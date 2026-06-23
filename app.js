@@ -970,6 +970,7 @@ function showResults() {
   G.screen = "results";
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
   renderResults(e, false);
+  pingGames("POST");
 }
 
 function renderResults(e, keepScroll) {
@@ -1024,10 +1025,23 @@ function renderResults(e, keepScroll) {
 
 function showError(msg) { app().innerHTML = '<div class="error-box">' + msg + "</div>"; }
 
+function setGamesPlayed(n) {
+  var el = document.getElementById("gamesPlayed");
+  if (el && typeof n === "number") el.textContent = n.toLocaleString() + " games played";
+}
+function pingGames(method) {
+  try {
+    fetch("/api/games", { method: method })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { setGamesPlayed(d.count); })
+      .catch(function () {});
+  } catch (e) {}
+}
+
 function boot() {
   fetch(CFG.DATA_URL)
     .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
-    .then(function (data) { initData(data); renderIntro(); })
+    .then(function (data) { initData(data); renderIntro(); pingGames("GET"); })
     .catch(function (err) {
       showError("Couldn\u2019t load " + esc(CFG.DATA_URL) + " (" + esc(err.message) + "). Serve this folder over HTTP \u2014 e.g. <span class=\"mono\">python3 -m http.server</span> \u2014 rather than opening index.html as a file.");
     });

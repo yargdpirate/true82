@@ -91,6 +91,7 @@ body.drafting .site-foot { display: none; }
   color: var(--chalk-dim);
 }
 .site-foot p { margin: 4px 0; }
+.site-foot .games-count { font-size: 11px; letter-spacing: 0.04em; color: var(--maple); margin: 0 0 10px; }
 .site-foot details.legal summary {
   cursor: pointer;
   list-style: none;
@@ -505,7 +506,7 @@ body.drafting .site-foot { display: none; }
 .tw-track { height: 9px; background: var(--tunnel-2); border-radius: 5px; overflow: hidden; }
 .tw-fill { height: 100%; border-radius: 5px; transition: width 0.5s cubic-bezier(.2,.7,.2,1); }
 .tw-fill.tw-off { background: var(--amber); }
-.tw-fill.tw-def { background: var(--ok); }
+.tw-fill.tw-def { background: var(--amber); }
 .tw-fill.tw-nub { width: 7px; background: var(--whistle); }
 .tier-elite { color: var(--amber); }
 .tier-strong { color: var(--chalk); }
