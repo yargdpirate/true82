@@ -216,9 +216,10 @@ body.drafting .site-foot { display: none; }
 .pool-count { font-family: var(--mono); font-size: 11px; color: var(--chalk-dim); }
 
 /* draft search + sort tools */
-.pool-head-tools { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+.pool-head-tools { display: flex; flex-direction: row; align-items: center; gap: 8px; }
 .pool-search {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   box-sizing: border-box;
   font-family: var(--mono);
   font-size: 13px;
@@ -231,20 +232,31 @@ body.drafting .site-foot { display: none; }
 }
 .pool-search::placeholder { color: var(--chalk-dim); }
 .pool-search:focus { outline: none; border-color: var(--maple); }
-.sort-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.sort-chips { display: flex; gap: 6px; flex-wrap: nowrap; flex: 0 0 auto; }
 .sort-chip {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 5px 11px;
+  padding: 5px 9px;
   background: transparent;
   border: 1px solid var(--maple-line);
   border-radius: 999px;
   color: var(--chalk-dim);
   cursor: pointer;
+  white-space: nowrap;
 }
 .sort-chip.active { background: var(--amber); border-color: var(--amber); color: var(--tunnel); font-weight: 600; }
+.pro-hint { font-family: var(--mono); font-size: 11px; line-height: 1.4; color: var(--maple); margin: 8px 0 2px; }
+.pro-hint em { font-style: italic; color: var(--amber); }
+.info-i {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px;
+  border: 1.4px solid currentColor; border-radius: 50%;
+  font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700;
+  font-size: 9px; line-height: 1;
+  margin-right: 2px; vertical-align: -1px;
+}
 
 .pool { display: flex; flex-direction: column; gap: 6px; }
 .player-row {
