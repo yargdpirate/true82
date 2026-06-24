@@ -215,6 +215,37 @@ body.drafting .site-foot { display: none; }
 }
 .pool-count { font-family: var(--mono); font-size: 11px; color: var(--chalk-dim); }
 
+/* draft search + sort tools */
+.pool-head-tools { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+.pool-search {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 8px 11px;
+  background: var(--tunnel);
+  border: 1px solid var(--maple-line);
+  border-radius: 8px;
+  color: var(--chalk);
+  -webkit-appearance: none;
+}
+.pool-search::placeholder { color: var(--chalk-dim); }
+.pool-search:focus { outline: none; border-color: var(--maple); }
+.sort-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.sort-chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  background: transparent;
+  border: 1px solid var(--maple-line);
+  border-radius: 999px;
+  color: var(--chalk-dim);
+  cursor: pointer;
+}
+.sort-chip.active { background: var(--amber); border-color: var(--amber); color: var(--tunnel); font-weight: 600; }
+
 .pool { display: flex; flex-direction: column; gap: 6px; }
 .player-row {
   width: 100%;
@@ -513,6 +544,29 @@ body.drafting .site-foot { display: none; }
 .tier-solid { color: var(--chalk-dim); }
 .tier-avg { color: var(--chalk-dim); }
 .tier-weak { color: var(--whistle); }
+
+/* ---------- Kaman Mode ---------- */
+.kaman-ticket { display: flex; align-items: center; justify-content: center; min-height: 96px; padding: 10px 12px; }
+.kaman-big {
+  font-family: var(--disp);
+  font-weight: 800;
+  font-size: clamp(52px, 19vw, 104px);
+  line-height: 0.92;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--amber);
+  text-align: center;
+  text-shadow: 0 3px 0 var(--maple-line);
+}
+.kaman-board { position: relative; overflow: hidden; }
+.kaman-flavor {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chalk-dim);
+  margin: 12px auto 2px;
+  max-width: 30em;
+}
 
 
 /* ---------- the climb (results) ---------- */

@@ -19,7 +19,9 @@ var CFG = {
   SITE_NAME: "PERFECT FIVE",
   DATA_URL: "site_data.json",
   GAMES_IN_SEASON: 82,
-  POS_THRESHOLD: 20
+  POS_THRESHOLD: 20,
+  KAMAN_LO: 2004,
+  KAMAN_HI: 2016
 };
 
 var BUCKETS = ["G", "F", "C"];
@@ -29,6 +31,7 @@ CFG.ROUNDS = BUCKETS.reduce(function (s, b) { return s + BUCKET_CAP[b]; }, 0);
 var MODE = "classic";
 
 var META = null, SC = null, IDX = null;
+var KAMAN_SEASONS = [];   // Kaman Mode: every Chris Kaman season (one row each), the entire draft pool
 var CRESTS = {};   // "FRANCHISE|decade" -> data-URI of a custom era crest (optional)
 var CREST_DEFAULT = null;  // optional data-URI shown for ANY combo lacking its own crest (temp/testing)
 var BASELINE = 10;
@@ -164,14 +167,27 @@ function initData(data) {
       if (!prev || valueOf(row) > valueOf(prev)) BEST_BY_NAME.set(name, row);
     });
   });
+
+  // ----- Kaman Mode pool: every Chris Kaman season (one row per season, traded
+  // years collapsed to his higher-value stint). The whole draft is five Kamans.
+  KAMAN_SEASONS = [];
+  var kBySeason = {};
+  data.players.forEach(function (row) {
+    if (row[IDX.name] !== "Chris Kaman") return;
+    var s = row[IDX.season];
+    if (!kBySeason[s] || valueOf(row) > valueOf(kBySeason[s])) kBySeason[s] = row;
+  });
+  KAMAN_SEASONS = Object.keys(kBySeason).map(function (s) { return kBySeason[s]; })
+    .sort(function (a, b) { return a[IDX.season] - b[IDX.season]; });
 }
 
 /* ---------- eligibility helpers ---------- */
 
-function bucketOpen(b) { return G.filled[b] < BUCKET_CAP[b]; }
+function capOf(b) { return MODE === "kaman" ? (b === "C" ? 5 : 0) : BUCKET_CAP[b]; }
+function bucketOpen(b) { return G.filled[b] < capOf(b); }
 function openBuckets() { return BUCKETS.filter(bucketOpen); }
 function rowOpenBuckets(row) { return rowBuckets(row).filter(bucketOpen); }
-function rowDraftable(row) { return !G.drafted.has(row[IDX.name]) && rowOpenBuckets(row).length > 0; }
+function rowDraftable(row) { return (MODE === "kaman" || !G.drafted.has(row[IDX.name])) && rowOpenBuckets(row).length > 0; }
 
 function poolHasEligible(fr, dec) {
   var pool = POOLS.get(key(fr, dec));
@@ -225,6 +241,8 @@ function newGame(mode) {
     cur: null,
     selected: null,
     yearByName: {},
+    sortMode: "min",
+    query: "",
     screen: "draft"
   };
   nextRound(true);
@@ -233,6 +251,13 @@ function newGame(mode) {
 function nextRound(animate) {
   G.round += 1;
   if (G.round > CFG.ROUNDS) { showResults(); return; }
+  if (MODE === "kaman") {
+    G.cur = { kaman: true };
+    G.selected = null;
+    G.yearByName = {};
+    renderDraft(animate ? { kaman: true } : false);
+    return;
+  }
   var fresh = availableEras().filter(function (d) { return !G.seenDec.has(d); });
   var avail = fresh.length ? fresh : availableEras();   // fall back to a repeat era only if every era's been used
   if (!avail.length) { showResults(); return; }
@@ -275,20 +300,48 @@ function lastNameKey(name) {
   return (parts[parts.length - 1] + " " + name).toLowerCase();
 }
 
+function cmpName(a, b) { var ka = lastNameKey(a[IDX.name]), kb = lastNameKey(b[IDX.name]); return ka < kb ? -1 : ka > kb ? 1 : 0; }
+// Max minutes the player logged in any of his eligible seasons for this team/era,
+// so a stud whose best-BPM season was injury-shortened isn't buried by a minutes sort.
+function poolMaxMin(name) {
+  var yrs = POOL_YEARS.get(key(G.cur.fr, G.cur.dec));
+  var arr = yrs ? yrs.get(name) : null;
+  var m = 0;
+  if (arr) for (var i = 0; i < arr.length; i++) { var v = arr[i][IDX.mp]; if (v > m) m = v; }
+  return m;
+}
+function sortPoolRows(rows) {
+  var mode = G.sortMode || "min";
+  if (mode === "az") {
+    rows.sort(cmpName);
+  } else if (mode === "obpm") {
+    rows.sort(function (a, b) { return (b[IDX.obpm] - a[IDX.obpm]) || cmpName(a, b); });
+  } else if (mode === "dbpm") {
+    rows.sort(function (a, b) { return (b[IDX.dbpm] - a[IDX.dbpm]) || cmpName(a, b); });
+  } else {
+    rows.sort(function (a, b) { return (poolMaxMin(b[IDX.name]) - poolMaxMin(a[IDX.name])) || cmpName(a, b); });
+  }
+}
+
 function currentPoolRows() {
+  if (MODE === "kaman") { return KAMAN_SEASONS.slice(); }
   var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
   var rows = [];
   if (pool) pool.forEach(function (row, name) { if (!G.drafted.has(name)) rows.push(row); });
-  rows.sort(function (a, b) {
-    var ka = lastNameKey(a[IDX.name]), kb = lastNameKey(b[IDX.name]);
-    return ka < kb ? -1 : ka > kb ? 1 : 0;
-  });
+  var q = (G.query || "").trim().toLowerCase();
+  if (q) rows = rows.filter(function (r) { return r[IDX.name].toLowerCase().indexOf(q) !== -1; });
+  sortPoolRows(rows);
   return rows;
 }
 
 // The row to use for a player in the current cell: the user's chosen season if
 // one is set (and still valid for this cell), otherwise the best season (default).
 function resolveRow(name) {
+  if (MODE === "kaman") {
+    var s = parseInt(name, 10);
+    for (var ki = 0; ki < KAMAN_SEASONS.length; ki++) if (KAMAN_SEASONS[ki][IDX.season] === s) return KAMAN_SEASONS[ki];
+    return null;
+  }
   var k = key(G.cur.fr, G.cur.dec);
   var sel = G.yearByName ? G.yearByName[name] : undefined;
   if (sel !== undefined && sel !== null) {
@@ -306,9 +359,9 @@ function confirmPick(bucket) {
   if (!row || !rowDraftable(row)) return;
   var opts = rowOpenBuckets(row);
   if (opts.indexOf(bucket) === -1) bucket = opts[0];
-  G.drafted.add(G.selected);
+  if (MODE !== "kaman") G.drafted.add(G.selected);   // Kaman Mode allows duplicate picks
   G.filled[bucket] += 1;
-  G.picks.push({ row: row, fr: G.cur.fr, dec: G.cur.dec, slot: bucket });
+  G.picks.push({ row: row, fr: MODE === "kaman" ? null : G.cur.fr, dec: MODE === "kaman" ? null : G.cur.dec, slot: bucket });
   nextRound(true);
 }
 
@@ -448,6 +501,7 @@ function renderIntro() {
       '<p class="intro-lead">An \u201C82\u20130\u201D-style game, but driven by advanced metrics instead of just adding up counting stats. Pick a team that would actually win IRL. Try to go undefeated. Compare your team vs the all-timers.</p>' +
       '<button class="btn btn-primary btn-block" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
       '<button class="btn btn-primary btn-block" id="startPro">\uD83D\uDC10 Pro \u00B7 no stats, draft from memory</button>' +
+      '<button class="btn btn-primary btn-block btn-kaman" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 5 centers, 0 losses</button>' +
       '<p class="eyebrow">Draft</p>' +
       "<p>Draft a 5-man roster with 2 guards, 2 forwards, and a center. You get a random team from a random decade. Pick a guy who played for that team in that era. Pick any season he played. You can reroll the era and the team once each per draft.</p>" +
       '<p class="eyebrow">Winning</p>' +
@@ -455,6 +509,7 @@ function renderIntro() {
     "</section>";
   el("startClassic").addEventListener("click", function () { newGame("classic"); });
   el("startPro").addEventListener("click", function () { newGame("pro"); });
+  el("startKaman").addEventListener("click", function () { newGame("kaman"); });
 }
 
 /* ---------- draft ---------- */
@@ -487,7 +542,7 @@ function lineupRailHtml() {
   var cells = [];
   BUCKETS.forEach(function (b) {
     var inB = G.picks.filter(function (p) { return p.slot === b; });
-    for (var i = 0; i < BUCKET_CAP[b]; i++) {
+    for (var i = 0; i < capOf(b); i++) {
       var p = inB[i];
       if (p) {
         var nm = p.row[IDX.name];
@@ -515,10 +570,11 @@ function confirmHtml() {
   var opts = rowOpenBuckets(row);
   if (!opts.length) return "";
   var yr = shortSeason(row[IDX.season]);
+  var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
   if (opts.length === 1) {
-    return '<button class="confirm-btn" data-bucket="' + opts[0] + '">Draft ' + esc(G.selected) + " " + yr + " \u00B7 " + BUCKET_NAME[opts[0]] + "</button>";
+    return '<button class="confirm-btn" data-bucket="' + opts[0] + '">Draft ' + who + " " + yr + " \u00B7 " + BUCKET_NAME[opts[0]] + "</button>";
   }
-  return '<div class="confirm-label">Assign ' + esc(G.selected) + " " + yr + " to:</div>" +
+  return '<div class="confirm-label">Assign ' + who + " " + yr + " to:</div>" +
     '<div class="confirm-multi">' + opts.map(function (b) {
       return '<button class="confirm-btn" data-bucket="' + b + '">' + BUCKET_NAME[b] + "</button>";
     }).join("") + "</div>";
@@ -557,6 +613,7 @@ function yearControlHtml(name, row) {
 
 /* one draft-pool row (a div[role=button] so it can legally contain the <select>) */
 function poolRowHtml(bestRow) {
+  if (MODE === "kaman") return kamanRowHtml(bestRow);
   var name = bestRow[IDX.name];
   var row = resolveRow(name);
   var open = rowDraftable(row);
@@ -572,6 +629,18 @@ function poolRowHtml(bestRow) {
     '<span class="pr-sub">' + sub1 + "</span>" + sub2 + "</div>";
 }
 
+// Kaman Mode pool row: each row is one Chris Kaman season (selected by season).
+function kamanRowHtml(row) {
+  var season = row[IDX.season];
+  var sel = (G.selected === String(season));
+  var cls = "player-row" + (sel ? " sel" : "");
+  return '<div class="' + cls + '" role="button" tabindex="0" data-season="' + season + '" aria-pressed="' + sel + '">' +
+    '<span class="pr-top"><span class="pr-name">Chris Kaman ' + shortSeason(season) + "</span>" +
+    '<span class="pr-pos">C \u00B7 ' + esc(row[IDX.team]) + "</span></span>" +
+    '<span class="pr-sub">' + chipsFor(row) + "</span>" +
+    '<span class="pr-sub pr-stats">' + statLine(row) + "</span></div>";
+}
+
 function poolInnerHtml(rows) { return rows.map(poolRowHtml).join(""); }
 
 function selectRow(node) {
@@ -581,7 +650,7 @@ function selectRow(node) {
   if (prev && prev !== node) { prev.classList.remove("sel"); prev.setAttribute("aria-pressed", "false"); }
   node.classList.add("sel");
   node.setAttribute("aria-pressed", "true");
-  G.selected = node.getAttribute("data-name");
+  G.selected = MODE === "kaman" ? node.getAttribute("data-season") : node.getAttribute("data-name");
   updateTray();
 }
 
@@ -595,6 +664,7 @@ function refreshPool() {
 
 function renderDraft(anim) {
   G.screen = "draft";
+  G.query = "";                 // fresh filter on each new round / skip (sort persists)
   document.body.classList.add("drafting");
   renderPips();
   var rows = currentPoolRows();
@@ -602,20 +672,22 @@ function renderDraft(anim) {
   rows.forEach(function (r) { codes[r[IDX.team]] = true; });
   var codeStr = Object.keys(codes).sort().join("/");
 
-  var teamSkippable = G.teamSkips > 0 && teamSkipTargets().length > 0;
-  var eraSkippable = G.eraSkips > 0 && eraSkipTargets().length > 0;
+  var teamSkippable = MODE !== "kaman" && G.teamSkips > 0 && teamSkipTargets().length > 0;
+  var eraSkippable = MODE !== "kaman" && G.eraSkips > 0 && eraSkipTargets().length > 0;
 
   var poolHtml = poolInnerHtml(rows);
 
-  var crest = crestFor(G.cur.fr, G.cur.dec);
+  var crest = MODE === "kaman" ? null : crestFor(G.cur.fr, G.cur.dec);
   var artHtml = crest
     ? '<div class="ticket-art"><img id="flapArt" class="crest-img flap" alt="' +
         esc(titleCase(G.cur.fr) + " " + decLabel(G.cur.dec)) + '" src="' + crest + '"></div>'
     : "";
 
-  app().innerHTML =
-    startOverBtnHtml() +
-    '<section class="ticket">' +
+  var ticketHtml;
+  if (MODE === "kaman") {
+    ticketHtml = '<section class="ticket kaman-ticket"><div class="kaman-big" id="kamanBig">KAMAN</div></section>';
+  } else {
+    ticketHtml = '<section class="ticket">' +
       '<div class="ticket-head">' +
         '<div class="ticket-headtext">' +
           '<div class="ticket-roll">' +
@@ -630,14 +702,47 @@ function renderDraft(anim) {
         '<button class="skip-btn" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team \u00B7 " + G.teamSkips + " left</button>" +
         '<button class="skip-btn" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era \u00B7 " + G.eraSkips + " left</button>" +
       "</div>" +
-    "</section>" +
-    '<div class="pool-head"><span class="pool-count">pick one \u00B7 any season via \u25BE \u00B7 A\u2013Z</span></div>' +
+    "</section>";
+  }
+
+  var poolHeadHtml;
+  if (MODE === "kaman") {
+    poolHeadHtml = '<div class="pool-head"><span class="pool-count">pick a Kaman season \u00B7 repeats welcome</span></div>';
+  } else {
+    var chips = [["min", "Min"], ["az", "A\u2013Z"]];
+    if (MODE === "classic") chips.push(["obpm", "Off"], ["dbpm", "Def"]);
+    var chipsHtml = chips.map(function (c) {
+      return '<button class="sort-chip' + (G.sortMode === c[0] ? " active" : "") + '" data-sort="' + c[0] + '">' + c[1] + "</button>";
+    }).join("");
+    poolHeadHtml = '<div class="pool-head pool-head-tools">' +
+      '<input type="search" id="poolSearch" class="pool-search" placeholder="filter players\u2026" autocomplete="off" spellcheck="false">' +
+      '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div></div>";
+  }
+
+  app().innerHTML =
+    startOverBtnHtml() +
+    ticketHtml +
+    poolHeadHtml +
     '<div class="pool" id="pool">' + poolHtml + "</div>" +
     '<div class="tray"><div class="tray-inner" id="trayInner"></div></div>';
 
   updateTray();
 
   wireStartOver();
+  var searchEl = el("poolSearch");
+  if (searchEl) {
+    searchEl.addEventListener("input", function () { G.query = searchEl.value; refreshPool(); });
+  }
+  var chipRow = el("sortChips");
+  if (chipRow) {
+    chipRow.addEventListener("click", function (ev) {
+      var b = ev.target.closest(".sort-chip");
+      if (!b) return;
+      G.sortMode = b.getAttribute("data-sort");
+      chipRow.querySelectorAll(".sort-chip").forEach(function (c) { c.classList.toggle("active", c === b); });
+      refreshPool();
+    });
+  }
   if (teamSkippable) el("skipTeam").addEventListener("click", doTeamSkip);
   if (eraSkippable) el("skipEra").addEventListener("click", doEraSkip);
   el("pool").addEventListener("click", function (ev) {
@@ -666,6 +771,7 @@ function renderDraft(anim) {
   });
 
   if (anim) {
+    if (anim.kaman) reveal("kamanBig");
     if (anim.dec) reveal("flapDec");
     if (anim.fr) reveal("flapFr");
     if (anim.dec || anim.fr) reveal("flapArt");
@@ -879,7 +985,7 @@ function picksInSlotOrder() {
   return G.picks.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return BUCKETS.indexOf(a.p.slot) - BUCKETS.indexOf(b.p.slot); });
 }
 
-function shareModeLabel() { return MODE === "pro" ? "Pro" : "Classic"; }
+function shareModeLabel() { return MODE === "kaman" ? "Kaman Mode" : MODE === "pro" ? "Pro" : "Classic"; }
 function shareSurname(nm) {
   var parts = String(nm).trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
@@ -890,12 +996,12 @@ function shareSurname(nm) {
 function shareText(e) {
   var wins = e.winTally, losses = CFG.GAMES_IN_SEASON - wins, undef = wins >= CFG.GAMES_IN_SEASON;
   var head = "\uD83C\uDFC0 TRUE 82 (" + shareModeLabel() + ")";
-  var line2 = (undef ? "\uD83C\uDFC6 " : "") + wins + "\u2013" + losses + " | \uD83D\uDCCA Net " + signed1(e.net);
+  var line2 = (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signed1(e.net);
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]);
   });
-  return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\ntrue82.net";
+  return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\nhttps://true82.net";
 }
 
 function flashShareBtn(msg) {
@@ -968,6 +1074,7 @@ function shareOrCopy(txt) {
 
 function showResults() {
   G.screen = "results";
+  if (MODE === "kaman") { renderKamanResults(); pingGames("POST"); return; }
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
   renderResults(e, false);
   pingGames("POST");
@@ -1021,13 +1128,77 @@ function renderResults(e, keepScroll) {
   window.scrollTo(0, scrollY);
 }
 
+/* ---------- Kaman Mode results (a maxed-out meme page) ---------- */
+function kamanFlavor() {
+  var lines = [
+    "Kaman. Kaman Kaman. KAMAN! Kaman? Kaman Kaman Kaman\u2026 Kaman.",
+    "KAMAN kaman Kaman KAMAN. Kaman Kaman? KAMAN!!! kaman \uD83E\uDDB4 Kaman.",
+    "Kaman Kaman Kaman Kaman Kaman. Kaman. (Kaman.) KAMAN Kaman Kaman.",
+    "kaman\u2026 Kaman?? KAMAN!! Kaman Kaman Kaman Kaman Kaman Kaman Kaman.",
+    "Kaman Kaman. Kaman Kaman Kaman. Kaman Kaman Kaman Kaman. K\u00A0A\u00A0M\u00A0A\u00A0N.",
+    "KAMAN. Kaman kaman KAMAN Kaman? Kaman!! Kaman Kaman \uD83E\uDDB4\uD83E\uDDB4\uD83E\uDDB4 Kaman.",
+    "Kaman (Kaman) Kaman \u2014 Kaman Kaman KAMAN Kaman Kaman? KAMAN. kaman."
+  ];
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+function kamanBar(label) {
+  return '<div class="tw-row">' +
+    '<div class="tw-top"><span class="tw-end">' + label + "</span>" +
+      '<span class="tw-tier tier-elite">CAVEMAN</span></div>' +
+    '<div class="tw-track"><div class="tw-fill tw-off" style="width:100%"></div></div>' +
+    "</div>";
+}
+function kamanShareText() {
+  var rows = G.picks.map(function (p) {
+    return "C '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]);
+  });
+  return "\uD83C\uDFC0 TRUE 82 (Kaman Mode)\n\uD83C\uDFC6 82\u20130 |  Net +\u221E\n\n" + rows.join("\n") + "\n\nhttps://true82.net";
+}
+function renderKamanResults() {
+  renderPips();
+  document.body.classList.remove("drafting");
+  var picksHtml = G.picks.map(function (p) {
+    var row = p.row, name = row[IDX.name];
+    return '<div class="pick-card">' +
+      '<div class="pick-top"><span class="pr-name"><span class="slot-badge">C</span>' + esc(name) + "</span>" +
+      '<span class="pr-v"><small>V</small>\u221E</span></div>' +
+      '<div class="pr-sub"><span>' + shortSeason(row[IDX.season]) + " \u00B7 Caveman Era</span>" + chipsFor(row) + "</div>" +
+      '<div class="pr-sub pr-stats">' + statLine(row) + "</div></div>";
+  }).join("");
+
+  var ledger = '<div class="ledger">' +
+    '<div class="ledger-row"><span>Raw talent \u03A3V<span class="why">Five centers. The math gave up and went home.</span></span><span class="ledger-amt">\u221E</span></div>' +
+    '<div class="ledger-row"><span>Usage tax<span class="why">There is only one ball, but Kaman is somehow under all five rims at once.</span></span><span class="ledger-amt zero">\u2713 0.0</span></div>' +
+    '<div class="ledger-row"><span>Spacing bonus<span class="why">Five 7-footers bend spacetime \u2014 the floor is now a black hole.</span></span><span class="ledger-amt good">+\u221E</span></div>' +
+    '<div class="ledger-row"><span>Rebounding<span class="why">Every miss is yours. Every make is yours. The ball was always yours.</span></span><span class="ledger-amt good">+\u221E</span></div>' +
+    '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Beyond the league baseline. Beyond the league. Beyond.</span></span><span class="ledger-amt">+\u221E</span></div></div>';
+
+  app().innerHTML =
+    startOverBtnHtml() +
+    '<section class="board kaman-board"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
+      '<p class="eyebrow">Front office projection \u00B7 KAMAN MODE</p>' +
+      '<div class="big">82\u20130</div><div class="big-label">net rating +\u221E</div>' +
+      '<p class="kaman-flavor">' + kamanFlavor() + "</p>" +
+      '<button class="btn btn-primary btn-block" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
+    '<section class="section twoway-sec"><div class="twoway">' + kamanBar("Offense") + kamanBar("Defense") + "</div></section>" +
+    '<section class="section"><p class="eyebrow">Your five \u00B7 all centers, as nature intended</p>' + picksHtml + "</section>" +
+    '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
+    '<div class="actions"><button class="btn btn-primary" id="againBtn">Run it back</button></div>';
+
+  el("againBtn").addEventListener("click", function () { newGame(); });
+  wireStartOver();
+  el("shareTeamBtn").addEventListener("click", function () { shareOrCopy(kamanShareText()); });
+  setupGoatFireworks(true);
+  window.scrollTo(0, 0);
+}
+
 /* ---------- boot ---------- */
 
 function showError(msg) { app().innerHTML = '<div class="error-box">' + msg + "</div>"; }
 
 function setGamesPlayed(n) {
   var el = document.getElementById("gamesPlayed");
-  if (el && typeof n === "number") el.textContent = n.toLocaleString() + " games played";
+  if (el && typeof n === "number") el.textContent = n.toLocaleString() + " games played | ";
 }
 function pingGames(method) {
   try {
