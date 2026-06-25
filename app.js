@@ -835,9 +835,9 @@ function renderDraft(anim) {
         artHtml +
       "</div>" +
       '<div class="ticket-actions">' +
-        '<button class="skip-btn" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team \u00B7 " + (MODE === "cap" ? "-$1" : G.teamSkips + " left") + "</button>" +
-        '<button class="skip-btn" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era \u00B7 " + (MODE === "cap" ? "-$1" : G.eraSkips + " left") + "</button>" +
-        (MODE === "cap" ? '<button class="skip-btn" id="rerollYears"' + (yearRerollable ? "" : " disabled") + ">Skip yrs \u00B7 -$1</button>" : "") +
+        '<button class="skip-btn" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.teamSkips + " left") + "</button>" +
+        '<button class="skip-btn" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.eraSkips + " left") + "</button>" +
+        (MODE === "cap" ? '<button class="skip-btn" id="rerollYears"' + (yearRerollable ? "" : " disabled") + ">Skip yrs -$1</button>" : "") +
       "</div>" +
     "</section>";
   }
