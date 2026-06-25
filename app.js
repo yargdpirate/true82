@@ -217,7 +217,9 @@ function teamSkipTargets() {
 // Skip era: other UNUSED eras where the SAME franchise can fill an open slot
 function eraSkipTargets() {
   return DECADES.filter(function (d) {
-    return d !== G.cur.dec && !G.seenDec.has(d) && poolHasEligible(G.cur.fr, d);
+    // Presti allows repeating an era, so the reroll offers every decade the franchise played
+    // in except the current one; other modes keep the distinct-decade rule.
+    return d !== G.cur.dec && (MODE === "cap" || !G.seenDec.has(d)) && poolHasEligible(G.cur.fr, d);
   });
 }
 
@@ -319,7 +321,9 @@ function doEraSkip() {
   if (!targets.length) return;
   if (MODE === "cap") { if (!chargeReroll()) return; }
   else { if (!G.eraSkips) return; G.eraSkips -= 1; }
-  if (MODE === "cap") G.seenDec.delete(G.cur.dec);   // free the tentative decade (never committed) so skips don't exhaust the pool
+  // Free the decade we're leaving so deals stay varied — but only if it isn't already locked in by a
+  // committed pick, since the reroll can now land on an era you've already drafted.
+  if (MODE === "cap" && !G.picks.some(function (p) { return p.dec === G.cur.dec; })) G.seenDec.delete(G.cur.dec);
   G.cur.dec = pick1(targets);         // same franchise, different (unused) era
   G.seenDec.add(G.cur.dec);
   G.selected = null;
