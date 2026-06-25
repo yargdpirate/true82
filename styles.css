@@ -190,6 +190,7 @@ body.drafting .site-foot { display: none; }
   display: flex;
   gap: 8px;
   margin-top: 12px;
+  flex-wrap: wrap;
 }
 .skip-btn {
   flex: 1;
@@ -754,3 +755,61 @@ body.drafting .site-foot { display: none; }
 .pr-v-inline { font-family: var(--mono); font-weight: 600; font-size: 13px; color: var(--amber); white-space: nowrap; }
 .tray-stats-4 { grid-template-columns: repeat(4, 1fr); }
 .tray-hint { text-align: center; padding: 6px; font-size: 12px; }
+
+/* ---------- Salary Cap mode ---------- */
+.btn-dark {
+  background: var(--ink);
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  box-shadow: inset 0 0 0 1px rgba(255, 181, 46, 0.22);
+}
+.btn-dark:active { background: var(--tunnel); }
+.mode-note {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--chalk-dim);
+  margin: 2px 2px 6px;
+}
+.mode-note strong { color: var(--amber); font-weight: 700; }
+.cap-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 2px;
+  padding: 8px 12px;
+  background: var(--tunnel);
+  border: 1px solid var(--maple-line);
+  border-left: 3px solid var(--amber);
+}
+.cap-bar-amt { font-family: var(--mono); font-weight: 700; font-size: 22px; color: var(--amber); line-height: 1; }
+.cap-bar-sub { font-family: var(--mono); font-size: 12px; color: var(--chalk-dim); }
+.cap-cost { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--amber); white-space: nowrap; }
+.cap-row .pr-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 3px;
+}
+.cap-season { font-family: var(--mono); font-size: 13px; color: var(--chalk-dim); }
+.cap-row.off .cap-cost { color: var(--maple); }
+.cap-spent { font-family: var(--mono); font-size: 12px; color: var(--maple); margin: 4px 0 2px; }
+
+/* Salary Cap: info (i) + explanation tooltip */
+.cap-bar { align-items: center; }
+.cap-info {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; flex: 0 0 auto; align-self: center;
+  border: 1.4px solid var(--maple); border-radius: 50%;
+  color: var(--maple); background: transparent; cursor: pointer;
+  font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700;
+  font-size: 10px; line-height: 1; padding: 0;
+}
+.cap-info:active { color: var(--amber); border-color: var(--amber); }
+.cap-tip {
+  font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  color: var(--chalk-dim); background: var(--tunnel);
+  border: 1px solid var(--maple-line); border-left: 3px solid var(--maple);
+  padding: 8px 10px; margin: 2px 0;
+}

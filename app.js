@@ -189,7 +189,9 @@ function openBuckets() { return BUCKETS.filter(bucketOpen); }
 function rowOpenBuckets(row) { return rowBuckets(row).filter(bucketOpen); }
 function rowDraftable(row) {
   var dkey = MODE === "kaman" ? String(row[IDX.season]) : row[IDX.name];
-  return !G.drafted.has(dkey) && rowOpenBuckets(row).length > 0;
+  if (G.drafted.has(dkey) || rowOpenBuckets(row).length === 0) return false;
+  if (MODE === "cap" && !capAffordable(row)) return false;
+  return true;
 }
 
 function poolHasEligible(fr, dec) {
@@ -237,14 +239,19 @@ function newGame(mode) {
     picks: [],
     drafted: new Set(),
     filled: { G: 0, F: 0, C: 0 },
-    teamSkips: 1,
-    eraSkips: 1,
+    teamSkips: MODE === "cap" ? 2 : 1,
+    eraSkips: MODE === "cap" ? 2 : 1,
+    yearRerolls: MODE === "cap" ? 2 : 0,
     seenFr: new Set(),
     seenDec: new Set(),
     cur: null,
     selected: null,
     yearByName: {},
-    sortMode: MODE === "pro" ? "az" : "min",
+    costByName: {},
+    costDir: "desc",
+    budget: CAP_BUDGET,
+    maxCap: CAP_BUDGET,
+    sortMode: MODE === "pro" ? "az" : MODE === "cap" ? "cost" : "min",
     query: "",
     screen: "draft"
   };
@@ -261,43 +268,75 @@ function nextRound(animate) {
     renderDraft(animate ? { kaman: true } : false);
     return;
   }
-  var fresh = availableEras().filter(function (d) { return !G.seenDec.has(d); });
-  var avail = fresh.length ? fresh : availableEras();   // fall back to a repeat era only if every era's been used
-  if (!avail.length) { showResults(); return; }
-  var dec = pick1(avail);
-  G.cur = { dec: dec, fr: randFranchise(dec, G.seenFr) };
+  var tries = 0;
+  while (true) {
+    tries++;
+    var fresh = availableEras().filter(function (d) { return !G.seenDec.has(d); });
+    var avail = fresh.length ? fresh : availableEras();   // fall back to a repeat era only if every era's been used
+    if (!avail.length) { showResults(); return; }
+    var dec = pick1(avail);
+    G.cur = { dec: dec, fr: randFranchise(dec, G.seenFr) };
+    G.selected = null;
+    G.yearByName = {};
+    if (MODE === "pro") assignProSeasons();
+    else if (MODE === "cap") assignCapPool();
+    // Cap: never strand the player — re-roll the era/prices until something is affordable.
+    if (MODE !== "cap" || tries > 40 || capPoolHasPick()) break;
+  }
   G.seenDec.add(G.cur.dec);
   G.seenFr.add(G.cur.fr);
-  G.selected = null;
-  G.yearByName = {};
-  if (MODE === "pro") assignProSeasons();
   renderDraft(animate ? { dec: true, fr: true } : false);
 }
 
+// Presti: rerolls are unlimited but each costs $1 of cap. Decrementing the remaining
+// budget IS the cap drop (you reroll before spending that dollar). Blocked if it would
+// leave too little to fill the open slots ($1 minimum per remaining pick).
+function chargeReroll() {
+  var picksToGo = CFG.ROUNDS - G.round + 1;
+  if (G.budget - 1 < picksToGo) return false;
+  G.budget -= 1;
+  G.maxCap -= 1;
+  return true;
+}
+
 function doTeamSkip() {
-  if (!G.teamSkips) return;
   var targets = teamSkipTargets();
   if (!targets.length) return;
-  G.teamSkips -= 1;
+  if (MODE === "cap") { if (!chargeReroll()) return; }
+  else { if (!G.teamSkips) return; G.teamSkips -= 1; }
+  if (MODE === "cap") G.seenFr.delete(G.cur.fr);   // free the tentative franchise (never committed) so skips don't exhaust the pool
   G.cur.fr = pick1(targets);          // same era, different (unused) franchise
   G.seenFr.add(G.cur.fr);
   G.selected = null;
   G.yearByName = {};
   if (MODE === "pro") assignProSeasons();
+  else if (MODE === "cap") { assignCapPool(); var ct = 0; while (!capPoolHasPick() && ct < 40) { assignCapPool(); ct++; } }
   renderDraft({ dec: false, fr: true });
 }
 
 function doEraSkip() {
-  if (!G.eraSkips) return;
   var targets = eraSkipTargets();
   if (!targets.length) return;
-  G.eraSkips -= 1;
+  if (MODE === "cap") { if (!chargeReroll()) return; }
+  else { if (!G.eraSkips) return; G.eraSkips -= 1; }
+  if (MODE === "cap") G.seenDec.delete(G.cur.dec);   // free the tentative decade (never committed) so skips don't exhaust the pool
   G.cur.dec = pick1(targets);         // same franchise, different (unused) era
   G.seenDec.add(G.cur.dec);
   G.selected = null;
   G.yearByName = {};
   if (MODE === "pro") assignProSeasons();
+  else if (MODE === "cap") { assignCapPool(); var ce = 0; while (!capPoolHasPick() && ce < 40) { assignCapPool(); ce++; } }
   renderDraft({ dec: true, fr: false });
+}
+
+// Cap only: re-roll every player's locked season + price for the current team/era ($1).
+function doYearReroll() {
+  if (MODE !== "cap") return;
+  if (!chargeReroll()) return;
+  G.selected = null;
+  assignCapPool();
+  var cy = 0; while (!capPoolHasPick() && cy < 40) { assignCapPool(); cy++; }
+  renderDraft(false);
 }
 
 function lastNameKey(name) {
@@ -318,6 +357,50 @@ function assignProSeasons() {
     if (arr && arr.length) G.yearByName[name] = arr[Math.floor(Math.random() * arr.length)][IDX.season];
   });
 }
+
+/* ---------- Salary Cap mode ----------
+   $50 budget, seasons locked random, every player priced off that season's value with
+   a steep quadratic curve + fat-tailed roll. Calibrated (Monte Carlo vs the real engine,
+   1 team + 1 era skip) so even optimal play sneaks an 82-0 roster under the cap ~1 in 50
+   boards — and so stars genuinely cost a third-plus of the cap, forcing real tradeoffs. */
+var CAP_BUDGET = 50;
+function capRoll() {
+  var u = Math.random();
+  if (u < 0.55) return 0.85 + 0.30 * Math.random();   // 55% normal
+  if (u < 0.80) return 0.55 + 0.25 * Math.random();   // 25% fire-sale
+  return 1.25 + 0.35 * Math.random();                 // 20% gouged
+}
+function capCost(v) {
+  return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll()));
+}
+// Lock each pool player to a random season AND price it off that season's value.
+function assignCapPool() {
+  var k = key(G.cur.fr, G.cur.dec);
+  var pool = POOLS.get(k), yrs = POOL_YEARS.get(k);
+  G.costByName = {};
+  if (!pool || !yrs) return;
+  pool.forEach(function (row, name) {
+    var arr = yrs.get(name);
+    if (arr && arr.length) {
+      var pickRow = arr[Math.floor(Math.random() * arr.length)];
+      G.yearByName[name] = pickRow[IDX.season];
+      G.costByName[name] = capCost(valueOf(pickRow));
+    }
+  });
+}
+// Affordable if it still leaves at least $1 for every remaining pick (never strand).
+function capAffordable(row) {
+  var c = G.costByName ? G.costByName[row[IDX.name]] : null;
+  if (c == null) return true;
+  var picksAfter = CFG.ROUNDS - G.round;
+  return c <= G.budget - picksAfter;
+}
+function capPoolHasPick() {
+  var rows = currentPoolRows();
+  for (var i = 0; i < rows.length; i++) if (rowDraftable(resolveRow(rows[i][IDX.name]))) return true;
+  return false;
+}
+
 // Max minutes the player logged in any of his eligible seasons for this team/era,
 // so a stud whose best-BPM season was injury-shortened isn't buried by a minutes sort.
 function poolMaxMin(name) {
@@ -335,6 +418,13 @@ function sortPoolRows(rows) {
     rows.sort(function (a, b) { return (b[IDX.obpm] - a[IDX.obpm]) || cmpName(a, b); });
   } else if (mode === "dbpm") {
     rows.sort(function (a, b) { return (b[IDX.dbpm] - a[IDX.dbpm]) || cmpName(a, b); });
+  } else if (mode === "cost") {
+    var dir = (G.costDir === "asc") ? 1 : -1;   // default desc = most money first
+    rows.sort(function (a, b) {
+      var ca = G.costByName ? (G.costByName[a[IDX.name]] || 0) : 0;
+      var cb = G.costByName ? (G.costByName[b[IDX.name]] || 0) : 0;
+      return (dir * (ca - cb)) || cmpName(a, b);   // tiebreak: alphabetical
+    });
   } else {
     rows.sort(function (a, b) { return (poolMaxMin(b[IDX.name]) - poolMaxMin(a[IDX.name])) || cmpName(a, b); });
   }
@@ -379,6 +469,7 @@ function confirmPick(bucket) {
   G.drafted.add(G.selected);   // classic/pro: by player name; Kaman: by season (each once)
   G.filled[bucket] += 1;
   G.picks.push({ row: row, fr: MODE === "kaman" ? null : G.cur.fr, dec: MODE === "kaman" ? null : G.cur.dec, slot: bucket });
+  if (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) G.budget -= G.costByName[G.selected];
   nextRound(true);
 }
 
@@ -517,16 +608,18 @@ function renderIntro() {
       '<h1 class="intro-title">Go 82\u20130</h1>' +
       '<p class="intro-lead">An \u201C82\u20130\u201D-style game, but driven by advanced metrics instead of just adding up counting stats. Pick a team that would actually win IRL. Try to go undefeated. Compare your team vs the all-timers.</p>' +
       '<button class="btn btn-primary btn-block" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
-      '<button class="btn btn-primary btn-block" id="startPro">\uD83D\uDC10 Pro \u00B7 pick the best seasons from memory</button>' +
-      '<button class="btn btn-primary btn-block btn-kaman" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 KAMAN</button>' +
+      '<button class="btn btn-primary btn-block" id="startPro">\uD83C\uDFC6 Pro \u00B7 pick the best seasons from memory</button>' +
+      '<button class="btn btn-primary btn-block" id="startCap">\uD83D\uDC10 Presti Mode \u00B7 Salary Cap &amp; Random</button>' +
       '<p class="eyebrow">Draft</p>' +
       "<p>Draft a 5-man roster with 2 guards, 2 forwards, and a center. You get a random team from a random decade. Pick a guy who played for that team in that era. Pick any season he played. You can reroll the era and the team once each per draft.</p>" +
       '<p class="eyebrow">Winning</p>' +
       "<p>Recommended to have at least <strong>3 shooters</strong> and <strong>1 role player</strong>. Based mostly on OBPM and DBPM (why we only go back to 1974) + some minor custom tweaks. Some players from low/no 3pt era get 3pt shooter bonuses based on reputation and vibes.</p>" +
+      '<button class="btn btn-primary btn-block btn-dark" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 KAMAN</button>' +
     "</section>";
   el("startClassic").addEventListener("click", function () { newGame("classic"); });
   el("startPro").addEventListener("click", function () { newGame("pro"); });
   el("startKaman").addEventListener("click", function () { newGame("kaman"); });
+  el("startCap").addEventListener("click", function () { newGame("cap"); });
 }
 
 /* ---------- draft ---------- */
@@ -588,10 +681,11 @@ function confirmHtml() {
   if (!opts.length) return "";
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
+  var costNote = (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) ? " \u00B7 $" + G.costByName[G.selected] : "";
   if (opts.length === 1) {
-    return '<button class="confirm-btn" data-bucket="' + opts[0] + '">Draft ' + who + " " + yr + " \u00B7 " + BUCKET_NAME[opts[0]] + "</button>";
+    return '<button class="confirm-btn" data-bucket="' + opts[0] + '">Draft ' + who + " " + yr + " \u00B7 " + BUCKET_NAME[opts[0]] + costNote + "</button>";
   }
-  return '<div class="confirm-label">Assign ' + who + " " + yr + " to:</div>" +
+  return '<div class="confirm-label">Assign ' + who + " " + yr + costNote + " to:</div>" +
     '<div class="confirm-multi">' + opts.map(function (b) {
       return '<button class="confirm-btn" data-bucket="' + b + '">' + BUCKET_NAME[b] + "</button>";
     }).join("") + "</div>";
@@ -631,6 +725,7 @@ function yearControlHtml(name, row) {
 /* one draft-pool row (a div[role=button] so it can legally contain the <select>) */
 function poolRowHtml(bestRow) {
   if (MODE === "kaman") return kamanRowHtml(bestRow);
+  if (MODE === "cap") return capRowHtml(bestRow);
   var name = bestRow[IDX.name];
   var row = resolveRow(name);
   var open = rowDraftable(row);
@@ -658,6 +753,26 @@ function kamanRowHtml(row) {
     '<span class="pr-pos">C \u00B7 ' + esc(row[IDX.team]) + (open ? "" : " \u00B7 picked") + "</span></span>" +
     '<span class="pr-sub">' + chipsFor(row) + "</span>" +
     '<span class="pr-sub pr-stats">' + statLine(row) + "</span></div>";
+}
+
+// Salary Cap pool row: locked season, no stats — just the name, the year, and a price tag.
+function capRowHtml(bestRow) {
+  var name = bestRow[IDX.name];
+  var row = resolveRow(name);
+  var taken = G.drafted.has(name);
+  var afford = capAffordable(row);
+  var noSlot = rowOpenBuckets(row).length === 0;
+  var open = !taken && !noSlot && afford;
+  var sel = (G.selected === name) && open;
+  var cost = G.costByName ? G.costByName[name] : null;
+  var why = taken ? " \u00B7 picked" : (noSlot ? " \u00B7 full" : (afford ? "" : " \u00B7 over"));
+  var cls = "player-row cap-row" + (sel ? " sel" : "") + (open ? "" : " off");
+  return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
+    (open ? "" : ' aria-disabled="true"') + ">" +
+    '<span class="pr-top"><span class="pr-name">' + esc(name) + "</span>" +
+    '<span class="cap-cost">' + (cost != null ? "$" + cost : "") + "</span></span>" +
+    '<span class="pr-sub"><span class="cap-season">' + shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]) +
+    '</span><span class="pr-pos">' + bucketTag(row) + why + "</span></span></div>";
 }
 
 function poolInnerHtml(rows) { return rows.map(poolRowHtml).join(""); }
@@ -691,8 +806,10 @@ function renderDraft(anim) {
   rows.forEach(function (r) { codes[r[IDX.team]] = true; });
   var codeStr = Object.keys(codes).sort().join("/");
 
-  var teamSkippable = MODE !== "kaman" && G.teamSkips > 0 && teamSkipTargets().length > 0;
-  var eraSkippable = MODE !== "kaman" && G.eraSkips > 0 && eraSkipTargets().length > 0;
+  var canReroll = MODE !== "cap" || (G.budget - 1 >= CFG.ROUNDS - G.round + 1);  // leave $1 per remaining pick
+  var teamSkippable = MODE !== "kaman" && (MODE === "cap" ? canReroll : G.teamSkips > 0) && teamSkipTargets().length > 0;
+  var eraSkippable = MODE !== "kaman" && (MODE === "cap" ? canReroll : G.eraSkips > 0) && eraSkipTargets().length > 0;
+  var yearRerollable = MODE === "cap" && canReroll;
 
   var poolHtml = poolInnerHtml(rows);
 
@@ -718,8 +835,9 @@ function renderDraft(anim) {
         artHtml +
       "</div>" +
       '<div class="ticket-actions">' +
-        '<button class="skip-btn" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team \u00B7 " + G.teamSkips + " left</button>" +
-        '<button class="skip-btn" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era \u00B7 " + G.eraSkips + " left</button>" +
+        '<button class="skip-btn" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team \u00B7 " + (MODE === "cap" ? "-$1" : G.teamSkips + " left") + "</button>" +
+        '<button class="skip-btn" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era \u00B7 " + (MODE === "cap" ? "-$1" : G.eraSkips + " left") + "</button>" +
+        (MODE === "cap" ? '<button class="skip-btn" id="rerollYears"' + (yearRerollable ? "" : " disabled") + ">Skip yrs \u00B7 -$1</button>" : "") +
       "</div>" +
     "</section>";
   }
@@ -728,10 +846,12 @@ function renderDraft(anim) {
   if (MODE === "kaman") {
     poolHeadHtml = '<div class="pool-head"><span class="pool-count">pick a Kaman season \u00B7 repeats welcome</span></div>';
   } else {
-    var chips = [["min", "Min"], ["az", "A\u2013Z"]];
+    var chips = MODE === "cap" ? [["cost", "$"], ["min", "Min"], ["az", "A\u2013Z"]] : [["min", "Min"], ["az", "A\u2013Z"]];
     if (MODE === "classic") chips.push(["obpm", "Off"], ["dbpm", "Def"]);
     var chipsHtml = chips.map(function (c) {
-      return '<button class="sort-chip' + (G.sortMode === c[0] ? " active" : "") + '" data-sort="' + c[0] + '">' + c[1] + "</button>";
+      var label = c[1];
+      if (c[0] === "cost" && G.sortMode === "cost") label = "$ " + (G.costDir === "asc" ? "\u2191" : "\u2193");
+      return '<button class="sort-chip' + (G.sortMode === c[0] ? " active" : "") + '" data-sort="' + c[0] + '">' + label + "</button>";
     }).join("");
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
@@ -743,9 +863,19 @@ function renderDraft(anim) {
     ? '<p class="pro-hint"><span class="info-i">i</span> <em>Each player\u2019s season is randomized</em>. Change the season using the \u25BE menu.</p>'
     : "";
 
+  var capBar = MODE === "cap"
+    ? '<div class="cap-bar">' +
+        '<span class="cap-bar-amt">$' + G.budget + '</span>' +
+        '<span class="cap-bar-sub">left</span>' +
+        '<button class="cap-info" id="capInfo" aria-expanded="false" aria-label="How Salary Cap works">i</button>' +
+      '</div>' +
+      '<div class="cap-tip" id="capTip" hidden>$50 salary cap. Player salaries are randomized each round to fair value, bargain, or rip-off. Player year available is also randomized. Unlimited rerolls of team, era, player years, but it costs $1 from your salary cap each time. Possibly unwinnable.</div>'
+    : "";
+
   app().innerHTML =
     startOverBtnHtml() +
     ticketHtml +
+    capBar +
     poolHeadHtml +
     proHint +
     '<div class="pool" id="pool">' + poolHtml + "</div>" +
@@ -763,13 +893,31 @@ function renderDraft(anim) {
     chipRow.addEventListener("click", function (ev) {
       var b = ev.target.closest(".sort-chip");
       if (!b) return;
-      G.sortMode = b.getAttribute("data-sort");
-      chipRow.querySelectorAll(".sort-chip").forEach(function (c) { c.classList.toggle("active", c === b); });
+      var mode = b.getAttribute("data-sort");
+      if (mode === "cost" && G.sortMode === "cost") {
+        G.costDir = (G.costDir === "asc") ? "desc" : "asc";   // re-click flips most/least money
+      } else {
+        G.sortMode = mode;
+      }
+      chipRow.querySelectorAll(".sort-chip").forEach(function (c) {
+        c.classList.toggle("active", c.getAttribute("data-sort") === G.sortMode);
+      });
+      var costChip = chipRow.querySelector('.sort-chip[data-sort="cost"]');
+      if (costChip) costChip.textContent = (G.sortMode === "cost") ? ("$ " + (G.costDir === "asc" ? "\u2191" : "\u2193")) : "$";
       refreshPool();
     });
   }
   if (teamSkippable) el("skipTeam").addEventListener("click", doTeamSkip);
   if (eraSkippable) el("skipEra").addEventListener("click", doEraSkip);
+  if (yearRerollable) el("rerollYears").addEventListener("click", doYearReroll);
+  var capInfo = el("capInfo");
+  if (capInfo) capInfo.addEventListener("click", function () {
+    var tip = el("capTip");
+    if (!tip) return;
+    var hidden = tip.hasAttribute("hidden");
+    if (hidden) { tip.removeAttribute("hidden"); capInfo.setAttribute("aria-expanded", "true"); }
+    else { tip.setAttribute("hidden", ""); capInfo.setAttribute("aria-expanded", "false"); }
+  });
   el("pool").addEventListener("click", function (ev) {
     if (ev.target.closest(".year-sel")) return;     // the dropdown handles its own taps
     var btn = ev.target.closest(".player-row");
@@ -869,21 +1017,23 @@ function twoWayHtml(e) {
 function climbHtml(e) {
   var legends = META.legends || [];
   var G82 = CFG.GAMES_IN_SEASON;
-  var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest team ('16 Warriors)
+  var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
+  var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
   var youWins = e.winTally;          // integer record places the dot and drives comparisons
   var below = youWins < FLOOR;
 
-  // Layout in pixels so the 62->73 cluster spacing is fixed, then the track height ADAPTS to
-  // the case so there's no dead space below the floor: a below-floor five needs a little room
-  // under the Spurs for its marker, an on-board five ends flush at the Spurs. The empty 73->82
-  // span compresses into the top band. RX must equal --rail-x.
-  var BAND_PX = 60, CLUSTER_PX = 200, FLOOR_PX = BAND_PX + CLUSTER_PX;
+  // Layout in pixels so per-win spacing in the cluster stays fixed (~18px/win) no matter how
+  // many pins there are; the track height ADAPTS. A below-floor five needs a little room under
+  // the Spurs for its marker, an on-board five ends flush at the Spurs. The empty
+  // LADDER_TOP->82 span compresses into the top band. RX must equal --rail-x.
+  var PX_PER_WIN = 200 / 11;                    // the original 62->73 cluster spacing
+  var BAND_PX = 60, CLUSTER_PX = Math.round((LADDER_TOP - FLOOR) * PX_PER_WIN), FLOOR_PX = BAND_PX + CLUSTER_PX;
   var BOTTOM_PX = below ? 50 : 14, TRACK_PX = FLOOR_PX + BOTTOM_PX;
   var Y_SUMMIT = 0, RX = 56;
   var Y_TEAMTOP = BAND_PX / TRACK_PX * 100, Y_FLOOR = FLOOR_PX / TRACK_PX * 100;
   function yPct(w) {
-    if (w <= TEAM_TOP) return Y_TEAMTOP + (TEAM_TOP - w) / (TEAM_TOP - FLOOR) * (Y_FLOOR - Y_TEAMTOP);
-    return (TOP - w) / (TOP - TEAM_TOP) * Y_TEAMTOP;   // compressed elite band (73..82)
+    if (w <= LADDER_TOP) return Y_TEAMTOP + (LADDER_TOP - w) / (LADDER_TOP - FLOOR) * (Y_FLOOR - Y_TEAMTOP);
+    return (TOP - w) / (TOP - LADDER_TOP) * Y_TEAMTOP;   // compressed band (LADDER_TOP..82)
   }
 
   var youY = below ? 0 : Math.max(0, Math.min(Y_FLOOR, yPct(youWins)));
@@ -1010,7 +1160,7 @@ function picksInSlotOrder() {
   return G.picks.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return BUCKETS.indexOf(a.p.slot) - BUCKETS.indexOf(b.p.slot); });
 }
 
-function shareModeLabel() { return MODE === "kaman" ? "Kaman Mode" : MODE === "pro" ? "Pro" : "Classic"; }
+function shareModeLabel() { return MODE === "kaman" ? "Kaman Mode" : MODE === "pro" ? "Pro" : MODE === "cap" ? "Presti" : "Classic"; }
 function shareSurname(nm) {
   var parts = String(nm).trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
@@ -1020,13 +1170,21 @@ function shareSurname(nm) {
 }
 function shareText(e) {
   var wins = e.winTally, losses = CFG.GAMES_IN_SEASON - wins, undef = wins >= CFG.GAMES_IN_SEASON;
-  var head = "\uD83C\uDFC0 TRUE 82 (" + shareModeLabel() + ")";
-  var line2 = (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signed1(e.net);
+  var head, line2;
+  if (MODE === "cap") {
+    // Presti: result emoji moves up to the title (basketball = missed, trophy = 82-0);
+    // line 2 swaps the result emoji for cap space ($ left under the $50 cap).
+    head = (undef ? "\uD83C\uDFC6" : "\uD83C\uDFC0") + " TRUE 82 (Presti Mode)";
+    line2 = wins + "-" + losses + " | $" + G.budget + " Cap Spc | Net " + signed1(e.net);
+  } else {
+    head = "\uD83C\uDFC0 TRUE 82 (" + shareModeLabel() + ")";
+    line2 = (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signed1(e.net);
+  }
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]);
   });
-  return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\nhttps://true82.net";
+  return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\ntrue82.net";
 }
 
 function flashShareBtn(msg) {
@@ -1134,8 +1292,9 @@ function renderResults(e, keepScroll) {
   document.body.classList.remove("drafting");
   app().innerHTML =
     startOverBtnHtml() +
-    '<section class="board"><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : "classic draft") + "</p>" +
+    '<section class="board"><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
+      (MODE === "cap" ? '<div class="cap-spent">built for $' + (G.maxCap - G.budget) + ' of $' + CAP_BUDGET + (CAP_BUDGET - G.maxCap > 0 ? " \u00B7 $" + (CAP_BUDGET - G.maxCap) + " to skips" : "") + ' \u00B7 $' + G.budget + ' unspent</div>' : "") +
       '<button class="btn btn-primary btn-block" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml + "</section>" +
@@ -1177,7 +1336,7 @@ function kamanShareText() {
   var rows = G.picks.map(function (p) {
     return "C '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]);
   });
-  return "\uD83C\uDFC0 TRUE 82 (Kaman Mode)\n\uD83C\uDFC6 82\u20130 |  Net +\u221E\n\n" + rows.join("\n") + "\n\nhttps://true82.net";
+  return "\uD83C\uDFC0 TRUE 82 (Kaman Mode)\n\uD83C\uDFC6 82\u20130 |  Net +\u221E\n\n" + rows.join("\n") + "\n\ntrue82.net";
 }
 function renderKamanResults() {
   renderPips();
