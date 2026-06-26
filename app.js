@@ -212,14 +212,14 @@ function availableEras() {
 // Skip team: other UNUSED franchises in the SAME era that can fill an open slot
 function teamSkipTargets() {
   var list = FR_BY_DEC.get(G.cur.dec) || [];
-  return list.filter(function (f) { return f !== G.cur.fr && !G.seenFr.has(f) && poolHasEligible(f, G.cur.dec); });
+  return list.filter(function (f) { return f !== G.cur.fr && !G.seenFr.has(f) && !G.seenPairs.has(key(f, G.cur.dec)) && poolHasEligible(f, G.cur.dec); });
 }
 // Skip era: other UNUSED eras where the SAME franchise can fill an open slot
 function eraSkipTargets() {
   return DECADES.filter(function (d) {
     // Presti allows repeating an era, so the reroll offers every decade the franchise played
     // in except the current one; other modes keep the distinct-decade rule.
-    return d !== G.cur.dec && (MODE === "cap" || !G.seenDec.has(d)) && poolHasEligible(G.cur.fr, d);
+    return d !== G.cur.dec && (MODE === "cap" || !G.seenDec.has(d)) && !G.seenPairs.has(key(G.cur.fr, d)) && poolHasEligible(G.cur.fr, d);
   });
 }
 
@@ -246,6 +246,7 @@ function newGame(mode) {
     yearRerolls: MODE === "cap" ? 2 : 0,
     seenFr: new Set(),
     seenDec: new Set(),
+    seenPairs: new Set(),
     cur: null,
     selected: null,
     yearByName: {},
@@ -287,28 +288,37 @@ function nextRound(animate) {
   }
   G.seenDec.add(G.cur.dec);
   G.seenFr.add(G.cur.fr);
+  G.seenPairs.add(key(G.cur.fr, G.cur.dec));
   renderDraft(animate ? { dec: true, fr: true } : false);
 }
 
 // Presti: rerolls are unlimited but each costs $1 of cap. Decrementing the remaining
 // budget IS the cap drop (you reroll before spending that dollar). Blocked if it would
 // leave too little to fill the open slots ($1 minimum per remaining pick).
-function chargeReroll() {
+function chargeReroll(spinId) {
   var picksToGo = CFG.ROUNDS - G.round + 1;
   if (G.budget - 1 < picksToGo) return false;
   G.budget -= 1;
   G.maxCap -= 1;
+  // 1-in-8 free spin: refund the dollar (net cost 0) and flag the pressed button
+  // so it can flash "+$1" after renderDraft rebuilds the actions row.
+  if (spinId && Math.random() < 0.125) {
+    G.budget += 1;
+    G.maxCap += 1;
+    G.refundFlash = spinId;
+  }
   return true;
 }
 
 function doTeamSkip() {
   var targets = teamSkipTargets();
   if (!targets.length) return;
-  if (MODE === "cap") { if (!chargeReroll()) return; }
+  if (MODE === "cap") { if (!chargeReroll("skipTeam")) return; }
   else { if (!G.teamSkips) return; G.teamSkips -= 1; }
   if (MODE === "cap") G.seenFr.delete(G.cur.fr);   // free the tentative franchise (never committed) so skips don't exhaust the pool
   G.cur.fr = pick1(targets);          // same era, different (unused) franchise
   G.seenFr.add(G.cur.fr);
+  G.seenPairs.add(key(G.cur.fr, G.cur.dec));
   G.selected = null;
   G.yearByName = {};
   if (MODE === "pro") assignProSeasons();
@@ -319,13 +329,14 @@ function doTeamSkip() {
 function doEraSkip() {
   var targets = eraSkipTargets();
   if (!targets.length) return;
-  if (MODE === "cap") { if (!chargeReroll()) return; }
+  if (MODE === "cap") { if (!chargeReroll("skipEra")) return; }
   else { if (!G.eraSkips) return; G.eraSkips -= 1; }
   // Free the decade we're leaving so deals stay varied — but only if it isn't already locked in by a
   // committed pick, since the reroll can now land on an era you've already drafted.
   if (MODE === "cap" && !G.picks.some(function (p) { return p.dec === G.cur.dec; })) G.seenDec.delete(G.cur.dec);
   G.cur.dec = pick1(targets);         // same franchise, different (unused) era
   G.seenDec.add(G.cur.dec);
+  G.seenPairs.add(key(G.cur.fr, G.cur.dec));
   G.selected = null;
   G.yearByName = {};
   if (MODE === "pro") assignProSeasons();
@@ -336,12 +347,238 @@ function doEraSkip() {
 // Cap only: re-roll every player's locked season + price for the current team/era ($1).
 function doYearReroll() {
   if (MODE !== "cap") return;
-  if (!chargeReroll()) return;
+  if (!chargeReroll("rerollYears")) return;
   G.selected = null;
   assignCapPool();
   var cy = 0; while (!capPoolHasPick() && cy < 40) { assignCapPool(); cy++; }
-  renderDraft(false);
+  renderDraft({ years: true });
 }
+
+// Short press haptic for the Presti spin buttons. navigator.vibrate fires on
+// Chrome/Android; iOS Safari ignores it (silent no-op). try/catch guards the few
+// webviews that throw on the call.
+function buzz(ms) {
+  try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {}
+}
+
+// One delegated press-haptic for every casino button (skip/draft/start/share/run-it-back),
+// so we don't have to wire each one. Capture phase + closest() catches taps on inner spans.
+var _hapticsBound = false;
+function bindHaptics() {
+  if (_hapticsBound) return;
+  _hapticsBound = true;
+  document.addEventListener("pointerdown", function (e) {
+    if (!e.target || !e.target.closest) return;
+    var b = e.target.closest("button.presti-spin");
+    if (b && !b.disabled) buzz(15);
+  }, true);
+}
+
+// The 1-in-8 payoff: button turns green and reads "+$1" for 3s, then restores
+// whatever label the re-rendered button is showing. Guarded so a later re-render
+// that swaps the node out doesn't throw.
+function flashRefund(btn) {
+  if (!btn) return;
+  var original = btn.textContent;
+  btn.classList.add("refunded");
+  btn.textContent = "REFUND!";
+  setTimeout(function () {
+    if (!btn.isConnected) return;   // node was replaced by a later render
+    btn.classList.remove("refunded");
+    btn.textContent = original;
+  }, 2000);
+}
+
+/* ---------- Presti slot reels ----------
+   On every Presti respin (player pick advances the round, or a manual team/era
+   skip) the decade and franchise read out like slot reels: rapid decoy swaps that
+   decelerate and land on the true value (already known — this is pure overlay,
+   nothing async/loading). All motion is transform/opacity/filter via the Web
+   Animations API, so it runs on the compositor with no per-frame JS loop. The
+   three reels land in sequence — decade, then franchise, then crest — each with a
+   haptic thump, which is what sells the "three little payoffs" feel. */
+
+function prefersReduce() {
+  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+
+// One value-change frame on a text flap. Decoys get a quick blurred slide; the
+// landing slides further and overshoots its scale, then settles (the "ka-chunk").
+function animFlap(node, landing) {
+  var kf = landing
+    ? [{ transform: "translateY(70%) scale(.96)", filter: "blur(2px) brightness(1.55)", opacity: .5, offset: 0 },
+       { transform: "translateY(0) scale(1.14)",  filter: "blur(0) brightness(1.55)",  opacity: 1, offset: .55 },
+       { transform: "translateY(0) scale(1)",     filter: "blur(0) brightness(1)",     opacity: 1, offset: 1 }]
+    : [{ transform: "translateY(40%)", filter: "blur(3px)", opacity: .25 },
+       { transform: "translateY(0)",   filter: "blur(0)",   opacity: 1 }];
+  node.animate(kf, {
+    duration: landing ? 300 : 80,
+    easing: landing ? "cubic-bezier(.16,.86,.3,1.04)" : "ease-out"
+  });
+}
+
+// Spin one reel: decelerating decoy swaps starting at `startDelay`, landing on
+// `final` exactly at startDelay + spinMs, then onLand (the haptic).
+function setText(n, v) { n.textContent = v; }
+function setImg(n, v) { n.src = v; }
+
+function runReel(node, decoys, final, startDelay, spinMs, onLand, apply, animate) {
+  if (!node) return;
+  apply = apply || setText;
+  animate = animate || animFlap;
+  if (!decoys || !decoys.length) decoys = [final];
+  var gaps = [], t = 55, total = 0;
+  while (total + t < spinMs) { gaps.push(t); total += t; t *= 1.16; }  // each gap longer = slowing reel
+  var acc = startDelay;
+  gaps.forEach(function (g) {
+    setTimeout(function () {
+      if (!node.isConnected) return;
+      apply(node, pick1(decoys));
+      animate(node, false);
+    }, acc);
+    acc += g;
+  });
+  setTimeout(function () {
+    if (!node.isConnected) return;     // a newer respin replaced the node
+    apply(node, final);
+    animate(node, true);
+    if (onLand) onLand();
+  }, startDelay + spinMs);
+}
+
+// Crest swap animation: quick scale on decoys, overshoot-settle on the landing.
+function animCrest(img, landing) {
+  var kf = landing
+    ? [{ transform: "scale(.6) rotate(-6deg)", opacity: .4, offset: 0 },
+       { transform: "scale(1.1) rotate(2deg)", opacity: 1, offset: .6 },
+       { transform: "scale(1) rotate(0)",      opacity: 1, offset: 1 }]
+    : [{ transform: "scale(.82)", opacity: .5 },
+       { transform: "scale(1)",   opacity: 1 }];
+  img.animate(kf, { duration: landing ? 320 : 80, easing: landing ? "cubic-bezier(.16,.86,.3,1.04)" : "ease-out" });
+}
+
+// Warmed sample of real crest data-URIs to flash through during a spin (decoys are
+// unchained from the outcome). Built + decode-warmed once; reused every spin.
+var CREST_POOL = null;
+function crestPool(fr) {
+  if (fr) {                                // era reroll: only THIS team's logos, across its decades
+    var arr = [], seenF = {};
+    for (var d = 0; d < DECADES.length; d++) {
+      var c = CRESTS[key(fr, DECADES[d])];
+      if (c && !seenF[c]) { seenF[c] = 1; arr.push(c); var im0 = new Image(); im0.src = c; }
+    }
+    return arr.length ? arr : null;
+  }
+  if (CREST_POOL) return CREST_POOL;
+  var vals = [];
+  for (var k in CRESTS) if (Object.prototype.hasOwnProperty.call(CRESTS, k)) vals.push(CRESTS[k]);
+  CREST_POOL = [];
+  var seen = {};
+  for (var i = 0; i < vals.length && CREST_POOL.length < 18; i++) {
+    var v = vals[Math.floor(Math.random() * vals.length)];
+    if (seen[v]) continue;
+    seen[v] = 1;
+    CREST_POOL.push(v);
+    var im = new Image(); im.src = v;   // warm the decode so swaps don't flicker
+  }
+  if (!CREST_POOL.length) CREST_POOL = null;   // no crests in data -> caller skips the reel
+  return CREST_POOL;
+}
+
+// Sample of real player names to flash through while the pool rows spin.
+var DECOY_NAMES = null;
+function decoyNames() {
+  if (DECOY_NAMES) return DECOY_NAMES;
+  var all = [];
+  if (typeof BEST_BY_NAME !== "undefined" && BEST_BY_NAME && BEST_BY_NAME.forEach) {
+    BEST_BY_NAME.forEach(function (_v, k) { all.push(k); });
+  }
+  if (!all.length) all = ["—"];
+  DECOY_NAMES = [];
+  for (var i = 0; i < 40 && all.length; i++) DECOY_NAMES.push(all[Math.floor(Math.random() * all.length)]);
+  return DECOY_NAMES;
+}
+
+// Roulette the draft-pool rows so the real names/years aren't shown until the spin
+// settles. mode "full" spins name + year + price (new team/era); mode "years" spins
+// only year + price (Skip yrs — same players). Lightweight: one shared decelerating
+// loop doing plain text swaps, no per-row animation; rows dim + lock during the spin.
+function scramblePool(mode, settleAt) {
+  var pool = el("pool");
+  if (!pool || prefersReduce()) return;
+  var seasons = pool.querySelectorAll(".cap-season");
+  if (!seasons.length) return;            // not a cap pool
+  var names = pool.querySelectorAll(".pr-name");
+  var costs = pool.querySelectorAll(".cap-cost");
+  var dur = settleAt || 620;
+  var decade = (G.cur && G.cur.dec) ? G.cur.dec : 1990;
+  pool.classList.add("scrambling");
+
+  function rSeason() { return shortSeason(decade + Math.floor(Math.random() * 10)); }
+  function rCost() { return "$" + (1 + Math.floor(Math.random() * 20)); }
+  function paint() {
+    var i;
+    if (mode === "full") for (i = 0; i < names.length; i++) names[i].textContent = pick1(decoyNames());
+    for (i = 0; i < seasons.length; i++) seasons[i].textContent = rSeason();
+    for (i = 0; i < costs.length; i++) costs[i].textContent = rCost();
+  }
+
+  paint();                                // immediate, so the first paint shows decoys not the real pool
+  var gaps = [], t = 55, total = 0;
+  while (total + t < dur) { gaps.push(t); total += t; t *= 1.18; }
+  var acc = 0;
+  gaps.forEach(function (g) { setTimeout(function () { if (pool.isConnected) paint(); }, acc); acc += g; });
+  setTimeout(function () {
+    if (!pool.isConnected) return;
+    pool.classList.remove("scrambling");
+    refreshPool();                        // restore the real rows + re-enable interaction
+    buzz(20);                             // final thump as everything locks in
+  }, dur);
+}
+
+// Orchestrate the staggered reel landings for a Presti respin. Returns the time
+// (ms from now) the last ticket reel lands, so the pool can settle just after.
+function spinCapReels(anim) {
+  var decNode = el("flapDec"), frNode = el("flapFr"), artNode = el("flapArt");
+  var SPIN = 620;       // each reel's spin length (start -> land)
+  var STAGGER = 200;    // gap between consecutive landings
+  if (prefersReduce()) {                 // accessible fallback: the existing pops
+    if (anim.dec) reveal("flapDec");
+    if (anim.fr)  reveal("flapFr");
+    if (artNode) reveal("flapArt");
+    return SPIN;
+  }
+  var decDecoys = DECADES.map(decLabel);
+  var frDecoys  = FRANCHISES.map(titleCase);
+
+  // clip the roll into a single-line reel-window while values fly past
+  var roll = (decNode || frNode) ? (decNode || frNode).parentNode : null;
+  if (roll) roll.classList.add("reeling");
+
+  var slot = 0;
+  if (anim.dec && decNode) {
+    runReel(decNode, decDecoys, decNode.textContent, slot * STAGGER, SPIN, function () { buzz(12); });
+    slot++;
+  }
+  if (anim.fr && frNode) {
+    runReel(frNode, frDecoys, frNode.textContent, slot * STAGGER, SPIN, function () { buzz(12); });
+    slot++;
+  }
+  var lastTextLand = slot > 0 ? (slot - 1) * STAGGER + SPIN : 0;
+  // drop the clip-window after the final text reel settles, so long franchise names wrap/show in full
+  if (roll) setTimeout(function () { roll.classList.remove("reeling"); }, lastTextLand + 360);
+
+  // crest reels through random logos and lands one beat after the last text reel
+  var crestLand = lastTextLand;
+  if (artNode) {
+    crestLand = slot * STAGGER + SPIN;
+    var eraOnly = anim.dec && !anim.fr;   // team is fixed -> flash only this franchise's logos
+    var cpool = crestPool(eraOnly ? G.cur.fr : null);
+    runReel(artNode, cpool || [artNode.src], artNode.src, 0, crestLand, function () { buzz(18); }, setImg, animCrest);
+  }
+  return crestLand;
+}
+
 
 function lastNameKey(name) {
   var parts = String(name).split(" ");
@@ -611,14 +848,14 @@ function renderIntro() {
     '<section class="ticket intro">' +
       '<h1 class="intro-title">Go 82\u20130</h1>' +
       '<p class="intro-lead">An \u201C82\u20130\u201D-style game, but driven by advanced metrics instead of just adding up counting stats. Pick a team that would actually win IRL. Try to go undefeated. Compare your team vs the all-timers.</p>' +
-      '<button class="btn btn-primary btn-block" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
-      '<button class="btn btn-primary btn-block" id="startPro">\uD83C\uDFC6 Pro \u00B7 pick the best seasons from memory</button>' +
-      '<button class="btn btn-primary btn-block" id="startCap">\uD83D\uDC10 Presti Mode \u00B7 Salary Cap &amp; Random</button>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="startPro">\uD83C\uDFC6 Pro \u00B7 pick the best seasons from memory</button>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="startCap">\uD83D\uDC10 Presti Mode \u00B7 Salary Cap &amp; Random</button>' +
       '<p class="eyebrow">Draft</p>' +
       "<p>Draft a 5-man roster with 2 guards, 2 forwards, and a center. You get a random team from a random decade. Pick a guy who played for that team in that era. Pick any season he played. You can reroll the era and the team once each per draft.</p>" +
       '<p class="eyebrow">Winning</p>' +
       "<p>Recommended to have at least <strong>3 shooters</strong> and <strong>1 role player</strong>. Based mostly on OBPM and DBPM (why we only go back to 1974) + some minor custom tweaks. Some players from low/no 3pt era get 3pt shooter bonuses based on reputation and vibes.</p>" +
-      '<button class="btn btn-primary btn-block btn-dark" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 KAMAN</button>' +
+      '<button class="btn btn-primary btn-block btn-dark presti-spin" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 KAMAN</button>' +
     "</section>";
   el("startClassic").addEventListener("click", function () { newGame("classic"); });
   el("startPro").addEventListener("click", function () { newGame("pro"); });
@@ -686,12 +923,13 @@ function confirmHtml() {
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
   var costNote = (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) ? " \u00B7 $" + G.costByName[G.selected] : "";
+  var spinCls = (MODE === "cap") ? " presti-spin" : "";
   if (opts.length === 1) {
-    return '<button class="confirm-btn" data-bucket="' + opts[0] + '">Draft ' + who + " " + yr + " \u00B7 " + BUCKET_NAME[opts[0]] + costNote + "</button>";
+    return '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '">Draft ' + who + " " + yr + " \u00B7 " + BUCKET_NAME[opts[0]] + costNote + "</button>";
   }
   return '<div class="confirm-label">Assign ' + who + " " + yr + costNote + " to:</div>" +
     '<div class="confirm-multi">' + opts.map(function (b) {
-      return '<button class="confirm-btn" data-bucket="' + b + '">' + BUCKET_NAME[b] + "</button>";
+      return '<button class="confirm-btn' + spinCls + '" data-bucket="' + b + '">' + BUCKET_NAME[b] + "</button>";
     }).join("") + "</div>";
 }
 
@@ -804,6 +1042,7 @@ function renderDraft(anim) {
   G.screen = "draft";
   G.query = "";                 // fresh filter on each new round / skip (sort persists)
   document.body.classList.add("drafting");
+  document.body.classList.toggle("cap-mode", MODE === "cap");
   renderPips();
   var rows = currentPoolRows();
   var codes = {};
@@ -814,6 +1053,7 @@ function renderDraft(anim) {
   var teamSkippable = MODE !== "kaman" && (MODE === "cap" ? canReroll : G.teamSkips > 0) && teamSkipTargets().length > 0;
   var eraSkippable = MODE !== "kaman" && (MODE === "cap" ? canReroll : G.eraSkips > 0) && eraSkipTargets().length > 0;
   var yearRerollable = MODE === "cap" && canReroll;
+  var spinCls = (MODE === "cap") ? " presti-spin" : "";   // gold extruded style on Presti rerolls only
 
   var poolHtml = poolInnerHtml(rows);
 
@@ -839,9 +1079,9 @@ function renderDraft(anim) {
         artHtml +
       "</div>" +
       '<div class="ticket-actions">' +
-        '<button class="skip-btn" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.teamSkips + " left") + "</button>" +
-        '<button class="skip-btn" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.eraSkips + " left") + "</button>" +
-        (MODE === "cap" ? '<button class="skip-btn" id="rerollYears"' + (yearRerollable ? "" : " disabled") + ">Skip yrs -$1</button>" : "") +
+        '<button class="skip-btn' + spinCls + '" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.teamSkips + " left") + "</button>" +
+        '<button class="skip-btn' + spinCls + '" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.eraSkips + " left") + "</button>" +
+        (MODE === "cap" ? '<button class="skip-btn presti-spin" id="rerollYears"' + (yearRerollable ? "" : " disabled") + ">Skip yrs -$1</button>" : "") +
       "</div>" +
     "</section>";
   }
@@ -947,11 +1187,22 @@ function renderDraft(anim) {
     refreshPool();
   });
 
+  if (MODE === "cap") {
+    if (G.refundFlash) { flashRefund(el(G.refundFlash)); G.refundFlash = null; }
+  }
+
   if (anim) {
-    if (anim.kaman) reveal("kamanBig");
-    if (anim.dec) reveal("flapDec");
-    if (anim.fr) reveal("flapFr");
-    if (anim.dec || anim.fr) reveal("flapArt");
+    if (MODE === "cap" && anim.years) {
+      scramblePool("years", 620);         // Skip yrs: spin only the player years/prices
+    } else if (MODE === "cap" && (anim.dec || anim.fr)) {
+      var crestLand = spinCapReels(anim);  // ticket: staggered decade/franchise/crest reels
+      scramblePool("full", crestLand + 120); // pool reveals last, just after the crest lands
+    } else {
+      if (anim.kaman) reveal("kamanBig");
+      if (anim.dec) reveal("flapDec");
+      if (anim.fr) reveal("flapFr");
+      if (anim.dec || anim.fr) reveal("flapArt");
+    }
     window.scrollTo(0, 0);
   }
 }
@@ -1299,12 +1550,12 @@ function renderResults(e, keepScroll) {
     '<section class="board"><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       (MODE === "cap" ? '<div class="cap-spent">built for $' + (G.maxCap - G.budget) + ' of $' + CAP_BUDGET + (CAP_BUDGET - G.maxCap > 0 ? " \u00B7 $" + (CAP_BUDGET - G.maxCap) + " to skips" : "") + ' \u00B7 $' + G.budget + ' unspent</div>' : "") +
-      '<button class="btn btn-primary btn-block" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml + "</section>" +
     '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
-    '<div class="actions"><button class="btn btn-primary" id="againBtn">Run it back</button></div>';
+    '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">Run it back</button></div>';
 
   el("againBtn").addEventListener("click", function () { newGame(); });
   wireStartOver();
@@ -1367,11 +1618,11 @@ function renderKamanResults() {
       '<p class="eyebrow">Front office projection \u00B7 KAMAN MODE</p>' +
       '<div class="big">82\u20130</div><div class="big-label">net rating +\u221E</div>' +
       '<p class="kaman-flavor">' + kamanFlavor() + "</p>" +
-      '<button class="btn btn-primary btn-block" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec"><div class="twoway">' + kamanBar("Offense") + kamanBar("Defense") + "</div></section>" +
     '<section class="section"><p class="eyebrow">Your five \u00B7 all centers, as nature intended</p>' + picksHtml + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
-    '<div class="actions"><button class="btn btn-primary" id="againBtn">Kaman</button></div>';
+    '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">Kaman</button></div>';
 
   el("againBtn").addEventListener("click", function () { renderIntro(); });
   wireStartOver();
@@ -1398,6 +1649,7 @@ function pingGames(method) {
 }
 
 function boot() {
+  bindHaptics();
   fetch(CFG.DATA_URL)
     .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
     .then(function (data) { initData(data); renderIntro(); pingGames("GET"); })
