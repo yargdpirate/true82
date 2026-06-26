@@ -259,9 +259,10 @@ button.presti-spin:disabled {
   transform: none;
 }
 .skip-btn.presti-spin.refunded {
-  --spin-face: #F4A823;   /* brighter lit gold (stays gold, per spec) */
-  --spin-top:  #FFC44F;
-  color: var(--spin-ink);
+  --spin-face: #2FA866;   /* money-green flash on the free spin */
+  --spin-top:  #4FC487;
+  --spin-side: #1B6E40;
+  color: #082A1A;
   animation: spinRefund 500ms ease;
 }
 /* marquee: two interleaved sets of white bulbs around the inner perimeter,
@@ -552,7 +553,7 @@ button.presti-spin:disabled {
 .confirm-multi { display: flex; gap: 6px; }
 .confirm-multi .confirm-btn { margin-top: 4px; }
 
-/* Presti: the draft button(s) wear the same casino style as the rerolls, but
+/* The draft button(s) wear the same casino style as the rerolls in every mode,
    sized as the hero action and centered at the bottom of the tray. */
 .confirm-btn.presti-spin {
   flex: 0 0 auto;
@@ -568,9 +569,9 @@ button.presti-spin:disabled {
   letter-spacing: 0.08em;
   padding: 13px 22px;
 }
-body.cap-mode .confirm-label { text-align: center; }
-body.cap-mode .confirm-multi { justify-content: center; flex-wrap: wrap; }
-body.cap-mode .confirm-multi .confirm-btn.presti-spin { min-width: 0; margin: 10px 0 0; padding: 12px 18px; }
+.confirm-label { text-align: center; }
+.confirm-multi { justify-content: center; flex-wrap: wrap; }
+.confirm-multi .confirm-btn.presti-spin { min-width: 0; margin: 10px 0 0; padding: 12px 18px; }
 
 /* ---------- results ---------- */
 

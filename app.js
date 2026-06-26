@@ -349,8 +349,10 @@ function doYearReroll() {
   if (MODE !== "cap") return;
   if (!chargeReroll("rerollYears")) return;
   G.selected = null;
-  assignCapPool();
-  var cy = 0; while (!capPoolHasPick() && cy < 40) { assignCapPool(); cy++; }
+  var prev = {};
+  for (var pn in G.yearByName) { if (Object.prototype.hasOwnProperty.call(G.yearByName, pn)) prev[pn] = G.yearByName[pn]; }
+  assignCapPool(prev);
+  var cy = 0; while (!capPoolHasPick() && cy < 40) { assignCapPool(prev); cy++; }
   renderDraft({ years: true });
 }
 
@@ -429,11 +431,29 @@ function runReel(node, decoys, final, startDelay, spinMs, onLand, apply, animate
   if (!decoys || !decoys.length) decoys = [final];
   var gaps = [], t = 55, total = 0;
   while (total + t < spinMs) { gaps.push(t); total += t; t *= 1.16; }  // each gap longer = slowing reel
-  var acc = startDelay;
+
+  // Pre-build the decoy sequence so no two consecutive frames are identical (and the
+  // last spin frame differs from `final`), so the reel reads as motion, not flicker.
+  // With <2 distinct decoys there's nothing else to show, so it falls back to repeats.
+  function pickNot(a, b) {
+    if (decoys.length < 2) return decoys[0];
+    var v, tries = 0;
+    do { v = decoys[Math.floor(Math.random() * decoys.length)]; tries++; }
+    while ((v === a || v === b) && tries < 12);
+    return v;
+  }
+  var seq = [], prev = null;
+  for (var i = 0; i < gaps.length; i++) {
+    prev = pickNot(prev, i === gaps.length - 1 ? final : null);  // avoid the previous frame; on the last frame also avoid the landing value
+    seq.push(prev);
+  }
+
+  var acc = startDelay, idx = 0;
   gaps.forEach(function (g) {
+    var val = seq[idx++];
     setTimeout(function () {
       if (!node.isConnected) return;
-      apply(node, pick1(decoys));
+      apply(node, val);
       animate(node, false);
     }, acc);
     acc += g;
@@ -536,9 +556,9 @@ function scramblePool(mode, settleAt) {
   }, dur);
 }
 
-// Orchestrate the staggered reel landings for a Presti respin. Returns the time
-// (ms from now) the last ticket reel lands, so the pool can settle just after.
-function spinCapReels(anim) {
+// Orchestrate the staggered reel landings for a respin (Classic / Pro / Presti).
+// Returns the time (ms from now) the last ticket reel lands.
+function spinReels(anim) {
   var decNode = el("flapDec"), frNode = el("flapFr"), artNode = el("flapArt");
   var SPIN = 620;       // each reel's spin length (start -> land)
   var STAGGER = 200;    // gap between consecutive landings
@@ -615,7 +635,7 @@ function capCost(v) {
   return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll()));
 }
 // Lock each pool player to a random season AND price it off that season's value.
-function assignCapPool() {
+function assignCapPool(avoid) {
   var k = key(G.cur.fr, G.cur.dec);
   var pool = POOLS.get(k), yrs = POOL_YEARS.get(k);
   G.costByName = {};
@@ -623,7 +643,12 @@ function assignCapPool() {
   pool.forEach(function (row, name) {
     var arr = yrs.get(name);
     if (arr && arr.length) {
-      var pickRow = arr[Math.floor(Math.random() * arr.length)];
+      var cands = arr;
+      if (avoid && avoid[name] != null && arr.length > 1) {   // don't land the same year twice in a row when there's an alternative
+        var alt = arr.filter(function (r) { return r[IDX.season] !== avoid[name]; });
+        if (alt.length) cands = alt;
+      }
+      var pickRow = cands[Math.floor(Math.random() * cands.length)];
       G.yearByName[name] = pickRow[IDX.season];
       G.costByName[name] = capCost(valueOf(pickRow));
     }
@@ -923,9 +948,9 @@ function confirmHtml() {
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
   var costNote = (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) ? " \u00B7 $" + G.costByName[G.selected] : "";
-  var spinCls = (MODE === "cap") ? " presti-spin" : "";
+  var spinCls = " presti-spin";   // casino skin on the draft/position buttons, all modes
   if (opts.length === 1) {
-    return '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '">Draft ' + who + " " + yr + " \u00B7 " + BUCKET_NAME[opts[0]] + costNote + "</button>";
+    return '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '">Draft your player</button>';
   }
   return '<div class="confirm-label">Assign ' + who + " " + yr + costNote + " to:</div>" +
     '<div class="confirm-multi">' + opts.map(function (b) {
@@ -1042,7 +1067,6 @@ function renderDraft(anim) {
   G.screen = "draft";
   G.query = "";                 // fresh filter on each new round / skip (sort persists)
   document.body.classList.add("drafting");
-  document.body.classList.toggle("cap-mode", MODE === "cap");
   renderPips();
   var rows = currentPoolRows();
   var codes = {};
@@ -1053,7 +1077,7 @@ function renderDraft(anim) {
   var teamSkippable = MODE !== "kaman" && (MODE === "cap" ? canReroll : G.teamSkips > 0) && teamSkipTargets().length > 0;
   var eraSkippable = MODE !== "kaman" && (MODE === "cap" ? canReroll : G.eraSkips > 0) && eraSkipTargets().length > 0;
   var yearRerollable = MODE === "cap" && canReroll;
-  var spinCls = (MODE === "cap") ? " presti-spin" : "";   // gold extruded style on Presti rerolls only
+  var spinCls = " presti-spin";   // casino skin on the skip buttons, all modes
 
   var poolHtml = poolInnerHtml(rows);
 
@@ -1192,16 +1216,13 @@ function renderDraft(anim) {
   }
 
   if (anim) {
-    if (MODE === "cap" && anim.years) {
-      scramblePool("years", 620);         // Skip yrs: spin only the player years/prices
-    } else if (MODE === "cap" && (anim.dec || anim.fr)) {
-      var crestLand = spinCapReels(anim);  // ticket: staggered decade/franchise/crest reels
-      scramblePool("full", crestLand + 120); // pool reveals last, just after the crest lands
-    } else {
-      if (anim.kaman) reveal("kamanBig");
-      if (anim.dec) reveal("flapDec");
-      if (anim.fr) reveal("flapFr");
-      if (anim.dec || anim.fr) reveal("flapArt");
+    if (MODE === "kaman") {
+      if (anim.kaman) reveal("kamanBig");   // nothing to reel through — keep the pop
+    } else if (anim.years) {
+      scramblePool("years", 620);           // cap-only: spin just the pool years/prices
+    } else if (anim.dec || anim.fr) {
+      var crestLand = spinReels(anim);       // ticket slot-reels: Classic / Pro / Presti
+      if (MODE === "cap") scramblePool("full", crestLand + 120); // pool roulette: cap only
     }
     window.scrollTo(0, 0);
   }
@@ -1322,24 +1343,16 @@ function climbHtml(e) {
   var railSvg = '<svg class="climb-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
     '<path class="rail-path" d="' + railD + '"/>' + fillSvg + "</svg>";
 
-  var perfect = youWins >= TOP;                 // 82-0
-  var sub;
-  if (perfect) sub = "\uD83D\uDC10 perfect season";
-  else if (youWins > TEAM_TOP) sub = "\uD83D\uDC10, but not 82\u20130";
-  else if (below) sub = "oof.";
-  else if (rank === 1) sub = "tops the win board";
-  else sub = "#" + rank + " of " + total + (comp ? " \u00B7 \u2248 " + esc(comp.label) : "");
-
   var youMarker;
   if (below) {
     youMarker = '<div class="climb-you below" style="top:' + ((FLOOR_PX + 22) / TRACK_PX * 100).toFixed(2) + '%">' +
         '<span class="cy-arrow">\u25BC</span>' +
-        '<span class="cy-label">YOUR FIVE<small>' + esc(sub) + "</small></span>" +
+        '<span class="cy-label">YOUR FIVE</span>' +
       "</div>";
   } else {
     youMarker = '<div class="climb-you" style="top:' + youY.toFixed(2) + '%">' +
         '<span class="cy-dot"></span>' +
-        '<span class="cy-label">YOUR FIVE<small>' + esc(sub) + "</small></span>" +
+        '<span class="cy-label">YOUR FIVE</span>' +
       "</div>";
   }
 
@@ -1549,7 +1562,7 @@ function renderResults(e, keepScroll) {
     startOverBtnHtml() +
     '<section class="board"><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
-      (MODE === "cap" ? '<div class="cap-spent">built for $' + (G.maxCap - G.budget) + ' of $' + CAP_BUDGET + (CAP_BUDGET - G.maxCap > 0 ? " \u00B7 $" + (CAP_BUDGET - G.maxCap) + " to skips" : "") + ' \u00B7 $' + G.budget + ' unspent</div>' : "") +
+      (MODE === "cap" ? '<div class="cap-spent">$' + G.budget + ' cap space</div>' : "") +
       '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml + "</section>" +
