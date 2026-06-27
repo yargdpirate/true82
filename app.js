@@ -1437,6 +1437,7 @@ var HH_SEGMENTS = [
   { label: "ON FIRE",   m: 1.6,  odds: 15, lvl: 3 },
   { label: "SUPERNOVA", m: 2.5,  odds: 5,  lvl: 4 }
 ];
+var HH_BONUS_SCALE = 0.67;   // hot-hand bonus dialed down a flat 33%
 
 // Net at which the season flips to 82-0 (smallest net where ceil(82*phi(net/NET_SD)) hits 82).
 function hhNet82() {
@@ -1473,7 +1474,7 @@ function hhEligible(e) {
 function hotHand(e) {
   var hotIdx = hhPickHot(), segIdx = hhSpinSeg(), seg = HH_SEGMENTS[segIdx];
   var hotV = valueOf(G.picks[hotIdx].row), THRESH = hhNet82();
-  var newNet = e.net + (seg.m - 1) * hotV, win = newNet > THRESH;
+  var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE, win = newNet > THRESH;
   var names = G.picks.map(function (p) { return shareSurname(p.row[IDX.name]); });
   var ITEM = 54, COPIES = 6, targetFlat = (COPIES - 2) * names.length + hotIdx;
 
