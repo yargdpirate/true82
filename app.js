@@ -1424,6 +1424,258 @@ function setupGoatFireworks(autoArm) {
   }
 }
 
+/* ---------- Presti "Hot Hand": one luck-equalizing shot at 82-0 ----------
+   A near-perfect roster gets a controlled, ~40-50% chance to flip to 82-0: one
+   starter "catches fire" (value x M), net is recomputed (taxes don't move), and a
+   cross of the 82-0 line fires the existing goat fireworks. Visual-first so it lands
+   fully with sound off; buzz() is the only sugar layer (Android; silent on iOS). */
+
+var HH_SEGMENTS = [
+  { label: "COLD",      m: 1.0,  odds: 25, lvl: 0 },
+  { label: "WARM",      m: 1.2,  odds: 30, lvl: 1 },
+  { label: "HOT",       m: 1.35, odds: 25, lvl: 2 },
+  { label: "ON FIRE",   m: 1.6,  odds: 15, lvl: 3 },
+  { label: "SUPERNOVA", m: 2.5,  odds: 5,  lvl: 4 }
+];
+
+// Net at which the season flips to 82-0 (smallest net where ceil(82*phi(net/NET_SD)) hits 82).
+function hhNet82() {
+  var lo = 0, hi = 80;
+  for (var k = 0; k < 48; k++) {
+    var mid = (lo + hi) / 2;
+    if (Math.ceil(CFG.GAMES_IN_SEASON * phi(mid / SC.NET_SD)) >= CFG.GAMES_IN_SEASON) hi = mid; else lo = mid;
+  }
+  return hi;
+}
+
+// Weighted-random starter, biased hard toward value (your star tends to erupt; a
+// near-certain whiff on the weakest pick stays rare).
+function hhPickHot() {
+  var w = G.picks.map(function (p) { var v = Math.max(0.5, valueOf(p.row)); return v * v; });
+  var sum = w.reduce(function (a, b) { return a + b; }, 0), r = Math.random() * sum;
+  for (var i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; }
+  return w.length - 1;
+}
+
+function hhSpinSeg() {
+  var r = Math.random() * 100, acc = 0;
+  for (var i = 0; i < HH_SEGMENTS.length; i++) { acc += HH_SEGMENTS[i].odds; if (r < acc) return i; }
+  return 0;
+}
+
+// Fires on every drafted result that isn't already a perfect 82-0 (Kaman has its own
+// results path and never reaches here). Far-from-perfect rosters still get the spin -
+// the lever pull and wheel are the variable-reward hit; near-perfect ones can cross.
+function hhEligible(e) {
+  return !!(G.picks && G.picks.length >= CFG.ROUNDS && e.winTally < CFG.GAMES_IN_SEASON);
+}
+
+function hotHand(e) {
+  var hotIdx = hhPickHot(), segIdx = hhSpinSeg(), seg = HH_SEGMENTS[segIdx];
+  var hotV = valueOf(G.picks[hotIdx].row), THRESH = hhNet82();
+  var newNet = e.net + (seg.m - 1) * hotV, win = newNet > THRESH;
+  var names = G.picks.map(function (p) { return shareSurname(p.row[IDX.name]); });
+  var ITEM = 54, COPIES = 6, targetFlat = (COPIES - 2) * names.length + hotIdx;
+
+  var stripHtml = "", c, n, s;
+  for (c = 0; c < COPIES; c++) for (n = 0; n < names.length; n++) stripHtml += '<div class="hh-name">' + esc(names[n]) + "</div>";
+  var segHtml = "";
+  for (s = 0; s < HH_SEGMENTS.length; s++) segHtml += '<div class="hh-seg lvl' + HH_SEGMENTS[s].lvl + '"></div>';
+
+  var ov = document.createElement("div");
+  ov.className = "hh-overlay";
+  ov.innerHTML =
+    '<button class="hh-skip" id="hhSkip">skip \u2192</button>' +
+    '<div class="hh-card"><div class="goat-fw" id="hhFw" aria-hidden="true"></div>' +
+      '<div class="hh-eyebrow">Heat Check</div>' +
+      '<div class="hh-lever" id="hhLever" role="button" tabindex="0" aria-label="Pull the basketball through the hoop">' +
+        '<span class="hh-fire" aria-hidden="true"><i></i><i></i><i></i></span>' +
+        '<span class="hh-ball" id="hhArm">' +
+          '<svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">' +
+            '<defs><radialGradient id="hhBg" cx="38%" cy="30%" r="78%">' +
+              '<stop offset="0%" stop-color="#ffcb84"/><stop offset="48%" stop-color="#e8802a"/><stop offset="100%" stop-color="#a64e10"/>' +
+            '</radialGradient></defs>' +
+            '<circle cx="24" cy="24" r="22" fill="url(#hhBg)" stroke="#6e3208" stroke-width="1"/>' +
+            '<path d="M2 24H46M24 2V46M8 7Q24 24 8 41M40 7Q24 24 40 41" fill="none" stroke="#6e3208" stroke-width="1.5" stroke-linecap="round"/>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="hh-hoop" aria-hidden="true">' +
+          '<svg viewBox="0 0 96 76" width="96" height="76">' +
+            '<g fill="none" stroke="#e6e0d2" stroke-width="1" opacity="0.8">' +
+              '<path d="M16 20 L36 62"/><path d="M32 20 L42 62"/><path d="M48 20 L48 62"/><path d="M64 20 L54 62"/><path d="M80 20 L60 62"/>' +
+              '<path d="M24 36 Q48 40 72 36"/><path d="M31 50 Q48 54 65 50"/>' +
+            '</g>' +
+            '<ellipse cx="48" cy="16" rx="35" ry="9" fill="none" stroke="#e0531a" stroke-width="4"/>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="hh-lever-hint">PULL DOWN<b>\u2193</b></span>' +
+      '</div>' +
+      '<div class="hh-stage">' +
+        '<div class="hh-step" id="hhStep1">' +
+          '<div class="hh-window"><div class="hh-strip" id="hhStrip">' + stripHtml + '</div><span class="hh-payline"></span></div></div>' +
+        '<div class="hh-step" id="hhStep2">' +
+          '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhHeatLabel">\u00B7</div></div>' +
+        '<div class="hh-step" id="hhStep3">' +
+          '<div class="hh-net" id="hhNet">' + e.net.toFixed(1) + '</div>' +
+          '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-thresh"></span></div></div>' +
+        '<div class="hh-verdict" id="hhVerdict"></div>' +
+        '<div class="hh-actions" id="hhActions">' +
+          '<button class="hh-btn presti-spin" id="hhSee">SEE YOUR TEAM</button>' +
+          '<button class="hh-btn presti-spin" id="hhAgain">RUN IT BACK</button>' +
+        '</div>' +
+      '</div></div>';
+  document.body.appendChild(ov);
+  var fillEl = ov.querySelector("#hhFill");
+  fillEl.style.transform = "scaleX(" + Math.min(1, e.net / THRESH).toFixed(4) + ")";
+  requestAnimationFrame(function () { ov.classList.add("in"); });
+
+  function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  function segs() { return ov.querySelectorAll(".hh-seg"); }
+
+  function verdict() {
+    var v = ov.querySelector("#hhVerdict");
+    if (win) {
+      ov.classList.add("won");
+      v.innerHTML = '<div class="hh-stamp">82\u20130</div>';
+      buzz(45);
+      var fw = ov.querySelector("#hhFw"); if (fw && !reducedMotion()) fireGoats(fw);
+      G.hotWin = newNet;                                   // promote the result to 82-0 (headline + share)
+      var big = document.querySelector(".big"); if (big) big.textContent = "82\u20130";
+      var bl = document.querySelector(".big-label"); if (bl) bl.textContent = "net rating " + signed1(newNet);
+    } else {
+      ov.classList.add("missed");
+      v.innerHTML = '<div class="hh-stamp miss">' + (THRESH - newNet).toFixed(1) + ' SHORT</div>';
+      buzz(10);
+    }
+    v.classList.add("on");
+    ov.querySelector("#hhActions").classList.add("on");
+  }
+
+  function climb() {
+    ov.querySelector("#hhStep3").classList.add("on");
+    var numEl = ov.querySelector("#hhNet"), start = e.net, dur = 1650, t0 = performance.now();
+    (function frame(now) {
+      if (!ov.parentNode) return;
+      var t = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - t, 4.5);   // hard ease-out = crawl/stall near the line
+      var val = start + (newNet - start) * k;
+      numEl.textContent = val.toFixed(1);
+      fillEl.style.transform = "scaleX(" + Math.min(1, Math.max(0, val / THRESH)).toFixed(4) + ")";
+      if (val >= THRESH) numEl.classList.add("over");
+      if (t < 1) requestAnimationFrame(frame); else verdict();
+    })(t0);
+  }
+
+  function heat() {
+    ov.querySelector("#hhStep2").classList.add("on");
+    var cs = segs(), N = cs.length, label = ov.querySelector("#hhHeatLabel"), order = [], i, l;
+    var laps = 4;                                                 // longer base spin (chaotic-test length)
+    for (l = 0; l < laps; l++) for (i = 0; i < N; i++) order.push(i);
+    for (i = 0; i <= segIdx; i++) order.push(i);                   // sweep up to the target
+
+    // Mario Party endings: after "arriving," the wheel keeps drifting and settles on an
+    // adjacent notch - often overshooting and ticking back a slot (pure theater; the
+    // outcome was decided up front). Pick one, weighted toward having some hijink.
+    var up = segIdx + 1, down = segIdx - 1, endings = [[]];        // [] = clean stop
+    if (segIdx < N - 1) endings.push([up, segIdx]);               // overshoot one, tick BACK
+    if (segIdx > 0)     endings.push([down, segIdx]);             // dip back one, recover
+    if (segIdx > 0 && segIdx < N - 1) endings.push([up, down, segIdx]);  // wobble both ways, settle
+    if (segIdx < 4) { var tease = []; for (i = segIdx + 1; i <= 4; i++) tease.push(i); tease.push(segIdx); endings.push(tease); }  // SUPERNOVA tease, fall back
+    var pick = (Math.random() < 0.8 && endings.length > 1) ? endings[1 + Math.floor(Math.random() * (endings.length - 1))] : endings[0];
+    var base = order.length;
+    for (i = 0; i < pick.length; i++) order.push(pick[i]);
+    order[order.length - 1] = segIdx;                             // guarantee the final rest is the real result
+
+    // gaps: smooth deceleration through the spin, then slow + slightly uneven "settle" ticks,
+    // all stretched ~50% for the drawn-out, readable Mario Party cadence.
+    var gaps = [], t = 38;
+    for (i = 0; i < order.length; i++) {
+      if (i < base) { gaps.push(t * 1.5); t *= 1.085; }
+      else gaps.push((250 + (i % 2) * 70 + Math.random() * 110) * 1.5);
+    }
+
+    var acc = 0;
+    order.forEach(function (ci, j) {
+      setTimeout(function () {
+        if (!ov.parentNode) return;
+        for (var z = 0; z < N; z++) cs[z].classList.remove("lit");
+        cs[ci].classList.add("lit");
+        label.textContent = HH_SEGMENTS[ci].label;
+        label.className = "hh-heatlabel lvl" + HH_SEGMENTS[ci].lvl;
+        label.style.transform = "scale(" + (j < base ? 1.18 : 1) + ")";   // dice-block "grows when fast," shrinks into the lock
+        buzz(j >= base ? 11 : 5);                                  // chunkier ticks during the suspense
+        if (j === order.length - 1) {
+          for (var f = 0; f <= segIdx; f++) cs[f].classList.add("fill");
+          cs[segIdx].classList.add("result");
+          buzz(segIdx === 4 ? 40 : 18);
+          setTimeout(climb, 560);
+        }
+      }, acc);
+      acc += gaps[j];
+    });
+  }
+
+  function reel() {
+    ov.querySelector("#hhStep1").classList.add("on");
+    var strip = ov.querySelector("#hhStrip"), endY = -((targetFlat - 1) * ITEM);
+    function land() {
+      if (!ov.parentNode) return;
+      var rows = strip.querySelectorAll(".hh-name");
+      if (rows[targetFlat]) rows[targetFlat].classList.add("hot");
+      buzz(18);
+      setTimeout(heat, 470);
+    }
+    function glide(to, dur, ease) { strip.style.transition = "transform " + dur + "s " + ease; strip.style.transform = "translateY(" + to + "px)"; }
+    var variant = Math.floor(Math.random() * 3);   // 0 normal, 1 overshoot-back, 2 stall-creep (all ~50% longer)
+    if (variant === 1) {
+      // Mario Party: blow past your guy by one name, hang, then tick BACK onto him
+      requestAnimationFrame(function () { glide(endY - ITEM, 2.3, "cubic-bezier(.1,.72,.18,1)"); });
+      setTimeout(function () { if (ov.parentNode) { glide(endY, 0.52, "cubic-bezier(.34,0,.3,1)"); buzz(8); } }, 2360);
+      setTimeout(land, 2900);
+    } else if (variant === 2) {
+      // Mario Party: stall one name SHORT, hang on it, then creep forward onto him
+      requestAnimationFrame(function () { glide(endY + ITEM, 2.2, "cubic-bezier(.08,.8,.1,1)"); });
+      setTimeout(function () { if (ov.parentNode) { glide(endY, 0.66, "cubic-bezier(.5,0,.5,1)"); buzz(9); } }, 2620);
+      setTimeout(land, 3300);
+    } else {
+      // normal: one long smooth deceleration with a soft settle
+      requestAnimationFrame(function () { glide(endY, 2.6, "cubic-bezier(.12,.66,.18,1)"); });
+      setTimeout(land, 2640);
+    }
+  }
+
+  function run() { if (reducedMotion()) { ov.classList.add("reduced"); verdict(); } else reel(); }
+
+  // Pull the basketball down through the hoop (drag = embodied agency) or tap/Enter
+  // (auto-dunk). At the bottom it catches fire, then the sequence fires once.
+  var lever = ov.querySelector("#hhLever"), arm = ov.querySelector("#hhArm");
+  var TRAVEL = 150, dragging = false, startY = 0, pull = 0, fired = false;
+  function setPull(p) {
+    pull = p < 0 ? 0 : p > 1 ? 1 : p;
+    arm.style.transform = "translateY(" + (pull * TRAVEL).toFixed(1) + "px)";
+    if (pull >= 0.9) lever.classList.add("ignited"); else if (!fired) lever.classList.remove("ignited");
+  }
+  function fire() {
+    if (fired) return; fired = true;
+    lever.classList.add("pulling");
+    arm.style.transition = "transform .28s cubic-bezier(.4,0,.7,1)";       // dunk it the rest of the way down
+    setPull(1); lever.classList.add("ignited"); buzz(34);                  // through the net, catches fire
+    setTimeout(function () { ov.classList.add("lit"); run(); }, 640);      // let it burn a beat, then start
+  }
+  lever.addEventListener("pointerdown", function (ev) {
+    if (fired) return;
+    dragging = true; startY = ev.clientY; arm.style.transition = "none"; lever.classList.add("pulling"); buzz(8);
+    if (lever.setPointerCapture) try { lever.setPointerCapture(ev.pointerId); } catch (e2) {}
+  });
+  lever.addEventListener("pointermove", function (ev) { if (dragging && !fired) setPull((ev.clientY - startY) / TRAVEL); });
+  lever.addEventListener("pointerup", function () { if (dragging && !fired) { dragging = false; fire(); } });
+  lever.addEventListener("pointercancel", function () { if (dragging && !fired) { dragging = false; lever.classList.remove("pulling", "ignited"); arm.style.transition = "transform .3s ease"; setPull(0); } });
+  lever.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && !fired) { ev.preventDefault(); fire(); } });
+
+  ov.querySelector("#hhSkip").addEventListener("click", dismiss);
+  ov.querySelector("#hhSee").addEventListener("click", dismiss);
+  ov.querySelector("#hhAgain").addEventListener("click", function () { dismiss(); newGame(); });
+}
+
 function picksInSlotOrder() {
   return G.picks.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return BUCKETS.indexOf(a.p.slot) - BUCKETS.indexOf(b.p.slot); });
 }
@@ -1437,16 +1689,19 @@ function shareSurname(nm) {
   return parts[0].charAt(0) + ". " + rest.join(" ");
 }
 function shareText(e) {
-  var wins = e.winTally, losses = CFG.GAMES_IN_SEASON - wins, undef = wins >= CFG.GAMES_IN_SEASON;
+  var hot = (typeof G.hotWin === "number");                       // a Hot Hand win counts as a real 82-0
+  var wins = hot ? CFG.GAMES_IN_SEASON : e.winTally;
+  var netVal = hot ? G.hotWin : e.net;
+  var losses = CFG.GAMES_IN_SEASON - wins, undef = wins >= CFG.GAMES_IN_SEASON;
   var head, line2;
   if (MODE === "cap") {
     // Presti: result emoji moves up to the title (basketball = missed, trophy = 82-0);
     // line 2 swaps the result emoji for cap space ($ left under the $50 cap).
     head = (undef ? "\uD83C\uDFC6" : "\uD83C\uDFC0") + " TRUE 82 (Presti Mode)";
-    line2 = wins + "-" + losses + " | $" + G.budget + " Cap Spc | Net " + signed1(e.net);
+    line2 = wins + "-" + losses + " | $" + G.budget + " Cap Spc | Net " + signed1(netVal);
   } else {
     head = "\uD83C\uDFC0 TRUE 82 (" + shareModeLabel() + ")";
-    line2 = (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signed1(e.net);
+    line2 = (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signed1(netVal);
   }
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
@@ -1577,6 +1832,7 @@ function renderResults(e, keepScroll) {
     shareOrCopy(shareText(e2));
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
+  if (hhEligible(e)) hotHand(e);     // the 82-0 lever: offered on every drafted result
   window.scrollTo(0, scrollY);
 }
 
