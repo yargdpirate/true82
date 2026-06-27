@@ -1517,7 +1517,8 @@ function hotHand(e) {
         '<div class="hh-step" id="hhStep2">' +
           '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhHeatLabel">\u00B7</div></div>' +
         '<div class="hh-step" id="hhStep3">' +
-          '<div class="hh-net" id="hhNet">' + e.net.toFixed(1) + '</div>' +
+          '<div class="hh-net" id="hhNet">' + e.winTally + '</div>' +
+          '<div class="hh-netcap">WINS</div>' +
           '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-thresh"></span></div></div>' +
         '<div class="hh-verdict" id="hhVerdict"></div>' +
         '<div class="hh-actions" id="hhActions">' +
@@ -1527,7 +1528,7 @@ function hotHand(e) {
       '</div></div>';
   document.body.appendChild(ov);
   var fillEl = ov.querySelector("#hhFill");
-  fillEl.style.transform = "scaleX(" + Math.min(1, e.net / THRESH).toFixed(4) + ")";
+  fillEl.style.transform = "scaleX(" + Math.min(1, e.winTally / CFG.GAMES_IN_SEASON).toFixed(4) + ")";
   requestAnimationFrame(function () { ov.classList.add("in"); });
 
   function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
@@ -1535,9 +1536,10 @@ function hotHand(e) {
 
   function verdict() {
     var v = ov.querySelector("#hhVerdict");
+    var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + signed1(newNet) + '</div><div class="hh-netcap">NET RATING</div>';
     if (win) {
       ov.classList.add("won");
-      v.innerHTML = '<div class="hh-stamp">82\u20130</div>';
+      v.innerHTML = netHtml;
       buzz(45);
       var fw = ov.querySelector("#hhFw"); if (fw && !reducedMotion()) fireGoats(fw);
       G.hotWin = newNet;                                   // promote the result to 82-0 (headline + share)
@@ -1545,12 +1547,15 @@ function hotHand(e) {
       var bl = document.querySelector(".big-label"); if (bl) bl.textContent = "net rating " + signed1(newNet);
     } else {
       ov.classList.add("missed");
-      v.innerHTML = '<div class="hh-stamp miss">' + (THRESH - newNet).toFixed(1) + ' SHORT</div>';
+      v.innerHTML = netHtml;
       buzz(10);
     }
     v.classList.add("on");
     ov.querySelector("#hhActions").classList.add("on");
   }
+
+  // wins implied by a net rating - matches the engine's win formula exactly
+  function hhWins(net) { return Math.min(CFG.GAMES_IN_SEASON, Math.ceil(CFG.GAMES_IN_SEASON * phi(net / SC.NET_SD))); }
 
   function climb() {
     ov.querySelector("#hhStep3").classList.add("on");
@@ -1558,10 +1563,11 @@ function hotHand(e) {
     (function frame(now) {
       if (!ov.parentNode) return;
       var t = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - t, 4.5);   // hard ease-out = crawl/stall near the line
-      var val = start + (newNet - start) * k;
-      numEl.textContent = val.toFixed(1);
-      fillEl.style.transform = "scaleX(" + Math.min(1, Math.max(0, val / THRESH)).toFixed(4) + ")";
-      if (val >= THRESH) numEl.classList.add("over");
+      var val = start + (newNet - start) * k;                                 // animate net under the hood...
+      var w = hhWins(val);                                                    // ...but show WINS climbing toward 82
+      numEl.textContent = w;
+      fillEl.style.transform = "scaleX(" + (w / CFG.GAMES_IN_SEASON).toFixed(4) + ")";
+      if (w >= CFG.GAMES_IN_SEASON) numEl.classList.add("over");
       if (t < 1) requestAnimationFrame(frame); else verdict();
     })(t0);
   }

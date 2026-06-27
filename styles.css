@@ -1047,8 +1047,9 @@ button.presti-spin:disabled {
 .hh-heatlabel.lvl4 { color: #fff; text-shadow: 0 0 10px #fff, 0 0 28px rgba(255,210,120,0.9); }
 
 /* climb */
-.hh-net { font-family: var(--disp); font-weight: 700; font-size: 54px; line-height: 1; color: var(--chalk); font-variant-numeric: tabular-nums; transition: color 0.2s; }
+.hh-net { font-family: var(--disp); font-weight: 700; font-size: 62px; line-height: 0.92; color: var(--chalk); font-variant-numeric: tabular-nums; transition: color 0.2s; }
 .hh-net.over { color: #fff; text-shadow: 0 0 12px #fff, 0 0 32px rgba(255,210,120,0.95); }
+.hh-netcap { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--chalk-dim); margin: 2px 0 7px; }
 .hh-bar { position: relative; width: 100%; max-width: 320px; height: 10px; border-radius: 5px; background: rgba(185,138,79,0.14); overflow: hidden; }
 .hh-fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, rgba(255,181,46,0.7), #ffe9b0); }
 .hh-thresh { position: absolute; top: -3px; bottom: -3px; right: 0; width: 2px; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.9); }
@@ -1056,8 +1057,9 @@ button.presti-spin:disabled {
 /* verdict + actions */
 .hh-verdict { opacity: 0; transform: translateY(8px); transition: opacity 0.35s ease, transform 0.35s ease; }
 .hh-verdict.on { opacity: 1; transform: none; }
-.hh-stamp { font-family: var(--disp); font-weight: 700; font-size: 48px; line-height: 1; letter-spacing: 0.03em; color: #fff; text-shadow: 0 0 14px rgba(255,210,120,0.95), 0 0 36px rgba(255,181,46,0.8); }
-.hh-stamp.miss { color: var(--chalk); font-size: 34px; text-shadow: none; }
+.hh-stamp { font-family: var(--disp); font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: 0.03em; color: var(--amber); font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255,210,120,0.7); }
+.hh-stamp.miss { color: var(--chalk-dim); text-shadow: none; }
+.hh-netcap + .hh-bar { margin-top: 0; }
 .hh-vsub { margin-top: 5px; font-family: var(--mono); font-size: 12px; color: var(--chalk-dim); letter-spacing: 0.02em; }
 .hh-actions { display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; }
 .hh-actions.on { display: flex; }
