@@ -634,25 +634,64 @@ function capRoll() {
 function capCost(v) {
   return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll()));
 }
-// Lock each pool player to a random season AND price it off that season's value.
+// How aggressively cost lies about value (tuned against the real player pool via sim;
+// these are safe to nudge). At these values a value-built roster costs the same as
+// before (~+1%), but "buy the most expensive" and "$1 = junk" both stop working.
+var CAP_TRAP = 0.50;   // chance a mediocre marginal (value 2-4) is overpriced into the premium tier
+var CAP_GEM  = 0.15;   // chance a marginal (value 2-4) is dropped to a $1 gem
+// Lock each pool player to a random season AND price it off that season's value,
+// then run the mispricing pass so cost is a noisy signal you have to read past.
 function assignCapPool(avoid) {
   var k = key(G.cur.fr, G.cur.dec);
   var pool = POOLS.get(k), yrs = POOL_YEARS.get(k);
   G.costByName = {};
   if (!pool || !yrs) return;
+  var items = [];
   pool.forEach(function (row, name) {
     var arr = yrs.get(name);
-    if (arr && arr.length) {
-      var cands = arr;
-      if (avoid && avoid[name] != null && arr.length > 1) {   // don't land the same year twice in a row when there's an alternative
-        var alt = arr.filter(function (r) { return r[IDX.season] !== avoid[name]; });
-        if (alt.length) cands = alt;
-      }
-      var pickRow = cands[Math.floor(Math.random() * cands.length)];
-      G.yearByName[name] = pickRow[IDX.season];
-      G.costByName[name] = capCost(valueOf(pickRow));
+    if (!arr || !arr.length) return;
+    var cands = arr;
+    if (avoid && avoid[name] != null && arr.length > 1) {   // don't land the same year twice in a row when there's an alternative
+      var alt = arr.filter(function (r) { return r[IDX.season] !== avoid[name]; });
+      if (alt.length) cands = alt;
     }
+    var pickRow = cands[Math.floor(Math.random() * cands.length)];
+    G.yearByName[name] = pickRow[IDX.season];
+    items.push({ name: name, v: valueOf(pickRow), cost: capCost(valueOf(pickRow)) });
   });
+  if (!items.length) return;
+  capMisprice(items);
+  for (var i = 0; i < items.length; i++) G.costByName[items[i].name] = items[i].cost;
+}
+// Inject realistic mispricing. The 5 highest-VALUE players are shielded, so the cost of
+// a value-built roster (the economy / odds of 82-0) is preserved; only the price signal
+// gets noisy. Then: overprice some mediocre marginals into the premium tier (traps that
+// blend in with real stars), drop a few marginals to $1 (gems), lift the incidental $1
+// floor so a $1 tag now means "gem", and guarantee 2-4 weak players priced above $1.
+function capMisprice(items) {
+  var n = items.length, i;
+  var byVal = items.slice().sort(function (a, b) { return b.v - a.v; });
+  var shielded = {};
+  for (i = 0; i < Math.min(5, n); i++) shielded[byVal[i].name] = true;
+  var costs = items.map(function (it) { return it.cost; }).sort(function (a, b) { return b - a; });
+  var lo = Math.max(costs[Math.min(2, n - 1)], 10), hi = Math.max(costs[0], lo + 8);  // premium band overlaps real top-3
+  for (i = 0; i < n; i++) {
+    var it = items[i];
+    if (it.v >= 2 && it.v <= 4 && !shielded[it.name]) {
+      var r = Math.random();
+      if (r < CAP_GEM) it.cost = 1;                                                       // underpriced gem
+      else if (r < CAP_GEM + CAP_TRAP) it.cost = Math.round(lo + Math.random() * (hi - lo)); // overpriced trap
+      else if (it.cost < 2) it.cost = 2;                                                  // $1 floor now reads as "gem"
+    }
+  }
+  var weak = [];
+  for (i = 0; i < n; i++) if (items[i].v < 2) weak.push(i);
+  for (i = weak.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = weak[i]; weak[i] = weak[j]; weak[j] = t; }
+  var above = 0; for (i = 0; i < weak.length; i++) if (items[weak[i]].cost > 1) above++;
+  var want = 2 + Math.floor(Math.random() * 3);   // 2..4 weak players above $1
+  for (i = 0; i < weak.length && above < want; i++) {
+    if (items[weak[i]].cost <= 1) { items[weak[i]].cost = 2 + Math.floor(Math.random() * 5); above++; }  // $2..$6
+  }
 }
 // Affordable if it still leaves at least $1 for every remaining pick (never strand).
 function capAffordable(row) {
@@ -1579,25 +1618,31 @@ function hotHand(e) {
     for (l = 0; l < laps; l++) for (i = 0; i < N; i++) order.push(i);
     for (i = 0; i <= segIdx; i++) order.push(i);                   // sweep up to the target
 
-    // Mario Party endings: after "arriving," the wheel keeps drifting and settles on an
-    // adjacent notch - often overshooting and ticking back a slot (pure theater; the
-    // outcome was decided up front). Pick one, weighted toward having some hijink.
-    var up = segIdx + 1, down = segIdx - 1, endings = [[]];        // [] = clean stop
-    if (segIdx < N - 1) endings.push([up, segIdx]);               // overshoot one, tick BACK
-    if (segIdx > 0)     endings.push([down, segIdx]);             // dip back one, recover
-    if (segIdx > 0 && segIdx < N - 1) endings.push([up, down, segIdx]);  // wobble both ways, settle
-    if (segIdx < 4) { var tease = []; for (i = segIdx + 1; i <= 4; i++) tease.push(i); tease.push(segIdx); endings.push(tease); }  // SUPERNOVA tease, fall back
-    var pick = (Math.random() < 0.8 && endings.length > 1) ? endings[1 + Math.floor(Math.random() * (endings.length - 1))] : endings[0];
-    var base = order.length;
-    for (i = 0; i < pick.length; i++) order.push(pick[i]);
-    order[order.length - 1] = segIdx;                             // guarantee the final rest is the real result
+    var base = order.length;   // the smooth decel above ends exactly on segIdx
 
-    // gaps: smooth deceleration through the spin, then slow + slightly uneven "settle" ticks,
-    // all stretched ~50% for the drawn-out, readable Mario Party cadence.
-    var gaps = [], t = 38;
+    // Ending pattern - every transition is to an ADJACENT slot (a wheel never teleports):
+    //   65% clean stop - the decel just lands on the result
+    //   20% back-tick  - overshoot one notch, then tick back onto the result
+    //   15% burst      - it slows, then a quick lap re-accelerates and catches the result
+    var roll = Math.random(), burst = false;
+    if (roll < 0.65) {
+      /* clean stop: nothing appended */
+    } else if (roll < 0.85) {
+      if (segIdx < N - 1) { order.push(segIdx + 1); order.push(segIdx); }   // overshoot up one, tick back
+      else { order.push(segIdx - 1); order.push(segIdx); }                  // top slot: dip down one, tick back
+    } else {
+      burst = true;
+      for (i = 1; i <= N; i++) order.push((segIdx + i) % N);                // one quick lap around, back onto segIdx
+    }
+    order[order.length - 1] = segIdx;                                       // the final rest is always the real result
+
+    // gaps: smooth deceleration through the base sweep, then either drawn-out "settle"
+    // ticks (clean / back-tick) or a re-accelerating burst that catches on the lock.
+    var gaps = [], t = 38, last = order.length - 1;
     for (i = 0; i < order.length; i++) {
       if (i < base) { gaps.push(t * 1.5); t *= 1.085; }
-      else gaps.push((250 + (i % 2) * 70 + Math.random() * 110) * 1.5);
+      else if (burst) gaps.push((i === last - 1 ? 300 : 72 - (i - base) * 10) * 1.5);   // speed up (72,62,52..) then catch
+      else gaps.push((250 + (i % 2) * 70 + Math.random() * 110) * 1.5);                 // uneven settle ticks
     }
 
     var acc = 0;
@@ -1608,8 +1653,9 @@ function hotHand(e) {
         cs[ci].classList.add("lit");
         label.textContent = HH_SEGMENTS[ci].label;
         label.className = "hh-heatlabel lvl" + HH_SEGMENTS[ci].lvl;
-        label.style.transform = "scale(" + (j < base ? 1.18 : 1) + ")";   // dice-block "grows when fast," shrinks into the lock
-        buzz(j >= base ? 11 : 5);                                  // chunkier ticks during the suspense
+        var fast = j < base || (burst && j < last - 1);
+        label.style.transform = "scale(" + (fast ? 1.18 : 1) + ")";   // dice-block "grows when fast," shrinks into the lock
+        buzz(j < base ? 5 : (fast ? 6 : 11));                         // light during the fast burst, chunky on settle ticks
         if (j === order.length - 1) {
           for (var f = 0; f <= segIdx; f++) cs[f].classList.add("fill");
           cs[segIdx].classList.add("result");
