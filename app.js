@@ -1470,11 +1470,11 @@ function setupGoatFireworks(autoArm) {
    fully with sound off; buzz() is the only sugar layer (Android; silent on iOS). */
 
 var HH_SEGMENTS = [
-  { label: "COLD",      m: 1.0,  odds: 25, lvl: 0 },
-  { label: "WARM",      m: 1.2,  odds: 30, lvl: 1 },
+  { label: "COLD",      m: 1.0,  odds: 5,  lvl: 0 },
+  { label: "WARM",      m: 1.2,  odds: 25, lvl: 1 },
   { label: "HOT",       m: 1.35, odds: 25, lvl: 2 },
-  { label: "ON FIRE",   m: 1.6,  odds: 15, lvl: 3 },
-  { label: "SUPERNOVA", m: 2.5,  odds: 5,  lvl: 4 }
+  { label: "ON FIRE",   m: 1.5,  odds: 25, lvl: 3 },
+  { label: "SUPERNOVA", m: 2.0,  odds: 20, lvl: 4 }
 ];
 var HH_BONUS_SCALE = 0.67;   // hot-hand bonus dialed down a flat 33%
 
@@ -1574,6 +1574,16 @@ function hotHand(e) {
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
   function verdict() {
+    if (segIdx > 0) {                                            // COLD = nobody caught fire: no flame, no highlight
+      G.hotIdx = hotIdx;
+      G.hotValue = hotV * (1 + (seg.m - 1) * HH_BONUS_SCALE);    // the hot player's post-boost value
+      var card = document.querySelector('.pick-card[data-pick="' + hotIdx + '"]');
+      if (card) {
+        card.classList.add("hot-pick");
+        var pv = card.querySelector(".pr-v");
+        if (pv) pv.innerHTML = "<small>V</small>" + G.hotValue.toFixed(2);
+      }
+    }
     var v = ov.querySelector("#hhVerdict");
     var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + signed1(newNet) + '</div><div class="hh-netcap">NET RATING</div>';
     if (win) {
@@ -1758,7 +1768,8 @@ function shareText(e) {
   }
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
-    return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]);
+    var flame = (entry.i === G.hotIdx) ? " \uD83D\uDD25" : "";   // hot hand (COLD leaves G.hotIdx unset)
+    return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
   return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\ntrue82.net";
 }
@@ -1844,7 +1855,7 @@ function renderResults(e, keepScroll) {
   var scrollY = keepScroll ? window.scrollY : 0;
   var picksHtml = picksInSlotOrder().map(function (entry) {
     var p = entry.p, i = entry.i, row = p.row, name = row[IDX.name];
-    return '<div class="pick-card">' +
+    return '<div class="pick-card" data-pick="' + i + '">' +
       '<div class="pick-top"><span class="pr-name"><span class="slot-badge">' + p.slot + "</span>" + esc(name) + "</span>" +
       '<span class="pr-v"><small>V</small>' + valueOf(row).toFixed(2) + "</span></div>" +
       '<div class="pr-sub"><span>' + shortSeason(row[IDX.season]) + " " + esc(titleCase(p.fr)) + "</span>" + chipsFor(row) + "</div>" +
