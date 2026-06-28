@@ -1472,9 +1472,9 @@ function setupGoatFireworks(autoArm) {
 var HH_SEGMENTS = [
   { label: "COLD",      m: 1.0,  odds: 5,  lvl: 0 },
   { label: "WARM",      m: 1.2,  odds: 25, lvl: 1 },
-  { label: "HOT",       m: 1.35, odds: 25, lvl: 2 },
+  { label: "HOT",       m: 1.35, odds: 30, lvl: 2 },
   { label: "ON FIRE",   m: 1.7,  odds: 25, lvl: 3 },
-  { label: "SUPERNOVA", m: 2.25,  odds: 20, lvl: 4 }
+  { label: "SUPERNOVA", m: 2.25,  odds: 15, lvl: 4 }
 ];
 var HH_BONUS_SCALE = 0.67;   // hot-hand bonus dialed down a flat 33%
 
