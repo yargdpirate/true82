@@ -1472,9 +1472,9 @@ function setupGoatFireworks(autoArm) {
 var HH_SEGMENTS = [
   { label: "COLD",      m: 1.0,  odds: 5,  lvl: 0 },
   { label: "WARM",      m: 1.2,  odds: 25, lvl: 1 },
-  { label: "HOT",       m: 1.45, odds: 25, lvl: 2 },
-  { label: "ON FIRE",   m: 1.65,  odds: 25, lvl: 3 },
-  { label: "SUPERNOVA", m: 2.20,  odds: 20, lvl: 4 }
+  { label: "HOT",       m: 1.35, odds: 25, lvl: 2 },
+  { label: "ON FIRE",   m: 1.7,  odds: 25, lvl: 3 },
+  { label: "SUPERNOVA", m: 2.25,  odds: 20, lvl: 4 }
 ];
 var HH_BONUS_SCALE = 0.67;   // hot-hand bonus dialed down a flat 33%
 
@@ -1576,6 +1576,7 @@ function hotHand(e) {
   function verdict() {
     if (segIdx > 0) {                                            // COLD = nobody caught fire: no flame, no highlight
       G.hotIdx = hotIdx;
+      G.hotLvl = seg.lvl;                                        // tier reached (WARM 1 ... SUPERNOVA 4) -> picks the share emoji
       G.hotValue = hotV * (1 + (seg.m - 1) * HH_BONUS_SCALE);    // the hot player's post-boost value
       var card = document.querySelector('.pick-card[data-pick="' + hotIdx + '"]');
       if (card) {
@@ -1768,7 +1769,11 @@ function shareText(e) {
   }
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
-    var flame = (entry.i === G.hotIdx) ? " \uD83D\uDD25" : "";   // hot hand (COLD leaves G.hotIdx unset)
+    var flame = "";
+    if (entry.i === G.hotIdx) {                                  // COLD never sets G.hotIdx; WARM stays emoji-free
+      if (G.hotLvl === 4) flame = " \uD83C\uDF0B";               // SUPERNOVA -> volcano
+      else if (G.hotLvl >= 2) flame = " \uD83D\uDD25";           // HOT / ON FIRE -> fire
+    }
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
   return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\ntrue82.net";
