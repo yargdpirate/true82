@@ -634,6 +634,12 @@ button.presti-spin:disabled {
   padding: 10px 12px;
   margin-bottom: 6px;
 }
+.pick-card.hot-pick {
+  border-color: #ff4133;
+  box-shadow: 0 0 0 1px #ff4133, 0 0 16px rgba(255,65,51,0.55), inset 0 0 18px rgba(255,65,51,0.12);
+}
+.hot-pick .pr-v { color: #ff5a4a; text-shadow: 0 0 10px rgba(255,65,51,0.6); }
+.hot-pick .pr-v small { color: #ff5a4a; opacity: 0.7; }
 .pick-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 
 .ledger { border: 1px solid var(--tunnel-2); }
