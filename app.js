@@ -379,15 +379,25 @@ function bindHaptics() {
 // The 1-in-8 payoff: button turns green and reads "+$1" for 3s, then restores
 // whatever label the re-rendered button is showing. Guarded so a later re-render
 // that swaps the node out doesn't throw.
-function flashRefund(btn) {
-  if (!btn) return;
-  var original = btn.textContent;
-  btn.classList.add("refunded");
-  btn.textContent = "REFUND!";
+// A free spin lights up ALL THREE cost buttons (not just the one pressed) with the
+// money-green flash + "REFUND!" text, and bolds the entire app for the moment.
+function flashRefund() {
+  var restores = [];
+  ["skipTeam", "skipEra", "rerollYears"].forEach(function (id) {
+    var btn = el(id);
+    if (!btn) return;
+    restores.push({ btn: btn, text: btn.textContent });
+    btn.classList.add("refunded");
+    btn.textContent = "REFUND!";
+  });
+  if (!restores.length) return;
+  sprayFromEl(document.querySelector(".ticket-actions"), MONEY_EMOJI);   // 💵 spray from the cost buttons
   setTimeout(function () {
-    if (!btn.isConnected) return;   // node was replaced by a later render
-    btn.classList.remove("refunded");
-    btn.textContent = original;
+    restores.forEach(function (r) {
+      if (!r.btn.isConnected) return;            // node replaced by a later render
+      r.btn.classList.remove("refunded");
+      r.btn.textContent = r.text;
+    });
   }, 2000);
 }
 
@@ -1251,7 +1261,7 @@ function renderDraft(anim) {
   });
 
   if (MODE === "cap") {
-    if (G.refundFlash) { flashRefund(el(G.refundFlash)); G.refundFlash = null; }
+    if (G.refundFlash) { flashRefund(); G.refundFlash = null; }
   }
 
   if (anim) {
@@ -1329,12 +1339,12 @@ function twoWayHtml(e) {
   return '<div class="twoway">' + off + def + "</div>";
 }
 
-function climbHtml(e) {
+function climbHtml(e, winsOverride) {
   var legends = META.legends || [];
   var G82 = CFG.GAMES_IN_SEASON;
   var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
   var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
-  var youWins = e.winTally;          // integer record places the dot and drives comparisons
+  var youWins = (typeof winsOverride === "number") ? winsOverride : e.winTally;   // post-boost wins when the Hot Hand fired
   var below = youWins < FLOOR;
 
   // Layout in pixels so per-win spacing in the cluster stays fixed (~18px/win) no matter how
@@ -1410,21 +1420,26 @@ function reducedMotion() {
   return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
 var FW_EMOJI = ["\uD83D\uDC10", "\uD83C\uDFC0", "\uD83C\uDFC6"];   // goat, basketball, trophy
-function goatBurst(box, cx, cy) {
-  for (var i = 0; i < 20; i++) {
+function goatBurst(box, cx, cy, emojis, o) {
+  emojis = emojis || FW_EMOJI; o = o || {};
+  var count = o.count || 20, cone = o.cone || 1.9, life = o.life || 1700;
+  for (var i = 0; i < count; i++) {
     var g = document.createElement("span");
     g.className = "goat-particle";
-    g.textContent = FW_EMOJI[(Math.random() * FW_EMOJI.length) | 0];
-    var ang = Math.random() * Math.PI * 2, dist = 60 + Math.random() * 130;
+    g.textContent = emojis[(Math.random() * emojis.length) | 0];
+    var ang = o.up ? (-Math.PI / 2 + (Math.random() - 0.5) * cone)   // upward fan (cone width) vs all directions
+                   : (Math.random() * Math.PI * 2),
+        dist = (o.distMin || 60) + Math.random() * (o.distSpan || 130);
     g.style.left = cx + "px";
     g.style.top = cy + "px";
     g.style.fontSize = (15 + Math.random() * 16).toFixed(0) + "px";
     g.style.setProperty("--dx", (Math.cos(ang) * dist).toFixed(0) + "px");
     g.style.setProperty("--dy", (Math.sin(ang) * dist).toFixed(0) + "px");
     g.style.setProperty("--rot", (Math.random() * 120 - 60).toFixed(0) + "deg");
-    g.style.animationDelay = (Math.random() * 0.07).toFixed(3) + "s";
+    g.style.animationDelay = (Math.random() * (o.stagger || 0.07)).toFixed(3) + "s";
+    if (o.dur) g.style.animationDuration = o.dur + "s";       // longer = rises higher and lingers before fading
     box.appendChild(g);
-    (function (node) { setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 1700); })(g);
+    (function (node) { setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, life); })(g);
   }
 }
 function fireGoats(box) {
@@ -1436,6 +1451,37 @@ function fireGoats(box) {
       }, k * 180);
     })(b);
   }
+}
+// Perfect-record (82-0) emoji explosion inside the results W/L box - the same burst Kaman uses.
+function fireWL() { var b = el("wlFw"); if (b && !reducedMotion()) fireGoats(b); }
+
+var MONEY_EMOJI = ["\uD83D\uDCB5"];   // 💵
+var FIRE_EMOJI  = ["\uD83D\uDD25"];   // 🔥
+// One-shot single-burst spray (the 82-0 particle, a single pop) anchored at a screen point.
+function emojiSpray(emojis, x, y, o) {
+  if (reducedMotion()) return;
+  var layer = document.createElement("div");
+  layer.className = "spray-layer";
+  document.body.appendChild(layer);
+  goatBurst(layer, x, y, emojis, o);
+  setTimeout(function () { if (layer.parentNode) layer.parentNode.removeChild(layer); }, (o && o.life ? o.life + 250 : 1900));
+}
+// Spray from the center of an element (viewport coords).
+function sprayFromEl(elm, emojis, o) {
+  if (!elm) return;
+  var r = elm.getBoundingClientRect();
+  emojiSpray(emojis, r.left + r.width / 2, r.top + r.height / 2, o);
+}
+// SUPERNOVA: five volcano plumes across the screen (center + two each side) from the label's height.
+function supernovaErupt(label) {
+  if (!label || reducedMotion()) return;
+  var lr = label.getBoundingClientRect(), y = lr.top + lr.height / 2, W = window.innerWidth;
+  var layer = document.createElement("div");
+  layer.className = "spray-layer";
+  document.body.appendChild(layer);
+  var opts = { up: true, count: 30, cone: 0.6, distMin: 150, distSpan: 240, dur: 2.2, stagger: 0.3, life: 2600 };
+  [0.1, 0.3, 0.5, 0.7, 0.9].forEach(function (fx) { goatBurst(layer, W * fx, y, FIRE_EMOJI, opts); });
+  setTimeout(function () { if (layer.parentNode) layer.parentNode.removeChild(layer); }, 2850);
 }
 function setupGoatFireworks(autoArm) {
   var box = el("goatFw");
@@ -1472,9 +1518,9 @@ function setupGoatFireworks(autoArm) {
 var HH_SEGMENTS = [
   { label: "COLD",      m: 1.0,  odds: 5,  lvl: 0 },
   { label: "WARM",      m: 1.2,  odds: 25, lvl: 1 },
-  { label: "HOT",       m: 1.35, odds: 30, lvl: 2 },
-  { label: "ON FIRE",   m: 1.7,  odds: 25, lvl: 3 },
-  { label: "SUPERNOVA", m: 2.25,  odds: 15, lvl: 4 }
+  { label: "HOT",       m: 1.35, odds: 25, lvl: 2 },
+  { label: "ON FIRE",   m: 1.5,  odds: 25, lvl: 3 },
+  { label: "SUPERNOVA", m: 2.0,  odds: 20, lvl: 4 }
 ];
 var HH_BONUS_SCALE = 0.67;   // hot-hand bonus dialed down a flat 33%
 
@@ -1558,7 +1604,7 @@ function hotHand(e) {
         '<div class="hh-step" id="hhStep3">' +
           '<div class="hh-net" id="hhNet">' + e.winTally + '</div>' +
           '<div class="hh-netcap">WINS</div>' +
-          '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-thresh"></span></div></div>' +
+          '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-fill-bonus" id="hhFillBonus"></span><span class="hh-thresh"></span></div></div>' +
         '<div class="hh-verdict" id="hhVerdict"></div>' +
         '<div class="hh-actions" id="hhActions">' +
           '<button class="hh-btn presti-spin" id="hhSee">SEE YOUR TEAM</button>' +
@@ -1566,23 +1612,36 @@ function hotHand(e) {
         '</div>' +
       '</div></div>';
   document.body.appendChild(ov);
-  var fillEl = ov.querySelector("#hhFill");
-  fillEl.style.transform = "scaleX(" + Math.min(1, e.winTally / CFG.GAMES_IN_SEASON).toFixed(4) + ")";
+  var fillEl = ov.querySelector("#hhFill"), bonusEl = ov.querySelector("#hhFillBonus");
+  var baseFrac = Math.min(1, e.winTally / CFG.GAMES_IN_SEASON);   // wins you earned BEFORE the Hot Hand (gold, fixed)
+  fillEl.style.transform = "scaleX(" + baseFrac.toFixed(4) + ")";
+  bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (red, glowing)
+  bonusEl.style.width = "0%";
   requestAnimationFrame(function () { ov.classList.add("in"); });
 
   function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
   function verdict() {
-    if (segIdx > 0) {                                            // COLD = nobody caught fire: no flame, no highlight
+    if (segIdx > 0) {                                            // COLD = nobody caught fire: no flame, no highlight, no boost
       G.hotIdx = hotIdx;
       G.hotLvl = seg.lvl;                                        // tier reached (WARM 1 ... SUPERNOVA 4) -> picks the share emoji
       G.hotValue = hotV * (1 + (seg.m - 1) * HH_BONUS_SCALE);    // the hot player's post-boost value
+      G.hotBase = e.net; G.hotNewNet = newNet; G.hotWins = hhWins(newNet);   // post-boost totals (drive record/net/share)
       var card = document.querySelector('.pick-card[data-pick="' + hotIdx + '"]');
       if (card) {
         card.classList.add("hot-pick");
         var pv = card.querySelector(".pr-v");
-        if (pv) pv.innerHTML = "<small>V</small>" + G.hotValue.toFixed(2);
+        if (pv) pv.innerHTML = "<small>V</small>" + hotV.toFixed(2) + ' <span class="hot-bonus">+ ' + (G.hotValue - hotV).toFixed(2) + "</span>";
+      }
+      var rec = document.querySelector(".big");                  // updated W/L record (the win rate)
+      if (rec) rec.textContent = G.hotWins + "\u2013" + (CFG.GAMES_IN_SEASON - G.hotWins);
+      var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [bonus, hot-hand red]
+      if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
+        '</span> <span class="net-bonus">+ ' + (newNet - e.net).toFixed(1) + "</span>";
+      if (G.hotWins > e.winTally) {                              // boost moved the win total -> re-plot the GOAT Climb
+        var cl = document.querySelector(".climb");
+        if (cl) { cl.outerHTML = climbHtml(e, G.hotWins); setupGoatFireworks(G.hotWins >= CFG.GAMES_IN_SEASON); }
       }
     }
     var v = ov.querySelector("#hhVerdict");
@@ -1592,9 +1651,6 @@ function hotHand(e) {
       v.innerHTML = netHtml;
       buzz(45);
       var fw = ov.querySelector("#hhFw"); if (fw && !reducedMotion()) fireGoats(fw);
-      G.hotWin = newNet;                                   // promote the result to 82-0 (headline + share)
-      var big = document.querySelector(".big"); if (big) big.textContent = "82\u20130";
-      var bl = document.querySelector(".big-label"); if (bl) bl.textContent = "net rating " + signed1(newNet);
     } else {
       ov.classList.add("missed");
       v.innerHTML = netHtml;
@@ -1616,7 +1672,8 @@ function hotHand(e) {
       var val = start + (newNet - start) * k;                                 // animate net under the hood...
       var w = hhWins(val);                                                    // ...but show WINS climbing toward 82
       numEl.textContent = w;
-      fillEl.style.transform = "scaleX(" + (w / CFG.GAMES_IN_SEASON).toFixed(4) + ")";
+      var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // portion the Hot Hand added, in red
+      bonusEl.style.width = (bonusFrac * 100).toFixed(2) + "%";
       if (w >= CFG.GAMES_IN_SEASON) numEl.classList.add("over");
       if (t < 1) requestAnimationFrame(frame); else verdict();
     })(t0);
@@ -1671,6 +1728,8 @@ function hotHand(e) {
           for (var f = 0; f <= segIdx; f++) cs[f].classList.add("fill");
           cs[segIdx].classList.add("result");
           buzz(segIdx === 4 ? 40 : 18);
+          if (segIdx === 4) supernovaErupt(label);   // SUPERNOVA -> five volcano plumes across the screen
+          else if (segIdx === 3) sprayFromEl(label, FIRE_EMOJI);   // ON FIRE -> simple radial flame burst (money-style)
           setTimeout(climb, 560);
         }
       }, acc);
@@ -1736,7 +1795,10 @@ function hotHand(e) {
   lever.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && !fired) { ev.preventDefault(); fire(); } });
 
   ov.querySelector("#hhSkip").addEventListener("click", dismiss);
-  ov.querySelector("#hhSee").addEventListener("click", dismiss);
+  ov.querySelector("#hhSee").addEventListener("click", function () {
+    dismiss();
+    if (G.hotWins >= CFG.GAMES_IN_SEASON) fireWL();   // perfect record revealed -> emoji explosion in the W/L box
+  });
   ov.querySelector("#hhAgain").addEventListener("click", function () { dismiss(); newGame(); });
 }
 
@@ -1753,9 +1815,9 @@ function shareSurname(nm) {
   return parts[0].charAt(0) + ". " + rest.join(" ");
 }
 function shareText(e) {
-  var hot = (typeof G.hotWin === "number");                       // a Hot Hand win counts as a real 82-0
-  var wins = hot ? CFG.GAMES_IN_SEASON : e.winTally;
-  var netVal = hot ? G.hotWin : e.net;
+  var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
+  var wins = hot ? G.hotWins : e.winTally;
+  var netVal = hot ? G.hotNewNet : e.net;
   var losses = CFG.GAMES_IN_SEASON - wins, undef = wins >= CFG.GAMES_IN_SEASON;
   var head, line2;
   if (MODE === "cap") {
@@ -1884,7 +1946,7 @@ function renderResults(e, keepScroll) {
   document.body.classList.remove("drafting");
   app().innerHTML =
     startOverBtnHtml() +
-    '<section class="board"><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
+    '<section class="board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       (MODE === "cap" ? '<div class="cap-spent">$' + G.budget + ' cap space</div>' : "") +
       '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
@@ -1901,6 +1963,7 @@ function renderResults(e, keepScroll) {
     shareOrCopy(shareText(e2));
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
+  if (e.winTally >= CFG.GAMES_IN_SEASON) setTimeout(fireWL, 360);   // drafted 82-0 -> burst the W/L box
   if (hhEligible(e)) hotHand(e);     // the 82-0 lever: offered on every drafted result
   window.scrollTo(0, scrollY);
 }

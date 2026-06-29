@@ -263,6 +263,7 @@ button.presti-spin:disabled {
   --spin-top:  #4FC487;
   --spin-side: #1B6E40;
   color: #082A1A;
+  font-weight: 700;       /* bold the green button text only */
   animation: spinRefund 500ms ease;
 }
 /* marquee: two interleaved sets of white bulbs around the inner perimeter,
@@ -582,7 +583,11 @@ button.presti-spin:disabled {
   padding: 16px;
   margin-bottom: 14px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
+.board .big-label .net-base { color: var(--amber); }
+.board .big-label .net-bonus { color: #ff5a4a; text-shadow: 0 0 10px rgba(255,65,51,0.55); }
 .board .big {
   font-family: var(--disp);
   font-weight: 700;
@@ -638,8 +643,8 @@ button.presti-spin:disabled {
   border-color: #ff4133;
   box-shadow: 0 0 0 1px #ff4133, 0 0 16px rgba(255,65,51,0.55), inset 0 0 18px rgba(255,65,51,0.12);
 }
-.hot-pick .pr-v { color: #ff5a4a; text-shadow: 0 0 10px rgba(255,65,51,0.6); }
-.hot-pick .pr-v small { color: #ff5a4a; opacity: 0.7; }
+.hot-pick .pr-name { color: #ff5a4a; }                          /* hot player's name in the bonus red */
+.hot-pick .pr-v .hot-bonus { color: #ff5a4a; text-shadow: 0 0 10px rgba(255,65,51,0.6); }   /* base value stays gold; only the bonus is red */
 .pick-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 
 .ledger { border: 1px solid var(--tunnel-2); }
@@ -705,6 +710,7 @@ button.presti-spin:disabled {
 /* ---------- the climb (results) ---------- */
 .climb { position: relative; }
 .goat-fw { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 6; }
+.spray-layer { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 200; }
 .goat-particle {
   position: absolute; line-height: 1; will-change: transform, opacity;
   transform: translate(-50%, -50%) scale(.3);
@@ -1058,6 +1064,7 @@ button.presti-spin:disabled {
 .hh-netcap { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--chalk-dim); margin: 2px 0 7px; }
 .hh-bar { position: relative; width: 100%; max-width: 320px; height: 10px; border-radius: 5px; background: rgba(185,138,79,0.14); overflow: hidden; }
 .hh-fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, rgba(255,181,46,0.7), #ffe9b0); }
+.hh-fill-bonus { position: absolute; top: 0; bottom: 0; left: 0; width: 0; background: linear-gradient(90deg, #ff4133, #ff7a5c); box-shadow: 0 0 9px 1px rgba(255,77,51,0.9); }
 .hh-thresh { position: absolute; top: -3px; bottom: -3px; right: 0; width: 2px; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.9); }
 
 /* verdict + actions */
