@@ -1583,7 +1583,7 @@ function hhSpinSeg() {
 // results path and never reaches here). Far-from-perfect rosters still get the spin -
 // the lever pull and wheel are the variable-reward hit; near-perfect ones can cross.
 function hhEligible(e) {
-  return !!(G.picks && G.picks.length >= CFG.ROUNDS && e.winTally < CFG.GAMES_IN_SEASON);
+  return !!(MODE === "cap" && G.picks && G.picks.length >= CFG.ROUNDS && e.winTally < CFG.GAMES_IN_SEASON);
 }
 
 function hotHand(e) {
@@ -1817,7 +1817,7 @@ function hotHand(e) {
   // Pull the basketball down through the hoop (drag = embodied agency) or tap/Enter
   // (auto-dunk). At the bottom it catches fire, then the sequence fires once.
   var lever = ov.querySelector("#hhLever"), arm = ov.querySelector("#hhArm");
-  var TRAVEL = 150, dragging = false, startY = 0, pull = 0, fired = false;
+  var TRAVEL = 150, RELEASE_AT = 0.97, dragging = false, startY = 0, pull = 0, fired = false;
   function setPull(p) {
     pull = p < 0 ? 0 : p > 1 ? 1 : p;
     arm.style.transform = "translateY(" + (pull * TRAVEL).toFixed(1) + "px)";
@@ -1836,7 +1836,11 @@ function hotHand(e) {
     dragging = true; startY = ev.clientY; arm.style.transition = "none"; lever.classList.add("pulling"); buzz(8);
     if (lever.setPointerCapture) try { lever.setPointerCapture(ev.pointerId); } catch (e2) {}
   });
-  lever.addEventListener("pointermove", function (ev) { if (dragging && !fired) setPull((ev.clientY - startY) / TRAVEL); });
+  lever.addEventListener("pointermove", function (ev) {
+    if (!dragging || fired) return;
+    setPull((ev.clientY - startY) / TRAVEL);
+    if (pull >= RELEASE_AT) { dragging = false; fire(); }   // reached the bottom -> auto-release, no cursor-up needed (desktop fix)
+  });
   lever.addEventListener("pointerup", function () { if (dragging && !fired) { dragging = false; fire(); } });
   lever.addEventListener("pointercancel", function () { if (dragging && !fired) { dragging = false; lever.classList.remove("pulling", "ignited"); arm.style.transition = "transform .3s ease"; setPull(0); } });
   lever.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && !fired) { ev.preventDefault(); fire(); } });
