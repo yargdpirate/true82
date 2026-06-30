@@ -645,6 +645,13 @@ button.presti-spin:disabled {
 }
 .hot-pick .pr-name { color: #ff5a4a; }                          /* hot player's name in the bonus red */
 .hot-pick .pr-v .hot-bonus { color: #ff5a4a; text-shadow: 0 0 10px rgba(255,65,51,0.6); }   /* base value stays gold; only the bonus is red */
+.hot-pick .slot-badge {
+  color: #ff5a4a;
+  text-shadow: 0 0 10px rgba(255,65,51,0.6);
+  background: transparent;
+  border: 1px solid #ff4133;
+  box-shadow: 0 0 8px rgba(255,65,51,0.5);
+}
 .pick-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 
 .ledger { border: 1px solid var(--tunnel-2); }
@@ -662,7 +669,7 @@ button.presti-spin:disabled {
 .ledger-amt.tax { color: var(--whistle); }
 .ledger-amt.zero { color: var(--ok); }
 .ledger-amt.good { color: var(--ok); }
-.ledger-amt.hot { color: #ff5a4a; text-shadow: 0 0 9px rgba(255,65,51,0.5); }
+.ledger-amt.hot { color: var(--ok); }
 .ledger-row.total { background: var(--tunnel); font-weight: 500; }
 
 /* ---------- two-way profile (results) ---------- */
@@ -800,6 +807,24 @@ button.presti-spin:disabled {
   padding: 5px 11px; margin-bottom: 12px; cursor: pointer;
 }
 .startover-btn:active { background: var(--maple); border-color: var(--maple); }
+
+.results-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.results-topbar .startover-btn { margin-bottom: 0; }
+.donate-btn {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--ink); background: var(--amber);
+  border: 1px solid var(--amber);
+  padding: 5px 11px; cursor: pointer;
+  text-decoration: none; display: inline-block;
+  max-width: 62%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.donate-btn:active { background: var(--maple); border-color: var(--maple); }
 .btn {
   flex: 1;
   font-family: var(--disp);

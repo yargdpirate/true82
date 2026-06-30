@@ -258,12 +258,14 @@ function newGame(mode) {
     query: "",
     screen: "draft"
   };
+  window.t82track && window.t82track("game_start", { mode: MODE });
   nextRound(true);
 }
 
 function nextRound(animate) {
   G.round += 1;
   if (G.round > CFG.ROUNDS) { showResults(); return; }
+  window.t82track && window.t82track("round_advance", { mode: MODE, round: G.round });
   if (MODE === "kaman") {
     G.cur = { kaman: true };
     G.selected = null;
@@ -376,7 +378,7 @@ function bindHaptics() {
   }, true);
 }
 
-// The 1-in-8 payoff: button turns green and reads "+$1" for 3s, then restores
+// The 1-in-8 payoff: button turns green and reads "REFUND!" for 2.5s, then restores
 // whatever label the re-rendered button is showing. Guarded so a later re-render
 // that swaps the node out doesn't throw.
 // A free spin lights up ALL THREE cost buttons (not just the one pressed) with the
@@ -398,7 +400,7 @@ function flashRefund() {
       r.btn.classList.remove("refunded");
       r.btn.textContent = r.text;
     });
-  }, 2000);
+  }, 2500);
 }
 
 /* ---------- Presti slot reels ----------
@@ -738,7 +740,7 @@ function sortPoolRows(rows) {
     rows.sort(function (a, b) {
       var ca = G.costByName ? (G.costByName[a[IDX.name]] || 0) : 0;
       var cb = G.costByName ? (G.costByName[b[IDX.name]] || 0) : 0;
-      return (dir * (ca - cb)) || cmpName(a, b);   // tiebreak: alphabetical
+      return (dir * (ca - cb)) || (poolMaxMin(b[IDX.name]) - poolMaxMin(a[IDX.name])) || cmpName(a, b);   // tiebreak: minutes, then alphabetical
     });
   } else {
     rows.sort(function (a, b) { return (poolMaxMin(b[IDX.name]) - poolMaxMin(a[IDX.name])) || cmpName(a, b); });
@@ -784,7 +786,10 @@ function confirmPick(bucket) {
   G.drafted.add(G.selected);   // classic/pro: by player name; Kaman: by season (each once)
   G.filled[bucket] += 1;
   G.picks.push({ row: row, fr: MODE === "kaman" ? null : G.cur.fr, dec: MODE === "kaman" ? null : G.cur.dec, slot: bucket });
-  if (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) G.budget -= G.costByName[G.selected];
+  if (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) {
+    G.picks[G.picks.length - 1].cost = G.costByName[G.selected];
+    G.budget -= G.costByName[G.selected];
+  }
   nextRound(true);
 }
 
@@ -912,6 +917,30 @@ function startOverBtnHtml() {
 function wireStartOver() {
   var b = el("startOverBtn");
   if (b) b.addEventListener("click", function () { renderIntro(); });
+}
+
+/* ---------- donate ---------- */
+var DONATE_URL = "https://www.paypal.com/ncp/payment/UJMRHNN2VBJES";
+var DONATE_MSGS = [
+  "Fund my caffeine dependency",
+  "Feed my GOAT herd",
+  "Fuel the token furnace",
+  "Prove my girlfriend wrong",
+  "Help me pay the luxury tax",
+  "Money me. Money now."
+];
+function resultsTopBarHtml() {
+  var msg = DONATE_MSGS[Math.floor(Math.random() * DONATE_MSGS.length)];
+  return '<div class="results-topbar">' +
+    startOverBtnHtml() +
+    '<a class="donate-btn" id="donateBtn" href="' + DONATE_URL + '" target="_blank" rel="noopener" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
+  '</div>';
+}
+function wireDonate() {
+  var b = el("donateBtn");
+  if (b) b.addEventListener("click", function () {
+    window.t82track && window.t82track("donate_click", { variant: b.getAttribute("data-msg"), mode: MODE });
+  });
 }
 
 function renderIntro() {
@@ -1619,11 +1648,13 @@ function hotHand(e) {
   bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (red, glowing)
   bonusEl.style.width = "0%";
   requestAnimationFrame(function () { ov.classList.add("in"); });
+  window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
 
   function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
   function verdict() {
+    window.t82track && window.t82track("heatcheck_result", { mode: MODE, segment: seg.label, hit_82: win ? 1 : 0 });
     if (segIdx > 0) {                                            // COLD = nobody caught fire: no flame, no highlight, no boost
       G.hotIdx = hotIdx;
       G.hotLvl = seg.lvl;                                        // tier reached (WARM 1 ... SUPERNOVA 4) -> picks the share emoji
@@ -1794,6 +1825,7 @@ function hotHand(e) {
   }
   function fire() {
     if (fired) return; fired = true;
+    window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 1 });
     lever.classList.add("pulling");
     arm.style.transition = "transform .28s cubic-bezier(.4,0,.7,1)";       // dunk it the rest of the way down
     setPull(1); lever.classList.add("ignited"); buzz(34);                  // through the net, catches fire
@@ -1809,12 +1841,18 @@ function hotHand(e) {
   lever.addEventListener("pointercancel", function () { if (dragging && !fired) { dragging = false; lever.classList.remove("pulling", "ignited"); arm.style.transition = "transform .3s ease"; setPull(0); } });
   lever.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && !fired) { ev.preventDefault(); fire(); } });
 
-  ov.querySelector("#hhSkip").addEventListener("click", dismiss);
+  ov.querySelector("#hhSkip").addEventListener("click", function () {
+    if (!fired) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
+    dismiss();
+  });
   ov.querySelector("#hhSee").addEventListener("click", function () {
     dismiss();
     if (G.hotWins >= CFG.GAMES_IN_SEASON) fireWL();   // perfect record revealed -> emoji explosion in the W/L box
   });
-  ov.querySelector("#hhAgain").addEventListener("click", function () { dismiss(); newGame(); });
+  ov.querySelector("#hhAgain").addEventListener("click", function () {
+    window.t82track && window.t82track("replay", { mode: MODE });
+    dismiss(); newGame();
+  });
 }
 
 function picksInSlotOrder() {
@@ -1926,9 +1964,22 @@ function shareOrCopy(txt) {
 
 function showResults() {
   G.screen = "results";
-  if (MODE === "kaman") { renderKamanResults(); pingGames("POST"); return; }
+  if (MODE === "kaman") {
+    renderKamanResults();
+    window.t82track && window.t82track("game_complete", { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1 });
+    pingGames("POST");
+    return;
+  }
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
   renderResults(e, false);
+  if (window.t82track) {
+    var gc = { mode: MODE, wins: e.winTally, net: e.net, undefeated: e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0 };
+    if (MODE === "cap") {
+      gc.budget_used = G.maxCap - G.budget;                                            // $ spent incl. rerolls
+      gc.roster_value = G.picks.reduce(function (s, p) { return s + (p.cost || 0); }, 0); // $ on the five
+    }
+    window.t82track("game_complete", gc);
+  }
   pingGames("POST");
 }
 
@@ -1960,7 +2011,7 @@ function renderResults(e, keepScroll) {
 
   document.body.classList.remove("drafting");
   app().innerHTML =
-    startOverBtnHtml() +
+    resultsTopBarHtml() +
     '<section class="board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       (MODE === "cap" ? '<div class="cap-spent">$' + G.budget + ' cap space</div>' : "") +
@@ -1971,10 +2022,18 @@ function renderResults(e, keepScroll) {
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
     '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">Run it back</button></div>';
 
-  el("againBtn").addEventListener("click", function () { newGame(); });
+  el("againBtn").addEventListener("click", function () {
+    window.t82track && window.t82track("replay", { mode: MODE });
+    newGame();
+  });
   wireStartOver();
+  wireDonate();
   el("shareTeamBtn").addEventListener("click", function () {
     var e2 = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+    if (window.t82track) {
+      var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
+      window.t82track("share", { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0 });
+    }
     shareOrCopy(shareText(e2));
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
@@ -2029,7 +2088,7 @@ function renderKamanResults() {
     '<div class="ledger-row total"><span>\u2192 KAMAN<span class="why">Kaman Kaman KAMAN. (kaman.) KAMAN!</span></span><span class="ledger-amt">+\u221E</span></div></div>';
 
   app().innerHTML =
-    startOverBtnHtml() +
+    resultsTopBarHtml() +
     '<section class="board kaman-board"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
       '<p class="eyebrow">Front office projection \u00B7 KAMAN MODE</p>' +
       '<div class="big">82\u20130</div><div class="big-label">net rating +\u221E</div>' +
@@ -2042,7 +2101,11 @@ function renderKamanResults() {
 
   el("againBtn").addEventListener("click", function () { renderIntro(); });
   wireStartOver();
-  el("shareTeamBtn").addEventListener("click", function () { shareOrCopy(kamanShareText()); });
+  wireDonate();
+  el("shareTeamBtn").addEventListener("click", function () {
+    window.t82track && window.t82track("share", { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1 });
+    shareOrCopy(kamanShareText());
+  });
   setupGoatFireworks(true);
   window.scrollTo(0, 0);
 }
@@ -2066,10 +2129,16 @@ function pingGames(method) {
 
 function boot() {
   bindHaptics();
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
   fetch(CFG.DATA_URL)
     .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
-    .then(function (data) { initData(data); renderIntro(); pingGames("GET"); })
+    .then(function (data) {
+      initData(data); renderIntro(); pingGames("GET");
+      var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
+      window.t82track && window.t82track("data_ready", { load_ms: ms });
+    })
     .catch(function (err) {
+      window.t82track && window.t82track("data_error", {});
       showError("Couldn\u2019t load " + esc(CFG.DATA_URL) + " (" + esc(err.message) + "). Serve this folder over HTTP \u2014 e.g. <span class=\"mono\">python3 -m http.server</span> \u2014 rather than opening index.html as a file.");
     });
 }
