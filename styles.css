@@ -662,6 +662,7 @@ button.presti-spin:disabled {
 .ledger-amt.tax { color: var(--whistle); }
 .ledger-amt.zero { color: var(--ok); }
 .ledger-amt.good { color: var(--ok); }
+.ledger-amt.hot { color: #ff5a4a; text-shadow: 0 0 9px rgba(255,65,51,0.5); }
 .ledger-row.total { background: var(--tunnel); font-weight: 500; }
 
 /* ---------- two-way profile (results) ---------- */
@@ -953,6 +954,7 @@ button.presti-spin:disabled {
   border: 1px solid var(--maple-line); border-left: 3px solid var(--maple);
   padding: 8px 10px; margin: 2px 0;
 }
+.cap-note { flex: 1; min-width: 0; font-family: var(--mono); font-weight: 700; font-size: 10.5px; letter-spacing: 0.01em; line-height: 1.2; color: var(--amber); }
 
 /* ---------- Presti "Hot Hand": the 82-0 shot overlay ---------- */
 .hh-overlay {

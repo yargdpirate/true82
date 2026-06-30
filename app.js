@@ -1185,6 +1185,7 @@ function renderDraft(anim) {
         '<span class="cap-bar-amt">$' + G.budget + '</span>' +
         '<span class="cap-bar-sub">left</span>' +
         '<button class="cap-info" id="capInfo" aria-expanded="false" aria-label="How Salary Cap works">i</button>' +
+        '<span class="cap-note">Watch for random bargains and rip-offs.</span>' +
       '</div>' +
       '<div class="cap-tip" id="capTip" hidden>$50 salary cap. Player salaries are randomized each round to fair value, bargain, or rip-off. Player year available is also randomized. Unlimited rerolls of team, era, player years, but it costs $1 from your salary cap each time. Possibly unwinnable.</div>'
     : "";
@@ -1642,6 +1643,20 @@ function hotHand(e) {
       if (G.hotWins > e.winTally) {                              // boost moved the win total -> re-plot the GOAT Climb
         var cl = document.querySelector(".climb");
         if (cl) { cl.outerHTML = climbHtml(e, G.hotWins); setupGoatFireworks(G.hotWins >= CFG.GAMES_IN_SEASON); }
+      }
+      var ledgerEl = document.querySelector(".ledger");         // fold the Hot Hand bonus into the Scoring Card as the last step before net
+      var totalRow = ledgerEl && ledgerEl.querySelector(".ledger-row.total");
+      if (totalRow) {
+        var bonusRow = document.createElement("div");
+        bonusRow.className = "ledger-row";
+        bonusRow.innerHTML = '<span>Hot Hand bonus<span class="why">' + seg.label + " \u2014 " +
+          esc(shareSurname(G.picks[hotIdx].row[IDX.name])) + " caught fire (value \u00D7" + seg.m + ").</span></span>" +
+          '<span class="ledger-amt hot">+' + fmt1(newNet - e.net) + "</span>";
+        totalRow.parentNode.insertBefore(bonusRow, totalRow);
+        var amtEl = totalRow.querySelector(".ledger-amt");
+        if (amtEl) amtEl.textContent = signed1(newNet);
+        var whyEl = totalRow.querySelector(".why");
+        if (whyEl) whyEl.textContent = "Score " + fmt1(e.score) + " + Hot Hand " + fmt1(newNet - e.net) + " minus baseline " + fmt1(BASELINE) + ".";
       }
     }
     var v = ov.querySelector("#hhVerdict");
