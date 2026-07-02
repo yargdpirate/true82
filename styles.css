@@ -270,7 +270,9 @@ button.presti-spin:disabled {
    blinking in antiphase = classic alternating marquee. Bulbs are a masked dot
    grid (gradient + opacity only), so it stays GPU-cheap. */
 .skip-btn.presti-spin.refunded::before,
-.skip-btn.presti-spin.refunded::after {
+.skip-btn.presti-spin.refunded::after,
+.skip-btn.presti-spin.firesale::before,
+.skip-btn.presti-spin.firesale::after {
   content: "";
   position: absolute;
   inset: 3px;
@@ -285,8 +287,22 @@ button.presti-spin:disabled {
           mask-composite: exclude;
   filter: drop-shadow(0 0 2px rgba(255,255,255,0.7));
 }
-.skip-btn.presti-spin.refunded::before { animation: bulbsA 0.26s steps(1, end) infinite; }
-.skip-btn.presti-spin.refunded::after  { background-position: 5px 5px; animation: bulbsB 0.26s steps(1, end) infinite; }
+.skip-btn.presti-spin.refunded::before,
+.skip-btn.presti-spin.firesale::before { animation: bulbsA 0.26s steps(1, end) infinite; }
+.skip-btn.presti-spin.refunded::after,
+.skip-btn.presti-spin.firesale::after  { background-position: 5px 5px; animation: bulbsB 0.26s steps(1, end) infinite; }
+
+/* FIRE SALE: the refund flash's evil twin — same extrusion, same marquee bulbs,
+   but the panic-red palette. Every price on the board is -$2 until the next
+   reroll or pick. */
+.skip-btn.presti-spin.firesale {
+  --spin-face: #D63B2F;
+  --spin-top:  #F06A55;
+  --spin-side: #7E1D14;
+  color: #2A0703;
+  font-weight: 700;
+  animation: spinRefund 500ms ease;
+}
 @keyframes spinRefund {
   0%   { transform: translateY(4px) scale(0.98); }
   40%  { transform: translateY(-2px) scale(1.05); }
@@ -505,6 +521,36 @@ button.presti-spin:disabled {
   font-family: var(--body); font-size: 11px; color: var(--chalk); text-align: center;
 }
 .ls-name.ls-open { color: var(--chalk-dim); font-style: italic; }
+
+/* ---------- lineup position moves / swaps ----------
+   Quiet cue: any token with a legal move wears a small ⇄ chip (top-left).
+   Tap it -> it lifts + glows amber; every legal destination (open slot or
+   swappable teammate) pulses with a dashed amber ring and its own ⇄. */
+.lineup-slot.movable { cursor: pointer; }
+.lineup-slot.movable:focus-visible .ls-token { outline: 2px solid var(--amber); outline-offset: 2px; }
+.ls-swap {
+  position: absolute; top: -5px; left: -7px;
+  font-family: var(--mono); font-style: normal; font-size: 10px; font-weight: 700; line-height: 1;
+  color: var(--ink); background: var(--chalk-dim);
+  padding: 2px 3px; border-radius: 7px;
+  border: 1.5px solid var(--ink);
+}
+.lineup-slot.moving .ls-token {
+  transform: translateY(-3px);
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(255, 181, 46, 0.35), 0 6px 10px -4px rgba(0, 0, 0, 0.6);
+}
+.lineup-slot.moving .ls-swap { background: var(--amber); }
+.lineup-slot.swap-target { cursor: pointer; }
+.lineup-slot.swap-target .ls-token {
+  border: 2px dashed var(--amber);
+  animation: swapPulse 0.9s ease-in-out infinite;
+}
+.lineup-slot.swap-target .ls-swap { background: var(--amber); }
+@keyframes swapPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 181, 46, 0.55); }
+  50%      { box-shadow: 0 0 0 5px rgba(255, 181, 46, 0.12); }
+}
 
 
 .tray {
@@ -854,14 +900,9 @@ button.presti-spin:disabled {
   55%  { opacity: 1; }
   100% { transform: translateY(0); opacity: 1; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .flap { animation: none; }
-  button.presti-spin { transition: none; }
-  button.presti-spin:not(:disabled):active { transform: translateY(2px); }
-  .skip-btn.presti-spin.refunded { animation: none; transform: none; }
-  .skip-btn.presti-spin.refunded::before,
-  .skip-btn.presti-spin.refunded::after { animation: none; opacity: 1; }
-}
+/* prefers-reduced-motion support removed on purpose: Windows machines commonly
+   report it (Settings > Accessibility > Animation effects off) and it was killing
+   the entire game experience there. See prefersReduce() in app.js. */
 
 /* ---------- intro ---------- */
 
@@ -942,6 +983,9 @@ button.presti-spin:disabled {
 .cap-bar-amt { font-family: var(--mono); font-weight: 700; font-size: 22px; color: var(--amber); line-height: 1; }
 .cap-bar-sub { font-family: var(--mono); font-size: 12px; color: var(--chalk-dim); }
 .cap-cost { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--amber); white-space: nowrap; }
+/* FIRE SALE pricing: base price struck through in red, live -$2 price in green */
+.cap-cost .cost-old { color: var(--whistle); text-decoration: line-through; font-weight: 600; font-size: 13px; margin-right: 4px; }
+.cap-cost .cost-new { color: var(--ok); font-weight: 700; }
 .cap-row .pr-sub {
   display: flex;
   justify-content: space-between;
@@ -999,6 +1043,11 @@ button.presti-spin:disabled {
   font-family: var(--disp); font-weight: 700; font-size: 30px; line-height: 1;
   text-transform: uppercase; letter-spacing: 0.02em; color: var(--amber);
   text-shadow: 0 0 16px rgba(255,181,46,0.5);
+}
+/* the 81-0 clutch prompt is a full sentence — smaller, wrappable, same glow */
+.hh-eyebrow.hh-clutch {
+  font-size: 19px; line-height: 1.2; max-width: 320px; text-transform: none;
+  letter-spacing: 0.01em;
 }
 .hh-sub { font-family: var(--mono); font-size: 12px; color: var(--chalk-dim); letter-spacing: 0.02em; max-width: 280px; }
 /* pull a basketball down through the hoop (ball sits BEHIND the hoop), igniting at full pull */
@@ -1107,8 +1156,4 @@ button.presti-spin:disabled {
 .hh-dismiss { background: none; border: 0; color: var(--chalk-dim); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; padding: 6px; }
 .hh-skip { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 14px; z-index: 2; background: none; border: 0; color: var(--chalk-dim); font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; padding: 8px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .hh-overlay { transition: none; }
-  .hh-lever-hint { animation: none; }
-  .hh-overlay.reduced .hh-step { display: none; }
-}
+

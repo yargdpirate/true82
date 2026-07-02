@@ -42,6 +42,7 @@ var FR_BY_DEC = new Map();
 var DEC_SPAN = new Map();
 var SEASON_SPAN = null;
 var TEAM2FR = {}, BEST_BY_NAME = new Map(), FRANCHISES = [];
+var CAREER_BUCKETS = new Map();   // name -> {G,F,C}: every position the player EVER qualified at, career-wide
 var G = null;
 
 /* ---------- math ---------- */
@@ -61,6 +62,14 @@ function key(fr, dec) { return fr + "|" + dec; }
 function valueOf(row) { return row[IDX.bpm_star] - SC.REPLACEMENT; }
 
 function rowBuckets(row) {
+  // Career-wide eligibility: if he was EVER a G/F/C anywhere in his career, he's
+  // eligible there in every season. Built once in initData.
+  var set = CAREER_BUCKETS.get(row[IDX.name]);
+  if (set) {
+    var career = BUCKETS.filter(function (b) { return set[b]; });
+    if (career.length) return career;
+  }
+  // fallback (name missing from the map): the old per-season logic
   var out = [];
   if (row[IDX.g_pct] >= CFG.POS_THRESHOLD) out.push("G");
   if (row[IDX.f_pct] >= CFG.POS_THRESHOLD) out.push("F");
@@ -75,13 +84,42 @@ function rowBuckets(row) {
 
 function initData(data) {
   META = data.meta;
-  CRESTS = data.crests || {};
-  CREST_DEFAULT = data.crest_default || null;
+  // Crests arrive separately (crests.json) and may land before OR after this data.
+  // MERGE instead of reassign — the old `CRESTS = data.crests || {}` was throwing
+  // away every logo loadCrests() had already merged whenever crests.json won the
+  // download race (which it usually does now that Cloudflare's cache is warm).
+  if (data.crests) Object.keys(data.crests).forEach(function (k) { CRESTS[k] = data.crests[k]; });
+  CREST_DEFAULT = data.crest_default || CREST_DEFAULT;
+  CREST_POOL = null;
   SC = META.scoring;
   IDX = {};
   META.cols.forEach(function (c, i) { IDX[c] = i; });
   var m = /-\s*([0-9.]+)/.exec(String(SC.net || ""));
-  BASELINE = m ? parseFloat(m[1]) : 10;
+  BASELINE = (typeof SC.BASELINE === "number") ? SC.BASELINE : (m ? parseFloat(m[1]) : 10);
+
+  // Career-wide position eligibility: union of every season's qualifying buckets.
+  // A player who never clears the 20% bar anywhere falls back to the union of his
+  // per-season max-share buckets, so nobody ends up position-less.
+  CAREER_BUCKETS = new Map();
+  var fbBuckets = new Map();
+  data.players.forEach(function (row) {
+    var nm = row[IDX.name];
+    var set = CAREER_BUCKETS.get(nm);
+    if (!set) { set = {}; CAREER_BUCKETS.set(nm, set); }
+    if (row[IDX.g_pct] >= CFG.POS_THRESHOLD) set.G = 1;
+    if (row[IDX.f_pct] >= CFG.POS_THRESHOLD) set.F = 1;
+    if (row[IDX.c_pct] >= CFG.POS_THRESHOLD) set.C = 1;
+    var g = row[IDX.g_pct], f = row[IDX.f_pct], c = row[IDX.c_pct], mx = Math.max(g, f, c);
+    var fb = fbBuckets.get(nm);
+    if (!fb) { fb = {}; fbBuckets.set(nm, fb); }
+    fb[g === mx ? "G" : (f === mx ? "F" : "C")] = 1;
+  });
+  CAREER_BUCKETS.forEach(function (set, nm) {
+    if (!set.G && !set.F && !set.C) {
+      var fb = fbBuckets.get(nm) || {};
+      BUCKETS.forEach(function (b) { if (fb[b]) set[b] = 1; });
+    }
+  });
 
   // Manual 3pt-shooter overrides (meta.sp_override): known shooters whose early-era
   // seasons lack the tracked 3PM/3PA volume to clear the percentile bar. Force sp=1
@@ -256,6 +294,10 @@ function newGame(mode) {
     maxCap: CAP_BUDGET,
     sortMode: MODE === "pro" ? "az" : MODE === "cap" ? "cost" : "min",
     query: "",
+    fireSale: false,        // cap: -$2 on every price for the current board only
+    fireSaleFlash: null,    // cap: which spin button triggered it (for the flash)
+    yearRerollN: 0,         // cap: "Skip yrs" presses on the current team/era (bargain decay)
+    moveIdx: null,          // lineup rail: index of the pick selected for a position move/swap
     screen: "draft"
   };
   window.t82track && window.t82track("game_start", { mode: MODE });
@@ -264,6 +306,9 @@ function newGame(mode) {
 
 function nextRound(animate) {
   G.round += 1;
+  G.fireSale = false;       // a fire sale never survives into the next selection
+  G.yearRerollN = 0;        // fresh team/era next round -> bargain volatility resets
+  G.moveIdx = null;
   if (G.round > CFG.ROUNDS) { showResults(); return; }
   window.t82track && window.t82track("round_advance", { mode: MODE, round: G.round });
   if (MODE === "kaman") {
@@ -297,17 +342,25 @@ function nextRound(animate) {
 // Presti: rerolls are unlimited but each costs $1 of cap. Decrementing the remaining
 // budget IS the cap drop (you reroll before spending that dollar). Blocked if it would
 // leave too little to fill the open slots ($1 minimum per remaining pick).
+// Two rare outcomes per paid spin (mutually exclusive): 7.5% REFUND (the dollar comes
+// back) and 7.5% FIRE SALE (every price on this board drops $2, floor $1, until the
+// next reroll or pick).
 function chargeReroll(spinId) {
   var picksToGo = CFG.ROUNDS - G.round + 1;
   if (G.budget - 1 < picksToGo) return false;
+  G.fireSale = false;                 // any reroll wipes an active fire sale
   G.budget -= 1;
   G.maxCap -= 1;
-  // 1-in-8 free spin: refund the dollar (net cost 0) and flag the pressed button
-  // so it can flash "+$1" after renderDraft rebuilds the actions row.
-  if (spinId && Math.random() < 0.125) {
-    G.budget += 1;
-    G.maxCap += 1;
-    G.refundFlash = spinId;
+  if (spinId) {
+    var roll = Math.random();
+    if (roll < 0.075) {               // 7.5%: free spin — refund the dollar (net cost 0)
+      G.budget += 1;
+      G.maxCap += 1;
+      G.refundFlash = spinId;
+    } else if (roll < 0.15) {         // 7.5%: FIRE SALE — this board only
+      G.fireSale = true;
+      G.fireSaleFlash = spinId;
+    }
   }
   return true;
 }
@@ -315,7 +368,7 @@ function chargeReroll(spinId) {
 function doTeamSkip() {
   var targets = teamSkipTargets();
   if (!targets.length) return;
-  if (MODE === "cap") { if (!chargeReroll("skipTeam")) return; }
+  if (MODE === "cap") { if (!chargeReroll("skipTeam")) return; G.yearRerollN = 0; }
   else { if (!G.teamSkips) return; G.teamSkips -= 1; }
   if (MODE === "cap") G.seenFr.delete(G.cur.fr);   // free the tentative franchise (never committed) so skips don't exhaust the pool
   G.cur.fr = pick1(targets);          // same era, different (unused) franchise
@@ -331,7 +384,7 @@ function doTeamSkip() {
 function doEraSkip() {
   var targets = eraSkipTargets();
   if (!targets.length) return;
-  if (MODE === "cap") { if (!chargeReroll("skipEra")) return; }
+  if (MODE === "cap") { if (!chargeReroll("skipEra")) return; G.yearRerollN = 0; }
   else { if (!G.eraSkips) return; G.eraSkips -= 1; }
   // Free the decade we're leaving so deals stay varied — but only if it isn't already locked in by a
   // committed pick, since the reroll can now land on an era you've already drafted.
@@ -347,9 +400,12 @@ function doEraSkip() {
 }
 
 // Cap only: re-roll every player's locked season + price for the current team/era ($1).
+// Each press shrinks bargain depth (see capRoll) so you can't camp the button waiting
+// for a superstar discount; rip-offs keep their normal rate and size.
 function doYearReroll() {
   if (MODE !== "cap") return;
   if (!chargeReroll("rerollYears")) return;
+  G.yearRerollN = (G.yearRerollN || 0) + 1;
   G.selected = null;
   var prev = {};
   for (var pn in G.yearByName) { if (Object.prototype.hasOwnProperty.call(G.yearByName, pn)) prev[pn] = G.yearByName[pn]; }
@@ -403,6 +459,29 @@ function flashRefund() {
   }, 2500);
 }
 
+// FIRE SALE (7.5% per paid spin): the refund flash's evil twin — all three cost
+// buttons go red and read "FIRE SALE", with a ⬇️ burst. The -$2 board discount
+// itself is applied via effCost(); this is just the announcement.
+function flashFireSale() {
+  var restores = [];
+  ["skipTeam", "skipEra", "rerollYears"].forEach(function (id) {
+    var btn = el(id);
+    if (!btn) return;
+    restores.push({ btn: btn, text: btn.textContent });
+    btn.classList.add("firesale");
+    btn.textContent = "FIRE SALE";
+  });
+  if (!restores.length) return;
+  sprayFromEl(document.querySelector(".ticket-actions"), DOWN_EMOJI);   // ⬇️ spray from the cost buttons
+  setTimeout(function () {
+    restores.forEach(function (r) {
+      if (!r.btn.isConnected) return;            // node replaced by a later render
+      r.btn.classList.remove("firesale");
+      r.btn.textContent = r.text;
+    });
+  }, 2500);
+}
+
 /* ---------- Presti slot reels ----------
    On every Presti respin (player pick advances the round, or a manual team/era
    skip) the decade and franchise read out like slot reels: rapid decoy swaps that
@@ -413,7 +492,11 @@ function flashRefund() {
    haptic thump, which is what sells the "three little payoffs" feel. */
 
 function prefersReduce() {
-  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  // Deliberately always false. Windows machines commonly have "Animation effects"
+  // switched off, which makes browsers report prefers-reduced-motion and was
+  // silently killing every spin/spray/Hot-Hand sequence for those players.
+  // The game IS the motion, so the OS flag is ignored.
+  return false;
 }
 
 // One value-change frame on a text flap. Decoys get a quick blurred slide; the
@@ -460,6 +543,7 @@ function runReel(node, decoys, final, startDelay, spinMs, onLand, apply, animate
     seq.push(prev);
   }
 
+  if (seq.length) { apply(node, seq[0]); animate(node, false); }   // show a decoy right away so the real landing value never flashes pre-spin
   var acc = startDelay, idx = 0;
   gaps.forEach(function (g) {
     var val = seq[idx++];
@@ -637,14 +721,21 @@ function assignProSeasons() {
    1 team + 1 era skip) so even optimal play sneaks an 82-0 roster under the cap ~1 in 50
    boards — and so stars genuinely cost a third-plus of the cap, forcing real tradeoffs. */
 var CAP_BUDGET = 50;
-function capRoll() {
+// bargainDecay 1 = full-strength bargains; each "Skip yrs" press multiplies the
+// discount DEPTH by 0.65 (65%, 42%, 27%... of the original), converging on fair
+// price. The normal band and the gouged (rip-off) band are untouched.
+function capRoll(bargainDecay) {
   var u = Math.random();
   if (u < 0.55) return 0.85 + 0.30 * Math.random();   // 55% normal
-  if (u < 0.80) return 0.55 + 0.25 * Math.random();   // 25% fire-sale
+  if (u < 0.80) {                                     // 25% fire-sale (bargain)
+    var mult = 0.55 + 0.25 * Math.random();
+    var d = (bargainDecay == null) ? 1 : bargainDecay;
+    return 1 - (1 - mult) * d;                        // shrink the discount toward fair
+  }
   return 1.25 + 0.35 * Math.random();                 // 20% gouged
 }
-function capCost(v) {
-  return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll()));
+function capCost(v, bargainDecay) {
+  return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll(bargainDecay)));
 }
 // How aggressively cost lies about value (tuned against the real player pool via sim;
 // these are safe to nudge). At these values a value-built roster costs the same as
@@ -656,6 +747,7 @@ var CAP_GEM  = 0.15;   // chance a marginal (value 2-4) is dropped to a $1 gem
 function assignCapPool(avoid) {
   var k = key(G.cur.fr, G.cur.dec);
   var pool = POOLS.get(k), yrs = POOL_YEARS.get(k);
+  var decay = Math.pow(0.65, G.yearRerollN || 0);   // bargain depth shrinks per "Skip yrs" press
   G.costByName = {};
   if (!pool || !yrs) return;
   var items = [];
@@ -669,7 +761,7 @@ function assignCapPool(avoid) {
     }
     var pickRow = cands[Math.floor(Math.random() * cands.length)];
     G.yearByName[name] = pickRow[IDX.season];
-    items.push({ name: name, v: valueOf(pickRow), cost: capCost(valueOf(pickRow)) });
+    items.push({ name: name, v: valueOf(pickRow), cost: capCost(valueOf(pickRow), decay) });
   });
   if (!items.length) return;
   capMisprice(items);
@@ -705,9 +797,16 @@ function capMisprice(items) {
     if (items[weak[i]].cost <= 1) { items[weak[i]].cost = 2 + Math.floor(Math.random() * 5); above++; }  // $2..$6
   }
 }
+// The price the player actually pays right now: base cost, minus $2 during an
+// active FIRE SALE, never below $1.
+function effCost(name) {
+  var c = G.costByName ? G.costByName[name] : null;
+  if (c == null) return null;
+  return G.fireSale ? Math.max(1, c - 2) : c;
+}
 // Affordable if it still leaves at least $1 for every remaining pick (never strand).
 function capAffordable(row) {
-  var c = G.costByName ? G.costByName[row[IDX.name]] : null;
+  var c = effCost(row[IDX.name]);
   if (c == null) return true;
   var picksAfter = CFG.ROUNDS - G.round;
   return c <= G.budget - picksAfter;
@@ -738,8 +837,8 @@ function sortPoolRows(rows) {
   } else if (mode === "cost") {
     var dir = (G.costDir === "asc") ? 1 : -1;   // default desc = most money first
     rows.sort(function (a, b) {
-      var ca = G.costByName ? (G.costByName[a[IDX.name]] || 0) : 0;
-      var cb = G.costByName ? (G.costByName[b[IDX.name]] || 0) : 0;
+      var ca = effCost(a[IDX.name]) || 0;
+      var cb = effCost(b[IDX.name]) || 0;
       return (dir * (ca - cb)) || (poolMaxMin(b[IDX.name]) - poolMaxMin(a[IDX.name])) || cmpName(a, b);   // tiebreak: minutes, then alphabetical
     });
   } else {
@@ -786,9 +885,13 @@ function confirmPick(bucket) {
   G.drafted.add(G.selected);   // classic/pro: by player name; Kaman: by season (each once)
   G.filled[bucket] += 1;
   G.picks.push({ row: row, fr: MODE === "kaman" ? null : G.cur.fr, dec: MODE === "kaman" ? null : G.cur.dec, slot: bucket });
-  if (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) {
-    G.picks[G.picks.length - 1].cost = G.costByName[G.selected];
-    G.budget -= G.costByName[G.selected];
+  if (MODE === "cap") {
+    var paid = effCost(G.selected);
+    if (paid != null) {
+      G.picks[G.picks.length - 1].cost = paid;
+      G.budget -= paid;
+    }
+    G.fireSale = false;   // the sale ends with the selection
   }
   nextRound(true);
 }
@@ -855,6 +958,23 @@ function decLabel(dec) { return "\u2019" + String(dec).slice(2) + "s"; }
 // the draft pools: "FRANCHISE|decade" (e.g. "HEAT|1990"). A per-combo crest wins;
 // otherwise CREST_DEFAULT (if set) applies to every combo; otherwise null.
 function crestFor(fr, dec) { return CRESTS[key(fr, dec)] || CREST_DEFAULT || null; }
+
+// If a draft ticket rendered BEFORE the crest data finished downloading (the intro
+// is instant now, so that's possible), paint the logo in as soon as it exists.
+function refreshTicketArt() {
+  if (!G || G.screen !== "draft" || MODE === "kaman" || !G.cur) return;
+  var crest = crestFor(G.cur.fr, G.cur.dec);
+  if (!crest) return;
+  var img = el("flapArt");
+  if (img) { img.src = crest; return; }             // art node exists -> just repoint it
+  var head = document.querySelector(".ticket-head");
+  if (!head) return;
+  var wrap = document.createElement("div");
+  wrap.className = "ticket-art";
+  wrap.innerHTML = '<img id="flapArt" class="crest-img flap" alt="' +
+    esc(titleCase(G.cur.fr) + " " + decLabel(G.cur.dec)) + '" src="' + crest + '">';
+  head.appendChild(wrap);
+}
 function decSpanStr(dec) { var s = DEC_SPAN.get(dec); return s ? (s[0] + "\u2013" + s[1]) : ""; }
 function fmt1(x) { return x.toFixed(1); }
 function signed1(x) { return (x >= 0 ? "+" : "") + x.toFixed(1); }
@@ -960,10 +1080,17 @@ function renderIntro() {
       "<p>Recommended to have at least <strong>3 shooters</strong> and <strong>1 role player</strong>. Based mostly on OBPM and DBPM (why we only go back to 1974) + some minor custom tweaks. Some players from low/no 3pt era get 3pt shooter bonuses based on reputation and vibes.</p>" +
       '<button class="btn btn-primary btn-block btn-dark presti-spin" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 KAMAN</button>' +
     "</section>";
-  el("startClassic").addEventListener("click", function () { newGame("classic"); });
-  el("startPro").addEventListener("click", function () { newGame("pro"); });
-  el("startKaman").addEventListener("click", function () { newGame("kaman"); });
-  el("startCap").addEventListener("click", function () { newGame("cap"); });
+  function start(mode) {
+    if (DATA_READY) { newGame(mode); return; }
+    PENDING_MODE = mode;   // data still downloading — remember the choice and launch the moment it lands
+    ["startClassic", "startPro", "startCap", "startKaman"].forEach(function (id) { var b = el(id); if (b) b.disabled = true; });
+    var pressed = el(mode === "classic" ? "startClassic" : mode === "pro" ? "startPro" : mode === "cap" ? "startCap" : "startKaman");
+    if (pressed) pressed.textContent = "Loading players\u2026";
+  }
+  el("startClassic").addEventListener("click", function () { start("classic"); });
+  el("startPro").addEventListener("click", function () { start("pro"); });
+  el("startKaman").addEventListener("click", function () { start("kaman"); });
+  el("startCap").addEventListener("click", function () { start("cap"); });
 }
 
 /* ---------- draft ---------- */
@@ -992,25 +1119,88 @@ function lineupLastName(name) {
   while (parts.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(parts[parts.length - 1])) parts.pop();
   return parts[parts.length - 1];
 }
+/* ---------- lineup position moves / swaps ----------
+   Any drafted player can be re-slotted at any time during the draft:
+   tap his token (marked with a small ⇄ if he has a legal move) -> every legal
+   destination lights up with a pulsing dashed ring + ⇄ -> tap one to move (open
+   slot) or swap (another player's slot, if both are eligible both ways). Tap the
+   same token again to cancel. Eligibility uses career-wide positions. */
+
+function swapTargetsFor(pickIdx) {
+  var p = G.picks[pickIdx];
+  var elig = rowBuckets(p.row);
+  var t = { open: {}, picks: {} };
+  BUCKETS.forEach(function (b) {
+    if (b === p.slot) return;                       // moving within the same position is a no-op
+    if (elig.indexOf(b) !== -1 && G.filled[b] < capOf(b)) t.open[b] = true;
+  });
+  G.picks.forEach(function (q, j) {
+    if (j === pickIdx || q.slot === p.slot) return;
+    if (elig.indexOf(q.slot) !== -1 && rowBuckets(q.row).indexOf(p.slot) !== -1) t.picks[j] = true;
+  });
+  return t;
+}
+function pickHasMoves(i) {
+  var t = swapTargetsFor(i);
+  if (Object.keys(t.open).length) return true;
+  return Object.keys(t.picks).length > 0;
+}
+function afterLineupChange() {
+  G.moveIdx = null;
+  // a move can open/close a bucket, which can flip pool eligibility and the current selection
+  if (G.selected && MODE !== "kaman") {
+    var r = resolveRow(G.selected);
+    if (!r || !rowDraftable(r)) G.selected = null;
+  }
+  refreshPool();   // re-renders pool rows + tray
+}
+function doLineupMove(pickIdx, bucket) {
+  var p = G.picks[pickIdx];
+  G.filled[p.slot] -= 1;
+  G.filled[bucket] += 1;
+  p.slot = bucket;
+  afterLineupChange();
+}
+function doLineupSwap(i, j) {
+  var a = G.picks[i], b = G.picks[j];
+  var s = a.slot; a.slot = b.slot; b.slot = s;      // counts per bucket are unchanged
+  afterLineupChange();
+}
+
 function lineupRailHtml() {
+  var moving = G.moveIdx != null ? G.moveIdx : null;
+  var targets = moving != null ? swapTargetsFor(moving) : null;
   var cells = [];
   BUCKETS.forEach(function (b) {
-    var inB = G.picks.filter(function (p) { return p.slot === b; });
-    for (var i = 0; i < capOf(b); i++) {
-      var p = inB[i];
-      if (p) {
-        var nm = p.row[IDX.name];
-        cells.push('<div class="lineup-slot filled" data-slot="' + b + '" role="listitem">' +
-          '<span class="ls-token">' + esc(lineupInitials(nm)) + '<i class="ls-pos">' + b + "</i></span>" +
+    var inB = G.picks.map(function (p, i) { return { p: p, i: i }; }).filter(function (e) { return e.p.slot === b; });
+    for (var s = 0; s < capOf(b); s++) {
+      var entry = inB[s];
+      if (entry) {
+        var nm = entry.p.row[IDX.name];
+        var isMoving = moving === entry.i;
+        var isTarget = targets && targets.picks[entry.i];
+        var movable = isMoving || isTarget || pickHasMoves(entry.i);
+        var cls = "lineup-slot filled" + (movable ? " movable" : "") + (isMoving ? " moving" : "") + (isTarget ? " swap-target" : "");
+        var label = isTarget ? ("Swap " + nm + " with " + G.picks[moving].row[IDX.name])
+                             : ("Move " + nm + " (" + BUCKET_NAME[b] + ")");
+        cells.push('<div class="' + cls + '" data-pick="' + entry.i + '" role="listitem"' +
+          (movable ? ' tabindex="0" aria-label="' + esc(label) + '"' : "") + ">" +
+          '<span class="ls-token">' + esc(lineupInitials(nm)) +
+            (movable ? '<i class="ls-swap" aria-hidden="true">\u21C4</i>' : "") +
+            '<i class="ls-pos">' + b + "</i></span>" +
           '<span class="ls-name" title="' + esc(nm) + '">' + esc(lineupLastName(nm)) + "</span></div>");
       } else {
-        cells.push('<div class="lineup-slot open" data-slot="' + b + '" role="listitem">' +
-          '<span class="ls-token is-open">' + b + "</span>" +
+        var openTarget = targets && targets.open[b];
+        var ocls = "lineup-slot open" + (openTarget ? " swap-target" : "");
+        cells.push('<div class="' + ocls + '" data-slot="' + b + '" role="listitem"' +
+          (openTarget ? ' tabindex="0" aria-label="Move ' + esc(G.picks[moving].row[IDX.name]) + " to " + BUCKET_NAME[b] + '"' : "") + ">" +
+          '<span class="ls-token is-open">' + b +
+            (openTarget ? '<i class="ls-swap" aria-hidden="true">\u21C4</i>' : "") + "</span>" +
           '<span class="ls-name ls-open">open</span></div>');
       }
     }
   });
-  return '<div class="lineup-rail" role="list" aria-label="Your lineup">' + cells.join("") + "</div>";
+  return '<div class="lineup-rail" role="list" aria-label="Your lineup \u00B7 tap a player to move or swap positions">' + cells.join("") + "</div>";
 }
 
 function trayHtml() {
@@ -1025,7 +1215,7 @@ function confirmHtml() {
   if (!opts.length) return "";
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
-  var costNote = (MODE === "cap" && G.costByName && G.costByName[G.selected] != null) ? " \u00B7 $" + G.costByName[G.selected] : "";
+  var costNote = (MODE === "cap" && effCost(G.selected) != null) ? " \u00B7 $" + effCost(G.selected) : "";
   var spinCls = " presti-spin";   // casino skin on the draft/position buttons, all modes
   if (opts.length === 1) {
     return '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '">Draft your player</button>';
@@ -1043,12 +1233,38 @@ function bindConfirm() {
     b.addEventListener("click", function () { confirmPick(b.getAttribute("data-bucket")); });
   });
 }
+function bindLineupMoves() {
+  var inner = el("trayInner");
+  if (!inner) return;
+  function act(cell) {
+    if (cell.hasAttribute("data-pick")) {
+      var i = parseInt(cell.getAttribute("data-pick"), 10);
+      if (isNaN(i)) return;
+      if (G.moveIdx === i) { G.moveIdx = null; updateTray(); return; }              // tap again = cancel
+      if (G.moveIdx != null && swapTargetsFor(G.moveIdx).picks[i]) { doLineupSwap(G.moveIdx, i); buzz(15); return; }
+      if (pickHasMoves(i)) { G.moveIdx = i; buzz(8); updateTray(); return; }
+      G.moveIdx = null; updateTray();
+    } else if (cell.hasAttribute("data-slot") && G.moveIdx != null) {
+      var b = cell.getAttribute("data-slot");
+      if (swapTargetsFor(G.moveIdx).open[b]) { doLineupMove(G.moveIdx, b); buzz(15); }
+    }
+  }
+  inner.querySelectorAll(".lineup-slot").forEach(function (cell) {
+    cell.addEventListener("click", function () { act(cell); });
+    cell.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Enter" && ev.key !== " " && ev.key !== "Spacebar") return;
+      ev.preventDefault();
+      act(cell);
+    });
+  });
+}
 function updateTray() {
   var inner = el("trayInner");
   if (!inner) return;
   document.body.classList.toggle("has-pick", !!G.selected);
   inner.innerHTML = trayHtml() + confirmHtml();
   bindConfirm();
+  bindLineupMoves();
 }
 
 /* the season picker shown in each player row (only when >1 season exists) */
@@ -1101,6 +1317,7 @@ function kamanRowHtml(row) {
 }
 
 // Salary Cap pool row: locked season, no stats — just the name, the year, and a price tag.
+// During a FIRE SALE the base price shows struck through in red with the -$2 price in green.
 function capRowHtml(bestRow) {
   var name = bestRow[IDX.name];
   var row = resolveRow(name);
@@ -1110,12 +1327,19 @@ function capRowHtml(bestRow) {
   var open = !taken && !noSlot && afford;
   var sel = (G.selected === name) && open;
   var cost = G.costByName ? G.costByName[name] : null;
+  var eff = effCost(name);
+  var costHtml = "";
+  if (cost != null) {
+    costHtml = (G.fireSale && eff < cost)
+      ? '<s class="cost-old">$' + cost + '</s><b class="cost-new">$' + eff + '</b>'
+      : "$" + cost;
+  }
   var why = taken ? " \u00B7 picked" : (noSlot ? " \u00B7 full" : (afford ? "" : " \u00B7 over"));
   var cls = "player-row cap-row" + (sel ? " sel" : "") + (open ? "" : " off");
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true"') + ">" +
     '<span class="pr-top"><span class="pr-name">' + esc(name) + "</span>" +
-    '<span class="cap-cost">' + (cost != null ? "$" + cost : "") + "</span></span>" +
+    '<span class="cap-cost">' + costHtml + "</span></span>" +
     '<span class="pr-sub"><span class="cap-season">' + shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]) +
     '</span><span class="pr-pos">' + bucketTag(row) + why + "</span></span></div>";
 }
@@ -1292,6 +1516,7 @@ function renderDraft(anim) {
 
   if (MODE === "cap") {
     if (G.refundFlash) { flashRefund(); G.refundFlash = null; }
+    if (G.fireSaleFlash) { flashFireSale(); G.fireSaleFlash = null; }
   }
 
   if (anim) {
@@ -1311,7 +1536,6 @@ function renderDraft(anim) {
 function reveal(id) {
   var node = el(id);
   if (!node) return;
-  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   node.classList.remove("flap");
   void node.offsetWidth; // force reflow so the animation restarts
   node.classList.add("flap");
@@ -1447,7 +1671,7 @@ function climbHtml(e, winsOverride) {
 /* ---------- 82-0 goat fireworks ---------- */
 
 function reducedMotion() {
-  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  return false;   // see prefersReduce() — OS reduced-motion flag is deliberately ignored
 }
 var FW_EMOJI = ["\uD83D\uDC10", "\uD83C\uDFC0", "\uD83C\uDFC6"];   // goat, basketball, trophy
 function goatBurst(box, cx, cy, emojis, o) {
@@ -1486,6 +1710,7 @@ function fireGoats(box) {
 function fireWL() { var b = el("wlFw"); if (b && !reducedMotion()) fireGoats(b); }
 
 var MONEY_EMOJI = ["\uD83D\uDCB5"];   // 💵
+var DOWN_EMOJI  = ["\u2B07\uFE0F"];   // ⬇️ fire-sale price drop
 var FIRE_EMOJI  = ["\uD83D\uDD25"];   // 🔥
 // One-shot single-burst spray (the 82-0 particle, a single pop) anchored at a screen point.
 function emojiSpray(emojis, x, y, o) {
@@ -1579,17 +1804,27 @@ function hhSpinSeg() {
   return 0;
 }
 
-// Fires on every drafted result that isn't already a perfect 82-0 (Kaman has its own
-// results path and never reaches here). Far-from-perfect rosters still get the spin -
-// the lever pull and wheel are the variable-reward hit; near-perfect ones can cross.
+// The overlay now fires on every drafted Presti result under 82-0, but only the
+// exact-81 result gets the real Heat Check (spin + possible boost). Everything
+// else gets the same lever pull as a "reveal my results" gate, then dismisses.
 function hhEligible(e) {
   return !!(MODE === "cap" && G.picks && G.picks.length >= CFG.ROUNDS && e.winTally < CFG.GAMES_IN_SEASON);
 }
 
+// QA hook: add ?clutch=1 to the URL to force the 81-win Heat Check sequence on any
+// Presti result, so the clutch path can be tested without drafting an exact-81 team.
+var FORCE_CLUTCH = !!(typeof location !== "undefined" && location.search && /[?&]clutch=1(&|$)/.test(location.search));
+
 function hotHand(e) {
-  var hotIdx = hhPickHot(), segIdx = hhSpinSeg(), seg = HH_SEGMENTS[segIdx];
-  var hotV = valueOf(G.picks[hotIdx].row), THRESH = hhNet82();
-  var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE, win = newNet > THRESH;
+  var clutch = FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1;   // exactly 81 wins
+  var hotIdx = 0, segIdx = 0, seg = HH_SEGMENTS[0], hotV = 0, newNet = e.net, win = false;
+  if (clutch) {
+    hotIdx = hhPickHot(); segIdx = hhSpinSeg(); seg = HH_SEGMENTS[segIdx];
+    hotV = valueOf(G.picks[hotIdx].row);
+    var THRESH = hhNet82();
+    newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
+    win = newNet > THRESH;
+  }
   var names = G.picks.map(function (p) { return shareSurname(p.row[IDX.name]); });
   var ITEM = 54, COPIES = 6, targetFlat = (COPIES - 2) * names.length + hotIdx;
 
@@ -1598,12 +1833,33 @@ function hotHand(e) {
   var segHtml = "";
   for (s = 0; s < HH_SEGMENTS.length; s++) segHtml += '<div class="hh-seg lvl' + HH_SEGMENTS[s].lvl + '"></div>';
 
+  var titleHtml = clutch
+    ? '<div class="hh-eyebrow hh-clutch">You\u2019re 81\u20130 and down entering the 4th quarter. Clutch heroics to go undefeated?</div>'
+    : '<div class="hh-eyebrow">See Your Results</div>';
+  var stageHtml = clutch
+    ? '<div class="hh-stage">' +
+        '<div class="hh-step" id="hhStep1">' +
+          '<div class="hh-window"><div class="hh-strip" id="hhStrip">' + stripHtml + '</div><span class="hh-payline"></span></div></div>' +
+        '<div class="hh-step" id="hhStep2">' +
+          '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhHeatLabel">\u00B7</div></div>' +
+        '<div class="hh-step" id="hhStep3">' +
+          '<div class="hh-net" id="hhNet">' + e.winTally + '</div>' +
+          '<div class="hh-netcap">WINS</div>' +
+          '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-fill-bonus" id="hhFillBonus"></span><span class="hh-thresh"></span></div></div>' +
+        '<div class="hh-verdict" id="hhVerdict"></div>' +
+        '<div class="hh-actions" id="hhActions">' +
+          '<button class="hh-btn presti-spin" id="hhSee">SEE YOUR TEAM</button>' +
+          '<button class="hh-btn presti-spin" id="hhAgain">RUN IT BACK</button>' +
+        '</div>' +
+      '</div>'
+    : '';
+
   var ov = document.createElement("div");
   ov.className = "hh-overlay";
   ov.innerHTML =
     '<button class="hh-skip" id="hhSkip">skip \u2192</button>' +
     '<div class="hh-card"><div class="goat-fw" id="hhFw" aria-hidden="true"></div>' +
-      '<div class="hh-eyebrow">Heat Check</div>' +
+      titleHtml +
       '<div class="hh-lever" id="hhLever" role="button" tabindex="0" aria-label="Pull the basketball through the hoop">' +
         '<span class="hh-fire" aria-hidden="true"><i></i><i></i><i></i></span>' +
         '<span class="hh-ball" id="hhArm">' +
@@ -1626,29 +1882,17 @@ function hotHand(e) {
         '</span>' +
         '<span class="hh-lever-hint">PULL DOWN<b>\u2193</b></span>' +
       '</div>' +
-      '<div class="hh-stage">' +
-        '<div class="hh-step" id="hhStep1">' +
-          '<div class="hh-window"><div class="hh-strip" id="hhStrip">' + stripHtml + '</div><span class="hh-payline"></span></div></div>' +
-        '<div class="hh-step" id="hhStep2">' +
-          '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhHeatLabel">\u00B7</div></div>' +
-        '<div class="hh-step" id="hhStep3">' +
-          '<div class="hh-net" id="hhNet">' + e.winTally + '</div>' +
-          '<div class="hh-netcap">WINS</div>' +
-          '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-fill-bonus" id="hhFillBonus"></span><span class="hh-thresh"></span></div></div>' +
-        '<div class="hh-verdict" id="hhVerdict"></div>' +
-        '<div class="hh-actions" id="hhActions">' +
-          '<button class="hh-btn presti-spin" id="hhSee">SEE YOUR TEAM</button>' +
-          '<button class="hh-btn presti-spin" id="hhAgain">RUN IT BACK</button>' +
-        '</div>' +
-      '</div></div>';
+      stageHtml + '</div>';
   document.body.appendChild(ov);
-  var fillEl = ov.querySelector("#hhFill"), bonusEl = ov.querySelector("#hhFillBonus");
-  var baseFrac = Math.min(1, e.winTally / CFG.GAMES_IN_SEASON);   // wins you earned BEFORE the Hot Hand (gold, fixed)
-  fillEl.style.transform = "scaleX(" + baseFrac.toFixed(4) + ")";
-  bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (red, glowing)
-  bonusEl.style.width = "0%";
+  if (clutch) {
+    var fillEl = ov.querySelector("#hhFill"), bonusEl = ov.querySelector("#hhFillBonus");
+    var baseFrac = Math.min(1, e.winTally / CFG.GAMES_IN_SEASON);   // wins you earned BEFORE the Hot Hand (gold, fixed)
+    fillEl.style.transform = "scaleX(" + baseFrac.toFixed(4) + ")";
+    bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (red, glowing)
+    bonusEl.style.width = "0%";
+  }
   requestAnimationFrame(function () { ov.classList.add("in"); });
-  window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
+  if (clutch) window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
 
   function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
@@ -1812,7 +2056,7 @@ function hotHand(e) {
     }
   }
 
-  function run() { if (reducedMotion()) { ov.classList.add("reduced"); verdict(); } else reel(); }
+  function run() { reel(); }   // animations are always on (see prefersReduce)
 
   // Pull the basketball down through the hoop (drag = embodied agency) or tap/Enter
   // (auto-dunk). At the bottom it catches fire, then the sequence fires once.
@@ -1825,11 +2069,18 @@ function hotHand(e) {
   }
   function fire() {
     if (fired) return; fired = true;
-    window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 1 });
+    if (clutch) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 1 });
     lever.classList.add("pulling");
     arm.style.transition = "transform .28s cubic-bezier(.4,0,.7,1)";       // dunk it the rest of the way down
     setPull(1); lever.classList.add("ignited"); buzz(34);                  // through the net, catches fire
-    setTimeout(function () { ov.classList.add("lit"); run(); }, 640);      // let it burn a beat, then start
+    setTimeout(function () {
+      if (!clutch) {                                                       // ≤80 wins: the pull just reveals the results
+        ov.classList.remove("in");                                         // fade the overlay away...
+        setTimeout(dismiss, 470);                                          // ...then remove it (results are underneath)
+        return;
+      }
+      ov.classList.add("lit"); run();                                      // exactly 81: the real Heat Check
+    }, 640);
   }
   lever.addEventListener("pointerdown", function (ev) {
     if (fired) return;
@@ -1846,14 +2097,16 @@ function hotHand(e) {
   lever.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && !fired) { ev.preventDefault(); fire(); } });
 
   ov.querySelector("#hhSkip").addEventListener("click", function () {
-    if (!fired) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
+    if (clutch && !fired) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
     dismiss();
   });
-  ov.querySelector("#hhSee").addEventListener("click", function () {
+  var seeBtn = ov.querySelector("#hhSee");
+  if (seeBtn) seeBtn.addEventListener("click", function () {
     dismiss();
     if (G.hotWins >= CFG.GAMES_IN_SEASON) fireWL();   // perfect record revealed -> emoji explosion in the W/L box
   });
-  ov.querySelector("#hhAgain").addEventListener("click", function () {
+  var againBtn = ov.querySelector("#hhAgain");
+  if (againBtn) againBtn.addEventListener("click", function () {
     window.t82track && window.t82track("replay", { mode: MODE });
     dismiss(); newGame();
   });
@@ -2118,6 +2371,23 @@ function renderKamanResults() {
 
 function showError(msg) { app().innerHTML = '<div class="error-box">' + msg + "</div>"; }
 
+var DATA_READY = false, PENDING_MODE = null;
+
+// Crests are decorative — load them separately and in the background so they never
+// block the game. If this fetch fails or is slow, the game plays fine with no crests.
+function loadCrests() {
+  fetch("crests.json")
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (c) {
+      if (c && typeof c === "object") {
+        Object.keys(c).forEach(function (k) { CRESTS[k] = c[k]; });
+        CREST_POOL = null;   // rebuild the decoy pool now that real crests exist
+        refreshTicketArt();  // ticket already on screen? paint the logo in now
+      }
+    })
+    .catch(function () {});
+}
+
 function setGamesPlayed(n) {
   var el = document.getElementById("gamesPlayed");
   if (el && typeof n === "number") el.textContent = n.toLocaleString() + " games played | ";
@@ -2133,13 +2403,18 @@ function pingGames(method) {
 
 function boot() {
   bindHaptics();
+  renderIntro();     // the intro needs no player data — show it instantly instead of a loading screen
+  loadCrests();      // crests download in the background, non-blocking
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
   fetch(CFG.DATA_URL)
     .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
     .then(function (data) {
-      initData(data); renderIntro(); pingGames("GET");
+      initData(data);
+      DATA_READY = true;
+      pingGames("GET");
       var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
       window.t82track && window.t82track("data_ready", { load_ms: ms });
+      if (PENDING_MODE) { var pm = PENDING_MODE; PENDING_MODE = null; newGame(pm); }   // player tapped a mode while data was still loading
     })
     .catch(function (err) {
       window.t82track && window.t82track("data_error", {});

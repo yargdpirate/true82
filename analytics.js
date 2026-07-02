@@ -56,6 +56,11 @@
     }, true);
   }
 
+  // If the user comes back and keeps playing, allow one more session_end to fire on the
+  // next exit with updated totals (otherwise the most engaged users are undercounted).
+  // The dashboard de-dupes by taking MAX per session id.
+  function reopen() { ended = false; }
+
   // single guarded global for app.js to call
   window.t82track = track;
 
@@ -67,5 +72,8 @@
   window.addEventListener("pagehide", end);
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") end();
+    else reopen();
   });
+  // bfcache restore (iOS back-navigation) re-shows the page without re-running the script.
+  window.addEventListener("pageshow", function (e) { if (e.persisted) reopen(); });
 })();
