@@ -1863,7 +1863,7 @@ function hotHand(e) {
     : '';
 
   var ov = document.createElement("div");
-  ov.className = "hh-overlay" + (clutch ? "" : " hh-reveal");   // non-81 reveal gets a fully opaque backdrop
+  ov.className = "hh-overlay in" + (clutch ? "" : " hh-reveal");   // start opaque (no fade-in); "in" also = full opacity. non-81 gets opaque backdrop
   ov.innerHTML =
     '<button class="hh-skip" id="hhSkip">skip \u2192</button>' +
     '<div class="hh-card"><div class="goat-fw" id="hhFw" aria-hidden="true"></div>' +
@@ -1899,7 +1899,6 @@ function hotHand(e) {
     bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (red, glowing)
     bonusEl.style.width = "0%";
   }
-  requestAnimationFrame(function () { ov.classList.add("in"); });
   if (clutch) window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
 
   function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
