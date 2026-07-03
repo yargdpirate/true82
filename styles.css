@@ -523,33 +523,61 @@ button.presti-spin:disabled {
 .ls-name.ls-open { color: var(--chalk-dim); font-style: italic; }
 
 /* ---------- lineup position moves / swaps ----------
-   Quiet cue: any token with a legal move wears a small ⇄ chip (top-left).
-   Tap it -> it lifts + glows amber; every legal destination (open slot or
-   swappable teammate) pulses with a dashed amber ring and its own ⇄. */
+   Every drafted player with a legal position change wears a "SWAP" pill above his
+   token — the primary, self-explaining affordance. Tap one: it lifts and the pill
+   flips to a solid "MOVING", while every legal destination (a teammate or an open
+   slot) pulses and shows "HERE". Instruction-free verb flow: SWAP -> MOVING -> HERE. */
+.lineup-rail { padding-top: 15px; }                 /* headroom for the floating pill */
 .lineup-slot.movable { cursor: pointer; }
-.lineup-slot.movable:focus-visible .ls-token { outline: 2px solid var(--amber); outline-offset: 2px; }
+.lineup-slot.movable:focus-visible .ls-token { outline: 2px solid var(--amber); outline-offset: 3px; }
+
 .ls-swap {
-  position: absolute; top: -5px; left: -7px;
-  font-family: var(--mono); font-style: normal; font-size: 10px; font-weight: 700; line-height: 1;
-  color: var(--ink); background: var(--chalk-dim);
-  padding: 2px 3px; border-radius: 7px;
-  border: 1.5px solid var(--ink);
+  position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex; align-items: center; gap: 1px;
+  padding: 2px 6px; border-radius: 999px;
+  font-family: var(--disp); font-weight: 700; font-size: 10px; line-height: 1;
+  letter-spacing: 0.07em; text-transform: uppercase; white-space: nowrap;
+  color: var(--amber); background: var(--ink);
+  border: 1.5px solid var(--amber);
+  box-shadow: 0 2px 5px -2px rgba(0, 0, 0, 0.75);
+  animation: swapBreathe 2.7s ease-in-out infinite;   /* soft glow: "this is tappable" */
 }
+.ls-swap .lss-a { font-size: 12px; font-weight: 700; margin-left: 1px; }
+@keyframes swapBreathe {
+  0%, 100% { box-shadow: 0 2px 5px -2px rgba(0,0,0,0.75), 0 0 0 0 rgba(255,181,46,0); }
+  50%      { box-shadow: 0 2px 5px -2px rgba(0,0,0,0.75), 0 0 8px 0 rgba(255,181,46,0.32); }
+}
+
+/* the picked token: lifts, and its pill inverts to a solid "MOVING" */
 .lineup-slot.moving .ls-token {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   border-color: var(--amber);
-  box-shadow: 0 0 0 3px rgba(255, 181, 46, 0.35), 0 6px 10px -4px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 181, 46, 0.35), 0 7px 12px -5px rgba(0, 0, 0, 0.65);
 }
-.lineup-slot.moving .ls-swap { background: var(--amber); }
+.ls-swap.is-moving {
+  color: var(--ink); background: var(--amber); border-color: var(--amber);
+  letter-spacing: 0.04em; animation: none;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.7);
+}
+
+/* every legal destination: dashed amber ring + a solid, bobbing "HERE" pill */
 .lineup-slot.swap-target { cursor: pointer; }
 .lineup-slot.swap-target .ls-token {
   border: 2px dashed var(--amber);
   animation: swapPulse 0.9s ease-in-out infinite;
 }
-.lineup-slot.swap-target .ls-swap { background: var(--amber); }
+.ls-swap.is-here {
+  color: var(--ink); background: var(--amber); border-color: var(--amber);
+  animation: herePulse 0.9s ease-in-out infinite;
+}
 @keyframes swapPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 181, 46, 0.55); }
-  50%      { box-shadow: 0 0 0 5px rgba(255, 181, 46, 0.12); }
+  50%      { box-shadow: 0 0 0 6px rgba(255, 181, 46, 0.12); }
+}
+@keyframes herePulse {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-2px); }
 }
 
 
@@ -1034,6 +1062,9 @@ button.presti-spin:disabled {
   -webkit-tap-highlight-color: transparent;
 }
 .hh-overlay.in { opacity: 1; }
+/* The non-81 "See Your Results" reveal fully hides the board behind it (same look as
+   the standard overlay, just no translucency) so the result isn't visible mid-drag. */
+.hh-overlay.hh-reveal { background: radial-gradient(120% 90% at 50% 32%, rgb(30,22,8), rgb(5,6,8)); }
 .hh-card {
   position: relative; width: 100%; max-width: 380px;
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;

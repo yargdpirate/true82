@@ -1182,11 +1182,19 @@ function lineupRailHtml() {
         var movable = isMoving || isTarget || pickHasMoves(entry.i);
         var cls = "lineup-slot filled" + (movable ? " movable" : "") + (isMoving ? " moving" : "") + (isTarget ? " swap-target" : "");
         var label = isTarget ? ("Swap " + nm + " with " + G.picks[moving].row[IDX.name])
-                             : ("Move " + nm + " (" + BUCKET_NAME[b] + ")");
+                             : (isMoving ? ("Moving " + nm + " \u2014 tap a highlighted spot")
+                                         : ("Swap " + nm + " to another position"));
+        // Badge doubles as the affordance: SWAP (can move) -> MOVING (picked) -> HERE (a legal spot)
+        var badge = "";
+        if (movable) {
+          var bt = isMoving ? "MOVING" : (isTarget ? "HERE" : "SWAP");
+          var bcls = "ls-swap" + (isMoving ? " is-moving" : (isTarget ? " is-here" : ""));
+          badge = '<span class="' + bcls + '" aria-hidden="true">' + bt +
+                  (bt === "SWAP" ? '<i class="lss-a">\u21C4</i>' : "") + "</span>";
+        }
         cells.push('<div class="' + cls + '" data-pick="' + entry.i + '" role="listitem"' +
           (movable ? ' tabindex="0" aria-label="' + esc(label) + '"' : "") + ">" +
-          '<span class="ls-token">' + esc(lineupInitials(nm)) +
-            (movable ? '<i class="ls-swap" aria-hidden="true">\u21C4</i>' : "") +
+          '<span class="ls-token">' + badge + esc(lineupInitials(nm)) +
             '<i class="ls-pos">' + b + "</i></span>" +
           '<span class="ls-name" title="' + esc(nm) + '">' + esc(lineupLastName(nm)) + "</span></div>");
       } else {
@@ -1194,13 +1202,13 @@ function lineupRailHtml() {
         var ocls = "lineup-slot open" + (openTarget ? " swap-target" : "");
         cells.push('<div class="' + ocls + '" data-slot="' + b + '" role="listitem"' +
           (openTarget ? ' tabindex="0" aria-label="Move ' + esc(G.picks[moving].row[IDX.name]) + " to " + BUCKET_NAME[b] + '"' : "") + ">" +
-          '<span class="ls-token is-open">' + b +
-            (openTarget ? '<i class="ls-swap" aria-hidden="true">\u21C4</i>' : "") + "</span>" +
+          '<span class="ls-token is-open">' +
+            (openTarget ? '<span class="ls-swap is-here" aria-hidden="true">HERE</span>' : "") + b + "</span>" +
           '<span class="ls-name ls-open">open</span></div>');
       }
     }
   });
-  return '<div class="lineup-rail" role="list" aria-label="Your lineup \u00B7 tap a player to move or swap positions">' + cells.join("") + "</div>";
+  return '<div class="lineup-rail" role="list" aria-label="Your lineup \u00B7 tap a SWAP badge to move a player between positions">' + cells.join("") + "</div>";
 }
 
 function trayHtml() {
@@ -1855,7 +1863,7 @@ function hotHand(e) {
     : '';
 
   var ov = document.createElement("div");
-  ov.className = "hh-overlay";
+  ov.className = "hh-overlay" + (clutch ? "" : " hh-reveal");   // non-81 reveal gets a fully opaque backdrop
   ov.innerHTML =
     '<button class="hh-skip" id="hhSkip">skip \u2192</button>' +
     '<div class="hh-card"><div class="goat-fw" id="hhFw" aria-hidden="true"></div>' +
