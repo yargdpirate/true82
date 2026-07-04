@@ -26,6 +26,11 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `functions/api/games.js` | KV games-played counter (accrues via POST; no longer displayed) |
 | `functions/api/stats.js` | Public footer stats from D1: per-mode finished drafts + Presti 82-0 incl. Hot Hand |
 | `functions/avocado.js` | Analytics dashboard at `/avocado` (env `DASH_KEY` gates it) |
+| `og-image.png` | 1200×630 social card (generated from logo + design tokens) |
+| `robots.txt` | Public crawl allowed; /api/, /avocado, and the .md dev docs disallowed |
+| `sitemap.xml` | Homepage + the four explainer pages |
+| `404.html` | Real 404s for unknown paths (its presence disables Pages' SPA fallback, which soft-404'd everything to the homepage) |
+| `how-it-works/` `faq/` `can-you-go-82-0/` `what-is-bpm/` | Static SEO explainer pages (each an `index.html`; no analytics.js on purpose) |
 | `CONTEXT.md` | Living project state + decision log. **Start here** |
 | `docs/MODES.md` | Deep mechanics reference (engine, modes, pricing, Hot Hand) |
 | `docs/POPUPS.md` | Player-facing mode-blurb copy drafts |

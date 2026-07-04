@@ -24,6 +24,17 @@ any session that ships a real change; skip it for small back-and-forth. -->
   test.js harness · donate labels v2 (+retired marking on /avocado) · footer stat
   line (contact | per-mode drafts | Presti winrate incl HH, via new /api/stats;
   /avocado mode table gained a matching "82-0 w/ HH" column).
+- **GEO Stage 1 — in THIS commit (first deploy):** static homepage content in
+  index.html (visible H1 + intro + how-to + links inside #app; renderIntro()
+  overwrites it on boot exactly as before, zero app.js change), upgraded head
+  (canonical, title/description, full OG/Twitter set, new 1200×630 og-image.png),
+  Organization + WebApplication/VideoGame JSON-LD (no ratings/reviews), persistent
+  footer nav (survives hydration, hidden while drafting), four explainer pages as
+  directory routes (/how-it-works/, /faq/ with matching FAQPage JSON-LD,
+  /can-you-go-82-0/, /what-is-bpm/ — no analytics.js on purpose), robots.txt,
+  sitemap.xml, and 404.html (flips Pages out of SPA fallback so unknown paths 404
+  instead of soft-404'ing to the homepage). Pre-deploy the live site still serves
+  the "GOATs"-title shell; verify all of this post-push.
 - **Open:** `GAMES` KV binding looks unbound on **Production** — footer sat at 0, and
   code-wise only `!env.GAMES` yields a permanent 0. Definitive test:
   `curl -s -X POST https://true82.net/api/games` — a live binding must return
@@ -35,7 +46,13 @@ any session that ships a real change; skip it for small back-and-forth. -->
   dead-column strip in site_data (pos/port/rim/pm/ht, ~70 KB gz; upstream generator
   must adopt slim schema first) · dead-code purge (slotRailHtml, unused CFG keys,
   ~100 lines orphan CSS) · optional D1 index `idx_events_name_mode` · spot-check
-  cf-cache-status: HIT on statics.
+  cf-cache-status: HIT on statics · **post-deploy GEO manuals (after this commit
+  lands):** GSC domain property → submit https://true82.net/sitemap.xml →
+  URL-inspect all 5 pages; Cloudflare Security Events: confirm Googlebot/
+  Google-InspectionTool not WAF-challenged; spot-check a bogus URL returns a real
+  404 (404.html should flip Pages off SPA fallback); confirm view-source of / shows
+  the static intro and the "GOATs" title is gone · keep index.html's static intro
+  copy in rough sync with renderIntro() on future positioning edits.
 - **Settled (details in log — don't relitigate without new info):** swap is
   draft-only · reduced-motion deliberately ignored · refund/fire-sale = exclusive
   7.5/7.5 · decay 0.65ⁿ on bargain depth only · clutch = exactly 81 · KV counter
@@ -57,6 +74,50 @@ any session that ships a real change; skip it for small back-and-forth. -->
 
 ## Decision Log
 <!-- NEW ENTRIES ABOVE THIS LINE -->
+
+### 2026-07-04 — GEO Stage 1: static SEO/entity foundations (first deploy)
+Stage 1 of the GEO plan: make true82.net's initial HTML snippet-eligible and
+entity-clear without touching gameplay. Zero changes to app.js, analytics, engine,
+modes, Hot Hand, pricing, dashboard, or any functions/ file — verified byte-identical
+to the pre-Stage-1 live repo; 41/41 tests pass. Split ~20% homepage hygiene / 35%
+owned content, deferring the 45% off-domain work to later stages.
+
+index.html: replaced the loading-only #app shell with visible static content (H1,
+2-3 sentence description, how-to-play, links to the four explainer pages).
+renderIntro() overwrites #app on boot exactly as before — the static block is the
+initial-HTML version for crawlers, non-rendering AI parsers, no-JS, and link
+discovery, NOT a second UI; renderIntro() already emits its own H1 so the rendered
+DOM and the static block are both coherent. Keep the two in rough sync on future
+positioning edits. Upgraded head: canonical, stronger title/description, full
+OG/Twitter card set with a new 1200×630 og-image.png (the 800×188 logo cropped
+badly at 2:1). Static JSON-LD: Organization + WebApplication/VideoGame in an @graph,
+no aggregateRating/reviews (none exist). Persistent `.site-links` nav added to the
+footer (outside #app, survives hydration, hidden while drafting via the existing
+body.drafting rule).
+
+Four explainer pages as clean directory routes (each an index.html): /how-it-works/,
+/faq/ (FAQPage JSON-LD generated from the same strings as the visible text, 10 Q&As
+— schema/visible match verified programmatically), /can-you-go-82-0/ (73-9/72-10/69-13
+records and the ~1.5% perfect-season math verified), /what-is-bpm/. Answer-first,
+POPUPS.md/MODES.md copy reused, Hot Hand trigger/odds and pricing internals kept at
+the public "watch for surprises" tease level. Content pages deliberately do NOT load
+analytics.js (a session_start with no game_start would pollute the D1 funnel).
+
+robots.txt: allows public crawl, disallows /api/ + /avocado, references the sitemap;
+also disallows the root .md docs (CONTEXT/README) + /docs/ — publicly served on
+purpose per repo policy but they read like spoiler guides, so robots keeps them out
+of results without unpublishing. sitemap.xml lists the 5 pages. 404.html: real 404s
+for unknown paths. Its mere presence disables Cloudflare Pages' SPA fallback, which
+otherwise returns the homepage with a 200 for every unknown path (infinite soft-404
+homepage dupes — bad for indexing). Safe because the app is single-route with zero
+history/pushState usage (grep-verified).
+
+Deliberately skipped: llms.txt, nosnippet/max-snippet (would kill the snippet
+eligibility this whole pass is for), _headers (robots-blocked routes never surface a
+noindex header anyway; avocado.js self-noindexes), schema stuffing. Deferred:
+/games-like-immaculate-grid/ (needs a careful hand-written comparison, not a thin
+listicle), truew.net cross-link (add when confirmed ready). Post-deploy manuals
+tracked in Current State → Open.
 
 ### 2026-07-03 — Footer v2: contact first, per-mode drafts + Presti winrate from D1
 Footer line is now `Contact | N Presti drafts | N Classic drafts | N Pro drafts |

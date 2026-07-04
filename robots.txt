@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Backend routes — nothing to index
+Disallow: /api/
+Disallow: /avocado
+
+# Internal dev docs. Publicly served on purpose (repo policy), but they read
+# like a spoiler guide — keep them out of search results.
+Disallow: /CONTEXT.md
+Disallow: /README.md
+Disallow: /MODES.md
+Disallow: /POPUPS.md
+Disallow: /docs/
+
+Sitemap: https://true82.net/sitemap.xml
