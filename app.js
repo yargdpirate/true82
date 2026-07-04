@@ -1083,7 +1083,7 @@ function renderIntro() {
       '<p class="eyebrow">Draft</p>' +
       "<p>Draft a 5-man roster with 2 guards, 2 forwards, and a center. You get a random team from a random decade. Pick a guy who played for that team in that era. Pick any season he played. You can reroll the era and the team once each per draft.</p>" +
       '<p class="eyebrow">Winning</p>' +
-      "<p>Recommended to have at least <strong>3 shooters</strong> and <strong>1 role player</strong>. Based mostly on OBPM and DBPM (why we only go back to 1974) + some minor custom tweaks. Some players from low/no 3pt era get 3pt shooter bonuses based on reputation and vibes.</p>" +
+      "<p>Recommended to have at least <strong>3 shooters</strong> and <strong>1 overqualified role player</strong>. Based mostly on OBPM and DBPM (why we only go back to 1974) + some minor custom tweaks. Some players from low/no 3pt era get 3pt shooter bonuses based on reputation and vibes.</p>" +
       '<button class="btn btn-primary btn-block btn-dark presti-spin" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 KAMAN</button>' +
     "</section>";
   function start(mode) {
@@ -1787,9 +1787,9 @@ function setupGoatFireworks(autoArm) {
 var HH_SEGMENTS = [
   { label: "COLD",      m: 1.0,  odds: 5,  lvl: 0 },
   { label: "WARM",      m: 1.2,  odds: 25, lvl: 1 },
-  { label: "HOT",       m: 1.35, odds: 25, lvl: 2 },
-  { label: "ON FIRE",   m: 1.5,  odds: 25, lvl: 3 },
-  { label: "SUPERNOVA", m: 2.0,  odds: 20, lvl: 4 }
+  { label: "HOT",       m: 1.35, odds: 28, lvl: 2 },
+  { label: "ON FIRE",   m: 1.5,  odds: 28, lvl: 3 },
+  { label: "SUPERNOVA", m: 2.0,  odds: 14, lvl: 4 }
 ];
 var HH_BONUS_SCALE = 0.67;   // hot-hand bonus dialed down a flat 33%
 
@@ -2412,12 +2412,13 @@ function setFootStats(d) {
   // "0 drafts" row — a degraded deploy must not look like a dead game.
   if (!((d.presti || 0) + (d.classic || 0) + (d.pro || 0))) { el.innerHTML = ""; return; }
   var rate = d.presti ? Math.round(1000 * (d.presti82 || 0) / d.presti) / 10 : 0;
-  function seg(txt) { return ' | <span class="foot-seg">' + txt + "</span>"; }
-  el.innerHTML =
-    seg(d.presti.toLocaleString() + " Presti drafts") +
-    seg((d.classic || 0).toLocaleString() + " Classic drafts") +
-    seg((d.pro || 0).toLocaleString() + " Pro drafts") +
-    seg("Presti winrate " + rate + "%");
+  function seg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
+  el.innerHTML = [
+    seg(d.presti.toLocaleString() + " Presti drafts"),
+    seg((d.classic || 0).toLocaleString() + " Classic drafts"),
+    seg((d.pro || 0).toLocaleString() + " Pro drafts"),
+    seg("Presti WR " + rate + "%")
+  ].join(" | ");
 }
 function fetchFootStats() {
   try {

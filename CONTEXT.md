@@ -22,7 +22,7 @@ any session that ships a real change; skip it for small back-and-forth. -->
   lever; overlay starts opaque, no entrance fade) · crest race fix + late paint ·
   cookieless analytics + /avocado dashboard · disclaimer rewrite (SR credit) ·
   test.js harness · donate labels v2 (+retired marking on /avocado) · footer stat
-  line (contact | per-mode drafts | Presti winrate incl HH, via new /api/stats;
+  line — contact on its own line, per-mode drafts + Presti WR incl HH stacked below it, via /api/stats;
   /avocado mode table gained a matching "82-0 w/ HH" column).
 - **GEO Stage 1 — in THIS commit (first deploy):** static homepage content in
   index.html (visible H1 + intro + how-to + links inside #app; renderIntro()
@@ -74,6 +74,27 @@ any session that ships a real change; skip it for small back-and-forth. -->
 
 ## Decision Log
 <!-- NEW ENTRIES ABOVE THIS LINE -->
+
+### 2026-07-04 — Minor tuning: HH odds, footer layout, intro copy, donate button
+Heat Check tier odds retuned: SUPERNOVA 20→14, HOT 25→28, ON FIRE 25→28 (COLD 5 /
+WARM 25 unchanged; still sums to 100, hhSpinSeg reads %). Net effect: the top boost
+(×2.0) is rarer, the two mid boosts (×1.35 / ×1.5) more common — a softer, more
+frequent bump rather than occasional jackpots. 41/41 tests still pass.
+Footer restructured on index.html: contact now sits alone on the first line (no
+trailing separator); the D1 stat line moved to its own line below it and "Presti
+winrate" shortened to "Presti WR"; the info nav (Play / How it works / …) moved
+below the stats, restyled to match the contact line size (11px mono), left-justified
+and bold (600 = heaviest loaded Plex Mono weight). #footStats became a block div with
+`:empty{display:none}` so the zero-state (unbound DB / new DB) shows no gap. Nav CSS
+change is shared, so content pages get the same left/bold/11px nav; their footer
+order was left as-is (no stat line there). Intro copy: renderIntro's "1 role player"
+→ "1 overqualified role player" (still bold); the four explainer pages keep their own
+"one role player" prose, not synced (different register). Donate button (results top
+bar) restyled to the presti-spin 3D bevel — done in CSS on `.donate-btn` rather than
+adding the class, because `button.presti-spin` is element-scoped and the donate
+control is an `<a>` (kept as an anchor so the href + donate_click analytics are
+untouched). No app.js engine/mode/analytics/pricing/dashboard logic changed beyond
+the odds table and the two copy/string edits.
 
 ### 2026-07-04 — GEO Stage 1: static SEO/entity foundations (first deploy)
 Stage 1 of the GEO plan: make true82.net's initial HTML snippet-eligible and
