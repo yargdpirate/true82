@@ -15,7 +15,7 @@ export async function onRequest(context) {
   const q = (sql) => env.DB.prepare(sql).all().then((r) => r.results || []).catch(() => []);
   const one = (sql) => env.DB.prepare(sql).first().catch(() => null);
 
-  const [completes, roundFunnel, modeMix, hcAction, hcSeg, shareByU, deviceMix, referrers, endRows, donateMix] =
+  const [completes, roundFunnel, modeMix, hcAction, hcSeg, shareByU, deviceMix, referrers, endRows, donateMix, hhHits] =
     await Promise.all([
       q(`SELECT mode, wins, undefeated, sid FROM events WHERE name='game_complete' ORDER BY ts DESC LIMIT 100000`),
       q(`SELECT round, COUNT(*) c FROM events WHERE name='round_advance' GROUP BY round ORDER BY round`),
@@ -26,7 +26,8 @@ export async function onRequest(context) {
       q(`SELECT COALESCE(device,'?') d, COUNT(*) c FROM events WHERE name='session_start' GROUP BY d ORDER BY c DESC`),
       q(`SELECT referrer, COUNT(*) c FROM events WHERE name='session_start' AND referrer IS NOT NULL AND referrer<>'' GROUP BY referrer ORDER BY c DESC LIMIT 8`),
       q(`SELECT sid, games_played g FROM events WHERE name='session_end' AND games_played IS NOT NULL`),
-      q(`SELECT COALESCE(variant,'?') variant, COUNT(*) c FROM events WHERE name='donate_click' GROUP BY variant ORDER BY c DESC`)
+      q(`SELECT COALESCE(variant,'?') variant, COUNT(*) c FROM events WHERE name='donate_click' GROUP BY variant ORDER BY c DESC`),
+      q(`SELECT COALESCE(mode,'?') mode, COUNT(*) c FROM events WHERE name='heatcheck_result' AND hit_82=1 GROUP BY mode`)
     ]);
 
   // These headline queries are independent — run them in parallel instead of one-at-a-time.
@@ -58,10 +59,17 @@ export async function onRequest(context) {
   // ---- per-mode headline (median computed in JS from raw rows) ----
   const byMode = {};
   completes.forEach((r) => { const m = r.mode || "?"; (byMode[m] = byMode[m] || []).push({ wins: +r.wins || 0, undef: +r.undefeated || 0 }); });
+  // Hot Hand 82s live only in heatcheck_result (game_complete logs pre-boost wins at
+  // exactly 81), so natural + HH can be summed without double counting. The "w/ HH"
+  // column is the same math the public footer's "Presti winrate" uses.
+  const hhByMode = {};
+  hhHits.forEach((r) => { hhByMode[r.mode || "?"] = +r.c || 0; });
   const modeRows = Object.keys(byMode).sort().map((m) => {
     const arr = byMode[m], wins = arr.map((a) => a.wins).sort((a, b) => a - b);
     const undef = arr.reduce((s, a) => s + a.undef, 0);
-    return { mode: m, n: arr.length, median: median(wins), mean: round1(avg(wins)), undefPct: round1(100 * undef / (arr.length || 1)) };
+    return { mode: m, n: arr.length, median: median(wins), mean: round1(avg(wins)),
+             undefPct: round1(100 * undef / (arr.length || 1)),
+             w82Pct: round1(100 * (undef + (hhByMode[m] || 0)) / (arr.length || 1)) };
   });
 
   // ---- win distribution (all modes pooled) ----
@@ -96,17 +104,26 @@ export async function onRequest(context) {
   const refMax = Math.max(1, ...referrers.map((r) => +r.c || 0));
   const donateTotal = donateMix.reduce((s, r) => s + (+r.c || 0), 0);
   const donateMax = Math.max(1, ...donateMix.map((r) => +r.c || 0));
+  // Labels currently in rotation — KEEP IN SYNC with DONATE_MSGS in app.js.
+  // Anything else in the data is a retired label kept for history and marked below.
+  const DONATE_ACTIVE = new Set([
+    "Fund my caffeine dependency", "Feed my GOAT herd", "Fuel the token furnace",
+    "Help me pay the luxury tax", "Money me. Money now.",
+    "100% goes to girlfriend", "Fund weekly challenges",
+    "Keep developing the game", "Prove my parents wrong"
+  ]);
 
   // ===================== render =====================
   const cards = [];
 
   cards.push(card("Outcomes by mode", `
     <table>
-      <thead><tr><th>mode</th><th>games</th><th>median W</th><th>mean W</th><th>undefeated</th></tr></thead>
+      <thead><tr><th>mode</th><th>games</th><th>median W</th><th>mean W</th><th>undefeated</th><th>82-0 w/ HH</th></tr></thead>
       <tbody>${modeRows.length ? modeRows.map((r) =>
-        `<tr><td class="k">${esc(r.mode)}</td><td>${r.n}</td><td class="big">${r.median}</td><td>${r.mean}</td><td>${r.undefPct}%</td></tr>`
-      ).join("") : emptyRow(5)}</tbody>
-    </table>`));
+        `<tr><td class="k">${esc(r.mode)}</td><td>${r.n}</td><td class="big">${r.median}</td><td>${r.mean}</td><td>${r.undefPct}%</td><td>${r.w82Pct}%</td></tr>`
+      ).join("") : emptyRow(6)}</tbody>
+    </table>
+    <p class="muted">undefeated = drafted 82-0 · w/ HH also counts Hot Hand conversions — the footer's Presti winrate.</p>`));
 
   cards.push(card("Win distribution (all modes)",
     hist.some((b) => b.c) ? hist.map((b) => bar(`${b.lo}–${b.hi}`, b.c, histMax)).join("") : muted("no completed games yet")));
@@ -148,7 +165,7 @@ export async function onRequest(context) {
       ${stat(donateTotal, "clicks")}${stat(donateMix.length, "messages used")}${stat(pct(donateTotal, completesN) + "%", "of finishes")}
     </div>
     <div class="sub">by message</div>
-    ${donateMix.map((r) => bar(r.variant, +r.c || 0, donateMax)).join("")}`
+    ${donateMix.map((r) => bar(r.variant + (DONATE_ACTIVE.has(r.variant) ? "" : " · retired"), +r.c || 0, donateMax)).join("")}`
     : muted("no donate clicks yet")));
 
   cards.push(card("Presti economy", prestiRow && prestiRow.c ? `
