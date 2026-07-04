@@ -1041,13 +1041,19 @@ function wireStartOver() {
 
 /* ---------- donate ---------- */
 var DONATE_URL = "https://www.paypal.com/ncp/payment/UJMRHNN2VBJES";
+// Labels double as the donate_click analytics variant key. The /avocado donate card
+// groups by whatever arrives, so edits here flow through automatically — but keep
+// DONATE_ACTIVE in functions/avocado.js in sync so retired labels get marked there.
 var DONATE_MSGS = [
   "Fund my caffeine dependency",
   "Feed my GOAT herd",
   "Fuel the token furnace",
-  "Prove my girlfriend wrong",
   "Help me pay the luxury tax",
-  "Money me. Money now."
+  "Money me. Money now.",
+  "100% goes to girlfriend",
+  "Fund weekly challenges",
+  "Keep developing the game",
+  "Prove my parents wrong"
 ];
 function resultsTopBarHtml() {
   var msg = DONATE_MSGS[Math.floor(Math.random() * DONATE_MSGS.length)];
@@ -2231,7 +2237,7 @@ function showResults() {
   if (MODE === "kaman") {
     renderKamanResults();
     window.t82track && window.t82track("game_complete", { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1 });
-    pingGames("POST");
+    gameFinishedPings();
     return;
   }
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
@@ -2244,7 +2250,7 @@ function showResults() {
     }
     window.t82track("game_complete", gc);
   }
-  pingGames("POST");
+  gameFinishedPings();
 }
 
 function renderResults(e, keepScroll) {
@@ -2395,30 +2401,58 @@ function loadCrests() {
     .catch(function () {});
 }
 
-function setGamesPlayed(n) {
-  var el = document.getElementById("gamesPlayed");
-  if (el && typeof n === "number") el.textContent = n.toLocaleString() + " games played | ";
+// Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
+// the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
+// footer can't disagree with the dashboard. Fails soft: on any error the footer just
+// shows the contact line with no dangling separator.
+function setFootStats(d) {
+  var el = document.getElementById("footStats");
+  if (!el || !d || typeof d.presti !== "number") return;
+  // All zeros = DB unbound or brand-new database. Show nothing rather than a fake
+  // "0 drafts" row — a degraded deploy must not look like a dead game.
+  if (!((d.presti || 0) + (d.classic || 0) + (d.pro || 0))) { el.innerHTML = ""; return; }
+  var rate = d.presti ? Math.round(1000 * (d.presti82 || 0) / d.presti) / 10 : 0;
+  function seg(txt) { return ' | <span class="foot-seg">' + txt + "</span>"; }
+  el.innerHTML =
+    seg(d.presti.toLocaleString() + " Presti drafts") +
+    seg((d.classic || 0).toLocaleString() + " Classic drafts") +
+    seg((d.pro || 0).toLocaleString() + " Pro drafts") +
+    seg("Presti winrate " + rate + "%");
 }
-function pingGames(method) {
+function fetchFootStats() {
   try {
-    fetch("/api/games", { method: method })
+    fetch("/api/stats")
       .then(function (r) { return r.json(); })
-      .then(function (d) { setGamesPlayed(d.count); })
+      .then(setFootStats)
       .catch(function () {});
   } catch (e) {}
+}
+// The KV all-time counter is no longer displayed but keeps accruing so the historic
+// number stays continuous (see CONTEXT.md: games.js kept, not consolidated into D1).
+function pingGames(method) {
+  try {
+    fetch("/api/games", { method: method }).catch(function () {});
+  } catch (e) {}
+}
+// One game just finished: bump the KV counter, then refresh the footer once the
+// game_complete insert has had a moment to land in D1. Best effort — a miss here
+// self-heals on the next page load.
+function gameFinishedPings() {
+  pingGames("POST");
+  setTimeout(fetchFootStats, 1500);
 }
 
 function boot() {
   bindHaptics();
   renderIntro();     // the intro needs no player data — show it instantly instead of a loading screen
   loadCrests();      // crests download in the background, non-blocking
+  fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
   fetch(CFG.DATA_URL)
     .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
     .then(function (data) {
       initData(data);
       DATA_READY = true;
-      pingGames("GET");
       var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
       window.t82track && window.t82track("data_ready", { load_ms: ms });
       if (PENDING_MODE) { var pm = PENDING_MODE; PENDING_MODE = null; newGame(pm); }   // player tapped a mode while data was still loading

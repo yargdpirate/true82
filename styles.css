@@ -92,6 +92,7 @@ body.drafting .site-foot { display: none; }
 }
 .site-foot p { margin: 4px 0; }
 .site-foot .games-count { font-size: 11px; letter-spacing: 0.04em; color: var(--maple); margin: 0 0 10px; }
+.site-foot .foot-seg { white-space: nowrap; }   /* stat line wraps at the pipes, never mid-stat */
 .site-foot details.legal summary {
   cursor: pointer;
   list-style: none;
