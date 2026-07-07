@@ -17,8 +17,8 @@
   "use strict";
 
   var CONFIG = {
-    CLERK_FRONTEND_API: "",      // e.g. "https://your-instance.clerk.accounts.dev" — RUNBOOK §1.1
-    CLERK_PUBLISHABLE_KEY: ""    // pk_live_... / pk_test_... (client-safe by design)
+    CLERK_FRONTEND_API: "https://caring-grub-37.clerk.accounts.dev",      // e.g. "https://your-instance.clerk.accounts.dev" — RUNBOOK §1.1
+    CLERK_PUBLISHABLE_KEY: "pk_test_Y2FyaW5nLWdydWItMzcuY2xlcmsuYWNjb3VudHMuZGV2JA"    // pk_live_... / pk_test_... (client-safe by design)
   };
 
   var LEDGER_KEY = "t82:runs", LEDGER_CAP = 200, SID_KEY = "t82:sid";
