@@ -17,8 +17,8 @@
   "use strict";
 
   var CONFIG = {
-    CLERK_FRONTEND_API: "https://caring-grub-37.clerk.accounts.dev",      // e.g. "https://your-instance.clerk.accounts.dev" — RUNBOOK §1.1
-    CLERK_PUBLISHABLE_KEY: "pk_test_Y2FyaW5nLWdydWItMzcuY2xlcmsuYWNjb3VudHMuZGV2JA"    // pk_live_... / pk_test_... (client-safe by design)
+    CLERK_FRONTEND_API: "https://caring-grub-37.clerk.accounts.dev",
+    CLERK_PUBLISHABLE_KEY: "pk_test_Y2FyaW5nLWdydWItMzcuY2xlcmsuYWNjb3VudHMuZGV2JA"
   };
 
   var LEDGER_KEY = "t82:runs", LEDGER_CAP = 200, SID_KEY = "t82:sid";
@@ -59,23 +59,21 @@
       return (clerkReady = Promise.resolve(null));
     }
     clerkReady = new Promise(function (resolve) {
+      // clerk-js@6 ships its own UI — one script, no separate @clerk/ui, no
+      // ui: argument to load() (the old "not loaded with Ui components" throw).
       var base = CONFIG.CLERK_FRONTEND_API.replace(/\/$/, "");
-      var s1 = document.createElement("script");
-      s1.src = base + "/npm/@clerk/ui@1/dist/web/index.js";
-      var s2 = document.createElement("script");
-      s2.src = base + "/npm/@clerk/clerk-js@6/dist/clerk.browser.js";
-      s2.setAttribute("data-clerk-publishable-key", CONFIG.CLERK_PUBLISHABLE_KEY);
-      var left = 2;
-      function one() {
-        if (--left) return;
+      var s = document.createElement("script");
+      s.src = base + "/npm/@clerk/clerk-js@6/dist/clerk.browser.js";
+      s.async = true;
+      s.setAttribute("data-clerk-publishable-key", CONFIG.CLERK_PUBLISHABLE_KEY);
+      s.onload = function () {
         if (!g.Clerk) return resolve(null);
-        g.Clerk.load({ ui: { ClerkUI: g.__internal_ClerkUICtor } })
+        g.Clerk.load()
           .then(function () { resolve(g.Clerk); onSignedIn(); })
           .catch(function () { resolve(null); });
-      }
-      s1.onload = one; s2.onload = one;
-      s1.onerror = one; s2.onerror = one;
-      document.head.appendChild(s1); document.head.appendChild(s2);
+      };
+      s.onerror = function () { resolve(null); };
+      document.head.appendChild(s);
     });
     return clerkReady;
   }
