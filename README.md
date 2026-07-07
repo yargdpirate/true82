@@ -21,10 +21,37 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `crests.json` | Team-era crest images (base64 WebP), fetched in background, never blocks play |
 | `logo.png` | 9.8 KB quantized logo (replaced a 140 KB inline base64) |
 | `analytics.js` | Cookieless client tracker → `/api/event` |
-| `test.js` | Headless logic harness — `node test.js`, 41 checks. Run before changing game logic |
+| `test.js` | Headless logic harness — `node test.js`, 157 checks (116 without site_data.json). Run before changing game logic |
+| `sim-core.js` | `T82` — the ENTIRE headless game core (tables, deal loop, economy, engine, Hot Hand, replay verifier). app.js is a UI shell over it; see ACCOUNTS.md §2.4 |
+| `challenges.js` | Weekly-challenge manifest (shared client+server, same law as sim-core). Creative doctrine + hook API in the header |
+| `functions/api/verify.js` | POST /api/verify — stateless replay verification, fail-soft 200-always |
+| `functions/_lib/data.js` | Dataset bootstrap for Functions (ASSETS fetch, one initData per isolate) |
+| `functions/_lib/auth.js` | Clerk session verify (networkless RS256) + user upsert — failures land anonymous |
+| `functions/_lib/daily.js` | Daily labels + HMAC seed minting + display-name filter (pure, tested) |
+| `functions/api/` | Accounts endpoints: daily, run, me, claim, name, lb, hof, notebook (+verify). All fail-soft |
+| `duel-core.js` | Duel Draft match engine (shared module) — one sim-core state, two player overlays; rebuilds from ops |
+| `challenges.js` | FULL weekly manifest — 98 creative rule-permutations + ISO-week rotation (shared module) |
+| `scripts/validate_challenges.js` | Manifest gate: seeded survivability sims per challenge; run --full before shipping edits |
+| `accounts.js` | Client accounts layer: Clerk wiring (CONFIG placeholders), run ledger, core-truth replay submission |
+| `functions/api/weekly.js` | The live weekly (KV-override-aware) for the This-Week tile |
+| `duel-ui.js` | The duel screen: ?duel= deep link, ETag polling, lobby/join/move/quips/rematch — renders replayMatch output |
+| `arena-ui.js` | The Arena: profile banner + name edit, board strips with me-rank, ledger, sign-in/claim funnel |
+| `league-core.js` | League engine (shared): round-robin schedule, week clock, settlement, tie-group standings |
+| `league-ui.js` | League screen: found/join via link, weekly matchup card, standings, champion |
+| `functions/api/league*` | create · GET+settle-on-read · join · start |
+| `migrations/0002_leagues.sql` | leagues · league_members · league_results (insert-once settlement) |
+| `scripts/analytics.sql` | The commercial pack: retention cohorts, mode-hook retention, league health, churn |
+| `SECURITY.md` | Threat model, blast-radius posture, Clerk+Cloudflare checklists, rotation/deletion playbooks |
+| `EXTENDING.md` | The rails: add weeklies/officials/achievements/league knobs without ground-up work |
+| `BUGHUNT.md` | Where the bugs live: codebase-specific failure modes + the hunting process (read before any change) |
+| `_headers` / `wrangler.toml` | Pages security headers · bindings (secrets NEVER here) |
+| `functions/api/match*` | Duel endpoints: create, ETag poll, join/move/quip/resign/rematch — server rebuilds every move |
+| `migrations/0001_accounts.sql` | Full accounts schema — apply Preview D1 first (RUNBOOK §1.3) |
+| `RUNBOOK.md` | Ops manual: deploy, Clerk setup, smoke curls, symptom→cause debug playbooks |
 | `functions/api/event.js` | POST ingestion → D1 (allowlists, clamps, swallows errors) |
 | `functions/api/games.js` | KV games-played counter (accrues via POST; no longer displayed) |
 | `functions/api/stats.js` | Public footer stats from D1: per-mode finished drafts + Presti 82-0 incl. Hot Hand |
+| `functions/api/recap.js` | Two-phase season-recap copywriter (Claude, thinking): `phase:"headline"` at every season end (cheap), `phase:"article"` only on READ MORE; fail-soft, per-phase KV daily caps, needs `ANTHROPIC_API_KEY` |
 | `functions/avocado.js` | Analytics dashboard at `/avocado` (env `DASH_KEY` gates it) |
 | `og-image.png` | 1200×630 social card (generated from logo + design tokens) |
 | `robots.txt` | Public crawl allowed; /api/, /avocado, and the .md dev docs disallowed |

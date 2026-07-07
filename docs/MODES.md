@@ -145,9 +145,9 @@ Wheel (`HH_SEGMENTS`, odds sum 100):
 |---|---|---|
 | COLD | 1.0 | 5 |
 | WARM | 1.2 | 25 |
-| HOT | 1.35 | 25 |
-| ON FIRE | 1.5 | 25 |
-| SUPERNOVA | 2.0 | 20 |
+| HOT | 1.35 | 28 |
+| ON FIRE | 1.5 | 28 |
+| SUPERNOVA | 2.0 | 14 |
 
 Boost: `newNet = net + (m − 1) · valueOf(hot) · HH_BONUS_SCALE(0.67)`. Goes
 undefeated iff `newNet > hhNet82()` — the smallest net where
