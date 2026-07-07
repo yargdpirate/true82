@@ -59,18 +59,24 @@
       return (clerkReady = Promise.resolve(null));
     }
     clerkReady = new Promise(function (resolve) {
-      // clerk-js@6 ships its own UI — one script, no separate @clerk/ui, no
-      // ui: argument to load() (the old "not loaded with Ui components" throw).
+      // Clerk's OWN hosted loader picks the correct FULL (UI-bearing) bundle
+      // for this instance — hardcoding a versioned /npm/... path fetched the
+      // headless build, whose openSignIn() throws "not loaded with Ui
+      // components". Construct Clerk explicitly, load, then it's UI-ready.
       var base = CONFIG.CLERK_FRONTEND_API.replace(/\/$/, "");
       var s = document.createElement("script");
-      s.src = base + "/npm/@clerk/clerk-js@6/dist/clerk.browser.js";
-      s.async = true;
+      s.src = base + "/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+      s.async = true; s.crossOrigin = "anonymous";
       s.setAttribute("data-clerk-publishable-key", CONFIG.CLERK_PUBLISHABLE_KEY);
       s.onload = function () {
-        if (!g.Clerk) return resolve(null);
-        g.Clerk.load()
-          .then(function () { resolve(g.Clerk); onSignedIn(); })
-          .catch(function () { resolve(null); });
+        try {
+          var C = g.Clerk;
+          if (typeof C === "function") C = new C(CONFIG.CLERK_PUBLISHABLE_KEY);  // constructor form
+          if (!C || !C.load) return resolve(null);
+          C.load()
+            .then(function () { g.Clerk = C; resolve(C); onSignedIn(); })
+            .catch(function () { resolve(null); });
+        } catch (e) { resolve(null); }
       };
       s.onerror = function () { resolve(null); };
       document.head.appendChild(s);
