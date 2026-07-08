@@ -32,9 +32,9 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `nickname — 2 to 4 words, Title Case, the name the league would give this exact team based on the players' collective real-world personalities and likely colelctive style of play. It must read as a PLURAL subject, because the headline is composed as "<NICKNAME> FINISH <record>" (e.g. "The Fragile Five Finish 61-21"). May begin with "The". Be EXTREMELY creative and memorable. Do not simply base the headline off of the fact that they are are group of superstars, and do not reference that they have trouble sharing the ball`;
+const NICKNAME_RULES = `nickname — 2 to 4 words, Title Case, the name the league would give this exact team based on the players' collective real-world personalities and likely collective style of play. It must read as a PLURAL subject, because the headline is composed as "<NICKNAME> FINISH <record>" (e.g. "The Fragile Five Finish 61-21"). May begin with "The". Be EXTREMELY creative and memorable. Do not simply base the headline off of the fact that they are a group of superstars, and do not reference that they have trouble sharing the ball. Never use a real NBA franchise name, a player's name, or profanity.`;
 
-const SYS_HEADLINE = `You are the creative Copy Editor naming the front-page title after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons. Treat the season and record as established fact.`;
+const SYS_HEADLINE = `You are the creative Copy Editor naming the front-page title after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons. Treat the season and record as established fact.
 
 Return ONLY a JSON object — no markdown fences, no commentary:
 {"nickname": "...", "dek": "..."}
@@ -43,12 +43,12 @@ ${NICKNAME_RULES}
 
 dek — one subhead line, at most 90 characters, sentence case. Sharp, not cute. Calibrated to the season tier and tone directive provided.`;
 
-const SYS_ARTICLE = `You are the lead basketball columnist at Sports Illustrated filing the front-page story after the 82nd and final game of an NBA regular season. The roster is a made up of real players, each idependently set at one specific real season of his career. Treat the season and record as established fact. The headline and team nickname are already set in type — your story must fit them. Prose, not analysis.`;
+const SYS_ARTICLE = `You are the lead basketball columnist at Sports Illustrated filing the front-page story after the 82nd and final game of an NBA regular season. The roster is made up of real players, each independently set at one specific real season of his career. Treat the season and record as established fact. The headline and team nickname are already set in type — your story must fit them. Prose, not analysis.
 
 Return ONLY a JSON object — no markdown fences, no commentary:
 {"article": "..."}
 
-article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on the on-court strengths and weaknesses of THIS composition — how these particular players do and don't fit — naming two to four of them by surname. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not mention that they had a hard time sharing the ball. Do not use em dashes more than once.`;
+article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on the on-court strengths and weaknesses of THIS composition — how these particular players do and don't fit — naming two to four of them by surname. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not use em dashes more than once.`;
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -113,7 +113,7 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
 
   const isArticle = phase === "article";
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : 12000);
+  const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : 18000);
   let resp;
   try {
     resp = await fetch("https://api.anthropic.com/v1/messages", {

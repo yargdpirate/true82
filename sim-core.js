@@ -205,13 +205,24 @@ function randFranchise(S, dec, avoid) {
 
 function pick1(S, arr) { return arr[rndi(S, arr.length)]; }
 
+// Eligible seasons for a player in the current team/era: the >785-minute floor that
+// gates the regular draft. Kaman and challenges keep the full set. Shared by the pro
+// season-assigner and the UI (pool visibility + the season dropdown) so all three agree.
+function poolYearsEligible(S, name) {
+  var yrs = POOL_YEARS.get(key(S, S.cur.fr, S.cur.dec));
+  var arr = yrs ? yrs.get(name) : null;
+  if (!arr) return [];
+  if (S.mode === "kaman" || S.ch) return arr.slice();
+  return arr.filter(function (r) { return r[IDX.mp] > 785; });
+}
+
 function assignProSeasons(S) {
   var k = key(S, S.cur.fr, S.cur.dec);
   var pool = POOLS.get(k), yrs = POOL_YEARS.get(k);
   if (!pool || !yrs) return;
   pool.forEach(function (row, name) {
-    var arr = yrs.get(name);
-    if (arr && arr.length) S.yearByName[name] = arr[rndi(S, arr.length)][IDX.season];
+    var elig = poolYearsEligible(S, name);
+    if (elig.length) S.yearByName[name] = elig[rndi(S, elig.length)][IDX.season];   // random ELIGIBLE season; players with none are left unset and hidden by the UI
   });
 }
 
@@ -330,7 +341,12 @@ function resolveRow(S, name) {
     if (arr) for (var i = 0; i < arr.length; i++) if (arr[i][IDX.season] === sel) return arr[i];
   }
   var pool = POOLS.get(k);
-  return pool ? pool.get(name) : null;
+  var best = pool ? pool.get(name) : null;
+  if (best && S.mode !== "kaman" && !S.ch && best[IDX.mp] <= 785) {   // pooled "best" is minutes-filtered -> default to an eligible season instead
+    var elig = poolYearsEligible(S, name);
+    if (elig.length) return elig[0];
+  }
+  return best;
 }
 
 function engine(S, pickRows, slots) {
@@ -659,7 +675,7 @@ function initDataCore(data) {
     S.eraSkips  = C(S, "ERA_SKIPS",  isCap ? 2 : 1);
     S.yearRerolls = isCap ? 2 : 0;
     S.budget = S.maxCap = C(S, "CAP_BUDGET", CAP_BUDGET);
-    S.sortMode = S.mode === "pro" ? "az" : isCap ? "cost" : "min";
+    S.sortMode = isCap ? "cost" : "min";   // classic + pro sort by minutes; cap sorts by cost
     S.seedSet = seed != null;
     S.seed = S.seedSet ? seedOf(seed) : autoSeed();
     S.rng = makeRng(S.seed);
@@ -713,7 +729,7 @@ function initDataCore(data) {
     S.seenDec.add(S.cur.dec);
     S.seenFr.add(S.cur.fr);
     S.seenPairs.add(key(S, S.cur.fr, S.cur.dec));
-    return { dealt: true };
+    return { dec: true, fr: true, dealt: true };   // fresh deal: spin both the decade and franchise reels (+ crest). dealt kept for the deal-hook contract; replay ignores all of it.
   }
 
   function rerollUntilPickable(S, prev) {
@@ -907,7 +923,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 4,
+    VERSION: 5,
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
@@ -934,7 +950,7 @@ function initDataCore(data) {
     chargeReroll: chargeReroll, capRoll: capRoll, capCost: capCost,
     assignCapPool: assignCapPool, capMisprice: capMisprice,
     assignProSeasons: assignProSeasons, effCost: effCost, capAffordable: capAffordable,
-    resolveRow: resolveRow, engine: engine, erf: erf, phi: phi,
+    resolveRow: resolveRow, poolYearsEligible: poolYearsEligible, engine: engine, erf: erf, phi: phi,
     hhNet82: hhNet82, hhPickHot: hhPickHot, hhSpinSeg: hhSpinSeg, hhEligible: hhEligible,
     hhWins: hhWins, swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,
     HH_SEGMENTS: HH_SEGMENTS, HH_BONUS_SCALE: HH_BONUS_SCALE

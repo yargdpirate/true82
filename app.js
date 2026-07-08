@@ -559,7 +559,11 @@ function currentPoolRows() {
   if (MODE === "kaman") { return KAMAN_SEASONS.slice(); }
   var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
   var rows = [];
-  if (pool) pool.forEach(function (row, name) { if (!G.drafted.has(name)) rows.push(row); });
+  if (pool) pool.forEach(function (row, name) {
+    if (G.drafted.has(name)) return;
+    if (!T82.poolYearsEligible(G, name).length) return;   // hide players with no eligible (>785-min) season this team/era — don't shade, omit
+    rows.push(row);
+  });
   var q = (G.query || "").trim().toLowerCase();
   if (q) rows = rows.filter(function (r) { return r[IDX.name].toLowerCase().indexOf(q) !== -1; });
   sortPoolRows(rows);
@@ -948,8 +952,7 @@ function updateTray() {
 
 /* the season picker shown in each player row (only when >1 season exists) */
 function yearControlHtml(name, row) {
-  var yrs = POOL_YEARS.get(key(G.cur.fr, G.cur.dec));
-  var arr = yrs ? yrs.get(name) : null;
+  var arr = T82.poolYearsEligible(G, name);   // only eligible (>785-min) seasons in the dropdown
   if (!arr || arr.length <= 1) {
     return "<span>" + shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]) + "</span>";
   }
@@ -1985,14 +1988,14 @@ function requestHeadline(e, finalWins, finalNet, hh) {
     stampHeadline();
   }
   var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
-  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localHeadline(G.recapPayload)); }, 14000);
+  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localHeadline(G.recapPayload)); }, 20000);
   try {
     fetch("/api/recap", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(Object.assign({ phase: "headline" }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
     }).then(function (r) { return r.json(); })
-      .then(function (d) { clearTimeout(timer); settle(d && d.ok && d.nickname ? d : localHeadline(G.recapPayload)); })
+      .then(function (d) { clearTimeout(timer); if (d && !d.ok) console.warn("[tribune] headline \u2192 local, reason:", d.reason || "?"); settle(d && d.ok && d.nickname ? d : localHeadline(G.recapPayload)); })
       .catch(function () { clearTimeout(timer); settle(localHeadline(G.recapPayload)); });
   } catch (err) { clearTimeout(timer); settle(localHeadline(G.recapPayload)); }
 }
@@ -2017,7 +2020,7 @@ function requestArticle() {
       body: JSON.stringify(Object.assign({ phase: "article", nickname: G.recapHead.nickname }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
     }).then(function (r) { return r.json(); })
-      .then(function (d) { clearTimeout(timer); settle(d && d.ok && d.article ? d : localArticle(G.recapPayload)); })
+      .then(function (d) { clearTimeout(timer); if (d && !d.ok) console.warn("[tribune] article \u2192 local, reason:", d.reason || "?"); settle(d && d.ok && d.article ? d : localArticle(G.recapPayload)); })
       .catch(function () { clearTimeout(timer); settle(localArticle(G.recapPayload)); });
   } catch (err) { clearTimeout(timer); settle(localArticle(G.recapPayload)); }
 }
@@ -2031,14 +2034,7 @@ function maybeShowRecap() {
   showNewspaper(false);
 }
 
-function recapChip() {
-  if (document.getElementById("npChip")) return;
-  var c = document.createElement("button");
-  c.id = "npChip"; c.type = "button"; c.className = "np-chip";
-  c.textContent = "\uD83D\uDCF0 EXTRA! EXTRA!";
-  c.addEventListener("click", function () { showNewspaper(false); });
-  document.body.appendChild(c);
-}
+function recapChip() {}   // removed: the newspaper is one-and-done now — no reopen chip after dismissal
 
 var NP_TICK_HEAD = ["HOT OFF THE PRESS", "STOP THE PRESSES", "SETTING TYPE", "INK STILL DRYING"];
 var NP_TICK_ART = ["REWRITING THE LEDE", "CALLING THE COPY DESK", "TELETYPE INCOMING", "HOLDING PAGE ONE"];
@@ -2092,7 +2088,6 @@ function showNewspaper(gate) {
     clearInterval(tickTimer);
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
-    recapChip();
   }
   skip.addEventListener("click", function () {
     window.t82track && window.t82track("recap_skip", { mode: MODE });

@@ -1373,16 +1373,6 @@ button.more-modes:disabled {
   to   { opacity: 1; filter: blur(0); }
 }
 
-.np-chip {
-  position: fixed; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 110;
-  background: var(--amber); color: var(--ink); border: 0; border-radius: 999px;
-  font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-  padding: 10px 14px; cursor: pointer;
-  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.7);
-  animation: np-chip-in 0.35s ease both;
-}
-@keyframes np-chip-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
 /* content pages (/how-it-works/ etc.) — same 560px column as #app */
 a.brand-link { display: block; }
 main.content-page {
