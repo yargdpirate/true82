@@ -1939,7 +1939,7 @@ function localHeadline(p) {
   else if (noteStr.indexOf("floor shrinks") >= 0) nick = pick(["The Bricklayers", "The Cramped Quarters"]);
   else if (noteStr.indexOf("surplus shooting") >= 0) nick = pick(["The Splash Dynasty", "The Greenlight Five"]);
   else nick = pick(["The Company Men", "The Blueprint", "The Working Class"]);
-  return { nickname: nick, dek: "How " + byV[0].name + " and company landed at " + w + "-" + l, source: "fallback" };
+  return { nickname: nick, source: "fallback" };
 }
 function localArticle(p) {
   var w = p.wins, l = 82 - w, tier = recapTier(w);

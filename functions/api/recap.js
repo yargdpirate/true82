@@ -37,18 +37,16 @@ const NICKNAME_RULES = `nickname — 2 to 4 words, Title Case, the name the leag
 const SYS_HEADLINE = `You are the creative Copy Editor naming the front-page title after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons. Treat the season and record as established fact.
 
 Return ONLY a JSON object — no markdown fences, no commentary:
-{"nickname": "...", "dek": "..."}
+{"nickname": "..."}
 
-${NICKNAME_RULES}
-
-dek — one subhead line, at most 90 characters, sentence case. Sharp, not cute. Calibrated to the season tier and tone directive provided.`;
+${NICKNAME_RULES}`;
 
 const SYS_ARTICLE = `You are the lead basketball columnist at Sports Illustrated filing the front-page story after the 82nd and final game of an NBA regular season. The roster is made up of real players, each independently set at one specific real season of his career. Treat the season and record as established fact. The headline and team nickname are already set in type — your story must fit them. Prose, not analysis.
 
 Return ONLY a JSON object — no markdown fences, no commentary:
 {"article": "..."}
 
-article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on how these particular players actually perform together on the court, naming two to four of them by surname: their real strengths, and any genuine weakness kept to concrete basketball terms like defense, size, spacing, rim protection, or depth. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not use em dashes more than once.`;
+article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on how these particular players actually perform together on the court, naming two to four of them by surname: their real strengths, and any genuine weakness kept to concrete basketball terms like defense, size, rim protection, or depth. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not use em dashes more than once.`;
 
 // Applied to BOTH phases (nickname + dek + body) so the whole Tribune shares one voice.
 // Override live from the Cloudflare dashboard with RECAP_VOICE — no redeploy of code needed.
@@ -60,7 +58,7 @@ const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk pr
 const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the flim-flam will not fit inside the format and the length, trim the flim-flam, never the format or the count.`;
 
 // Kills the "too much talent" cliché in the nickname, dek, and body alike.
-const BAN = `CONTENT BAN (nickname, subhead, and story alike): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, and any "a team that shouldn't (have) work(ed)." These players won; write HOW they won on the court (defense, size, spacing, shot-making, pace, poise), never why they supposedly couldn't.`;
+const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -166,9 +164,9 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
         status: 200, headers: { "content-type": "application/json" }
       });
     }
-    const nick = clean(out.nickname, 48), dek = clean(out.dek, 120);
+    const nick = clean(out.nickname, 48);
     if (!nick) return fail("empty");
-    return new Response(JSON.stringify({ ok: true, nickname: nick, dek, source: "api" }), {
+    return new Response(JSON.stringify({ ok: true, nickname: nick, source: "api" }), {
       status: 200, headers: { "content-type": "application/json" }
     });
   } catch (e) { return fail("parse"); }
