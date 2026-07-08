@@ -135,7 +135,7 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
       body: JSON.stringify({
         model: env.RECAP_MODEL || "claude-sonnet-4-6",
         max_tokens: isArticle ? 2600 : 1400,
-        thinking: { type: "enabled", budget_tokens: isArticle ? 1400 : 700 },
+        thinking: { type: "enabled", budget_tokens: isArticle ? 1400 : 1024 },   // 1024 = Anthropic's minimum thinking budget; below it the request 400s
         system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + HARD,
         messages: [{ role: "user", content: user }]
       })
