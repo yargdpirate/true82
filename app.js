@@ -2031,14 +2031,7 @@ function maybeShowRecap() {
   showNewspaper(false);
 }
 
-function recapChip() {
-  if (document.getElementById("npChip")) return;
-  var c = document.createElement("button");
-  c.id = "npChip"; c.type = "button"; c.className = "np-chip";
-  c.textContent = "\uD83D\uDCF0 EXTRA! EXTRA!";
-  c.addEventListener("click", function () { showNewspaper(false); });
-  document.body.appendChild(c);
-}
+function recapChip() {}   // removed: the newspaper is one-and-done now — no reopen chip after dismissal
 
 var NP_TICK_HEAD = ["HOT OFF THE PRESS", "STOP THE PRESSES", "SETTING TYPE", "INK STILL DRYING"];
 var NP_TICK_ART = ["REWRITING THE LEDE", "CALLING THE COPY DESK", "TELETYPE INCOMING", "HOLDING PAGE ONE"];
@@ -2092,7 +2085,6 @@ function showNewspaper(gate) {
     clearInterval(tickTimer);
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
-    recapChip();
   }
   skip.addEventListener("click", function () {
     window.t82track && window.t82track("recap_skip", { mode: MODE });

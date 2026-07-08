@@ -713,7 +713,7 @@ function initDataCore(data) {
     S.seenDec.add(S.cur.dec);
     S.seenFr.add(S.cur.fr);
     S.seenPairs.add(key(S, S.cur.fr, S.cur.dec));
-    return { dealt: true };
+    return { dec: true, fr: true, dealt: true };   // fresh deal: spin both the decade and franchise reels (+ crest). dealt kept for the deal-hook contract; replay ignores all of it.
   }
 
   function rerollUntilPickable(S, prev) {
