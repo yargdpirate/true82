@@ -48,7 +48,7 @@ const SYS_ARTICLE = `You are the lead basketball columnist at Sports Illustrated
 Return ONLY a JSON object — no markdown fences, no commentary:
 {"article": "..."}
 
-article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on the on-court strengths and weaknesses of THIS composition — how these particular players do and don't fit — naming two to four of them by surname. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not use em dashes more than once.`;
+article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on how these particular players actually perform together on the court, naming two to four of them by surname: their real strengths, and any genuine weakness kept to concrete basketball terms like defense, size, spacing, rim protection, or depth. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not use em dashes more than once.`;
 
 // Applied to BOTH phases (nickname + dek + body) so the whole Tribune shares one voice.
 // Override live from the Cloudflare dashboard with RECAP_VOICE — no redeploy of code needed.
@@ -58,6 +58,9 @@ const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk pr
 
 // Appended AFTER the voice so it wins on recency: the flim-flam must obey format + length.
 const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the flim-flam will not fit inside the format and the length, trim the flim-flam, never the format or the count.`;
+
+// Kills the "too much talent" cliché in the nickname, dek, and body alike.
+const BAN = `CONTENT BAN (nickname, subhead, and story alike): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, and any "a team that shouldn't (have) work(ed)." These players won; write HOW they won on the court (defense, size, spacing, shot-making, pace, poise), never why they supposedly couldn't.`;
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -143,7 +146,7 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
       body: JSON.stringify(Object.assign({
         model: env.RECAP_MODEL || "claude-sonnet-4-6",
         max_tokens: maxTokens,
-        system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + HARD,
+        system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD,
         messages: [{ role: "user", content: user }]
       }, useThink ? { thinking: { type: "enabled", budget_tokens: thinkBudget } } : {}))
     });
