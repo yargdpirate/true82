@@ -1809,7 +1809,8 @@ function shareText(e) {
     }
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
-  return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\ntrue82.net";
+  var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";  // Tribune nickname above the roster; when absent, nick="" collapses back to the normal single blank line
+  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\ntrue82.net";
 }
 
 function flashShareBtn(msg) {
