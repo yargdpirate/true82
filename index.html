@@ -57,6 +57,18 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<style id="t82-live-hide">
+  /* LIVE LANE ONLY. app.js and styles.css are byte-identical to the
+     accounts-test branch; this block is the single behavioural divergence on
+     live, and it lives HERE (in the one file allowed to differ per lane) so the
+     shared engine/shell/CSS never fork. It hides the account/duel/league entry
+     points renderIntro() emits unconditionally, which would otherwise be dead
+     buttons on the public site. To LAUNCH one of these on live: add its
+     <script> tag near the bottom of this file AND delete its #id from the rule
+     below. (dailyStrip/startWeekly are already hidden by attribute; listed for
+     completeness so this block is the full "not-yet-live UI" manifest.) */
+  #arenaChip, #startDuel, #startLeague, #startWeekly, #dailyStrip, #runStatus { display: none !important; }
+</style>
 </head>
 <body>
 <header class="site-head">
@@ -104,6 +116,7 @@
 </footer>
 
 <script src="analytics.js" defer></script>
+<script src="sim-core.js" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>

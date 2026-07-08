@@ -5,7 +5,8 @@
 const NAMES = new Set([
   "session_start", "session_end", "data_ready", "data_error",
   "game_start", "round_advance", "game_complete", "replay", "share",
-  "heatcheck_shown", "heatcheck_action", "heatcheck_result", "donate_click"
+  "heatcheck_shown", "heatcheck_action", "heatcheck_result", "donate_click",
+  "recap_shown", "recap_read", "recap_skip"
 ]);
 const MODES = new Set(["classic", "pro", "cap", "kaman"]);
 const VIEWPORTS = new Set(["sm", "md", "lg"]);

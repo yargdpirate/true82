@@ -47,297 +47,125 @@ var G = null;
 
 /* ---------- math ---------- */
 
-function erf(x) {
-  var sign = x < 0 ? -1 : 1;
-  x = Math.abs(x);
-  var t = 1 / (1 + 0.3275911 * x);
-  var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
-  return sign * y;
-}
-function phi(x) { return 0.5 * (1 + erf(x / Math.SQRT2)); }
+
+
 
 /* ---------- data ---------- */
 
-function key(fr, dec) { return fr + "|" + dec; }
-function valueOf(row) { return row[IDX.bpm_star] - SC.REPLACEMENT; }
 
-function rowBuckets(row) {
-  // Career-wide eligibility: if he was EVER a G/F/C anywhere in his career, he's
-  // eligible there in every season. Built once in initData.
-  var set = CAREER_BUCKETS.get(row[IDX.name]);
-  if (set) {
-    var career = BUCKETS.filter(function (b) { return set[b]; });
-    if (career.length) return career;
-  }
-  // fallback (name missing from the map): the old per-season logic
-  var out = [];
-  if (row[IDX.g_pct] >= CFG.POS_THRESHOLD) out.push("G");
-  if (row[IDX.f_pct] >= CFG.POS_THRESHOLD) out.push("F");
-  if (row[IDX.c_pct] >= CFG.POS_THRESHOLD) out.push("C");
-  if (!out.length) {
-    var g = row[IDX.g_pct], f = row[IDX.f_pct], c = row[IDX.c_pct];
-    var m = Math.max(g, f, c);
-    out.push(g === m ? "G" : (f === m ? "F" : "C"));
-  }
-  return out;
-}
 
-function initData(data) {
-  META = data.meta;
-  // Crests arrive separately (crests.json) and may land before OR after this data.
-  // MERGE instead of reassign — the old `CRESTS = data.crests || {}` was throwing
-  // away every logo loadCrests() had already merged whenever crests.json won the
-  // download race (which it usually does now that Cloudflare's cache is warm).
-  if (data.crests) Object.keys(data.crests).forEach(function (k) { CRESTS[k] = data.crests[k]; });
-  CREST_DEFAULT = data.crest_default || CREST_DEFAULT;
-  CREST_POOL = null;
-  SC = META.scoring;
-  IDX = {};
-  META.cols.forEach(function (c, i) { IDX[c] = i; });
-  var m = /-\s*([0-9.]+)/.exec(String(SC.net || ""));
-  BASELINE = (typeof SC.BASELINE === "number") ? SC.BASELINE : (m ? parseFloat(m[1]) : 10);
 
-  // Career-wide position eligibility: union of every season's qualifying buckets.
-  // A player who never clears the 20% bar anywhere falls back to the union of his
-  // per-season max-share buckets, so nobody ends up position-less.
-  CAREER_BUCKETS = new Map();
-  var fbBuckets = new Map();
-  data.players.forEach(function (row) {
-    var nm = row[IDX.name];
-    var set = CAREER_BUCKETS.get(nm);
-    if (!set) { set = {}; CAREER_BUCKETS.set(nm, set); }
-    if (row[IDX.g_pct] >= CFG.POS_THRESHOLD) set.G = 1;
-    if (row[IDX.f_pct] >= CFG.POS_THRESHOLD) set.F = 1;
-    if (row[IDX.c_pct] >= CFG.POS_THRESHOLD) set.C = 1;
-    var g = row[IDX.g_pct], f = row[IDX.f_pct], c = row[IDX.c_pct], mx = Math.max(g, f, c);
-    var fb = fbBuckets.get(nm);
-    if (!fb) { fb = {}; fbBuckets.set(nm, fb); }
-    fb[g === mx ? "G" : (f === mx ? "F" : "C")] = 1;
-  });
-  CAREER_BUCKETS.forEach(function (set, nm) {
-    if (!set.G && !set.F && !set.C) {
-      var fb = fbBuckets.get(nm) || {};
-      BUCKETS.forEach(function (b) { if (fb[b]) set[b] = 1; });
-    }
-  });
 
-  // Manual 3pt-shooter overrides (meta.sp_override): known shooters whose early-era
-  // seasons lack the tracked 3PM/3PA volume to clear the percentile bar. Force sp=1
-  // across every one of their rows, before pools are built.
-  if (META.sp_override && META.sp_override.length) {
-    var spForce = {};
-    META.sp_override.forEach(function (nm) { spForce[nm] = true; });
-    data.players.forEach(function (row) { if (spForce[row[IDX.name]]) row[IDX.sp] = 1; });
-  }
 
-  // Categorical non-shooters (meta.sp_never): force sp=0 across all their rows,
-  // applied after sp_override so a "never" designation wins any conflict.
-  if (META.sp_never && META.sp_never.length) {
-    var spDeny = {};
-    META.sp_never.forEach(function (nm) { spDeny[nm] = true; });
-    data.players.forEach(function (row) { if (spDeny[row[IDX.name]]) row[IDX.sp] = 0; });
-  }
 
-  TEAM2FR = {};
-  Object.keys(data.franchises).forEach(function (fr) {
-    data.franchises[fr].forEach(function (code) { TEAM2FR[code] = fr; });
-  });
-
-  // Franchise x decade combos to drop from the draft (e.g. one-season expansion
-  // slivers like the '80s Heat = 1988-89 only). Keys are "FRANCHISE|decade".
-  var EXCLUDE = {};
-  if (META.era_exclude) META.era_exclude.forEach(function (kk) { EXCLUDE[kk] = true; });
-
-  POOLS = new Map(); POOL_YEARS = new Map(); FR_BY_DEC = new Map(); DEC_SPAN = new Map(); SEASON_SPAN = null;
-  data.players.forEach(function (row) {
-    var fr = TEAM2FR[row[IDX.team]];
-    if (!fr) return;
-    var season = row[IDX.season];
-    var dec = Math.floor(season / 10) * 10;
-    var k = key(fr, dec);
-    if (EXCLUDE[k]) return;
-    if (!POOLS.has(k)) POOLS.set(k, new Map());
-    var pool = POOLS.get(k);
-    var name = row[IDX.name];
-    var prev = pool.get(name);
-    if (!prev || valueOf(row) > valueOf(prev)) pool.set(name, row);
-    if (!POOL_YEARS.has(k)) POOL_YEARS.set(k, new Map());
-    var yrs = POOL_YEARS.get(k);
-    if (!yrs.has(name)) yrs.set(name, []);
-    yrs.get(name).push(row);
-    var span = DEC_SPAN.get(dec);
-    if (!span) DEC_SPAN.set(dec, [season, season]);
-    else { if (season < span[0]) span[0] = season; if (season > span[1]) span[1] = season; }
-    if (!SEASON_SPAN) SEASON_SPAN = [season, season];
-    else { if (season < SEASON_SPAN[0]) SEASON_SPAN[0] = season; if (season > SEASON_SPAN[1]) SEASON_SPAN[1] = season; }
-  });
-
-  // POOL_YEARS: one entry per season (collapse same-season double stints to the
-  // higher-value row), ordered oldest -> newest for the dropdown.
-  POOL_YEARS.forEach(function (yrs) {
-    yrs.forEach(function (arr, nm) {
-      var bySeason = {};
-      arr.forEach(function (r) {
-        var s = r[IDX.season];
-        if (!bySeason[s] || valueOf(r) > valueOf(bySeason[s])) bySeason[s] = r;
-      });
-      var out = Object.keys(bySeason).map(function (s) { return bySeason[s]; });
-      out.sort(function (a, b) { return a[IDX.season] - b[IDX.season]; });
-      yrs.set(nm, out);
-    });
-  });
-
-  var decSet = new Set();
-  POOLS.forEach(function (_pool, k) {
-    var parts = k.split("|");
-    var fr = parts[0], dec = parseInt(parts[1], 10);
-    decSet.add(dec);
-    if (!FR_BY_DEC.has(dec)) FR_BY_DEC.set(dec, []);
-    FR_BY_DEC.get(dec).push(fr);
-  });
-  DECADES = Array.from(decSet).sort(function (a, b) { return a - b; });
-
-  FRANCHISES = Array.from(new Set(Array.from(POOLS.keys()).map(function (k) { return k.split("|")[0]; }))).sort();
-  BEST_BY_NAME = new Map();
-  POOLS.forEach(function (pool) {
-    pool.forEach(function (row, name) {
-      var prev = BEST_BY_NAME.get(name);
-      if (!prev || valueOf(row) > valueOf(prev)) BEST_BY_NAME.set(name, row);
-    });
-  });
-
-  // ----- Kaman Mode pool: every Chris Kaman season (one row per season, traded
-  // years collapsed to his higher-value stint). The whole draft is five Kamans.
-  KAMAN_SEASONS = [];
-  var kBySeason = {};
-  data.players.forEach(function (row) {
-    if (row[IDX.name] !== "Chris Kaman") return;
-    var s = row[IDX.season];
-    if (!kBySeason[s] || valueOf(row) > valueOf(kBySeason[s])) kBySeason[s] = row;
-  });
-  KAMAN_SEASONS = Object.keys(kBySeason).map(function (s) { return kBySeason[s]; })
-    .sort(function (a, b) { return a[IDX.season] - b[IDX.season]; });
-}
 
 /* ---------- eligibility helpers ---------- */
 
-function capOf(b) { return MODE === "kaman" ? (b === "C" ? 5 : 0) : BUCKET_CAP[b]; }
-function bucketOpen(b) { return G.filled[b] < capOf(b); }
-function openBuckets() { return BUCKETS.filter(bucketOpen); }
-function rowOpenBuckets(row) { return rowBuckets(row).filter(bucketOpen); }
-function rowDraftable(row) {
-  var dkey = MODE === "kaman" ? String(row[IDX.season]) : row[IDX.name];
-  if (G.drafted.has(dkey) || rowOpenBuckets(row).length === 0) return false;
-  if (MODE === "cap" && !capAffordable(row)) return false;
-  return true;
-}
 
-function poolHasEligible(fr, dec) {
-  var pool = POOLS.get(key(fr, dec));
-  if (!pool) return false;
-  var ok = false;
-  pool.forEach(function (row) { if (!ok && rowDraftable(row)) ok = true; });
-  return ok;
-}
-function eraHasEligibleFranchise(dec) {
-  var list = FR_BY_DEC.get(dec) || [];
-  for (var i = 0; i < list.length; i++) if (poolHasEligible(list[i], dec)) return true;
-  return false;
-}
-function availableEras() {
-  return DECADES.filter(eraHasEligibleFranchise);
-}
+
+
+
+
+
+
+
+
 // Skip team: other UNUSED franchises in the SAME era that can fill an open slot
-function teamSkipTargets() {
-  var list = FR_BY_DEC.get(G.cur.dec) || [];
-  return list.filter(function (f) { return f !== G.cur.fr && !G.seenFr.has(f) && !G.seenPairs.has(key(f, G.cur.dec)) && poolHasEligible(f, G.cur.dec); });
-}
+
 // Skip era: other UNUSED eras where the SAME franchise can fill an open slot
-function eraSkipTargets() {
-  return DECADES.filter(function (d) {
-    // Presti allows repeating an era, so the reroll offers every decade the franchise played
-    // in except the current one; other modes keep the distinct-decade rule.
-    return d !== G.cur.dec && (MODE === "cap" || !G.seenDec.has(d)) && !G.seenPairs.has(key(G.cur.fr, d)) && poolHasEligible(G.cur.fr, d);
-  });
+
+
+
+/* ---------- CORE DELEGATION (Stage 2 — accounts) ----------
+   ALL game logic now lives in sim-core.js (global T82): tables, eligibility,
+   the deal loop, skips, the cap economy, picks, the engine, Hot Hand, and the
+   replay verifier. These same-name wrappers pass the global G, so every
+   existing call site — and the whole test harness — works unchanged. app.js is
+   the UI shell: rendering, input, overlays, cosmetics.
+   THE SEED-SPINE INVARIANT moved with the code — read sim-core.js's header
+   before touching ANYTHING random. Cosmetic randomness in this file stays on
+   Math.random forever. */
+var HH_SEGMENTS = T82.HH_SEGMENTS, HH_BONUS_SCALE = T82.HH_BONUS_SCALE;
+var CAP_BUDGET = 50;   // mirror for copy/UI; the core owns the real budget (challenge-patchable)
+
+function erf(x) { return T82.erf(null, x); }
+function phi(x) { return T82.phi(null, x); }
+function key(fr, dec) { return T82.key(null, fr, dec); }
+function valueOf(row) { return T82.valueOf(null, row); }
+function rowBuckets(row) { return T82.rowBuckets(null, row); }
+function capOf(b) { return T82.capOf(G, b); }
+function bucketOpen(b) { return T82.bucketOpen(G, b); }
+function openBuckets() { return T82.openBuckets(G); }
+function rowOpenBuckets(row) { return T82.rowOpenBuckets(G, row); }
+function rowDraftable(row) { return T82.rowDraftable(G, row); }
+function poolHasEligible(fr, dec) { return T82.poolHasEligible(G, fr, dec); }
+function availableEras() { return T82.availableEras(G); }
+function teamSkipTargets() { return T82.teamSkipTargets(G); }
+function eraSkipTargets() { return T82.eraSkipTargets(G); }
+function chargeReroll(spinId) { return T82.chargeReroll(G, spinId); }
+function capRoll(d) { return T82.capRoll(G, d); }
+function capCost(v, d) { return T82.capCost(G, v, d); }
+function assignCapPool(avoid) { return T82.assignCapPool(G, avoid); }
+function capMisprice(items) { return T82.capMisprice(G, items); }
+function assignProSeasons() { return T82.assignProSeasons(G); }
+function effCost(name) { return T82.effCost(G, name); }
+function capAffordable(row) { return T82.capAffordable(G, row); }
+function capPoolHasPick() { return T82.capPoolHasPick(G); }
+function resolveRow(name) { return T82.resolveRow(G, name); }
+function engine(rows, slots) { return T82.engine(G, rows, slots); }
+function hhNet82() { return T82.hhNet82(G); }
+function hhPickHot() { return T82.hhPickHot(G); }
+function hhSpinSeg() { return T82.hhSpinSeg(G); }
+function hhEligible(e) { return T82.hhEligible(G, e); }
+function swapTargetsFor(i) { return T82.swapTargetsFor(G, i); }
+function pickHasMoves(i) { return T82.pickHasMoves(G, i); }
+
+function initData(data) {
+  // Crests are UI: arrive separately (crests.json) and may land before OR after
+  // this data. MERGE instead of reassign (load-race regression, see tests).
+  if (data.crests) Object.keys(data.crests).forEach(function (k) { CRESTS[k] = data.crests[k]; });
+  CREST_DEFAULT = data.crest_default || CREST_DEFAULT;
+  CREST_POOL = null;
+  var t = T82.initData(data);
+  META = t.META; SC = t.SC; IDX = t.IDX; BASELINE = t.BASELINE;
+  POOLS = t.POOLS; POOL_YEARS = t.POOL_YEARS; DECADES = t.DECADES;
+  FR_BY_DEC = t.FR_BY_DEC; DEC_SPAN = t.DEC_SPAN; SEASON_SPAN = t.SEASON_SPAN;
+  TEAM2FR = t.TEAM2FR; BEST_BY_NAME = t.BEST_BY_NAME; FRANCHISES = t.FRANCHISES;
+  CAREER_BUCKETS = t.CAREER_BUCKETS; KAMAN_SEASONS = t.KAMAN_SEASONS;
 }
 
-/* ---------- game ---------- */
-
-function randFranchise(dec, avoid) {
-  var list = (FR_BY_DEC.get(dec) || []).filter(function (f) { return poolHasEligible(f, dec); });
-  if (!list.length) list = (FR_BY_DEC.get(dec) || []).slice();
-  var fresh = avoid ? list.filter(function (f) { return !avoid.has(f); }) : list;
-  var opts = fresh.length ? fresh : list;
-  return opts[Math.floor(Math.random() * opts.length)];
-}
-function pick1(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-function newGame(mode) {
+function newGame(mode, seed, challenge) {
   if (mode) MODE = mode;
-  G = {
-    round: 0,
-    picks: [],
-    drafted: new Set(),
-    filled: { G: 0, F: 0, C: 0 },
-    teamSkips: MODE === "cap" ? 2 : 1,
-    eraSkips: MODE === "cap" ? 2 : 1,
-    yearRerolls: MODE === "cap" ? 2 : 0,
-    seenFr: new Set(),
-    seenDec: new Set(),
-    seenPairs: new Set(),
-    cur: null,
-    selected: null,
-    yearByName: {},
-    costByName: {},
-    costDir: "desc",
-    budget: CAP_BUDGET,
-    maxCap: CAP_BUDGET,
-    sortMode: MODE === "pro" ? "az" : MODE === "cap" ? "cost" : "min",
-    query: "",
-    fireSale: false,        // cap: -$2 on every price for the current board only
-    fireSaleFlash: null,    // cap: which spin button triggered it (for the flash)
-    yearRerollN: 0,         // cap: "Skip yrs" presses on the current team/era (bargain decay)
-    moveIdx: null,          // lineup rail: index of the pick selected for a position move/swap
-    screen: "draft"
-  };
+  G = T82.newState(MODE, seed, challenge || null);
   window.t82track && window.t82track("game_start", { mode: MODE });
   nextRound(true);
 }
-
 function nextRound(animate) {
-  G.round += 1;
-  G.fireSale = false;       // a fire sale never survives into the next selection
-  G.yearRerollN = 0;        // fresh team/era next round -> bargain volatility resets
-  G.moveIdx = null;
-  if (G.round > CFG.ROUNDS) { showResults(); return; }
+  var r = T82.dealRound(G);
+  if (r === "done") { showResults(); return; }
   window.t82track && window.t82track("round_advance", { mode: MODE, round: G.round });
-  if (MODE === "kaman") {
-    G.cur = { kaman: true };
-    G.selected = null;
-    G.yearByName = {};
-    renderDraft(animate ? { kaman: true } : false);
-    return;
-  }
-  var tries = 0;
-  while (true) {
-    tries++;
-    var fresh = availableEras().filter(function (d) { return !G.seenDec.has(d); });
-    var avail = fresh.length ? fresh : availableEras();   // fall back to a repeat era only if every era's been used
-    if (!avail.length) { showResults(); return; }
-    var dec = pick1(avail);
-    G.cur = { dec: dec, fr: randFranchise(dec, G.seenFr) };
-    G.selected = null;
-    G.yearByName = {};
-    if (MODE === "pro") assignProSeasons();
-    else if (MODE === "cap") assignCapPool();
-    // Cap: never strand the player — re-roll the era/prices until something is affordable.
-    if (MODE !== "cap" || tries > 40 || capPoolHasPick()) break;
-  }
-  G.seenDec.add(G.cur.dec);
-  G.seenFr.add(G.cur.fr);
-  G.seenPairs.add(key(G.cur.fr, G.cur.dec));
-  renderDraft(animate ? { dec: true, fr: true } : false);
+  renderDraft(animate ? r : false);
 }
+function doTeamSkip() { var f = T82.skipTeam(G); if (f) renderDraft(f); }
+function doEraSkip() { var f = T82.skipEra(G); if (f) renderDraft(f); }
+function doYearReroll() { if (MODE !== "cap") return; var f = T82.yearReroll(G); if (f) renderDraft(f); }
+function confirmPick(bucket) {
+  if (!G.selected) return;
+  var row = resolveRow(G.selected);
+  if (!row) return;
+  if (T82.applyPick(G, G.selected, row[IDX.season], bucket)) nextRound(true);
+}
+function doLineupMove(pickIdx, bucket) { if (T82.moveSlot(G, pickIdx, bucket)) afterLineupChange(); }
+function doLineupSwap(i, j) { if (T82.swapSlots(G, i, j)) afterLineupChange(); }
+
+/* ---------- game (UI-side) ---------- */
+
+
+   // stream-backed: era pick + skip targets are outcome-relevant
+
+
+
+
 
 // Presti: rerolls are unlimited but each costs $1 of cap. Decrementing the remaining
 // budget IS the cap drop (you reroll before spending that dollar). Blocked if it would
@@ -345,74 +173,16 @@ function nextRound(animate) {
 // Two rare outcomes per paid spin (mutually exclusive): 7.5% REFUND (the dollar comes
 // back) and 7.5% FIRE SALE (every price on this board drops $2, floor $1, until the
 // next reroll or pick).
-function chargeReroll(spinId) {
-  var picksToGo = CFG.ROUNDS - G.round + 1;
-  if (G.budget - 1 < picksToGo) return false;
-  G.fireSale = false;                 // any reroll wipes an active fire sale
-  G.budget -= 1;
-  G.maxCap -= 1;
-  if (spinId) {
-    var roll = Math.random();
-    if (roll < 0.075) {               // 7.5%: free spin — refund the dollar (net cost 0)
-      G.budget += 1;
-      G.maxCap += 1;
-      G.refundFlash = spinId;
-    } else if (roll < 0.15) {         // 7.5%: FIRE SALE — this board only
-      G.fireSale = true;
-      G.fireSaleFlash = spinId;
-    }
-  }
-  return true;
-}
 
-function doTeamSkip() {
-  var targets = teamSkipTargets();
-  if (!targets.length) return;
-  if (MODE === "cap") { if (!chargeReroll("skipTeam")) return; G.yearRerollN = 0; }
-  else { if (!G.teamSkips) return; G.teamSkips -= 1; }
-  if (MODE === "cap") G.seenFr.delete(G.cur.fr);   // free the tentative franchise (never committed) so skips don't exhaust the pool
-  G.cur.fr = pick1(targets);          // same era, different (unused) franchise
-  G.seenFr.add(G.cur.fr);
-  G.seenPairs.add(key(G.cur.fr, G.cur.dec));
-  G.selected = null;
-  G.yearByName = {};
-  if (MODE === "pro") assignProSeasons();
-  else if (MODE === "cap") { assignCapPool(); var ct = 0; while (!capPoolHasPick() && ct < 40) { assignCapPool(); ct++; } }
-  renderDraft({ dec: false, fr: true });
-}
 
-function doEraSkip() {
-  var targets = eraSkipTargets();
-  if (!targets.length) return;
-  if (MODE === "cap") { if (!chargeReroll("skipEra")) return; G.yearRerollN = 0; }
-  else { if (!G.eraSkips) return; G.eraSkips -= 1; }
-  // Free the decade we're leaving so deals stay varied — but only if it isn't already locked in by a
-  // committed pick, since the reroll can now land on an era you've already drafted.
-  if (MODE === "cap" && !G.picks.some(function (p) { return p.dec === G.cur.dec; })) G.seenDec.delete(G.cur.dec);
-  G.cur.dec = pick1(targets);         // same franchise, different (unused) era
-  G.seenDec.add(G.cur.dec);
-  G.seenPairs.add(key(G.cur.fr, G.cur.dec));
-  G.selected = null;
-  G.yearByName = {};
-  if (MODE === "pro") assignProSeasons();
-  else if (MODE === "cap") { assignCapPool(); var ce = 0; while (!capPoolHasPick() && ce < 40) { assignCapPool(); ce++; } }
-  renderDraft({ dec: true, fr: false });
-}
+
+
+
 
 // Cap only: re-roll every player's locked season + price for the current team/era ($1).
 // Each press shrinks bargain depth (see capRoll) so you can't camp the button waiting
 // for a superstar discount; rip-offs keep their normal rate and size.
-function doYearReroll() {
-  if (MODE !== "cap") return;
-  if (!chargeReroll("rerollYears")) return;
-  G.yearRerollN = (G.yearRerollN || 0) + 1;
-  G.selected = null;
-  var prev = {};
-  for (var pn in G.yearByName) { if (Object.prototype.hasOwnProperty.call(G.yearByName, pn)) prev[pn] = G.yearByName[pn]; }
-  assignCapPool(prev);
-  var cy = 0; while (!capPoolHasPick() && cy < 40) { assignCapPool(prev); cy++; }
-  renderDraft({ years: true });
-}
+
 
 // Short press haptic for the Presti spin buttons. navigator.vibrate fires on
 // Chrome/Android; iOS Safari ignores it (silent no-op). try/catch guards the few
@@ -432,6 +202,26 @@ function bindHaptics() {
     var b = e.target.closest("button.presti-spin");
     if (b && !b.disabled) buzz(15);
   }, true);
+}
+
+// Mobile tabs restore from bfcache/background with the DOM intact but sometimes on a different
+// screen than the frozen paint, leaving the draft's body class (and its 100-176px #app bottom
+// padding) applied when you're no longer drafting -> dead scroll space below the content. On
+// every return to visibility, re-sync the two chrome classes to G (the source of truth). This
+// is a no-op whenever they already match.
+var _visBound = false;
+function bindVisibilityResync() {
+  if (_visBound) return;
+  _visBound = true;
+  function resync() {
+    var drafting = !!(G && G.screen === "draft");
+    document.body.classList.toggle("drafting", drafting);
+    document.body.classList.toggle("has-pick", drafting && !!G.selected);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") resync();
+  });
+  window.addEventListener("pageshow", resync);
 }
 
 // The 1-in-8 payoff: button turns green and reads "REFUND!" for 2.5s, then restores
@@ -634,7 +424,7 @@ function scramblePool(mode, settleAt) {
   function rCost() { return "$" + (1 + Math.floor(Math.random() * 20)); }
   function paint() {
     var i;
-    if (mode === "full") for (i = 0; i < names.length; i++) names[i].textContent = pick1(decoyNames());
+    if (mode === "full") { var _dn = decoyNames(); for (i = 0; i < names.length; i++) names[i].textContent = _dn[Math.floor(Math.random() * _dn.length)]; }   // cosmetic reel — must never touch G.rng
     for (i = 0; i < seasons.length; i++) seasons[i].textContent = rSeason();
     for (i = 0; i < costs.length; i++) costs[i].textContent = rCost();
   }
@@ -705,117 +495,36 @@ function lastNameKey(name) {
 function cmpName(a, b) { var ka = lastNameKey(a[IDX.name]), kb = lastNameKey(b[IDX.name]); return ka < kb ? -1 : ka > kb ? 1 : 0; }
 // Pro mode: lock each player to a RANDOM eligible season (not their peak), so you
 // can't optimize the season blind. Populates G.yearByName, which resolveRow respects.
-function assignProSeasons() {
-  var k = key(G.cur.fr, G.cur.dec);
-  var pool = POOLS.get(k), yrs = POOL_YEARS.get(k);
-  if (!pool || !yrs) return;
-  pool.forEach(function (row, name) {
-    var arr = yrs.get(name);
-    if (arr && arr.length) G.yearByName[name] = arr[Math.floor(Math.random() * arr.length)][IDX.season];
-  });
-}
+
 
 /* ---------- Salary Cap mode ----------
    $50 budget, seasons locked random, every player priced off that season's value with
    a steep quadratic curve + fat-tailed roll. Calibrated (Monte Carlo vs the real engine,
    1 team + 1 era skip) so even optimal play sneaks an 82-0 roster under the cap ~1 in 50
    boards — and so stars genuinely cost a third-plus of the cap, forcing real tradeoffs. */
-var CAP_BUDGET = 50;
 // bargainDecay 1 = full-strength bargains; each "Skip yrs" press multiplies the
 // discount DEPTH by 0.65 (65%, 42%, 27%... of the original), converging on fair
 // price. The normal band and the gouged (rip-off) band are untouched.
-function capRoll(bargainDecay) {
-  var u = Math.random();
-  if (u < 0.55) return 0.85 + 0.30 * Math.random();   // 55% normal
-  if (u < 0.80) {                                     // 25% fire-sale (bargain)
-    var mult = 0.55 + 0.25 * Math.random();
-    var d = (bargainDecay == null) ? 1 : bargainDecay;
-    return 1 - (1 - mult) * d;                        // shrink the discount toward fair
-  }
-  return 1.25 + 0.35 * Math.random();                 // 20% gouged
-}
-function capCost(v, bargainDecay) {
-  return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll(bargainDecay)));
-}
+
+
 // How aggressively cost lies about value (tuned against the real player pool via sim;
 // these are safe to nudge). At these values a value-built roster costs the same as
 // before (~+1%), but "buy the most expensive" and "$1 = junk" both stop working.
-var CAP_TRAP = 0.50;   // chance a mediocre marginal (value 2-4) is overpriced into the premium tier
-var CAP_GEM  = 0.15;   // chance a marginal (value 2-4) is dropped to a $1 gem
 // Lock each pool player to a random season AND price it off that season's value,
 // then run the mispricing pass so cost is a noisy signal you have to read past.
-function assignCapPool(avoid) {
-  var k = key(G.cur.fr, G.cur.dec);
-  var pool = POOLS.get(k), yrs = POOL_YEARS.get(k);
-  var decay = Math.pow(0.65, G.yearRerollN || 0);   // bargain depth shrinks per "Skip yrs" press
-  G.costByName = {};
-  if (!pool || !yrs) return;
-  var items = [];
-  pool.forEach(function (row, name) {
-    var arr = yrs.get(name);
-    if (!arr || !arr.length) return;
-    var cands = arr;
-    if (avoid && avoid[name] != null && arr.length > 1) {   // don't land the same year twice in a row when there's an alternative
-      var alt = arr.filter(function (r) { return r[IDX.season] !== avoid[name]; });
-      if (alt.length) cands = alt;
-    }
-    var pickRow = cands[Math.floor(Math.random() * cands.length)];
-    G.yearByName[name] = pickRow[IDX.season];
-    items.push({ name: name, v: valueOf(pickRow), cost: capCost(valueOf(pickRow), decay) });
-  });
-  if (!items.length) return;
-  capMisprice(items);
-  for (var i = 0; i < items.length; i++) G.costByName[items[i].name] = items[i].cost;
-}
+
 // Inject realistic mispricing. The 5 highest-VALUE players are shielded, so the cost of
 // a value-built roster (the economy / odds of 82-0) is preserved; only the price signal
 // gets noisy. Then: overprice some mediocre marginals into the premium tier (traps that
 // blend in with real stars), drop a few marginals to $1 (gems), lift the incidental $1
 // floor so a $1 tag now means "gem", and guarantee 2-4 weak players priced above $1.
-function capMisprice(items) {
-  var n = items.length, i;
-  var byVal = items.slice().sort(function (a, b) { return b.v - a.v; });
-  var shielded = {};
-  for (i = 0; i < Math.min(5, n); i++) shielded[byVal[i].name] = true;
-  var costs = items.map(function (it) { return it.cost; }).sort(function (a, b) { return b - a; });
-  var lo = Math.max(costs[Math.min(2, n - 1)], 10), hi = Math.max(costs[0], lo + 8);  // premium band overlaps real top-3
-  for (i = 0; i < n; i++) {
-    var it = items[i];
-    if (it.v >= 2 && it.v <= 4 && !shielded[it.name]) {
-      var r = Math.random();
-      if (r < CAP_GEM) it.cost = 1;                                                       // underpriced gem
-      else if (r < CAP_GEM + CAP_TRAP) it.cost = Math.round(lo + Math.random() * (hi - lo)); // overpriced trap
-      else if (it.cost < 2) it.cost = 2;                                                  // $1 floor now reads as "gem"
-    }
-  }
-  var weak = [];
-  for (i = 0; i < n; i++) if (items[i].v < 2) weak.push(i);
-  for (i = weak.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = weak[i]; weak[i] = weak[j]; weak[j] = t; }
-  var above = 0; for (i = 0; i < weak.length; i++) if (items[weak[i]].cost > 1) above++;
-  var want = 2 + Math.floor(Math.random() * 3);   // 2..4 weak players above $1
-  for (i = 0; i < weak.length && above < want; i++) {
-    if (items[weak[i]].cost <= 1) { items[weak[i]].cost = 2 + Math.floor(Math.random() * 5); above++; }  // $2..$6
-  }
-}
+
 // The price the player actually pays right now: base cost, minus $2 during an
 // active FIRE SALE, never below $1.
-function effCost(name) {
-  var c = G.costByName ? G.costByName[name] : null;
-  if (c == null) return null;
-  return G.fireSale ? Math.max(1, c - 2) : c;
-}
+
 // Affordable if it still leaves at least $1 for every remaining pick (never strand).
-function capAffordable(row) {
-  var c = effCost(row[IDX.name]);
-  if (c == null) return true;
-  var picksAfter = CFG.ROUNDS - G.round;
-  return c <= G.budget - picksAfter;
-}
-function capPoolHasPick() {
-  var rows = currentPoolRows();
-  for (var i = 0; i < rows.length; i++) if (rowDraftable(resolveRow(rows[i][IDX.name]))) return true;
-  return false;
-}
+
+
 
 // Max minutes the player logged in any of his eligible seasons for this team/era,
 // so a stud whose best-BPM season was injury-shortened isn't buried by a minutes sort.
@@ -859,95 +568,13 @@ function currentPoolRows() {
 
 // The row to use for a player in the current cell: the user's chosen season if
 // one is set (and still valid for this cell), otherwise the best season (default).
-function resolveRow(name) {
-  if (MODE === "kaman") {
-    var s = parseInt(name, 10);
-    for (var ki = 0; ki < KAMAN_SEASONS.length; ki++) if (KAMAN_SEASONS[ki][IDX.season] === s) return KAMAN_SEASONS[ki];
-    return null;
-  }
-  var k = key(G.cur.fr, G.cur.dec);
-  var sel = G.yearByName ? G.yearByName[name] : undefined;
-  if (sel !== undefined && sel !== null) {
-    var yrs = POOL_YEARS.get(k);
-    var arr = yrs ? yrs.get(name) : null;
-    if (arr) for (var i = 0; i < arr.length; i++) if (arr[i][IDX.season] === sel) return arr[i];
-  }
-  var pool = POOLS.get(k);
-  return pool ? pool.get(name) : null;
-}
 
-function confirmPick(bucket) {
-  if (!G.selected) return;
-  var row = resolveRow(G.selected);
-  if (!row || !rowDraftable(row)) return;
-  var opts = rowOpenBuckets(row);
-  if (opts.indexOf(bucket) === -1) bucket = opts[0];
-  G.drafted.add(G.selected);   // classic/pro: by player name; Kaman: by season (each once)
-  G.filled[bucket] += 1;
-  G.picks.push({ row: row, fr: MODE === "kaman" ? null : G.cur.fr, dec: MODE === "kaman" ? null : G.cur.dec, slot: bucket });
-  if (MODE === "cap") {
-    var paid = effCost(G.selected);
-    if (paid != null) {
-      G.picks[G.picks.length - 1].cost = paid;
-      G.budget -= paid;
-    }
-    G.fireSale = false;   // the sale ends with the selection
-  }
-  nextRound(true);
-}
+
+
 
 /* ---------- engine (position-independent) ---------- */
 
-function engine(pickRows, slots) {
-  var sumV = 0, sumUsage = 0, sumSp = 0, sumObpm = 0, sumDbpm = 0;
-  pickRows.forEach(function (row) {
-    sumV += valueOf(row);
-    sumUsage += row[IDX.usage];
-    sumSp += row[IDX.sp];
-    sumObpm += row[IDX.obpm];
-    sumDbpm += row[IDX.dbpm];
-  });
-  var usageTax = SC.USAGE_RATE * Math.max(0, sumUsage - SC.USAGE_BUDGET);
-  var spacingTax = SC.SPACING_TAX * Math.max(0, SC.SPACERS_REQ - sumSp);
-  var spacingBonus = (SC.SPACING_BONUS || 0) * Math.max(0, sumSp - SC.SPACERS_REQ);
 
-  // Backcourt / wing defense penalties on the two G-slot and two F-slot players
-  // (needs slot info): both bottom-25% defenders by DBPM = -2, both bottom-10% = -3
-  // (ladder, per position group).
-  var backDefTax = 0, backDefTier = 0, wingDefTax = 0, wingDefTier = 0;
-  if (slots) {
-    var gr = [], fr = [];
-    for (var s = 0; s < pickRows.length; s++) {
-      if (slots[s] === "G") gr.push(pickRows[s]);
-      else if (slots[s] === "F") fr.push(pickRows[s]);
-    }
-    if (gr.length === 2) {
-      var da = gr[0][IDX.dbpm], db = gr[1][IDX.dbpm];
-      if (da <= SC.GD_BOTTOM10 && db <= SC.GD_BOTTOM10) { backDefTax = SC.BACKCOURT_D_TAX_10; backDefTier = 10; }
-      else if (da <= SC.GD_BOTTOM25 && db <= SC.GD_BOTTOM25) { backDefTax = SC.BACKCOURT_D_TAX_25; backDefTier = 25; }
-    }
-    if (fr.length === 2) {
-      var fa = fr[0][IDX.dbpm], fb = fr[1][IDX.dbpm];
-      if (fa <= SC.FD_BOTTOM10 && fb <= SC.FD_BOTTOM10) { wingDefTax = SC.WING_D_TAX_10; wingDefTier = 10; }
-      else if (fa <= SC.FD_BOTTOM25 && fb <= SC.FD_BOTTOM25) { wingDefTax = SC.WING_D_TAX_25; wingDefTier = 25; }
-    }
-  }
-
-  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax;
-  var net = score - BASELINE;
-  var p = phi(net / SC.NET_SD);
-  return {
-    sumV: sumV, sumUsage: sumUsage, sumSp: sumSp,
-    sumObpm: sumObpm, sumDbpm: sumDbpm,
-    usageTax: usageTax, spacingTax: spacingTax, spacingBonus: spacingBonus,
-    backDefTax: backDefTax, backDefTier: backDefTier,
-    wingDefTax: wingDefTax, wingDefTier: wingDefTier,
-    score: score, net: net, p: p,
-    projW: CFG.GAMES_IN_SEASON * p,
-    winTally: Math.min(CFG.GAMES_IN_SEASON, Math.ceil(CFG.GAMES_IN_SEASON * p)),
-    p82: Math.pow(p, CFG.GAMES_IN_SEASON) + CFG.GAMES_IN_SEASON * Math.pow(p, CFG.GAMES_IN_SEASON - 1) * (1 - p)
-  };
-}
 
 /* ---------- formatting ---------- */
 
@@ -1071,32 +698,97 @@ function wireDonate() {
 
 function renderIntro() {
   G = null;
+  if (window.T82DUI) T82DUI.stop();   // leaving a duel screen kills its poll
   document.body.classList.remove("drafting");
   renderPips();
   app().innerHTML =
     '<section class="ticket intro">' +
-      '<h1 class="intro-title">Go 82\u20130</h1>' +
-      '<p class="intro-lead">An \u201C82\u20130\u201D-style game, but driven by advanced metrics instead of just adding up counting stats. Pick a team that would actually win IRL. Try to go undefeated. Compare your team vs the all-timers.</p>' +
+      '<div class="intro-toprow"><button class="arena-chip" id="arenaChip" type="button">\uD83C\uDFDF Arena</button></div>' +
+      '<h1 class="intro-title" id="introTitle">Go 82\u20130</h1>' +
+      '<p class="intro-lead">An \u201C82\u20130\u201D-style game, but driven by advanced metrics instead of just adding up counting stats. Pick a team that would actually win IRL. Try to go undefeated.</p>' +
+      '<button class="daily-strip" id="dailyStrip" hidden></button>' +
       '<button class="btn btn-primary btn-block presti-spin" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
-      '<button class="btn btn-primary btn-block presti-spin" id="startPro">\uD83C\uDFC6 Pro \u00B7 pick the best seasons from memory</button>' +
       '<button class="btn btn-primary btn-block presti-spin" id="startCap">\uD83D\uDC10 Presti Mode \u00B7 Salary Cap &amp; Random</button>' +
+      '<button class="btn btn-primary btn-block presti-spin weekly-tile" id="startWeekly" hidden>' +
+        '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
+        '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
+      '<button class="btn btn-block more-modes" id="startPro">\uD83C\uDFC6 Pro \u00B7 pick the best seasons from memory</button>' +
+      '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
+      '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       '<p class="eyebrow">Draft</p>' +
       "<p>Draft a 5-man roster with 2 guards, 2 forwards, and a center. You get a random team from a random decade. Pick a guy who played for that team in that era. Pick any season he played. You can reroll the era and the team once each per draft.</p>" +
       '<p class="eyebrow">Winning</p>' +
       "<p>Recommended to have at least <strong>3 shooters</strong> and <strong>1 overqualified role player</strong>. Based mostly on OBPM and DBPM (why we only go back to 1974) + some minor custom tweaks. Some players from low/no 3pt era get 3pt shooter bonuses based on reputation and vibes.</p>" +
-      '<button class="btn btn-primary btn-block btn-dark presti-spin" id="startKaman">\uD83E\uDDB4 Kaman Mode \u00B7 KAMAN</button>' +
     "</section>";
   function start(mode) {
     if (DATA_READY) { newGame(mode); return; }
     PENDING_MODE = mode;   // data still downloading — remember the choice and launch the moment it lands
-    ["startClassic", "startPro", "startCap", "startKaman"].forEach(function (id) { var b = el(id); if (b) b.disabled = true; });
-    var pressed = el(mode === "classic" ? "startClassic" : mode === "pro" ? "startPro" : mode === "cap" ? "startCap" : "startKaman");
+    ["startClassic", "startPro", "startCap"].forEach(function (id) { var b = el(id); if (b) b.disabled = true; });
+    var pressed = el(mode === "classic" ? "startClassic" : mode === "pro" ? "startPro" : "startCap");
     if (pressed) pressed.textContent = "Loading players\u2026";
+  }
+  function queue(fn, btn) {
+    if (DATA_READY) { fn(); return; }
+    PENDING_FN = fn;
+    if (btn) btn.disabled = true;
   }
   el("startClassic").addEventListener("click", function () { start("classic"); });
   el("startPro").addEventListener("click", function () { start("pro"); });
-  el("startKaman").addEventListener("click", function () { start("kaman"); });
   el("startCap").addEventListener("click", function () { start("cap"); });
+  el("startDuel").addEventListener("click", function () {
+    queue(function () { if (window.T82DUI) T82DUI.lobby(); }, el("startDuel"));
+  });
+  el("arenaChip").addEventListener("click", function () {   // no site data needed — opens instantly
+    if (window.T82ARENA) T82ARENA.route();
+  });
+  el("startLeague").addEventListener("click", function () {   // league office needs no site data either
+    if (window.T82LGUI) T82LGUI.lobby();
+  });
+
+  // kaman left the menu — five quick taps on the title bring Him back
+  var kTaps = [], title = el("introTitle");
+  if (title) title.addEventListener("click", function () {
+    var now = Date.now();
+    kTaps = kTaps.filter(function (t) { return now - t < 2500; });
+    kTaps.push(now);
+    if (kTaps.length >= 5) { kTaps = []; start("kaman"); }
+  });
+
+  // daily strip — the server mints today's seed; anonymous can play, sign-in makes it count
+  if (window.T82ACC) T82ACC.fetchDaily().then(function (d) {
+    var strip = el("dailyStrip");
+    if (!strip || !d || !d.ok || G) return;
+    var hrs = Math.max(1, Math.round((d.endsInS || 0) / 3600));
+    var label = d.mode === "cap" ? "Presti" : d.mode.charAt(0).toUpperCase() + d.mode.slice(1);
+    strip.textContent = "\uD83D\uDCC5 Today's board \u00B7 " + label + " \u00B7 " + hrs + "h left";
+    strip.hidden = false;
+    strip.addEventListener("click", function () {
+      queue(function () {
+        newGame(d.mode, d.seed);
+        if (G) G.official = { label: d.label };
+      }, strip);
+    });
+  });
+
+  // this-week tile — self-marketing: name, blurb, base chip, days left, your best
+  if (window.T82ACC && window.T82CH) T82ACC.fetchWeekly().then(function (w) {
+    var tile = el("startWeekly");
+    if (!tile || !w || !w.ok || !T82CH.byId[w.challengeId] || G) return;
+    var ch = T82CH.byId[w.challengeId];
+    el("wkName").textContent = w.name;
+    el("wkBlurb").textContent = w.blurb;
+    var days = Math.max(1, Math.ceil((w.endsInS || 0) / 86400));
+    var baseChip = w.base === "cap" ? "Presti rules" : w.base === "pro" ? "Pro rules" : "Classic rules";
+    el("wkMeta").textContent = baseChip + " \u00B7 " + days + (days === 1 ? " day" : " days") + " left" +
+      (w.best ? " \u00B7 your best: " + w.best.wins + " W" : "");
+    tile.hidden = false;
+    tile.addEventListener("click", function () {
+      queue(function () {
+        newGame(ch.base, undefined, ch);
+        if (G) G.weekly = { challengeId: ch.id, week: w.week };
+      }, tile);
+    });
+  });
 }
 
 /* ---------- draft ---------- */
@@ -1132,25 +824,8 @@ function lineupLastName(name) {
    slot) or swap (another player's slot, if both are eligible both ways). Tap the
    same token again to cancel. Eligibility uses career-wide positions. */
 
-function swapTargetsFor(pickIdx) {
-  var p = G.picks[pickIdx];
-  var elig = rowBuckets(p.row);
-  var t = { open: {}, picks: {} };
-  BUCKETS.forEach(function (b) {
-    if (b === p.slot) return;                       // moving within the same position is a no-op
-    if (elig.indexOf(b) !== -1 && G.filled[b] < capOf(b)) t.open[b] = true;
-  });
-  G.picks.forEach(function (q, j) {
-    if (j === pickIdx || q.slot === p.slot) return;
-    if (elig.indexOf(q.slot) !== -1 && rowBuckets(q.row).indexOf(p.slot) !== -1) t.picks[j] = true;
-  });
-  return t;
-}
-function pickHasMoves(i) {
-  var t = swapTargetsFor(i);
-  if (Object.keys(t.open).length) return true;
-  return Object.keys(t.picks).length > 0;
-}
+
+
 function afterLineupChange() {
   G.moveIdx = null;
   // a move can open/close a bucket, which can flip pool eligibility and the current selection
@@ -1160,18 +835,8 @@ function afterLineupChange() {
   }
   refreshPool();   // re-renders pool rows + tray
 }
-function doLineupMove(pickIdx, bucket) {
-  var p = G.picks[pickIdx];
-  G.filled[p.slot] -= 1;
-  G.filled[bucket] += 1;
-  p.slot = bucket;
-  afterLineupChange();
-}
-function doLineupSwap(i, j) {
-  var a = G.picks[i], b = G.picks[j];
-  var s = a.slot; a.slot = b.slot; b.slot = s;      // counts per bucket are unchanged
-  afterLineupChange();
-}
+
+
 
 function lineupRailHtml() {
   var moving = G.moveIdx != null ? G.moveIdx : null;
@@ -1784,46 +1449,20 @@ function setupGoatFireworks(autoArm) {
    cross of the 82-0 line fires the existing goat fireworks. Visual-first so it lands
    fully with sound off; buzz() is the only sugar layer (Android; silent on iOS). */
 
-var HH_SEGMENTS = [
-  { label: "COLD",      m: 1.0,  odds: 5,  lvl: 0 },
-  { label: "WARM",      m: 1.2,  odds: 25, lvl: 1 },
-  { label: "HOT",       m: 1.35, odds: 28, lvl: 2 },
-  { label: "ON FIRE",   m: 1.5,  odds: 28, lvl: 3 },
-  { label: "SUPERNOVA", m: 2.0,  odds: 14, lvl: 4 }
-];
-var HH_BONUS_SCALE = 0.67;   // hot-hand bonus dialed down a flat 33%
 
 // Net at which the season flips to 82-0 (smallest net where ceil(82*phi(net/NET_SD)) hits 82).
-function hhNet82() {
-  var lo = 0, hi = 80;
-  for (var k = 0; k < 48; k++) {
-    var mid = (lo + hi) / 2;
-    if (Math.ceil(CFG.GAMES_IN_SEASON * phi(mid / SC.NET_SD)) >= CFG.GAMES_IN_SEASON) hi = mid; else lo = mid;
-  }
-  return hi;
-}
+
 
 // Weighted-random starter, biased hard toward value (your star tends to erupt; a
 // near-certain whiff on the weakest pick stays rare).
-function hhPickHot() {
-  var w = G.picks.map(function (p) { var v = Math.max(0.5, valueOf(p.row)); return v * v; });
-  var sum = w.reduce(function (a, b) { return a + b; }, 0), r = Math.random() * sum;
-  for (var i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; }
-  return w.length - 1;
-}
 
-function hhSpinSeg() {
-  var r = Math.random() * 100, acc = 0;
-  for (var i = 0; i < HH_SEGMENTS.length; i++) { acc += HH_SEGMENTS[i].odds; if (r < acc) return i; }
-  return 0;
-}
+
+
 
 // The overlay now fires on every drafted Presti result under 82-0, but only the
 // exact-81 result gets the real Heat Check (spin + possible boost). Everything
 // else gets the same lever pull as a "reveal my results" gate, then dismisses.
-function hhEligible(e) {
-  return !!(MODE === "cap" && G.picks && G.picks.length >= CFG.ROUNDS && e.winTally < CFG.GAMES_IN_SEASON);
-}
+
 
 // QA hook: add ?clutch=1 to the URL to force the 81-win Heat Check sequence on any
 // Presti result, so the clutch path can be tested without drafting an exact-81 team.
@@ -1857,8 +1496,8 @@ function hotHand(e) {
         '<div class="hh-step" id="hhStep2">' +
           '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhHeatLabel">\u00B7</div></div>' +
         '<div class="hh-step" id="hhStep3">' +
-          '<div class="hh-net" id="hhNet">' + e.winTally + '</div>' +
-          '<div class="hh-netcap">WINS</div>' +
+          '<div class="hh-net" id="hhNet">' + signed1(e.net) + '</div>' +
+          '<div class="hh-netcap">NET RATING</div>' +
           '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-fill-bonus" id="hhFillBonus"></span><span class="hh-thresh"></span></div></div>' +
         '<div class="hh-verdict" id="hhVerdict"></div>' +
         '<div class="hh-actions" id="hhActions">' +
@@ -1907,11 +1546,16 @@ function hotHand(e) {
   }
   if (clutch) window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
 
-  function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); setTimeout(maybeShowRecap, 700); }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
   function verdict() {
     window.t82track && window.t82track("heatcheck_result", { mode: MODE, segment: seg.label, hit_82: win ? 1 : 0 });
+    // Final record is now known (any non-COLD segment moves it): write the Tribune.
+    requestHeadline(e,
+      segIdx > 0 ? hhWins(newNet) : e.winTally,
+      segIdx > 0 ? newNet : e.net,
+      segIdx > 0 ? { player: shareSurname(G.picks[hotIdx].row[IDX.name]), tier: seg.label } : null);
     if (segIdx > 0) {                                            // COLD = nobody caught fire: no flame, no highlight, no boost
       G.hotIdx = hotIdx;
       G.hotLvl = seg.lvl;                                        // tier reached (WARM 1 ... SUPERNOVA 4) -> picks the share emoji
@@ -1948,7 +1592,8 @@ function hotHand(e) {
       }
     }
     var v = ov.querySelector("#hhVerdict");
-    var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + signed1(newNet) + '</div><div class="hh-netcap">NET RATING</div>';
+    var finalW = segIdx > 0 ? G.hotWins : e.winTally;   // wins are now the static reveal (ticker showed net rating)
+    var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + finalW + "\u2013" + (CFG.GAMES_IN_SEASON - finalW) + '</div><div class="hh-netcap">FINAL RECORD</div>';
     if (win) {
       ov.classList.add("won");
       v.innerHTML = netHtml;
@@ -1972,10 +1617,10 @@ function hotHand(e) {
     (function frame(now) {
       if (!ov.parentNode) return;
       var t = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - t, 4.5);   // hard ease-out = crawl/stall near the line
-      var val = start + (newNet - start) * k;                                 // animate net under the hood...
-      var w = hhWins(val);                                                    // ...but show WINS climbing toward 82
-      numEl.textContent = w;
-      var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // portion the Hot Hand added, in red
+      var val = start + (newNet - start) * k;                                 // net rating is what climbs on-screen now
+      var w = hhWins(val);                                                    // wins tracked under the hood for the bar + verdict
+      numEl.textContent = signed1(val);                                       // show NET RATING ticking; final record is revealed static at verdict
+      var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // bar still fills toward 82-0 in red
       bonusEl.style.width = (bonusFrac * 100).toFixed(2) + "%";
       if (w >= CFG.GAMES_IN_SEASON) numEl.classList.add("over");
       if (t < 1) requestAnimationFrame(frame); else verdict();
@@ -2232,6 +1877,298 @@ function shareOrCopy(txt) {
   copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!"); else revealShareText(txt); });
 }
 
+/* ---------- season recap: The True 82 Tribune ----------
+   Every finished season ends on the Tribune's spinning front page — and for
+   non-Heat-Check games the paper IS the reveal: results render underneath, the
+   record breaks as the headline. Two-phase model calls keep costs down:
+     phase 1 (every season)  — nickname + dek from POST /api/recap {phase:"headline"}
+     phase 2 (READ MORE only) — the four-sentence story {phase:"article"}
+   Both phases fail soft to local template copy so the paper ALWAYS lands. Model
+   text is inserted with textContent only — never innerHTML — untrusted output. */
+
+var RECAP_TIERS = [
+  [82, "perfect"], [81, "heartbreak"], [74, "record"], [73, "matched"],
+  [70, "historic"], [65, "great"], [58, "contender"], [50, "solid"],
+  [42, "forgettable"], [33, "mediocre"], [20, "bad"], [8, "awful"], [1, "shame"], [0, "futile"]
+];
+function recapTier(w) { for (var i = 0; i < RECAP_TIERS.length; i++) if (w >= RECAP_TIERS[i][0]) return RECAP_TIERS[i][1]; return "futile"; }
+
+// Human-readable composition signals from the engine result — the same facts the
+// Scoring Card shows, phrased for a writer instead of a ledger.
+function recapFitNotes(e) {
+  var n = [];
+  if (e.usageTax > 0) n.push("shot demand runs over budget: too many high-usage scorers sharing one ball");
+  if (e.spacingBonus > 0) n.push("surplus shooting: extra floor-spacers stretch every defense");
+  else if (e.spacingTax > 0) n.push("only " + e.sumSp + " of " + SC.SPACERS_REQ + " required floor-spacers: the floor shrinks in the half court");
+  if (e.backDefTax > 0) n.push("both starting guards rank bottom-" + e.backDefTier + "% defensively: the perimeter leaks");
+  if (e.wingDefTax > 0) n.push("both forwards rank bottom-" + e.wingDefTier + "% defensively: the frontcourt gets attacked");
+  if (!n.length) n.push("a balanced five: no structural weakness the model could tax");
+  return n;
+}
+
+function buildRecapPayload(e, finalWins, finalNet, hh) {
+  return {
+    mode: MODE,
+    wins: finalWins,
+    net: Math.round(finalNet * 10) / 10,
+    hh: hh || null,
+    players: picksInSlotOrder().map(function (x) {
+      var r = x.p.row;
+      return { slot: x.p.slot, yr: r[IDX.season], name: r[IDX.name], v: Math.round(valueOf(r) * 10) / 10 };
+    }),
+    notes: recapFitNotes(e)
+  };
+}
+
+// Rule-based fallback copy. Nickname from the loudest fit signal, story from a
+// tier-toned template. Deliberately plain next to the model's prose, never broken.
+function localHeadline(p) {
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  var w = p.wins, l = 82 - w;
+  var byV = p.players.slice().sort(function (a, b) { return b.v - a.v; });
+  var noteStr = (p.notes[0] || "").toLowerCase();
+  var nick;
+  if (w >= 82) nick = pick(["The Inevitables", "The Perfect Machine", "The Immortals"]);
+  else if (w === 0) nick = pick(["The Winless Wonders", "The Empty Column"]);
+  else if (noteStr.indexOf("guards rank") >= 0 || noteStr.indexOf("forwards rank") >= 0) nick = pick(["The Matadors", "The Turnstiles", "The Open Doors"]);
+  else if (noteStr.indexOf("one ball") >= 0) nick = pick(["The Five Alphas", "The One-Ball Army"]);
+  else if (noteStr.indexOf("floor shrinks") >= 0) nick = pick(["The Bricklayers", "The Cramped Quarters"]);
+  else if (noteStr.indexOf("surplus shooting") >= 0) nick = pick(["The Splash Dynasty", "The Greenlight Five"]);
+  else nick = pick(["The Company Men", "The Blueprint", "The Working Class"]);
+  return { nickname: nick, dek: "How " + byV[0].name + " and company landed at " + w + "-" + l, source: "fallback" };
+}
+function localArticle(p) {
+  var w = p.wins, l = 82 - w, tier = recapTier(w);
+  var byV = p.players.slice().sort(function (a, b) { return b.v - a.v; });
+  var star = byV[0].name, second = byV[1].name;
+  var noteStr = (p.notes[0] || "").toLowerCase();
+  var open = {
+    perfect: "The final buzzer confirmed it: 82-0, a season without a single loss.",
+    heartbreak: "It ends 81-1, one win from immortality and forever short of it.",
+    record: "At " + w + "-" + l + ", this team did what no NBA season ever had and buried the 73-win mark.",
+    matched: "At 73-9, this team walked all the way up to history and signed its name beside it.",
+    historic: "A " + w + "-win season put this group in company only a handful of teams have ever kept.",
+    great: "At " + w + "-" + l + ", this was a genuinely feared team that never quite touched legend.",
+    contender: "The " + w + "-" + l + " record reads like what it was: a real contender, start to finish.",
+    solid: "It closed " + w + "-" + l + ", the kind of good season nobody will bring up in five years.",
+    forgettable: "At " + w + "-" + l + ", the season lived just north of .500 and south of anyone's memory.",
+    mediocre: w + "-" + l + " is the treadmill: never bad enough to look away, never good enough to matter.",
+    bad: "The season closed " + w + "-" + l + ", and the post-mortem writes itself.",
+    awful: "At " + w + "-" + l + ", this was one of the roughest seasons in memory.",
+    shame: w + "-" + l + " puts this team beneath the famous tankers, and they weren't even trying to lose.",
+    futile: "It ends 0-82, a season of perfect futility that history will never let go of."
+  }[tier];
+  var mid = (p.notes.length && noteStr.indexOf("balanced") < 0)
+    ? "Around him, the fit told the story: " + p.notes[0].replace(":", " \u2014") + "."
+    : "Around him the pieces fit cleanly, with no structural flaw to hide.";
+  var close = w >= 65 ? "With " + second + " giving the nights their shape, the record came to feel less like luck than arithmetic."
+    : w >= 42 ? "Even with " + second + " steadying the group, the record landed exactly where the construction deserved."
+    : "Not even " + second + " could hold it together, and the roster's flaws wrote the record all season long.";
+  return {
+    article: open + " " + star + " carried the nightly burden and set the terms of the fight. " + mid + " " + close,
+    source: "fallback"
+  };
+}
+
+// Phase 1: one headline request per season. Fired from showResults (non-clutch) or
+// from the Heat Check verdict() with post-boost totals.
+function requestHeadline(e, finalWins, finalNet, hh) {
+  if (G.recapReq) return;
+  G.recapReq = 1;
+  G.recapPayload = buildRecapPayload(e, finalWins, finalNet, hh);
+  G.recapWins = finalWins;
+  var token = G, settled = false;
+  function settle(d) {
+    if (settled || token !== G) return;
+    settled = true;
+    G.recapHead = d;
+    stampHeadline();
+  }
+  var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localHeadline(G.recapPayload)); }, 14000);
+  try {
+    fetch("/api/recap", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(Object.assign({ phase: "headline" }, G.recapPayload)),
+      signal: ac ? ac.signal : undefined
+    }).then(function (r) { return r.json(); })
+      .then(function (d) { clearTimeout(timer); settle(d && d.ok && d.nickname ? d : localHeadline(G.recapPayload)); })
+      .catch(function () { clearTimeout(timer); settle(localHeadline(G.recapPayload)); });
+  } catch (err) { clearTimeout(timer); settle(localHeadline(G.recapPayload)); }
+}
+
+// Phase 2: the story — only ever fired by READ MORE, written to match the nickname
+// already in print (even a fallback nickname, so the piece never contradicts it).
+function requestArticle() {
+  if (G.recapArt || G.recapArtReq || !G.recapPayload || !G.recapHead) return;
+  G.recapArtReq = 1;
+  var token = G, settled = false;
+  function settle(d) {
+    if (settled || token !== G) return;
+    settled = true;
+    G.recapArt = d;
+    inkInArticle();
+  }
+  var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localArticle(G.recapPayload)); }, 22000);
+  try {
+    fetch("/api/recap", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(Object.assign({ phase: "article", nickname: G.recapHead.nickname }, G.recapPayload)),
+      signal: ac ? ac.signal : undefined
+    }).then(function (r) { return r.json(); })
+      .then(function (d) { clearTimeout(timer); settle(d && d.ok && d.article ? d : localArticle(G.recapPayload)); })
+      .catch(function () { clearTimeout(timer); settle(localArticle(G.recapPayload)); });
+  } catch (err) { clearTimeout(timer); settle(localArticle(G.recapPayload)); }
+}
+
+// Post-Heat-Check path only: the spin ceremony already revealed the results, so
+// the paper follows it once, non-gated.
+function maybeShowRecap() {
+  if (!G.recapPayload || G.recapAuto || G.screen !== "results") return;
+  if (document.querySelector(".hh-overlay") || document.querySelector(".np-overlay")) return;
+  G.recapAuto = 1;
+  showNewspaper(false);
+}
+
+function recapChip() {
+  if (document.getElementById("npChip")) return;
+  var c = document.createElement("button");
+  c.id = "npChip"; c.type = "button"; c.className = "np-chip";
+  c.textContent = "\uD83D\uDCF0 EXTRA! EXTRA!";
+  c.addEventListener("click", function () { showNewspaper(false); });
+  document.body.appendChild(c);
+}
+
+var NP_TICK_HEAD = ["HOT OFF THE PRESS", "STOP THE PRESSES", "SETTING TYPE", "INK STILL DRYING"];
+var NP_TICK_ART = ["REWRITING THE LEDE", "CALLING THE COPY DESK", "TELETYPE INCOMING", "HOLDING PAGE ONE"];
+
+function showNewspaper(gate) {
+  if (!G.recapPayload) return;
+  var chip = document.getElementById("npChip"); if (chip) chip.remove();
+  if (document.querySelector(".np-overlay")) return;
+  var wins = G.recapWins, losses = CFG.GAMES_IN_SEASON - wins;
+
+  var ov = document.createElement("div"); ov.className = "np-overlay" + (gate ? " np-gate" : "");
+  var paper = document.createElement("div"); paper.className = "np-paper" + (G.recapShown ? " np-quick" : "");
+  paper.setAttribute("role", "dialog"); paper.setAttribute("aria-label", "Season recap");
+  function div(cls, txt) { var x = document.createElement("div"); x.className = cls; if (txt != null) x.textContent = txt; return x; }
+
+  var mast = div("np-mast");
+  mast.appendChild(div("np-mast-side", npDate()));
+  mast.appendChild(div("np-mast-name", "The True 82 Tribune"));
+  mast.appendChild(div("np-mast-side np-right", "SPORTS FINAL \u00B7 5\u00A2"));
+  paper.appendChild(mast);
+  if (wins >= CFG.GAMES_IN_SEASON || wins === 0) paper.appendChild(div("np-banner", wins ? "HISTORY: A PERFECT SEASON" : "HISTORY: A PERFECT DISASTER"));
+
+  var headWrap = div("np-headwrap");
+  paper.appendChild(headWrap);
+  var ticker = div("np-ticker", NP_TICK_HEAD[0]);
+  paper.appendChild(ticker);
+
+  var art = div("np-article");
+  paper.appendChild(art);
+
+  var acts = div("np-actions");
+  var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read"; read.textContent = "READ MORE";
+  acts.appendChild(read);
+  paper.appendChild(acts);
+
+  var under = div("np-under");
+  var skip = document.createElement("button"); skip.type = "button"; skip.className = "presti-spin np-underbtn"; skip.textContent = "SKIP TO RESULTS";
+  var again = document.createElement("button"); again.type = "button"; again.className = "presti-spin np-underbtn"; again.textContent = "RUN IT BACK";
+  under.appendChild(skip); under.appendChild(again);
+
+  ov.appendChild(paper); ov.appendChild(under);
+  document.body.appendChild(ov);
+  buzz(20);
+
+  var tickTimer = setInterval(function () {
+    var arr = paper.classList.contains("printing-art") ? NP_TICK_ART : NP_TICK_HEAD;
+    ticker.textContent = arr[Math.floor(Date.now() / 1400) % arr.length];
+  }, 1400);
+
+  function close(fireworksOk) {
+    clearInterval(tickTimer);
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
+    recapChip();
+  }
+  skip.addEventListener("click", function () {
+    window.t82track && window.t82track("recap_skip", { mode: MODE });
+    close(true);
+  });
+  again.addEventListener("click", function () {
+    clearInterval(tickTimer);
+    window.t82track && window.t82track("replay", { mode: MODE });
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    newGame();
+  });
+  ov.addEventListener("click", function (ev) { if (ev.target === ov) { window.t82track && window.t82track("recap_skip", { mode: MODE }); close(true); } });
+  read.addEventListener("click", function () {
+    if (!paper.classList.contains("open")) {
+      paper.classList.add("open");
+      read.textContent = "CLOSE STORY";
+      if (!G.recapReadTracked) { G.recapReadTracked = 1; window.t82track && window.t82track("recap_read", { mode: MODE }); }
+      if (G.recapArt) { inkInArticle(); }
+      else { paper.classList.add("printing-art"); ticker.style.display = ""; buildGhostArticle(); requestArticle(); }
+    } else {
+      paper.classList.remove("open");
+      read.textContent = "READ MORE";
+    }
+  });
+
+  function buildGhostArticle() {
+    art.textContent = "";
+    art.appendChild(div("np-byline", "TELETYPE \u2014 STORY DEVELOPING"));
+    var g = div("np-ghostbody");
+    for (var i = 0; i < 6; i++) g.appendChild(div("np-gline" + (i === 5 ? " short" : "")));
+    art.appendChild(g);
+  }
+
+  // Fill-in renderers live on G so requestHeadline/requestArticle can reach the
+  // open paper without holding stale DOM refs across games.
+  G.npStamp = function () {
+    if (!ov.parentNode || !G.recapHead) return;
+    headWrap.textContent = "";
+    var h = div("np-head np-stamp", String(G.recapHead.nickname).toUpperCase() + " FINISH " + wins + "\u2013" + losses);
+    headWrap.appendChild(h);
+    if (G.recapHead.dek) headWrap.appendChild(div("np-dek", G.recapHead.dek));
+    if (!paper.classList.contains("printing-art")) { ticker.style.display = "none"; }
+    paper.classList.add("ready");
+    buzz(14);
+    if (!G.recapShownTracked) {
+      G.recapShownTracked = 1;
+      window.t82track && window.t82track("recap_shown", { mode: MODE, wins: wins, segment: G.recapHead.source || "api", variant: String(G.recapHead.nickname).slice(0, 78) });
+    }
+  };
+  G.npInk = function () {
+    if (!ov.parentNode || !G.recapArt) return;
+    paper.classList.remove("printing-art");
+    ticker.style.display = "none";
+    art.textContent = "";
+    art.appendChild(div("np-byline", "From the Tribune wire desk"));
+    var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
+    art.appendChild(body);
+  };
+
+  if (G.recapHead) G.npStamp();
+  else {
+    var gh = div("np-headghost");
+    gh.appendChild(div("np-gline")); gh.appendChild(div("np-gline")); gh.appendChild(div("np-gline short"));
+    headWrap.appendChild(gh);
+  }
+  if (paper.classList.contains("open") && G.recapArt) G.npInk();
+  G.recapShown = 1;
+
+  function npDate() {
+    var m = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"], t = new Date();
+    return m[t.getMonth()] + " " + t.getDate() + ", " + t.getFullYear();
+  }
+}
+function stampHeadline() { if (G.npStamp) G.npStamp(); }
+function inkInArticle() { if (G.npInk) G.npInk(); }
+
 function showResults() {
   G.screen = "results";
   if (MODE === "kaman") {
@@ -2290,7 +2227,8 @@ function renderResults(e, keepScroll) {
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml + "</section>" +
     '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
-    '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">Run it back</button></div>';
+    '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">Run it back</button></div>' +
+    '<p class="run-status" id="runStatus"></p>';
 
   el("againBtn").addEventListener("click", function () {
     window.t82track && window.t82track("replay", { mode: MODE });
@@ -2307,8 +2245,19 @@ function renderResults(e, keepScroll) {
     shareOrCopy(shareText(e2));
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
-  if (e.winTally >= CFG.GAMES_IN_SEASON) setTimeout(fireWL, 360);   // drafted 82-0 -> burst the W/L box
-  if (hhEligible(e)) hotHand(e);     // the 82-0 lever: offered on every drafted result
+  // The Tribune is now the season-end ceremony. The Heat Check lever survives ONLY
+  // when a real spin is pending (exactly 81 wins in Presti, or the QA flag) — its
+  // old non-clutch "reveal my results" role is the paper's job now. For gated
+  // papers the drafted-82-0 W/L burst waits for the paper to close.
+  var clutchPending = hhEligible(e) && (FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1);
+  if (clutchPending) {
+    hotHand(e);                       // recap request fires from verdict() with post-boost totals
+  } else if (MODE !== "kaman") {
+    requestHeadline(e, e.winTally, e.net, null);
+    G.recapAuto = 1;
+    G.recapGateFw = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
+    showNewspaper(true);
+  }
   window.scrollTo(0, scrollY);
 }
 
@@ -2384,7 +2333,13 @@ function renderKamanResults() {
 
 function showError(msg) { app().innerHTML = '<div class="error-box">' + msg + "</div>"; }
 
-var DATA_READY = false, PENDING_MODE = null;
+var DATA_READY = false, PENDING_MODE = null, PENDING_FN = null;
+var DUEL_ID = (function () {   // ?duel=<id> deep link (duel-ui.js routes it once data lands)
+  try { return new URLSearchParams(location.search).get("duel"); } catch (e) { return null; }
+})();
+var LEAGUE_ID = (function () {   // ?league=<id> deep link — needs no site data, routes at boot
+  try { return new URLSearchParams(location.search).get("league"); } catch (e) { return null; }
+})();
 
 // Crests are decorative — load them separately and in the background so they never
 // block the game. If this fetch fails or is slow, the game plays fine with no crests.
@@ -2440,12 +2395,16 @@ function pingGames(method) {
 // self-heals on the next page load.
 function gameFinishedPings() {
   pingGames("POST");
+  try { if (window.T82ACC) T82ACC.submitRun(); } catch (e) {}   // core-truth replay submit (accounts.js); kaman self-skips
   setTimeout(fetchFootStats, 1500);
 }
 
 function boot() {
   bindHaptics();
-  renderIntro();     // the intro needs no player data — show it instantly instead of a loading screen
+  bindVisibilityResync();
+  if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }
+  else if (LEAGUE_ID && window.T82LGUI) { var lgi = LEAGUE_ID; LEAGUE_ID = null; T82LGUI.route(lgi); }
+  else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   loadCrests();      // crests download in the background, non-blocking
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
@@ -2456,7 +2415,9 @@ function boot() {
       DATA_READY = true;
       var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
       window.t82track && window.t82track("data_ready", { load_ms: ms });
-      if (PENDING_MODE) { var pm = PENDING_MODE; PENDING_MODE = null; newGame(pm); }   // player tapped a mode while data was still loading
+      if (DUEL_ID && window.T82DUI) { var di = DUEL_ID; DUEL_ID = null; T82DUI.route(di); }  // duel deep link wins the boot race
+      else if (PENDING_FN) { var pf = PENDING_FN; PENDING_FN = null; pf(); }               // queued daily/weekly launch
+      else if (PENDING_MODE) { var pm = PENDING_MODE; PENDING_MODE = null; newGame(pm); }   // player tapped a mode while data was still loading
     })
     .catch(function (err) {
       window.t82track && window.t82track("data_error", {});
