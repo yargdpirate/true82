@@ -50,6 +50,13 @@ Return ONLY a JSON object — no markdown fences, no commentary:
 
 article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on the on-court strengths and weaknesses of THIS composition — how these particular players do and don't fit — naming two to four of them by surname. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not use em dashes more than once.`;
 
+// Applied to BOTH phases (nickname + dek + body) so the whole Tribune shares one voice.
+// Override live from the Cloudflare dashboard with RECAP_VOICE — no redeploy needed.
+const DEFAULT_VOICE = `VOICE — render every word (nickname, dek, and story) in the voice of a 1920s newspaper sports barker: breathless and theatrical, thick with jazz-age slang and carnival flim-flam, fond of alliteration and big ballyhoo. Gloriously over-the-top and old-timey, never modern. Keep every length, format, and content rule above fully intact.`;
+
+// Appended AFTER the voice so it wins on recency: the flim-flam must obey format + length.
+const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the flim-flam will not fit inside the format and the length, trim the flim-flam, never the format or the count.`;
+
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method !== "POST") return new Response("method", { status: 405 });
@@ -112,6 +119,7 @@ COMPOSITION SIGNALS (how the five fit together):
 ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced five"}`;
 
   const isArticle = phase === "article";
+  const voice = env.RECAP_VOICE || DEFAULT_VOICE;
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : 18000);
   let resp;
@@ -128,7 +136,7 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
         model: env.RECAP_MODEL || "claude-sonnet-4-6",
         max_tokens: isArticle ? 2600 : 1400,
         thinking: { type: "enabled", budget_tokens: isArticle ? 1400 : 700 },
-        system: isArticle ? SYS_ARTICLE : SYS_HEADLINE,
+        system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + HARD,
         messages: [{ role: "user", content: user }]
       })
     });
