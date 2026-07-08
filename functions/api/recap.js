@@ -51,8 +51,10 @@ Return ONLY a JSON object — no markdown fences, no commentary:
 article — EXACTLY four natural-length sentences, 75 to 100 words total, written like the punchy opening paragraph of a Sports Illustrated column. Narrative, not analysis: no stat citations, no lists. Center it on the on-court strengths and weaknesses of THIS composition — how these particular players do and don't fit — naming two to four of them by surname. Mention personality only where a player is genuinely famous for it. Calibrate every word to the season tier and tone directive provided. If a late-season eruption is noted, you may weave it in. Never mention ratings, models, engines, video games, or drafting. Do not invent injuries, trades, or quotes. Do not use em dashes more than once.`;
 
 // Applied to BOTH phases (nickname + dek + body) so the whole Tribune shares one voice.
-// Override live from the Cloudflare dashboard with RECAP_VOICE — no redeploy needed.
-const DEFAULT_VOICE = `VOICE — render every word (nickname, dek, and story) in the voice of a 1920s newspaper sports barker: breathless and theatrical, thick with jazz-age slang and carnival flim-flam, fond of alliteration and big ballyhoo. Gloriously over-the-top and old-timey, never modern. Keep every length, format, and content rule above fully intact.`;
+// Override live from the Cloudflare dashboard with RECAP_VOICE — no redeploy of code needed.
+// To bring back the 1920s flim-flam barker, paste THIS into the RECAP_VOICE dashboard value:
+//   render every word (nickname, dek, and story) in the voice of a 1920s newspaper sports barker: breathless and theatrical, thick with jazz-age slang and carnival flim-flam, fond of alliteration and big ballyhoo, gloriously over-the-top and old-timey.
+const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk prose: vivid and confident, plain-spoken, never gimmicky or old-timey. Let the roster and the record carry it.`;
 
 // Appended AFTER the voice so it wins on recency: the flim-flam must obey format + length.
 const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the flim-flam will not fit inside the format and the length, trim the flim-flam, never the format or the count.`;
@@ -120,6 +122,12 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
 
   const isArticle = phase === "article";
   const voice = env.RECAP_VOICE || DEFAULT_VOICE;
+  // Headline thinking is OFF by default so titles land in ~3s instead of ~15s. Bring the
+  // slower, more-considered titles back by setting RECAP_HEADLINE_THINK to 1024 or more.
+  const headThink = Math.max(0, parseInt(env.RECAP_HEADLINE_THINK, 10) || 0);
+  const useThink = isArticle || headThink >= 1024;                 // article always thinks; headline only if dialed up
+  const thinkBudget = isArticle ? 1400 : headThink;
+  const maxTokens = isArticle ? 2600 : (useThink ? thinkBudget + 512 : 512);
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : 18000);
   let resp;
@@ -132,13 +140,12 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
         "x-api-key": env.ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01"
       },
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         model: env.RECAP_MODEL || "claude-sonnet-4-6",
-        max_tokens: isArticle ? 2600 : 1400,
-        thinking: { type: "enabled", budget_tokens: isArticle ? 1400 : 1024 },   // 1024 = Anthropic's minimum thinking budget; below it the request 400s
+        max_tokens: maxTokens,
         system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + HARD,
         messages: [{ role: "user", content: user }]
-      })
+      }, useThink ? { thinking: { type: "enabled", budget_tokens: thinkBudget } } : {}))
     });
   } catch (e) { clearTimeout(timer); return fail("timeout"); }
   clearTimeout(timer);
