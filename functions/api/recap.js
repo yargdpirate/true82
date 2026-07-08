@@ -34,7 +34,7 @@ function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIE
 
 const NICKNAME_RULES = `nickname — 2 to 4 words, Title Case, the name the league would give this exact team based on the players' collective real-world personalities and likely colelctive style of play. It must read as a PLURAL subject, because the headline is composed as "<NICKNAME> FINISH <record>" (e.g. "The Fragile Five Finish 61-21"). May begin with "The". Be EXTREMELY creative and memorable. Do not simply base the headline off of the fact that they are are group of superstars, and do not reference that they have trouble sharing the ball`;
 
-const SYS_HEADLINE = `You are the lead basketball columnist naming the front-page story minutes after the 82nd and final game of an NBA regular season. The roster is a fantasy draft of real players, each frozen at one real season of his career. Treat the season and record as established fact.`;
+const SYS_HEADLINE = `You are the creative Copy Editor naming the front-page title after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons. Treat the season and record as established fact.`;
 
 Return ONLY a JSON object — no markdown fences, no commentary:
 {"nickname": "...", "dek": "..."}
