@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#101418">
 <link rel="canonical" href="https://true82.net/can-you-go-82-0/">
 <title>Can an NBA Team Go 82-0? The Question Behind TRUE 82</title>
-<meta name="description" content="No NBA team has ever gone 82-0 — the best season on record is the 2015-16 Warriors' 73-9. Why perfection is so hard, the closest near-misses, and how TRUE 82 turns the question into a draft game.">
+<meta name="description" content="No NBA team has ever gone 82-0; the best season on record is the 2015-16 Warriors' 73-9. Why perfection is so hard, the closest near-misses, and how TRUE 82 turns the question into a draft game.">
 <meta property="og:title" content="Can an NBA team really go 82-0?">
 <meta property="og:description" content="No team ever has. The 73-9 Warriors came closest. TRUE 82 turns the question into a cross-era draft challenge.">
 <meta property="og:type" content="article">
@@ -20,6 +20,52 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
+<style>
+/* page-scoped: comparison table, formula block, ordered list for the 82-0 explainer */
+.content-page ol { margin: 10px 0; padding-left: 22px; }
+.content-page ol li { margin: 8px 0; }
+.t82-table-wrap { overflow-x: auto; margin: 12px 0; -webkit-overflow-scrolling: touch; }
+table.t82-compare { width: 100%; border-collapse: collapse; font-size: 13.5px; font-family: var(--body); }
+table.t82-compare caption { caption-side: top; text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--chalk-dim); padding-bottom: 6px; }
+table.t82-compare th, table.t82-compare td { padding: 7px 9px; text-align: left; border-bottom: 1px solid var(--tunnel-2); white-space: nowrap; }
+table.t82-compare thead th { font-family: var(--disp); font-weight: 600; color: var(--amber); letter-spacing: 0.02em; border-bottom: 1px solid var(--maple-line); }
+table.t82-compare td.num { font-family: var(--mono); }
+table.t82-compare tbody tr:last-child td { border-bottom: none; }
+.t82-formula { font-family: var(--mono); font-size: 13.5px; color: var(--chalk); background: var(--tunnel); border: 1px solid var(--tunnel-2); border-radius: 8px; padding: 10px 12px; margin: 10px 0; overflow-x: auto; }
+.t82-note { font-size: 13px; color: var(--chalk-dim); margin: 6px 0 0; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can an NBA team go 82-0?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No NBA team has ever finished a season 82-0. The best regular season on record is the 2015-16 Golden State Warriors' 73-9, which broke the 1995-96 Chicago Bulls' 72-10 mark."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is going 82-0 close to impossible?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A team would need roughly a 99.16% chance of winning every single game just to have a 50% shot at a perfect season. In a modern, high-scoring environment that works out to about a +38.8 net rating, a level no team in NBA history has come near. Season-long variance from travel, back-to-backs, injuries and cold shooting makes it even harder."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Who came closest to going undefeated in the NBA?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nobody has come close. The three most dominant regular seasons are the 2015-16 Golden State Warriors (73-9, +10.7 net rating), the 1995-96 Chicago Bulls (72-10, +13.4), and the 1971-72 Los Angeles Lakers (69-13, +10.7), each still far short of a perfect season. The Warriors opened 24-0 and the Lakers won 33 straight, still the longest streak in NBA history."
+      }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <header class="site-head">
@@ -31,21 +77,46 @@
 
   <p class="lead">No NBA team has ever finished a season 82&#8211;0. The best regular season on record is the 2015&#8211;16 Golden State Warriors' 73&#8211;9, which broke the 72&#8211;10 mark the 1995&#8211;96 Chicago Bulls had held for twenty years. TRUE 82 exists because that question is more fun as a draft challenge than as a trivia answer.</p>
 
-  <h2>Why 82&#8211;0 is so close to impossible</h2>
-  <p>An NBA season is 82 games across roughly six months: back-to-backs, cross-country travel, injuries, cold shooting nights, and 29 opponents who all treat beating the best team as their season highlight. Even great teams lose games they "should" win. The arithmetic is merciless too &mdash; a team with a 95 percent chance of winning any single game, better than any team that has ever existed, would still finish 82&#8211;0 only about 1.5 percent of the time. Perfection isn't a talent question. It's talent multiplied by variance, 82 times in a row.</p>
+  <h2>Why is 82&#8211;0 close to impossible?</h2>
+  <p>Going undefeated is close to impossible because a team would need roughly a <strong>99.16% chance of winning every single game</strong> just to have a coin-flip (50%) shot at a perfect season. In a modern, high-scoring environment, that works out to about a <strong>+38.8 net rating</strong>, a level no team in NBA history has come near.</p>
+  <p>That figure comes from Daryl Morey's Pythagorean win model:</p>
+  <p class="t82-formula">Win% = PF<sup>13.91</sup> &divide; (PF<sup>13.91</sup> + PA<sup>13.91</sup>)</p>
+  <p class="t82-note">PF = points scored, PA = points allowed.</p>
+  <p>And +38.8 only buys a 50% chance. Real seasons pile on the variance you cannot model away: cross-country travel, back-to-backs, injuries, cold shooting nights, getting jobbed by refs, and 29 opponents who treat beating you as their season highlight. All of it has to be absorbed by an outperformance cushion so large the arithmetic essentially rules perfection out. Morey's model may bend at the extremes, but it is built to describe what is actually possible, and 82&#8211;0 is not.</p>
+  <p>So if TRUE 82 ever feels too hard, know that it is going easy on you: the required net rating drops to <strong>+27.1</strong>, and your starters get to play a full 48 minutes for all 82 games (Joel Embiid breathes a sigh of relief).</p>
 
-  <h2>The closest anyone has come</h2>
-  <ul>
-    <li><strong>2015&#8211;16 Golden State Warriors, 73&#8211;9</strong> &mdash; the all-time record, opened with 24 straight wins.</li>
-    <li><strong>1995&#8211;96 Chicago Bulls, 72&#8211;10</strong> &mdash; the previous standard, and they finished the job with a title.</li>
-    <li><strong>1971&#8211;72 Los Angeles Lakers, 69&#8211;13</strong> &mdash; including a 33-game winning streak that is still the longest in NBA history.</li>
-  </ul>
+  <h2>Who came closest to going undefeated in the NBA?</h2>
+  <p>Nobody has come close. The three most dominant regular seasons ever still finished a long way from perfect:</p>
+  <div class="t82-table-wrap">
+    <table class="t82-compare">
+      <caption>Best regular seasons vs. what 82&#8211;0 would require</caption>
+      <thead>
+        <tr><th scope="col">Team</th><th scope="col">Record</th><th scope="col">Net rating</th><th scope="col">Short of 82&#8211;0</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>2015&#8211;16 Golden State Warriors</td><td class="num">73&#8211;9</td><td class="num">+10.7</td><td class="num">+25.4</td></tr>
+        <tr><td>1995&#8211;96 Chicago Bulls</td><td class="num">72&#8211;10</td><td class="num">+13.4</td><td class="num">+23.1</td></tr>
+        <tr><td>1971&#8211;72 Los Angeles Lakers</td><td class="num">69&#8211;13</td><td class="num">+10.7</td><td class="num">+23.4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="t82-note">"Short of 82&#8211;0" is the net rating each team would still need to add to reach a coin-flip shot at a perfect season in its own scoring era, which is why two teams at +10.7 sit different distances from the line.</p>
+  <p>Even those runs came in bursts, not full seasons: the Warriors opened 2015&#8211;16 at 24&#8211;0, and the Lakers won 33 straight in 1971&#8211;72, still the longest winning streak in NBA history.</p>
+  <p>So the next time you are mad about a run that stops short of 82&#8211;0, the system is being fair to you. Probably cartoonishly generous, actually.</p>
 
   <h2>How TRUE 82 turns the question into a game</h2>
-  <p>Real rosters are stuck with one era, one payroll, and one front office. TRUE 82 removes those limits and adds its own: draft five players from random franchise-and-era tickets &mdash; two guards, two forwards, one center &mdash; and a <a href="/how-it-works/">BPM-based season engine</a> projects whether that lineup could run the table. The engine cares about roster fit, so the question stops being "can you name five legends" and becomes "can you build a team."</p>
+  <p>Real rosters are stuck with one era, one payroll, and one front office. TRUE 82 removes those limits and adds its own: draft five players from random franchise-and-era tickets (two guards, two forwards, one center), and a <a href="/how-it-works/">BPM-based season engine</a> projects whether that lineup could run the table. The engine cares about roster fit, so the question stops being "can you name five legends" and becomes "can you build a team."</p>
+  <p>The engine also compresses superstar value on purpose, for the same reason eight players who each average 20 points a game will not combine for 160: there is only one ball to go around (cough, Matt Ishbia and Vivek). And it punishes weak defense harder than you would expect. On a roster full of legendary playmakers, elite offense does not make up for being an easy target on the other end the way it might on an ordinary team.</p>
 
   <h2>What kind of roster actually has a chance?</h2>
-  <p>The same kind that wins in real life. You want elite value, but you also want shooting around it, someone willing to guard, and not five players who each need 25 shots. The in-game rule of thumb is at least three shooters and one role player. Lineups built for fit routinely out-project lineups built for name recognition &mdash; which is the whole point.</p>
+  <p>The kind that does everything well, not just a stack of pantheon names. A real contender has to:</p>
+  <ol>
+    <li><strong>Defend.</strong> Real team defense is what stabilizes the game-to-game variance that ends undefeated runs.</li>
+    <li><strong>Space the floor.</strong> That means at least three players respected from the 3-point line (or who would have been, in eras before it existed). You can sometimes get away with two shooters, but it almost never works.</li>
+    <li><strong>Carry a super-role player.</strong> On a team of legends, someone has to contribute without touches. Ask Chris Bosh, or really ask Mario Chalmers, the #5 option on the Heatles.</li>
+    <li><strong>Fill every box-score column.</strong> The engine runs on BPM, so it wants to see all the counting stats. When 2024&#8211;25 Kevin Durant grades out like the team's Mario Chalmers, it is because he was below average at everything except efficient scoring.</li>
+  </ol>
+  <p>So the goal is not to rebuild a Team USA All-Star roster. It is to cover every weakness, at least as far as BPM can detect it.</p>
 
   <p><a class="btn btn-primary btn-block" href="/">Try the 82&#8211;0 chase</a></p>
 </main>
