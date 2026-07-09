@@ -1,18 +1,15 @@
 // POST /api/recap — two-phase season-recap copywriter for the Tribune overlay.
-//   phase "headline": nickname + dek only. Fires at EVERY season end -> kept cheap
+//   phase "headline": nickname only. Fires at EVERY season end -> kept cheap
 //                     (small thinking budget, tiny output).
 //   phase "article":  the four-sentence story. Fires ONLY when the reader presses
 //                     READ MORE (rare), written to match the nickname already shown.
-// Fail-soft like the rest of the API: ANY problem (no key, over budget, timeout,
-// bad parse) returns {ok:false} with status 200 and the client writes that piece
-// locally instead. Never a 500, never blocks the game.
+// Fail-soft like the rest of the API: ANY problem (no key, timeout, bad parse) returns
+// {ok:false} with status 200 and the client writes that piece locally instead. Never a
+// 500, never blocks the game.
 //
 // Bindings (Pages > Settings > Environment variables / Bindings):
 //   ANTHROPIC_API_KEY   (secret, REQUIRED for AI copy — feature degrades without it)
-//   GAMES               (KV, optional — reused for soft daily budget counters)
 //   RECAP_MODEL         (optional, default "claude-sonnet-4-6")
-//   RECAP_HEADLINE_CAP  (optional, default 400 AI headlines/day)
-//   RECAP_ARTICLE_CAP   (optional, default 150 AI articles/day)
 
 const TIERS = [
   [82, "PERFECT SEASON — 82-0", "immortality achieved; euphoric and mythic — this team just did the only thing left to do"],
@@ -32,21 +29,16 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `nickname — the star of the whole page. Aim for a real locker-room nickname twisted weird: grounded more often than not, but still tilted toward the strange. Call it two parts plausible nickname, three parts mayhem. The touchstones (Banana Boat, Lob City, Grit and Grind, the Hamptons crew) all hook onto a real thing first, THEN get playful; match that.
-THE HOOK (non-negotiable): grab one real, recognizable thread about THIS team and twist it. Pull from how they play (pace, passing, lockdown defense, bombing threes, sheer dominance), a standout's game, an era, or a vibe, and fuse it to an unexpected, funny, or slightly menacing image. A savvy fan should half-get the thread on hearing it, before any article explains it. Lead with a real hook, not description; keep it good-natured, never crude or mean.
-NO ALLITERATION: do not match the first sounds of the words (avoid "Help-Side Hyenas", "Skip-Pass Swindlers", "Closeout Cryptids"); it reads as manufactured. Use plain, natural word pairings.
-CALIBRATION:
-- TOO BORING (reject): "Myth Makers", "The Titans", "The Juggernauts" — sounds like a trophy.
-- TARGET: "The Repo Men", "The Three-Ball Zealots", "The Transition Wolves", "The Third-Quarter Ghosts", "The Overtime Locksmiths" — grounded enough to sound real, weird enough to grin at, and you can feel the basketball in it.
-- TOO RANDOM (reel back in): "The Parking Lot Iguanas", "The Velvet Walruses", "The Damp Accountants" — noun salad with no thread; funny once, arbitrary always.
-BANNED REGISTER (the "yuck" zone): do NOT reach for the epic, mythic, "great team" vibe. No Makers, Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals, or Reign, and no other noble or ominous abstraction. If it sounds like a compliment or a movie trailer, throw it out.
-Format: 2 to 4 words, Title Case, and PLURAL so it fits "<NICKNAME> FINISH <record>" (e.g. "The Transition Wolves Finish 74-8"); may begin with "The".
-Hard bans: never the word "Five" or the numeral "5" in any form; never a real NBA franchise name; never a real player's name; no profanity.`;
+const NICKNAME_RULES = `free-associate a short nickname (2-4 words) that lands as a CUTTING INSIDE JOKE about these specific players. The best names reward a fan for recognizing something true about this exact group:
+- A shared reputation or story they're actually known for (e.g. known gamblers -> "The Match Fixers"; famous partiers -> "The Partiers"; a notorious teammate-killer -> "The Team Killers").
+- OR a deadpan label that's funny because it's dryly literal or self-aware (e.g. a lineup of famously cerebral players -> "The Smartest Guys in the Room"; a roster that has off-coirt misconduct related to firearms -> "The Sharp Shooters"; a band of loose cannons owning it -> "The Idiots"; players associated with match fixing -> "The match Fixers).
+If nothing specific and true fits this group, fall back to a two-word free association about the roster.  Skip the first obvious pairing for the one only THIS roster earns. Chirp like a clever rival fan.
+BANNED REGISTER:
+- No alliteration (words sharing a starting sound, e.g. "Furnace Foxes").
+- No epic/mythic/"great team" grandeur, even ironically (no Makers, Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals, Reign).
+It prints as "<NICKNAME> FINISH 72-10", so it must read right there. Output only the nickname (a leading "The" is fine): no quotes, no explanation.`;
 
-const SYS_HEADLINE = `You are the creative Copy Editor naming the front-page title after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons. Treat the season and record as established fact.
-
-Return ONLY a JSON object — no markdown fences, no commentary:
-{"nickname": "..."}
+const SYS_HEADLINE = `You are the creative Copy Editor naming the team on the front page after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons; the roster and record below are established fact.
 
 ${NICKNAME_RULES}`;
 
@@ -72,6 +64,9 @@ const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk pr
 
 // Appended AFTER the voice so it wins on recency: the flim-flam must obey format + length.
 const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the flim-flam will not fit inside the format and the length, trim the flim-flam, never the format or the count.`;
+
+// Headline is a bare string (per NICKNAME_RULES), not JSON — this tail wins on recency.
+const HARD_HEAD = `FORMAT OVERRIDES THE VOICE. Output ONLY the nickname itself, on a single line: no quotes, no markdown, no explanation, nothing before or after it.`;
 
 // Kills the "too much talent" cliché in the nickname, dek, and body alike.
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
@@ -109,21 +104,6 @@ export async function onRequest(context) {
   const nickname = clean(b.nickname, 48);   // article phase: the name already in print
   if (phase === "article" && !nickname) return fail("bad_payload");
 
-  // Soft daily budgets so a traffic spike can't run up the API bill. KV get/put is
-  // not atomic — caps are order-of-magnitude, not exact meters. Fail OPEN when KV
-  // is missing/down: the cap is best-effort, the feature is not.
-  if (env.GAMES) {
-    try {
-      const cap = phase === "article"
-        ? Math.max(1, parseInt(env.RECAP_ARTICLE_CAP, 10) || 150)
-        : Math.max(1, parseInt(env.RECAP_HEADLINE_CAP, 10) || 400);
-      const capKey = "recapcap:" + phase.charAt(0) + ":" + new Date().toISOString().slice(0, 10);
-      const used = parseInt(await env.GAMES.get(capKey), 10) || 0;
-      if (used >= cap) return fail("budget");
-      await env.GAMES.put(capKey, String(used + 1), { expirationTtl: 172800 });
-    } catch (e) { /* KV down -> fail open */ }
-  }
-
   const t = tierFor(wins);
   const user =
 `MODE: ${modeLabel}
@@ -160,7 +140,7 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
       body: JSON.stringify(Object.assign({
         model: env.RECAP_MODEL || "claude-sonnet-4-6",
         max_tokens: maxTokens,
-        system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD,
+        system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + BAN + "\n\n" + (isArticle ? HARD : HARD_HEAD),
         messages: [{ role: "user", content: user }]
       }, useThink ? { thinking: { type: "enabled", budget_tokens: thinkBudget } } : {}))
     });
@@ -171,16 +151,24 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
   try {
     const data = await resp.json();
     const text = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n");
-    const raw = text.replace(/```json|```/g, "").trim();
-    const out = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
     if (isArticle) {
+      const raw = text.replace(/```json|```/g, "").trim();
+      const out = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
       const article = clean(out.article, 700);
       if (!article) return fail("empty");
       return new Response(JSON.stringify({ ok: true, article, source: "api" }), {
         status: 200, headers: { "content-type": "application/json" }
       });
     }
-    const nick = clean(out.nickname, 48);
+    // Headline: the model returns the bare nickname (see NICKNAME_RULES). Still cope if
+    // it wraps the name in JSON or quotes out of habit, and take only the first line.
+    let nickRaw = text.replace(/```json|```/g, "").trim();
+    const js = nickRaw.indexOf("{"), je = nickRaw.lastIndexOf("}");
+    if (js !== -1 && je > js) {
+      try { const o = JSON.parse(nickRaw.slice(js, je + 1)); if (o && o.nickname) nickRaw = String(o.nickname); } catch (e2) {}
+    }
+    nickRaw = nickRaw.split("\n")[0].replace(/^\s*["'\u201C\u2018]+|["'\u201D\u2019]+\s*$/g, "");
+    const nick = clean(nickRaw, 48);
     if (!nick) return fail("empty");
     return new Response(JSON.stringify({ ok: true, nickname: nick, source: "api" }), {
       status: 200, headers: { "content-type": "application/json" }
