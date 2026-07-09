@@ -29,13 +29,17 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `free-associate a short nickname (2-4 words) that lands as a CUTTING INSIDE JOKE about these specific players. The best names reward a fan for recognizing something true about this exact group:
-- A shared reputation or story they're actually known for (e.g. known gamblers -> "The Match Fixers"; famous partiers -> "The Partiers"; a notorious teammate-killer -> "The Team Killers").
-- OR a deadpan label that's funny because it's dryly literal or self-aware (e.g. a lineup of famously cerebral players -> "The Smartest Guys in the Room"; a roster that has off-coirt misconduct related to firearms -> "The Sharp Shooters"; a band of loose cannons owning it -> "The Idiots"; players associated with match fixing -> "The match Fixers).
-If nothing specific and true fits this group, fall back to a two-word free association about the roster.  Skip the first obvious pairing for the one only THIS roster earns. Chirp like a clever rival fan.
-BANNED REGISTER:
-- No alliteration (words sharing a starting sound, e.g. "Furnace Foxes").
-- No epic/mythic/"great team" grandeur, even ironically (no Makers, Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals, Reign).
+const NICKNAME_RULES = `free-associate a short nickname (2-4 words) that lands as a CUTTING, GOSSIPY INSIDE JOKE about these specific players — the kind of thing a rival fan tweets to get a laugh. This is about WHO these guys are, not how they play. Reach for the tabloid angle: reputations, feuds, egos, nightlife, scandals, memes, the stuff people actually gossip about.
+RANK YOUR ANGLES, best to worst:
+1. A shared off-court reputation or story they're actually known for (known gamblers -> "The Match Fixers"; famous partiers -> "The Partiers"; a notorious teammate-killer -> "The Team Killers"; DUI history -> "The Designated Drivers"; firearms trouble -> "The Sharp Shooters").
+2. A deadpan label that's funny because it's dryly literal or self-aware (famously cerebral guys -> "The Smartest Guys in the Room"; loose cannons owning it -> "The Idiots").
+3. LAST RESORT only: a two-word free association about the roster's vibe. On-court playstyle is the fallback, never the default.
+HARD NO — these are the exact failure modes, reject on sight:
+- Generic praise that just says they are good: "The Untouchables", "The Real Deal", "Simply the Best". If it reads as a compliment, it is dead.
+- Anything about ball-sharing, usage, touches, or "too many stars": "The Unsharables", "The Ball Hogs". Never.
+- Alliteration (words sharing a starting sound, e.g. "Furnace Foxes").
+- Epic or mythic grandeur, even ironically (no Makers, Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals, Reign).
+Chirp like a clever rival fan. Skip the first obvious pairing for the one only THIS roster earns.
 It prints as "<NICKNAME> FINISH 72-10", so it must read right there. Output only the nickname (a leading "The" is fine): no quotes, no explanation.`;
 
 const SYS_HEADLINE = `You are the creative Copy Editor naming the team on the front page after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons; the roster and record below are established fact.
@@ -47,14 +51,15 @@ const SYS_ARTICLE = `You are a Sports Illustrated columnist filing a short seaso
 Return ONLY a JSON object, no markdown fences, no commentary:
 {"article": "..."}
 
-article — 3 to 4 short sentences, about 65 words total and never more than 85. Laconic and punchy: no analysis, no future outlook, no questions, no filler.
-Sentence 1 is the nickname's origin and nothing else: ONE self-contained clause of no more than 15 words, stating the reason as plain fact (something the group did off the court, or the way it captures their play), committing fully, never hedging, winking, or apologizing. No "and", no "so ... that", no stacked clauses. Shape it like "Nicknamed ... because ...", using the actual nickname.
-Then one or two tight sentences on the basketball: name two to four players by surname and say what they actually did on the floor, matched to the season tier and tone directive.
-End on ONE laconic verdict about perfection, chosen by the final record. This is the point of the game, so keep it to a single short sentence with one small detail only:
-- 82 wins (a perfect 82-0, reached any way): salute it outright, no flaw and no asterisk (e.g. "Eighty-two games, zero losses, nothing left to argue.").
-- 76 to 81 wins: a narrow miss, stated with fondness, pinned on ONE small thing and nothing more — a single fair-game soft spot from the composition signals (leaky perimeter, soft frontcourt, no rim protection, thin depth) or, if none fits, one flat night (e.g. "One cold Tuesday short of perfect.").
-- under 76 wins: the flaw or two that capped them all year, drawn from the composition signals, plain and unsentimental, matched to the tone directive (e.g. "The perimeter leaked all season, and the record knew it.").
-Never blame spacing, shooting, or shot-sharing; if those are the only signals, keep it vague (never quite clicked) instead of naming them. Never mention ratings, models, engines, fantasy, video games, or drafting, and invent nothing beyond the nickname's origin and, at most, one flat night: no injuries, trades, or quotes. Do not use em dashes.`;
+article — 4 short sentences, about 70 words total and never more than 90. Gossipy and fun, a columnist who cares more about the locker room than the box score. Laconic: no comp analysis, no future outlook, no questions.
+Sentence 1, the nickname's origin: ONE clause, 15 words max, stating the off-court or personality reason they earned it as plain fact and committing fully, no hedging or winking. Shape it like "Nicknamed ... because ...".
+Sentence 2, one quick on-court line: name two or three players by surname and what they actually did. One sentence only; the basketball is garnish, not the meal.
+Sentence 3, the verdict on perfection, chosen by the final record, one short line:
+- 82 wins (a perfect 82-0, any way): salute it, no flaw, no asterisk.
+- 76 to 81 wins: a narrow miss pinned on ONE small thing (a fair-game soft spot, or one flat night).
+- under 76 wins: the flaw or two that capped them all year, plain, matched to the tone directive.
+Sentence 4, the kicker: invent one juicy, absurd off-court drama beat about this group (a feud, a nightlife legend, an ego war, a ridiculous incident), played completely straight with full tabloid energy. Keep it comic and good-natured, never a real crime or a genuine accusation. End on this.
+Never blame spacing, shooting, or shot-sharing. Never mention ratings, models, engines, fantasy, video games, or drafting. Do not use em dashes.`;
 
 // Applied to BOTH phases (nickname + dek + body) so the whole Tribune shares one voice.
 // Override live from the Cloudflare dashboard with RECAP_VOICE — no redeploy of code needed.
