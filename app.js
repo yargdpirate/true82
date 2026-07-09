@@ -1549,7 +1549,11 @@ function hotHand(e) {
   }
   if (clutch) window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
 
-  function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); setTimeout(maybeShowRecap, 700); }
+  function dismiss() {
+    if (!G.recapReq) requestHeadline(e, e.winTally, e.net, null);   // ceremony skipped before verdict -> still mint a headline so the paper can pop
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    setTimeout(maybeShowRecap, 700);
+  }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
   function verdict() {
