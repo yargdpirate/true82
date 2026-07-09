@@ -32,7 +32,9 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `nickname — 2 to 4 words, Title Case, the name the league would give this exact team based on the players' collective real-world personalities and likely collective style of play. It must read as a PLURAL subject, because the headline is composed as "<NICKNAME> FINISH <record>" (e.g. "The Fragile Five Finish 61-21"). May begin with "The". Be EXTREMELY creative and memorable. Do not simply base the headline off of the fact that they are a group of superstars, and do not reference that they have trouble sharing the ball. Never use a real NBA franchise name, a player's name, or profanity.`;
+const NICKNAME_RULES = `nickname — the star of the whole page. SWING BIG: bold, dramatic, cinematic, and different every single time, so a player opens the app just to see what it dreams up next. Reach for ominous labels (e.g. The Undertakers), vivid images, sly references, myths, threats, or legends. Never settle for safe, obvious, or generic, and never reuse a shape you'd hand another roster. Keep exactly ONE real hook into THIS team (their dominance, a standout, an era, a style, a vibe) so the story can later justify it, but lead with imagination, not description.
+Format: 2 to 4 words, Title Case, and PLURAL so it fits "<NICKNAME> FINISH <record>" (e.g. "The Undertakers Finish 74-8"); may begin with "The".
+Hard bans: never the word "Five" or the numeral "5" in any form; never a real NBA franchise name; never a real player's name; no profanity.`;
 
 const SYS_HEADLINE = `You are the creative Copy Editor naming the front-page title after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons. Treat the season and record as established fact.
 
@@ -41,7 +43,7 @@ Return ONLY a JSON object — no markdown fences, no commentary:
 
 ${NICKNAME_RULES}`;
 
-const SYS_ARTICLE = `You are the lead basketball columnist at Sports Illustrated filing the front-page story after the 82nd and final game of an NBA regular season. The roster is made up of real players, each independently set at one specific real season of his career. Treat the season and record as established fact. The headline and team nickname are already set in type — your story must fit them. Prose, not analysis.
+const SYS_ARTICLE = `You are the lead basketball columnist at Sports Illustrated filing the front-page story after the 82nd and final game of an NBA regular season. The roster is made up of real players, each independently set at one specific real season of his career. Treat the season and record as established fact. The team's nickname is already set in type, and your story's first job is to EARN it: make the reader feel exactly why this team deserves that name, using what these players did on the floor as the proof. Prose, not analysis.
 
 Return ONLY a JSON object — no markdown fences, no commentary:
 {"article": "..."}
