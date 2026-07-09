@@ -2070,6 +2070,7 @@ function showNewspaper(gate) {
   var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read"; read.textContent = "READ MORE";
   acts.appendChild(read);
   paper.appendChild(acts);
+  var storyDone = false;   // flips true once the full article has inked in -> READ MORE/CLOSE STORY becomes GET RESULTS
 
   var under = div("np-under");
   var skip = document.createElement("button"); skip.type = "button"; skip.className = "presti-spin np-underbtn"; skip.textContent = "SKIP TO RESULTS";
@@ -2102,6 +2103,11 @@ function showNewspaper(gate) {
   });
   ov.addEventListener("click", function (ev) { if (ev.target === ov) { window.t82track && window.t82track("recap_skip", { mode: MODE }); close(true); } });
   read.addEventListener("click", function () {
+    if (storyDone) {                       // full article is unfurled -> button now exits to results
+      window.t82track && window.t82track("recap_results", { mode: MODE });
+      close(true);
+      return;
+    }
     if (!paper.classList.contains("open")) {
       paper.classList.add("open");
       read.textContent = "CLOSE STORY";
@@ -2146,6 +2152,10 @@ function showNewspaper(gate) {
     art.appendChild(div("np-byline", "From the Tribune wire desk"));
     var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
     art.appendChild(body);
+    if (paper.classList.contains("open")) {   // only once the story is actually on screen
+      storyDone = true;                        // full article is unfurled
+      read.textContent = "GET RESULTS";        // READ MORE / CLOSE STORY -> forward to results
+    }
   };
 
   if (G.recapHead) G.npStamp();
