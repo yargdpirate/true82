@@ -1334,8 +1334,8 @@ button.more-modes:disabled {
 }
 
 /* The two big calls sit UNDER the paper on the backdrop, standard gold bevel. */
-.np-under { display: flex; gap: 10px; width: min(430px, 94vw); margin-top: 14px; }
-.np-underbtn { flex: 1; font-family: var(--disp); font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; padding: 12px 6px 13px; }
+.np-under { display: flex; flex-direction: column; gap: 10px; width: min(430px, 94vw); margin-top: 14px; }
+.np-underbtn { width: 100%; font-family: var(--disp); font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 10px 15px; }
 
 /* ---- typesetting: greeked bars, teletype ticker, stamp, ink-dry ---- */
 .np-gline {
@@ -1417,6 +1417,7 @@ main.content-page {
 .weekly-tile .wk-blurb { font-size:.85rem; opacity:.85; font-weight:400; white-space:normal; }
 .weekly-tile .wk-meta { font-size:.75rem; opacity:.7; margin-top:2px; }
 .more-modes { margin-top: 10px; }   /* 3D box styling now comes from the presti-spin rule above; only spacing remains here */
+#startPro { margin-top: 30px; }     /* extra break so the secondary modes read as their own group, set apart from Classic/Presti */
 .run-status { text-align:center; font-size:.85rem; opacity:.8; min-height:1.2em; margin:8px 0 0; }
 
 /* ---------- duel screen (Phase D2) ---------- */
