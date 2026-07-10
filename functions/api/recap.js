@@ -93,19 +93,86 @@ const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON objec
 
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
+const RECAP_BUILD = "2026-07-10.recap-debug-v2";
+const DEFAULT_MODEL = "claude-sonnet-4-6";
+const EDITION_TIMEOUT_MS = 28000;
+
 export async function onRequest(context) {
   const { request, env } = context;
-  if (request.method !== "POST") return new Response("method", { status: 405 });
-  const fail = (reason) => new Response(JSON.stringify({ ok: false, reason }), {
-    status: 200, headers: { "content-type": "application/json" }
-  });
+  const started = Date.now();
+  const model = env.RECAP_MODEL || DEFAULT_MODEL;
+  const configured = !!env.ANTHROPIC_API_KEY;
+  const suppliedId = request.headers.get("x-t82-recap-id");
+  const requestId = suppliedId && /^[A-Za-z0-9._-]{6,80}$/.test(suppliedId)
+    ? suppliedId
+    : (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID() : "r" + Date.now().toString(36));
+  let phase = "unknown";
 
-  if (!env.ANTHROPIC_API_KEY) return fail("unconfigured");
+  const cleanHeader = (v) => String(v == null ? "" : v).replace(/[\r\n]/g, " ").slice(0, 180);
+  const elapsed = () => Date.now() - started;
+  const log = (result, reason, extra = {}) => {
+    console.log("[tribune]", JSON.stringify(Object.assign({
+      build: RECAP_BUILD,
+      requestId,
+      phase,
+      model,
+      result,
+      reason: reason || null,
+      elapsedMs: elapsed()
+    }, extra)));
+  };
+  const respond = (body, status = 200, result = "ok", reason = null) => {
+    const ms = elapsed();
+    const headers = new Headers({
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store, max-age=0",
+      "x-t82-recap-build": RECAP_BUILD,
+      "x-t82-recap-id": requestId,
+      "x-t82-recap-model": cleanHeader(model),
+      "x-t82-recap-phase": cleanHeader(phase),
+      "x-t82-recap-result": cleanHeader(result),
+      "server-timing": `recap;dur=${ms}`
+    });
+    if (reason) headers.set("x-t82-recap-reason", cleanHeader(reason));
+    return new Response(request.method === "HEAD" ? null : JSON.stringify(Object.assign({
+      requestId,
+      model,
+      phase,
+      elapsedMs: ms,
+      build: RECAP_BUILD
+    }, body)), { status, headers });
+  };
+  const fail = (reason, extra = {}) => {
+    log("fallback", reason, extra);
+    return respond(Object.assign({ ok: false, reason }, extra), 200, "fallback", reason);
+  };
+
+  // Zero-token deployment/binding probe for browser-console diagnostics.
+  if (request.method === "GET" || request.method === "HEAD") {
+    phase = "health";
+    const editionThink = Math.max(0, parseInt(env.RECAP_EDITION_THINK, 10) || 0);
+    log("health", null, { configured, editionThink, editionTimeoutMs: EDITION_TIMEOUT_MS });
+    return respond({
+      ok: true,
+      health: true,
+      configured,
+      editionThink,
+      editionTimeoutMs: EDITION_TIMEOUT_MS,
+      message: configured ? "Recap Function and API-key binding are available." : "Recap Function is deployed but ANTHROPIC_API_KEY is not bound in this environment."
+    }, 200, "health", null);
+  }
+  if (request.method !== "POST") {
+    phase = "method";
+    log("method_not_allowed", "method");
+    return respond({ ok: false, reason: "method" }, 405, "error", "method");
+  }
+
+  if (!configured) return fail("unconfigured", { configured: false });
 
   let b;
-  try { b = await request.json(); } catch { return fail("bad_json"); }
+  try { b = await request.json(); } catch (e) { return fail("bad_json", { errorName: e && e.name }); }
   if (!b || typeof b !== "object" || !Array.isArray(b.players) || b.players.length !== 5) return fail("bad_payload");
-  const phase = b.phase === "article" ? "article" : b.phase === "edition" ? "edition" : "headline";
+  phase = b.phase === "article" ? "article" : b.phase === "edition" ? "edition" : "headline";
 
   const clean = (s, max) => String(s == null ? "" : s).replace(/[<>{}\\]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
   const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo; };
@@ -152,14 +219,16 @@ TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
   const useThink = isArticle || (isEdition ? editionThink >= 1024 : headThink >= 1024);
   const thinkBudget = isArticle ? 1400 : isEdition ? editionThink : headThink;
   const maxTokens = isArticle ? 2600 : isEdition ? (useThink ? thinkBudget + 900 : 900) : (useThink ? thinkBudget + 512 : 512);
+  const timeoutMs = isArticle ? 30000 : isEdition ? EDITION_TIMEOUT_MS : 24000;
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : isEdition ? 16000 : 18000);
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
 
   let system;
   if (isArticle) system = SYS_ARTICLE + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD;
   else if (isEdition) system = SYS_EDITION + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD + "\n\n" + HARD_EDITION;
   else system = SYS_HEADLINE + (env.RECAP_VOICE ? "\n\n" + env.RECAP_VOICE : "") + "\n\n" + HARD_HEAD;
 
+  log("provider_request", null, { configured: true, wins, useThink, thinkBudget, maxTokens, timeoutMs });
   let resp;
   try {
     resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -171,34 +240,76 @@ TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify(Object.assign({
-        model: env.RECAP_MODEL || "claude-sonnet-4-6",
+        model,
         max_tokens: maxTokens,
         system,
         messages: [{ role: "user", content: user }]
       }, useThink ? { thinking: { type: "enabled", budget_tokens: thinkBudget } } : {}))
     });
-  } catch (e) { clearTimeout(timer); return fail("timeout"); }
+  } catch (e) {
+    clearTimeout(timer);
+    return fail(e && e.name === "AbortError" ? "timeout" : "provider_fetch", {
+      errorName: e && e.name,
+      errorMessage: cleanHeader(e && e.message),
+      timeoutMs
+    });
+  }
   clearTimeout(timer);
-  if (!resp.ok) return fail("api_" + resp.status);
+
+  const providerRequestId = resp.headers.get("request-id") || resp.headers.get("x-request-id") || null;
+  let rawBody = "";
+  try { rawBody = await resp.text(); } catch (e) {
+    return fail("provider_body", { providerStatus: resp.status, providerRequestId, errorName: e && e.name });
+  }
+
+  let data = null;
+  try { data = JSON.parse(rawBody); } catch (e) {
+    return fail("provider_non_json", {
+      providerStatus: resp.status,
+      providerRequestId,
+      providerPreview: cleanHeader(rawBody.slice(0, 220))
+    });
+  }
+
+  if (!resp.ok) {
+    const providerError = data && data.error || {};
+    return fail("api_" + resp.status, {
+      providerStatus: resp.status,
+      providerRequestId: data.request_id || providerRequestId,
+      providerErrorType: cleanHeader(providerError.type),
+      providerMessage: cleanHeader(providerError.message)
+    });
+  }
+
+  const providerId = data.request_id || providerRequestId;
+  const stopReason = data.stop_reason || null;
+  const usage = data.usage ? {
+    inputTokens: data.usage.input_tokens,
+    outputTokens: data.usage.output_tokens,
+    cacheReadTokens: data.usage.cache_read_input_tokens,
+    cacheCreateTokens: data.usage.cache_creation_input_tokens
+  } : null;
 
   try {
-    const data = await resp.json();
     const text = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n");
     if (isArticle || isEdition) {
-      const raw = text.replace(/```json|```/g, "").trim();
-      const out = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+      const cleaned = text.replace(/```json|```/g, "").trim();
+      const first = cleaned.indexOf("{");
+      const last = cleaned.lastIndexOf("}");
+      if (first < 0 || last <= first) return fail("parse_no_object", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
+      const out = JSON.parse(cleaned.slice(first, last + 1));
       const article = clean(out.article, 700);
-      if (!article) return fail("empty");
+      if (!article) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
       if (isEdition) {
         const nick = clean(out.nickname, 48);
-        if (!nick) return fail("empty");
-        return new Response(JSON.stringify({ ok: true, nickname: nick, article, source: "api" }), {
-          status: 200, headers: { "content-type": "application/json" }
-        });
+        if (!nick) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
+        const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
+        log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length, articleChars: article.length });
+        return respond({ ok: true, nickname: nick, article, source: "api", diagnostic }, 200, "api", null);
       }
-      return new Response(JSON.stringify({ ok: true, article, source: "api" }), {
-        status: 200, headers: { "content-type": "application/json" }
-      });
+      const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
+      log("api", null, { providerRequestId: providerId, stopReason, usage, articleChars: article.length });
+      return respond({ ok: true, article, source: "api", diagnostic }, 200, "api", null);
     }
 
     let nickRaw = text.replace(/```json|```/g, "").trim();
@@ -208,9 +319,17 @@ TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
     }
     nickRaw = nickRaw.split("\n")[0].replace(/^\s*["'\u201C\u2018]+|["'\u201D\u2019]+\s*$/g, "");
     const nick = clean(nickRaw, 48);
-    if (!nick) return fail("empty");
-    return new Response(JSON.stringify({ ok: true, nickname: nick, source: "api" }), {
-      status: 200, headers: { "content-type": "application/json" }
+    if (!nick) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
+    const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
+    log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length });
+    return respond({ ok: true, nickname: nick, source: "api", diagnostic }, 200, "api", null);
+  } catch (e) {
+    return fail("parse", {
+      providerRequestId: providerId,
+      stopReason,
+      usage,
+      errorName: e && e.name,
+      errorMessage: cleanHeader(e && e.message)
     });
-  } catch (e) { return fail("parse"); }
+  }
 }

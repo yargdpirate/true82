@@ -45,6 +45,98 @@ var TEAM2FR = {}, BEST_BY_NAME = new Map(), FRANCHISES = [];
 var CAREER_BUCKETS = new Map();   // name -> {G,F,C}: every position the player EVER qualified at, career-wide
 var G = null;
 
+/* ---------- Tribune recap diagnostics ----------
+   Always installed at app load so the console works before, during, and after
+   a season. This is intentionally independent of G because newGame() replaces
+   game state. No secrets or full article text are stored in the debug history. */
+var T82_RECAP_BUILD = "2026-07-10.recap-debug-v2";
+var T82_RECAP_HISTORY = [];
+var T82_RECAP_LAST = {
+  build: T82_RECAP_BUILD,
+  state: "idle",
+  source: null,
+  reason: null,
+  message: "No Tribune request has started in this page load."
+};
+
+function recapDebugClone(v) {
+  try { return JSON.parse(JSON.stringify(v)); } catch (e) { return v; }
+}
+function recapDebugEvent(name, fields) {
+  var row = Object.assign({
+    at: new Date().toISOString(),
+    event: name,
+    build: T82_RECAP_BUILD
+  }, fields || {});
+  T82_RECAP_HISTORY.push(row);
+  if (T82_RECAP_HISTORY.length > 60) T82_RECAP_HISTORY.shift();
+  return row;
+}
+function recapDebugSet(last) {
+  T82_RECAP_LAST = Object.assign({ build: T82_RECAP_BUILD }, last || {});
+  window.__T82_RECAP_DEBUG = T82_RECAP_LAST;
+  return T82_RECAP_LAST;
+}
+function recapDebugPrint() {
+  var snapshot = {
+    build: T82_RECAP_BUILD,
+    last: recapDebugClone(T82_RECAP_LAST),
+    history: recapDebugClone(T82_RECAP_HISTORY),
+    help: "Run t82RecapHealth() to verify the deployed Function, API-key binding, model, and timeout without spending tokens. Run t82RecapDebug('clear') to reset this page's history."
+  };
+  if (console && console.groupCollapsed) console.groupCollapsed("[tribune] recap diagnostics " + T82_RECAP_BUILD);
+  if (console && console.log) {
+    console.log("Last request:", snapshot.last);
+    if (console.table && snapshot.history.length) console.table(snapshot.history);
+    else console.log("History:", snapshot.history);
+    console.log(snapshot.help);
+  }
+  if (console && console.groupEnd) console.groupEnd();
+  return snapshot;
+}
+window.t82RecapDebug = function (action) {
+  if (action === "clear") {
+    T82_RECAP_HISTORY.length = 0;
+    recapDebugSet({ state: "idle", source: null, reason: null, message: "Debug history cleared." });
+  }
+  return recapDebugPrint();
+};
+window.t82RecapHealth = function () {
+  var started = Date.now();
+  recapDebugEvent("health_start", { path: "/api/recap?health=1" });
+  if (typeof fetch !== "function") return Promise.reject(new Error("fetch unavailable"));
+  return fetch("/api/recap?health=1&_=" + Date.now(), {
+    method: "GET",
+    cache: "no-store",
+    headers: { "accept": "application/json" }
+  }).then(function (r) {
+    return r.text().then(function (raw) {
+      var body = null;
+      try { body = JSON.parse(raw); } catch (e) { body = { ok: false, reason: "non_json", preview: raw.slice(0, 240) }; }
+      var result = {
+        state: "health",
+        ok: !!(r.ok && body && body.ok),
+        httpStatus: r.status,
+        elapsedMs: Date.now() - started,
+        body: body,
+        cfRay: r.headers.get("cf-ray"),
+        serverBuild: r.headers.get("x-t82-recap-build"),
+        contentType: r.headers.get("content-type")
+      };
+      recapDebugEvent("health_result", result);
+      if (console && console.log) console.log("[tribune] health", result);
+      return result;
+    });
+  }).catch(function (err) {
+    var result = { state: "health", ok: false, elapsedMs: Date.now() - started, reason: "network", error: String(err && err.message || err) };
+    recapDebugEvent("health_error", result);
+    if (console && console.error) console.error("[tribune] health failed", result);
+    return result;
+  });
+};
+recapDebugSet(T82_RECAP_LAST);
+if (console && console.log) console.log("[tribune] diagnostics ready — t82RecapDebug() / t82RecapHealth() — build " + T82_RECAP_BUILD);
+
 /* ---------- optional feature loading ---------- */
 
 // Keep the first paint and critical site-data request lean. Duel/Arena/League
@@ -2063,22 +2155,31 @@ function requestEdition() {
   G.recapArtIntent = "unwrap";
 
   var token = G, settled = false, started = Date.now(), httpStatus = 0;
+  var requestId = "r" + started.toString(36) + "-" + Math.random().toString(36).slice(2, 9);
   var fallbackHead = localHeadline(G.recapPayload);
   var fallbackArt = localArticle(G.recapPayload);
-  var debug = {
+  var debug = recapDebugSet({
+    build: T82_RECAP_BUILD,
     state: "requesting",
     phase: "edition",
+    requestId: requestId,
     startedAt: new Date(started).toISOString(),
     elapsedMs: 0,
     source: null,
     reason: null,
-    httpStatus: null
-  };
-  window.__T82_RECAP_DEBUG = debug;
-  window.t82RecapDebug = function () {
-    var d = window.__T82_RECAP_DEBUG || { state: "idle" };
-    try { return JSON.parse(JSON.stringify(d)); } catch (e) { return d; }
-  };
+    httpStatus: null,
+    payload: {
+      mode: G.recapPayload.mode,
+      wins: G.recapPayload.wins,
+      playerCount: G.recapPayload.players && G.recapPayload.players.length
+    }
+  });
+  recapDebugEvent("edition_request_start", {
+    requestId: requestId,
+    mode: debug.payload.mode,
+    wins: debug.payload.wins,
+    playerCount: debug.payload.playerCount
+  });
 
   function finishDebug(state, source, reason) {
     debug.state = state;
@@ -2086,7 +2187,7 @@ function requestEdition() {
     debug.source = source || null;
     debug.reason = reason || null;
     debug.httpStatus = httpStatus || null;
-    window.__T82_RECAP_DEBUG = debug;
+    recapDebugSet(debug);
   }
 
   function settle(d, reason) {
@@ -2096,13 +2197,44 @@ function requestEdition() {
     if (apiCopy) {
       G.recapHead = { nickname: String(d.nickname), source: d.source || "api" };
       G.recapArt = { article: String(d.article), source: d.source || "api" };
+      debug.nickname = String(d.nickname);
+      debug.articleChars = String(d.article).length;
+      debug.server = d.diagnostic || null;
       finishDebug("settled", "api", null);
-      console.info("[tribune] AI edition ready in " + debug.elapsedMs + "ms");
+      recapDebugEvent("edition_api_ready", {
+        requestId: requestId,
+        elapsedMs: debug.elapsedMs,
+        httpStatus: debug.httpStatus,
+        nickname: debug.nickname,
+        articleChars: debug.articleChars,
+        model: debug.responseHeaders && debug.responseHeaders.model,
+        cfRay: debug.responseHeaders && debug.responseHeaders.cfRay
+      });
+      if (console && console.log) console.log("[tribune] AI edition ready", recapDebugClone(debug));
     } else {
       G.recapHead = Object.assign({}, fallbackHead, { source: "fallback" });
       G.recapArt = Object.assign({}, fallbackArt, { source: "fallback" });
+      debug.responseBody = d ? {
+        ok: d.ok,
+        reason: d.reason,
+        phase: d.phase,
+        model: d.model,
+        requestId: d.requestId,
+        elapsedMs: d.elapsedMs,
+        providerStatus: d.providerStatus,
+        providerErrorType: d.providerErrorType,
+        providerMessage: d.providerMessage
+      } : null;
       finishDebug("settled", "fallback", reason || (d && d.reason) || "invalid_response");
-      console.warn("[tribune] local edition used after " + debug.elapsedMs + "ms; reason:", debug.reason, "status:", debug.httpStatus || "n/a");
+      recapDebugEvent("edition_fallback", {
+        requestId: requestId,
+        elapsedMs: debug.elapsedMs,
+        httpStatus: debug.httpStatus,
+        reason: debug.reason,
+        model: debug.responseHeaders && debug.responseHeaders.model,
+        cfRay: debug.responseHeaders && debug.responseHeaders.cfRay
+      });
+      if (console && console.warn) console.warn("[tribune] local edition used", recapDebugClone(debug));
     }
     stampHeadline();
     inkInArticle();
@@ -2110,34 +2242,79 @@ function requestEdition() {
   }
 
   var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
-  // The opening animation is a latency mask, not a network deadline. Keep the
-  // request alive after the three-second reveal and show the typesetting state
-  // until the Worker responds. The client deadline slightly exceeds the Worker's
-  // edition deadline so explicit server reasons normally reach the console.
+  // The opening animation is only a latency mask. The Function gets 28 seconds;
+  // this client guard is deliberately longer so its explicit reason normally
+  // reaches the browser before a client-side abort.
   var timer = setTimeout(function () {
     if (ac) ac.abort();
-    settle(null, "client_timeout");
-  }, 17500);
+    settle(null, "client_timeout_32s");
+  }, 32000);
 
-  console.info("[tribune] requesting AI edition; inspect t82RecapDebug() for status");
+  if (console && console.log) console.log("[tribune] requesting AI edition", recapDebugClone(debug));
   try {
     fetch("/api/recap", {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: {
+        "content-type": "application/json",
+        "accept": "application/json",
+        "x-t82-recap-id": requestId
+      },
       body: JSON.stringify(Object.assign({ phase: "edition" }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
     }).then(function (r) {
       httpStatus = r.status;
-      return r.json();
-    }).then(function (d) {
+      debug.responseHeaders = {
+        contentType: r.headers.get("content-type"),
+        cacheControl: r.headers.get("cache-control"),
+        cfRay: r.headers.get("cf-ray"),
+        requestId: r.headers.get("x-t82-recap-id"),
+        serverBuild: r.headers.get("x-t82-recap-build"),
+        model: r.headers.get("x-t82-recap-model"),
+        result: r.headers.get("x-t82-recap-result"),
+        reason: r.headers.get("x-t82-recap-reason"),
+        serverTiming: r.headers.get("server-timing")
+      };
+      recapDebugEvent("edition_response_headers", Object.assign({
+        requestId: requestId,
+        httpStatus: r.status
+      }, debug.responseHeaders));
+      return r.text().then(function (raw) { return { response: r, raw: raw }; });
+    }).then(function (packet) {
       clearTimeout(timer);
+      var d;
+      try {
+        d = JSON.parse(packet.raw);
+      } catch (parseErr) {
+        debug.responsePreview = packet.raw.slice(0, 300);
+        settle(null, "response_not_json");
+        return;
+      }
+      debug.responseShape = {
+        ok: !!d.ok,
+        hasNickname: !!d.nickname,
+        hasArticle: !!d.article,
+        reason: d.reason || null,
+        source: d.source || null,
+        model: d.model || null,
+        requestId: d.requestId || null,
+        elapsedMs: d.elapsedMs || null
+      };
+      recapDebugEvent("edition_response_body", Object.assign({ requestId: requestId }, debug.responseShape));
       if (d && d.ok && d.nickname && d.article) settle(d, null);
       else settle(d, d && d.reason ? d.reason : "invalid_response");
     }).catch(function (err) {
       clearTimeout(timer);
-      settle(null, err && err.name === "AbortError" ? "client_timeout" : "network_or_parse");
+      var reason = err && err.name === "AbortError" ? "client_timeout_32s" : "network_error";
+      debug.fetchError = { name: err && err.name, message: String(err && err.message || err) };
+      recapDebugEvent("edition_fetch_error", { requestId: requestId, reason: reason, error: debug.fetchError.message });
+      settle(null, reason);
     });
   } catch (err) {
     clearTimeout(timer);
+    debug.fetchError = { name: err && err.name, message: String(err && err.message || err) };
+    recapDebugEvent("edition_request_setup_error", { requestId: requestId, error: debug.fetchError.message });
     settle(null, "request_setup");
   }
 }
