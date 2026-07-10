@@ -1322,16 +1322,23 @@ button.more-modes:disabled {
 
 /* READ MORE lives ON the paper: same 3D bevel geometry as every raised button,
    re-inked to newsprint black-and-white via the presti-spin custom props. */
-.np-actions { display: none; margin-top: 14px; }
+.np-actions { display: none; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .np-paper.ready .np-actions { display: flex; }
-.np-actions .np-read {
+.np-actions .np-read, .np-actions .np-share {
   --spin-face: #241d15;
   --spin-top:  #4a4034;
   --spin-side: #000000;
   --spin-ink:  #f2e9d3;
-  flex: 1; font-family: var(--disp); font-size: 15px; letter-spacing: 0.07em; text-transform: uppercase;
+  flex: 1 1 145px; font-family: var(--disp); font-size: 15px; letter-spacing: 0.07em; text-transform: uppercase;
   animation: np-stamp 0.34s ease-out both;
 }
+.np-actions .np-share {
+  display: none;
+  --spin-face: #8b3428;
+  --spin-top:  #b05242;
+  --spin-side: #4b1712;
+}
+.np-paper.open.story-ready .np-share { display: block; }
 
 /* The two big calls sit UNDER the paper on the backdrop, standard gold bevel. */
 .np-under { display: flex; flex-direction: column; gap: 10px; width: min(430px, 94vw); margin-top: 14px; }
@@ -1495,96 +1502,368 @@ main.content-page {
 .lg-matchup { text-align:center; padding:10px; margin:8px 0; border:1px solid var(--line,#6a5a3a); border-radius:10px; font-size:.95rem; }
 .lg-me { color:#3fae5a; font-weight:600; }
 
-/* ---------- Tribune bundle: the paper lands tied with twine ----------
-   Wrapped state of the season-end paper. Only the record stamp shows (local
-   data, zero model tokens); tapping snips the twine, reveals the printed page,
-   and starts the headline call. Palette + spin borrowed from .np-paper. */
-.np-hidden { display: none !important; }
-
-.np-bundle {
+/* ---------- Tribune bundle: finished stack + connected unfold ----------
+   The wrapped state is a three-sheet sports extra, not a flat placeholder.
+   The score has a clear center panel; the tie crosses the lower third. The top
+   sheet folds away while the actual front page reveals beneath it. */
+.np-stage {
   position: relative;
   width: min(430px, 94vw);
-  padding: 24px 18px 28px;
+  min-height: 322px;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  transition: min-height 0.45s ease;
+}
+.np-stage .np-paper { width: 100%; }
+.np-hidden {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.np-bundle {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  width: 100%;
+  min-height: 306px;
+  padding: 0;
   border: 0;
   cursor: pointer;
-  text-align: center;
   color: #1b1611;
-  background:
-    radial-gradient(rgba(27, 22, 17, 0.05) 1px, transparent 1.2px) 0 0 / 5px 5px,
-    linear-gradient(180deg, #f6efdc 0%, #f2e9d3 22%, #e9dec2 100%);
-  /* the stack: two offset sheets peeking out under the top paper */
-  box-shadow:
-    5px 7px 0 -1px #e7dcbe, 5px 7px 0 0 rgba(27, 22, 17, 0.32),
-    10px 14px 0 -2px #ddd0b0, 10px 14px 0 -1px rgba(27, 22, 17, 0.26),
-    0 24px 60px -14px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(27, 22, 17, 0.35);
+  background: transparent;
+  text-align: left;
   animation: np-spin 1.05s cubic-bezier(0.18, 0.7, 0.24, 1) both;
   transform-origin: 50% 48%;
+  -webkit-tap-highlight-color: transparent;
 }
 .np-bundle.np-quick { animation-duration: 0.55s; }
-.np-bundle:focus-visible { outline: 2px solid #f2b544; outline-offset: 3px; }
+.np-bundle:focus-visible { outline: 2px solid #f2b544; outline-offset: 8px; }
 .np-bundle:disabled { cursor: default; }
 
-.np-bundle-mast {
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 700; font-size: 17px; letter-spacing: 0.01em;
-  padding-bottom: 6px; border-bottom: 3px double #1b1611;
+.np-stack {
+  position: relative;
+  width: 100%;
+  min-height: 306px;
+  transform-style: preserve-3d;
 }
+.np-sheet {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(27, 22, 17, 0.36);
+  background:
+    radial-gradient(rgba(27, 22, 17, 0.055) 0.8px, transparent 1px) 0 0 / 5px 5px,
+    linear-gradient(180deg, #f7f0de 0%, #f1e7cf 58%, #e8dab9 100%);
+  box-shadow: 0 20px 48px -15px rgba(0, 0, 0, 0.82);
+}
+.np-sheet-back { pointer-events: none; }
+.np-sheet-back::before, .np-sheet-back::after {
+  content: "";
+  position: absolute;
+  left: 16px; right: 16px;
+  height: 1px;
+  background: rgba(27, 22, 17, 0.22);
+}
+.np-sheet-back::before { top: 32px; }
+.np-sheet-back::after { top: 42px; }
+.np-sheet-back-2 {
+  transform: translate(10px, 13px) rotate(1.25deg);
+  background-color: #ddcfaa;
+  box-shadow: 0 24px 55px -15px rgba(0, 0, 0, 0.82);
+}
+.np-sheet-back-1 {
+  transform: translate(5px, 7px) rotate(-0.7deg);
+  background-color: #eadfbe;
+}
+.np-sheet-top {
+  overflow: hidden;
+  padding: 13px 15px 15px;
+  transform-origin: 50% 2%;
+  backface-visibility: hidden;
+  box-shadow:
+    0 24px 60px -18px rgba(0, 0, 0, 0.86),
+    0 0 0 1px rgba(255, 255, 255, 0.34) inset;
+}
+.np-sheet-top::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  background:
+    linear-gradient(93deg, transparent 0 48%, rgba(70, 53, 31, 0.12) 50%, transparent 52%),
+    linear-gradient(178deg, transparent 0 73%, rgba(70, 53, 31, 0.1) 74%, transparent 75%);
+}
+
+.np-bundle-mast {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 8px;
+  padding: 0 0 6px;
+  border-bottom: 3px double #1b1611;
+}
+.np-bundle-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  font-size: clamp(17px, 5.2vw, 22px);
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+  text-align: center;
+}
+.np-bundle-side {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.08em;
+  color: #514637;
+  white-space: nowrap;
+}
+.np-bundle-kicker {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(27, 22, 17, 0.42);
+}
+.np-bundle-extra {
+  padding: 2px 6px 3px;
+  background: #a13c2c;
+  color: #f5ead2;
+  font-family: var(--disp);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+.np-bundle-kicker-copy {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.12em;
+  color: #4a4034;
+}
+
+.np-bundle-face {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 70px;
+  align-items: center;
+  gap: 10px;
+  min-height: 170px;
+  padding: 9px 0 12px;
+}
+.np-bundle-teaser, .np-bundle-box {
+  align-self: stretch;
+  padding: 7px 6px;
+  border-top: 2px solid #1b1611;
+  border-bottom: 1px solid rgba(27, 22, 17, 0.45);
+  background: rgba(255, 255, 255, 0.16);
+}
+.np-bundle-teaser-head, .np-bundle-box-head {
+  margin-bottom: 7px;
+  font-family: var(--mono);
+  font-size: 7px;
+  line-height: 1.25;
+  letter-spacing: 0.11em;
+  font-weight: 600;
+}
+.np-bundle-copyline {
+  height: 5px;
+  margin: 6px 0;
+  background: rgba(27, 22, 17, 0.35);
+  box-shadow: 0 9px 0 rgba(27, 22, 17, 0.17);
+}
+.np-bundle-copyline.short { width: 75%; }
+.np-bundle-copyline.tiny { width: 48%; }
+.np-bundle-box-row {
+  padding: 6px 0 5px;
+  border-top: 1px solid rgba(27, 22, 17, 0.28);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+}
+
 .np-bundle-stamp {
-  display: inline-block;
-  margin: 24px auto 20px;
-  padding: 8px 18px 11px;
+  position: relative;
+  min-width: 0;
+  padding: 12px 8px 13px;
   border: 3px double #a13c2c;
   color: #a13c2c;
-  transform: rotate(-4.5deg);
-  opacity: 0.94;   /* a hair of ink starvation, like a real rubber stamp */
+  text-align: center;
+  transform: rotate(-1.4deg);
+  opacity: 0.96;
+  background: rgba(247, 240, 222, 0.72);
+  box-shadow: 0 0 0 4px rgba(161, 60, 44, 0.06);
 }
+.np-bundle-stamp::before, .np-bundle-stamp::after {
+  content: "";
+  position: absolute;
+  left: 8px; right: 8px;
+  height: 1px;
+  background: rgba(161, 60, 44, 0.35);
+}
+.np-bundle-stamp::before { top: 31px; }
+.np-bundle-stamp::after { bottom: 29px; }
 .np-bundle-eyebrow {
   font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.32em; text-indent: 0.32em;
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
 }
 .np-bundle-rec {
   font-family: Georgia, "Times New Roman", serif;
-  font-weight: 700; font-size: clamp(44px, 13vw, 62px); line-height: 1;
-  letter-spacing: -0.01em; margin-top: 2px;
+  font-weight: 700;
+  font-size: clamp(43px, 13vw, 62px);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  margin: 8px 0 7px;
+  white-space: nowrap;
 }
-.np-bundle-hint {
+.np-bundle-sub {
   font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.22em; color: #4a4034;
-  animation: np-hint 1.7s ease-in-out infinite;
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
 }
-@keyframes np-hint { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+.np-bundle-folio {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 7px;
+  border-top: 3px double #1b1611;
+}
+.np-bundle-hint, .np-bundle-foldnote {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: #4a4034;
+}
+.np-bundle-hint { animation: np-hint 1.7s ease-in-out infinite; }
+.np-bundle-foldnote { font-size: 7px; opacity: 0.68; }
+@keyframes np-hint { 0%, 100% { opacity: 0.48; } 50% { opacity: 1; } }
 
-/* twine: two crossing bands + the knot, snipped on unwrap */
-.np-twine-h, .np-twine-v, .np-twine-knot { position: absolute; pointer-events: none; }
+/* Twine is intentionally offset: the score remains fully legible. */
+.np-twine-h, .np-twine-v, .np-twine-knot, .np-fold-shadow {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+}
 .np-twine-h {
-  left: -7px; right: -7px; top: 50%; height: 9px; margin-top: -5px;
-  background: linear-gradient(180deg, #a3835a, #7c6140 55%, #5f4a30);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  transform: rotate(-1.2deg);
+  left: -8px;
+  right: -8px;
+  top: 73%;
+  height: 8px;
+  background:
+    repeating-linear-gradient(8deg, rgba(255,255,255,0.12) 0 2px, transparent 2px 5px),
+    linear-gradient(180deg, #b18d5e, #7b5e3b 58%, #584329);
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  transform: rotate(-0.8deg);
 }
 .np-twine-v {
-  top: -7px; bottom: -7px; left: 50%; width: 9px; margin-left: -5px;
-  background: linear-gradient(90deg, #a3835a, #7c6140 55%, #5f4a30);
-  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.3), inset 1px 0 0 rgba(255, 255, 255, 0.28);
-  transform: rotate(1.4deg);
+  top: -7px;
+  bottom: -7px;
+  left: 14%;
+  width: 8px;
+  background:
+    repeating-linear-gradient(98deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 5px),
+    linear-gradient(90deg, #b18d5e, #7b5e3b 58%, #584329);
+  box-shadow: 2px 0 2px rgba(0, 0, 0, 0.28), inset 1px 0 0 rgba(255, 255, 255, 0.24);
+  transform: rotate(0.8deg);
 }
 .np-twine-knot {
-  left: 50%; top: 50%; width: 21px; height: 21px; margin: -11px 0 0 -11px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 32%, #a3835a, #6b5336 68%, #52402a);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  left: 14%;
+  top: 73%;
+  width: 22px;
+  height: 22px;
+  margin: -7px 0 0 -7px;
+  border-radius: 48% 52% 46% 54%;
+  background: radial-gradient(circle at 34% 30%, #b18d5e, #6b5133 68%, #493720);
+  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.28);
+  transform: rotate(12deg);
+}
+.np-fold-shadow {
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.24), transparent 42%);
 }
 .np-twine-h, .np-twine-v, .np-twine-knot {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.9, 0.4), opacity 0.3s ease;
+  transition: transform 0.32s cubic-bezier(0.42, 0, 0.92, 0.36), opacity 0.27s ease;
 }
-.np-bundle.np-snip { animation: none; transition: transform 0.28s ease 0.16s, opacity 0.28s ease 0.16s; transform: scale(1.06); opacity: 0; }
-.np-bundle.np-snip .np-twine-h { transform: translateX(72%) rotate(9deg); opacity: 0; }
-.np-bundle.np-snip .np-twine-v { transform: translateY(-74%) rotate(-11deg); opacity: 0; transition-delay: 0.05s; }
-.np-bundle.np-snip .np-twine-knot { transform: scale(0) rotate(70deg); opacity: 0; }
 
-/* the printed page settles out of the wrapper instead of re-spinning */
-.np-paper.np-unwrapped { animation: np-unwrap 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.12) both; }
-@keyframes np-unwrap {
-  0%   { transform: scale(0.9) rotate(-1.6deg); opacity: 0; }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+/* One connected motion: tie releases, top page lifts/folds, real page opens below. */
+.np-bundle.np-snip { animation: none; pointer-events: none; }
+.np-bundle.np-snip .np-twine-h { transform: translateX(76%) rotate(8deg); opacity: 0; }
+.np-bundle.np-snip .np-twine-v { transform: translateY(-78%) rotate(-10deg); opacity: 0; transition-delay: 0.04s; }
+.np-bundle.np-snip .np-twine-knot { transform: scale(0) rotate(95deg); opacity: 0; }
+.np-bundle.np-snip .np-sheet-top { animation: np-top-unfold 0.9s cubic-bezier(0.2, 0.72, 0.22, 1) both; }
+.np-bundle.np-snip .np-sheet-back-1 { animation: np-stack-release-1 0.78s ease 0.1s both; }
+.np-bundle.np-snip .np-sheet-back-2 { animation: np-stack-release-2 0.78s ease 0.12s both; }
+.np-bundle.np-snip .np-fold-shadow { animation: np-fold-shade 0.66s ease both; }
+@keyframes np-top-unfold {
+  0%, 18% { transform: translateY(0) rotateX(0deg) scale(1); opacity: 1; }
+  36% { transform: translateY(-7px) rotateX(-10deg) scale(1.015); opacity: 1; }
+  72% { transform: translateY(-15px) rotateX(-66deg) scale(1.025); opacity: 0.76; }
+  100% { transform: translateY(-25px) rotateX(-91deg) scale(1.035); opacity: 0; }
 }
+@keyframes np-stack-release-1 {
+  to { transform: translate(3px, 17px) rotate(-1.8deg) scale(0.98); opacity: 0; }
+}
+@keyframes np-stack-release-2 {
+  to { transform: translate(10px, 25px) rotate(2.4deg) scale(0.96); opacity: 0; }
+}
+@keyframes np-fold-shade {
+  0%, 18% { opacity: 0; }
+  46% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+.np-paper.np-unwrapped {
+  visibility: visible;
+  pointer-events: auto;
+  animation: np-page-unfold 0.9s cubic-bezier(0.18, 0.74, 0.22, 1) both;
+  transform-origin: 50% 4%;
+}
+@keyframes np-page-unfold {
+  0%, 16% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.965) rotateX(7deg);
+    clip-path: inset(0 0 56% 0 round 2px);
+  }
+  40% {
+    opacity: 0.56;
+    transform: translateY(3px) scale(0.985) rotateX(3deg);
+    clip-path: inset(0 0 36% 0 round 2px);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(0) scale(1.012) rotateX(0deg);
+    clip-path: inset(0 0 8% 0 round 1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0deg);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (max-width: 370px) {
+  .np-stage { min-height: 306px; }
+  .np-stack, .np-bundle { min-height: 292px; }
+  .np-sheet-top { padding: 11px 12px 13px; }
+  .np-bundle-face { grid-template-columns: 54px minmax(0, 1fr) 54px; gap: 7px; min-height: 160px; }
+  .np-bundle-rec { font-size: clamp(38px, 13vw, 48px); }
+  .np-bundle-side { font-size: 6.5px; }
+  .np-bundle-kicker-copy, .np-bundle-box-row { font-size: 6.5px; }
+  .np-bundle-teaser, .np-bundle-box { padding-left: 4px; padding-right: 4px; }
+}
+

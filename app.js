@@ -1849,6 +1849,25 @@ function shareSurname(nm) {
   while (rest.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(rest[rest.length - 1])) rest.pop();
   return parts[0].charAt(0) + ". " + rest.join(" ");
 }
+function tribuneTeaser() {
+  var txt = "";
+  if (G && G.recapArt && G.recapArt.article) txt = String(G.recapArt.article);
+  else if (G && G.recapHead && G.recapHead.dek) txt = String(G.recapHead.dek);
+  if (!txt) return "";
+  var first = txt.match(/^.*?[.!?](?:\s|$)/);
+  txt = first ? first[0].trim() : txt.trim();
+  return txt.length > 210 ? txt.slice(0, 207).replace(/\s+\S*$/, "") + "\u2026" : txt;
+}
+function tribuneFullShareText() {
+  if (!G || !G.recapPayload || !G.recapHead) return "";
+  var p = G.recapPayload, losses = CFG.GAMES_IN_SEASON - p.wins;
+  var roster = p.players.map(function (x) {
+    return x.slot + " '" + String(x.yr).slice(-2) + " " + shareSurname(x.name);
+  }).join("\n");
+  var story = G.recapArt && G.recapArt.article ? String(G.recapArt.article) : tribuneTeaser();
+  return "\uD83D\uDDDE\uFE0F THE TRUE 82 TRIBUNE\n\"" + String(G.recapHead.nickname) + "\" FINISH " + p.wins + "\u2013" + losses +
+    (story ? "\n\n" + story : "") + "\n\nTHE FIVE\n" + roster + "\n\ntrue82.net";
+}
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
@@ -1873,17 +1892,24 @@ function shareText(e) {
     }
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
-  var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";  // Tribune nickname above the roster; when absent, nick="" collapses back to the normal single blank line
-  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\ntrue82.net";
+  var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";  // preserves the popular compact roster format
+  var teaser = tribuneTeaser();
+  var tribune = teaser ? "\n\n\uD83D\uDDDE\uFE0F Tribune: " + teaser : "";
+  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + tribune + "\n\ntrue82.net";
 }
 
-function flashShareBtn(msg) {
-  var b = el("shareTeamBtn");
-  if (!b) return;
-  b.textContent = msg;
-  setTimeout(function () { var b2 = el("shareTeamBtn"); if (b2) b2.textContent = "SHARE YOUR TEAM"; }, 1600);
+function shareButtonLabel(b) {
+  if (!b) return "SHARE YOUR TEAM";
+  return b.getAttribute("data-share-label") || (b.id === "shareTeamBtn" ? "SHARE YOUR TEAM" : "SHARE");
 }
-function revealShareText(txt) {
+function flashShareBtn(msg, button) {
+  var b = button || el("shareTeamBtn");
+  if (!b) return;
+  var reset = shareButtonLabel(b);
+  b.textContent = msg;
+  setTimeout(function () { if (b && b.isConnected !== false) b.textContent = reset; }, 1600);
+}
+function revealShareText(txt, button) {
   var box = el("shareTextOut");
   if (!box) {
     box = document.createElement("textarea");
@@ -1891,14 +1917,14 @@ function revealShareText(txt) {
     box.className = "share-out";
     box.setAttribute("readonly", "");
     box.rows = 9;
-    var btn = el("shareTeamBtn");
+    var btn = button || el("shareTeamBtn");
     if (btn && btn.parentNode) btn.parentNode.insertBefore(box, btn.nextSibling);
     else { var app = document.getElementById("app"); if (app) app.appendChild(box); }
   }
   box.value = txt;
   box.style.display = "block";
   try { box.focus(); box.select(); box.setSelectionRange(0, txt.length); } catch (e) {}
-  flashShareBtn("\u2193 SELECT & COPY");
+  flashShareBtn("\u2193 SELECT & COPY", button);
 }
 function legacyCopy(txt) {
   var ta = document.createElement("textarea");
@@ -1927,9 +1953,9 @@ function copyToClipboard(txt) {
 // user gesture as the share call. If the platform can't share (or it's blocked, e.g. a
 // sandboxed preview), we still copy and flash COPIED!, and if even clipboard is blocked we
 // reveal an on-page selectable box so the text is always reachable.
-function shareOrCopy(txt) {
+function shareOrCopy(txt, button) {
   var copyP = copyToClipboard(txt);
-  var copiedFlash = function () { copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!"); }); };
+  var copiedFlash = function () { copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); }); };
   if (navigator.share) {
     var sp;
     try { sp = navigator.share({ text: txt }); }
@@ -1937,20 +1963,20 @@ function shareOrCopy(txt) {
     if (sp && sp.then) {
       sp.then(copiedFlash, function (err) {
         if (err && err.name === "AbortError") { copiedFlash(); return; }  // user dismissed the sheet
-        copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!"); else revealShareText(txt); });
+        copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); else revealShareText(txt, button); });
       });
       return;
     }
   }
-  copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!"); else revealShareText(txt); });
+  copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); else revealShareText(txt, button); });
 }
 
 /* ---------- season recap: The True 82 Tribune ----------
    Every finished season ends on the Tribune's spinning front page — and for
    non-Heat-Check games the paper IS the reveal: results render underneath, the
    record breaks as the headline. Two-phase model calls keep costs down:
-     phase 1 (every season)  — nickname + dek from POST /api/recap {phase:"headline"}
-     phase 2 (READ MORE only) — the four-sentence story {phase:"article"}
+     phase 1 (unwrap only) — nickname + dek from POST /api/recap {phase:"headline"}
+     phase 2 (engaged readers) — the four-sentence story {phase:"article"}
    Both phases fail soft to local template copy so the paper ALWAYS lands. Model
    text is inserted with textContent only — never innerHTML — untrusted output. */
 
@@ -2060,6 +2086,7 @@ function requestHeadline() {
     settled = true;
     G.recapHead = d;
     stampHeadline();
+    if (G.recapArtIntent) requestArticle();
   }
   var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
   var timer = setTimeout(function () { if (ac) ac.abort(); settle(localHeadline(G.recapPayload)); }, 20000);
@@ -2074,8 +2101,15 @@ function requestHeadline() {
   } catch (err) { clearTimeout(timer); settle(localHeadline(G.recapPayload)); }
 }
 
-// Phase 2: the story — only ever fired by READ MORE, written to match the nickname
-// already in print (even a fallback nickname, so the piece never contradicts it).
+// Phase 2: the story — fired only after an engagement signal (historic record,
+// dwell, paper tap/scroll, or READ MORE), and written to match the nickname already
+// in print (even a fallback nickname, so the piece never contradicts it).
+function expressRecapArticleInterest(reason) {
+  if (!G || !G.recapPayload || G.recapArt || G.recapArtReq) return;
+  if (!G.recapArtIntent) G.recapArtIntent = reason || "engaged";
+  if (G.recapHead) requestArticle();
+}
+
 function requestArticle() {
   if (G.recapArt || G.recapArtReq || !G.recapPayload || !G.recapHead) return;
   G.recapArtReq = 1;
@@ -2120,6 +2154,7 @@ function showNewspaper(gate) {
   var wins = G.recapWins, losses = CFG.GAMES_IN_SEASON - wins;
 
   var ov = document.createElement("div"); ov.className = "np-overlay" + (gate ? " np-gate" : "");
+  var stage = document.createElement("div"); stage.className = "np-stage";
   var paper = document.createElement("div"); paper.className = "np-paper" + (G.recapShown ? " np-quick" : "");
   paper.setAttribute("role", "dialog"); paper.setAttribute("aria-label", "Season recap");
   function div(cls, txt) { var x = document.createElement("div"); x.className = cls; if (txt != null) x.textContent = txt; return x; }
@@ -2141,7 +2176,9 @@ function showNewspaper(gate) {
 
   var acts = div("np-actions");
   var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read"; read.textContent = "READ MORE";
-  acts.appendChild(read);
+  var shareEdition = document.createElement("button"); shareEdition.type = "button"; shareEdition.className = "presti-spin np-share"; shareEdition.textContent = "TEXT FULL STORY";
+  shareEdition.setAttribute("data-share-label", "TEXT FULL STORY");
+  acts.appendChild(read); acts.appendChild(shareEdition);
   paper.appendChild(acts);
   var storyDone = false;   // flips true once the full article has inked in -> READ MORE/CLOSE STORY becomes GET RESULTS
 
@@ -2150,27 +2187,73 @@ function showNewspaper(gate) {
   var again = document.createElement("button"); again.type = "button"; again.className = "presti-spin np-underbtn"; again.textContent = "RUN IT BACK";
   under.appendChild(skip); under.appendChild(again);
 
-  // THE BUNDLE: the paper lands tied with twine, showing only the record stamp —
-  // all local data, zero tokens. The model call starts at unwrap. A paper reopened
-  // after a prior unwrap (G.recapReq set) skips straight to the printed page.
-  var bundle = null, autoT = null;
+  // THE BUNDLE: three offset sheets + a finished front-page shell. The record sits
+  // in its own unobstructed panel; twine crosses the lower third instead of the score.
+  // The top sheet folds away while this exact paper reveals underneath, buying the
+  // headline request useful time without a hard object swap.
+  var bundle = null, autoT = null, prefetchT = null;
   if (!G.recapReq) {
     paper.classList.add("np-hidden");
     bundle = document.createElement("button");
     bundle.type = "button";
     bundle.className = "np-bundle" + (G.recapShown ? " np-quick" : "");
-    bundle.setAttribute("aria-label", "Unwrap the paper");
-    bundle.appendChild(div("np-bundle-mast", "The True 82 Tribune"));
+    bundle.setAttribute("aria-label", "Unwrap the Tribune and reveal the season recap");
+
+    var stack = div("np-stack");
+    var back2 = div("np-sheet np-sheet-back np-sheet-back-2"); back2.setAttribute("aria-hidden", "true");
+    var back1 = div("np-sheet np-sheet-back np-sheet-back-1"); back1.setAttribute("aria-hidden", "true");
+    var top = div("np-sheet np-sheet-top");
+
+    var bmast = div("np-bundle-mast");
+    bmast.appendChild(div("np-bundle-side", npDate()));
+    bmast.appendChild(div("np-bundle-name", "The True 82 Tribune"));
+    bmast.appendChild(div("np-bundle-side np-right", "SPORTS FINAL \u00B7 5\u00A2"));
+    top.appendChild(bmast);
+
+    var kicker = div("np-bundle-kicker");
+    kicker.appendChild(div("np-bundle-extra", "EXTRA"));
+    kicker.appendChild(div("np-bundle-kicker-copy", "THE SEASON EDITION \u00B7 FIVE PICKS, ONE VERDICT"));
+    top.appendChild(kicker);
+
+    var face = div("np-bundle-face");
+    var teaser = div("np-bundle-teaser");
+    teaser.appendChild(div("np-bundle-teaser-head", wins >= 81 ? "HISTORY DESK" : wins === 0 ? "DISASTER DESK" : "FRONT OFFICE"));
+    teaser.appendChild(div("np-bundle-copyline"));
+    teaser.appendChild(div("np-bundle-copyline short"));
+    teaser.appendChild(div("np-bundle-copyline"));
+    teaser.appendChild(div("np-bundle-copyline tiny"));
+    face.appendChild(teaser);
+
     var stamp = div("np-bundle-stamp");
-    stamp.appendChild(div("np-bundle-eyebrow", wins >= CFG.GAMES_IN_SEASON ? "HISTORY" : wins === 0 ? "DISASTER" : "FINAL"));
-    stamp.appendChild(div("np-bundle-rec", wins + "\u2013" + losses + "!"));
-    bundle.appendChild(stamp);
-    bundle.appendChild(div("np-bundle-hint", "TAP TO UNWRAP"));
-    bundle.appendChild(div("np-twine-h")); bundle.appendChild(div("np-twine-v")); bundle.appendChild(div("np-twine-knot"));
+    stamp.appendChild(div("np-bundle-eyebrow", wins >= CFG.GAMES_IN_SEASON ? "HISTORY" : wins === 0 ? "DISASTER" : "FINAL EDITION"));
+    stamp.appendChild(div("np-bundle-rec", wins + "\u2013" + losses));
+    stamp.appendChild(div("np-bundle-sub", "PROJECTED RECORD"));
+    face.appendChild(stamp);
+
+    var box = div("np-bundle-box");
+    box.appendChild(div("np-bundle-box-head", "EDITION NOTES"));
+    box.appendChild(div("np-bundle-box-row", shareModeLabel().toUpperCase()));
+    box.appendChild(div("np-bundle-box-row", "NET " + signed1(G.recapPayload.net)));
+    box.appendChild(div("np-bundle-box-row", "5-MAN FINAL"));
+    face.appendChild(box);
+    top.appendChild(face);
+
+    var folio = div("np-bundle-folio");
+    folio.appendChild(div("np-bundle-hint", "TAP TO UNWRAP"));
+    folio.appendChild(div("np-bundle-foldnote", "PAGE ONE INSIDE"));
+    top.appendChild(folio);
+
+    top.appendChild(div("np-fold-shadow"));
+    top.appendChild(div("np-twine-h")); top.appendChild(div("np-twine-v")); top.appendChild(div("np-twine-knot"));
+    stack.appendChild(back2); stack.appendChild(back1); stack.appendChild(top);
+    bundle.appendChild(stack);
+  } else {
+    stage.classList.add("np-opened");
   }
 
-  if (bundle) ov.appendChild(bundle);
-  ov.appendChild(paper); ov.appendChild(under);
+  if (bundle) stage.appendChild(bundle);
+  stage.appendChild(paper);
+  ov.appendChild(stage); ov.appendChild(under);
   document.body.appendChild(ov);
   buzz(20);
 
@@ -2182,12 +2265,19 @@ function showNewspaper(gate) {
   function close(fireworksOk) {
     clearInterval(tickTimer);
     clearTimeout(autoT);
+    clearTimeout(prefetchT);
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
   }
 
-  // The snip: twine flies off, the stack settles into the printed page, and THIS
-  // is where the model call starts. Funnel event: finishes -> unwraps -> reads.
+  function engageArticle(reason) {
+    clearTimeout(prefetchT);
+    expressRecapArticleInterest(reason);
+  }
+
+  // Connected unwrap: release the lower-third tie, lift/fold the top sheet, and
+  // reveal the real front page beneath it. Headline starts at the tap; article
+  // generation remains demand-priced and begins only on an engagement signal.
   function unwrap(auto) {
     if (!bundle || G.recapReq) return;
     clearTimeout(autoT);
@@ -2195,13 +2285,24 @@ function showNewspaper(gate) {
     requestHeadline();
     var b = bundle; bundle = null;
     b.disabled = true;
+    stage.classList.add("np-opening");
     b.classList.add("np-snip");
+    paper.classList.remove("np-hidden");
+    paper.classList.add("np-unwrapped");
+
+    // Option B — event driven: remarkable records prefetch immediately after the
+    // headline; ordinary editions wait for a dwell, paper interaction, scroll, or
+    // explicit READ MORE. Closing before the dwell cancels the speculative call.
+    if (wins >= CFG.GAMES_IN_SEASON - 1 || wins === 0) engageArticle("historic-record");
+    else prefetchT = setTimeout(function () { engageArticle("paper-dwell"); }, 1100);
+
     setTimeout(function () {
       if (b.parentNode) b.parentNode.removeChild(b);
-      paper.classList.remove("np-hidden");
-      paper.classList.add("np-unwrapped");
+      stage.classList.remove("np-opening");
+      stage.classList.add("np-opened");
+      paper.classList.remove("np-unwrapped");
       buzz(16);
-    }, 430);
+    }, 920);
   }
   if (bundle) {
     bundle.addEventListener("click", function () { unwrap(false); });
@@ -2217,11 +2318,20 @@ function showNewspaper(gate) {
   again.addEventListener("click", function () {
     clearInterval(tickTimer);
     clearTimeout(autoT);
+    clearTimeout(prefetchT);
     window.t82track && window.t82track("replay", { mode: MODE });
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     newGame();
   });
   ov.addEventListener("click", function (ev) { if (ev.target === ov) { window.t82track && window.t82track("recap_skip", { mode: MODE }); close(true); } });
+
+  // Any real interaction with the opened object is a strong enough signal to write
+  // the story in the background. READ MORE still forces it immediately.
+  paper.addEventListener("pointerdown", function (ev) {
+    if (!paper.classList.contains("np-hidden") && !(ev.target && ev.target.closest && ev.target.closest("button"))) engageArticle("paper-tap");
+  }, { passive: true });
+  paper.addEventListener("scroll", function () { if (!paper.classList.contains("np-hidden")) engageArticle("paper-scroll"); }, { passive: true });
+
   read.addEventListener("click", function () {
     if (storyDone) {                       // full article is unfurled -> button now exits to results
       window.t82track && window.t82track("recap_results", { mode: MODE });
@@ -2232,12 +2342,19 @@ function showNewspaper(gate) {
       paper.classList.add("open");
       read.textContent = "CLOSE STORY";
       if (!G.recapReadTracked) { G.recapReadTracked = 1; window.t82track && window.t82track("recap_read", { mode: MODE }); }
+      engageArticle("read-more");
       if (G.recapArt) { inkInArticle(); }
       else { paper.classList.add("printing-art"); ticker.style.display = ""; buildGhostArticle(); requestArticle(); }
     } else {
       paper.classList.remove("open");
       read.textContent = "READ MORE";
     }
+  });
+
+  shareEdition.addEventListener("click", function () {
+    if (!G.recapArt || !G.recapHead) return;
+    window.t82track && window.t82track("share", { mode: MODE, wins: wins, undefeated: wins >= CFG.GAMES_IN_SEASON ? 1 : 0, variant: "tribune_full" });
+    shareOrCopy(tribuneFullShareText(), shareEdition);
   });
 
   function buildGhostArticle() {
@@ -2267,6 +2384,7 @@ function showNewspaper(gate) {
   G.npInk = function () {
     if (!ov.parentNode || !G.recapArt) return;
     paper.classList.remove("printing-art");
+    paper.classList.add("story-ready");
     ticker.style.display = "none";
     art.textContent = "";
     art.appendChild(div("np-byline", "From the Tribune wire desk"));
