@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101418">
+<link rel="canonical" href="https://true82.net/what-is-bpm/">
+<title>What Is BPM in Basketball? Box Plus/Minus Explained</title>
+<meta name="description" content="BPM (Box Plus/Minus) estimates a player's contribution per 100 possessions relative to league average, using only box-score stats. What it measures, its limits, and how TRUE 82 builds a draft game on it.">
+<meta property="og:title" content="What is BPM in basketball?">
+<meta property="og:description" content="Box Plus/Minus explained: a per-100-possessions, box-score-based estimate of player impact — and the stat at the heart of TRUE 82's season engine.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://true82.net/what-is-bpm/">
+<meta property="og:site_name" content="TRUE 82">
+<meta property="og:image" content="https://true82.net/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://true82.net/og-image.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23101418'/%3E%3Crect x='20' y='20' width='24' height='24' transform='rotate(45 32 32)' fill='%23FFB52E'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="brand-link" href="/" aria-label="TRUE 82 — play the game"><img class="brand-logo" src="/logo.png" alt="TRUE 82" width="800" height="188" decoding="async"></a>
+</header>
+
+<main class="content-page">
+  <h1>What is BPM in basketball?</h1>
+
+  <p class="lead">BPM &mdash; Box Plus/Minus &mdash; is a box-score-based estimate of a player's contribution per 100 possessions, relative to a league-average player. Zero is average, +5 or better is an All-NBA-caliber season, and around &minus;2 is replacement level. Basketball Reference publishes BPM back to the 1973&#8211;74 season, split into offensive (OBPM) and defensive (DBPM) halves.</p>
+
+  <h2>What BPM tries to measure</h2>
+  <p>BPM starts from a simple question: given only what's in the box score &mdash; scoring, efficiency, rebounds, assists, steals, blocks, turnovers &mdash; how much did this player help his team per 100 possessions? Because it's expressed relative to league average, it travels across eras better than raw counting stats: a +6 season means roughly the same thing in 1985 and 2025 even though pace and scoring environments differ wildly. Its main limitation is honest and well known: the box score can't see everything, and defense in particular is only partially captured, which is why DBPM is treated as an estimate rather than gospel.</p>
+
+  <h2>How TRUE 82 uses BPM-style value</h2>
+  <p>In TRUE 82, every player-season's core value is built mostly from OBPM and DBPM, with some minor custom tweaks. That's also why the player pool starts in 1974 &mdash; the steals, blocks, and turnovers those stats depend on weren't tracked league-wide before then. One adjustment worth naming: shooters from the low-3PT and pre-3PT eras get shooting credit based on reputation and vibes, because the 1978 box score cannot tell you that a player would happily launch eight threes a game today.</p>
+
+  <h2>Why BPM alone is not enough</h2>
+  <p>Five high-BPM players are not automatically a great team &mdash; value overlaps. That's why the <a href="/how-it-works/">TRUE 82 engine</a> layers fit on top of value: it taxes lineups where too many players need the ball, checks whether there's enough shooting to keep the floor spaced, and penalizes a backcourt or wing rotation that can't defend. BPM tells you how good a player was; the engine decides whether your five would actually work together for 82 games.</p>
+
+  <h2>Play a BPM-driven draft game</h2>
+  <p>The fastest way to build intuition for advanced metrics is to draft with them. TRUE 82 deals you random franchise-and-era tickets and lets the engine judge the result &mdash; free, in the browser, no account.</p>
+
+  <p><a class="btn btn-primary btn-block" href="/">Play TRUE 82</a></p>
+
+  <p class="fineprint">BPM and its underlying data are the work of Basketball Reference / Sports Reference LLC. TRUE 82 is an independent fan project and claims no endorsement by or affiliation with Basketball Reference, Stathead, or Sports Reference LLC.</p>
+</main>
+
+<footer class="site-foot">
+  <nav class="site-links" aria-label="TRUE 82 information pages">
+    <a href="/">Play</a>
+    <a href="/how-it-works/">How it works</a>
+    <a href="/faq/">FAQ</a>
+    <a href="/can-you-go-82-0/">82&#8211;0 explainer</a>
+    <a href="/what-is-bpm/">BPM explained</a>
+  </nav>
+  <p class="games-count mono">Contact: <a href="mailto:true82mailbox@gmail.com">true82mailbox@gmail.com</a></p>
+  <p class="fineprint">TRUE 82 is an independent, non-commercial fan project, not affiliated with the NBA, any team, or Sports Reference LLC. Full legal disclaimer on the <a href="/">game page</a>.</p>
+</footer>
+</body>
+</html>
