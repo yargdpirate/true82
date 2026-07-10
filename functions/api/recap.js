@@ -1,6 +1,7 @@
 // POST /api/recap — two-phase season-recap copywriter for the Tribune overlay.
-//   phase "headline": nickname only. Fires at EVERY season end -> kept cheap
-//                     (small thinking budget, tiny output).
+//   phase "headline": nickname only. Fires at EVERY season end -> kept CHEAP:
+//                     no thinking by default, no BAN block, minimal user payload
+//                     (record + roster names; ~55% fewer input tokens than v1).
 //   phase "article":  the four-sentence story. Fires ONLY when the reader presses
 //                     READ MORE (rare), written to match the nickname already shown.
 // Fail-soft like the rest of the API: ANY problem (no key, timeout, bad parse) returns
@@ -29,20 +30,18 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `free-associate a short nickname (2-4 words) that lands as a CUTTING, GOSSIPY INSIDE JOKE about these specific players — the kind of thing a rival fan tweets to get a laugh. This is about WHO these guys are, not how they play. Reach for the tabloid angle: reputations, feuds, egos, nightlife, scandals, memes, the stuff people actually gossip about.
-RANK YOUR ANGLES, best to worst:
-1. A shared off-court reputation or story they're actually known for (known gamblers -> "The Match Fixers"; famous partiers -> "The Partiers"; a notorious teammate-killer -> "The Team Killers"; DUI history -> "The Designated Drivers"; firearms trouble -> "The Sharp Shooters").
-2. A deadpan label that's funny because it's dryly literal or self-aware (famously cerebral guys -> "The Smartest Guys in the Room"; loose cannons owning it -> "The Idiots").
-3. LAST RESORT only: a two-word free association about the roster's vibe. On-court playstyle is the fallback, never the default.
-HARD NO — these are the exact failure modes, reject on sight:
-- Generic praise that just says they are good: "The Untouchables", "The Real Deal", "Simply the Best". If it reads as a compliment, it is dead.
-- Anything about ball-sharing, usage, touches, or "too many stars": "The Unsharables", "The Ball Hogs". Never.
-- Alliteration (words sharing a starting sound, e.g. "Furnace Foxes").
-- Epic or mythic grandeur, even ironically (no Makers, Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals, Reign).
-Chirp like a clever rival fan. Skip the first obvious pairing for the one only THIS roster earns.
-It prints as "<NICKNAME> FINISH 72-10", so it must read right there. Output only the nickname (a leading "The" is fine): no quotes, no explanation.`;
+const NICKNAME_RULES = `Free-associate a 2-4 word nickname that lands as a cutting, gossipy inside joke about WHO these specific players are off the court — the thing a clever rival fan tweets for a laugh. Tabloid angles: reputations, feuds, egos, nightlife, scandals, memes.
+Rank your angles, best to worst:
+1. A shared off-court reputation or story they are actually known for (known gamblers -> "The Match Fixers"; famous partiers -> "The Partiers"; DUI history -> "The Designated Drivers").
+2. A deadpan label, funny because it is dryly literal or self-aware ("The Smartest Guys in the Room"; "The Idiots").
+3. LAST RESORT: a two-word free association on the roster's vibe. On-court playstyle is the fallback, never the default.
+HARD NO — reject on sight:
+- Generic praise ("The Untouchables", "The Real Deal"): if it reads as a compliment, it is dead.
+- Ball-sharing, usage, touches, or "too many stars" ("The Unsharables", "The Ball Hogs"). Never.
+- Alliteration. Epic or mythic grandeur (no Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals).
+Skip the first obvious pairing for the one only THIS roster earns. It prints as "<NICKNAME> FINISH 72-10", so it must read right there. Output only the nickname on a single line (a leading "The" is fine): no quotes, no explanation.`;
 
-const SYS_HEADLINE = `You are the creative Copy Editor naming the team on the front page after the 82nd and final game of an NBA regular season. The roster is composed of several players from different historical seasons; the roster and record below are established fact.
+const SYS_HEADLINE = `You name the team on the newspaper front page after the 82nd and final game of an NBA season. The five players below are real, each frozen at one historical season; the record is established fact.
 
 ${NICKNAME_RULES}`;
 
@@ -61,8 +60,9 @@ Sentence 3, the verdict on perfection, chosen by the final record, one short lin
 Sentence 4, the kicker: invent one juicy, absurd off-court drama beat about this group (a feud, a nightlife legend, an ego war, a ridiculous incident), played completely straight with full tabloid energy. Keep it comic and good-natured, never a real crime or a genuine accusation. End on this.
 Never blame spacing, shooting, or shot-sharing. Never mention ratings, models, engines, fantasy, video games, or drafting. Do not use em dashes.`;
 
-// Applied to BOTH phases (nickname + dek + body) so the whole Tribune shares one voice.
-// Override live from the Cloudflare dashboard with RECAP_VOICE — no redeploy of code needed.
+// Applied to the ARTICLE by default. The HEADLINE skips the default voice (noise for a
+// 2-4 word name) but picks up a custom RECAP_VOICE from the dashboard when set — so the
+// flim-flam barker below still flavors both phases if you paste it into RECAP_VOICE:
 // To bring back the 1920s flim-flam barker, paste THIS into the RECAP_VOICE dashboard value:
 //   render every word (nickname, dek, and story) in the voice of a 1920s newspaper sports barker: breathless and theatrical, thick with jazz-age slang and carnival flim-flam, fond of alliteration and big ballyhoo, gloriously over-the-top and old-timey.
 const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk prose: vivid and confident, plain-spoken, never gimmicky or old-timey. Let the roster and the record carry it.`;
@@ -110,17 +110,25 @@ export async function onRequest(context) {
   if (phase === "article" && !nickname) return fail("bad_payload");
 
   const t = tierFor(wins);
-  const user =
-`MODE: ${modeLabel}
+  // Two user messages, one per phase. The HEADLINE one is deliberately minimal: the
+  // nickname is about WHO the players are (world knowledge), so mode, tier, tone,
+  // lineup values, and composition signals are dead weight — and the spacing/usage
+  // signals actively feed the BANNED angles. The ARTICLE keeps the full context
+  // (tier verdict + fit notes are load-bearing for its sentence 3).
+  const user = phase === "article"
+    ? `MODE: ${modeLabel}
 FINAL RECORD: ${wins}-${losses} (82 games)
 SEASON TIER: ${t[1]}
 TONE DIRECTIVE: ${t[2]}
-LATE-SEASON ERUPTION: ${hh ? hh.player + " caught fire down the stretch (" + hh.tier + ")" : "none"}${phase === "article" ? `
-TEAM NICKNAME ALREADY IN PRINT: ${nickname}` : ""}
+LATE-SEASON ERUPTION: ${hh ? hh.player + " caught fire down the stretch (" + hh.tier + ")" : "none"}
+TEAM NICKNAME ALREADY IN PRINT: ${nickname}
 ROSTER (slot / season / player / lineup value):
 ${players.map(p => `${p.slot} / ${p.yr} / ${p.name} / ${p.v}`).join("\n")}
 COMPOSITION SIGNALS (how the five fit together):
-${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced five"}`;
+${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced five"}`
+    : `FINAL RECORD: ${wins}-${losses}
+ROSTER (season / player):
+${players.map(p => `${p.yr} ${p.name}`).join("\n")}`;
 
   const isArticle = phase === "article";
   const voice = env.RECAP_VOICE || DEFAULT_VOICE;
@@ -145,7 +153,13 @@ ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced 
       body: JSON.stringify(Object.assign({
         model: env.RECAP_MODEL || "claude-sonnet-4-6",
         max_tokens: maxTokens,
-        system: (isArticle ? SYS_ARTICLE : SYS_HEADLINE) + "\n\n" + voice + "\n\n" + BAN + "\n\n" + (isArticle ? HARD : HARD_HEAD),
+        // ARTICLE keeps the full stack (voice + BAN + HARD). HEADLINE runs lean:
+        // NICKNAME_RULES already bans the ball-sharing angle, so BAN is redundant
+        // there, and the default voice is noise for a 2-4 word name — a custom
+        // RECAP_VOICE (dashboard) still applies to both phases when set.
+        system: isArticle
+          ? SYS_ARTICLE + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD
+          : SYS_HEADLINE + (env.RECAP_VOICE ? "\n\n" + env.RECAP_VOICE : "") + "\n\n" + HARD_HEAD,
         messages: [{ role: "user", content: user }]
       }, useThink ? { thinking: { type: "enabled", budget_tokens: thinkBudget } } : {}))
     });

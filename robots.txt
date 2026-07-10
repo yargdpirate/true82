@@ -1,4 +1,23 @@
+# TRUE 82 welcomes public search and answer-engine discovery while withholding
+# model-training permission. Each named crawler gets a complete rule group because
+# specific user-agent groups do not inherit the wildcard group's path rules.
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+Disallow: /avocado
+Disallow: /CONTEXT.md
+Disallow: /README.md
+Disallow: /MODES.md
+Disallow: /POPUPS.md
+Disallow: /docs/
+
+User-agent: GPTBot
+Disallow: /
+
 User-agent: *
+# Content-Signal is supplementary metadata for crawlers that recognize it.
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 
 # Backend routes — nothing to index

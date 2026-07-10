@@ -63,8 +63,9 @@
      live, and it lives HERE (in the one file allowed to differ per lane) so the
      shared engine/shell/CSS never fork. It hides the account/duel/league entry
      points renderIntro() emits unconditionally, which would otherwise be dead
-     buttons on the public site. To LAUNCH one of these on live: add its
-     <script> tag near the bottom of this file AND delete its #id from the rule
+     buttons on the public site. To LAUNCH one of these on live: add the
+     required account/feature files to LIVE_FILES and the critical chain as
+     documented in DEPLOY-LANES.md, then delete its #id from the rule
      below. (dailyStrip/startWeekly are already hidden by attribute; listed for
      completeness so this block is the full "not-yet-live UI" manifest.) */
   #arenaChip, #startDuel, #startLeague, #startWeekly, #dailyStrip, #runStatus { display: none !important; }
@@ -72,7 +73,7 @@
 </head>
 <body>
 <header class="site-head">
-  <img class="brand-logo" src="logo.png" alt="TRUE 82" width="800" height="188">
+  <img class="brand-logo" src="logo.png" alt="TRUE 82" width="800" height="188" decoding="async" fetchpriority="high">
   <div class="round-pips" id="roundPips" aria-hidden="true"></div>
 </header>
 

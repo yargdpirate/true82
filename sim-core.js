@@ -122,6 +122,128 @@
   var CAP_BUDGET = 50, CAP_TRAP = 0.50, CAP_GEM = 0.15;
   var DATA_VERSION = 0;
 
+  // ---- MANUAL PLAYER-VALUE ADJUSTMENTS (VALUE_ADJ) -------------------------
+  // Hand-curated deltas added to a player-season's engine value (bpm_star) for
+  // specific seasons. Applied in initDataCore BEFORE pools/costs, so value, the
+  // salary-cap price (cost is ~0.26*(value)^2, so a flat bump costs more on
+  // stronger seasons), and the win projection all pick it up automatically. The
+  // Offense/Defense bars are NOT touched (they keep reading raw OBPM/DBPM).
+  //   n   = exact dataset name (validated against site_data.json)
+  //   adj = delta added to bpm_star (and adj/2 to each bar)
+  //   w   = one or more windows. [y0,y1] = seasons y0..y1 inclusive (END-YEAR:
+  //         2015 = the 2014-15 season), all teams. [y0,y1,"TEAM"] scopes to one
+  //         team (only needed to disambiguate a same-season two-team split).
+  //   mp  = optional minutes floor: skip rows below it (drops tiny mid-season
+  //         slivers, e.g. Durant's 269-min 2023 PHO stint).
+  var VALUE_ADJ = [
+    { n:"Moses Malone",             adj:1.75, w:[[1979,1983]] },
+    { n:"Steve Nash",               adj:1.50, w:[[2005,2010]] },
+    { n:"James Worthy",             adj:1.50, w:[[1985,1991]] },
+    { n:"Klay Thompson",            adj:1.25, w:[[2015,2019]] },
+    { n:"Chris Bosh",               adj:1.25, w:[[2011,2014]] },
+    { n:"Isiah Thomas",             adj:1.00, w:[[1984,1990]] },
+    { n:"Patrick Ewing",            adj:1.00, w:[[1989,1995]] },
+    { n:"Tony Parker",              adj:1.00, w:[[2005,2014]] },
+    { n:"Andre Iguodala",           adj:1.00, w:[[2015,2019]] },
+    { n:"Rasheed Wallace",          adj:1.00, w:[[2001,2006]] },
+    { n:"Bob McAdoo",               adj:1.00, w:[[1974,1976]] },
+    { n:"Pete Maravich",            adj:1.00, w:[[1974,1977]] },
+    { n:"Artis Gilmore",            adj:1.00, w:[[1977,1979]] },
+    { n:"Aaron Gordon",             adj:1.00, w:[[2022,2026]] },
+    { n:"Nikola Jokić",             adj:1.00, w:[[2021,2026]] },
+    { n:"Tim Duncan",               adj:0.75, w:[[2002,2007]] },
+    { n:"Hakeem Olajuwon",          adj:0.75, w:[[1989,1995]] },
+    { n:"Dirk Nowitzki",            adj:0.75, w:[[2006,2011]] },
+    { n:"Kevin McHale",             adj:0.75, w:[[1984,1988]] },
+    { n:"Pau Gasol",                adj:0.75, w:[[2008,2012]] },
+    { n:"Joe Dumars",               adj:0.75, w:[[1988,1993]] },
+    { n:"Dennis Johnson",           adj:0.75, w:[[1979,1987]] },
+    { n:"Michael Cooper",           adj:0.75, w:[[1982,1988]] },
+    { n:"Shane Battier",            adj:0.75, w:[[2006,2013]] },
+    { n:"Bruce Bowen",              adj:0.75, w:[[2003,2007]] },
+    { n:"Kevin Durant",             adj:0.75, w:[[2021,2026]], mp:785 },
+    { n:"George Gervin",            adj:0.75, w:[[1978,1982]] },
+    { n:"David Thompson",           adj:0.75, w:[[1976,1978]] },
+    { n:"Elvin Hayes",              adj:0.75, w:[[1974,1979]] },
+    { n:"Walt Frazier",             adj:0.75, w:[[1974,1975]] },
+    { n:"Larry Bird",               adj:0.50, w:[[1984,1988]] },
+    { n:"Kobe Bryant",              adj:0.50, w:[[2001,2010]] },
+    { n:"Charles Barkley",          adj:0.50, w:[[1987,1993]] },
+    { n:"Robert Parish",            adj:0.50, w:[[1980,1987]] },
+    { n:"Tayshaun Prince",          adj:0.50, w:[[2004,2008]] },
+    { n:"Kentavious Caldwell-Pope", adj:0.50, w:[[2020,2020],[2023,2024]] },
+    { n:"Jrue Holiday",             adj:0.50, w:[[2021,2026]] },
+    { n:"Brook Lopez",              adj:0.50, w:[[2019,2024]] },
+    { n:"Derrick White",            adj:0.50, w:[[2023,2025]] },
+    { n:"Mikal Bridges",            adj:0.50, w:[[2021,2022]] },
+    { n:"Ben Wallace",              adj:0.50, w:[[2002,2006]] },
+    { n:"Dikembe Mutombo",          adj:0.50, w:[[1995,2001]] },
+    { n:"Dwight Howard",            adj:0.50, w:[[2009,2012]] },
+    { n:"Bill Walton",              adj:0.50, w:[[1977,1978]] },
+    { n:"Rick Barry",               adj:0.50, w:[[1974,1976]] },
+    { n:"Tiny Archibald",           adj:0.25, w:[[1974,1975]] },
+    { n:"John Havlicek",            adj:0.25, w:[[1974,1978]] },
+    { n:"Jerry West",               adj:0.25, w:[[1974,1974]] }
+  ];
+  function valueAdjMatch(win, season, team) {
+    for (var i = 0; i < win.length; i++) {
+      var y0 = win[i][0], y1 = win[i][1], tm = win[i][2];
+      if (season < y0 || season > y1) continue;
+      if (tm && team !== tm) continue;
+      return true;
+    }
+    return false;
+  }
+
+  // ---- SHOOTER LABELS (floor-spacing tags) ---------------------------------
+  // Manual shooter tagging applied in initDataCore AFTER the algorithmic sp,
+  // overriding it. Sets row[IDX.sp]: NEVER -> 0, ALWAYS -> 1, SUPER -> SUPER_SP
+  // (elite gravity: counts as 1.5 floor-spacers toward SPACERS_REQ, so spacing
+  // now moves in half-shooter steps). SUPER wins any overlap (applied last).
+  // These REPLACE the old meta.sp_override / meta.sp_never lists.
+  var SUPER_SP = 1.5;
+  var ALWAYS_SHOOTER = [
+    "Pete Maravich", "Fred Brown", "Rick Barry", "Jon McGlocklin", "Brian Winters",
+    "Chris Ford", "Louie Dampier", "Glen Combs", "Rick Mount", "Bill Keller", "Brian Taylor",
+    "Kevin Grevey", "Larry Bird", "Dan Issel", "Bingo Smith", "Geoff Petrie", "Scott Wedman",
+    "Jon Sundvold", "Mike Evans", "Kyle Macy", "Jerry Sichting", "John Roche", "Mike Gminski",
+    "Victor Wembanyama", "Tim Hardaway Jr.", "Nicolas Batum", "Jayson Tatum", "Jaylen Brown",
+    "Paul George", "Eric Gordon", "Jordan Clarkson", "Myles Turner", "Malik Monk",
+    "Chris Paul", "Devin Booker", "Rasheed Wallace", "Bradley Beal", "Jamal Crawford",
+    "John Stockton", "Jack Sikma", "George Gervin", "World B. Free", "Kiki Vandeweghe",
+    "Calvin Murphy", "Eddie Johnson", "Darrell Griffith", "Michael Cooper", "Danny Ainge",
+    "Craig Hodges", "Bob McAdoo", "Jerry West", "Ron Boone", "Kobe Bryant", "Tracy McGrady",
+    "Toni Kukoč", "Detlef Schrempf", "Sam Perkins", "Robert Horry", "Arvydas Sabonis",
+    "Brandon Roy"
+  ];
+  var NEVER_SHOOTER = [
+    "Kareem Abdul-Jabbar", "Moses Malone", "Robert Parish", "Kevin McHale", "James Worthy",
+    "Dominique Wilkins", "Clyde Drexler", "Magic Johnson", "Isiah Thomas", "Michael Jordan",
+    "Charles Barkley", "Karl Malone", "Hakeem Olajuwon", "Patrick Ewing", "Bill Cartwright",
+    "Mark Eaton", "Manute Bol", "Tree Rollins", "Darryl Dawkins", "Buck Williams",
+    "Charles Oakley", "A.C. Green", "Horace Grant", "Larry Nance", "Terry Cummings",
+    "Otis Thorpe", "Mychal Thompson", "Caldwell Jones", "Kurt Rambis", "Alex English",
+    "Adrian Dantley", "Bernard King", "Walter Davis", "Mark Aguirre", "Orlando Woolridge",
+    "Kelly Tripucka", "Reggie Theus", "Rolando Blackman", "Ricky Pierce", "Purvis Short",
+    "Maurice Cheeks", "Dennis Johnson", "Sidney Moncrief", "Michael Ray Richardson",
+    "Alvin Robertson", "Fat Lever", "Mark Jackson", "Doc Rivers", "John Bagley",
+    "Johnny Dawkins", "Sleepy Floyd", "Norm Nixon", "Bobby Jones", "Cedric Maxwell",
+    "David Thompson", "Randy Smith", "James Silas", "Billy Knight", "Maurice Lucas",
+    "Larry Kenon", "Alvan Adams", "Mark Olberding", "Mickey Johnson", "Mike Mitchell",
+    "Thurl Bailey", "Jay Vincent", "Roy Hinson", "John Havlicek", "Bob Love", "Bob Dandridge",
+    "Spencer Haywood", "Dave Greenwood", "Tom Boswell", "Warren Jabali", "Dennis Rodman",
+    "David Robinson", "Kevin Garnett", "George McGinnis", "Marques Johnson", "Gerald Wallace",
+    "Paul Pressey", "Kevin Johnson", "Rajon Rondo", "John Wall", "Gus Williams", "Grant Hill",
+    "Shawn Marion", "Ron Harper", "Lamar Odom", "Chris Webber", "Andrei Kirilenko",
+    "Derrick Rose", "Allen Iverson", "Ja Morant"
+  ];
+  var SUPER_SHOOTER = [
+    "Stephen Curry", "Damian Lillard", "James Harden", "Trae Young", "Luka Dončić",
+    "LaMelo Ball", "Gilbert Arenas", "Michael Adams", "Klay Thompson", "Reggie Miller",
+    "Ray Allen", "Kyle Korver", "JJ Redick", "Peja Stojaković", "Duncan Robinson",
+    "Buddy Hield", "Seth Curry"
+  ];
+
   function rnd(S)  { return (S && S.rng) ? S.rng.f() : Math.random(); }
   function rndi(S, n) { return Math.floor(rnd(S) * n); }
 
@@ -349,6 +471,15 @@ function resolveRow(S, name) {
   return best;
 }
 
+// Explicit floor-spacing curve, indexed by round(sumSp*2): entry i is the net
+// spacing effect (negative = tax, positive = bonus) when sumSp = i*0.5, for
+// sumSp 0.0 .. 7.5 (max = five 1.5-value super-shooters). Hand-tunable. This is
+// the DEFAULT; weekly challenges that override SPACING_TAX/SPACING_BONUS/
+// SPACERS_REQ fall back to the linear formula (see engine) so their hooks work.
+//   idx:  0    1   2   3   4   5   6   7   8   9   10   11   12  13   14  15
+//  sumSp: 0   0.5  1  1.5  2  2.5  3  3.5  4  4.5   5   5.5   6  6.5   7  7.5
+var SPACING_CURVE = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 4.5, 5, 5.5, 6, 6.5];
+
 function engine(S, pickRows, slots) {
   var sumV = 0, sumUsage = 0, sumSp = 0, sumObpm = 0, sumDbpm = 0;
   pickRows.forEach(function (row) {
@@ -359,8 +490,21 @@ function engine(S, pickRows, slots) {
     sumDbpm += row[IDX.dbpm];
   });
   var usageTax = C(S,"USAGE_RATE") * Math.max(0, sumUsage - C(S,"USAGE_BUDGET"));
-  var spacingTax = C(S,"SPACING_TAX") * Math.max(0, C(S,"SPACERS_REQ") - sumSp);
-  var spacingBonus = (C(S,"SPACING_BONUS") || 0) * Math.max(0, sumSp - C(S,"SPACERS_REQ"));
+  // Floor spacing. Default play reads the explicit SPACING_CURVE table (supports
+  // fractional super-shooter counts). A challenge week that overrides any spacing
+  // knob falls back to the linear formula so those hooks still bite.
+  var spacingTax, spacingBonus;
+  var hop = Object.prototype.hasOwnProperty;
+  var spHook = !!(S && S.ch && S.ch.cfg &&
+    (hop.call(S.ch.cfg, "SPACING_TAX") || hop.call(S.ch.cfg, "SPACING_BONUS") || hop.call(S.ch.cfg, "SPACERS_REQ")));
+  if (spHook) {
+    spacingTax = C(S, "SPACING_TAX") * Math.max(0, C(S, "SPACERS_REQ") - sumSp);
+    spacingBonus = (C(S, "SPACING_BONUS") || 0) * Math.max(0, sumSp - C(S, "SPACERS_REQ"));
+  } else {
+    var spNet = SPACING_CURVE[Math.max(0, Math.min(SPACING_CURVE.length - 1, Math.round(sumSp * 2)))];
+    spacingTax = spNet < 0 ? -spNet : 0;
+    spacingBonus = spNet > 0 ? spNet : 0;
+  }
 
   // Backcourt / wing defense penalties on the two G-slot and two F-slot players
   // (needs slot info): both bottom-25% defenders by DBPM = -2, both bottom-10% = -3
@@ -504,22 +648,31 @@ function initDataCore(data) {
     }
   });
 
-  // Manual 3pt-shooter overrides (meta.sp_override): known shooters whose early-era
-  // seasons lack the tracked 3PM/3PA volume to clear the percentile bar. Force sp=1
-  // across every one of their rows, before pools are built.
-  if (META.sp_override && META.sp_override.length) {
-    var spForce = {};
-    META.sp_override.forEach(function (nm) { spForce[nm] = true; });
-    data.players.forEach(function (row) { if (spForce[row[IDX.name]]) row[IDX.sp] = 1; });
-  }
+  // Shooter tagging (see ALWAYS/NEVER/SUPER_SHOOTER above). Overrides the
+  // algorithmic sp: NEVER -> 0, ALWAYS -> 1, SUPER -> SUPER_SP (1.5). SUPER is
+  // applied LAST so it wins any name that also appears in ALWAYS. Replaces the
+  // old meta.sp_override / meta.sp_never (still present in the data, now unused).
+  var spTag = {};
+  NEVER_SHOOTER.forEach(function (nm) { spTag[nm] = 0; });
+  ALWAYS_SHOOTER.forEach(function (nm) { spTag[nm] = 1; });
+  SUPER_SHOOTER.forEach(function (nm) { spTag[nm] = SUPER_SP; });
+  data.players.forEach(function (row) {
+    var nm = row[IDX.name];
+    if (Object.prototype.hasOwnProperty.call(spTag, nm)) row[IDX.sp] = spTag[nm];
+  });
 
-  // Categorical non-shooters (meta.sp_never): force sp=0 across all their rows,
-  // applied after sp_override so a "never" designation wins any conflict.
-  if (META.sp_never && META.sp_never.length) {
-    var spDeny = {};
-    META.sp_never.forEach(function (nm) { spDeny[nm] = true; });
-    data.players.forEach(function (row) { if (spDeny[row[IDX.name]]) row[IDX.sp] = 0; });
-  }
+  // Manual value adjustments (VALUE_ADJ): add the delta to bpm_star for matching
+  // rows. Value + cap cost + win odds follow automatically; the O/D bars keep
+  // reading the raw OBPM/DBPM columns (no split). Runs before pools/costs.
+  var adjByName = {};
+  VALUE_ADJ.forEach(function (e) { adjByName[e.n] = e; });
+  data.players.forEach(function (row) {
+    var e = adjByName[row[IDX.name]];
+    if (!e) return;
+    if (e.mp && row[IDX.mp] < e.mp) return;
+    if (!valueAdjMatch(e.w, row[IDX.season], row[IDX.team])) return;
+    row[IDX.bpm_star] += e.adj;
+  });
 
   TEAM2FR = {};
   Object.keys(data.franchises).forEach(function (fr) {
@@ -923,7 +1076,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 5,
+    VERSION: 7,   // v7: shooter-label system (always/never/super=1.5 spacers) + fractional spacing
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
