@@ -11,6 +11,7 @@ Disallow: /README.md
 Disallow: /MODES.md
 Disallow: /POPUPS.md
 Disallow: /docs/
+Disallow: /md/
 
 User-agent: GPTBot
 Disallow: /
@@ -31,5 +32,6 @@ Disallow: /README.md
 Disallow: /MODES.md
 Disallow: /POPUPS.md
 Disallow: /docs/
+Disallow: /md/
 
 Sitemap: https://true82.net/sitemap.xml

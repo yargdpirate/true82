@@ -2054,48 +2054,91 @@ function prepareRecap(e, finalWins, finalNet, hh) {
 // One edition request per opened bundle. The unwrap click is the event-driven
 // engagement signal: it buys a nickname and the complete four-sentence story in
 // a single round trip, which is faster and cheaper than serial headline/article
-// calls. A 2.85s client press deadline guarantees the three-second reveal never
-// ends on a blank page; late or failed model copy falls back locally and is ignored.
+// calls. The three-second reveal masks normal latency without becoming a network
+// deadline; slower valid responses stay in press, while real failures fall back.
 function requestEdition() {
   if (G.recapReq || !G.recapPayload) return;
   G.recapReq = 1;
   G.recapArtReq = 1;
   G.recapArtIntent = "unwrap";
-  var token = G, settled = false;
+
+  var token = G, settled = false, started = Date.now(), httpStatus = 0;
   var fallbackHead = localHeadline(G.recapPayload);
   var fallbackArt = localArticle(G.recapPayload);
-  function settle(d) {
+  var debug = {
+    state: "requesting",
+    phase: "edition",
+    startedAt: new Date(started).toISOString(),
+    elapsedMs: 0,
+    source: null,
+    reason: null,
+    httpStatus: null
+  };
+  window.__T82_RECAP_DEBUG = debug;
+  window.t82RecapDebug = function () {
+    var d = window.__T82_RECAP_DEBUG || { state: "idle" };
+    try { return JSON.parse(JSON.stringify(d)); } catch (e) { return d; }
+  };
+
+  function finishDebug(state, source, reason) {
+    debug.state = state;
+    debug.elapsedMs = Date.now() - started;
+    debug.source = source || null;
+    debug.reason = reason || null;
+    debug.httpStatus = httpStatus || null;
+    window.__T82_RECAP_DEBUG = debug;
+  }
+
+  function settle(d, reason) {
     if (settled || token !== G) return;
     settled = true;
-    var source = d && d.source ? d.source : "fallback";
-    G.recapHead = d && d.nickname ? { nickname: String(d.nickname), source: source } : fallbackHead;
-    G.recapArt = d && d.article ? { article: String(d.article), source: source } : fallbackArt;
+    var apiCopy = !!(d && d.ok && d.nickname && d.article);
+    if (apiCopy) {
+      G.recapHead = { nickname: String(d.nickname), source: d.source || "api" };
+      G.recapArt = { article: String(d.article), source: d.source || "api" };
+      finishDebug("settled", "api", null);
+      console.info("[tribune] AI edition ready in " + debug.elapsedMs + "ms");
+    } else {
+      G.recapHead = Object.assign({}, fallbackHead, { source: "fallback" });
+      G.recapArt = Object.assign({}, fallbackArt, { source: "fallback" });
+      finishDebug("settled", "fallback", reason || (d && d.reason) || "invalid_response");
+      console.warn("[tribune] local edition used after " + debug.elapsedMs + "ms; reason:", debug.reason, "status:", debug.httpStatus || "n/a");
+    }
     stampHeadline();
     inkInArticle();
+    if (G.npEditionReady) G.npEditionReady();
   }
+
   var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  // The opening animation is a latency mask, not a network deadline. Keep the
+  // request alive after the three-second reveal and show the typesetting state
+  // until the Worker responds. The client deadline slightly exceeds the Worker's
+  // edition deadline so explicit server reasons normally reach the console.
   var timer = setTimeout(function () {
     if (ac) ac.abort();
-    settle({ nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
-  }, 2850);
+    settle(null, "client_timeout");
+  }, 17500);
+
+  console.info("[tribune] requesting AI edition; inspect t82RecapDebug() for status");
   try {
     fetch("/api/recap", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(Object.assign({ phase: "edition" }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
-    }).then(function (r) { return r.json(); })
-      .then(function (d) {
-        clearTimeout(timer);
-        if (d && !d.ok) console.warn("[tribune] edition \u2192 local, reason:", d.reason || "?");
-        settle(d && d.ok && d.nickname && d.article ? d : { nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
-      })
-      .catch(function () {
-        clearTimeout(timer);
-        settle({ nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
-      });
+    }).then(function (r) {
+      httpStatus = r.status;
+      return r.json();
+    }).then(function (d) {
+      clearTimeout(timer);
+      if (d && d.ok && d.nickname && d.article) settle(d, null);
+      else settle(d, d && d.reason ? d.reason : "invalid_response");
+    }).catch(function (err) {
+      clearTimeout(timer);
+      settle(null, err && err.name === "AbortError" ? "client_timeout" : "network_or_parse");
+    });
   } catch (err) {
     clearTimeout(timer);
-    settle({ nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
+    settle(null, "request_setup");
   }
 }
 
@@ -2264,8 +2307,8 @@ function showNewspaper(gate) {
 
   // A deliberately paced 3.1-second pressroom reveal. The click is the Option-B
   // engagement event, so the combined edition request starts at frame one. The
-  // 2.85-second local deadline guarantees headline and article are typeset before
-  // the cover settles, even when the model or network is slow.
+  // animation masks normal latency, but it no longer aborts a healthy request:
+  // slower editions remain visibly "in press" until AI copy or a real failure.
   function unwrap(auto) {
     if (!bundle || G.recapReq) return;
     clearTimeout(autoT);
@@ -2288,19 +2331,21 @@ function showNewspaper(gate) {
     statusTimers.push(setTimeout(function () { setPressStatus("SETTING THE FINAL EDITION"); }, 2180));
 
     openingT = setTimeout(function () {
-      // requestEdition's deadline should already have supplied local copy; this is
-      // an additional invariant so no future request refactor can expose a blank.
-      if (!G.recapHead) G.recapHead = localHeadline(G.recapPayload);
-      if (!G.recapArt) G.recapArt = localArticle(G.recapPayload);
-      G.npStamp();
-      G.npInk();
       if (b.parentNode) b.parentNode.removeChild(b);
       stage.classList.remove("np-opening");
-      stage.classList.add("np-opened", "np-copy-ready");
+      stage.classList.add("np-opened");
       paper.classList.remove("np-revealing");
       paper.classList.add("np-settled");
       ov.classList.remove("np-is-opening");
-      pressStatus.textContent = "FINAL EDITION READY";
+      if (G.recapHead && G.recapArt) {
+        G.npStamp();
+        G.npInk();
+        G.npEditionReady();
+      } else {
+        stage.classList.add("np-awaiting-copy");
+        paper.classList.add("np-awaiting-copy");
+        pressStatus.textContent = "FINAL COPY INCOMING";
+      }
       buzz(18);
     }, 3100);
   }
@@ -2337,6 +2382,15 @@ function showNewspaper(gate) {
 
   // Fill-in renderers live on G so the edition request can finish without holding
   // stale DOM refs across games. All model output remains textContent-only.
+  G.npEditionReady = function () {
+    if (!ov.parentNode) return;
+    stage.classList.remove("np-awaiting-copy");
+    paper.classList.remove("np-awaiting-copy");
+    if (stage.classList.contains("np-opening")) return;
+    stage.classList.add("np-copy-ready");
+    pressStatus.textContent = "FINAL EDITION READY";
+    statusTimers.push(setTimeout(function () { stage.classList.remove("np-copy-ready"); }, 1050));
+  };
   G.npStamp = function () {
     if (!ov.parentNode || !G.recapHead) return;
     headWrap.textContent = "";

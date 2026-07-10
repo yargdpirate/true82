@@ -1943,7 +1943,28 @@ main.content-page {
   pointer-events: none;
   opacity: 0;
 }
-.np-stage.np-opening .np-press-fx { opacity: 1; }
+.np-stage.np-opening .np-press-fx,
+.np-stage.np-awaiting-copy .np-press-fx,
+.np-stage.np-copy-ready .np-press-fx { opacity: 1; }
+.np-stage.np-awaiting-copy .np-press-status {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  animation: np-copy-wait 1.25s ease-in-out infinite;
+}
+.np-stage.np-copy-ready .np-press-status {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  animation: np-copy-ready 1.05s ease both;
+}
+@keyframes np-copy-wait {
+  0%, 100% { opacity: .58; letter-spacing: .16em; }
+  50% { opacity: 1; letter-spacing: .2em; }
+}
+@keyframes np-copy-ready {
+  0%, 65% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -5px); }
+}
+.np-paper.np-awaiting-copy .np-gline { animation-duration: .82s; }
 .np-press-sweep {
   position: absolute;
   left: -12%; right: -12%;
