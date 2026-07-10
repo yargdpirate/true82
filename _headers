@@ -7,3 +7,10 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   Cross-Origin-Opener-Policy: same-origin
+
+# Agent discovery (RFC 8288): homepage advertises machine-readable entry points.
+# Every rel below is in the IANA Link Relations registry — describedby (the
+# llms.txt that describes this site for agents), help (the how-to explainer),
+# canonical (the preferred URL; ?duel=/?league= deep links share this page).
+/
+  Link: <https://true82.net/llms.txt>; rel="describedby"; type="text/markdown", <https://true82.net/how-it-works/>; rel="help", <https://true82.net/>; rel="canonical"

@@ -3,8 +3,9 @@
 // Preferred browser path:
 //   phase "edition"  -> nickname + four-sentence story in one fast request when
 //                       the reader presses READ STORY. No thinking by default,
-//                       because the three-second opening sequence is the latency
-//                       budget and one round trip is cheaper than two serial calls.
+//                       because one round trip is cheaper than two serial calls. The three-second
+//                       opening sequence masks normal latency; slower valid editions
+//                       remain in a visible typesetting state instead of being discarded.
 //
 // Legacy-compatible paths remain available for old clients:
 //   phase "headline" -> nickname only
@@ -152,7 +153,7 @@ TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
   const thinkBudget = isArticle ? 1400 : isEdition ? editionThink : headThink;
   const maxTokens = isArticle ? 2600 : isEdition ? (useThink ? thinkBudget + 900 : 900) : (useThink ? thinkBudget + 512 : 512);
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : isEdition ? 9500 : 18000);
+  const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : isEdition ? 16000 : 18000);
 
   let system;
   if (isArticle) system = SYS_ARTICLE + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD;
