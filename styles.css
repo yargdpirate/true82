@@ -226,7 +226,8 @@ body.drafting .site-foot { display: none; }
 
 /* Presti "spin" buttons: extruded goldenrod, cap mode only.
    Dual shadow = 3D side (0 5px 0) + grounding drop; compresses on :active. */
-button.presti-spin {
+button.presti-spin,
+button.more-modes {
   --spin-face: #E89A1C;   /* goldenrod: more orange than --amber, still yellow */
   --spin-top:  #F8B647;
   --spin-side: #9E5A0F;
@@ -248,14 +249,16 @@ button.presti-spin {
   -webkit-user-select: none;
   user-select: none;
 }
-button.presti-spin:not(:disabled):active {
+button.presti-spin:not(:disabled):active,
+button.more-modes:not(:disabled):active {
   transform: translateY(4px);   /* compresses into the page */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.35),
     0 1px 0 0 var(--spin-side),
     0 2px 4px -2px rgba(0,0,0,0.45);
 }
-button.presti-spin:disabled {
+button.presti-spin:disabled,
+button.more-modes:disabled {
   color: #6c6048;
   background: #3a352a;
   box-shadow: inset 0 0 0 1px #4a4434;
@@ -1331,8 +1334,8 @@ button.presti-spin:disabled {
 }
 
 /* The two big calls sit UNDER the paper on the backdrop, standard gold bevel. */
-.np-under { display: flex; gap: 10px; width: min(430px, 94vw); margin-top: 14px; }
-.np-underbtn { flex: 1; font-family: var(--disp); font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; padding: 12px 6px 13px; }
+.np-under { display: flex; flex-direction: column; gap: 10px; width: min(430px, 94vw); margin-top: 14px; }
+.np-underbtn { width: 100%; font-family: var(--disp); font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 10px 15px; }
 
 /* ---- typesetting: greeked bars, teletype ticker, stamp, ink-dry ---- */
 .np-gline {
@@ -1369,16 +1372,6 @@ button.presti-spin:disabled {
   from { opacity: 0.15; filter: blur(2.5px); }
   to   { opacity: 1; filter: blur(0); }
 }
-
-.np-chip {
-  position: fixed; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 110;
-  background: var(--amber); color: var(--ink); border: 0; border-radius: 999px;
-  font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-  padding: 10px 14px; cursor: pointer;
-  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.7);
-  animation: np-chip-in 0.35s ease both;
-}
-@keyframes np-chip-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 /* content pages (/how-it-works/ etc.) — same 560px column as #app */
 a.brand-link { display: block; }
@@ -1423,7 +1416,8 @@ main.content-page {
 .weekly-tile .wk-name { font-weight:700; font-size:1.05rem; }
 .weekly-tile .wk-blurb { font-size:.85rem; opacity:.85; font-weight:400; white-space:normal; }
 .weekly-tile .wk-meta { font-size:.75rem; opacity:.7; margin-top:2px; }
-.more-modes { background:transparent; border:1px solid var(--line, #6a5a3a); opacity:.85; margin-top:10px; }
+.more-modes { margin-top: 10px; }   /* 3D box styling now comes from the presti-spin rule above; only spacing remains here */
+#startPro { margin-top: 30px; }     /* extra break so the secondary modes read as their own group, set apart from Classic/Presti */
 .run-status { text-align:center; font-size:.85rem; opacity:.8; min-height:1.2em; margin:8px 0 0; }
 
 /* ---------- duel screen (Phase D2) ---------- */
@@ -1500,3 +1494,97 @@ main.content-page {
 .lg-fmt.on, .lg-rnd.on { border-color:#3fae5a; color:#3fae5a; font-weight:700; }
 .lg-matchup { text-align:center; padding:10px; margin:8px 0; border:1px solid var(--line,#6a5a3a); border-radius:10px; font-size:.95rem; }
 .lg-me { color:#3fae5a; font-weight:600; }
+
+/* ---------- Tribune bundle: the paper lands tied with twine ----------
+   Wrapped state of the season-end paper. Only the record stamp shows (local
+   data, zero model tokens); tapping snips the twine, reveals the printed page,
+   and starts the headline call. Palette + spin borrowed from .np-paper. */
+.np-hidden { display: none !important; }
+
+.np-bundle {
+  position: relative;
+  width: min(430px, 94vw);
+  padding: 24px 18px 28px;
+  border: 0;
+  cursor: pointer;
+  text-align: center;
+  color: #1b1611;
+  background:
+    radial-gradient(rgba(27, 22, 17, 0.05) 1px, transparent 1.2px) 0 0 / 5px 5px,
+    linear-gradient(180deg, #f6efdc 0%, #f2e9d3 22%, #e9dec2 100%);
+  /* the stack: two offset sheets peeking out under the top paper */
+  box-shadow:
+    5px 7px 0 -1px #e7dcbe, 5px 7px 0 0 rgba(27, 22, 17, 0.32),
+    10px 14px 0 -2px #ddd0b0, 10px 14px 0 -1px rgba(27, 22, 17, 0.26),
+    0 24px 60px -14px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(27, 22, 17, 0.35);
+  animation: np-spin 1.05s cubic-bezier(0.18, 0.7, 0.24, 1) both;
+  transform-origin: 50% 48%;
+}
+.np-bundle.np-quick { animation-duration: 0.55s; }
+.np-bundle:focus-visible { outline: 2px solid #f2b544; outline-offset: 3px; }
+.np-bundle:disabled { cursor: default; }
+
+.np-bundle-mast {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700; font-size: 17px; letter-spacing: 0.01em;
+  padding-bottom: 6px; border-bottom: 3px double #1b1611;
+}
+.np-bundle-stamp {
+  display: inline-block;
+  margin: 24px auto 20px;
+  padding: 8px 18px 11px;
+  border: 3px double #a13c2c;
+  color: #a13c2c;
+  transform: rotate(-4.5deg);
+  opacity: 0.94;   /* a hair of ink starvation, like a real rubber stamp */
+}
+.np-bundle-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.32em; text-indent: 0.32em;
+}
+.np-bundle-rec {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700; font-size: clamp(44px, 13vw, 62px); line-height: 1;
+  letter-spacing: -0.01em; margin-top: 2px;
+}
+.np-bundle-hint {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.22em; color: #4a4034;
+  animation: np-hint 1.7s ease-in-out infinite;
+}
+@keyframes np-hint { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* twine: two crossing bands + the knot, snipped on unwrap */
+.np-twine-h, .np-twine-v, .np-twine-knot { position: absolute; pointer-events: none; }
+.np-twine-h {
+  left: -7px; right: -7px; top: 50%; height: 9px; margin-top: -5px;
+  background: linear-gradient(180deg, #a3835a, #7c6140 55%, #5f4a30);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transform: rotate(-1.2deg);
+}
+.np-twine-v {
+  top: -7px; bottom: -7px; left: 50%; width: 9px; margin-left: -5px;
+  background: linear-gradient(90deg, #a3835a, #7c6140 55%, #5f4a30);
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.3), inset 1px 0 0 rgba(255, 255, 255, 0.28);
+  transform: rotate(1.4deg);
+}
+.np-twine-knot {
+  left: 50%; top: 50%; width: 21px; height: 21px; margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #a3835a, #6b5336 68%, #52402a);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+.np-twine-h, .np-twine-v, .np-twine-knot {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.9, 0.4), opacity 0.3s ease;
+}
+.np-bundle.np-snip { animation: none; transition: transform 0.28s ease 0.16s, opacity 0.28s ease 0.16s; transform: scale(1.06); opacity: 0; }
+.np-bundle.np-snip .np-twine-h { transform: translateX(72%) rotate(9deg); opacity: 0; }
+.np-bundle.np-snip .np-twine-v { transform: translateY(-74%) rotate(-11deg); opacity: 0; transition-delay: 0.05s; }
+.np-bundle.np-snip .np-twine-knot { transform: scale(0) rotate(70deg); opacity: 0; }
+
+/* the printed page settles out of the wrapper instead of re-spinning */
+.np-paper.np-unwrapped { animation: np-unwrap 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.12) both; }
+@keyframes np-unwrap {
+  0%   { transform: scale(0.9) rotate(-1.6deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}

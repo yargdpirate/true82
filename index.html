@@ -57,10 +57,23 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<style id="t82-live-hide">
+  /* LIVE LANE ONLY. app.js and styles.css are byte-identical to the
+     accounts-test branch; this block is the single behavioural divergence on
+     live, and it lives HERE (in the one file allowed to differ per lane) so the
+     shared engine/shell/CSS never fork. It hides the account/duel/league entry
+     points renderIntro() emits unconditionally, which would otherwise be dead
+     buttons on the public site. To LAUNCH one of these on live: add the
+     required account/feature files to LIVE_FILES and the critical chain as
+     documented in DEPLOY-LANES.md, then delete its #id from the rule
+     below. (dailyStrip/startWeekly are already hidden by attribute; listed for
+     completeness so this block is the full "not-yet-live UI" manifest.) */
+  #arenaChip, #startDuel, #startLeague, #startWeekly, #dailyStrip, #runStatus { display: none !important; }
+</style>
 </head>
 <body>
 <header class="site-head">
-  <img class="brand-logo" src="logo.png" alt="TRUE 82" width="800" height="188">
+  <img class="brand-logo" src="logo.png" alt="TRUE 82" width="800" height="188" decoding="async" fetchpriority="high">
   <div class="round-pips" id="roundPips" aria-hidden="true"></div>
 </header>
 
@@ -105,13 +118,6 @@
 
 <script src="analytics.js" defer></script>
 <script src="sim-core.js" defer></script>
-<script src="challenges.js" defer></script>
-<script src="duel-core.js" defer></script>
-<script src="league-core.js" defer></script>
-<script src="accounts.js" defer></script>
-<script src="duel-ui.js" defer></script>
-<script src="arena-ui.js" defer></script>
-<script src="league-ui.js" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>

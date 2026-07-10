@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#101418">
 <link rel="canonical" href="https://true82.net/faq/">
 <title>TRUE 82 FAQ — NBA Draft Game Questions, Answered</title>
-<meta name="description" content="What TRUE 82 is, how to play, what the four modes do, why the engine uses BPM, whether 82-0 is actually possible, and where the data comes from.">
+<meta name="description" content="What TRUE 82 is, how to play, the solo modes and competitive formats, why the engine uses BPM, whether 82-0 is possible, and where the data comes from.">
 <meta property="og:title" content="TRUE 82 FAQ">
 <meta property="og:description" content="Answers to the common questions about TRUE 82, the BPM-driven NBA draft game built for the 82-0 chase.">
 <meta property="og:type" content="article">
@@ -20,98 +20,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "What is TRUE 82?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "TRUE 82 is a free browser-based NBA draft game. Each round deals a random franchise-and-era ticket; you draft five players (two guards, two forwards, one center), and a BPM-based season engine projects your lineup's 82-game record. The goal is a perfect 82-0 season."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Is TRUE 82 free?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. TRUE 82 is completely free to play in any modern browser, with no account, no download, no ads, and no cookies. There's an optional donate button if you enjoy it, and that's the extent of the commerce."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "How do you play TRUE 82?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Draft a five-man roster with two guards, two forwards, and a center. Each of five rounds gives you a random NBA team from a random decade; pick a player who played for that team in that era. When the lineup is full, the engine simulates the season and hands you a projected record."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What are the four game modes?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Classic shows full stat lines and lets you pick any season of a player's career. Pro hides all stats and locks each player to a mystery season, so you draft from memory. Presti Mode gives you a $50 salary cap against prices that lie. Kaman Mode is five Chris Kamans, and you cannot lose."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What makes TRUE 82 different from other 82-0 games?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The engine. TRUE 82 doesn't just add up counting stats: player value is built from Box Plus/Minus, and the model adjusts for roster fit, penalizing overloaded usage and weak positional defense while rewarding shooting. A lineup of five ball-dominant legends will underperform four stars plus the right role player."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Why does TRUE 82 use BPM?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Box Plus/Minus estimates a player's per-100-possession impact relative to league average from the box score, which makes it comparable across eras and available for the whole modern record. That lets the game price a 1970s big man and a 2020s guard on the same scale. It's also why the player pool starts in 1974, when the underlying stats begin."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can you actually go 82-0 in TRUE 82?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. A strong enough lineup projects to a perfect record, and the game's footer counts how many drafts have finished 82-0. In Classic, good drafting gets you there regularly; in Presti Mode the salary cap makes perfection rare by design; in Kaman Mode it is guaranteed."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Does TRUE 82 work on mobile?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. TRUE 82 is designed mobile-first: the whole interface lives in a single phone-width column, and drafting is built around taps rather than drags. It plays the same in a desktop browser."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Where does the player data come from?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Player and team data comes from Basketball Reference and Stathead, maintained by Sports Reference LLC, the definitive public record of basketball history. TRUE 82 uses that data for non-commercial commentary, analysis, and historical reference, with no claim of ownership."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Is TRUE 82 affiliated with the NBA or Basketball Reference?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "No. TRUE 82 is an independent, non-commercial fan project. It is not affiliated with, endorsed by, or sponsored by the NBA, any team, or Sports Reference LLC. Team names, logos, and player names belong to their respective owners and appear for identification and historical reference only."
-      }
-    }
-  ]
-}
-</script>
 </head>
 <body>
 <header class="site-head">
-  <a class="brand-link" href="/" aria-label="TRUE 82 — play the game"><img class="brand-logo" src="/logo.png" alt="TRUE 82" width="800" height="188"></a>
+  <a class="brand-link" href="/" aria-label="TRUE 82 — play the game"><img class="brand-logo" src="/logo.png" alt="TRUE 82" width="800" height="188" decoding="async"></a>
 </header>
 
 <main class="content-page">
@@ -127,8 +39,8 @@
   <h2>How do you play TRUE 82?</h2>
   <p>Draft a five-man roster with two guards, two forwards, and a center. Each of five rounds gives you a random NBA team from a random decade; pick a player who played for that team in that era. When the lineup is full, the engine simulates the season and hands you a projected record.</p>
 
-  <h2>What are the four game modes?</h2>
-  <p>Classic shows full stat lines and lets you pick any season of a player&#x27;s career. Pro hides all stats and locks each player to a mystery season, so you draft from memory. Presti Mode gives you a $50 salary cap against prices that lie. Kaman Mode is five Chris Kamans, and you cannot lose.</p>
+  <h2>What ways can you play TRUE 82?</h2>
+  <p>The four solo modes are Classic, Pro, Presti Mode, and Kaman Mode. Classic shows full stat lines and lets you choose a player season; Pro hides the stats and locks each player to a mystery season; Presti gives you a $50 cap against prices that lie; and Kaman Mode is five Chris Kamans. Beyond solo play, Today&#x27;s Board and the weekly challenge give everyone the same setup, Duel is a correspondence head-to-head draft, League turns weekly challenges into a season, and Arena collects profiles, leaderboards, and run history.</p>
 
   <h2>What makes TRUE 82 different from other 82-0 games?</h2>
   <p>The engine. TRUE 82 doesn&#x27;t just add up counting stats: player value is built from Box Plus/Minus, and the model adjusts for roster fit, penalizing overloaded usage and weak positional defense while rewarding shooting. A lineup of five ball-dominant legends will underperform four stars plus the right role player.</p>

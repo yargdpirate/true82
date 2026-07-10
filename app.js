@@ -45,6 +45,51 @@ var TEAM2FR = {}, BEST_BY_NAME = new Map(), FRANCHISES = [];
 var CAREER_BUCKETS = new Map();   // name -> {G,F,C}: every position the player EVER qualified at, career-wide
 var G = null;
 
+/* ---------- optional feature loading ---------- */
+
+// Keep the first paint and critical site-data request lean. Duel/Arena/League
+// code is loaded only when its screen is opened; league-core.js is server/test
+// code and is intentionally not shipped to the browser at all.
+var SCRIPT_LOADS = {};
+function loadScriptOnce(src) {
+  if (SCRIPT_LOADS[src]) return SCRIPT_LOADS[src];
+  SCRIPT_LOADS[src] = new Promise(function (resolve) {
+    if (typeof document === "undefined" || !document.createElement || !document.head) return resolve(false);
+    var tag = document.createElement("script");
+    tag.src = src;
+    tag.async = true;
+    tag.setAttribute("data-t82-feature", src);
+    tag.onload = function () { resolve(true); };
+    tag.onerror = function () { delete SCRIPT_LOADS[src]; resolve(false); };
+    document.head.appendChild(tag);
+  });
+  return SCRIPT_LOADS[src];
+}
+function loadScriptChain(srcs) {
+  return srcs.reduce(function (p, src) {
+    return p.then(function (ok) { return ok ? loadScriptOnce(src) : false; });
+  }, Promise.resolve(true));
+}
+function ensureDuelUI() {
+  if (window.T82DUEL && window.T82DUI) return Promise.resolve(true);
+  var missing = [];
+  if (!window.T82DUEL) missing.push("duel-core.js");
+  if (!window.T82DUI) missing.push("duel-ui.js");
+  return loadScriptChain(missing)
+    .then(function (ok) { return !!(ok && window.T82DUEL && window.T82DUI); });
+}
+function ensureArenaUI() {
+  if (window.T82ARENA) return Promise.resolve(true);
+  return loadScriptOnce("arena-ui.js").then(function (ok) { return !!(ok && window.T82ARENA); });
+}
+function ensureLeagueUI() {
+  if (window.T82LGUI) return Promise.resolve(true);
+  return loadScriptOnce("league-ui.js").then(function (ok) { return !!(ok && window.T82LGUI); });
+}
+function featureLoadFailed(btn, label) {
+  if (btn) { btn.disabled = false; btn.textContent = label; }
+}
+
 /* ---------- math ---------- */
 
 
@@ -202,6 +247,26 @@ function bindHaptics() {
     var b = e.target.closest("button.presti-spin");
     if (b && !b.disabled) buzz(15);
   }, true);
+}
+
+// Mobile tabs restore from bfcache/background with the DOM intact but sometimes on a different
+// screen than the frozen paint, leaving the draft's body class (and its 100-176px #app bottom
+// padding) applied when you're no longer drafting -> dead scroll space below the content. On
+// every return to visibility, re-sync the two chrome classes to G (the source of truth). This
+// is a no-op whenever they already match.
+var _visBound = false;
+function bindVisibilityResync() {
+  if (_visBound) return;
+  _visBound = true;
+  function resync() {
+    var drafting = !!(G && G.screen === "draft");
+    document.body.classList.toggle("drafting", drafting);
+    document.body.classList.toggle("has-pick", drafting && !!G.selected);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") resync();
+  });
+  window.addEventListener("pageshow", resync);
 }
 
 // The 1-in-8 payoff: button turns green and reads "REFUND!" for 2.5s, then restores
@@ -539,7 +604,11 @@ function currentPoolRows() {
   if (MODE === "kaman") { return KAMAN_SEASONS.slice(); }
   var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
   var rows = [];
-  if (pool) pool.forEach(function (row, name) { if (!G.drafted.has(name)) rows.push(row); });
+  if (pool) pool.forEach(function (row, name) {
+    if (G.drafted.has(name)) return;
+    if (!T82.poolYearsEligible(G, name).length) return;   // hide players with no eligible (>785-min) season this team/era — don't shade, omit
+    rows.push(row);
+  });
   var q = (G.query || "").trim().toLowerCase();
   if (q) rows = rows.filter(function (r) { return r[IDX.name].toLowerCase().indexOf(q) !== -1; });
   sortPoolRows(rows);
@@ -612,7 +681,8 @@ function statLine(row) {
 }
 function chipsFor(row) {
   var out = [];
-  if (row[IDX.sp] === 1) out.push('<span class="chip">3PT</span>');
+  if (row[IDX.sp] >= 1.5) out.push('<span class="chip">3PT+</span>');
+  else if (row[IDX.sp] === 1) out.push('<span class="chip">3PT</span>');
   return out.length ? '<span class="chips">' + out.join("") + "</span>" : "";
 }
 function bucketTag(row) { return rowBuckets(row).join("/"); }
@@ -716,13 +786,27 @@ function renderIntro() {
   el("startPro").addEventListener("click", function () { start("pro"); });
   el("startCap").addEventListener("click", function () { start("cap"); });
   el("startDuel").addEventListener("click", function () {
-    queue(function () { if (window.T82DUI) T82DUI.lobby(); }, el("startDuel"));
+    var btn = el("startDuel"), label = btn.textContent;
+    queue(function () {
+      btn.disabled = true; btn.textContent = "Opening duel\u2026";
+      ensureDuelUI().then(function (ok) {
+        if (ok) T82DUI.lobby(); else featureLoadFailed(btn, label);
+      });
+    }, btn);
   });
-  el("arenaChip").addEventListener("click", function () {   // no site data needed — opens instantly
-    if (window.T82ARENA) T82ARENA.route();
+  el("arenaChip").addEventListener("click", function () {   // no site data needed
+    var btn = el("arenaChip"), label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Opening\u2026";
+    ensureArenaUI().then(function (ok) {
+      if (ok) T82ARENA.route(); else featureLoadFailed(btn, label);
+    });
   });
-  el("startLeague").addEventListener("click", function () {   // league office needs no site data either
-    if (window.T82LGUI) T82LGUI.lobby();
+  el("startLeague").addEventListener("click", function () {   // league office needs no site data
+    var btn = el("startLeague"), label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Opening league\u2026";
+    ensureLeagueUI().then(function (ok) {
+      if (ok) T82LGUI.lobby(); else featureLoadFailed(btn, label);
+    });
   });
 
   // kaman left the menu — five quick taps on the title bring Him back
@@ -928,8 +1012,7 @@ function updateTray() {
 
 /* the season picker shown in each player row (only when >1 season exists) */
 function yearControlHtml(name, row) {
-  var yrs = POOL_YEARS.get(key(G.cur.fr, G.cur.dec));
-  var arr = yrs ? yrs.get(name) : null;
+  var arr = T82.poolYearsEligible(G, name);   // only eligible (>785-min) seasons in the dropdown
   if (!arr || arr.length <= 1) {
     return "<span>" + shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]) + "</span>";
   }
@@ -1476,8 +1559,8 @@ function hotHand(e) {
         '<div class="hh-step" id="hhStep2">' +
           '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhHeatLabel">\u00B7</div></div>' +
         '<div class="hh-step" id="hhStep3">' +
-          '<div class="hh-net" id="hhNet">' + e.winTally + '</div>' +
-          '<div class="hh-netcap">WINS</div>' +
+          '<div class="hh-net" id="hhNet">' + signed1(e.net) + '</div>' +
+          '<div class="hh-netcap">NET RATING</div>' +
           '<div class="hh-bar"><span class="hh-fill" id="hhFill"></span><span class="hh-fill-bonus" id="hhFillBonus"></span><span class="hh-thresh"></span></div></div>' +
         '<div class="hh-verdict" id="hhVerdict"></div>' +
         '<div class="hh-actions" id="hhActions">' +
@@ -1526,13 +1609,17 @@ function hotHand(e) {
   }
   if (clutch) window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
 
-  function dismiss() { if (ov.parentNode) ov.parentNode.removeChild(ov); setTimeout(maybeShowRecap, 700); }
+  function dismiss() {
+    if (!G.recapPayload) prepareRecap(e, e.winTally, e.net, null);   // ceremony skipped before verdict -> stage the payload so the bundle can pop (no model call yet)
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    setTimeout(maybeShowRecap, 700);
+  }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
   function verdict() {
     window.t82track && window.t82track("heatcheck_result", { mode: MODE, segment: seg.label, hit_82: win ? 1 : 0 });
-    // Final record is now known (any non-COLD segment moves it): write the Tribune.
-    requestHeadline(e,
+    // Final record is now known (any non-COLD segment moves it): stage the Tribune.
+    prepareRecap(e,
       segIdx > 0 ? hhWins(newNet) : e.winTally,
       segIdx > 0 ? newNet : e.net,
       segIdx > 0 ? { player: shareSurname(G.picks[hotIdx].row[IDX.name]), tier: seg.label } : null);
@@ -1572,7 +1659,8 @@ function hotHand(e) {
       }
     }
     var v = ov.querySelector("#hhVerdict");
-    var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + signed1(newNet) + '</div><div class="hh-netcap">NET RATING</div>';
+    var finalW = segIdx > 0 ? G.hotWins : e.winTally;   // wins are now the static reveal (ticker showed net rating)
+    var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + finalW + "\u2013" + (CFG.GAMES_IN_SEASON - finalW) + '</div><div class="hh-netcap">FINAL RECORD</div>';
     if (win) {
       ov.classList.add("won");
       v.innerHTML = netHtml;
@@ -1596,10 +1684,10 @@ function hotHand(e) {
     (function frame(now) {
       if (!ov.parentNode) return;
       var t = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - t, 4.5);   // hard ease-out = crawl/stall near the line
-      var val = start + (newNet - start) * k;                                 // animate net under the hood...
-      var w = hhWins(val);                                                    // ...but show WINS climbing toward 82
-      numEl.textContent = w;
-      var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // portion the Hot Hand added, in red
+      var val = start + (newNet - start) * k;                                 // net rating is what climbs on-screen now
+      var w = hhWins(val);                                                    // wins tracked under the hood for the bar + verdict
+      numEl.textContent = signed1(val);                                       // show NET RATING ticking; final record is revealed static at verdict
+      var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // bar still fills toward 82-0 in red
       bonusEl.style.width = (bonusFrac * 100).toFixed(2) + "%";
       if (w >= CFG.GAMES_IN_SEASON) numEl.classList.add("over");
       if (t < 1) requestAnimationFrame(frame); else verdict();
@@ -1785,7 +1873,8 @@ function shareText(e) {
     }
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
-  return head + "\n" + line2 + "\n\n" + rows.join("\n") + "\n\ntrue82.net";
+  var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";  // Tribune nickname above the roster; when absent, nick="" collapses back to the normal single blank line
+  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\ntrue82.net";
 }
 
 function flashShareBtn(msg) {
@@ -1914,7 +2003,7 @@ function localHeadline(p) {
   else if (noteStr.indexOf("floor shrinks") >= 0) nick = pick(["The Bricklayers", "The Cramped Quarters"]);
   else if (noteStr.indexOf("surplus shooting") >= 0) nick = pick(["The Splash Dynasty", "The Greenlight Five"]);
   else nick = pick(["The Company Men", "The Blueprint", "The Working Class"]);
-  return { nickname: nick, dek: "How " + byV[0].name + " and company landed at " + w + "-" + l, source: "fallback" };
+  return { nickname: nick, source: "fallback" };
 }
 function localArticle(p) {
   var w = p.wins, l = 82 - w, tier = recapTier(w);
@@ -1951,11 +2040,20 @@ function localArticle(p) {
 
 // Phase 1: one headline request per season. Fired from showResults (non-clutch) or
 // from the Heat Check verdict() with post-boost totals.
-function requestHeadline(e, finalWins, finalNet, hh) {
-  if (G.recapReq) return;
-  G.recapReq = 1;
+// Stage the recap payload at season end — pure local work, zero tokens. The model
+// call itself lives in requestHeadline(), fired ONLY when the reader unwraps the
+// bundle (or the 82-0 auto-unwrap): a skipped paper now costs nothing. First
+// writer wins, so verdict()'s post-boost totals beat dismiss()'s plain ones.
+function prepareRecap(e, finalWins, finalNet, hh) {
+  if (G.recapPayload) return;
   G.recapPayload = buildRecapPayload(e, finalWins, finalNet, hh);
   G.recapWins = finalWins;
+}
+
+// Phase 1: the nickname — fired by the bundle unwrap, never automatically.
+function requestHeadline() {
+  if (G.recapReq || !G.recapPayload) return;
+  G.recapReq = 1;
   var token = G, settled = false;
   function settle(d) {
     if (settled || token !== G) return;
@@ -1964,14 +2062,14 @@ function requestHeadline(e, finalWins, finalNet, hh) {
     stampHeadline();
   }
   var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
-  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localHeadline(G.recapPayload)); }, 14000);
+  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localHeadline(G.recapPayload)); }, 20000);
   try {
     fetch("/api/recap", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(Object.assign({ phase: "headline" }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
     }).then(function (r) { return r.json(); })
-      .then(function (d) { clearTimeout(timer); settle(d && d.ok && d.nickname ? d : localHeadline(G.recapPayload)); })
+      .then(function (d) { clearTimeout(timer); if (d && !d.ok) console.warn("[tribune] headline \u2192 local, reason:", d.reason || "?"); settle(d && d.ok && d.nickname ? d : localHeadline(G.recapPayload)); })
       .catch(function () { clearTimeout(timer); settle(localHeadline(G.recapPayload)); });
   } catch (err) { clearTimeout(timer); settle(localHeadline(G.recapPayload)); }
 }
@@ -1996,7 +2094,7 @@ function requestArticle() {
       body: JSON.stringify(Object.assign({ phase: "article", nickname: G.recapHead.nickname }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
     }).then(function (r) { return r.json(); })
-      .then(function (d) { clearTimeout(timer); settle(d && d.ok && d.article ? d : localArticle(G.recapPayload)); })
+      .then(function (d) { clearTimeout(timer); if (d && !d.ok) console.warn("[tribune] article \u2192 local, reason:", d.reason || "?"); settle(d && d.ok && d.article ? d : localArticle(G.recapPayload)); })
       .catch(function () { clearTimeout(timer); settle(localArticle(G.recapPayload)); });
   } catch (err) { clearTimeout(timer); settle(localArticle(G.recapPayload)); }
 }
@@ -2010,14 +2108,7 @@ function maybeShowRecap() {
   showNewspaper(false);
 }
 
-function recapChip() {
-  if (document.getElementById("npChip")) return;
-  var c = document.createElement("button");
-  c.id = "npChip"; c.type = "button"; c.className = "np-chip";
-  c.textContent = "\uD83D\uDCF0 EXTRA! EXTRA!";
-  c.addEventListener("click", function () { showNewspaper(false); });
-  document.body.appendChild(c);
-}
+function recapChip() {}   // removed: the newspaper is one-and-done now — no reopen chip after dismissal
 
 var NP_TICK_HEAD = ["HOT OFF THE PRESS", "STOP THE PRESSES", "SETTING TYPE", "INK STILL DRYING"];
 var NP_TICK_ART = ["REWRITING THE LEDE", "CALLING THE COPY DESK", "TELETYPE INCOMING", "HOLDING PAGE ONE"];
@@ -2052,12 +2143,33 @@ function showNewspaper(gate) {
   var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read"; read.textContent = "READ MORE";
   acts.appendChild(read);
   paper.appendChild(acts);
+  var storyDone = false;   // flips true once the full article has inked in -> READ MORE/CLOSE STORY becomes GET RESULTS
 
   var under = div("np-under");
   var skip = document.createElement("button"); skip.type = "button"; skip.className = "presti-spin np-underbtn"; skip.textContent = "SKIP TO RESULTS";
   var again = document.createElement("button"); again.type = "button"; again.className = "presti-spin np-underbtn"; again.textContent = "RUN IT BACK";
   under.appendChild(skip); under.appendChild(again);
 
+  // THE BUNDLE: the paper lands tied with twine, showing only the record stamp —
+  // all local data, zero tokens. The model call starts at unwrap. A paper reopened
+  // after a prior unwrap (G.recapReq set) skips straight to the printed page.
+  var bundle = null, autoT = null;
+  if (!G.recapReq) {
+    paper.classList.add("np-hidden");
+    bundle = document.createElement("button");
+    bundle.type = "button";
+    bundle.className = "np-bundle" + (G.recapShown ? " np-quick" : "");
+    bundle.setAttribute("aria-label", "Unwrap the paper");
+    bundle.appendChild(div("np-bundle-mast", "The True 82 Tribune"));
+    var stamp = div("np-bundle-stamp");
+    stamp.appendChild(div("np-bundle-eyebrow", wins >= CFG.GAMES_IN_SEASON ? "HISTORY" : wins === 0 ? "DISASTER" : "FINAL"));
+    stamp.appendChild(div("np-bundle-rec", wins + "\u2013" + losses + "!"));
+    bundle.appendChild(stamp);
+    bundle.appendChild(div("np-bundle-hint", "TAP TO UNWRAP"));
+    bundle.appendChild(div("np-twine-h")); bundle.appendChild(div("np-twine-v")); bundle.appendChild(div("np-twine-knot"));
+  }
+
+  if (bundle) ov.appendChild(bundle);
   ov.appendChild(paper); ov.appendChild(under);
   document.body.appendChild(ov);
   buzz(20);
@@ -2069,9 +2181,34 @@ function showNewspaper(gate) {
 
   function close(fireworksOk) {
     clearInterval(tickTimer);
+    clearTimeout(autoT);
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
-    recapChip();
+  }
+
+  // The snip: twine flies off, the stack settles into the printed page, and THIS
+  // is where the model call starts. Funnel event: finishes -> unwraps -> reads.
+  function unwrap(auto) {
+    if (!bundle || G.recapReq) return;
+    clearTimeout(autoT);
+    window.t82track && window.t82track("recap_unwrap", { mode: MODE, wins: wins, segment: auto ? "auto" : "tap" });
+    requestHeadline();
+    var b = bundle; bundle = null;
+    b.disabled = true;
+    b.classList.add("np-snip");
+    setTimeout(function () {
+      if (b.parentNode) b.parentNode.removeChild(b);
+      paper.classList.remove("np-hidden");
+      paper.classList.add("np-unwrapped");
+      buzz(16);
+    }, 430);
+  }
+  if (bundle) {
+    bundle.addEventListener("click", function () { unwrap(false); });
+    // A perfect 82-0 auto-unwraps after a beat — rare enough that the token is
+    // always worth the moment (owner call, 2026-07-09). Everything else waits
+    // for the tap.
+    if (wins >= CFG.GAMES_IN_SEASON) autoT = setTimeout(function () { unwrap(true); }, 1500);
   }
   skip.addEventListener("click", function () {
     window.t82track && window.t82track("recap_skip", { mode: MODE });
@@ -2079,12 +2216,18 @@ function showNewspaper(gate) {
   });
   again.addEventListener("click", function () {
     clearInterval(tickTimer);
+    clearTimeout(autoT);
     window.t82track && window.t82track("replay", { mode: MODE });
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     newGame();
   });
   ov.addEventListener("click", function (ev) { if (ev.target === ov) { window.t82track && window.t82track("recap_skip", { mode: MODE }); close(true); } });
   read.addEventListener("click", function () {
+    if (storyDone) {                       // full article is unfurled -> button now exits to results
+      window.t82track && window.t82track("recap_results", { mode: MODE });
+      close(true);
+      return;
+    }
     if (!paper.classList.contains("open")) {
       paper.classList.add("open");
       read.textContent = "CLOSE STORY";
@@ -2129,6 +2272,10 @@ function showNewspaper(gate) {
     art.appendChild(div("np-byline", "From the Tribune wire desk"));
     var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
     art.appendChild(body);
+    if (paper.classList.contains("open")) {   // only once the story is actually on screen
+      storyDone = true;                        // full article is unfurled
+      read.textContent = "GET RESULTS";        // READ MORE / CLOSE STORY -> forward to results
+    }
   };
 
   if (G.recapHead) G.npStamp();
@@ -2232,7 +2379,7 @@ function renderResults(e, keepScroll) {
   if (clutchPending) {
     hotHand(e);                       // recap request fires from verdict() with post-boost totals
   } else if (MODE !== "kaman") {
-    requestHeadline(e, e.winTally, e.net, null);
+    prepareRecap(e, e.winTally, e.net, null);   // payload only; the model call fires on unwrap
     G.recapAuto = 1;
     G.recapGateFw = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
     showNewspaper(true);
@@ -2322,7 +2469,10 @@ var LEAGUE_ID = (function () {   // ?league=<id> deep link — needs no site dat
 
 // Crests are decorative — load them separately and in the background so they never
 // block the game. If this fetch fails or is slow, the game plays fine with no crests.
+var CRESTS_REQUESTED = false;
 function loadCrests() {
+  if (CRESTS_REQUESTED) return;
+  CRESTS_REQUESTED = true;
   fetch("crests.json")
     .then(function (res) { return res.ok ? res.json() : null; })
     .then(function (c) {
@@ -2333,6 +2483,13 @@ function loadCrests() {
       }
     })
     .catch(function () {});
+}
+function scheduleCrests() {
+  var start = function () { loadCrests(); };
+  // The crest file is decorative and roughly the same transfer size as the
+  // critical player dataset. Never let it compete for the initial connection.
+  if (typeof requestIdleCallback === "function") requestIdleCallback(start, { timeout: 2500 });
+  else setTimeout(start, 0);
 }
 
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
@@ -2380,10 +2537,14 @@ function gameFinishedPings() {
 
 function boot() {
   bindHaptics();
+  bindVisibilityResync();
   if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }
-  else if (LEAGUE_ID && window.T82LGUI) { var lgi = LEAGUE_ID; LEAGUE_ID = null; T82LGUI.route(lgi); }
+  else if (LEAGUE_ID) {
+    var lgi = LEAGUE_ID; LEAGUE_ID = null;
+    app().innerHTML = '<section class="ticket league"><p class="duel-wait">Opening the league office\u2026</p></section>';
+    ensureLeagueUI().then(function (ok) { if (ok) T82LGUI.route(lgi); else showError("Couldn\u2019t load the league screen. Reload and try again."); });
+  }
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
-  loadCrests();      // crests download in the background, non-blocking
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
   fetch(CFG.DATA_URL)
@@ -2393,7 +2554,11 @@ function boot() {
       DATA_READY = true;
       var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
       window.t82track && window.t82track("data_ready", { load_ms: ms });
-      if (DUEL_ID && window.T82DUI) { var di = DUEL_ID; DUEL_ID = null; T82DUI.route(di); }  // duel deep link wins the boot race
+      scheduleCrests();   // decorative payload waits until the critical dataset is ready, then uses idle time
+      if (DUEL_ID) {
+        var di = DUEL_ID; DUEL_ID = null;
+        ensureDuelUI().then(function (ok) { if (ok) T82DUI.route(di); else showError("Couldn\u2019t load the duel screen. Reload and try again."); });
+      }
       else if (PENDING_FN) { var pf = PENDING_FN; PENDING_FN = null; pf(); }               // queued daily/weekly launch
       else if (PENDING_MODE) { var pm = PENDING_MODE; PENDING_MODE = null; newGame(pm); }   // player tapped a mode while data was still loading
     })
