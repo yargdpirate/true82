@@ -1,16 +1,24 @@
-// POST /api/recap — two-phase season-recap copywriter for the Tribune overlay.
-//   phase "headline": nickname only. Fires at EVERY season end -> kept CHEAP:
-//                     no thinking by default, no BAN block, minimal user payload
-//                     (record + roster names; ~55% fewer input tokens than v1).
-//   phase "article":  the four-sentence story. Fires ONLY when the reader presses
-//                     READ MORE (rare), written to match the nickname already shown.
-// Fail-soft like the rest of the API: ANY problem (no key, timeout, bad parse) returns
-// {ok:false} with status 200 and the client writes that piece locally instead. Never a
-// 500, never blocks the game.
+// POST /api/recap — fail-soft season-recap copywriter for the Tribune overlay.
+//
+// Preferred browser path:
+//   phase "edition"  -> nickname + four-sentence story in one fast request when
+//                       the reader presses READ STORY. No thinking by default,
+//                       because the three-second opening sequence is the latency
+//                       budget and one round trip is cheaper than two serial calls.
+//
+// Legacy-compatible paths remain available for old clients:
+//   phase "headline" -> nickname only
+//   phase "article"  -> story written to a supplied nickname
+//
+// Any problem (no key, timeout, bad parse) returns {ok:false} with status 200.
+// The browser then typesets deterministic local copy, so the paper never blocks.
 //
 // Bindings (Pages > Settings > Environment variables / Bindings):
-//   ANTHROPIC_API_KEY   (secret, REQUIRED for AI copy — feature degrades without it)
+//   ANTHROPIC_API_KEY   (secret, REQUIRED for AI copy — degrades locally without it)
 //   RECAP_MODEL         (optional, default "claude-sonnet-4-6")
+//   RECAP_VOICE         (optional house voice applied to article/edition copy)
+//   RECAP_HEADLINE_THINK (optional legacy headline thinking budget, >=1024)
+//   RECAP_EDITION_THINK  (optional edition thinking budget, >=1024; default off)
 
 const TIERS = [
   [82, "PERFECT SEASON — 82-0", "immortality achieved; euphoric and mythic — this team just did the only thing left to do"],
@@ -39,18 +47,9 @@ HARD NO — reject on sight:
 - Generic praise ("The Untouchables", "The Real Deal"): if it reads as a compliment, it is dead.
 - Ball-sharing, usage, touches, or "too many stars" ("The Unsharables", "The Ball Hogs"). Never.
 - Alliteration. Epic or mythic grandeur (no Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals).
-Skip the first obvious pairing for the one only THIS roster earns. It prints as "<NICKNAME> FINISH 72-10", so it must read right there. Output only the nickname on a single line (a leading "The" is fine): no quotes, no explanation.`;
+Skip the first obvious pairing for the one only THIS roster earns. It prints as "<NICKNAME> FINISH 72-10", so it must read right there.`;
 
-const SYS_HEADLINE = `You name the team on the newspaper front page after the 82nd and final game of an NBA season. The five players below are real, each frozen at one historical season; the record is established fact.
-
-${NICKNAME_RULES}`;
-
-const SYS_ARTICLE = `You are a Sports Illustrated columnist filing a short season-ending blurb after this team's 82nd and final game. The roster is real NBA players, each frozen at one specific season of his career; treat the record as established fact and write as though it were a real NBA season. The nickname is already in print, and your job is to explain it.
-
-Return ONLY a JSON object, no markdown fences, no commentary:
-{"article": "..."}
-
-article — 4 short sentences, about 70 words total and never more than 90. Gossipy and fun, a columnist who cares more about the locker room than the box score. Laconic: no comp analysis, no future outlook, no questions.
+const ARTICLE_RULES = `The article must be 4 short sentences, about 70 words total and never more than 90. Gossipy and fun, by a columnist who cares more about the locker room than the box score. Laconic: no comp analysis, no future outlook, no questions.
 Sentence 1, the nickname's origin: ONE clause, 15 words max, stating the off-court or personality reason they earned it as plain fact and committing fully, no hedging or winking. Shape it like "Nicknamed ... because ...".
 Sentence 2, one quick on-court line: name two or three players by surname and what they actually did. One sentence only; the basketball is garnish, not the meal.
 Sentence 3, the verdict on perfection, chosen by the final record, one short line:
@@ -60,20 +59,37 @@ Sentence 3, the verdict on perfection, chosen by the final record, one short lin
 Sentence 4, the kicker: invent one juicy, absurd off-court drama beat about this group (a feud, a nightlife legend, an ego war, a ridiculous incident), played completely straight with full tabloid energy. Keep it comic and good-natured, never a real crime or a genuine accusation. End on this.
 Never blame spacing, shooting, or shot-sharing. Never mention ratings, models, engines, fantasy, video games, or drafting. Do not use em dashes.`;
 
-// Applied to the ARTICLE by default. The HEADLINE skips the default voice (noise for a
-// 2-4 word name) but picks up a custom RECAP_VOICE from the dashboard when set — so the
-// flim-flam barker below still flavors both phases if you paste it into RECAP_VOICE:
-// To bring back the 1920s flim-flam barker, paste THIS into the RECAP_VOICE dashboard value:
-//   render every word (nickname, dek, and story) in the voice of a 1920s newspaper sports barker: breathless and theatrical, thick with jazz-age slang and carnival flim-flam, fond of alliteration and big ballyhoo, gloriously over-the-top and old-timey.
+const SYS_HEADLINE = `You name the team on the newspaper front page after the 82nd and final game of an NBA season. The five players below are real, each frozen at one historical season; the record is established fact.
+
+${NICKNAME_RULES}
+
+Output only the nickname on a single line (a leading "The" is fine): no quotes, no explanation.`;
+
+const SYS_ARTICLE = `You are a Sports Illustrated columnist filing a short season-ending blurb after this team's 82nd and final game. The roster is real NBA players, each frozen at one specific season of his career; treat the record as established fact and write as though it were a real NBA season. The nickname is already in print, and your job is to explain it.
+
+Return ONLY a JSON object, no markdown fences, no commentary:
+{"article": "..."}
+
+${ARTICLE_RULES}`;
+
+const SYS_EDITION = `You are the front-page sports editor after the 82nd and final game of an NBA season. The five players below are real, each frozen at one historical season; treat the record as established fact and write as though this season really happened.
+
+Create the nickname and the complete short article together so the article explains the exact nickname you chose.
+
+NICKNAME RULES:
+${NICKNAME_RULES}
+
+ARTICLE RULES:
+${ARTICLE_RULES}
+
+Return ONLY a JSON object, no markdown fences, no commentary:
+{"nickname": "...", "article": "..."}`;
+
 const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk prose: vivid and confident, plain-spoken, never gimmicky or old-timey. Let the roster and the record carry it.`;
-
-// Appended AFTER the voice so it wins on recency: the flim-flam must obey format + length.
-const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the flim-flam will not fit inside the format and the length, trim the flim-flam, never the format or the count.`;
-
-// Headline is a bare string (per NICKNAME_RULES), not JSON — this tail wins on recency.
+const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the voice will not fit inside the format and the length, trim the voice, never the format or the count.`;
 const HARD_HEAD = `FORMAT OVERRIDES THE VOICE. Output ONLY the nickname itself, on a single line: no quotes, no markdown, no explanation, nothing before or after it.`;
+const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON object with both non-empty string fields "nickname" and "article". Do not omit either field and do not put text outside the object.`;
 
-// Kills the "too much talent" cliché in the nickname, dek, and body alike.
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
 export async function onRequest(context) {
@@ -88,10 +104,8 @@ export async function onRequest(context) {
   let b;
   try { b = await request.json(); } catch { return fail("bad_json"); }
   if (!b || typeof b !== "object" || !Array.isArray(b.players) || b.players.length !== 5) return fail("bad_payload");
-  const phase = b.phase === "article" ? "article" : "headline";
+  const phase = b.phase === "article" ? "article" : b.phase === "edition" ? "edition" : "headline";
 
-  // Sanitize hard: this text goes into a prompt. Strip angle brackets and braces,
-  // clamp lengths, coerce numbers. One garbage POST must not steer the model.
   const clean = (s, max) => String(s == null ? "" : s).replace(/[<>{}\\]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
   const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo; };
 
@@ -106,40 +120,45 @@ export async function onRequest(context) {
   }));
   const notes = (Array.isArray(b.notes) ? b.notes : []).slice(0, 6).map(n => clean(n, 110)).filter(Boolean);
   const hh = b.hh && b.hh.player ? { player: clean(b.hh.player, 30), tier: clean(b.hh.tier, 12) } : null;
-  const nickname = clean(b.nickname, 48);   // article phase: the name already in print
+  const nickname = clean(b.nickname, 48);
   if (phase === "article" && !nickname) return fail("bad_payload");
 
   const t = tierFor(wins);
-  // Two user messages, one per phase. The HEADLINE one is deliberately minimal: the
-  // nickname is about WHO the players are (world knowledge), so mode, tier, tone,
-  // lineup values, and composition signals are dead weight — and the spacing/usage
-  // signals actively feed the BANNED angles. The ARTICLE keeps the full context
-  // (tier verdict + fit notes are load-bearing for its sentence 3).
-  const user = phase === "article"
-    ? `MODE: ${modeLabel}
+  const fullContext = `MODE: ${modeLabel}
 FINAL RECORD: ${wins}-${losses} (82 games)
 SEASON TIER: ${t[1]}
 TONE DIRECTIVE: ${t[2]}
 LATE-SEASON ERUPTION: ${hh ? hh.player + " caught fire down the stretch (" + hh.tier + ")" : "none"}
-TEAM NICKNAME ALREADY IN PRINT: ${nickname}
 ROSTER (slot / season / player / lineup value):
 ${players.map(p => `${p.slot} / ${p.yr} / ${p.name} / ${p.v}`).join("\n")}
 COMPOSITION SIGNALS (how the five fit together):
-${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced five"}`
-    : `FINAL RECORD: ${wins}-${losses}
+${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced five"}`;
+
+  const user = phase === "headline"
+    ? `FINAL RECORD: ${wins}-${losses}
 ROSTER (season / player):
-${players.map(p => `${p.yr} ${p.name}`).join("\n")}`;
+${players.map(p => `${p.yr} ${p.name}`).join("\n")}`
+    : phase === "article"
+      ? `${fullContext}
+TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
+      : fullContext;
 
   const isArticle = phase === "article";
+  const isEdition = phase === "edition";
   const voice = env.RECAP_VOICE || DEFAULT_VOICE;
-  // Headline thinking is OFF by default so titles land in ~3s instead of ~15s. Bring the
-  // slower, more-considered titles back by setting RECAP_HEADLINE_THINK to 1024 or more.
   const headThink = Math.max(0, parseInt(env.RECAP_HEADLINE_THINK, 10) || 0);
-  const useThink = isArticle || headThink >= 1024;                 // article always thinks; headline only if dialed up
-  const thinkBudget = isArticle ? 1400 : headThink;
-  const maxTokens = isArticle ? 2600 : (useThink ? thinkBudget + 512 : 512);
+  const editionThink = Math.max(0, parseInt(env.RECAP_EDITION_THINK, 10) || 0);
+  const useThink = isArticle || (isEdition ? editionThink >= 1024 : headThink >= 1024);
+  const thinkBudget = isArticle ? 1400 : isEdition ? editionThink : headThink;
+  const maxTokens = isArticle ? 2600 : isEdition ? (useThink ? thinkBudget + 900 : 900) : (useThink ? thinkBudget + 512 : 512);
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : 18000);
+  const timer = setTimeout(() => ac.abort(), isArticle ? 20000 : isEdition ? 9500 : 18000);
+
+  let system;
+  if (isArticle) system = SYS_ARTICLE + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD;
+  else if (isEdition) system = SYS_EDITION + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD + "\n\n" + HARD_EDITION;
+  else system = SYS_HEADLINE + (env.RECAP_VOICE ? "\n\n" + env.RECAP_VOICE : "") + "\n\n" + HARD_HEAD;
+
   let resp;
   try {
     resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -153,13 +172,7 @@ ${players.map(p => `${p.yr} ${p.name}`).join("\n")}`;
       body: JSON.stringify(Object.assign({
         model: env.RECAP_MODEL || "claude-sonnet-4-6",
         max_tokens: maxTokens,
-        // ARTICLE keeps the full stack (voice + BAN + HARD). HEADLINE runs lean:
-        // NICKNAME_RULES already bans the ball-sharing angle, so BAN is redundant
-        // there, and the default voice is noise for a 2-4 word name — a custom
-        // RECAP_VOICE (dashboard) still applies to both phases when set.
-        system: isArticle
-          ? SYS_ARTICLE + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD
-          : SYS_HEADLINE + (env.RECAP_VOICE ? "\n\n" + env.RECAP_VOICE : "") + "\n\n" + HARD_HEAD,
+        system,
         messages: [{ role: "user", content: user }]
       }, useThink ? { thinking: { type: "enabled", budget_tokens: thinkBudget } } : {}))
     });
@@ -170,17 +183,23 @@ ${players.map(p => `${p.yr} ${p.name}`).join("\n")}`;
   try {
     const data = await resp.json();
     const text = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n");
-    if (isArticle) {
+    if (isArticle || isEdition) {
       const raw = text.replace(/```json|```/g, "").trim();
       const out = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
       const article = clean(out.article, 700);
       if (!article) return fail("empty");
+      if (isEdition) {
+        const nick = clean(out.nickname, 48);
+        if (!nick) return fail("empty");
+        return new Response(JSON.stringify({ ok: true, nickname: nick, article, source: "api" }), {
+          status: 200, headers: { "content-type": "application/json" }
+        });
+      }
       return new Response(JSON.stringify({ ok: true, article, source: "api" }), {
         status: 200, headers: { "content-type": "application/json" }
       });
     }
-    // Headline: the model returns the bare nickname (see NICKNAME_RULES). Still cope if
-    // it wraps the name in JSON or quotes out of habit, and take only the first line.
+
     let nickRaw = text.replace(/```json|```/g, "").trim();
     const js = nickRaw.indexOf("{"), je = nickRaw.lastIndexOf("}");
     if (js !== -1 && je > js) {
