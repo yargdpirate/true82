@@ -1849,25 +1849,6 @@ function shareSurname(nm) {
   while (rest.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(rest[rest.length - 1])) rest.pop();
   return parts[0].charAt(0) + ". " + rest.join(" ");
 }
-function tribuneTeaser() {
-  var txt = "";
-  if (G && G.recapArt && G.recapArt.article) txt = String(G.recapArt.article);
-  else if (G && G.recapHead && G.recapHead.dek) txt = String(G.recapHead.dek);
-  if (!txt) return "";
-  var first = txt.match(/^.*?[.!?](?:\s|$)/);
-  txt = first ? first[0].trim() : txt.trim();
-  return txt.length > 210 ? txt.slice(0, 207).replace(/\s+\S*$/, "") + "\u2026" : txt;
-}
-function tribuneFullShareText() {
-  if (!G || !G.recapPayload || !G.recapHead) return "";
-  var p = G.recapPayload, losses = CFG.GAMES_IN_SEASON - p.wins;
-  var roster = p.players.map(function (x) {
-    return x.slot + " '" + String(x.yr).slice(-2) + " " + shareSurname(x.name);
-  }).join("\n");
-  var story = G.recapArt && G.recapArt.article ? String(G.recapArt.article) : tribuneTeaser();
-  return "\uD83D\uDDDE\uFE0F THE TRUE 82 TRIBUNE\n\"" + String(G.recapHead.nickname) + "\" FINISH " + p.wins + "\u2013" + losses +
-    (story ? "\n\n" + story : "") + "\n\nTHE FIVE\n" + roster + "\n\ntrue82.net";
-}
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
@@ -1892,10 +1873,8 @@ function shareText(e) {
     }
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
-  var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";  // preserves the popular compact roster format
-  var teaser = tribuneTeaser();
-  var tribune = teaser ? "\n\n\uD83D\uDDDE\uFE0F Tribune: " + teaser : "";
-  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + tribune + "\n\ntrue82.net";
+  var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";
+  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\ntrue82.net";
 }
 
 function shareButtonLabel(b) {
@@ -1972,13 +1951,11 @@ function shareOrCopy(txt, button) {
 }
 
 /* ---------- season recap: The True 82 Tribune ----------
-   Every finished season ends on the Tribune's spinning front page — and for
-   non-Heat-Check games the paper IS the reveal: results render underneath, the
-   record breaks as the headline. Two-phase model calls keep costs down:
-     phase 1 (unwrap only) — nickname + dek from POST /api/recap {phase:"headline"}
-     phase 2 (engaged readers) — the four-sentence story {phase:"article"}
-   Both phases fail soft to local template copy so the paper ALWAYS lands. Model
-   text is inserted with textContent only — never innerHTML — untrusted output. */
+   Every finished season stages a wrapped sports extra. Pressing READ STORY is the
+   engagement event: one POST /api/recap {phase:"edition"} requests the nickname
+   and complete article while a fixed 3.1-second pressroom reveal runs. A client
+   deadline typesets local fallback copy before the cover settles, so the paper
+   always opens complete. Model text enters through textContent only. */
 
 var RECAP_TIERS = [
   [82, "perfect"], [81, "heartbreak"], [74, "record"], [73, "matched"],
@@ -2064,73 +2041,62 @@ function localArticle(p) {
   };
 }
 
-// Phase 1: one headline request per season. Fired from showResults (non-clutch) or
-// from the Heat Check verdict() with post-boost totals.
 // Stage the recap payload at season end — pure local work, zero tokens. The model
-// call itself lives in requestHeadline(), fired ONLY when the reader unwraps the
-// bundle (or the 82-0 auto-unwrap): a skipped paper now costs nothing. First
-// writer wins, so verdict()'s post-boost totals beat dismiss()'s plain ones.
+// request fires only when READ STORY opens the bundle (or the rare 82-0 auto-open),
+// so skipping the wrapped edition costs nothing. First writer wins, ensuring the
+// Heat Check verdict's post-boost totals beat the ceremony-skip fallback.
 function prepareRecap(e, finalWins, finalNet, hh) {
   if (G.recapPayload) return;
   G.recapPayload = buildRecapPayload(e, finalWins, finalNet, hh);
   G.recapWins = finalWins;
 }
 
-// Phase 1: the nickname — fired by the bundle unwrap, never automatically.
-function requestHeadline() {
+// One edition request per opened bundle. The unwrap click is the event-driven
+// engagement signal: it buys a nickname and the complete four-sentence story in
+// a single round trip, which is faster and cheaper than serial headline/article
+// calls. A 2.85s client press deadline guarantees the three-second reveal never
+// ends on a blank page; late or failed model copy falls back locally and is ignored.
+function requestEdition() {
   if (G.recapReq || !G.recapPayload) return;
   G.recapReq = 1;
-  var token = G, settled = false;
-  function settle(d) {
-    if (settled || token !== G) return;
-    settled = true;
-    G.recapHead = d;
-    stampHeadline();
-    if (G.recapArtIntent) requestArticle();
-  }
-  var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
-  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localHeadline(G.recapPayload)); }, 20000);
-  try {
-    fetch("/api/recap", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify(Object.assign({ phase: "headline" }, G.recapPayload)),
-      signal: ac ? ac.signal : undefined
-    }).then(function (r) { return r.json(); })
-      .then(function (d) { clearTimeout(timer); if (d && !d.ok) console.warn("[tribune] headline \u2192 local, reason:", d.reason || "?"); settle(d && d.ok && d.nickname ? d : localHeadline(G.recapPayload)); })
-      .catch(function () { clearTimeout(timer); settle(localHeadline(G.recapPayload)); });
-  } catch (err) { clearTimeout(timer); settle(localHeadline(G.recapPayload)); }
-}
-
-// Phase 2: the story — fired only after an engagement signal (historic record,
-// dwell, paper tap/scroll, or READ MORE), and written to match the nickname already
-// in print (even a fallback nickname, so the piece never contradicts it).
-function expressRecapArticleInterest(reason) {
-  if (!G || !G.recapPayload || G.recapArt || G.recapArtReq) return;
-  if (!G.recapArtIntent) G.recapArtIntent = reason || "engaged";
-  if (G.recapHead) requestArticle();
-}
-
-function requestArticle() {
-  if (G.recapArt || G.recapArtReq || !G.recapPayload || !G.recapHead) return;
   G.recapArtReq = 1;
+  G.recapArtIntent = "unwrap";
   var token = G, settled = false;
+  var fallbackHead = localHeadline(G.recapPayload);
+  var fallbackArt = localArticle(G.recapPayload);
   function settle(d) {
     if (settled || token !== G) return;
     settled = true;
-    G.recapArt = d;
+    var source = d && d.source ? d.source : "fallback";
+    G.recapHead = d && d.nickname ? { nickname: String(d.nickname), source: source } : fallbackHead;
+    G.recapArt = d && d.article ? { article: String(d.article), source: source } : fallbackArt;
+    stampHeadline();
     inkInArticle();
   }
   var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
-  var timer = setTimeout(function () { if (ac) ac.abort(); settle(localArticle(G.recapPayload)); }, 22000);
+  var timer = setTimeout(function () {
+    if (ac) ac.abort();
+    settle({ nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
+  }, 2850);
   try {
     fetch("/api/recap", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify(Object.assign({ phase: "article", nickname: G.recapHead.nickname }, G.recapPayload)),
+      body: JSON.stringify(Object.assign({ phase: "edition" }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
     }).then(function (r) { return r.json(); })
-      .then(function (d) { clearTimeout(timer); if (d && !d.ok) console.warn("[tribune] article \u2192 local, reason:", d.reason || "?"); settle(d && d.ok && d.article ? d : localArticle(G.recapPayload)); })
-      .catch(function () { clearTimeout(timer); settle(localArticle(G.recapPayload)); });
-  } catch (err) { clearTimeout(timer); settle(localArticle(G.recapPayload)); }
+      .then(function (d) {
+        clearTimeout(timer);
+        if (d && !d.ok) console.warn("[tribune] edition \u2192 local, reason:", d.reason || "?");
+        settle(d && d.ok && d.nickname && d.article ? d : { nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
+      })
+      .catch(function () {
+        clearTimeout(timer);
+        settle({ nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
+      });
+  } catch (err) {
+    clearTimeout(timer);
+    settle({ nickname: fallbackHead.nickname, article: fallbackArt.article, source: "fallback" });
+  }
 }
 
 // Post-Heat-Check path only: the spin ceremony already revealed the results, so
@@ -2155,7 +2121,7 @@ function showNewspaper(gate) {
 
   var ov = document.createElement("div"); ov.className = "np-overlay" + (gate ? " np-gate" : "");
   var stage = document.createElement("div"); stage.className = "np-stage";
-  var paper = document.createElement("div"); paper.className = "np-paper" + (G.recapShown ? " np-quick" : "");
+  var paper = document.createElement("div"); paper.className = "np-paper";
   paper.setAttribute("role", "dialog"); paper.setAttribute("aria-label", "Season recap");
   function div(cls, txt) { var x = document.createElement("div"); x.className = cls; if (txt != null) x.textContent = txt; return x; }
 
@@ -2175,29 +2141,26 @@ function showNewspaper(gate) {
   paper.appendChild(art);
 
   var acts = div("np-actions");
-  var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read"; read.textContent = "READ MORE";
-  var shareEdition = document.createElement("button"); shareEdition.type = "button"; shareEdition.className = "presti-spin np-share"; shareEdition.textContent = "TEXT FULL STORY";
-  shareEdition.setAttribute("data-share-label", "TEXT FULL STORY");
-  acts.appendChild(read); acts.appendChild(shareEdition);
+  var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read"; read.textContent = "GET RESULTS";
+  acts.appendChild(read);
   paper.appendChild(acts);
-  var storyDone = false;   // flips true once the full article has inked in -> READ MORE/CLOSE STORY becomes GET RESULTS
 
   var under = div("np-under");
   var skip = document.createElement("button"); skip.type = "button"; skip.className = "presti-spin np-underbtn"; skip.textContent = "SKIP TO RESULTS";
   var again = document.createElement("button"); again.type = "button"; again.className = "presti-spin np-underbtn"; again.textContent = "RUN IT BACK";
   under.appendChild(skip); under.appendChild(again);
 
-  // THE BUNDLE: three offset sheets + a finished front-page shell. The record sits
-  // in its own unobstructed panel; twine crosses the lower third instead of the score.
-  // The top sheet folds away while this exact paper reveals underneath, buying the
-  // headline request useful time without a hard object swap.
-  var bundle = null, autoT = null, prefetchT = null;
+  // Three physical sheets remain on one stage. The wrapped cover carries a clear
+  // ink-black READ STORY action. On activation, the tie releases, the cover lifts,
+  // backing sheets fan away, a press sweep travels down the page, and this real
+  // Tribune expands underneath. There is no object swap and no spin animation.
+  var bundle = null, autoT = null, openingT = null, statusTimers = [];
   if (!G.recapReq) {
     paper.classList.add("np-hidden");
     bundle = document.createElement("button");
     bundle.type = "button";
-    bundle.className = "np-bundle" + (G.recapShown ? " np-quick" : "");
-    bundle.setAttribute("aria-label", "Unwrap the Tribune and reveal the season recap");
+    bundle.className = "np-bundle";
+    bundle.setAttribute("aria-label", "Read the True 82 Tribune season story");
 
     var stack = div("np-stack");
     var back2 = div("np-sheet np-sheet-back np-sheet-back-2"); back2.setAttribute("aria-hidden", "true");
@@ -2239,9 +2202,14 @@ function showNewspaper(gate) {
     top.appendChild(face);
 
     var folio = div("np-bundle-folio");
-    folio.appendChild(div("np-bundle-hint", "TAP TO UNWRAP"));
+    folio.appendChild(div("np-bundle-hint", "SPECIAL SEASON EDITION"));
     folio.appendChild(div("np-bundle-foldnote", "PAGE ONE INSIDE"));
     top.appendChild(folio);
+
+    var cta = div("np-bundle-cta");
+    cta.appendChild(div("np-bundle-cta-kicker", "OPEN THE FINAL EDITION"));
+    cta.appendChild(div("np-bundle-cta-main", "READ STORY  \u2192"));
+    top.appendChild(cta);
 
     top.appendChild(div("np-fold-shadow"));
     top.appendChild(div("np-twine-h")); top.appendChild(div("np-twine-v")); top.appendChild(div("np-twine-knot"));
@@ -2249,10 +2217,18 @@ function showNewspaper(gate) {
     bundle.appendChild(stack);
   } else {
     stage.classList.add("np-opened");
+    paper.classList.add("open", "story-ready", "ready");
   }
+
+  var pressFx = div("np-press-fx");
+  pressFx.setAttribute("aria-hidden", "true");
+  pressFx.appendChild(div("np-press-sweep"));
+  var pressStatus = div("np-press-status", "BREAKING THE TWINE");
+  pressFx.appendChild(pressStatus);
 
   if (bundle) stage.appendChild(bundle);
   stage.appendChild(paper);
+  stage.appendChild(pressFx);
   ov.appendChild(stage); ov.appendChild(under);
   document.body.appendChild(ov);
   buzz(20);
@@ -2262,120 +2238,112 @@ function showNewspaper(gate) {
     ticker.textContent = arr[Math.floor(Date.now() / 1400) % arr.length];
   }, 1400);
 
+  function clearStatusTimers() {
+    for (var i = 0; i < statusTimers.length; i++) clearTimeout(statusTimers[i]);
+    statusTimers.length = 0;
+  }
   function close(fireworksOk) {
     clearInterval(tickTimer);
     clearTimeout(autoT);
-    clearTimeout(prefetchT);
+    clearTimeout(openingT);
+    clearStatusTimers();
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
   }
-
-  function engageArticle(reason) {
-    clearTimeout(prefetchT);
-    expressRecapArticleInterest(reason);
+  function setPressStatus(txt) {
+    pressStatus.textContent = txt;
   }
 
-  // Connected unwrap: release the lower-third tie, lift/fold the top sheet, and
-  // reveal the real front page beneath it. Headline starts at the tap; article
-  // generation remains demand-priced and begins only on an engagement signal.
+  function buildGhostArticle() {
+    art.textContent = "";
+    art.appendChild(div("np-byline", "TRIBUNE WIRE \u2014 FINAL COPY IN PROGRESS"));
+    var g = div("np-ghostbody");
+    for (var i = 0; i < 7; i++) g.appendChild(div("np-gline" + (i === 6 ? " short" : "")));
+    art.appendChild(g);
+  }
+
+  // A deliberately paced 3.1-second pressroom reveal. The click is the Option-B
+  // engagement event, so the combined edition request starts at frame one. The
+  // 2.85-second local deadline guarantees headline and article are typeset before
+  // the cover settles, even when the model or network is slow.
   function unwrap(auto) {
     if (!bundle || G.recapReq) return;
     clearTimeout(autoT);
     window.t82track && window.t82track("recap_unwrap", { mode: MODE, wins: wins, segment: auto ? "auto" : "tap" });
-    requestHeadline();
-    var b = bundle; bundle = null;
+    if (!G.recapReadTracked) { G.recapReadTracked = 1; window.t82track && window.t82track("recap_read", { mode: MODE }); }
+
+    var b = bundle;
+    bundle = null;
     b.disabled = true;
+    ov.classList.add("np-is-opening");
     stage.classList.add("np-opening");
-    b.classList.add("np-snip");
+    b.classList.add("np-opening-bundle");
     paper.classList.remove("np-hidden");
-    paper.classList.add("np-unwrapped");
+    paper.classList.add("np-revealing", "open", "printing-art");
+    buildGhostArticle();
+    requestEdition();
 
-    // Option B — event driven: remarkable records prefetch immediately after the
-    // headline; ordinary editions wait for a dwell, paper interaction, scroll, or
-    // explicit READ MORE. Closing before the dwell cancels the speculative call.
-    if (wins >= CFG.GAMES_IN_SEASON - 1 || wins === 0) engageArticle("historic-record");
-    else prefetchT = setTimeout(function () { engageArticle("paper-dwell"); }, 1100);
+    statusTimers.push(setTimeout(function () { setPressStatus("LIFTING PAGE ONE"); }, 620));
+    statusTimers.push(setTimeout(function () { setPressStatus("RUNNING THE PRESSES"); }, 1320));
+    statusTimers.push(setTimeout(function () { setPressStatus("SETTING THE FINAL EDITION"); }, 2180));
 
-    setTimeout(function () {
+    openingT = setTimeout(function () {
+      // requestEdition's deadline should already have supplied local copy; this is
+      // an additional invariant so no future request refactor can expose a blank.
+      if (!G.recapHead) G.recapHead = localHeadline(G.recapPayload);
+      if (!G.recapArt) G.recapArt = localArticle(G.recapPayload);
+      G.npStamp();
+      G.npInk();
       if (b.parentNode) b.parentNode.removeChild(b);
       stage.classList.remove("np-opening");
-      stage.classList.add("np-opened");
-      paper.classList.remove("np-unwrapped");
-      buzz(16);
-    }, 920);
+      stage.classList.add("np-opened", "np-copy-ready");
+      paper.classList.remove("np-revealing");
+      paper.classList.add("np-settled");
+      ov.classList.remove("np-is-opening");
+      pressStatus.textContent = "FINAL EDITION READY";
+      buzz(18);
+    }, 3100);
   }
+
   if (bundle) {
     bundle.addEventListener("click", function () { unwrap(false); });
-    // A perfect 82-0 auto-unwraps after a beat — rare enough that the token is
-    // always worth the moment (owner call, 2026-07-09). Everything else waits
-    // for the tap.
+    // A perfect 82-0 still opens itself after a beat; every ordinary edition waits
+    // for the prominent READ STORY action.
     if (wins >= CFG.GAMES_IN_SEASON) autoT = setTimeout(function () { unwrap(true); }, 1500);
   }
+
   skip.addEventListener("click", function () {
+    if (stage.classList.contains("np-opening")) return;
     window.t82track && window.t82track("recap_skip", { mode: MODE });
     close(true);
   });
   again.addEventListener("click", function () {
-    clearInterval(tickTimer);
-    clearTimeout(autoT);
-    clearTimeout(prefetchT);
+    if (stage.classList.contains("np-opening")) return;
     window.t82track && window.t82track("replay", { mode: MODE });
-    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    close(false);
     newGame();
   });
-  ov.addEventListener("click", function (ev) { if (ev.target === ov) { window.t82track && window.t82track("recap_skip", { mode: MODE }); close(true); } });
-
-  // Any real interaction with the opened object is a strong enough signal to write
-  // the story in the background. READ MORE still forces it immediately.
-  paper.addEventListener("pointerdown", function (ev) {
-    if (!paper.classList.contains("np-hidden") && !(ev.target && ev.target.closest && ev.target.closest("button"))) engageArticle("paper-tap");
-  }, { passive: true });
-  paper.addEventListener("scroll", function () { if (!paper.classList.contains("np-hidden")) engageArticle("paper-scroll"); }, { passive: true });
+  ov.addEventListener("click", function (ev) {
+    if (ev.target === ov && !stage.classList.contains("np-opening")) {
+      window.t82track && window.t82track("recap_skip", { mode: MODE });
+      close(true);
+    }
+  });
 
   read.addEventListener("click", function () {
-    if (storyDone) {                       // full article is unfurled -> button now exits to results
-      window.t82track && window.t82track("recap_results", { mode: MODE });
-      close(true);
-      return;
-    }
-    if (!paper.classList.contains("open")) {
-      paper.classList.add("open");
-      read.textContent = "CLOSE STORY";
-      if (!G.recapReadTracked) { G.recapReadTracked = 1; window.t82track && window.t82track("recap_read", { mode: MODE }); }
-      engageArticle("read-more");
-      if (G.recapArt) { inkInArticle(); }
-      else { paper.classList.add("printing-art"); ticker.style.display = ""; buildGhostArticle(); requestArticle(); }
-    } else {
-      paper.classList.remove("open");
-      read.textContent = "READ MORE";
-    }
+    window.t82track && window.t82track("recap_results", { mode: MODE });
+    close(true);
   });
 
-  shareEdition.addEventListener("click", function () {
-    if (!G.recapArt || !G.recapHead) return;
-    window.t82track && window.t82track("share", { mode: MODE, wins: wins, undefeated: wins >= CFG.GAMES_IN_SEASON ? 1 : 0, variant: "tribune_full" });
-    shareOrCopy(tribuneFullShareText(), shareEdition);
-  });
-
-  function buildGhostArticle() {
-    art.textContent = "";
-    art.appendChild(div("np-byline", "TELETYPE \u2014 STORY DEVELOPING"));
-    var g = div("np-ghostbody");
-    for (var i = 0; i < 6; i++) g.appendChild(div("np-gline" + (i === 5 ? " short" : "")));
-    art.appendChild(g);
-  }
-
-  // Fill-in renderers live on G so requestHeadline/requestArticle can reach the
-  // open paper without holding stale DOM refs across games.
+  // Fill-in renderers live on G so the edition request can finish without holding
+  // stale DOM refs across games. All model output remains textContent-only.
   G.npStamp = function () {
     if (!ov.parentNode || !G.recapHead) return;
     headWrap.textContent = "";
     var h = div("np-head np-stamp", String(G.recapHead.nickname).toUpperCase() + " FINISH " + wins + "\u2013" + losses);
     headWrap.appendChild(h);
     if (G.recapHead.dek) headWrap.appendChild(div("np-dek", G.recapHead.dek));
-    if (!paper.classList.contains("printing-art")) { ticker.style.display = "none"; }
     paper.classList.add("ready");
-    buzz(14);
     if (!G.recapShownTracked) {
       G.recapShownTracked = 1;
       window.t82track && window.t82track("recap_shown", { mode: MODE, wins: wins, segment: G.recapHead.source || "api", variant: String(G.recapHead.nickname).slice(0, 78) });
@@ -2384,16 +2352,13 @@ function showNewspaper(gate) {
   G.npInk = function () {
     if (!ov.parentNode || !G.recapArt) return;
     paper.classList.remove("printing-art");
-    paper.classList.add("story-ready");
+    paper.classList.add("story-ready", "open", "ready");
     ticker.style.display = "none";
     art.textContent = "";
     art.appendChild(div("np-byline", "From the Tribune wire desk"));
     var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
     art.appendChild(body);
-    if (paper.classList.contains("open")) {   // only once the story is actually on screen
-      storyDone = true;                        // full article is unfurled
-      read.textContent = "GET RESULTS";        // READ MORE / CLOSE STORY -> forward to results
-    }
+    read.textContent = "GET RESULTS";
   };
 
   if (G.recapHead) G.npStamp();
@@ -2402,7 +2367,7 @@ function showNewspaper(gate) {
     gh.appendChild(div("np-gline")); gh.appendChild(div("np-gline")); gh.appendChild(div("np-gline short"));
     headWrap.appendChild(gh);
   }
-  if (paper.classList.contains("open") && G.recapArt) G.npInk();
+  if (G.recapArt) G.npInk();
   G.recapShown = 1;
 
   function npDate() {
