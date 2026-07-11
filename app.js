@@ -49,7 +49,7 @@ var G = null;
    Always installed at app load so the console works before, during, and after
    a season. This is intentionally independent of G because newGame() replaces
    game state. No secrets or full article text are stored in the debug history. */
-var T82_RECAP_BUILD = "2026-07-10.recap-debug-v2";
+var T82_RECAP_BUILD = "2026-07-10.roster-polish-v1";
 var T82_RECAP_HISTORY = [];
 var T82_RECAP_LAST = {
   build: T82_RECAP_BUILD,
@@ -271,26 +271,71 @@ function initData(data) {
   CAREER_BUCKETS = t.CAREER_BUCKETS; KAMAN_SEASONS = t.KAMAN_SEASONS;
 }
 
+// Anonymous run telemetry stays in memory until an actual event needs it. This gives
+// page-exit and Start over events the current round/team/era plus an accurate Presti
+// split without writing a row for every tap. The initial cap is UI-only metadata;
+// changing it cannot affect replay determinism or the engine result.
+function analyticsRunSnapshot(reason) {
+  var p = { mode: MODE };
+  if (!G) return p;
+  p.round = G.round || 0;
+  if (G.cur) {
+    if (G.cur.fr) p.franchise = G.cur.fr;
+    if (G.cur.dec != null) p.decade = G.cur.dec;
+  }
+  if (MODE === "cap") {
+    var playerSpend = G.picks.reduce(function (sum, pick) { return sum + (pick.cost || 0); }, 0);
+    var initialCap = typeof G.analyticsInitialCap === "number" ? G.analyticsInitialCap : G.maxCap;
+    var rerollSpend = Math.max(0, initialCap - G.maxCap);
+    p.player_spend = playerSpend;
+    p.reroll_spend = rerollSpend;
+    p.roster_value = playerSpend;                 // backward-compatible field
+    p.budget_used = playerSpend + rerollSpend;   // corrected: total dollars spent
+  }
+  if (reason) p.reason = reason;
+  return p;
+}
+function trackRunState() {
+  window.t82track && window.t82track("run_state", analyticsRunSnapshot());
+}
+function trackDealView(source) {
+  var p = analyticsRunSnapshot();
+  p.variant = source;
+  window.t82track && window.t82track("deal_view", p);
+}
+
 function newGame(mode, seed, challenge) {
   if (mode) MODE = mode;
   G = T82.newState(MODE, seed, challenge || null);
+  G.analyticsInitialCap = G.maxCap;
   window.t82track && window.t82track("game_start", { mode: MODE });
   nextRound(true);
 }
 function nextRound(animate) {
   var r = T82.dealRound(G);
   if (r === "done") { showResults(); return; }
-  window.t82track && window.t82track("round_advance", { mode: MODE, round: G.round });
+  var snap = analyticsRunSnapshot();
+  window.t82track && window.t82track("round_advance", snap);
   renderDraft(animate ? r : false);
 }
-function doTeamSkip() { var f = T82.skipTeam(G); if (f) renderDraft(f); }
-function doEraSkip() { var f = T82.skipEra(G); if (f) renderDraft(f); }
-function doYearReroll() { if (MODE !== "cap") return; var f = T82.yearReroll(G); if (f) renderDraft(f); }
+function doTeamSkip() {
+  var f = T82.skipTeam(G);
+  if (f) { trackDealView("team_reroll"); trackRunState(); renderDraft(f); }
+}
+function doEraSkip() {
+  var f = T82.skipEra(G);
+  if (f) { trackDealView("era_reroll"); trackRunState(); renderDraft(f); }
+}
+function doYearReroll() {
+  if (MODE !== "cap") return;
+  var f = T82.yearReroll(G);
+  if (f) { trackRunState(); renderDraft(f); }
+}
 function confirmPick(bucket) {
   if (!G.selected) return;
   var row = resolveRow(G.selected);
   if (!row) return;
-  if (T82.applyPick(G, G.selected, row[IDX.season], bucket)) nextRound(true);
+  if (T82.applyPick(G, G.selected, row[IDX.season], bucket)) { trackRunState(); nextRound(true); }
 }
 function doLineupMove(pickIdx, bucket) { if (T82.moveSlot(G, pickIdx, bucket)) afterLineupChange(); }
 function doLineupSwap(i, j) { if (T82.swapSlots(G, i, j)) afterLineupChange(); }
@@ -328,15 +373,42 @@ function buzz(ms) {
   try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {}
 }
 
-// One delegated press-haptic for every casino button (skip/draft/start/share/run-it-back),
-// so we don't have to wire each one. Capture phase + closest() catches taps on inner spans.
+// Every true button except the deliberately flat Start over control and the
+// newspaper-object wrapper receives the same extruded 3D treatment. A tiny
+// observer covers buttons created by later renders and lazy-loaded feature UIs.
+var _buttonStyleObserver = null;
+function decorate3dButtons(root) {
+  if (!root) return;
+  function add(node) {
+    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle)")) return;
+    node.classList.add("presti-spin");
+  }
+  add(root);
+  if (root.querySelectorAll) {
+    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle)");
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.add("presti-spin");
+  }
+}
+function bindGlobalButtonStyle() {
+  decorate3dButtons(document);
+  if (_buttonStyleObserver || typeof MutationObserver === "undefined" || !document.documentElement) return;
+  _buttonStyleObserver = new MutationObserver(function (records) {
+    for (var i = 0; i < records.length; i++) {
+      for (var j = 0; j < records[i].addedNodes.length; j++) decorate3dButtons(records[i].addedNodes[j]);
+    }
+  });
+  _buttonStyleObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+// One delegated press-haptic for every raised button, so we don't have to wire
+// each one. Capture phase + closest() catches taps on inner spans.
 var _hapticsBound = false;
 function bindHaptics() {
   if (_hapticsBound) return;
   _hapticsBound = true;
   document.addEventListener("pointerdown", function (e) {
     if (!e.target || !e.target.closest) return;
-    var b = e.target.closest("button.presti-spin");
+    var b = e.target.closest("button.presti-spin, a.btn");
     if (b && !b.disabled) buzz(15);
   }, true);
 }
@@ -805,7 +877,14 @@ function startOverBtnHtml() {
 }
 function wireStartOver() {
   var b = el("startOverBtn");
-  if (b) b.addEventListener("click", function () { renderIntro(); });
+  if (b) b.addEventListener("click", function () {
+    // Only an unfinished draft is a bailout. Results/newspaper navigation is already
+    // represented by game_complete and its own action events.
+    if (G && G.screen === "draft") {
+      window.t82track && window.t82track("run_abandon", analyticsRunSnapshot("start_over"));
+    }
+    renderIntro();
+  });
 }
 
 /* ---------- donate ---------- */
@@ -1259,7 +1338,7 @@ function renderDraft(anim) {
     }).join("");
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
-      '<input type="search" id="poolSearch" class="pool-search" placeholder="filter players\u2026" autocomplete="off" spellcheck="false">' +
+      '<input type="search" id="poolSearch" class="pool-search" placeholder="search player name..." autocomplete="off" spellcheck="false">' +
       "</div>";
   }
 
@@ -1728,6 +1807,7 @@ function hotHand(e) {
       }
       var rec = document.querySelector(".big");                  // updated W/L record (the win rate)
       if (rec) rec.textContent = G.hotWins + "\u2013" + (CFG.GAMES_IN_SEASON - G.hotWins);
+      setEliteResultGlow(G.hotWins);
       var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [bonus, hot-hand red]
       if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
         '</span> <span class="net-bonus">+ ' + (newNet - e.net).toFixed(1) + "</span>";
@@ -2375,6 +2455,7 @@ function showNewspaper(gate) {
   // backing sheets fan away, a press sweep travels down the page, and this real
   // Tribune expands underneath. There is no object swap and no spin animation.
   var bundle = null, autoT = null, openingT = null, statusTimers = [];
+  var fullReadTimer = null, fullReadTracked = false, fullReadScrollBound = false;
   if (!G.recapReq) {
     paper.classList.add("np-hidden");
     bundle = document.createElement("button");
@@ -2451,6 +2532,10 @@ function showNewspaper(gate) {
   stage.appendChild(pressFx);
   ov.appendChild(stage); ov.appendChild(under);
   document.body.appendChild(ov);
+  if (!G.recapPresentedTracked) {
+    G.recapPresentedTracked = 1;
+    window.t82track && window.t82track("recap_presented", { mode: MODE, wins: wins });
+  }
   buzz(20);
 
   var tickTimer = setInterval(function () {
@@ -2466,12 +2551,49 @@ function showNewspaper(gate) {
     clearInterval(tickTimer);
     clearTimeout(autoT);
     clearTimeout(openingT);
+    clearTimeout(fullReadTimer);
     clearStatusTimers();
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
   }
   function setPressStatus(txt) {
     pressStatus.textContent = txt;
+  }
+  function trackRecapAction(variant) {
+    window.t82track && window.t82track("recap_action", { mode: MODE, variant: variant });
+  }
+  // "Full read" is an engagement proxy, not an eye-tracker: count it once when the
+  // reader either reaches the article bottom or keeps the finished edition visible
+  // for a length-aware dwell (7-12 seconds). This is materially stricter than unwrap.
+  function markFullRead(signal) {
+    if (fullReadTracked || !ov.parentNode || !G.recapArt) return;
+    fullReadTracked = true;
+    clearTimeout(fullReadTimer);
+    window.t82track && window.t82track("recap_full_read", {
+      mode: MODE,
+      variant: signal,
+      segment: (G.recapHead && G.recapHead.source) || "unknown"
+    });
+  }
+  function armFullRead() {
+    if (fullReadTracked || fullReadTimer || !ov.parentNode || !G.recapArt ||
+        !stage.classList.contains("np-opened") || !paper.classList.contains("story-ready")) return;
+    if (!fullReadScrollBound) {
+      fullReadScrollBound = true;
+      paper.addEventListener("scroll", function () {
+        if (paper.scrollHeight - paper.scrollTop - paper.clientHeight <= 28) markFullRead("article_bottom");
+      }, { passive: true });
+    }
+    var words = String(G.recapArt.article || "").trim().split(/\s+/).filter(Boolean).length;
+    var delay = Math.max(7000, Math.min(12000, words * 140));
+    fullReadTimer = setTimeout(function dwellCheck() {
+      fullReadTimer = null;
+      if (document.visibilityState === "hidden") {
+        fullReadTimer = setTimeout(dwellCheck, 1500);
+        return;
+      }
+      markFullRead("visible_dwell");
+    }, delay);
   }
 
   function buildGhostArticle() {
@@ -2523,6 +2645,7 @@ function showNewspaper(gate) {
         paper.classList.add("np-awaiting-copy");
         pressStatus.textContent = "FINAL COPY INCOMING";
       }
+      armFullRead();
       buzz(18);
     }, 3100);
   }
@@ -2536,23 +2659,27 @@ function showNewspaper(gate) {
 
   skip.addEventListener("click", function () {
     if (stage.classList.contains("np-opening")) return;
+    trackRecapAction("skip_results");
     window.t82track && window.t82track("recap_skip", { mode: MODE });
     close(true);
   });
   again.addEventListener("click", function () {
     if (stage.classList.contains("np-opening")) return;
+    trackRecapAction("run_it_back");
     window.t82track && window.t82track("replay", { mode: MODE });
     close(false);
     newGame();
   });
   ov.addEventListener("click", function (ev) {
     if (ev.target === ov && !stage.classList.contains("np-opening")) {
+      trackRecapAction("backdrop_dismiss");
       window.t82track && window.t82track("recap_skip", { mode: MODE });
       close(true);
     }
   });
 
   read.addEventListener("click", function () {
+    trackRecapAction("get_results");
     window.t82track && window.t82track("recap_results", { mode: MODE });
     close(true);
   });
@@ -2590,6 +2717,7 @@ function showNewspaper(gate) {
     var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
     art.appendChild(body);
     read.textContent = "GET RESULTS";
+    armFullRead();
   };
 
   if (G.recapHead) G.npStamp();
@@ -2609,6 +2737,11 @@ function showNewspaper(gate) {
 function stampHeadline() { if (G.npStamp) G.npStamp(); }
 function inkInArticle() { if (G.npInk) G.npInk(); }
 
+function setEliteResultGlow(wins) {
+  var board = document.querySelector(".board");
+  if (board) board.classList.toggle("elite-result", wins === 81 || wins === 82);
+}
+
 function showResults() {
   G.screen = "results";
   if (MODE === "kaman") {
@@ -2620,11 +2753,10 @@ function showResults() {
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
   renderResults(e, false);
   if (window.t82track) {
-    var gc = { mode: MODE, wins: e.winTally, net: e.net, undefeated: e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0 };
-    if (MODE === "cap") {
-      gc.budget_used = G.maxCap - G.budget;                                            // $ spent incl. rerolls
-      gc.roster_value = G.picks.reduce(function (s, p) { return s + (p.cost || 0); }, 0); // $ on the five
-    }
+    var gc = analyticsRunSnapshot();
+    gc.wins = e.winTally;
+    gc.net = e.net;
+    gc.undefeated = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
     window.t82track("game_complete", gc);
   }
   gameFinishedPings();
@@ -2659,7 +2791,7 @@ function renderResults(e, keepScroll) {
   document.body.classList.remove("drafting");
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
+    '<section class="board' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       (MODE === "cap" ? '<div class="cap-spent">$' + G.budget + ' cap space</div>' : "") +
       '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
@@ -2748,7 +2880,7 @@ function renderKamanResults() {
 
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board kaman-board"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
+    '<section class="board kaman-board elite-result"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
       '<p class="eyebrow">Front office projection \u00B7 KAMAN MODE</p>' +
       '<div class="big">82\u20130</div><div class="big-label">net rating +\u221E</div>' +
       '<p class="kaman-flavor">' + kamanFlavor() + "</p>" +
@@ -2850,6 +2982,7 @@ function gameFinishedPings() {
 }
 
 function boot() {
+  bindGlobalButtonStyle();
   bindHaptics();
   bindVisibilityResync();
   if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }

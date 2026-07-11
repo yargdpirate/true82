@@ -118,7 +118,7 @@
   var META = null, SC = null, IDX = null, BASELINE = 10;
   var POOLS = new Map(), POOL_YEARS = new Map(), DECADES = [], FR_BY_DEC = new Map();
   var DEC_SPAN = new Map(), SEASON_SPAN = null, TEAM2FR = {}, BEST_BY_NAME = new Map();
-  var FRANCHISES = [], CAREER_BUCKETS = new Map(), KAMAN_SEASONS = [];
+  var FRANCHISES = [], CAREER_BUCKETS = new Map(), KAMAN_SEASONS = [], DRAFT_ROWS = [];
   var CAP_BUDGET = 50, CAP_TRAP = 0.50, CAP_GEM = 0.15;
   var DATA_VERSION = 0;
 
@@ -193,6 +193,59 @@
       return true;
     }
     return false;
+  }
+
+  // Draft eligibility belongs to the team stint, but the selected player's
+  // value and rate stats should represent his full season. The source bundle
+  // contains one row per stint and minutes, but not games played, so traded
+  // seasons are reconstructed with minute-weighted rates. Every stint receives
+  // the same whole-season statistical row while retaining its own team code and
+  // stint-minute floor. Array properties are runtime-only and never serialized.
+  function stintMinutes(row) {
+    return row && typeof row._stintMp === "number" ? row._stintMp : row[IDX.mp];
+  }
+  function buildDraftRows(players) {
+    var groups = new Map();
+    players.forEach(function (row) {
+      var k = row[IDX.name] + "\u0000" + row[IDX.season];
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(row);
+    });
+    var weighted = [IDX.bpm_star, IDX.usage, IDX.rim, IDX.pm, IDX.ppg,
+      IDX.rpg, IDX.apg, IDX.spg, IDX.bpg, IDX.g_pct, IDX.f_pct,
+      IDX.c_pct, IDX.dbpm, IDX.obpm];
+    var out = [];
+    players.forEach(function (stint) {
+      var k = stint[IDX.name] + "\u0000" + stint[IDX.season];
+      var group = groups.get(k) || [stint];
+      var totalMp = 0;
+      for (var i = 0; i < group.length; i++) totalMp += Math.max(0, Number(group[i][IDX.mp]) || 0);
+      if (!(totalMp > 0)) totalMp = group.length;
+      var full = stint.slice();
+      for (var j = 0; j < weighted.length; j++) {
+        var col = weighted[j], sum = 0;
+        for (i = 0; i < group.length; i++) {
+          var w = Math.max(0, Number(group[i][IDX.mp]) || 0) || (totalMp === group.length ? 1 : 0);
+          sum += (Number(group[i][col]) || 0) * w;
+        }
+        full[col] = sum / totalMp;
+      }
+      // The spacing domain is intentionally half-step categorical. Rebuild the
+      // season tag from the weighted stint tags without introducing odd decimals.
+      var spSum = 0;
+      for (i = 0; i < group.length; i++) {
+        var sw = Math.max(0, Number(group[i][IDX.mp]) || 0) || (totalMp === group.length ? 1 : 0);
+        spSum += (Number(group[i][IDX.sp]) || 0) * sw;
+      }
+      full[IDX.sp] = Math.max(0, Math.min(1.5, Math.round((spSum / totalMp) * 2) / 2));
+      full[IDX.mp] = group.reduce(function (n, r) { return n + (Number(r[IDX.mp]) || 0); }, 0);
+      full[IDX.team] = stint[IDX.team];
+      full[IDX.pos] = stint[IDX.pos];
+      full._stintMp = Number(stint[IDX.mp]) || 0;
+      full._stintTeam = stint[IDX.team];
+      out.push(full);
+    });
+    return out;
   }
 
   // ---- SHOOTER LABELS (floor-spacing tags) ---------------------------------
@@ -335,7 +388,7 @@ function poolYearsEligible(S, name) {
   var arr = yrs ? yrs.get(name) : null;
   if (!arr) return [];
   if (S.mode === "kaman" || S.ch) return arr.slice();
-  return arr.filter(function (r) { return r[IDX.mp] > 785; });
+  return arr.filter(function (r) { return stintMinutes(r) > 785; });
 }
 
 function assignProSeasons(S) {
@@ -374,7 +427,7 @@ function assignCapPool(S, avoid) {
   pool.forEach(function (row, name) {
     var arr = yrs.get(name);
     if (!arr || !arr.length) return;
-    var elig = S.ch ? arr : arr.filter(function (r) { return r[IDX.mp] > 785; });   // regular draft filters to >785 min; challenges keep the full pool
+    var elig = S.ch ? arr : arr.filter(function (r) { return stintMinutes(r) > 785; });   // regular draft filters to >785 min; challenges keep the full pool
     if (!elig.length) return;                                          // no eligible season -> off the board
     var cands = elig;
     if (avoid && avoid[name] != null && elig.length > 1) {   // don't land the same year twice in a row when there's an alternative
@@ -384,14 +437,14 @@ function assignCapPool(S, avoid) {
     var pickRow = cands[rndi(S, cands.length)];
     S.yearByName[name] = pickRow[IDX.season];
     var peakMin = 0;   // peak minutes across the player's eligible seasons -> weights the $2 bump
-    for (var pj = 0; pj < elig.length; pj++) if (elig[pj][IDX.mp] > peakMin) peakMin = elig[pj][IDX.mp];
+    for (var pj = 0; pj < elig.length; pj++) if (stintMinutes(elig[pj]) > peakMin) peakMin = stintMinutes(elig[pj]);
     items.push({ name: name, v: valueOf(S, pickRow), cost: capCost(S, valueOf(S, pickRow), decay), peakMin: peakMin });
   });
   if (!items.length) return;
   capMisprice(S, items);
   capBumpTwos(S, items);   // two more $1 players -> $2, weighted by peak minutes (stacks on capMisprice)
-  // Hard ceiling: a player never costs more than $24. effCost's fire-sale -$2 then caps fire-sale at $22.
-  for (var i = 0; i < items.length; i++) S.costByName[items[i].name] = Math.min(24, items[i].cost);
+  // Hard ceiling: a player never costs more than $23. effCost's fire-sale -$2 then caps fire-sale at $21.
+  for (var i = 0; i < items.length; i++) S.costByName[items[i].name] = Math.min(23, items[i].cost);
 }
 
 function capBumpTwos(S, items) {
@@ -464,7 +517,7 @@ function resolveRow(S, name) {
   }
   var pool = POOLS.get(k);
   var best = pool ? pool.get(name) : null;
-  if (best && S.mode !== "kaman" && !S.ch && best[IDX.mp] <= 785) {   // pooled "best" is minutes-filtered -> default to an eligible season instead
+  if (best && S.mode !== "kaman" && !S.ch && stintMinutes(best) <= 785) {   // pooled "best" is minutes-filtered -> default to an eligible season instead
     var elig = poolYearsEligible(S, name);
     if (elig.length) return elig[0];
   }
@@ -661,15 +714,19 @@ function initDataCore(data) {
     if (Object.prototype.hasOwnProperty.call(spTag, nm)) row[IDX.sp] = spTag[nm];
   });
 
-  // Manual value adjustments (VALUE_ADJ): add the delta to bpm_star for matching
-  // rows. Value + cap cost + win odds follow automatically; the O/D bars keep
-  // reading the raw OBPM/DBPM columns (no split). Runs before pools/costs.
+  // Reconstruct one whole-season statistical line for every team stint. Team
+  // membership and the 785-minute eligibility floor remain stint-specific.
+  DRAFT_ROWS = buildDraftRows(data.players);
+
+  // Manual value adjustments (VALUE_ADJ): apply after the whole-season merge so
+  // every eligible team view of that season receives the same season value.
+  // Team-scoped windows and minute floors still inspect the actual stint.
   var adjByName = {};
   VALUE_ADJ.forEach(function (e) { adjByName[e.n] = e; });
-  data.players.forEach(function (row) {
+  DRAFT_ROWS.forEach(function (row) {
     var e = adjByName[row[IDX.name]];
     if (!e) return;
-    if (e.mp && row[IDX.mp] < e.mp) return;
+    if (e.mp && stintMinutes(row) < e.mp) return;
     if (!valueAdjMatch(e.w, row[IDX.season], row[IDX.team])) return;
     row[IDX.bpm_star] += e.adj;
   });
@@ -685,7 +742,7 @@ function initDataCore(data) {
   if (META.era_exclude) META.era_exclude.forEach(function (kk) { EXCLUDE[kk] = true; });
 
   POOLS = new Map(); POOL_YEARS = new Map(); FR_BY_DEC = new Map(); DEC_SPAN = new Map(); SEASON_SPAN = null;
-  data.players.forEach(function (row) {
+  DRAFT_ROWS.forEach(function (row) {
     var fr = TEAM2FR[row[IDX.team]];
     if (!fr) return;
     var season = row[IDX.season];
@@ -746,7 +803,7 @@ function initDataCore(data) {
   // years collapsed to his higher-value stint). The whole draft is five Kamans.
   KAMAN_SEASONS = [];
   var kBySeason = {};
-  data.players.forEach(function (row) {
+  DRAFT_ROWS.forEach(function (row) {
     if (row[IDX.name] !== "Chris Kaman") return;
     var s = row[IDX.season];
     if (!kBySeason[s] || valueOf(S, row) > valueOf(S, kBySeason[s])) kBySeason[s] = row;
@@ -759,7 +816,7 @@ function initDataCore(data) {
   function rowDraftable(S, row) {
     var dkey = S.mode === "kaman" ? String(row[IDX.season]) : row[IDX.name];
     if (S.drafted.has(dkey)) return false;
-    if (S.mode !== "kaman" && !S.ch && row[IDX.mp] <= 785) return false;   // regular draft only: cameo/short seasons (<=785 min) aren't draftable. Challenges keep the full pool (narrow ones like Short Kings would otherwise strand); kaman exempt.
+    if (S.mode !== "kaman" && !S.ch && stintMinutes(row) <= 785) return false;   // regular draft only: cameo/short seasons (<=785 min) aren't draftable. Challenges keep the full pool (narrow ones like Short Kings would otherwise strand); kaman exempt.
     var obs = rowOpenBuckets(S, row);
     if (obs.length === 0) return false;
     if (S.ch && S.ch.filter && !S.ch.filter(row, T.t)) return false;
@@ -1076,7 +1133,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 7,   // v7: shooter-label system (always/never/super=1.5 spacers) + fractional spacing
+    VERSION: 8,   // v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
@@ -1087,7 +1144,7 @@ function initDataCore(data) {
               DECADES: DECADES, FR_BY_DEC: FR_BY_DEC, DEC_SPAN: DEC_SPAN,
               SEASON_SPAN: SEASON_SPAN, TEAM2FR: TEAM2FR, BEST_BY_NAME: BEST_BY_NAME,
               FRANCHISES: FRANCHISES, CAREER_BUCKETS: CAREER_BUCKETS,
-              KAMAN_SEASONS: KAMAN_SEASONS, dataVersion: DATA_VERSION };
+              KAMAN_SEASONS: KAMAN_SEASONS, DRAFT_ROWS: DRAFT_ROWS, dataVersion: DATA_VERSION };
       return T.t;
     },
     newState: newState, dealRound: dealRound,
@@ -1102,7 +1159,7 @@ function initDataCore(data) {
     eraSkipTargets: eraSkipTargets, capPoolHasPick: capPoolHasPick,
     chargeReroll: chargeReroll, capRoll: capRoll, capCost: capCost,
     assignCapPool: assignCapPool, capMisprice: capMisprice,
-    assignProSeasons: assignProSeasons, effCost: effCost, capAffordable: capAffordable,
+    assignProSeasons: assignProSeasons, effCost: effCost, capAffordable: capAffordable, stintMinutes: stintMinutes,
     resolveRow: resolveRow, poolYearsEligible: poolYearsEligible, engine: engine, erf: erf, phi: phi,
     hhNet82: hhNet82, hhPickHot: hhPickHot, hhSpinSeg: hhSpinSeg, hhEligible: hhEligible,
     hhWins: hhWins, swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,

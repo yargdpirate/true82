@@ -39,25 +39,22 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `Free-associate a 2-4 word nickname that lands as a cutting, gossipy inside joke about WHO these specific players are off the court — the thing a clever rival fan tweets for a laugh. Tabloid angles: reputations, feuds, egos, nightlife, scandals, memes.
-Rank your angles, best to worst:
-1. A shared off-court reputation or story they are actually known for (known gamblers -> "The Match Fixers"; famous partiers -> "The Partiers"; DUI history -> "The Designated Drivers").
-2. A deadpan label, funny because it is dryly literal or self-aware ("The Smartest Guys in the Room"; "The Idiots").
-3. LAST RESORT: a two-word free association on the roster's vibe. On-court playstyle is the fallback, never the default.
-HARD NO — reject on sight:
-- Generic praise ("The Untouchables", "The Real Deal"): if it reads as a compliment, it is dead.
-- Ball-sharing, usage, touches, or "too many stars" ("The Unsharables", "The Ball Hogs"). Never.
-- Alliteration. Epic or mythic grandeur (no Legends, Titans, Gods, Kings, Dynasty, Empire, Immortals).
-Skip the first obvious pairing for the one only THIS roster earns. It prints as "<NICKNAME> FINISH 72-10", so it must read right there.`;
+const NICKNAME_RULES = `Free-associate a 2-4 word nickname from the most salient public-persona associations of these exact five players. Silently tag each player with one or two recognizable traits first: temperament, interview style, fashion, hobbies, business or creative interests, signature habits, public memes, intensity, eccentricity, or self-presentation. Then find the sharpest shared trait, contrast, or unlikely social dynamic that only this roster produces.
+Rank angles best to worst:
+1. A specific personality intersection or contrast shared by at least two names.
+2. A dry literal label that becomes funny because of who is on the roster.
+3. A culturally salient reference tied to multiple players' public personas.
+4. LAST RESORT: an on-court vibe.
+Do not default to clubs, partying, gambling, scandals, or generic greatness. Use nightlife only when it is unusually defining for several players. Reject generic praise, mythic grandeur, alliteration, and ball-sharing jokes. Skip the first obvious pairing for the one only THIS roster earns. It prints as "<NICKNAME> FINISH 72-10", so it must read naturally there.`;
 
-const ARTICLE_RULES = `The article must be 4 short sentences, about 70 words total and never more than 90. Gossipy and fun, by a columnist who cares more about the locker room than the box score. Laconic: no comp analysis, no future outlook, no questions.
-Sentence 1, the nickname's origin: ONE clause, 15 words max, stating the off-court or personality reason they earned it as plain fact and committing fully, no hedging or winking. Shape it like "Nicknamed ... because ...".
-Sentence 2, one quick on-court line: name two or three players by surname and what they actually did. One sentence only; the basketball is garnish, not the meal.
+const ARTICLE_RULES = `The article must be 4 short sentences, about 70 words total and never more than 90. Gossipy and fun, by a columnist more interested in personality than box-score summary. Laconic: no comp analysis, no future outlook, no questions.
+Sentence 1, the nickname's origin: ONE clause, 15 words max, explaining the personality or public-persona connection as plain fact. Shape it like "Nicknamed ... because ...".
+Sentence 2, one quick on-court line: name two or three players by surname and what they actually did. One sentence only; basketball is garnish, not the meal.
 Sentence 3, the verdict on perfection, chosen by the final record, one short line:
-- 82 wins (a perfect 82-0, any way): salute it, no flaw, no asterisk.
-- 76 to 81 wins: a narrow miss pinned on ONE small thing (a fair-game soft spot, or one flat night).
-- under 76 wins: the flaw or two that capped them all year, plain, matched to the tone directive.
-Sentence 4, the kicker: invent one juicy, absurd off-court drama beat about this group (a feud, a nightlife legend, an ego war, a ridiculous incident), played completely straight with full tabloid energy. Keep it comic and good-natured, never a real crime or a genuine accusation. End on this.
+- 82 wins: salute it, no flaw, no asterisk.
+- 76 to 81 wins: a narrow miss pinned on ONE small thing or one flat night.
+- under 76 wins: the flaw or two that capped them all year, matched to the tone directive.
+Sentence 4, the kicker: invent one absurd, personality-consistent locker-room, team-flight, interview-room, group-chat, wardrobe, hobby, or off-day scene. Vary the setting; nightlife is not the default. End on this.
 Never blame spacing, shooting, or shot-sharing. Never mention ratings, models, engines, fantasy, video games, or drafting. Do not use em dashes.`;
 
 const SYS_HEADLINE = `You name the team on the newspaper front page after the 82nd and final game of an NBA season. The five players below are real, each frozen at one historical season; the record is established fact.
@@ -93,7 +90,7 @@ const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON objec
 
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
-const RECAP_BUILD = "2026-07-10.recap-debug-v2";
+const RECAP_BUILD = "2026-07-10.roster-polish-v1";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const EDITION_TIMEOUT_MS = 28000;
 
