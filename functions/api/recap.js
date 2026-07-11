@@ -39,7 +39,7 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `Free-associate a vivid 2-4 word nickname from the most recognizable public personas and off-court lives of these exact five players. Before naming the team, silently give every player one loud, concrete association a fan might immediately know: interview energy, humor, fashion, music, acting, media presence, business empire, hobbies, family-man image, nightlife, gambling, feuds, memes, strange rituals, politics, philosophy, collecting, food, or any other genuinely distinctive public trait. Do not flatten famous personalities into generic intelligence, quietness, reading, overthinking, leadership, greatness, or "legend" language.
+const NICKNAME_RULES = `Free-associate a vivid nickname of 2-3 words from the most recognizable public personas and off-court lives of these exact five players. An optional leading "The" does not count toward the three-word maximum. Before naming the team, silently give every player one loud, concrete association a fan might immediately know: interview energy, humor, fashion, music, acting, media presence, business empire, hobbies, family-man image, nightlife, gambling, feuds, memes, strange rituals, politics, philosophy, collecting, food, or any other genuinely distinctive public trait. Do not flatten famous personalities into generic intelligence, quietness, reading, overthinking, leadership, greatness, or "legend" language.
 
 Build the nickname from the strongest collision among two or three of those associations. Prefer, in order:
 1. A specific social dynamic or contrast that instantly evokes the actual names.
@@ -63,7 +63,7 @@ const SYS_HEADLINE = `You name the team on the newspaper front page after the 82
 
 ${NICKNAME_RULES}
 
-Output only the nickname on a single line (a leading "The" is fine): no quotes, no explanation.`;
+Output only the nickname on a single line: no quotes, no explanation. Maximum three words, plus an optional leading "The".`;
 
 const SYS_ARTICLE = `You are a Sports Illustrated columnist filing a short season-ending blurb after this team's 82nd and final game. The roster is real NBA players, each frozen at one specific season of his career; treat the record as established fact and write as though it were a real NBA season. The nickname is already in print, and your job is to explain it.
 
@@ -87,12 +87,12 @@ Return ONLY a JSON object, no markdown fences, no commentary:
 
 const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk prose: vivid and confident, plain-spoken, never gimmicky or old-timey. Let the roster and the record carry it.`;
 const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the voice will not fit inside the format and the length, trim the voice, never the format or the count.`;
-const HARD_HEAD = `FORMAT OVERRIDES THE VOICE. Output ONLY the nickname itself, on a single line: no quotes, no markdown, no explanation, nothing before or after it.`;
-const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON object with both non-empty string fields "nickname" and "article". Do not omit either field and do not put text outside the object.`;
+const HARD_HEAD = `FORMAT OVERRIDES THE VOICE. Output ONLY the nickname itself, on one line: no quotes, markdown, or explanation. Use at most three words, plus an optional leading "The".`;
+const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON object with both non-empty string fields "nickname" and "article". The nickname is at most three words, plus an optional leading "The". Do not omit either field or put text outside the object.`;
 
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
-const RECAP_BUILD = "2026-07-11.quick-polish-v2";
+const RECAP_BUILD = "2026-07-11.headline-length-v1";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const EDITION_TIMEOUT_MS = 28000;
 
@@ -174,6 +174,21 @@ export async function onRequest(context) {
   phase = b.phase === "article" ? "article" : b.phase === "edition" ? "edition" : "headline";
 
   const clean = (s, max) => String(s == null ? "" : s).replace(/[<>{}\\]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
+  // Product contract: at most three nickname words, with an optional leading
+  // "The" outside that count. The prompt should normally satisfy this; the
+  // clamp keeps the newspaper layout deterministic when a model occasionally
+  // runs long.
+  const normalizeNickname = (value) => {
+    const raw = clean(value, 80).replace(/^\s*["'\u201C\u2018]+|["'\u201D\u2019]+\s*$/g, "");
+    const words = raw.split(/\s+/).filter(Boolean);
+    const maxWords = words.length && /^the$/i.test(words[0].replace(/[^A-Za-z]/g, "")) ? 4 : 3;
+    return clean(words.slice(0, maxWords).join(" ").replace(/[,:;.!?]+$/, ""), 48);
+  };
+  const reconcileNickname = (article, original, normalized) => {
+    if (!original || !normalized || original === normalized) return article;
+    const escaped = String(original).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return article.replace(new RegExp(escaped, "gi"), normalized);
+  };
   const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo; };
 
   const wins = Math.round(num(b.wins, 0, 82));
@@ -187,7 +202,7 @@ export async function onRequest(context) {
   }));
   const notes = (Array.isArray(b.notes) ? b.notes : []).slice(0, 6).map(n => clean(n, 110)).filter(Boolean);
   const hh = b.hh && b.hh.player ? { player: clean(b.hh.player, 30), tier: clean(b.hh.tier, 12) } : null;
-  const nickname = clean(b.nickname, 48);
+  const nickname = normalizeNickname(b.nickname);
   if (phase === "article" && !nickname) return fail("bad_payload");
 
   const t = tierFor(wins);
@@ -297,13 +312,15 @@ TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
       const last = cleaned.lastIndexOf("}");
       if (first < 0 || last <= first) return fail("parse_no_object", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
       const out = JSON.parse(cleaned.slice(first, last + 1));
-      const article = clean(out.article, 700);
+      let article = clean(out.article, 700);
       if (!article) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
       if (isEdition) {
-        const nick = clean(out.nickname, 48);
+        const originalNick = clean(out.nickname, 80);
+        const nick = normalizeNickname(originalNick);
         if (!nick) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
+        article = clean(reconcileNickname(article, originalNick, nick), 700);
         const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
-        log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length, articleChars: article.length });
+        log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length, nicknameTrimmed: originalNick !== nick, articleChars: article.length });
         return respond({ ok: true, nickname: nick, article, source: "api", diagnostic }, 200, "api", null);
       }
       const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
@@ -317,7 +334,7 @@ TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
       try { const o = JSON.parse(nickRaw.slice(js, je + 1)); if (o && o.nickname) nickRaw = String(o.nickname); } catch (e2) {}
     }
     nickRaw = nickRaw.split("\n")[0].replace(/^\s*["'\u201C\u2018]+|["'\u201D\u2019]+\s*$/g, "");
-    const nick = clean(nickRaw, 48);
+    const nick = normalizeNickname(nickRaw);
     if (!nick) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
     const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
     log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length });

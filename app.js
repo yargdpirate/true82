@@ -49,7 +49,7 @@ var G = null;
    Always installed at app load so the console works before, during, and after
    a season. This is intentionally independent of G because newGame() replaces
    game state. No secrets or full article text are stored in the debug history. */
-var T82_RECAP_BUILD = "2026-07-11.quick-polish-v2";
+var T82_RECAP_BUILD = "2026-07-11.headline-length-v1";
 var T82_RECAP_HISTORY = [];
 var T82_RECAP_LAST = {
   build: T82_RECAP_BUILD,
