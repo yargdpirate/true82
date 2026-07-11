@@ -39,13 +39,15 @@ const TIERS = [
 ];
 function tierFor(w) { for (const t of TIERS) if (w >= t[0]) return t; return TIERS[TIERS.length - 1]; }
 
-const NICKNAME_RULES = `Free-associate a 2-4 word nickname from the most salient public-persona associations of these exact five players. Silently tag each player with one or two recognizable traits first: temperament, interview style, fashion, hobbies, business or creative interests, signature habits, public memes, intensity, eccentricity, or self-presentation. Then find the sharpest shared trait, contrast, or unlikely social dynamic that only this roster produces.
-Rank angles best to worst:
-1. A specific personality intersection or contrast shared by at least two names.
-2. A dry literal label that becomes funny because of who is on the roster.
-3. A culturally salient reference tied to multiple players' public personas.
+const NICKNAME_RULES = `Free-associate a vivid 2-4 word nickname from the most recognizable public personas and off-court lives of these exact five players. Before naming the team, silently give every player one loud, concrete association a fan might immediately know: interview energy, humor, fashion, music, acting, media presence, business empire, hobbies, family-man image, nightlife, gambling, feuds, memes, strange rituals, politics, philosophy, collecting, food, or any other genuinely distinctive public trait. Do not flatten famous personalities into generic intelligence, quietness, reading, overthinking, leadership, greatness, or "legend" language.
+
+Build the nickname from the strongest collision among two or three of those associations. Prefer, in order:
+1. A specific social dynamic or contrast that instantly evokes the actual names.
+2. A playful tabloid-column or pop-culture angle grounded in recognizable public personas.
+3. A dry literal label made funny by this exact combination of people.
 4. LAST RESORT: an on-court vibe.
-Do not default to clubs, partying, gambling, scandals, or generic greatness. Use nightlife only when it is unusually defining for several players. Reject generic praise, mythic grandeur, alliteration, and ball-sharing jokes. Skip the first obvious pairing for the one only THIS roster earns. It prints as "<NICKNAME> FINISH 72-10", so it must read naturally there.`;
+
+Nightlife, gossip, chaos, and vice are allowed when they are genuinely the salient connection, but they are only some of many possible categories, not the automatic answer. The result should feel a little dangerous, highly specific, and obviously playful. Reject bland book-club, silent-genius, generic praise, mythic grandeur, alliteration, and ball-sharing labels. Skip the first obvious pairing for the one only THIS roster earns. It prints as "<NICKNAME> FINISH 72-10!", so it must read naturally there.`;
 
 const ARTICLE_RULES = `The article must be 4 short sentences, about 70 words total and never more than 90. Gossipy and fun, by a columnist more interested in personality than box-score summary. Laconic: no comp analysis, no future outlook, no questions.
 Sentence 1, the nickname's origin: ONE clause, 15 words max, explaining the personality or public-persona connection as plain fact. Shape it like "Nicknamed ... because ...".
@@ -90,7 +92,7 @@ const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON objec
 
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
-const RECAP_BUILD = "2026-07-10.roster-polish-v1";
+const RECAP_BUILD = "2026-07-11.quick-polish-v2";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const EDITION_TIMEOUT_MS = 28000;
 

@@ -49,7 +49,7 @@ var G = null;
    Always installed at app load so the console works before, during, and after
    a season. This is intentionally independent of G because newGame() replaces
    game state. No secrets or full article text are stored in the debug history. */
-var T82_RECAP_BUILD = "2026-07-10.roster-polish-v1";
+var T82_RECAP_BUILD = "2026-07-11.quick-polish-v2";
 var T82_RECAP_HISTORY = [];
 var T82_RECAP_LAST = {
   build: T82_RECAP_BUILD,
@@ -373,19 +373,19 @@ function buzz(ms) {
   try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {}
 }
 
-// Every true button except the deliberately flat Start over control and the
-// newspaper-object wrapper receives the same extruded 3D treatment. A tiny
-// observer covers buttons created by later renders and lazy-loaded feature UIs.
+// Every true button except the deliberately flat Start over, compact Sort/info
+// controls, and newspaper-object wrapper receives the same extruded 3D treatment.
+// A tiny observer covers buttons created by later renders and lazy-loaded UIs.
 var _buttonStyleObserver = null;
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
-    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle)")) return;
+    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info)")) return;
     node.classList.add("presti-spin");
   }
   add(root);
   if (root.querySelectorAll) {
-    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle)");
+    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info)");
     for (var i = 0; i < nodes.length; i++) nodes[i].classList.add("presti-spin");
   }
 }
@@ -2490,7 +2490,7 @@ function showNewspaper(gate) {
 
     var stamp = div("np-bundle-stamp");
     stamp.appendChild(div("np-bundle-eyebrow", wins >= CFG.GAMES_IN_SEASON ? "HISTORY" : wins === 0 ? "DISASTER" : "FINAL EDITION"));
-    stamp.appendChild(div("np-bundle-rec", wins + "\u2013" + losses));
+    stamp.appendChild(div("np-bundle-rec", wins + "\u2013" + losses + "!"));
     stamp.appendChild(div("np-bundle-sub", "PROJECTED RECORD"));
     face.appendChild(stamp);
 
@@ -2698,7 +2698,7 @@ function showNewspaper(gate) {
   G.npStamp = function () {
     if (!ov.parentNode || !G.recapHead) return;
     headWrap.textContent = "";
-    var h = div("np-head np-stamp", String(G.recapHead.nickname).toUpperCase() + " FINISH " + wins + "\u2013" + losses);
+    var h = div("np-head np-stamp", String(G.recapHead.nickname).toUpperCase() + " FINISH " + wins + "\u2013" + losses + "!");
     headWrap.appendChild(h);
     if (G.recapHead.dek) headWrap.appendChild(div("np-dek", G.recapHead.dek));
     paper.classList.add("ready");
@@ -2738,8 +2738,8 @@ function stampHeadline() { if (G.npStamp) G.npStamp(); }
 function inkInArticle() { if (G.npInk) G.npInk(); }
 
 function setEliteResultGlow(wins) {
-  var board = document.querySelector(".board");
-  if (board) board.classList.toggle("elite-result", wins === 81 || wins === 82);
+  var share = document.getElementById("shareTeamBtn");
+  if (share) share.classList.toggle("elite-result", wins === 81 || wins === 82);
 }
 
 function showResults() {
@@ -2791,10 +2791,10 @@ function renderResults(e, keepScroll) {
   document.body.classList.remove("drafting");
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
+    '<section class="board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       (MODE === "cap" ? '<div class="cap-spent">$' + G.budget + ' cap space</div>' : "") +
-      '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
+      '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml + "</section>" +
     '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
@@ -2880,11 +2880,11 @@ function renderKamanResults() {
 
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board kaman-board elite-result"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
+    '<section class="board kaman-board"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
       '<p class="eyebrow">Front office projection \u00B7 KAMAN MODE</p>' +
       '<div class="big">82\u20130</div><div class="big-label">net rating +\u221E</div>' +
       '<p class="kaman-flavor">' + kamanFlavor() + "</p>" +
-      '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
+      '<button class="btn btn-primary btn-block presti-spin elite-result" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec"><div class="twoway">' + kamanBar("Offense") + kamanBar("Defense") + "</div></section>" +
     '<section class="section"><p class="eyebrow">Your five \u00B7 all centers, as nature intended</p>' + picksHtml + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
