@@ -1340,16 +1340,33 @@ button.more-modes:disabled {
   padding: 3px 6px 0 0;
 }
 
-/* The opened story exits through an ink-colored GET RESULTS control on the paper. */
+/* The opened story's primary action shares the permanent five-character edition URL.
+   It intentionally reads as the one saturated object on the newsprint page. */
 .np-actions { display: none; margin-top: 14px; }
 .np-paper.ready .np-actions { display: flex; }
 .np-actions .np-read {
-  --spin-face: #241d15;
-  --spin-top:  #4a4034;
-  --spin-side: #000000;
-  --spin-ink:  #f2e9d3;
-  flex: 1; font-family: var(--disp); font-size: 15px; letter-spacing: 0.07em; text-transform: uppercase;
-  animation: np-stamp 0.34s ease-out both;
+  --spin-face: #ffb52e;
+  --spin-top:  #ffd270;
+  --spin-side: #8a5200;
+  --spin-ink:  #17110a;
+  flex: 1; font-family: var(--disp); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase;
+  outline: 2px solid rgba(255, 236, 176, 0.88);
+  outline-offset: 3px;
+  animation: np-stamp 0.34s ease-out both, np-share-glow 2s ease-in-out 0.35s infinite;
+}
+.np-actions .np-read:disabled {
+  cursor: wait;
+  opacity: 0.78;
+  filter: saturate(0.76);
+}
+.np-actions .np-read.np-share-failed:not(:disabled) { filter: saturate(0.82); }
+@keyframes np-share-glow {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.66), 0 5px 0 var(--spin-side), 0 0 0 2px rgba(255,210,112,.42), 0 0 17px rgba(255,181,46,.48), 0 0 38px rgba(255,181,46,.20); }
+  50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.78), 0 5px 0 var(--spin-side), 0 0 0 3px rgba(255,238,184,.72), 0 0 30px rgba(255,181,46,.76), 0 0 62px rgba(255,181,46,.34); }
+}
+.np-actions .np-read:not(:disabled):active {
+  animation-play-state: paused;
+  outline-offset: 1px;
 }
 
 /* The two big calls sit UNDER the paper on the backdrop, standard gold bevel. */

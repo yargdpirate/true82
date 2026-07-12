@@ -49,7 +49,7 @@ var G = null;
    Always installed at app load so the console works before, during, and after
    a season. This is intentionally independent of G because newGame() replaces
    game state. No secrets or full article text are stored in the debug history. */
-var T82_RECAP_BUILD = "2026-07-11.tribune-share-v2";
+var T82_RECAP_BUILD = "2026-07-11.tribune-short-share-v1";
 var T82_RECAP_HISTORY = [];
 var T82_RECAP_LAST = {
   build: T82_RECAP_BUILD,
@@ -2024,24 +2024,33 @@ function shareSurname(nm) {
   return parts[0].charAt(0) + ". " + rest.join(" ");
 }
 
-// A signed edition gets a readable URL before the share tap. The publish request
-// itself is deliberately fire-and-forget so Safari's transient share activation
-// is never lost while waiting on the network.
-function mintRecapSlug(nick) {
-  var base = String(nick || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "edition";
-  var tail = "";
+// Five-character root URLs keep the newspaper link as short as the domain allows:
+// true82.net/A7k_Q. The first character is uppercase or numeric so _routes.json can
+// invoke only these dynamic root paths without putting ordinary static assets through
+// a Function. Publication begins as soon as a signed AI edition settles, allowing the
+// client to retry the extraordinarily rare five-character collision before SHARE is tapped.
+var RECAP_ID_FIRST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+var RECAP_ID_REST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+function mintRecapSlug() {
+  var out = "";
   try {
-    var a = new Uint8Array(8);
+    var a = new Uint8Array(5);
     crypto.getRandomValues(a);
-    for (var i = 0; i < a.length; i++) tail += (a[i] % 36).toString(36);
-  } catch (e) { tail = Math.random().toString(36).slice(2, 10); }
-  while (tail.length < 8) tail += "0";
-  return base + "-" + tail.slice(0, 8);
+    out = RECAP_ID_FIRST.charAt(a[0] % RECAP_ID_FIRST.length);
+    for (var i = 1; i < a.length; i++) out += RECAP_ID_REST.charAt(a[i] % RECAP_ID_REST.length);
+  } catch (e) {
+    out = RECAP_ID_FIRST.charAt(Math.floor(Math.random() * RECAP_ID_FIRST.length));
+    while (out.length < 5) out += RECAP_ID_REST.charAt(Math.floor(Math.random() * RECAP_ID_REST.length));
+  }
+  return out.slice(0, 5);
 }
 function publishRecap() {
-  if (!G || G.recapPublished || !G.recapSlug || !G.recapSig || !G.recapPayload) return;
-  if (!G.recapHead || G.recapHead.source !== "api" || !G.recapArt || G.recapArt.source !== "api") return;
-  var pay = G.recapPayload;
+  if (!G || !G.recapSig || !G.recapPayload) return Promise.resolve(false);
+  if (!G.recapHead || G.recapHead.source !== "api" || !G.recapArt || G.recapArt.source !== "api") return Promise.resolve(false);
+  if (G.recapPublished) return Promise.resolve(true);
+  if (G.recapPublishPromise) return G.recapPublishPromise;
+
+  var token = G, pay = G.recapPayload;
   var body = {
     sig: G.recapSig,
     mode: pay.mode,
@@ -2051,27 +2060,59 @@ function publishRecap() {
     article: G.recapArt.article,
     players: pay.players
   };
-  recapDebugEvent("share_publish_start", { slug: G.recapSlug });
-  try {
-    fetch("/r/" + G.recapSlug, {
+  function setShareState(state) {
+    if (token === G && G.npShareState) G.npShareState(state);
+  }
+  function attempt(remaining) {
+    if (token !== G) return Promise.resolve(false);
+    if (!G.recapSlug) G.recapSlug = mintRecapSlug();
+    var slug = G.recapSlug;
+    setShareState("preparing");
+    recapDebugEvent("share_publish_start", { slug: slug, remaining: remaining });
+    return fetch("/" + slug, {
       method: "POST",
       keepalive: true,
       credentials: "same-origin",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body)
     }).then(function (res) {
+      if (token !== G) return false;
+      if (res && res.status === 409 && remaining > 0) {
+        recapDebugEvent("share_publish_collision", { slug: slug, httpStatus: res.status });
+        G.recapSlug = mintRecapSlug();
+        return attempt(remaining - 1);
+      }
       if (res && res.ok) {
         G.recapPublished = 1;
-        recapDebugEvent("share_publish_ready", { slug: G.recapSlug, httpStatus: res.status });
-      } else {
-        recapDebugEvent("share_publish_failed", { slug: G.recapSlug, httpStatus: res && res.status });
+        recapDebugEvent("share_publish_ready", { slug: slug, httpStatus: res.status });
+        setShareState("ready");
+        return true;
       }
+      recapDebugEvent("share_publish_failed", { slug: slug, httpStatus: res && res.status });
+      setShareState("failed");
+      return false;
     }).catch(function (err) {
-      recapDebugEvent("share_publish_failed", { slug: G.recapSlug, reason: "network", message: String(err && err.message || err) });
+      if (token !== G) return false;
+      recapDebugEvent("share_publish_failed", { slug: slug, reason: "network", message: String(err && err.message || err) });
+      setShareState("failed");
+      return false;
+    });
+  }
+  try {
+    G.recapPublishPromise = attempt(5).then(function (ok) {
+      if (token === G) G.recapPublishPromise = null;
+      return ok;
+    }, function () {
+      if (token === G) G.recapPublishPromise = null;
+      setShareState("failed");
+      return false;
     });
   } catch (e) {
-    recapDebugEvent("share_publish_failed", { slug: G.recapSlug, reason: "setup", message: String(e && e.message || e) });
+    recapDebugEvent("share_publish_failed", { reason: "setup", message: String(e && e.message || e) });
+    setShareState("failed");
+    return Promise.resolve(false);
   }
+  return G.recapPublishPromise;
 }
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
@@ -2098,7 +2139,7 @@ function shareText(e) {
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
   var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";
-  var tail = (G.recapSlug && G.recapSig) ? "\uD83D\uDCF0 true82.net/r/" + G.recapSlug : "true82.net";
+  var tail = (G.recapPublished && G.recapSlug) ? "\uD83D\uDCF0 true82.net/" + G.recapSlug : "true82.net";
   return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\n" + tail;
 }
 
@@ -2332,7 +2373,8 @@ function requestEdition() {
       G.recapArt = { article: String(d.article), source: d.source || "api" };
       if (d.sig && typeof d.sig === "string") {
         G.recapSig = d.sig;
-        if (!G.recapSlug) G.recapSlug = mintRecapSlug(d.nickname);
+        if (!G.recapSlug) G.recapSlug = mintRecapSlug();
+        publishRecap();   // pre-publish + collision retry so SHARE ARTICLE has a live five-character URL
       }
       debug.nickname = String(d.nickname);
       debug.articleChars = String(d.article).length;
@@ -2500,7 +2542,7 @@ function showNewspaper(gate) {
   paper.appendChild(art);
 
   var acts = div("np-actions");
-  var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read"; read.textContent = "GET RESULTS";
+  var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read np-share-article"; read.textContent = "PREPARING LINK…"; read.disabled = true; read.setAttribute("data-share-label", "SHARE ARTICLE");
   acts.appendChild(read);
   paper.appendChild(acts);
 
@@ -2738,10 +2780,31 @@ function showNewspaper(gate) {
   });
 
   read.addEventListener("click", function () {
-    trackRecapAction("get_results");
-    window.t82track && window.t82track("recap_results", { mode: MODE });
-    close(true);
+    if (!G.recapPublished) {
+      flashShareBtn("PREPARING LINK…", read);
+      publishRecap().then(function (ok) { if (ok) flashShareBtn("LINK READY — TAP AGAIN", read); });
+      return;
+    }
+    trackRecapAction("share_article");
+    var e2 = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+    if (window.t82track) {
+      var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
+      window.t82track("share", { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0, variant: "tribune_article" });
+    }
+    shareOrCopy(shareText(e2), read);
   });
+
+  // The in-paper action is the canonical article share. It stays visibly present
+  // while its five-character link is prepared, then becomes an active gold control.
+  G.npShareState = function (state) {
+    if (!ov.parentNode) return;
+    read.classList.toggle("np-share-ready", state === "ready");
+    read.classList.toggle("np-share-failed", state === "failed" || state === "unavailable");
+    if (state === "ready") { read.disabled = false; read.textContent = "SHARE ARTICLE"; }
+    else if (state === "failed") { read.disabled = false; read.textContent = "RETRY ARTICLE LINK"; }
+    else if (state === "unavailable") { read.disabled = true; read.textContent = "ARTICLE LINK UNAVAILABLE"; }
+    else { read.disabled = true; read.textContent = "PREPARING LINK…"; }
+  };
 
   // Fill-in renderers live on G so the edition request can finish without holding
   // stale DOM refs across games. All model output remains textContent-only.
@@ -2775,7 +2838,12 @@ function showNewspaper(gate) {
     art.appendChild(div("np-byline", "From the Tribune wire desk"));
     var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
     art.appendChild(body);
-    read.textContent = "GET RESULTS";
+    if (G.recapSig && G.recapHead && G.recapHead.source === "api" && G.recapArt.source === "api") {
+      G.npShareState(G.recapPublished ? "ready" : "preparing");
+      publishRecap();
+    } else {
+      G.npShareState("unavailable");
+    }
     armFullRead();
   };
 
@@ -2972,11 +3040,11 @@ var DUEL_ID = (function () {   // ?duel=<id> deep link (duel-ui.js routes it onc
 var LEAGUE_ID = (function () {   // ?league=<id> deep link — needs no site data, routes at boot
   try { return new URLSearchParams(location.search).get("league"); } catch (e) { return null; }
 })();
-var SHARE_REF = (function () {   // ?ref=<slug> attribution from a Tribune share page; consumed by the first game start
+var SHARE_REF = (function () {   // ?ref=<5-char id> attribution from a Tribune share page; consumed by the first game start
   try {
     var sp = new URLSearchParams(location.search);
-    var r = (sp.get("ref") || "").toLowerCase().slice(0, 70);
-    if (!/^[a-z0-9-]{5,70}$/.test(r)) r = "";
+    var r = (sp.get("ref") || "").slice(0, 5);
+    if (!/^[A-Z0-9][A-Za-z0-9_-]{4}$/.test(r)) r = "";
     if (r && window.history && history.replaceState) {
       sp.delete("ref");
       var qs = sp.toString();

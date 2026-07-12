@@ -310,7 +310,7 @@ export async function onRequest(context) {
       ${stat(cnt(recapTotals), "editions published")}${stat(recapTotals ? +recapTotals.vh || 0 : 0, "human opens")}${stat(cnt(refStarts), "games started via link")}
     </div>
     <table class="compact"><thead><tr><th>edition</th><th>record</th><th>opens</th><th>fetches</th></tr></thead>
-    <tbody>${recapTop.length ? recapTop.map((r) => `<tr><td><a href="/r/${esc(r.id)}">${esc(r.nickname || r.id)}</a></td><td>${+r.wins || 0}–${82 - (+r.wins || 0)}</td><td>${+r.views_human || 0}</td><td>${+r.views_raw || 0}</td></tr>`).join("") : emptyRow(4)}</tbody></table>
+    <tbody>${recapTop.length ? recapTop.map((r) => { const rid=String(r.id||""); const href=/^[A-Z0-9][A-Za-z0-9_-]{4}$/.test(rid)?"/"+rid:"/r/"+rid; return `<tr><td><a href="${esc(href)}">${esc(r.nickname || r.id)}</a></td><td>${+r.wins || 0}–${82 - (+r.wins || 0)}</td><td>${+r.views_human || 0}</td><td>${+r.views_raw || 0}</td></tr>`; }).join("") : emptyRow(4)}</tbody></table>
     <p class="muted">Fetches include unfurl crawlers; opens use the in-page human beacon. Referral starts are attributed once, to the first game launched after the shared link is opened.</p>`
     : muted("Migration 0005 (recaps) has not been applied; share pages are not being stored.")));
 
