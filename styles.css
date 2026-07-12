@@ -227,7 +227,8 @@ body.drafting .site-foot { display: none; }
 /* Presti "spin" buttons: extruded goldenrod, cap mode only.
    Dual shadow = 3D side (0 5px 0) + grounding drop; compresses on :active. */
 button.presti-spin,
-button.more-modes {
+button.more-modes,
+a.btn {
   --spin-face: #E89A1C;   /* goldenrod: more orange than --amber, still yellow */
   --spin-top:  #F8B647;
   --spin-side: #9E5A0F;
@@ -250,7 +251,8 @@ button.more-modes {
   user-select: none;
 }
 button.presti-spin:not(:disabled):active,
-button.more-modes:not(:disabled):active {
+button.more-modes:not(:disabled):active,
+a.btn:active {
   transform: translateY(4px);   /* compresses into the page */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.35),
@@ -665,6 +667,31 @@ button.more-modes:disabled {
   text-align: center;
   position: relative;
   overflow: hidden;
+}
+#shareTeamBtn.elite-result {
+  outline: 2px solid rgba(255, 240, 184, 0.78);
+  outline-offset: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.62),
+    0 5px 0 0 var(--spin-side),
+    0 0 0 2px rgba(255, 211, 106, 0.48),
+    0 0 20px rgba(255, 181, 46, 0.55),
+    0 0 46px rgba(255, 181, 46, 0.24);
+  animation: elite-result-glow 2.2s ease-in-out infinite;
+}
+@keyframes elite-result-glow {
+  0%, 100% {
+    outline-color: rgba(255, 240, 184, 0.68);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.58), 0 5px 0 0 var(--spin-side), 0 0 0 2px rgba(255, 211, 106, 0.42), 0 0 16px rgba(255, 181, 46, 0.42), 0 0 36px rgba(255, 181, 46, 0.18);
+  }
+  50% {
+    outline-color: rgba(255, 247, 211, 0.98);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.70), 0 5px 0 0 var(--spin-side), 0 0 0 3px rgba(255, 231, 157, 0.72), 0 0 28px rgba(255, 181, 46, 0.72), 0 0 62px rgba(255, 181, 46, 0.32);
+  }
+}
+#shareTeamBtn.elite-result:not(:disabled):active {
+  outline-offset: 1px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 1px 0 0 var(--spin-side), 0 0 0 2px rgba(255, 231, 157, 0.72), 0 0 20px rgba(255, 181, 46, 0.58);
 }
 .board .big-label .net-base { color: var(--amber); }
 .board .big-label .net-bonus { color: #ff5a4a; text-shadow: 0 0 10px rgba(255,65,51,0.55); }

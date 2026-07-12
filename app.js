@@ -45,6 +45,98 @@ var TEAM2FR = {}, BEST_BY_NAME = new Map(), FRANCHISES = [];
 var CAREER_BUCKETS = new Map();   // name -> {G,F,C}: every position the player EVER qualified at, career-wide
 var G = null;
 
+/* ---------- Tribune recap diagnostics ----------
+   Always installed at app load so the console works before, during, and after
+   a season. This is intentionally independent of G because newGame() replaces
+   game state. No secrets or full article text are stored in the debug history. */
+var T82_RECAP_BUILD = "2026-07-11.tribune-share-v2";
+var T82_RECAP_HISTORY = [];
+var T82_RECAP_LAST = {
+  build: T82_RECAP_BUILD,
+  state: "idle",
+  source: null,
+  reason: null,
+  message: "No Tribune request has started in this page load."
+};
+
+function recapDebugClone(v) {
+  try { return JSON.parse(JSON.stringify(v)); } catch (e) { return v; }
+}
+function recapDebugEvent(name, fields) {
+  var row = Object.assign({
+    at: new Date().toISOString(),
+    event: name,
+    build: T82_RECAP_BUILD
+  }, fields || {});
+  T82_RECAP_HISTORY.push(row);
+  if (T82_RECAP_HISTORY.length > 60) T82_RECAP_HISTORY.shift();
+  return row;
+}
+function recapDebugSet(last) {
+  T82_RECAP_LAST = Object.assign({ build: T82_RECAP_BUILD }, last || {});
+  window.__T82_RECAP_DEBUG = T82_RECAP_LAST;
+  return T82_RECAP_LAST;
+}
+function recapDebugPrint() {
+  var snapshot = {
+    build: T82_RECAP_BUILD,
+    last: recapDebugClone(T82_RECAP_LAST),
+    history: recapDebugClone(T82_RECAP_HISTORY),
+    help: "Run t82RecapHealth() to verify the deployed Function, API-key binding, model, and timeout without spending tokens. Run t82RecapDebug('clear') to reset this page's history."
+  };
+  if (console && console.groupCollapsed) console.groupCollapsed("[tribune] recap diagnostics " + T82_RECAP_BUILD);
+  if (console && console.log) {
+    console.log("Last request:", snapshot.last);
+    if (console.table && snapshot.history.length) console.table(snapshot.history);
+    else console.log("History:", snapshot.history);
+    console.log(snapshot.help);
+  }
+  if (console && console.groupEnd) console.groupEnd();
+  return snapshot;
+}
+window.t82RecapDebug = function (action) {
+  if (action === "clear") {
+    T82_RECAP_HISTORY.length = 0;
+    recapDebugSet({ state: "idle", source: null, reason: null, message: "Debug history cleared." });
+  }
+  return recapDebugPrint();
+};
+window.t82RecapHealth = function () {
+  var started = Date.now();
+  recapDebugEvent("health_start", { path: "/api/recap?health=1" });
+  if (typeof fetch !== "function") return Promise.reject(new Error("fetch unavailable"));
+  return fetch("/api/recap?health=1&_=" + Date.now(), {
+    method: "GET",
+    cache: "no-store",
+    headers: { "accept": "application/json" }
+  }).then(function (r) {
+    return r.text().then(function (raw) {
+      var body = null;
+      try { body = JSON.parse(raw); } catch (e) { body = { ok: false, reason: "non_json", preview: raw.slice(0, 240) }; }
+      var result = {
+        state: "health",
+        ok: !!(r.ok && body && body.ok),
+        httpStatus: r.status,
+        elapsedMs: Date.now() - started,
+        body: body,
+        cfRay: r.headers.get("cf-ray"),
+        serverBuild: r.headers.get("x-t82-recap-build"),
+        contentType: r.headers.get("content-type")
+      };
+      recapDebugEvent("health_result", result);
+      if (console && console.log) console.log("[tribune] health", result);
+      return result;
+    });
+  }).catch(function (err) {
+    var result = { state: "health", ok: false, elapsedMs: Date.now() - started, reason: "network", error: String(err && err.message || err) };
+    recapDebugEvent("health_error", result);
+    if (console && console.error) console.error("[tribune] health failed", result);
+    return result;
+  });
+};
+recapDebugSet(T82_RECAP_LAST);
+if (console && console.log) console.log("[tribune] diagnostics ready — t82RecapDebug() / t82RecapHealth() — build " + T82_RECAP_BUILD);
+
 /* ---------- optional feature loading ---------- */
 
 // Keep the first paint and critical site-data request lean. Duel/Arena/League
@@ -179,26 +271,73 @@ function initData(data) {
   CAREER_BUCKETS = t.CAREER_BUCKETS; KAMAN_SEASONS = t.KAMAN_SEASONS;
 }
 
+// Anonymous run telemetry stays in memory until an actual event needs it. This gives
+// page-exit and Start over events the current round/team/era plus an accurate Presti
+// split without writing a row for every tap. The initial cap is UI-only metadata;
+// changing it cannot affect replay determinism or the engine result.
+function analyticsRunSnapshot(reason) {
+  var p = { mode: MODE };
+  if (!G) return p;
+  p.round = G.round || 0;
+  if (G.cur) {
+    if (G.cur.fr) p.franchise = G.cur.fr;
+    if (G.cur.dec != null) p.decade = G.cur.dec;
+  }
+  if (MODE === "cap") {
+    var playerSpend = G.picks.reduce(function (sum, pick) { return sum + (pick.cost || 0); }, 0);
+    var initialCap = typeof G.analyticsInitialCap === "number" ? G.analyticsInitialCap : G.maxCap;
+    var rerollSpend = Math.max(0, initialCap - G.maxCap);
+    p.player_spend = playerSpend;
+    p.reroll_spend = rerollSpend;
+    p.roster_value = playerSpend;                 // backward-compatible field
+    p.budget_used = playerSpend + rerollSpend;   // corrected: total dollars spent
+  }
+  if (reason) p.reason = reason;
+  return p;
+}
+function trackRunState() {
+  window.t82track && window.t82track("run_state", analyticsRunSnapshot());
+}
+function trackDealView(source) {
+  var p = analyticsRunSnapshot();
+  p.variant = source;
+  window.t82track && window.t82track("deal_view", p);
+}
+
 function newGame(mode, seed, challenge) {
   if (mode) MODE = mode;
   G = T82.newState(MODE, seed, challenge || null);
-  window.t82track && window.t82track("game_start", { mode: MODE });
+  G.analyticsInitialCap = G.maxCap;
+  var shareRef = SHARE_REF;
+  if (shareRef) SHARE_REF = "";  // one conversion per referred landing, not every replay in the visit
+  window.t82track && window.t82track("game_start", shareRef ? { mode: MODE, variant: "recap:" + shareRef } : { mode: MODE });
   nextRound(true);
 }
 function nextRound(animate) {
   var r = T82.dealRound(G);
   if (r === "done") { showResults(); return; }
-  window.t82track && window.t82track("round_advance", { mode: MODE, round: G.round });
+  var snap = analyticsRunSnapshot();
+  window.t82track && window.t82track("round_advance", snap);
   renderDraft(animate ? r : false);
 }
-function doTeamSkip() { var f = T82.skipTeam(G); if (f) renderDraft(f); }
-function doEraSkip() { var f = T82.skipEra(G); if (f) renderDraft(f); }
-function doYearReroll() { if (MODE !== "cap") return; var f = T82.yearReroll(G); if (f) renderDraft(f); }
+function doTeamSkip() {
+  var f = T82.skipTeam(G);
+  if (f) { trackDealView("team_reroll"); trackRunState(); renderDraft(f); }
+}
+function doEraSkip() {
+  var f = T82.skipEra(G);
+  if (f) { trackDealView("era_reroll"); trackRunState(); renderDraft(f); }
+}
+function doYearReroll() {
+  if (MODE !== "cap") return;
+  var f = T82.yearReroll(G);
+  if (f) { trackRunState(); renderDraft(f); }
+}
 function confirmPick(bucket) {
   if (!G.selected) return;
   var row = resolveRow(G.selected);
   if (!row) return;
-  if (T82.applyPick(G, G.selected, row[IDX.season], bucket)) nextRound(true);
+  if (T82.applyPick(G, G.selected, row[IDX.season], bucket)) { trackRunState(); nextRound(true); }
 }
 function doLineupMove(pickIdx, bucket) { if (T82.moveSlot(G, pickIdx, bucket)) afterLineupChange(); }
 function doLineupSwap(i, j) { if (T82.swapSlots(G, i, j)) afterLineupChange(); }
@@ -236,15 +375,42 @@ function buzz(ms) {
   try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {}
 }
 
-// One delegated press-haptic for every casino button (skip/draft/start/share/run-it-back),
-// so we don't have to wire each one. Capture phase + closest() catches taps on inner spans.
+// Every true button except the deliberately flat Start over, compact Sort/info
+// controls, and newspaper-object wrapper receives the same extruded 3D treatment.
+// A tiny observer covers buttons created by later renders and lazy-loaded UIs.
+var _buttonStyleObserver = null;
+function decorate3dButtons(root) {
+  if (!root) return;
+  function add(node) {
+    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info)")) return;
+    node.classList.add("presti-spin");
+  }
+  add(root);
+  if (root.querySelectorAll) {
+    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info)");
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.add("presti-spin");
+  }
+}
+function bindGlobalButtonStyle() {
+  decorate3dButtons(document);
+  if (_buttonStyleObserver || typeof MutationObserver === "undefined" || !document.documentElement) return;
+  _buttonStyleObserver = new MutationObserver(function (records) {
+    for (var i = 0; i < records.length; i++) {
+      for (var j = 0; j < records[i].addedNodes.length; j++) decorate3dButtons(records[i].addedNodes[j]);
+    }
+  });
+  _buttonStyleObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+// One delegated press-haptic for every raised button, so we don't have to wire
+// each one. Capture phase + closest() catches taps on inner spans.
 var _hapticsBound = false;
 function bindHaptics() {
   if (_hapticsBound) return;
   _hapticsBound = true;
   document.addEventListener("pointerdown", function (e) {
     if (!e.target || !e.target.closest) return;
-    var b = e.target.closest("button.presti-spin");
+    var b = e.target.closest("button.presti-spin, a.btn");
     if (b && !b.disabled) buzz(15);
   }, true);
 }
@@ -713,7 +879,14 @@ function startOverBtnHtml() {
 }
 function wireStartOver() {
   var b = el("startOverBtn");
-  if (b) b.addEventListener("click", function () { renderIntro(); });
+  if (b) b.addEventListener("click", function () {
+    // Only an unfinished draft is a bailout. Results/newspaper navigation is already
+    // represented by game_complete and its own action events.
+    if (G && G.screen === "draft") {
+      window.t82track && window.t82track("run_abandon", analyticsRunSnapshot("start_over"));
+    }
+    renderIntro();
+  });
 }
 
 /* ---------- donate ---------- */
@@ -1167,7 +1340,7 @@ function renderDraft(anim) {
     }).join("");
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
-      '<input type="search" id="poolSearch" class="pool-search" placeholder="filter players\u2026" autocomplete="off" spellcheck="false">' +
+      '<input type="search" id="poolSearch" class="pool-search" placeholder="search player name..." autocomplete="off" spellcheck="false">' +
       "</div>";
   }
 
@@ -1636,6 +1809,7 @@ function hotHand(e) {
       }
       var rec = document.querySelector(".big");                  // updated W/L record (the win rate)
       if (rec) rec.textContent = G.hotWins + "\u2013" + (CFG.GAMES_IN_SEASON - G.hotWins);
+      setEliteResultGlow(G.hotWins);
       var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [bonus, hot-hand red]
       if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
         '</span> <span class="net-bonus">+ ' + (newNet - e.net).toFixed(1) + "</span>";
@@ -1849,6 +2023,56 @@ function shareSurname(nm) {
   while (rest.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(rest[rest.length - 1])) rest.pop();
   return parts[0].charAt(0) + ". " + rest.join(" ");
 }
+
+// A signed edition gets a readable URL before the share tap. The publish request
+// itself is deliberately fire-and-forget so Safari's transient share activation
+// is never lost while waiting on the network.
+function mintRecapSlug(nick) {
+  var base = String(nick || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "edition";
+  var tail = "";
+  try {
+    var a = new Uint8Array(8);
+    crypto.getRandomValues(a);
+    for (var i = 0; i < a.length; i++) tail += (a[i] % 36).toString(36);
+  } catch (e) { tail = Math.random().toString(36).slice(2, 10); }
+  while (tail.length < 8) tail += "0";
+  return base + "-" + tail.slice(0, 8);
+}
+function publishRecap() {
+  if (!G || G.recapPublished || !G.recapSlug || !G.recapSig || !G.recapPayload) return;
+  if (!G.recapHead || G.recapHead.source !== "api" || !G.recapArt || G.recapArt.source !== "api") return;
+  var pay = G.recapPayload;
+  var body = {
+    sig: G.recapSig,
+    mode: pay.mode,
+    wins: pay.wins,
+    net: pay.net,
+    nickname: G.recapHead.nickname,
+    article: G.recapArt.article,
+    players: pay.players
+  };
+  recapDebugEvent("share_publish_start", { slug: G.recapSlug });
+  try {
+    fetch("/r/" + G.recapSlug, {
+      method: "POST",
+      keepalive: true,
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (res && res.ok) {
+        G.recapPublished = 1;
+        recapDebugEvent("share_publish_ready", { slug: G.recapSlug, httpStatus: res.status });
+      } else {
+        recapDebugEvent("share_publish_failed", { slug: G.recapSlug, httpStatus: res && res.status });
+      }
+    }).catch(function (err) {
+      recapDebugEvent("share_publish_failed", { slug: G.recapSlug, reason: "network", message: String(err && err.message || err) });
+    });
+  } catch (e) {
+    recapDebugEvent("share_publish_failed", { slug: G.recapSlug, reason: "setup", message: String(e && e.message || e) });
+  }
+}
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
@@ -1874,7 +2098,8 @@ function shareText(e) {
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
   var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";
-  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\ntrue82.net";
+  var tail = (G.recapSlug && G.recapSig) ? "\uD83D\uDCF0 true82.net/r/" + G.recapSlug : "true82.net";
+  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\n" + tail;
 }
 
 function shareButtonLabel(b) {
@@ -2063,22 +2288,31 @@ function requestEdition() {
   G.recapArtIntent = "unwrap";
 
   var token = G, settled = false, started = Date.now(), httpStatus = 0;
+  var requestId = "r" + started.toString(36) + "-" + Math.random().toString(36).slice(2, 9);
   var fallbackHead = localHeadline(G.recapPayload);
   var fallbackArt = localArticle(G.recapPayload);
-  var debug = {
+  var debug = recapDebugSet({
+    build: T82_RECAP_BUILD,
     state: "requesting",
     phase: "edition",
+    requestId: requestId,
     startedAt: new Date(started).toISOString(),
     elapsedMs: 0,
     source: null,
     reason: null,
-    httpStatus: null
-  };
-  window.__T82_RECAP_DEBUG = debug;
-  window.t82RecapDebug = function () {
-    var d = window.__T82_RECAP_DEBUG || { state: "idle" };
-    try { return JSON.parse(JSON.stringify(d)); } catch (e) { return d; }
-  };
+    httpStatus: null,
+    payload: {
+      mode: G.recapPayload.mode,
+      wins: G.recapPayload.wins,
+      playerCount: G.recapPayload.players && G.recapPayload.players.length
+    }
+  });
+  recapDebugEvent("edition_request_start", {
+    requestId: requestId,
+    mode: debug.payload.mode,
+    wins: debug.payload.wins,
+    playerCount: debug.payload.playerCount
+  });
 
   function finishDebug(state, source, reason) {
     debug.state = state;
@@ -2086,7 +2320,7 @@ function requestEdition() {
     debug.source = source || null;
     debug.reason = reason || null;
     debug.httpStatus = httpStatus || null;
-    window.__T82_RECAP_DEBUG = debug;
+    recapDebugSet(debug);
   }
 
   function settle(d, reason) {
@@ -2096,13 +2330,49 @@ function requestEdition() {
     if (apiCopy) {
       G.recapHead = { nickname: String(d.nickname), source: d.source || "api" };
       G.recapArt = { article: String(d.article), source: d.source || "api" };
+      if (d.sig && typeof d.sig === "string") {
+        G.recapSig = d.sig;
+        if (!G.recapSlug) G.recapSlug = mintRecapSlug(d.nickname);
+      }
+      debug.nickname = String(d.nickname);
+      debug.articleChars = String(d.article).length;
+      debug.server = d.diagnostic || null;
       finishDebug("settled", "api", null);
-      console.info("[tribune] AI edition ready in " + debug.elapsedMs + "ms");
+      recapDebugEvent("edition_api_ready", {
+        requestId: requestId,
+        elapsedMs: debug.elapsedMs,
+        httpStatus: debug.httpStatus,
+        nickname: debug.nickname,
+        articleChars: debug.articleChars,
+        signed: !!G.recapSig,
+        model: debug.responseHeaders && debug.responseHeaders.model,
+        cfRay: debug.responseHeaders && debug.responseHeaders.cfRay
+      });
+      if (console && console.log) console.log("[tribune] AI edition ready", recapDebugClone(debug));
     } else {
       G.recapHead = Object.assign({}, fallbackHead, { source: "fallback" });
       G.recapArt = Object.assign({}, fallbackArt, { source: "fallback" });
+      debug.responseBody = d ? {
+        ok: d.ok,
+        reason: d.reason,
+        phase: d.phase,
+        model: d.model,
+        requestId: d.requestId,
+        elapsedMs: d.elapsedMs,
+        providerStatus: d.providerStatus,
+        providerErrorType: d.providerErrorType,
+        providerMessage: d.providerMessage
+      } : null;
       finishDebug("settled", "fallback", reason || (d && d.reason) || "invalid_response");
-      console.warn("[tribune] local edition used after " + debug.elapsedMs + "ms; reason:", debug.reason, "status:", debug.httpStatus || "n/a");
+      recapDebugEvent("edition_fallback", {
+        requestId: requestId,
+        elapsedMs: debug.elapsedMs,
+        httpStatus: debug.httpStatus,
+        reason: debug.reason,
+        model: debug.responseHeaders && debug.responseHeaders.model,
+        cfRay: debug.responseHeaders && debug.responseHeaders.cfRay
+      });
+      if (console && console.warn) console.warn("[tribune] local edition used", recapDebugClone(debug));
     }
     stampHeadline();
     inkInArticle();
@@ -2110,34 +2380,80 @@ function requestEdition() {
   }
 
   var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
-  // The opening animation is a latency mask, not a network deadline. Keep the
-  // request alive after the three-second reveal and show the typesetting state
-  // until the Worker responds. The client deadline slightly exceeds the Worker's
-  // edition deadline so explicit server reasons normally reach the console.
+  // The opening animation is only a latency mask. The Function gets 28 seconds;
+  // this client guard is deliberately longer so its explicit reason normally
+  // reaches the browser before a client-side abort.
   var timer = setTimeout(function () {
     if (ac) ac.abort();
-    settle(null, "client_timeout");
-  }, 17500);
+    settle(null, "client_timeout_32s");
+  }, 32000);
 
-  console.info("[tribune] requesting AI edition; inspect t82RecapDebug() for status");
+  if (console && console.log) console.log("[tribune] requesting AI edition", recapDebugClone(debug));
   try {
     fetch("/api/recap", {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: {
+        "content-type": "application/json",
+        "accept": "application/json",
+        "x-t82-recap-id": requestId
+      },
       body: JSON.stringify(Object.assign({ phase: "edition" }, G.recapPayload)),
       signal: ac ? ac.signal : undefined
     }).then(function (r) {
       httpStatus = r.status;
-      return r.json();
-    }).then(function (d) {
+      debug.responseHeaders = {
+        contentType: r.headers.get("content-type"),
+        cacheControl: r.headers.get("cache-control"),
+        cfRay: r.headers.get("cf-ray"),
+        requestId: r.headers.get("x-t82-recap-id"),
+        serverBuild: r.headers.get("x-t82-recap-build"),
+        model: r.headers.get("x-t82-recap-model"),
+        result: r.headers.get("x-t82-recap-result"),
+        reason: r.headers.get("x-t82-recap-reason"),
+        serverTiming: r.headers.get("server-timing")
+      };
+      recapDebugEvent("edition_response_headers", Object.assign({
+        requestId: requestId,
+        httpStatus: r.status
+      }, debug.responseHeaders));
+      return r.text().then(function (raw) { return { response: r, raw: raw }; });
+    }).then(function (packet) {
       clearTimeout(timer);
+      var d;
+      try {
+        d = JSON.parse(packet.raw);
+      } catch (parseErr) {
+        debug.responsePreview = packet.raw.slice(0, 300);
+        settle(null, "response_not_json");
+        return;
+      }
+      debug.responseShape = {
+        ok: !!d.ok,
+        hasNickname: !!d.nickname,
+        hasArticle: !!d.article,
+        hasSig: !!d.sig,
+        reason: d.reason || null,
+        source: d.source || null,
+        model: d.model || null,
+        requestId: d.requestId || null,
+        elapsedMs: d.elapsedMs || null
+      };
+      recapDebugEvent("edition_response_body", Object.assign({ requestId: requestId }, debug.responseShape));
       if (d && d.ok && d.nickname && d.article) settle(d, null);
       else settle(d, d && d.reason ? d.reason : "invalid_response");
     }).catch(function (err) {
       clearTimeout(timer);
-      settle(null, err && err.name === "AbortError" ? "client_timeout" : "network_or_parse");
+      var reason = err && err.name === "AbortError" ? "client_timeout_32s" : "network_error";
+      debug.fetchError = { name: err && err.name, message: String(err && err.message || err) };
+      recapDebugEvent("edition_fetch_error", { requestId: requestId, reason: reason, error: debug.fetchError.message });
+      settle(null, reason);
     });
   } catch (err) {
     clearTimeout(timer);
+    debug.fetchError = { name: err && err.name, message: String(err && err.message || err) };
+    recapDebugEvent("edition_request_setup_error", { requestId: requestId, error: debug.fetchError.message });
     settle(null, "request_setup");
   }
 }
@@ -2198,6 +2514,7 @@ function showNewspaper(gate) {
   // backing sheets fan away, a press sweep travels down the page, and this real
   // Tribune expands underneath. There is no object swap and no spin animation.
   var bundle = null, autoT = null, openingT = null, statusTimers = [];
+  var fullReadTimer = null, fullReadTracked = false, fullReadScrollBound = false;
   if (!G.recapReq) {
     paper.classList.add("np-hidden");
     bundle = document.createElement("button");
@@ -2232,7 +2549,7 @@ function showNewspaper(gate) {
 
     var stamp = div("np-bundle-stamp");
     stamp.appendChild(div("np-bundle-eyebrow", wins >= CFG.GAMES_IN_SEASON ? "HISTORY" : wins === 0 ? "DISASTER" : "FINAL EDITION"));
-    stamp.appendChild(div("np-bundle-rec", wins + "\u2013" + losses));
+    stamp.appendChild(div("np-bundle-rec", wins + "\u2013" + losses + "!"));
     stamp.appendChild(div("np-bundle-sub", "PROJECTED RECORD"));
     face.appendChild(stamp);
 
@@ -2274,6 +2591,10 @@ function showNewspaper(gate) {
   stage.appendChild(pressFx);
   ov.appendChild(stage); ov.appendChild(under);
   document.body.appendChild(ov);
+  if (!G.recapPresentedTracked) {
+    G.recapPresentedTracked = 1;
+    window.t82track && window.t82track("recap_presented", { mode: MODE, wins: wins });
+  }
   buzz(20);
 
   var tickTimer = setInterval(function () {
@@ -2289,12 +2610,49 @@ function showNewspaper(gate) {
     clearInterval(tickTimer);
     clearTimeout(autoT);
     clearTimeout(openingT);
+    clearTimeout(fullReadTimer);
     clearStatusTimers();
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
   }
   function setPressStatus(txt) {
     pressStatus.textContent = txt;
+  }
+  function trackRecapAction(variant) {
+    window.t82track && window.t82track("recap_action", { mode: MODE, variant: variant });
+  }
+  // "Full read" is an engagement proxy, not an eye-tracker: count it once when the
+  // reader either reaches the article bottom or keeps the finished edition visible
+  // for a length-aware dwell (7-12 seconds). This is materially stricter than unwrap.
+  function markFullRead(signal) {
+    if (fullReadTracked || !ov.parentNode || !G.recapArt) return;
+    fullReadTracked = true;
+    clearTimeout(fullReadTimer);
+    window.t82track && window.t82track("recap_full_read", {
+      mode: MODE,
+      variant: signal,
+      segment: (G.recapHead && G.recapHead.source) || "unknown"
+    });
+  }
+  function armFullRead() {
+    if (fullReadTracked || fullReadTimer || !ov.parentNode || !G.recapArt ||
+        !stage.classList.contains("np-opened") || !paper.classList.contains("story-ready")) return;
+    if (!fullReadScrollBound) {
+      fullReadScrollBound = true;
+      paper.addEventListener("scroll", function () {
+        if (paper.scrollHeight - paper.scrollTop - paper.clientHeight <= 28) markFullRead("article_bottom");
+      }, { passive: true });
+    }
+    var words = String(G.recapArt.article || "").trim().split(/\s+/).filter(Boolean).length;
+    var delay = Math.max(7000, Math.min(12000, words * 140));
+    fullReadTimer = setTimeout(function dwellCheck() {
+      fullReadTimer = null;
+      if (document.visibilityState === "hidden") {
+        fullReadTimer = setTimeout(dwellCheck, 1500);
+        return;
+      }
+      markFullRead("visible_dwell");
+    }, delay);
   }
 
   function buildGhostArticle() {
@@ -2346,6 +2704,7 @@ function showNewspaper(gate) {
         paper.classList.add("np-awaiting-copy");
         pressStatus.textContent = "FINAL COPY INCOMING";
       }
+      armFullRead();
       buzz(18);
     }, 3100);
   }
@@ -2359,23 +2718,27 @@ function showNewspaper(gate) {
 
   skip.addEventListener("click", function () {
     if (stage.classList.contains("np-opening")) return;
+    trackRecapAction("skip_results");
     window.t82track && window.t82track("recap_skip", { mode: MODE });
     close(true);
   });
   again.addEventListener("click", function () {
     if (stage.classList.contains("np-opening")) return;
+    trackRecapAction("run_it_back");
     window.t82track && window.t82track("replay", { mode: MODE });
     close(false);
     newGame();
   });
   ov.addEventListener("click", function (ev) {
     if (ev.target === ov && !stage.classList.contains("np-opening")) {
+      trackRecapAction("backdrop_dismiss");
       window.t82track && window.t82track("recap_skip", { mode: MODE });
       close(true);
     }
   });
 
   read.addEventListener("click", function () {
+    trackRecapAction("get_results");
     window.t82track && window.t82track("recap_results", { mode: MODE });
     close(true);
   });
@@ -2394,7 +2757,7 @@ function showNewspaper(gate) {
   G.npStamp = function () {
     if (!ov.parentNode || !G.recapHead) return;
     headWrap.textContent = "";
-    var h = div("np-head np-stamp", String(G.recapHead.nickname).toUpperCase() + " FINISH " + wins + "\u2013" + losses);
+    var h = div("np-head np-stamp", String(G.recapHead.nickname).toUpperCase() + " FINISH " + wins + "\u2013" + losses + "!");
     headWrap.appendChild(h);
     if (G.recapHead.dek) headWrap.appendChild(div("np-dek", G.recapHead.dek));
     paper.classList.add("ready");
@@ -2413,6 +2776,7 @@ function showNewspaper(gate) {
     var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
     art.appendChild(body);
     read.textContent = "GET RESULTS";
+    armFullRead();
   };
 
   if (G.recapHead) G.npStamp();
@@ -2432,6 +2796,11 @@ function showNewspaper(gate) {
 function stampHeadline() { if (G.npStamp) G.npStamp(); }
 function inkInArticle() { if (G.npInk) G.npInk(); }
 
+function setEliteResultGlow(wins) {
+  var share = document.getElementById("shareTeamBtn");
+  if (share) share.classList.toggle("elite-result", wins === 81 || wins === 82);
+}
+
 function showResults() {
   G.screen = "results";
   if (MODE === "kaman") {
@@ -2443,11 +2812,10 @@ function showResults() {
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
   renderResults(e, false);
   if (window.t82track) {
-    var gc = { mode: MODE, wins: e.winTally, net: e.net, undefeated: e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0 };
-    if (MODE === "cap") {
-      gc.budget_used = G.maxCap - G.budget;                                            // $ spent incl. rerolls
-      gc.roster_value = G.picks.reduce(function (s, p) { return s + (p.cost || 0); }, 0); // $ on the five
-    }
+    var gc = analyticsRunSnapshot();
+    gc.wins = e.winTally;
+    gc.net = e.net;
+    gc.undefeated = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
     window.t82track("game_complete", gc);
   }
   gameFinishedPings();
@@ -2485,7 +2853,7 @@ function renderResults(e, keepScroll) {
     '<section class="board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">Front office projection \u00B7 ' + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft") + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       (MODE === "cap" ? '<div class="cap-spent">$' + G.budget + ' cap space</div>' : "") +
-      '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
+      '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml + "</section>" +
     '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
@@ -2505,6 +2873,7 @@ function renderResults(e, keepScroll) {
       var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
       window.t82track("share", { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0 });
     }
+    publishRecap();
     shareOrCopy(shareText(e2));
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
@@ -2575,7 +2944,7 @@ function renderKamanResults() {
       '<p class="eyebrow">Front office projection \u00B7 KAMAN MODE</p>' +
       '<div class="big">82\u20130</div><div class="big-label">net rating +\u221E</div>' +
       '<p class="kaman-flavor">' + kamanFlavor() + "</p>" +
-      '<button class="btn btn-primary btn-block presti-spin" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
+      '<button class="btn btn-primary btn-block presti-spin elite-result" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec"><div class="twoway">' + kamanBar("Offense") + kamanBar("Defense") + "</div></section>" +
     '<section class="section"><p class="eyebrow">Your five \u00B7 all centers, as nature intended</p>' + picksHtml + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
@@ -2602,6 +2971,19 @@ var DUEL_ID = (function () {   // ?duel=<id> deep link (duel-ui.js routes it onc
 })();
 var LEAGUE_ID = (function () {   // ?league=<id> deep link — needs no site data, routes at boot
   try { return new URLSearchParams(location.search).get("league"); } catch (e) { return null; }
+})();
+var SHARE_REF = (function () {   // ?ref=<slug> attribution from a Tribune share page; consumed by the first game start
+  try {
+    var sp = new URLSearchParams(location.search);
+    var r = (sp.get("ref") || "").toLowerCase().slice(0, 70);
+    if (!/^[a-z0-9-]{5,70}$/.test(r)) r = "";
+    if (r && window.history && history.replaceState) {
+      sp.delete("ref");
+      var qs = sp.toString();
+      history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+    }
+    return r;
+  } catch (e) { return ""; }
 })();
 
 // Crests are decorative — load them separately and in the background so they never
@@ -2673,6 +3055,7 @@ function gameFinishedPings() {
 }
 
 function boot() {
+  bindGlobalButtonStyle();
   bindHaptics();
   bindVisibilityResync();
   if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }

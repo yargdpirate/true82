@@ -4,13 +4,15 @@
 
 const NAMES = new Set([
   "session_start", "session_end", "data_ready", "data_error",
-  "game_start", "round_advance", "game_complete", "replay", "share",
-  "heatcheck_shown", "heatcheck_action", "heatcheck_result", "donate_click",
-  "recap_shown", "recap_read", "recap_skip", "recap_unwrap", "recap_results"
+  "game_start", "round_advance", "deal_view", "game_complete", "run_abandon",
+  "replay", "share", "heatcheck_shown", "heatcheck_action", "heatcheck_result",
+  "donate_click", "recap_presented", "recap_shown", "recap_read", "recap_full_read", "recap_action",
+  "recap_skip", "recap_unwrap", "recap_results"
 ]);
 const MODES = new Set(["classic", "pro", "cap", "kaman"]);
 const VIEWPORTS = new Set(["sm", "md", "lg"]);
 const DEVICES = new Set(["mobile", "tablet", "desktop"]);
+const ABANDON_REASONS = new Set(["start_over", "page_exit"]);
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -33,7 +35,6 @@ export async function onRequest(context) {
     if (set && !set.has(v)) return null;
     return v.slice(0, max || 64);
   };
-  // Clamp numeric fields to sane ranges so one bad/garbage POST can't skew aggregates.
   const clamp = (n, lo, hi) => (n === null ? null : Math.max(lo, Math.min(hi, n)));
 
   const ua = request.headers.get("user-agent") || "";
@@ -51,7 +52,7 @@ export async function onRequest(context) {
     undefeated: bit(b.undefeated),
     budget_used: clamp(int(b.budget_used), 0, 1000),
     roster_value: clamp(int(b.roster_value), 0, 1000),
-    segment: str(b.segment, null, 16),
+    segment: str(b.segment, null, 32),
     variant: str(b.variant, null, 80),
     pulled: bit(b.pulled),
     hit_82: bit(b.hit_82),
@@ -62,25 +63,58 @@ export async function onRequest(context) {
     referrer: str(b.referrer, null, 256),
     device: DEVICES.has(device) ? device : "desktop",
     country: country ? String(country).slice(0, 2) : null,
-    viewport: str(b.viewport, VIEWPORTS, 4)
+    viewport: str(b.viewport, VIEWPORTS, 4),
+
+    // Analytics v2: all ephemeral and visit-scoped. `run_id` is regenerated for
+    // every game and dies with the tab; it is not a cross-visit identifier.
+    run_id: str(b.run_id, null, 64),
+    reason: str(b.reason, ABANDON_REASONS, 24),
+    franchise: str(b.franchise, null, 80),
+    decade: clamp(int(b.decade), 1940, 2030),
+    player_spend: clamp(int(b.player_spend), 0, 1000),
+    reroll_spend: clamp(int(b.reroll_spend), 0, 1000)
   };
 
   try {
     await env.DB.prepare(
       `INSERT INTO events
         (ts,sid,name,mode,round,wins,net,undefeated,budget_used,roster_value,
-         segment,variant,pulled,hit_82,duration,games_played,max_round,load_ms,referrer,device,country,viewport)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+         segment,variant,pulled,hit_82,duration,games_played,max_round,load_ms,referrer,device,country,viewport,
+         run_id,reason,franchise,decade,player_spend,reroll_spend)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
       r.ts, r.sid, r.name, r.mode, r.round, r.wins, r.net, r.undefeated,
       r.budget_used, r.roster_value, r.segment, r.variant, r.pulled, r.hit_82, r.duration,
-      r.games_played, r.max_round, r.load_ms, r.referrer, r.device, r.country, r.viewport
+      r.games_played, r.max_round, r.load_ms, r.referrer, r.device, r.country, r.viewport,
+      r.run_id, r.reason, r.franchise, r.decade, r.player_spend, r.reroll_spend
     ).run();
+    return new Response(null, { status: 204, headers: { "cache-control": "no-store", "x-t82-event-schema": "v2" } });
   } catch (e) {
-    // Swallow so analytics never surfaces to the player, but expose the reason in a
-    // header so a schema mismatch (e.g. missing column) is visible via `curl -si`.
-    return new Response(null, { status: 204, headers: { "cache-control": "no-store", "x-t82-err": String(e && e.message).slice(0, 80) } });
+    // Safe rollout: if migration 0004 has not been applied yet, preserve the old
+    // analytics stream instead of dropping every event. New v2 dimensions will be
+    // null until the migration is run; /avocado displays a prominent warning.
+    const msg = String(e && e.message || "");
+    if (/no column named|has no column|run_id|player_spend|reroll_spend/i.test(msg)) {
+      try {
+        await env.DB.prepare(
+          `INSERT INTO events
+            (ts,sid,name,mode,round,wins,net,undefeated,budget_used,roster_value,
+             segment,variant,pulled,hit_82,duration,games_played,max_round,load_ms,referrer,device,country,viewport)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        ).bind(
+          r.ts, r.sid, r.name, r.mode, r.round, r.wins, r.net, r.undefeated,
+          r.budget_used, r.roster_value, r.segment, r.variant, r.pulled, r.hit_82, r.duration,
+          r.games_played, r.max_round, r.load_ms, r.referrer, r.device, r.country, r.viewport
+        ).run();
+        return new Response(null, { status: 204, headers: {
+          "cache-control": "no-store", "x-t82-event-schema": "legacy", "x-t82-err": "analytics-v2-migration-required"
+        } });
+      } catch (legacyErr) {
+        return new Response(null, { status: 204, headers: {
+          "cache-control": "no-store", "x-t82-err": String(legacyErr && legacyErr.message).slice(0, 100)
+        } });
+      }
+    }
+    return new Response(null, { status: 204, headers: { "cache-control": "no-store", "x-t82-err": msg.slice(0, 100) } });
   }
-
-  return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
 }

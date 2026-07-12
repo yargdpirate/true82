@@ -3,11 +3,16 @@
   "include": [
     "/api/*",
     "/avocado",
+    "/r/*",
     "/",
-    "/faq", "/faq/",
-    "/how-it-works", "/how-it-works/",
-    "/what-is-bpm", "/what-is-bpm/",
-    "/can-you-go-82-0", "/can-you-go-82-0/"
+    "/faq",
+    "/faq/",
+    "/how-it-works",
+    "/how-it-works/",
+    "/what-is-bpm",
+    "/what-is-bpm/",
+    "/can-you-go-82-0",
+    "/can-you-go-82-0/"
   ],
   "exclude": []
 }
