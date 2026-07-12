@@ -93,7 +93,7 @@ const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON objec
 
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
-const RECAP_BUILD = "2026-07-11.tribune-short-share-v1";
+const RECAP_BUILD = "2026-07-11.tribune-share-debug-v2";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const EDITION_TIMEOUT_MS = 28000;
 

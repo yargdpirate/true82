@@ -9,7 +9,7 @@
 //   DB              D1 database with migrations/0005_recaps.sql applied
 //   RECAP_SIGN_KEY  secret shared with functions/api/recap.js
 
-const SHARE_BUILD = "2026-07-11.tribune-short-share-v1";
+const SHARE_BUILD = "2026-07-11.tribune-share-debug-v2";
 
 /* ---- share-page signature (KEEP BYTE-EQUIVALENT with functions/api/recap.js) ---- */
 const SIGN_VERSION = "t82share.v2";
@@ -50,6 +50,9 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const id = String(context.params && context.params.id || "");
 
+  if (url.searchParams.get("share_health") === "1" && (request.method === "GET" || request.method === "HEAD")) {
+    return shareHealth(env, request.method === "HEAD");
+  }
   if (!SLUG_RE.test(id)) return plain("not found", 404);
 
   if (request.method === "POST" && url.searchParams.get("open") === "1") {
@@ -83,6 +86,30 @@ export async function onRequest(context) {
     context.waitUntil(env.DB.prepare("UPDATE recaps SET views_raw=views_raw+1 WHERE id=?").bind(id).run().catch(() => {}));
   }
   return new Response(renderEdition(row, url.origin), { status: 200, headers: pageHeaders() });
+}
+
+async function shareHealth(env, head) {
+  let table = false;
+  let dbError = null;
+  if (env.DB) {
+    try {
+      const row = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='recaps'").first();
+      table = !!(row && row.name === "recaps");
+    } catch (e) {
+      dbError = String(e && e.message || e).slice(0, 180);
+    }
+  }
+  const body = {
+    ok: !!(env.DB && env.RECAP_SIGN_KEY && table && !dbError),
+    health: true,
+    build: SHARE_BUILD,
+    dbBound: !!env.DB,
+    signKey: !!env.RECAP_SIGN_KEY,
+    recapsTable: table,
+    dbError: dbError
+  };
+  if (head) return new Response(null, { status: 200, headers: jsonHeaders() });
+  return json(body, 200);
 }
 
 async function publish(request, env, id) {
@@ -191,12 +218,14 @@ function pageHeaders() {
     "cache-control": "no-store",
     "x-robots-tag": "noindex, nofollow",
     "x-content-type-options": "nosniff",
-    "referrer-policy": "strict-origin-when-cross-origin"
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-t82-share-build": SHARE_BUILD
   });
 }
-function noStoreHeaders() { return new Headers({ "cache-control": "no-store" }); }
-function json(body, status) { return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json;charset=utf-8", "cache-control": "no-store" } }); }
-function plain(body, status) { return new Response(body, { status, headers: { "content-type": "text/plain;charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } }); }
+function jsonHeaders() { return new Headers({ "content-type": "application/json;charset=utf-8", "cache-control": "no-store", "x-t82-share-build": SHARE_BUILD }); }
+function noStoreHeaders() { return new Headers({ "cache-control": "no-store", "x-t82-share-build": SHARE_BUILD }); }
+function json(body, status) { return new Response(JSON.stringify(body), { status, headers: jsonHeaders() }); }
+function plain(body, status) { return new Response(body, { status, headers: { "content-type": "text/plain;charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "x-t82-share-build": SHARE_BUILD } }); }
 function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function escJs(v) { return String(v == null ? "" : v).replace(/[^A-Za-z0-9_-]/g, ""); }
 function fmtSigned(v) { const n = Number(v) || 0; return (n >= 0 ? "+" : "") + n.toFixed(1); }
