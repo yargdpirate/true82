@@ -49,7 +49,7 @@ var G = null;
    Always installed at app load so the console works before, during, and after
    a season. This is intentionally independent of G because newGame() replaces
    game state. No secrets or full article text are stored in the debug history. */
-var T82_RECAP_BUILD = "2026-07-11.tribune-short-share-v1";
+var T82_RECAP_BUILD = "2026-07-11.tribune-share-debug-v2";
 var T82_RECAP_HISTORY = [];
 var T82_RECAP_LAST = {
   build: T82_RECAP_BUILD,
@@ -136,6 +136,73 @@ window.t82RecapHealth = function () {
 };
 recapDebugSet(T82_RECAP_LAST);
 if (console && console.log) console.log("[tribune] diagnostics ready — t82RecapDebug() / t82RecapHealth() — build " + T82_RECAP_BUILD);
+
+
+function shareDebugSnapshot() {
+  var g = (typeof G !== "undefined" && G) ? G : null;
+  var button = document.querySelector && document.querySelector(".np-share-article");
+  var history = T82_RECAP_HISTORY.filter(function (row) { return /^share_/.test(String(row && row.event || "")); });
+  return {
+    build: T82_RECAP_BUILD,
+    origin: (typeof location !== "undefined" && location.origin) || null,
+    state: g ? {
+      slug: g.recapSlug || null,
+      published: !!g.recapPublished,
+      publishPending: !!g.recapPublishPromise,
+      publishError: recapDebugClone(g.recapPublishError || null),
+      hasSignature: !!g.recapSig,
+      headlineSource: g.recapHead && g.recapHead.source || null,
+      articleSource: g.recapArt && g.recapArt.source || null
+    } : null,
+    button: button ? { text: button.textContent, disabled: !!button.disabled, title: button.title || null } : null,
+    history: recapDebugClone(history),
+    help: "Run await t82ShareHealth() before playing. After a failed button press, run t82ShareDebug(). The last share_publish_failed row includes the HTTP status and server reason."
+  };
+}
+window.t82ShareDebug = function (action) {
+  if (action === "clear") {
+    for (var i = T82_RECAP_HISTORY.length - 1; i >= 0; i--) {
+      if (/^share_/.test(String(T82_RECAP_HISTORY[i] && T82_RECAP_HISTORY[i].event || ""))) T82_RECAP_HISTORY.splice(i, 1);
+    }
+    if (typeof G !== "undefined" && G) G.recapPublishError = null;
+  }
+  var snapshot = shareDebugSnapshot();
+  if (console && console.groupCollapsed) console.groupCollapsed("[tribune] article-share diagnostics " + T82_RECAP_BUILD);
+  if (console && console.log) {
+    console.log("Current state:", snapshot.state);
+    console.log("Button:", snapshot.button);
+    if (console.table && snapshot.history.length) console.table(snapshot.history);
+    else console.log("History:", snapshot.history);
+    console.log(snapshot.help);
+  }
+  if (console && console.groupEnd) console.groupEnd();
+  return snapshot;
+};
+window.t82ShareHealth = function () {
+  var started = Date.now();
+  var path = "/A0000?share_health=1&_=" + Date.now();
+  recapDebugEvent("share_health_start", { path: path, origin: location.origin });
+  return fetch(path, { method: "GET", cache: "no-store", headers: { "accept": "application/json" } })
+    .then(function (r) { return r.text().then(function (raw) {
+      var body = null;
+      try { body = JSON.parse(raw); } catch (e) { body = { ok: false, reason: "non_json", preview: raw.slice(0, 240) }; }
+      var result = {
+        state: "health", ok: !!(r.ok && body && body.ok), httpStatus: r.status,
+        elapsedMs: Date.now() - started, body: body, cfRay: r.headers.get("cf-ray"),
+        serverBuild: r.headers.get("x-t82-share-build"), contentType: r.headers.get("content-type")
+      };
+      recapDebugEvent("share_health_result", result);
+      if (console && console.log) console.log("[tribune] share health", result);
+      return result;
+    }); })
+    .catch(function (err) {
+      var result = { state: "health", ok: false, elapsedMs: Date.now() - started, reason: "network", error: String(err && err.message || err) };
+      recapDebugEvent("share_health_error", result);
+      if (console && console.error) console.error("[tribune] share health failed", result);
+      return result;
+    });
+};
+if (console && console.log) console.log("[tribune] article-share diagnostics ready — t82ShareDebug() / t82ShareHealth()");
 
 /* ---------- optional feature loading ---------- */
 
@@ -2044,9 +2111,39 @@ function mintRecapSlug() {
   }
   return out.slice(0, 5);
 }
+function recapShareHost() {
+  try {
+    var host = String(location.hostname || "").toLowerCase();
+    if (host === "true82.net" || host === "www.true82.net") return "true82.net";
+    return String(location.origin || "https://true82.net").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  } catch (e) { return "true82.net"; }
+}
+function sharePublishMessage(detail) {
+  var reason = String(detail && detail.reason || "");
+  if (reason === "migration_0005_required") return "Article storage needs migration 0005.";
+  if (reason === "db_unavailable") return "The D1 DB binding is missing in this environment.";
+  if (reason === "signing_unavailable") return "RECAP_SIGN_KEY is missing in this environment.";
+  if (reason === "bad_signature") return "The article signature could not be verified.";
+  if (reason === "bad_payload" || reason === "bad_mode") return "The article payload was rejected.";
+  if (reason === "route_not_deployed" || Number(detail && detail.httpStatus) === 404) return "The five-character article route is not deployed here.";
+  if (reason === "network") return "The article publish request could not reach Cloudflare.";
+  if (reason === "db_error") return "D1 rejected the article write.";
+  if (reason) return "Article link failed: " + reason + ".";
+  return "Article link could not be prepared.";
+}
 function publishRecap() {
-  if (!G || !G.recapSig || !G.recapPayload) return Promise.resolve(false);
-  if (!G.recapHead || G.recapHead.source !== "api" || !G.recapArt || G.recapArt.source !== "api") return Promise.resolve(false);
+  if (!G || !G.recapSig || !G.recapPayload) {
+    var pre = { reason: "missing_signature_or_payload" };
+    if (G) G.recapPublishError = pre;
+    recapDebugEvent("share_publish_blocked", pre);
+    return Promise.resolve(false);
+  }
+  if (!G.recapHead || G.recapHead.source !== "api" || !G.recapArt || G.recapArt.source !== "api") {
+    var sourceFail = { reason: "local_fallback", headlineSource: G.recapHead && G.recapHead.source, articleSource: G.recapArt && G.recapArt.source };
+    G.recapPublishError = sourceFail;
+    recapDebugEvent("share_publish_blocked", sourceFail);
+    return Promise.resolve(false);
+  }
   if (G.recapPublished) return Promise.resolve(true);
   if (G.recapPublishPromise) return G.recapPublishPromise;
 
@@ -2063,54 +2160,71 @@ function publishRecap() {
   function setShareState(state) {
     if (token === G && G.npShareState) G.npShareState(state);
   }
+  function fail(detail) {
+    if (token !== G) return false;
+    G.recapPublishError = detail || { reason: "unknown" };
+    recapDebugEvent("share_publish_failed", G.recapPublishError);
+    setShareState("failed");
+    return false;
+  }
   function attempt(remaining) {
     if (token !== G) return Promise.resolve(false);
     if (!G.recapSlug) G.recapSlug = mintRecapSlug();
     var slug = G.recapSlug;
+    var route = "/" + slug;
+    var started = Date.now();
     setShareState("preparing");
-    recapDebugEvent("share_publish_start", { slug: slug, remaining: remaining });
-    return fetch("/" + slug, {
+    G.recapPublishError = null;
+    recapDebugEvent("share_publish_start", { slug: slug, route: route, origin: location.origin, remaining: remaining });
+    return fetch(route, {
       method: "POST",
       keepalive: true,
       credentials: "same-origin",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "accept": "application/json" },
       body: JSON.stringify(body)
     }).then(function (res) {
-      if (token !== G) return false;
-      if (res && res.status === 409 && remaining > 0) {
-        recapDebugEvent("share_publish_collision", { slug: slug, httpStatus: res.status });
-        G.recapSlug = mintRecapSlug();
-        return attempt(remaining - 1);
-      }
-      if (res && res.ok) {
-        G.recapPublished = 1;
-        recapDebugEvent("share_publish_ready", { slug: slug, httpStatus: res.status });
-        setShareState("ready");
-        return true;
-      }
-      recapDebugEvent("share_publish_failed", { slug: slug, httpStatus: res && res.status });
-      setShareState("failed");
-      return false;
+      return res.text().then(function (raw) {
+        if (token !== G) return false;
+        var parsed = null;
+        try { parsed = raw ? JSON.parse(raw) : null; } catch (e) {}
+        var detail = {
+          slug: slug, route: route, origin: location.origin, httpStatus: res.status,
+          elapsedMs: Date.now() - started, reason: parsed && parsed.reason || null,
+          response: parsed || (raw ? raw.slice(0, 240) : null),
+          serverBuild: res.headers.get("x-t82-share-build"), cfRay: res.headers.get("cf-ray"),
+          contentType: res.headers.get("content-type")
+        };
+        if (res.status === 409 && remaining > 0 && detail.reason === "id_collision") {
+          recapDebugEvent("share_publish_collision", detail);
+          G.recapSlug = mintRecapSlug();
+          return attempt(remaining - 1);
+        }
+        if (res.ok && parsed && parsed.ok) {
+          G.recapPublished = 1;
+          G.recapPublishError = null;
+          recapDebugEvent("share_publish_ready", detail);
+          setShareState("ready");
+          return true;
+        }
+        if (res.status === 404 && !detail.reason) detail.reason = "route_not_deployed";
+        if (!detail.reason && (!parsed || typeof parsed !== "object")) detail.reason = "non_json_response";
+        return fail(detail);
+      });
     }).catch(function (err) {
-      if (token !== G) return false;
-      recapDebugEvent("share_publish_failed", { slug: slug, reason: "network", message: String(err && err.message || err) });
-      setShareState("failed");
-      return false;
+      return fail({ slug: slug, route: route, origin: location.origin, elapsedMs: Date.now() - started, reason: "network", message: String(err && err.message || err) });
     });
   }
   try {
     G.recapPublishPromise = attempt(5).then(function (ok) {
       if (token === G) G.recapPublishPromise = null;
       return ok;
-    }, function () {
+    }, function (err) {
       if (token === G) G.recapPublishPromise = null;
-      setShareState("failed");
-      return false;
+      return fail({ reason: "promise_rejection", message: String(err && err.message || err) });
     });
   } catch (e) {
-    recapDebugEvent("share_publish_failed", { reason: "setup", message: String(e && e.message || e) });
-    setShareState("failed");
-    return Promise.resolve(false);
+    if (token === G) G.recapPublishPromise = null;
+    return Promise.resolve(fail({ reason: "setup", message: String(e && e.message || e) }));
   }
   return G.recapPublishPromise;
 }
@@ -2139,7 +2253,7 @@ function shareText(e) {
     return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
   var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";
-  var tail = (G.recapPublished && G.recapSlug) ? "\uD83D\uDCF0 true82.net/" + G.recapSlug : "true82.net";
+  var tail = (G.recapPublished && G.recapSlug) ? "\uD83D\uDCF0 " + recapShareHost() + "/" + G.recapSlug : "true82.net";
   return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\n" + tail;
 }
 
@@ -2543,7 +2657,8 @@ function showNewspaper(gate) {
 
   var acts = div("np-actions");
   var read = document.createElement("button"); read.type = "button"; read.className = "presti-spin np-read np-share-article"; read.textContent = "PREPARING LINK…"; read.disabled = true; read.setAttribute("data-share-label", "SHARE ARTICLE");
-  acts.appendChild(read);
+  var shareNote = div("np-share-note", "Preparing a permanent article link…");
+  acts.appendChild(read); acts.appendChild(shareNote);
   paper.appendChild(acts);
 
   var under = div("np-under");
@@ -2781,8 +2896,12 @@ function showNewspaper(gate) {
 
   read.addEventListener("click", function () {
     if (!G.recapPublished) {
-      flashShareBtn("PREPARING LINK…", read);
-      publishRecap().then(function (ok) { if (ok) flashShareBtn("LINK READY — TAP AGAIN", read); });
+      G.recapPublishPromise = null;                 // an explicit retry always starts a fresh request
+      G.npShareState("preparing");
+      publishRecap().then(function (ok) {
+        if (ok) flashShareBtn("LINK READY — TAP AGAIN", read);
+        else if (console && console.warn) console.warn("[tribune] article link retry failed", window.t82ShareDebug());
+      });
       return;
     }
     trackRecapAction("share_article");
@@ -2800,10 +2919,20 @@ function showNewspaper(gate) {
     if (!ov.parentNode) return;
     read.classList.toggle("np-share-ready", state === "ready");
     read.classList.toggle("np-share-failed", state === "failed" || state === "unavailable");
-    if (state === "ready") { read.disabled = false; read.textContent = "SHARE ARTICLE"; }
-    else if (state === "failed") { read.disabled = false; read.textContent = "RETRY ARTICLE LINK"; }
-    else if (state === "unavailable") { read.disabled = true; read.textContent = "ARTICLE LINK UNAVAILABLE"; }
-    else { read.disabled = true; read.textContent = "PREPARING LINK…"; }
+    if (state === "ready") {
+      read.disabled = false; read.textContent = "SHARE ARTICLE"; read.title = "";
+      shareNote.textContent = "Permanent link ready: " + recapShareHost() + "/" + G.recapSlug;
+    } else if (state === "failed") {
+      read.disabled = false; read.textContent = "RETRY ARTICLE LINK";
+      shareNote.textContent = sharePublishMessage(G.recapPublishError);
+      read.title = shareNote.textContent + " Run t82ShareDebug() for details.";
+    } else if (state === "unavailable") {
+      read.disabled = true; read.textContent = "ARTICLE LINK UNAVAILABLE";
+      shareNote.textContent = "Only signed AI editions can be published.";
+    } else {
+      read.disabled = true; read.textContent = "PREPARING LINK…"; read.title = "";
+      shareNote.textContent = "Preparing a permanent article link…";
+    }
   };
 
   // Fill-in renderers live on G so the edition request can finish without holding
