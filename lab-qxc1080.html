@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Tribune Prompt Lab · Hosted</title>
+<style>
+  :root{
+    --bg:#131417; --panel:#191b1f; --field:#101114; --line:#33363d;
+    --ink:#e8e6e1; --dim:#9aa0a8; --amber:#f2a33c; --amber-ink:#161006;
+    --good:#2e7d4f; --bad:#a04040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0 auto;max-width:1100px;padding:16px 16px 80px;background:var(--bg);color:var(--ink);
+       font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  h1{font-size:16px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin:0}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  header .spacer{flex:1}
+  #totals{color:var(--dim);font-size:12px}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0}
+  .sechead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .sechead b{letter-spacing:.08em;text-transform:uppercase;font-size:12px;color:var(--dim)}
+  label{font-size:12px;color:var(--dim);display:inline-flex;align-items:center;gap:6px}
+  input[type=text],input[type=password],input[type=number],select,textarea{
+    background:#101114;border:1px solid var(--line);color:var(--ink);border-radius:5px;
+    padding:6px 8px;font:inherit}
+  input[type=number]{width:86px}
+  textarea{width:100%;resize:vertical}
+  input:focus,select:focus,textarea:focus,button:focus{outline:2px solid var(--amber);outline-offset:1px}
+  button{background:#22252b;border:1px solid var(--line);color:var(--ink);border-radius:5px;
+    padding:6px 12px;font:inherit;cursor:pointer}
+  button:hover{border-color:var(--amber)}
+  button.primary{background:var(--amber);border-color:var(--amber);color:var(--amber-ink);font-weight:700}
+  button.mini{padding:2px 8px;font-size:12px}
+  .grid{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .prow{display:grid;grid-template-columns:64px 84px 1fr 90px;gap:6px;margin:4px 0}
+  .srow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px}
+  .srow label{flex-direction:column;align-items:flex-start;gap:3px}
+  .srow input,.srow select{width:100%}
+  .promptbox{margin-top:10px}
+  .promptbox .lbl{font-size:12px;color:var(--dim);margin-bottom:4px;display:flex;justify-content:space-between}
+  .vars{font-size:11px;color:var(--dim)}
+  .vars code{color:var(--amber)}
+  #results .group{margin:14px 0;border-top:1px dashed var(--line);padding-top:10px}
+  .ghead{font-size:12px;color:var(--dim);margin-bottom:6px}
+  .pair{display:flex;gap:10px;flex-wrap:wrap}
+  .pair .col{flex:1;min-width:320px}
+  .colhead{font-size:12px;color:var(--amber);margin:4px 0}
+  .card{border:1px solid var(--line);border-radius:6px;background:#15171b;padding:10px;margin:8px 0}
+  .card .meta{font-size:11.5px;color:var(--dim);margin-bottom:6px;word-break:break-word}
+  .card pre{white-space:pre-wrap;word-break:break-word;background:#101114;border-radius:5px;
+    padding:8px;margin:6px 0;font-size:13px}
+  .card .parsed{background:#101114;border-radius:5px;padding:8px;margin:6px 0}
+  .card .parsed .k{color:var(--amber);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  .card .parsed p{margin:2px 0 8px}
+  .card details{margin:6px 0}
+  .card summary{cursor:pointer;color:var(--dim);font-size:12px}
+  .cfoot{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  .cfoot input[type=text]{flex:1;min-width:140px}
+  button.rate.on-good{background:var(--good);border-color:var(--good)}
+  button.rate.on-bad{background:var(--bad);border-color:var(--bad)}
+  .err{color:#ff9a8a}
+  .pending{color:var(--amber)}
+  footer{margin-top:18px;font-size:11.5px;color:var(--dim);line-height:1.6}
+  #preview{display:none;background:#101114;border:1px solid var(--line);border-radius:5px;
+    padding:8px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;margin-top:8px}
+  .hint{font-size:11px;color:var(--dim)}
+  @media (max-width:640px){
+    body{padding:10px 10px 60px}
+    input[type=text],input[type=password],input[type=number],select,textarea{font-size:16px}
+    button{padding:10px 14px}
+    button.mini{padding:6px 10px}
+    .prow{grid-template-columns:56px 74px 1fr 78px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Tribune Prompt Lab · Hosted</h1>
+  <span id="totals">0 runs</span>
+  <span class="spacer"></span>
+  <button id="btnExport" class="mini">Export session JSON</button>
+  <button id="btnClear" class="mini">Clear runs</button>
+</header>
+
+<section id="cfg">
+  <div class="sechead"><b>API + model</b></div>
+  <div class="grid">
+    <label>Lab secret <input id="labSecret" type="password" size="20" placeholder="x-lab value" autocomplete="off"></label>
+    <label>Model <input id="model" type="text" list="models" size="26" value="claude-sonnet-4-6"></label>
+    <datalist id="models">
+      <option value="claude-sonnet-4-6"></option>
+      <option value="claude-haiku-4-5-20251001"></option>
+      <option value="claude-opus-4-8"></option>
+    </datalist>
+    <label>max_tokens <input id="maxTokens" type="number" min="256" step="256" value="2048"></label>
+    <label><input id="thinkOn" type="checkbox"> thinking</label>
+    <label>budget <input id="thinkBudget" type="number" min="1024" step="256" value="2048"></label>
+    <label><input id="tempOn" type="checkbox"> explicit temp</label>
+    <label><input id="tempVal" type="number" min="0" max="1" step="0.05" value="1" disabled></label>
+  </div>
+  <div class="hint" id="tempHint">Requests go to /lab-proxy on this site; the Anthropic key lives in the Worker secret, never in this page. Thinking on = temperature locked to model default (API rule).</div>
+</section>
+
+<section id="scenario">
+  <div class="sechead">
+    <b>Scenario</b>
+    <button id="btnRand" class="mini primary">Randomize</button>
+    <span class="hint">presets:</span>
+    <button class="mini preset" data-p="memeMax">Meme density max</button>
+    <button class="mini preset" data-p="confab">Confabulation trap</button>
+    <button class="mini preset" data-p="oneStar">One star, four guys</button>
+    <button class="mini preset" data-p="eraWhiplash">Era whiplash</button>
+  </div>
+  <div id="playerRows"></div>
+  <div class="srow">
+    <label>Record <input id="record" type="text" value="82-0"></label>
+    <label>Net rating <input id="net" type="text" value="+30.0"></label>
+    <label>Mode <input id="gmode" type="text" value="Classic"></label>
+    <label>Hot Hand <input id="hot" type="text" value="None"></label>
+    <label id="nickWrap" style="display:none">Fixed nickname (article mode) <input id="nickname" type="text" placeholder="e.g. Vogue Dunkers"></label>
+  </div>
+  <div class="srow"><label>Composition notes <textarea id="notes" rows="2" placeholder="e.g. guard-heavy, thin rim protection"></textarea></label></div>
+</section>
+
+<section id="prompts">
+  <div class="sechead">
+    <b>Prompts</b>
+    <label>Mode
+      <select id="mode">
+        <option value="full">Full edition (headline + article)</option>
+        <option value="headline">Headline / nickname only</option>
+        <option value="article">Article only (fixed nickname)</option>
+      </select>
+    </label>
+    <label>Gens per run <input id="gens" type="number" min="1" max="5" value="2"></label>
+    <button id="btnPreview" class="mini">Preview compiled</button>
+    <button id="btnDefaults" class="mini">Restore default prompts</button>
+  </div>
+  <div class="vars">Template vars: <code>{{players}}</code> <code>{{record}}</code> <code>{{net_rating}}</code> <code>{{mode}}</code> <code>{{hot_hand}}</code> <code>{{notes}}</code> <code>{{nickname}}</code></div>
+
+  <div class="promptbox">
+    <div class="lbl"><span>System prompt (optional, shared by A and B)</span></div>
+    <textarea id="sys" rows="2" placeholder="Leave empty if production sends everything as the user message"></textarea>
+  </div>
+  <div class="promptbox">
+    <div class="lbl"><span id="lblA">Prompt A - production</span></div>
+    <textarea id="pA" rows="10"></textarea>
+  </div>
+  <div class="promptbox">
+    <div class="lbl"><span id="lblB">Prompt B - candidate</span></div>
+    <textarea id="pB" rows="10"></textarea>
+  </div>
+
+  <div class="grid" style="margin-top:10px">
+    <button id="runA" class="primary">Run A</button>
+    <button id="runB" class="primary">Run B</button>
+    <button id="runAB" class="primary">Run A + B (same scenario)</button>
+    <span class="hint">Cmd/Ctrl+Enter = Run A + B</span>
+  </div>
+  <pre id="preview"></pre>
+</section>
+
+<section>
+  <div class="sechead"><b>Results</b> <span class="hint">newest first; ratings and notes are saved and exported</span></div>
+  <div id="results"></div>
+</section>
+
+<footer>
+  Hosted variant: requests go to <b>/lab-proxy</b> on this site's origin; the Anthropic key stays in the Cloudflare secret. Open this page from its deployed URL only, never as a local file or in-app preview. If runs fail, open response forensics: 404 means the proxy route is missing from this deployment; 401 means the x-lab secret does not match.
+</footer>
+
+<script>
+'use strict';
+
+/* ======== CONFIG (edit if you want) ======== */
+const ENDPOINT = '/lab-proxy'; // same-origin Pages Function; the proxy holds the Anthropic key
+const LS_STATE = 't82lab_state_v1';
+const LS_SECRET = 't82lab_secret_v1';
+
+/* ======== PLAYER POOL (name, year, pos, value) ======== */
+const POOL = [
+// Guards
+{n:"Stephen Curry",y:2016,p:"G",v:11.6},{n:"Magic Johnson",y:1987,p:"G",v:12.1},
+{n:"Oscar Robertson",y:1964,p:"G",v:10.8},{n:"Jerry West",y:1966,p:"G",v:10.2},
+{n:"Allen Iverson",y:2001,p:"G",v:8.9},{n:"Kobe Bryant",y:2006,p:"G",v:10.9},
+{n:"Dwyane Wade",y:2009,p:"G",v:9.8},{n:"James Harden",y:2018,p:"G",v:9.6},
+{n:"Russell Westbrook",y:2017,p:"G",v:9.2},{n:"Chris Paul",y:2008,p:"G",v:9.4},
+{n:"Steve Nash",y:2005,p:"G",v:8.6},{n:"Jason Kidd",y:2003,p:"G",v:8.2},
+{n:"Gary Payton",y:1996,p:"G",v:8.0},{n:"John Stockton",y:1995,p:"G",v:7.9},
+{n:"Ray Allen",y:2001,p:"G",v:7.2},{n:"Reggie Miller",y:1995,p:"G",v:7.0},
+{n:"Tracy McGrady",y:2003,p:"G",v:9.3},{n:"Vince Carter",y:2001,p:"G",v:8.4},
+{n:"Damian Lillard",y:2020,p:"G",v:8.8},{n:"Kyrie Irving",y:2016,p:"G",v:8.1},
+{n:"Klay Thompson",y:2015,p:"G",v:6.8},{n:"Luka Doncic",y:2024,p:"G",v:11.2},
+{n:"Shai Gilgeous-Alexander",y:2025,p:"G",v:11.4},{n:"Anthony Edwards",y:2025,p:"G",v:8.9},
+{n:"Devin Booker",y:2021,p:"G",v:7.8},{n:"Ja Morant",y:2022,p:"G",v:7.6},
+{n:"Chauncey Billups",y:2006,p:"G",v:7.0},{n:"Damon Stoudamire",y:1997,p:"G",v:2.9},
+{n:"Rajon Rondo",y:2012,p:"G",v:5.6},{n:"Kyle Lowry",y:2019,p:"G",v:5.4},
+{n:"JR Smith",y:2016,p:"G",v:3.0},{n:"Nick Young",y:2016,p:"G",v:2.2},
+{n:"Lance Stephenson",y:2014,p:"G",v:3.1},{n:"Alex Caruso",y:2023,p:"G",v:2.6},
+{n:"Patrick Beverley",y:2020,p:"G",v:2.0},{n:"Bruce Brown",y:2023,p:"G",v:2.2},
+{n:"Derrick White",y:2024,p:"G",v:4.5},{n:"Tony Allen",y:2015,p:"G",v:2.8},
+{n:"Jamal Crawford",y:2010,p:"G",v:3.6},{n:"Lou Williams",y:2019,p:"G",v:3.8},
+{n:"Pete Maravich",y:1972,p:"G",v:8.3},
+// Forwards
+{n:"Michael Jordan",y:1988,p:"F",v:13.0},{n:"LeBron James",y:2013,p:"F",v:11.7},
+{n:"Larry Bird",y:1986,p:"F",v:12.0},{n:"Kevin Durant",y:2014,p:"F",v:11.0},
+{n:"Giannis Antetokounmpo",y:2021,p:"F",v:11.3},{n:"Kawhi Leonard",y:2019,p:"F",v:10.6},
+{n:"Tim Duncan",y:2003,p:"F",v:11.1},{n:"Kevin Garnett",y:2004,p:"F",v:10.7},
+{n:"Dirk Nowitzki",y:2011,p:"F",v:9.9},{n:"Charles Barkley",y:1993,p:"F",v:10.1},
+{n:"Karl Malone",y:1997,p:"F",v:9.7},{n:"Scottie Pippen",y:1994,p:"F",v:8.7},
+{n:"Julius Erving",y:1976,p:"F",v:10.4},{n:"Jayson Tatum",y:2024,p:"F",v:9.4},
+{n:"Jimmy Butler",y:2020,p:"F",v:8.3},{n:"Carmelo Anthony",y:2013,p:"F",v:7.7},
+{n:"Paul George",y:2019,p:"F",v:8.6},{n:"Zion Williamson",y:2021,p:"F",v:7.4},
+{n:"Dennis Rodman",y:1996,p:"F",v:5.5},{n:"Draymond Green",y:2016,p:"F",v:5.9},
+{n:"Shawn Marion",y:2006,p:"F",v:6.5},{n:"Andre Iguodala",y:2015,p:"F",v:4.6},
+{n:"Shane Battier",y:2012,p:"F",v:2.4},{n:"PJ Tucker",y:2021,p:"F",v:1.8},
+{n:"Boris Diaw",y:2014,p:"F",v:2.5},{n:"Trevor Ariza",y:2018,p:"F",v:2.9},
+{n:"Josh Smith",y:2013,p:"F",v:4.4},{n:"Metta World Peace",y:2010,p:"F",v:3.4},
+{n:"Andrei Kirilenko",y:2004,p:"F",v:5.7},{n:"DeMar DeRozan",y:2021,p:"F",v:6.2},
+// Centers
+{n:"Wilt Chamberlain",y:1962,p:"C",v:12.6},{n:"Bill Russell",y:1962,p:"C",v:11.9},
+{n:"Kareem Abdul-Jabbar",y:1977,p:"C",v:12.4},{n:"Hakeem Olajuwon",y:1994,p:"C",v:11.5},
+{n:"Shaquille O'Neal",y:2000,p:"C",v:12.2},{n:"David Robinson",y:1994,p:"C",v:10.9},
+{n:"Patrick Ewing",y:1990,p:"C",v:9.5},{n:"Moses Malone",y:1983,p:"C",v:10.6},
+{n:"Alonzo Mourning",y:1999,p:"C",v:8.5},{n:"Dwight Howard",y:2011,p:"C",v:9.1},
+{n:"Nikola Jokic",y:2024,p:"C",v:12.0},{n:"Joel Embiid",y:2023,p:"C",v:10.8},
+{n:"Victor Wembanyama",y:2025,p:"C",v:9.7},{n:"Pau Gasol",y:2010,p:"C",v:8.4},
+{n:"Marc Gasol",y:2013,p:"C",v:7.1},{n:"DeMarcus Cousins",y:2016,p:"C",v:7.9},
+{n:"Karl-Anthony Towns",y:2022,p:"C",v:7.5},{n:"Bam Adebayo",y:2022,p:"C",v:6.9},
+{n:"Domantas Sabonis",y:2024,p:"C",v:7.2},{n:"Ben Wallace",y:2004,p:"C",v:5.8},
+{n:"Joakim Noah",y:2014,p:"C",v:6.0},{n:"Brook Lopez",y:2021,p:"C",v:4.2},
+{n:"Al Horford",y:2022,p:"C",v:3.9},{n:"Marcus Camby",y:2007,p:"C",v:4.8},
+{n:"Robert Williams",y:2022,p:"C",v:3.0},{n:"Clint Capela",y:2021,p:"C",v:3.8},
+{n:"JaVale McGee",y:2017,p:"C",v:2.3},{n:"Boban Marjanovic",y:2019,p:"C",v:1.5},
+{n:"Zaza Pachulia",y:2017,p:"C",v:1.9},{n:"Robin Lopez",y:2016,p:"C",v:2.6},
+{n:"Kristaps Porzingis",y:2023,p:"C",v:4.3}
+];
+
+/* Diagnostic presets: each targets a known small-model failure mode */
+const PRESETS = {
+  memeMax:     {rec:"82-0", players:[["JR Smith","G"],["Lance Stephenson","G"],["Dennis Rodman","F"],["Draymond Green","F"],["Shaquille O'Neal","C"]]},
+  confab:      {rec:"68-14", players:[["Derrick White","G"],["Tony Allen","G"],["Shane Battier","F"],["Boris Diaw","F"],["Robert Williams","C"]]},
+  oneStar:     {rec:"81-1", players:[["Patrick Beverley","G"],["Bruce Brown","G"],["LeBron James","F"],["PJ Tucker","F"],["Robin Lopez","C"]]},
+  eraWhiplash: {rec:"82-0", players:[["Pete Maravich","G"],["Stephen Curry","G"],["Julius Erving","F"],["Giannis Antetokounmpo","F"],["Wilt Chamberlain","C"]]}
+};
+
+const RECORDS = [["82-0",38],["81-1",16],["80-2",14],["78-4",10],["75-7",6],["70-12",5],["59-23",4],["41-41",4],["23-59",3]];
+const NOTE_POOL = ["","","guard-heavy, thin rim protection","two ball-dominant stars, spacing questions",
+  "elite defense, half-court scoring crunch risk","budget backcourt carried by the frontcourt","no true point guard"];
+
+/* ======== DEFAULT PROMPTS ======== */
+const CTX = ['','','LINEUP','{{players}}',
+'FINAL RECORD: {{record}}    PROJECTED NET RATING: {{net_rating}}',
+'MODE: {{mode}}    HOT HAND: {{hot_hand}}',
+'COMPOSITION NOTES: {{notes}}'].join('\n');
+
+const NICK_V1 = 'Free-associate a vivid nickname of 2-3 words from the most recognizable public personas and off-court lives of these exact five players. An optional leading "The" does not count toward the three-word maximum. Before naming the team, silently give every player one loud, concrete association a fan might immediately know: interview energy, humor, fashion, music, acting, media presence, business empire, hobbies, family-man image, nightlife, gambling, feuds, memes, strange rituals, politics, philosophy, collecting, food, or any other genuinely distinctive public trait. Do not flatten famous personalities into generic intelligence, quietness, reading, overthinking, leadership, greatness, or "legend" language.';
+
+const NICK_ROAST = 'Roast this 5-man lineup with a 2-3 word team nickname (a leading "The" does not count). Banned words: legend, elite, cerebral, assassin. For each player, first write the one thing fans actually clown him for: the meme, the flop, the podcast, the burner account, the ring-chasing, the bricked free throws, the load management, the petty feud, the pregame fits, the ejections. Then build the nickname from the funniest overlap, like the top comment on r/nba.';
+
+function defaultPrompts(){
+  return {
+    headline: {
+      a: '[PLACEHOLDER - paste your real production nickname prompt over this block]\n\n' + NICK_V1 + '\n\nRespond with the team name only.' + CTX,
+      b: NICK_ROAST + '\n\nOutput the five per-player lines first, then the nickname alone on a final line beginning "FINAL:".' + CTX
+    },
+    full: {
+      a: '[PLACEHOLDER - paste your real production full-edition prompt over this block]\n\nYou are the True 82 Tribune sports desk writing the front page after this team\'s season. Return ONLY a JSON object with keys "nickname", "headline", "article". No markdown fences.\n\nNickname: ' + NICK_V1 + '\n\nHeadline: short and loud, vintage sports-final register, may include the record.\n\nArticle: 120-180 words, breathless newspaper voice, one concrete public-persona reference per player, weave in the record and one Hot Hand or roster-composition detail. Do not invent statistics. No em-dashes.' + CTX,
+      b: 'You are the True 82 Tribune sports desk. Return ONLY a JSON object with keys "nickname", "headline", "article". No markdown fences.\n\nNickname: ' + NICK_ROAST + '\n\nHeadline: tabloid back-page energy, punchy, can tease the roast.\n\nArticle: 120-180 words, written like the top r/nba comment grew into a game recap: affection through mockery, one specific clownable thing per player, the record treated as either inevitable or hilarious. Do not invent statistics. No em-dashes.' + CTX
+    },
+    article: {
+      a: '[PLACEHOLDER - paste your real production article prompt over this block]\n\nWrite the True 82 Tribune front-page article (120-180 words) for the team nicknamed "{{nickname}}". Breathless vintage newspaper voice, one concrete public-persona reference per player, weave in the record and one Hot Hand or roster-composition detail. Do not invent statistics. No em-dashes. Return the article text only.' + CTX,
+      b: 'Write the True 82 Tribune front-page article (120-180 words) for the team nicknamed "{{nickname}}", in the register of a top r/nba comment that grew into a game recap: affection through mockery, one specific clownable thing per player, the record treated as either inevitable or hilarious. Do not invent statistics. No em-dashes. Return the article text only.' + CTX
+    }
+  };
+}
+
+/* ======== STATE ======== */
+const $ = id => document.getElementById(id);
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+  : 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+let state = { mode:'full', prompts:defaultPrompts(), runs:[], totals:{inTok:0,outTok:0} };
+let currentMode = 'full';
+
+function save(){
+  try{
+    const snap = {
+      mode: currentMode,
+      prompts: collectPrompts(),
+      system: $('sys').value,
+      gens: $('gens').value,
+      config: readCfgRaw(),
+      scenario: readScenario(),
+      runs: state.runs,
+      totals: state.totals
+    };
+    localStorage.setItem(LS_STATE, JSON.stringify(snap));
+  }catch(e){ /* private mode etc: session just will not persist */ }
+}
+
+function load(){
+  let snap = null;
+  try{ snap = JSON.parse(localStorage.getItem(LS_STATE) || 'null'); }catch(e){}
+  try{ const k = localStorage.getItem(LS_SECRET); if(k) $('labSecret').value = k; }catch(e){}
+  if(!snap){ randomize(); return; }
+  state.prompts = snap.prompts || defaultPrompts();
+  state.runs = snap.runs || [];
+  state.totals = snap.totals || {inTok:0,outTok:0};
+  currentMode = snap.mode || 'full';
+  $('mode').value = currentMode;
+  $('sys').value = snap.system || '';
+  $('gens').value = snap.gens || 2;
+  if(snap.config) writeCfg(snap.config);
+  if(snap.scenario) writeScenario(snap.scenario); else randomize();
+  loadPromptsIntoUI();
+  renderAll();
+  updateTotals();
+}
+
+/* ======== CONFIG ======== */
+function readCfgRaw(){
+  return { model:$('model').value.trim(), maxTokens:parseInt($('maxTokens').value,10)||2048,
+    thinking:$('thinkOn').checked, budget:parseInt($('thinkBudget').value,10)||2048,
+    tempOn:$('tempOn').checked, temp:parseFloat($('tempVal').value) };
+}
+function writeCfg(c){
+  $('model').value = c.model || 'claude-sonnet-4-6';
+  $('maxTokens').value = c.maxTokens || 2048;
+  $('thinkOn').checked = !!c.thinking;
+  $('thinkBudget').value = c.budget || 2048;
+  $('tempOn').checked = !!c.tempOn;
+  if(typeof c.temp === 'number' && !isNaN(c.temp)) $('tempVal').value = c.temp;
+  syncTempState();
+}
+function syncTempState(){
+  const thinking = $('thinkOn').checked;
+  $('tempOn').disabled = thinking;
+  $('tempVal').disabled = thinking || !$('tempOn').checked;
+  $('thinkBudget').disabled = !thinking;
+  if(thinking) $('tempOn').checked = false;
+}
+
+/* ======== SCENARIO ======== */
+const SLOT_POS = ['G','G','F','F','C'];
+function buildPlayerRows(){
+  const host = $('playerRows'); host.innerHTML = '';
+  for(let i=0;i<5;i++){
+    const row = document.createElement('div'); row.className='prow';
+    row.innerHTML =
+      '<select class="pp"><option>G</option><option>F</option><option>C</option></select>' +
+      '<input class="py" type="number" min="1947" max="2026" value="2020">' +
+      '<input class="pn" type="text" placeholder="Player name">' +
+      '<input class="pv" type="number" step="0.1" min="0" value="5.0">';
+    host.appendChild(row);
+    row.querySelector('.pp').value = SLOT_POS[i];
+  }
+}
+function readScenario(){
+  const players = Array.from(document.querySelectorAll('.prow')).map(r=>({
+    pos: r.querySelector('.pp').value,
+    year: parseInt(r.querySelector('.py').value,10)||2020,
+    name: r.querySelector('.pn').value.trim(),
+    val: parseFloat(r.querySelector('.pv').value)||0
+  }));
+  return { players, record:$('record').value.trim(), net:$('net').value.trim(),
+    gmode:$('gmode').value.trim(), hot:$('hot').value.trim(),
+    notes:$('notes').value.trim(), nickname:$('nickname').value.trim() };
+}
+function writeScenario(s){
+  const rows = document.querySelectorAll('.prow');
+  (s.players||[]).forEach((p,i)=>{
+    if(!rows[i]) return;
+    rows[i].querySelector('.pp').value = p.pos;
+    rows[i].querySelector('.py').value = p.year;
+    rows[i].querySelector('.pn').value = p.name;
+    rows[i].querySelector('.pv').value = p.val;
+  });
+  $('record').value = s.record || '82-0';
+  $('net').value = s.net || '+30.0';
+  $('gmode').value = s.gmode || 'Classic';
+  $('hot').value = s.hot || 'None';
+  $('notes').value = s.notes || '';
+  $('nickname').value = s.nickname || '';
+}
+function weightedPick(arr, wfn){
+  const ws = arr.map(wfn); const tot = ws.reduce((a,b)=>a+b,0);
+  let r = Math.random()*tot;
+  for(let i=0;i<arr.length;i++){ r -= ws[i]; if(r<=0) return arr[i]; }
+  return arr[arr.length-1];
+}
+function deriveNet(sum){
+  const n = sum - 4.8 + (Math.random()*2.4 - 1.2);
+  return (n>=0?'+':'') + n.toFixed(1);
+}
+function randomize(){
+  const taken = new Set(); const picks = [];
+  for(const pos of SLOT_POS){
+    const cands = POOL.filter(p=>p.p===pos && !taken.has(p.n));
+    const pick = weightedPick(cands, p=>Math.pow(p.v,1.6));
+    taken.add(pick.n); picks.push(pick);
+  }
+  const rec = weightedPick(RECORDS, r=>r[1])[0];
+  const sum = picks.reduce((a,p)=>a+p.v,0);
+  const hot = Math.random()<0.5 ? 'None'
+    : picks[Math.floor(Math.random()*5)].n.split(' ').pop() + ' · ' + (3+Math.floor(Math.random()*7)) + '-game heater';
+  writeScenario({
+    players: picks.map(p=>({pos:p.p, year:p.y, name:p.n, val:p.v})),
+    record: rec, net: deriveNet(sum), gmode: 'Classic', hot,
+    notes: NOTE_POOL[Math.floor(Math.random()*NOTE_POOL.length)],
+    nickname: $('nickname').value
+  });
+  save();
+}
+function applyPreset(key){
+  const pr = PRESETS[key]; if(!pr) return;
+  const picks = pr.players.map(([name,pos])=>{
+    const p = POOL.find(x=>x.n===name) || {n:name,y:2020,p:pos,v:5};
+    return {pos, year:p.y, name:p.n, val:p.v};
+  });
+  const sum = picks.reduce((a,p)=>a+p.val,0);
+  writeScenario({ players:picks, record:pr.rec, net:deriveNet(sum),
+    gmode:'Classic', hot:'None', notes:'', nickname:$('nickname').value });
+  save();
+}
+
+/* ======== PROMPTS ======== */
+function collectPrompts(){
+  const p = JSON.parse(JSON.stringify(state.prompts));
+  p[currentMode] = { a: $('pA').value, b: $('pB').value };
+  return p;
+}
+function loadPromptsIntoUI(){
+  const m = state.prompts[currentMode] || {a:'',b:''};
+  $('pA').value = m.a; $('pB').value = m.b;
+  const label = {full:'full edition', headline:'headline only', article:'article only'}[currentMode];
+  $('lblA').textContent = 'Prompt A - production (' + label + ')';
+  $('lblB').textContent = 'Prompt B - candidate (' + label + ')';
+  $('nickWrap').style.display = currentMode==='article' ? '' : 'none';
+}
+function switchMode(newMode){
+  state.prompts = collectPrompts();
+  currentMode = newMode;
+  loadPromptsIntoUI();
+  save();
+}
+function compile(tpl, scen){
+  const s = scen || readScenario();
+  const players = s.players.map(p=>p.pos+' · '+p.year+' '+p.name+' ('+Number(p.val).toFixed(1)+' value)').join('\n');
+  return tpl
+    .replaceAll('{{players}}', players)
+    .replaceAll('{{record}}', s.record)
+    .replaceAll('{{net_rating}}', s.net)
+    .replaceAll('{{mode}}', s.gmode)
+    .replaceAll('{{hot_hand}}', s.hot)
+    .replaceAll('{{notes}}', s.notes || 'none')
+    .replaceAll('{{nickname}}', s.nickname || '');
+}
+
+/* ======== API ======== */
+async function callAPI(userMsg, cfg, sys){
+  const secret = $('labSecret').value.trim();
+  const body = { model: cfg.model, max_tokens: cfg.maxTokens,
+    messages: [{role:'user', content:userMsg}] };
+  if(sys) body.system = sys;
+  if(cfg.thinking) body.thinking = {type:'enabled', budget_tokens: cfg.budget};
+  else if(cfg.tempOn && !isNaN(cfg.temp)) body.temperature = Math.min(1, Math.max(0, cfg.temp));
+  const t0 = performance.now();
+  const res = await fetch(ENDPOINT, {
+    method:'POST',
+    headers: secret ? {'content-type':'application/json','x-lab':secret}
+                    : {'content-type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const ms = Math.round(performance.now()-t0);
+  const rawText = await res.text();
+  let j = {}; try{ j = JSON.parse(rawText); }catch(e){}
+  if(!res.ok){
+    const msg = (j.error && j.error.message) ? j.error.message : ('HTTP '+res.status);
+    const err = new Error(msg);
+    err.detail = 'HTTP '+res.status+' from '+ENDPOINT+'\n\n'+(rawText ? rawText.slice(0,800) : '(empty body)');
+    throw err;
+  }
+  if(!Array.isArray(j.content)){
+    const err = new Error('Got 200 OK but the body is not Messages API shape (no content array). The endpoint is probably not a transparent /v1/messages proxy.');
+    err.detail = 'HTTP '+res.status+' from '+ENDPOINT+'\n\n'+(rawText ? rawText.slice(0,800) : '(empty body)');
+    throw err;
+  }
+  const blocks = j.content || [];
+  return {
+    text: blocks.filter(b=>b.type==='text').map(b=>b.text).join('\n').trim(),
+    think: blocks.filter(b=>b.type==='thinking').map(b=>b.thinking||'').join('\n').trim(),
+    usage: { inTok:(j.usage&&j.usage.input_tokens)||0, outTok:(j.usage&&j.usage.output_tokens)||0 },
+    ms
+  };
+}
+
+/* ======== RUNS ======== */
+function effectiveCfg(){
+  const cfg = readCfgRaw();
+  if(cfg.thinking){
+    cfg.budget = Math.max(1024, cfg.budget);
+    $('thinkBudget').value = cfg.budget;
+    if(cfg.maxTokens <= cfg.budget){
+      cfg.maxTokens = cfg.budget + 1500;
+      $('maxTokens').value = cfg.maxTokens; // visible auto-bump so max_tokens > budget
+    }
+  }
+  return cfg;
+}
+function newGroup(ab){
+  const g = document.createElement('div'); g.className='group';
+  const scen = readScenario();
+  const head = document.createElement('div'); head.className='ghead';
+  head.textContent = new Date().toLocaleTimeString() + ' · ' + currentMode + ' · ' +
+    scen.record + ' · ' + scen.players.map(p=>p.name.split(' ').pop()).join(', ');
+  g.appendChild(head);
+  let colA=null, colB=null;
+  if(ab){
+    const pair = document.createElement('div'); pair.className='pair';
+    colA = document.createElement('div'); colA.className='col';
+    colA.innerHTML = '<div class="colhead">A · production</div>';
+    colB = document.createElement('div'); colB.className='col';
+    colB.innerHTML = '<div class="colhead">B · candidate</div>';
+    pair.appendChild(colA); pair.appendChild(colB); g.appendChild(pair);
+  }
+  $('results').prepend(g);
+  return {g, colA, colB};
+}
+function startRuns(slot, host){
+  const cfg = effectiveCfg();
+  const sys = $('sys').value.trim();
+  const scen = readScenario();
+  const tpl = slot==='a' ? $('pA').value : $('pB').value;
+  const compiled = compile(tpl, scen);
+  if(!compiled.trim()){ alert('Prompt '+slot.toUpperCase()+' is empty.'); return; }
+  const gens = Math.min(5, Math.max(1, parseInt($('gens').value,10)||1));
+  for(let i=0;i<gens;i++){
+    const run = { id: uid(), ts: new Date().toISOString(), slot, mode: currentMode,
+      scenario: scen, system: sys, compiled,
+      params: { model:cfg.model, maxTokens:cfg.maxTokens, thinking:cfg.thinking,
+        budget: cfg.thinking?cfg.budget:null,
+        temperature: cfg.thinking ? 'default(1)' : (cfg.tempOn?cfg.temp:'default') },
+      status:'pending', output:'', think:'', usage:{inTok:0,outTok:0}, ms:0, error:null, rating:null, note:'' };
+    state.runs.push(run);
+    const card = document.createElement('div'); card.className='card'; card.dataset.id = run.id;
+    host.appendChild(card);
+    renderCardInto(card, run);
+    setTimeout(()=>fire(run, card, cfg, sys), i*150);
+  }
+  save();
+}
+async function fire(run, card, cfg, sys){
+  try{
+    const r = await callAPI(run.compiled, cfg, sys);
+    run.status='done'; run.output=r.text; run.think=r.think; run.usage=r.usage; run.ms=r.ms;
+    state.totals.inTok += r.usage.inTok; state.totals.outTok += r.usage.outTok;
+  }catch(e){
+    run.status='error'; run.error = e.message || String(e); run.errorDetail = e.detail || null;
+  }
+  renderCardInto(card, run);
+  updateTotals();
+  save();
+}
+function runAB(){
+  const {colA, colB} = newGroup(true);
+  startRuns('a', colA);
+  startRuns('b', colB);
+}
+function runSingle(slot){
+  const {g} = newGroup(false);
+  startRuns(slot, g);
+}
+
+/* ======== RENDER ======== */
+function esc(t){ const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+function tryParseJSON(t){
+  let s = (t||'').trim();
+  s = s.replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');
+  const m = s.match(/\{[\s\S]*\}/); if(m) s = m[0];
+  try{ const o = JSON.parse(s); return (o && typeof o==='object' && !Array.isArray(o)) ? o : null; }
+  catch(e){ return null; }
+}
+function renderCardInto(card, run){
+  card.innerHTML = '';
+  const meta = document.createElement('div'); meta.className='meta';
+  const tk = run.params.thinking ? ('think '+run.params.budget) : 'no-think';
+  meta.textContent = run.slot.toUpperCase()+' · '+run.mode+' · '+run.params.model+' · temp '+run.params.temperature+
+    ' · '+tk+' · '+run.usage.inTok+' in / '+run.usage.outTok+' out tok · '+(run.ms/1000).toFixed(1)+'s';
+  card.appendChild(meta);
+
+  if(run.status==='pending'){
+    const p = document.createElement('div'); p.className='pending'; p.textContent='generating...';
+    card.appendChild(p); return;
+  }
+  if(run.status==='error'){
+    const p = document.createElement('div'); p.className='err'; p.textContent='Error: '+run.error;
+    card.appendChild(p);
+    if(run.errorDetail){
+      const det = document.createElement('details');
+      det.innerHTML = '<summary>response forensics</summary>';
+      const pre = document.createElement('pre'); pre.textContent = run.errorDetail;
+      det.appendChild(pre); card.appendChild(det);
+    }
+    return;
+  }
+
+  const parsed = tryParseJSON(run.output);
+  if(parsed){
+    const box = document.createElement('div'); box.className='parsed';
+    for(const [k,v] of Object.entries(parsed)){
+      box.innerHTML += '<div class="k">'+esc(k)+'</div><p>'+esc(typeof v==='string'?v:JSON.stringify(v))+'</p>';
+    }
+    card.appendChild(box);
+    const det = document.createElement('details');
+    det.innerHTML = '<summary>raw output</summary>';
+    const pre = document.createElement('pre'); pre.textContent = run.output;
+    det.appendChild(pre); card.appendChild(det);
+  } else {
+    const pre = document.createElement('pre'); pre.textContent = run.output || '(empty)';
+    card.appendChild(pre);
+  }
+
+  if(run.think){
+    const det = document.createElement('details');
+    det.innerHTML = '<summary>thinking ('+run.think.length+' chars)</summary>';
+    const pre = document.createElement('pre'); pre.textContent = run.think;
+    det.appendChild(pre); card.appendChild(det);
+  }
+
+  const foot = document.createElement('div'); foot.className='cfoot';
+  const bGood = document.createElement('button'); bGood.className='mini rate'+(run.rating==='good'?' on-good':''); bGood.textContent='Good';
+  const bBad  = document.createElement('button'); bBad.className='mini rate'+(run.rating==='bad'?' on-bad':''); bBad.textContent='Bad';
+  bGood.onclick = ()=>{ run.rating = run.rating==='good'?null:'good'; renderCardInto(card, run); save(); };
+  bBad.onclick  = ()=>{ run.rating = run.rating==='bad'?null:'bad'; renderCardInto(card, run); save(); };
+  const note = document.createElement('input'); note.type='text'; note.placeholder='note...'; note.value = run.note||'';
+  note.oninput = ()=>{ run.note = note.value; };
+  note.onchange = ()=>{ save(); };
+  const bCopy = document.createElement('button'); bCopy.className='mini'; bCopy.textContent='Copy';
+  bCopy.onclick = ()=>{ try{ navigator.clipboard.writeText(run.output); bCopy.textContent='Copied'; setTimeout(()=>bCopy.textContent='Copy',900);}catch(e){} };
+  foot.appendChild(bGood); foot.appendChild(bBad); foot.appendChild(note); foot.appendChild(bCopy);
+  card.appendChild(foot);
+}
+function renderAll(){
+  const host = $('results'); host.innerHTML = '';
+  // rebuild groups from saved runs (grouped by timestamp proximity is overkill; group per run order + slot pairs is lossy,
+  // so on reload we render each saved run as its own card, newest first, with its own header line)
+  const runs = state.runs.slice().reverse();
+  for(const run of runs){
+    const g = document.createElement('div'); g.className='group';
+    const head = document.createElement('div'); head.className='ghead';
+    const scen = run.scenario || {players:[],record:''};
+    head.textContent = new Date(run.ts).toLocaleString() + ' · ' + scen.record + ' · ' +
+      (scen.players||[]).map(p=>p.name.split(' ').pop()).join(', ');
+    g.appendChild(head);
+    const card = document.createElement('div'); card.className='card'; card.dataset.id = run.id;
+    g.appendChild(card);
+    renderCardInto(card, run);
+    host.appendChild(g);
+  }
+}
+function updateTotals(){
+  $('totals').textContent = state.runs.length + ' runs · ' +
+    state.totals.inTok + ' in / ' + state.totals.outTok + ' out tok';
+}
+
+/* ======== EXPORT / CLEAR ======== */
+function exportJSON(){
+  const data = { exported_at: new Date().toISOString(), tool: 'tribune-prompt-lab',
+    config: readCfgRaw(), mode: currentMode, system: $('sys').value,
+    prompts: collectPrompts(), scenario: readScenario(),
+    totals: state.totals, runs: state.runs };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tribune-lab-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function clearRuns(){
+  if(!confirm('Clear all runs and token totals? Prompts and scenario are kept.')) return;
+  state.runs = []; state.totals = {inTok:0,outTok:0};
+  $('results').innerHTML = ''; updateTotals(); save();
+}
+
+/* ======== WIRE-UP ======== */
+buildPlayerRows();
+
+$('btnRand').onclick = randomize;
+document.querySelectorAll('.preset').forEach(b=> b.onclick = ()=>applyPreset(b.dataset.p));
+$('mode').onchange = e => switchMode(e.target.value);
+$('thinkOn').onchange = ()=>{ syncTempState(); save(); };
+$('tempOn').onchange = ()=>{ syncTempState(); save(); };
+$('runA').onclick = ()=>runSingle('a');
+$('runB').onclick = ()=>runSingle('b');
+$('runAB').onclick = runAB;
+$('btnExport').onclick = exportJSON;
+$('btnClear').onclick = clearRuns;
+$('btnDefaults').onclick = ()=>{
+  if(!confirm('Overwrite all prompt textareas (all modes) with the built-in defaults?')) return;
+  state.prompts = defaultPrompts(); loadPromptsIntoUI(); save();
+};
+$('btnPreview').onclick = ()=>{
+  const pv = $('preview');
+  if(pv.style.display==='block'){ pv.style.display='none'; return; }
+  const sys = $('sys').value.trim();
+  pv.textContent = (sys ? 'SYSTEM:\n'+sys+'\n\n' : '') +
+    '--- USER (A, compiled) ---\n' + compile($('pA').value) +
+    '\n\n--- USER (B, compiled) ---\n' + compile($('pB').value);
+  pv.style.display = 'block';
+};
+$('labSecret').addEventListener('change', ()=>{ try{ localStorage.setItem(LS_SECRET, $('labSecret').value.trim()); }catch(e){} });
+document.addEventListener('keydown', e=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); runAB(); }
+});
+// autosave scenario + prompt edits
+['record','net','gmode','hot','notes','nickname','sys','pA','pB','model','maxTokens','thinkBudget','tempVal','gens'].forEach(id=>{
+  $(id).addEventListener('change', save);
+});
+$('playerRows').addEventListener('change', save);
+
+loadPromptsIntoUI();
+load();
+syncTempState();
+updateTotals();
+</script>
+</body>
+</html>
