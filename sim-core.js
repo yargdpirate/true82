@@ -1069,11 +1069,11 @@ function initDataCore(data) {
     return res;
   }
   var HH_SEGMENTS = [
-    { label: "COLD",      m: 1.0,  odds: 1,  lvl: 0 },
-    { label: "WARM",      m: 1.2,  odds: 9,  lvl: 1 },
-    { label: "HOT",       m: 1.35, odds: 30, lvl: 2 },
-    { label: "ON FIRE",   m: 1.5,  odds: 30, lvl: 3 },
-    { label: "SUPERNOVA", m: 2.0,  odds: 30, lvl: 4 }
+    { label: "COLD",      m: 1.0,  odds: 6,  lvl: 0 },
+    { label: "WARM",      m: 1.2,  odds: 14,  lvl: 1 },
+    { label: "HOT",       m: 1.35, odds: 42, lvl: 2 },
+    { label: "ON FIRE",   m: 1.5,  odds: 23, lvl: 3 },
+    { label: "SUPERNOVA", m: 2.0,  odds: 15, lvl: 4 }
   ];
   var HH_BONUS_SCALE = 0.67;
 
