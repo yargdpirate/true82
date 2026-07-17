@@ -333,3 +333,59 @@ The funnel keys off the `variant` column; zero server changes were needed.
   only the gate's separate caption element changed.
 - QA: 244 suite, 51 smoke (caption assertion retargeted to the new text).
   Cache key v10 on app.js.
+
+## V11 (2026-07-17) — compact draft chrome + the rules sheet + the copy rewrite
+
+Design goal, verbatim from the brief: it must be beyond dead simple to find
+the rules, and the rules must be written so a first-timer can play to the
+full extent immediately. Three moves, all modes, draft screens only:
+
+- COMPACT CHROME: while a draft is live, body.drafting now hides the big
+  masthead (one CSS rule; intro, gate, results, Tribune all still remove the
+  class, so the full site-head returns there). A 46px utility bar replaces
+  it: EXIT RUN (keeps the startOverBtn id, so wireStartOver and run_abandon
+  are untouched), the five pick diamonds with a live PICK N OF 5 counter
+  (renderPips paints both homes), and a small hoop mark. The amber Start
+  over slab, the daily/challenge strap, the cap money bar, the pro hint,
+  and every draft-screen (i) are retired from this screen.
+- THE MODE PANEL: one plq-slim frame under the bar. Left: identity (DAILY #N
+  with a "1 OFFICIAL ATTEMPT" / "PRACTICE RUN" pill, or CLASSIC MODE /
+  PRESTI MODE / PRO MODE / WEEKLY / CHALLENGE), then a mechanical status
+  line (base rules, the day's twist in one breath, live $N LEFT in Presti,
+  beat-target when arriving by link). Right: a gold HOW TO PLAY button
+  (book icon + "rules + official attempt" style sublabel) that rides the
+  existing presti-spin slab treatment. Kaman keeps its mystery: bar only.
+- THE RULES SHEET: HOW TO PLAY opens a proper overlay (z 110, Escape /
+  backdrop / GOT IT close, focus restore, body scroll lock, rules_open
+  analytics with the run snapshot). Contents in order: THE DAILY law (daily
+  runs), TODAY'S RULE / THE TWIST framed insert with the full brief, THE
+  GAME IN 20 SECONDS (four steps), base-mode rules bullets, WHAT WINS GAMES
+  (talent / shooting / one ball / defense / the math, with the engine's real
+  numbers: 110 usage budget, 3-spacer target, 2-3 net pair-defense taxes,
+  net 0 = 41-41, +27 runs the table, 96 Bulls +13), and a "today's rule
+  wins any conflict" note on modified boards. Fallback chain for challenge
+  briefs: DAILY_COPY[id].g, then the manifest blurb.
+- THE COPY REWRITE (daily-core): every DAILY_COPY entry (43 ids), all three
+  VANILLA_COPY entries, and all three MODE_TIPs rewritten under a stated
+  copy law: what changed, by how much, what to do about it, plain english,
+  verified against the actual cfg/filter/pick/deal hooks. Real numbers
+  throughout (luxury_tax now says "more than four times" because 0.4 vs
+  0.09375 IS 4.3x; deep_pockets admits $82 at 1.6x prices is normal buying
+  power; gem odds taught as "about 1 in 7, half the mid-tier are rip-offs"
+  straight from capMisprice). Era-locked boards still name their dead skips.
+  Zero em-dashes across every user-facing string (asserted).
+- Intro Draft/Winning paragraphs and the static index.html crawler block
+  refreshed to the same standard; both now point at HOW TO PLAY.
+- decorate3dButtons exclusion list gains .du-exit and .rs-close so the quiet
+  chrome stays quiet; the rules button deliberately takes the gold slab.
+- QA (local jsdom walk, 70 checks): chrome + panel per mode, live $ after a
+  paid skip, pips advance on a real confirmed pick, sheet contents per mode,
+  Escape/GOT IT/backdrop close + scroll-lock release, gate dunk to official
+  draft, practice pill flip, results restore the masthead, copy laws
+  (coverage + em-dash zero), challenge and kaman paths, run_abandon and
+  rules_open events. Cache key v11 on app.js and styles.css.
+- TEST-LANE HEADS-UP: the repo's smoke-daily walk asserts the old strap (i)
+  and capTip surfaces (V7/V8 checks). Those assertions need retargeting to
+  #rulesBtn / #rulesOverlay when this lands in the accounts-test lane; the
+  gate (i) checks still pass as-is. MODE_TIP's mirror comment now points at
+  RULES_MODE in app.js instead of the deleted #capTip.

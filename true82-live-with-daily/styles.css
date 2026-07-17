@@ -2288,3 +2288,124 @@ main.content-page {
 @media (prefers-reduced-motion: reduce) {
   .gate .hh-lever:not(.pulling) .hh-ball { animation: none; }
 }
+
+/* ============ COMPACT DRAFT CHROME + RULES SHEET (2026-07-17, v11) ============
+   While body.drafting: the masthead hides and .draft-utility takes over
+   (EXIT RUN | pick pips + PICK N OF 5 | hoop mark). Intro, gate, results, and
+   the Tribune all remove .drafting, so the full site-head returns there.
+   The mode panel replaces the strap / cap bar / pro hint; HOW TO PLAY opens
+   the rules sheet. #app prefixes are the house specificity armor. */
+body.drafting .site-head { display: none; }
+
+#app .draft-utility {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  gap: 8px; min-height: 46px; margin: 0 0 10px; padding: 0 0 8px;
+  border-bottom: 1px solid var(--tunnel-2);
+}
+#app .du-exit {
+  justify-self: start; display: inline-flex; align-items: center; gap: 3px;
+  -webkit-appearance: none; appearance: none;
+  font-family: var(--disp); font-style: italic; font-weight: 600; font-size: 15px;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--chalk);
+  background: none; border: 0; box-shadow: none; padding: 8px 8px 8px 0;
+}
+#app .du-exit:active { color: var(--amber); }
+.du-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.du-pips span { width: 11px; height: 11px; }
+.du-count { font-size: 8.5px; letter-spacing: 0.16em; color: var(--chalk-dim); white-space: nowrap; }
+.du-brandbox { justify-self: end; display: inline-flex; }
+.du-brand { width: 24px; height: 27px; opacity: 0.9; }
+
+/* ---------- the mode panel ---------- */
+#app .mode-panel {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 10px; padding: 10px 12px 11px;
+}
+.mp-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.mp-row1 { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; min-width: 0; }
+.mp-id {
+  font-family: var(--disp); font-weight: 700; font-size: 21px; line-height: 1;
+  letter-spacing: 0.06em; color: var(--chalk); white-space: nowrap;
+}
+.mp-name {
+  font-family: var(--disp); font-weight: 600; font-size: 15px; line-height: 1.1;
+  letter-spacing: 0.04em; color: var(--amber); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.mp-row2 {
+  font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--chalk-dim); line-height: 1.6; overflow-wrap: anywhere;
+}
+.mp-row2 .mp-cash { color: var(--amber); font-weight: 700; font-size: 13px; letter-spacing: 0.05em; }
+.mp-target { font-size: 9.5px; letter-spacing: 0.09em; color: var(--amber); }
+
+/* HOW TO PLAY: rides the presti-spin gold-slab treatment (decorate3dButtons
+   adds the class); this layers the book + two-line label layout on top. */
+#app .mp-rules-btn {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+  max-width: 47%; padding: 9px 12px 10px; border-radius: 10px; text-align: left;
+}
+#app .mp-rules-btn .mp-book { width: 25px; height: 21px; flex: none; }
+.mp-rules-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; line-height: 1; }
+.mp-rules-main { font-family: var(--disp); font-weight: 700; font-size: 17px; letter-spacing: 0.06em; white-space: nowrap; }
+.mp-rules-sub {
+  font-family: var(--mono); font-style: italic; font-size: 8px; letter-spacing: 0.01em;
+  opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 349px) {
+  #app .mode-panel { flex-wrap: wrap; }
+  #app .mp-rules-btn { max-width: none; flex: 1 1 100%; justify-content: center; text-align: center; }
+}
+
+/* ---------- the rules sheet ---------- */
+body.rules-open { overflow: hidden; }
+.rules-overlay {
+  position: fixed; inset: 0; z-index: 110;
+  display: flex; align-items: center; justify-content: center;
+  padding: 14px; background: rgba(6, 8, 11, 0.87);
+}
+.rules-sheet {
+  width: min(440px, 96vw); max-height: 88vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.rs-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 12px 14px 8px;
+}
+.rs-title { font-family: var(--disp); font-weight: 700; font-size: 27px; line-height: 1; letter-spacing: 0.05em; color: var(--amber); }
+.rules-overlay .rs-close {
+  -webkit-appearance: none; appearance: none;
+  width: 34px; height: 34px; flex: none; border-radius: 8px;
+  border: 1px solid var(--maple-line); background: var(--ink); color: var(--chalk);
+  font-size: 15px; line-height: 1; box-shadow: none;
+}
+.rules-overlay .rs-close:active { color: var(--amber); border-color: var(--maple); }
+.rs-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 0 14px 14px; }
+.rs-eyebrow {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--maple); margin: 16px 0 7px;
+}
+.rs-law { border-left: 3px solid var(--amber); background: var(--ink); padding: 10px 12px; margin: 2px 0 0; }
+.rs-law p { margin: 0 0 7px; font-size: 13.5px; line-height: 1.45; }
+.rs-law p:last-child { margin-bottom: 0; }
+#app .rs-today, .rules-overlay .rs-today { margin: 14px 0 0; padding: 10px 12px 12px; }
+.rs-today-label { margin: 0 0 6px; color: var(--amber); }
+.rs-today-name { margin: 0 0 5px; font-family: var(--disp); font-weight: 700; font-size: 19px; line-height: 1.05; letter-spacing: 0.03em; color: var(--chalk); }
+.rs-today-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--chalk); }
+.rs-target { margin: 8px 0 0; font-size: 10.5px; letter-spacing: 0.06em; color: var(--amber); }
+.rs-steps { margin: 0; padding: 0 0 0 20px; }
+.rs-steps li { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
+.rs-steps li::marker { color: var(--amber); font-family: var(--mono); font-weight: 600; }
+.rs-list { margin: 0; padding: 0 0 0 18px; list-style: square; }
+.rs-list li { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
+.rs-list li::marker { color: var(--maple); }
+.rs-engine li strong { color: var(--amber); font-weight: 600; letter-spacing: 0.03em; }
+.rs-note { margin: 10px 0 0; font-family: var(--mono); font-style: italic; font-size: 10.5px; color: var(--chalk-dim); }
+.rs-foot {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px calc(11px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--tunnel-2);
+}
+.rs-link { flex: none; font-size: 10.5px; letter-spacing: 0.04em; color: var(--amber); text-decoration: none; }
+.rs-link:active { color: var(--chalk); }
+.rules-overlay .rs-got { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: 0.07em; padding: 10px 8px 11px; }
