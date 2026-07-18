@@ -500,12 +500,12 @@ var _buttonStyleObserver = null;
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
-    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info)")) return;
+    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close)")) return;
     node.classList.add("presti-spin");
   }
   add(root);
   if (root.querySelectorAll) {
-    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info)");
+    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close)");
     for (var i = 0; i < nodes.length; i++) nodes[i].classList.add("presti-spin");
   }
 }
@@ -563,7 +563,7 @@ function flashRefund() {
   ["skipTeam", "skipEra", "rerollYears"].forEach(function (id) {
     var btn = el(id);
     if (!btn) return;
-    restores.push({ btn: btn, text: btn.textContent });
+    restores.push({ btn: btn, html: btn.innerHTML });   // chips: restore markup, not flat text
     btn.classList.add("refunded");
     btn.textContent = "REFUND!";
   });
@@ -573,7 +573,7 @@ function flashRefund() {
     restores.forEach(function (r) {
       if (!r.btn.isConnected) return;            // node replaced by a later render
       r.btn.classList.remove("refunded");
-      r.btn.textContent = r.text;
+      r.btn.innerHTML = r.html;
     });
   }, 2500);
 }
@@ -586,7 +586,7 @@ function flashFireSale() {
   ["skipTeam", "skipEra", "rerollYears"].forEach(function (id) {
     var btn = el(id);
     if (!btn) return;
-    restores.push({ btn: btn, text: btn.textContent });
+    restores.push({ btn: btn, html: btn.innerHTML });   // chips: restore markup, not flat text
     btn.classList.add("firesale");
     btn.textContent = "FIRE SALE";
   });
@@ -596,7 +596,7 @@ function flashFireSale() {
     restores.forEach(function (r) {
       if (!r.btn.isConnected) return;            // node replaced by a later render
       r.btn.classList.remove("firesale");
-      r.btn.textContent = r.text;
+      r.btn.innerHTML = r.html;
     });
   }, 2500);
 }
@@ -741,16 +741,16 @@ function decoyNames() {
 function scramblePool(mode, settleAt) {
   var pool = el("pool");
   if (!pool || prefersReduce()) return;
-  var seasons = pool.querySelectorAll(".cap-season");
-  if (!seasons.length) return;            // not a cap pool
+  var seasons = pool.querySelectorAll(".cap-season, .year-face:not(.year-fixed)");
+  if (!seasons.length) return;            // nothing spinnable on this board
   var names = pool.querySelectorAll(".pr-name");
-  var costs = pool.querySelectorAll(".cap-cost");
+  var costs = pool.querySelectorAll(".cc-amt");   // the amount span inside the price box
   var dur = settleAt || 620;
   var decade = (G.cur && G.cur.dec) ? G.cur.dec : 1990;
   pool.classList.add("scrambling");
 
   function rSeason() { return shortSeason(decade + Math.floor(Math.random() * 10)); }
-  function rCost() { return "$" + (1 + Math.floor(Math.random() * 20)); }
+  function rCost() { return fmtM(1 + Math.floor(Math.random() * 20)); }
   function paint() {
     var i;
     if (mode === "full") { var _dn = decoyNames(); for (i = 0; i < names.length; i++) names[i].textContent = _dn[Math.floor(Math.random() * _dn.length)]; }   // cosmetic reel — must never touch G.rng
@@ -974,12 +974,38 @@ function bucketTag(row) { return rowBuckets(row).join("/"); }
 /* ---------- rendering: shared ---------- */
 
 function el(id) { return document.getElementById(id); }
+
+/* ---------- game money (2026-07-17, v12) ----------
+   All in-game currency is millions. One formatter, used everywhere a dynamic
+   amount is shown or written into generated text: bank, prices, cost chips,
+   tray note, results, share text. Authored prose (daily-core copy layer,
+   RULES_MODE) carries the M inline in the strings themselves. Rules: no
+   space before M, trailing .0 dropped, one decimal max, U+2212 for negatives
+   (never an em dash, never a hyphen in UI). Numbers in, strings out; never
+   feed it an already-formatted string. */
+function fmtM(n) {
+  var v = Number(n);
+  if (!isFinite(v)) v = 0;
+  var neg = v < 0;
+  var a = Math.abs(v);
+  var r = Math.round(a * 10) / 10;
+  var s = (r % 1 === 0) ? String(Math.round(r)) : r.toFixed(1);
+  return (neg ? "\u2212" : "") + "$" + s + "M";
+}
+function fmtMCost(n) {              // a positive cost rendered as a deduction: 1 -> "−$1M"
+  return "\u2212" + fmtM(Math.abs(Number(n) || 0));
+}
 function app() { return el("app"); }
 
 function renderPips() {
+  // Two homes: the header pips (visible outside drafts) and the compact draft
+  // utility bar's pips + PICK N OF 5 counter (2026-07-17 chrome rework). The
+  // header is display:none while body.drafting, but keeping it painted costs
+  // nothing and guards against a stale frame if the class ever lags a render.
   var box = el("roundPips");
-  if (!box) return;
-  if (!G || G.screen !== "draft") { box.innerHTML = ""; return; }
+  var bar = el("drPips");
+  var count = el("drPickCount");
+  if (!G || G.screen !== "draft") { if (box) box.innerHTML = ""; return; }
   var doneCount = G.round - 1;
   var nowIndex = G.round;
   var html = "";
@@ -987,7 +1013,9 @@ function renderPips() {
     var cls = i <= doneCount ? "done" : (i === nowIndex ? "now" : "");
     html += "<span class=\"" + cls + "\"></span>";
   }
-  box.innerHTML = html;
+  if (box) box.innerHTML = html;
+  if (bar) bar.innerHTML = html;
+  if (count) count.textContent = "PICK " + Math.min(G.round, CFG.ROUNDS) + " OF " + CFG.ROUNDS;
 }
 
 /* ---------- intro ---------- */
@@ -1005,6 +1033,308 @@ function wireStartOver() {
     }
     renderIntro();
   });
+}
+
+/* ---------- compact draft chrome (2026-07-17) ----------
+   While a draft is live, body.drafting hides the big masthead (styles.css) and
+   these two surfaces replace the old pile (Start over slab, daily/challenge
+   strap, cap money bar, pro hint, and every draft-screen (i)):
+   1. draftUtilityHtml: EXIT RUN + pick diamonds + PICK N OF 5 + hoop mark.
+      The exit button keeps the startOverBtn id so wireStartOver and the
+      run_abandon analytics event are untouched.
+   2. modePanelHtml: identity on the left (Daily number + official pill, or
+      the mode name, plus live money in Presti), one mechanical status line,
+      and the HOW TO PLAY button, which opens the rules sheet.
+   The rules sheet is THE single help surface for every mode: the daily law,
+   today's rule, the game in 20 seconds, base-mode rules, and what the engine
+   rewards, all in plain english with the engine's real numbers. */
+
+function hoopMarkSvg() {
+  return '<svg class="du-brand" viewBox="0 0 32 36" aria-hidden="true" focusable="false">' +
+    '<path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" fill="var(--amber)"/>' +
+    '<rect x="5" y="15" width="22" height="3.4" rx="1.7" fill="var(--maple)"/>' +
+    '<path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" stroke="var(--maple)" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
+  '</svg>';
+}
+function bookIconSvg() {
+  // A drawn open book: ink cover, cream pages, faint text lines. Fixed colors
+  // on purpose: it always sits on the gold presti-spin slab.
+  return '<svg class="mp-book" viewBox="0 0 26 22" aria-hidden="true" focusable="false">' +
+    '<path d="M13 3.4C11.2 1.8 8.5 1 5.4 1c-1.2 0-2.3.1-3.4.4-.6.1-1 .6-1 1.2v14.6c0 .8.8 1.4 1.6 1.2 1-.2 1.9-.3 2.8-.3 2.9 0 5.4.8 7.6 2.3 2.2-1.5 4.7-2.3 7.6-2.3.9 0 1.8.1 2.8.3.8.2 1.6-.4 1.6-1.2V2.6c0-.6-.4-1.1-1-1.2C22.9 1.1 21.8 1 20.6 1c-3.1 0-5.8.8-7.6 2.4z" fill="#2A1A05"/>' +
+    '<path d="M12.1 4.6C10.6 3.5 8.4 2.9 5.9 2.9c-.9 0-1.8.1-2.7.3v13.1c.9-.2 1.8-.2 2.7-.2 2.3 0 4.4.5 6.2 1.5z" fill="#FFF3D6"/>' +
+    '<path d="M13.9 4.6c1.5-1.1 3.7-1.7 6.2-1.7.9 0 1.8.1 2.7.3v13.1c-.9-.2-1.8-.2-2.7-.2-2.3 0-4.4.5-6.2 1.5z" fill="#FFF3D6"/>' +
+    '<path d="M5.2 6.4c1.7-.2 3.3 0 4.8.6M5.2 9.2c1.7-.2 3.3 0 4.8.6M5.2 12c1.7-.2 3.3 0 4.8.6M16 7c1.5-.6 3.1-.8 4.8-.6M16 9.8c1.5-.6 3.1-.8 4.8-.6M16 12.6c1.5-.6 3.1-.8 4.8-.6" stroke="#2A1A05" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".55"/>' +
+  '</svg>';
+}
+function draftUtilityHtml() {
+  return '<div class="draft-utility" id="draftUtility">' +
+    '<button class="du-exit" id="startOverBtn" type="button">\u2039 EXIT RUN</button>' +
+    '<div class="du-mid">' +
+      '<div class="round-pips du-pips" id="drPips" aria-hidden="true"></div>' +
+      '<span class="du-count mono" id="drPickCount" aria-live="polite"></span>' +
+    '</div>' +
+    '<span class="du-brandbox">' + hoopMarkSvg() + '</span>' +
+  '</div>';
+}
+function modePanelHtml() {
+  if (MODE === "kaman") return "";   // the egg keeps its mystery
+  var baseName = MODE === "cap" ? "PRESTI" : MODE === "pro" ? "PRO" : "CLASSIC";
+  var copy = (window.T82DAILY && T82DAILY.DAILY_COPY) || {};
+  var idHtml, sub = [], targetHtml = "";
+  // v12: the bank gets its own slot between identity and the rules button,
+  // big enough to read from a barstool. tickBank() animates it on spends.
+  if (G.social) {
+    var claimed = window.T82DAILY ? T82DAILY.officialFor(G.social.key) : null;
+    idHtml = '<span class="mp-id">\uD83D\uDCC5 DAILY #' + G.social.num + '</span>' +
+      (claimed ? '<span class="ds-pill ds-prac">PRACTICE RUN</span>'
+               : '<span class="ds-pill ds-off">1 OFFICIAL ATTEMPT</span>');
+    sub.push(baseName + " RULES");
+    if (G.social.short) sub.push(esc(G.social.short));
+    if (G.social.target) {
+      targetHtml = '<div class="mp-target mono">BEAT ' + G.social.target.w + '-' +
+        (CFG.GAMES_IN_SEASON - G.social.target.w) + ' \u00B7 NET ' + T82DAILY.signedNet(G.social.target.n) + '</div>';
+    }
+  } else if (G.ch) {
+    idHtml = '<span class="mp-id">' + (G.weekly ? "WEEKLY" : "CHALLENGE") + '</span>' +
+      '<span class="mp-name">' + esc(G.ch.name || "") + '</span>';
+    var chShort = (copy[G.ch.id] && copy[G.ch.id].s) || G.ch.blurb || "";
+    sub.push(baseName + " RULES");
+    if (chShort) sub.push(esc(chShort));
+  } else if (MODE === "cap") {
+    idHtml = '<span class="mp-id">PRESTI MODE</span>';
+    sub.push("SALARY CAP \u00B7 SKIPS \u2212$1M");
+  } else if (MODE === "pro") {
+    idHtml = '<span class="mp-id">PRO MODE</span>';
+    sub.push("NO STATS \u00B7 TAP \u25BE TO CHANGE SEASON");
+  } else {
+    idHtml = '<span class="mp-id">CLASSIC MODE</span>';
+    sub.push("TAP THE YEAR \u25BE TO USE ANY SEASON");
+  }
+  var bankHtml = MODE === "cap"
+    ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + fmtM(G.budget) + '</b></div>'
+    : "";
+  var panelCls = 'mode-panel plq-frame plq-slim' + (MODE === "cap" ? ' cap-mode-panel' : '');
+  return '<div class="' + panelCls + '" id="modePanel">' +
+    '<div class="mp-left">' +
+      '<div class="mp-row1">' + idHtml + '</div>' +
+      '<div class="mp-row2 mono">' + sub.join(" \u00B7 ") + '</div>' +
+      targetHtml +
+    '</div>' +
+    bankHtml +
+    '<button class="mp-rules-btn presti-spin" id="rulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: the rules, today\u2019s twist, and how scoring works">' +
+      '<span class="mp-book-wrap">' + bookIconSvg() + '</span>' +
+      '<span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span><span class="mp-rules-sub mono">Rules & scoring</span></span>' +
+    '</button>' +
+  '</div>';
+}
+
+/* ---------- draft viewport (2026-07-17, v12) ----------
+   While drafting, the page no longer scrolls: body.drafting locks to 100dvh,
+   #app is a flex column, and the pool is the one scrolling region. The tray
+   stays fixed; the pool's scrollport runs behind it (bottom padding keeps the
+   last card reachable) and a gradient fade above the tray makes the list read
+   as continuing rather than ending. All sizes flow from the --tray-h CSS var,
+   which tracks the real tray height (it grows when a pick is selected), so
+   the fade and padding follow automatically. A one-time MORE PLAYERS cue
+   shows on round 1 if the list overflows, and dies on the first scroll. */
+var DRAFT_VP = { ro: null, off: null };
+function setTrayVar() {
+  var tray = document.querySelector(".tray");
+  if (!tray) return;
+  var h = tray.offsetHeight || 96;
+  document.documentElement.style.setProperty("--tray-h", h + "px");
+}
+function initDraftViewport() {
+  if (DRAFT_VP.ro) { try { DRAFT_VP.ro.disconnect(); } catch (e) {} DRAFT_VP.ro = null; }
+  if (DRAFT_VP.off) { DRAFT_VP.off(); DRAFT_VP.off = null; }
+  var tray = document.querySelector(".tray");
+  var pool = el("pool");
+  if (!tray || !pool) return;
+  setTrayVar();
+  if (typeof ResizeObserver === "function") {
+    DRAFT_VP.ro = new ResizeObserver(setTrayVar);
+    DRAFT_VP.ro.observe(tray);
+  }
+  var onResize = function () { setTrayVar(); };
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
+  var vv = window.visualViewport;
+  if (vv && vv.addEventListener) vv.addEventListener("resize", onResize);
+  DRAFT_VP.off = function () {
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("orientationchange", onResize);
+    if (vv && vv.removeEventListener) vv.removeEventListener("resize", onResize);
+  };
+  // The one-time continuation cue: only on the opening board, only if there is
+  // actually more below, and gone the instant the list moves.
+  if (G && G.round === 1 && !G.moreCueDone && pool.scrollHeight > pool.clientHeight + 8) {
+    var cue = document.createElement("div");
+    cue.className = "pool-cue mono";
+    cue.id = "poolCue";
+    cue.textContent = "MORE PLAYERS \u2193";
+    pool.parentNode.insertBefore(cue, pool.nextSibling);
+    pool.addEventListener("scroll", function killCue() {
+      G.moreCueDone = true;
+      var c = el("poolCue");
+      if (c && c.parentNode) c.parentNode.removeChild(c);
+      pool.removeEventListener("scroll", killCue);
+    }, { passive: true });
+  }
+}
+
+/* ---------- the bank ticker (2026-07-17, v12) ----------
+   Money never just refreshes: when the bank changes, the amount counts to the
+   new value one million at a time, dropping in red on a spend and climbing in
+   green on a refund. G.bankShown remembers what the panel last displayed, so
+   the tick survives the full re-render every skip and pick triggers, and a
+   fresh game starts silent. Reduced-motion users get the snap. */
+function tickBank() {
+  var node = el("bankAmt");
+  if (!node || MODE !== "cap" || !G) return;
+  var to = G.budget;
+  var from = (typeof G.bankShown === "number") ? G.bankShown : to;
+  G.bankShown = to;
+  if (from === to || prefersReduce()) { node.textContent = fmtM(to); return; }
+  var box = node.closest(".mp-bank");
+  var dir = to < from ? "bank-down" : "bank-up";
+  if (box) box.classList.add(dir);
+  var v = from;
+  var step = to < from ? -1 : 1;
+  var iv = Math.max(45, Math.min(140, Math.round(420 / Math.abs(to - from))));
+  node.textContent = fmtM(v);
+  var t = setInterval(function () {
+    if (!node.isConnected) { clearInterval(t); return; }   // a newer render owns the panel now
+    v += step;
+    node.textContent = fmtM(v);
+    if (v === to) {
+      clearInterval(t);
+      setTimeout(function () {
+        if (box && box.isConnected) box.classList.remove("bank-down", "bank-up");
+      }, 320);
+    }
+  }, iv);
+}
+
+/* ---------- the rules sheet ----------
+   Copy law: plain mechanics, real numbers, zero cryptic flavor. The per-board
+   daily briefs live in daily-core DAILY_COPY; the gate's one-paragraph mode
+   explainers live in daily-core MODE_TIP; the bullets here are the long form.
+   If a mechanic or an engine constant (site_data meta.scoring) changes,
+   update all three in the same commit. */
+var RULES_LAW = [
+  "One shared board per day. Everyone gets the same teams, the same players, the same prices.",
+  "Your first finished run is your official score. Replays are practice and can never overwrite it.",
+  "Finish, then share: your link drops friends onto this exact board to beat your number."
+];
+var RULES_STEPS = [
+  "Five rounds. Each one deals a random NBA franchise and decade. Draft one player who suited up for that team in that era.",
+  "Fill five slots: two guards, two forwards, one center. A player only fits slots he really played.",
+  "When your fifth pick lands, the season engine turns your five into an 82-game record using advanced impact stats (BPM). No dice: the same five always posts the same record.",
+  "The chase is 82-0. Nobody said it was likely."
+];
+var RULES_MODE = {
+  classic: [
+    "Full stats on every card. The season menu (\u25BE) under each name lets you use any year of that player's career.",
+    "One team skip and one era skip for the whole draft. Spend them on dead boards; they do not carry over.",
+    "The sort chips (Min, A\u2013Z, Off, Def) and the search box are your scouting tools."
+  ],
+  cap: [
+    "You have a $50M bank for all five picks. Every card shows its price.",
+    "Prices are randomized each round. True stars are priced honestly and fringe players run cheap; the mid-tier is the minefield, where about 1 in 7 is a $1M steal and about half are rip-offs priced like stars.",
+    "Skip team, skip era, or reroll the years for $1M each, as often as the money allows. Every empty roster spot needs $1M held in reserve.",
+    "Seasons are randomized too, and some boards are flat unwinnable. That is Presti."
+  ],
+  pro: [
+    "No stats. Every card is a name, a position, and a randomized season.",
+    "The season menu (\u25BE) still works, also blind. Change years at your own risk.",
+    "The engine grades your five with the real numbers at the end. Memory against the receipts."
+  ]
+};
+var RULES_ENGINE = [
+  ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
+  ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
+  ["ONE BALL", "Team usage above 110 gets taxed. Two high-usage alphas fit. Four is a turf war your net pays for."],
+  ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. Never stack two liabilities in one position group."],
+  ["THE MATH", "Net 0 is a 41-41 team, and one point of net is worth 2 to 3 wins in the middle. The 96 Bulls grade about +13. An 82-0 five needs about +27."]
+];
+function rulesSheetHtml() {
+  var isDaily = !!(G && G.social);
+  var ch = G && G.ch;
+  var baseKey = MODE === "cap" ? "cap" : MODE === "pro" ? "pro" : "classic";
+  var baseName = MODE === "cap" ? "PRESTI" : MODE === "pro" ? "PRO" : "CLASSIC";
+  var copy = (window.T82DAILY && T82DAILY.DAILY_COPY) || {};
+  var h = '<div class="rs-head"><span class="rs-title">HOW TO PLAY</span>' +
+    '<button class="rs-close" id="rulesClose" type="button" aria-label="Close the rules">\u2715</button></div>' +
+    '<div class="rs-scroll">';
+  if (isDaily) {
+    h += '<p class="rs-eyebrow">THE DAILY \u00B7 THE LAW</p><div class="rs-law">' +
+      RULES_LAW.map(function (t) { return "<p>" + t + "</p>"; }).join("") + '</div>';
+    var brief = G.social.gate || G.social.short || "";
+    h += '<div class="rs-today plq-frame plq-slim">' +
+      '<p class="rs-eyebrow rs-today-label">TODAY\u2019S RULE \u00B7 DAILY #' + G.social.num + '</p>' +
+      '<p class="rs-today-name">' + esc(G.social.name) + '</p>' +
+      (brief ? '<p class="rs-today-body">' + esc(brief) + '</p>' : '') +
+      (G.social.target
+        ? '<p class="rs-target mono">THE CHALLENGE: beat ' + G.social.target.w + '-' +
+          (CFG.GAMES_IN_SEASON - G.social.target.w) + ', Net ' + T82DAILY.signedNet(G.social.target.n) + '.</p>'
+        : '') +
+      '</div>';
+  } else if (ch) {
+    var chBrief = (copy[ch.id] && copy[ch.id].g) || ch.blurb || "";
+    h += '<div class="rs-today plq-frame plq-slim">' +
+      '<p class="rs-eyebrow rs-today-label">' + (G.weekly ? "THIS WEEK\u2019S TWIST" : "THE TWIST") + '</p>' +
+      '<p class="rs-today-name">' + esc(ch.name || "") + '</p>' +
+      (chBrief ? '<p class="rs-today-body">' + esc(chBrief) + '</p>' : '') +
+      '</div>';
+  }
+  var yearsTip = baseKey === "cap"
+    ? "Seasons are locked to their price tag in Presti. To change the years, respin the whole board with SKIP YRS for \u2212$1M."
+    : baseKey === "pro"
+      ? "Every card has a year menu (\u25BE), and it works blind: seasons are randomized, and you can change any of them from memory before you draft."
+      : "Every card has a year menu (\u25BE). You are drafting a season, not a career: 1996 Jordan and 2003 Jordan are different weapons. Check it on every pick and take the peak year.";
+  h += '<p class="rs-eyebrow">' + baseName + ' MODE RULES</p><ul class="rs-list">' +
+    (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+  h += '<div class="rs-years"><p class="rs-eyebrow rs-years-label">CHANGE THE YEARS</p>' +
+    '<p class="rs-years-body">' + yearsTip + '</p></div>';
+  h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
+    RULES_ENGINE.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>";
+  h += '<p class="rs-eyebrow">THE GAME IN 20 SECONDS</p><ol class="rs-steps">' +
+    RULES_STEPS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>" +
+    ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
+  h += '</div><div class="rs-foot">' +
+    '<a class="rs-link mono" href="/how-it-works/" target="_blank" rel="noopener">Full engine math \u2192</a>' +
+    '<button class="rs-got" id="rulesGotIt" type="button">GOT IT</button>' +
+  '</div>';
+  return h;
+}
+var RULES_PREV_FOCUS = null;
+function rulesEscListener(ev) { if (ev.key === "Escape") closeRulesSheet(); }
+function closeRulesSheet() {
+  var ov = el("rulesOverlay");
+  if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+  document.body.classList.remove("rules-open");
+  document.removeEventListener("keydown", rulesEscListener);
+  if (RULES_PREV_FOCUS && RULES_PREV_FOCUS.focus) { try { RULES_PREV_FOCUS.focus(); } catch (e) {} }
+  RULES_PREV_FOCUS = null;
+}
+function openRulesSheet() {
+  if (el("rulesOverlay")) return;
+  RULES_PREV_FOCUS = document.activeElement;
+  var ov = document.createElement("div");
+  ov.className = "rules-overlay";
+  ov.id = "rulesOverlay";
+  ov.setAttribute("role", "dialog");
+  ov.setAttribute("aria-modal", "true");
+  ov.setAttribute("aria-label", "How to play");
+  ov.innerHTML = '<div class="rules-sheet plq-frame" id="rulesSheet">' + rulesSheetHtml() + '</div>';
+  document.body.appendChild(ov);
+  document.body.classList.add("rules-open");
+  ov.addEventListener("click", function (ev2) { if (ev2.target === ov) closeRulesSheet(); });
+  el("rulesClose").addEventListener("click", closeRulesSheet);
+  el("rulesGotIt").addEventListener("click", closeRulesSheet);
+  document.addEventListener("keydown", rulesEscListener);
+  try { el("rulesClose").focus(); } catch (e) {}
+  window.t82track && window.t82track("rules_open", analyticsRunSnapshot("rules"));
 }
 
 /* ---------- donate ---------- */
@@ -1041,6 +1371,7 @@ function renderIntro() {
   G = null;
   if (window.T82DUI) T82DUI.stop();   // leaving a duel screen kills its poll
   document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
   renderPips();
   // THE DAILY takes the third slot (Pro's old spot) when daily-core.js +
   // challenges.js are on the page; without them the classic Pro button renders
@@ -1109,9 +1440,9 @@ function renderIntro() {
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       '<p class="eyebrow">Draft</p>' +
-      "<p>Draft a 5-man roster with 2 guards, 2 forwards, and a center. You get a random team from a random decade. Pick a guy who played for that team in that era. Pick any season he played. You can reroll the era and the team once each per draft.</p>" +
+      "<p>Five rounds. Each one deals a random NBA franchise and decade; draft one player who suited up for that team in that era, any season of his career. Fill 2 guards, 2 forwards, and a center. In Classic you can skip the team once and the era once.</p>" +
       '<p class="eyebrow">Winning</p>' +
-      "<p>Recommended to have at least <strong>3 shooters</strong> and <strong>1 overqualified role player</strong>. Based mostly on OBPM and DBPM (why we only go back to 1974) + some minor custom tweaks. Some players from low/no 3pt era get 3pt shooter bonuses based on reputation and vibes.</p>" +
+      "<p>The engine grades your five on advanced impact (BPM), then converts net rating into an 82-game record. It rewards real stars, wants about <strong>3 shooters</strong>, and punishes ball-hog pileups and bad-defense pairs. Every draft screen has a <strong>HOW TO PLAY</strong> button with the full rules and the day's twist.</p>" +
     "</section>";
   function start(mode) {
     if (DATA_READY) { newGame(mode); return; }
@@ -1230,7 +1561,8 @@ function renderIntro() {
     if (!tile || !w || !w.ok || !T82CH.byId[w.challengeId] || G) return;
     var ch = T82CH.byId[w.challengeId];
     el("wkName").textContent = w.name;
-    el("wkBlurb").textContent = w.blurb;
+    el("wkBlurb").textContent =
+      (window.T82DAILY && T82DAILY.DAILY_COPY && T82DAILY.DAILY_COPY[w.id] && T82DAILY.DAILY_COPY[w.id].s) || w.blurb;
     var days = Math.max(1, Math.ceil((w.endsInS || 0) / 86400));
     var baseChip = w.base === "cap" ? "Presti rules" : w.base === "pro" ? "Pro rules" : "Classic rules";
     el("wkMeta").textContent = baseChip + " \u00B7 " + days + (days === 1 ? " day" : " days") + " left" +
@@ -1357,7 +1689,7 @@ function confirmHtml() {
   if (!opts.length) return "";
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
-  var costNote = (MODE === "cap" && effCost(G.selected) != null) ? " \u00B7 $" + effCost(G.selected) : "";
+  var costNote = (MODE === "cap" && effCost(G.selected) != null) ? " \u00B7 " + fmtM(effCost(G.selected)) : "";
   var spinCls = " presti-spin";   // casino skin on the draft/position buttons, all modes
   if (opts.length === 1) {
     var ok1 = bucketLegal(row, opts[0]);
@@ -1415,9 +1747,14 @@ function updateTray() {
 
 /* the season picker shown in each player row (only when >1 season exists) */
 function yearControlHtml(name, row) {
+  // v12: the year is a styled face with a transparent native <select> stretched
+  // over it. Same handler, same a11y, but the face is plain text, so the year
+  // reel can spin it in every mode, and the gold caret makes "you can change
+  // this" visible instead of implied.
   var arr = T82.poolYearsEligible(G, name);   // only eligible (>785-min) seasons in the dropdown
+  var curTxt = shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]);
   if (!arr || arr.length <= 1) {
-    return "<span>" + shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]) + "</span>";
+    return '<span class="year-face year-fixed">' + curTxt + "</span>";
   }
   var cur = row[IDX.season];
   var opts = arr.map(function (r) {
@@ -1425,7 +1762,9 @@ function yearControlHtml(name, row) {
     return '<option value="' + s + '"' + (s === cur ? " selected" : "") + ">" +
       shortSeason(s) + " " + esc(r[IDX.team]) + "</option>";
   }).join("");
-  return '<select class="year-sel" data-name="' + esc(name) + '" aria-label="Season for ' + esc(name) + '">' + opts + "</select>";
+  return '<span class="year-wrap"><span class="year-face">' + curTxt +
+    ' <b class="yf-caret">\u25BE</b></span>' +
+    '<select class="year-sel" data-name="' + esc(name) + '" aria-label="Season for ' + esc(name) + '">' + opts + "</select></span>";
 }
 
 /* one draft-pool row (a div[role=button] so it can legally contain the <select>) */
@@ -1472,20 +1811,30 @@ function capRowHtml(bestRow) {
   var sel = (G.selected === name) && open;
   var cost = G.costByName ? G.costByName[name] : null;
   var eff = effCost(name);
+  // The price action box (v12): a compact right-side DRAFT + $NM box that makes
+  // the cost unmissable. Purely visual affordance: the ROW stays the single
+  // interactive control (role=button, whole surface tappable, one tab stop),
+  // and the box takes its pressed look from the row's active/selected state.
   var costHtml = "";
   if (cost != null) {
-    costHtml = (G.fireSale && eff < cost)
-      ? '<s class="cost-old">$' + cost + '</s><b class="cost-new">$' + eff + '</b>'
-      : "$" + cost;
+    var amt = (G.fireSale && eff < cost)
+      ? '<s class="cost-old">' + fmtM(cost) + '</s><b class="cost-new">' + fmtM(eff) + '</b>'
+      : fmtM(cost);
+    costHtml = '<span class="cc-tag">DRAFT</span><span class="cc-amt">' + amt + '</span>';
   }
   var why = block ? " \u00B7 " + block.tag : "";
   var cls = "player-row cap-row" + (sel ? " sel" : "") + (open ? "" : " off");
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true" title="' + esc(block.why) + '"') + ">" +
-    '<span class="pr-top"><span class="pr-name">' + esc(name) + "</span>" +
-    '<span class="cap-cost">' + costHtml + "</span></span>" +
-    '<span class="pr-sub"><span class="cap-season">' + shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]) +
-    '</span><span class="pr-pos">' + bucketTag(row) + why + "</span></span></div>";
+    '<span class="cap-main">' +
+      '<span class="pr-name">' + esc(name) + '</span>' +
+      '<span class="cap-meta">' +
+        '<span class="pr-pos">' + bucketTag(row) + why + '</span>' +
+        '<span class="cap-season">' + shortSeason(row[IDX.season]) + ' ' + esc(row[IDX.team]) + '</span>' +
+      '</span>' +
+    '</span>' +
+    '<span class="cap-cost">' + costHtml + '</span>' +
+  '</div>';
 }
 
 function poolInnerHtml(rows) { return rows.map(poolRowHtml).join(""); }
@@ -1512,8 +1861,8 @@ function refreshPool() {
 function renderDraft(anim) {
   G.screen = "draft";
   G.query = "";                 // fresh filter on each new round / skip (sort persists)
-  document.body.classList.add("drafting");
-  renderPips();
+  document.body.classList.add("drafting");   // hides the masthead: the utility bar takes over (styles.css)
+  document.body.classList.remove("gating");
   var rows = currentPoolRows();
   var codes = {};
   rows.forEach(function (r) { codes[r[IDX.team]] = true; });
@@ -1548,10 +1897,13 @@ function renderDraft(anim) {
         "</div>" +
         artHtml +
       "</div>" +
-      '<div class="ticket-actions">' +
-        '<button class="skip-btn' + spinCls + '" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.teamSkips + " left") + "</button>" +
-        '<button class="skip-btn' + spinCls + '" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era " + (MODE === "cap" ? "-$1" : "\u00B7 " + G.eraSkips + " left") + "</button>" +
-        (MODE === "cap" ? '<button class="skip-btn presti-spin" id="rerollYears"' + (yearRerollable ? "" : " disabled") + ">Skip yrs -$1</button>" : "") +
+      '<div class="ticket-actions' + (MODE === "cap" ? " ta-cap" : "") + '">' +
+        (MODE === "cap"
+          ? '<button class="skip-btn' + spinCls + '" id="skipTeam"' + (teamSkippable ? "" : " disabled") + '><span class="sk-lab">SKIP TEAM</span><span class="sk-chip">' + fmtMCost(1) + "</span></button>" +
+            '<button class="skip-btn' + spinCls + '" id="skipEra"' + (eraSkippable ? "" : " disabled") + '><span class="sk-lab">SKIP ERA</span><span class="sk-chip">' + fmtMCost(1) + "</span></button>" +
+            '<button class="skip-btn presti-spin" id="rerollYears"' + (yearRerollable ? "" : " disabled") + '><span class="sk-lab">SKIP YRS</span><span class="sk-chip">' + fmtMCost(1) + "</span></button>"
+          : '<button class="skip-btn' + spinCls + '" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team \u00B7 " + G.teamSkips + " left</button>" +
+            '<button class="skip-btn' + spinCls + '" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era \u00B7 " + G.eraSkips + " left</button>") +
       "</div>" +
     "</section>";
   }
@@ -1573,71 +1925,28 @@ function renderDraft(anim) {
       "</div>";
   }
 
-  var proHint = MODE === "pro"
-    ? '<p class="pro-hint"><span class="info-i">i</span> <em>Each player\u2019s season is randomized</em>. Change the season using the \u25BE menu.</p>'
-    : "";
-
-  var capBar = MODE === "cap"
-    ? '<div class="cap-bar">' +
-        '<span class="cap-bar-amt">$' + G.budget + '</span>' +
-        '<span class="cap-bar-sub">left</span>' +
-        '<button class="cap-info" id="capInfo" aria-expanded="false" aria-label="How Salary Cap works">i</button>' +
-        '<span class="cap-note">Watch for random bargains and rip-offs.</span>' +
-      '</div>' +
-      '<div class="cap-tip" id="capTip" hidden>$50 salary cap. Player salaries are randomized each round to fair value, bargain, or rip-off. Player year available is also randomized. Unlimited rerolls of team, era, player years, but it costs $1 from your salary cap each time. Possibly unwinnable.</div>'
-    : "";
-
-  // The run strap: which board, which rule, and whether THIS run counts.
-  // Renders for the Daily (G.social) and for any challenge run (G.ch, weekly
-  // included), because the rule must be visible at the moment it blocks a
-  // pick. Two lines, dismissable by nobody: the top row is identity and
-  // stakes, the second row is the rule itself.
-  var dailyStrap = "";
-  function strapTipHtml(brief, base) {   // the gate brief again, one tap away, all draft long
-    var tip = (window.T82DAILY && T82DAILY.MODE_TIP && T82DAILY.MODE_TIP[base]) || "";
-    return '<div class="cap-tip strap-tip" id="strapTip" hidden>' + esc(brief) +
-      (tip ? '<br><br>' + esc(tip) : '') + '</div>';
-  }
-  if (G.social && window.T82DAILY) {
-    var claimed = T82DAILY.officialFor(G.social.key);
-    var stakePill = claimed
-      ? '<span class="ds-pill ds-prac">PRACTICE</span>'
-      : '<span class="ds-pill ds-off">\u25CF OFFICIAL RUN</span>';
-    dailyStrap = '<div class="daily-strap plq-frame plq-slim"><div class="ds-row">' +
-      '<span class="ds-tag mono">\uD83D\uDCC5 THE DAILY #' + G.social.num + '</span>' +
-      '<span class="ds-name">' + esc(G.social.name) + '</span>' + stakePill +
-      (G.social.target
-        ? '<span class="ds-target mono">beat ' + G.social.target.w + '-' + (CFG.GAMES_IN_SEASON - G.social.target.w) +
-          ' \u00B7 Net ' + T82DAILY.signedNet(G.social.target.n) + '</span>'
-        : '') +
-      '<button class="cap-info strap-info" id="strapInfo" aria-expanded="false" aria-label="Today\u2019s rules">i</button>' +
-      '</div>' +
-      (G.social.short ? '<div class="ds-rule">' + esc(G.social.short) + '</div>' : '') +
-      strapTipHtml(G.social.gate || G.social.short || "", G.social.base) +
-      '</div>';
-  } else if (G.ch) {
-    dailyStrap = '<div class="daily-strap plq-frame plq-slim"><div class="ds-row">' +
-      '<span class="ds-tag mono">' + (G.weekly ? "WEEKLY" : "CHALLENGE") + '</span>' +
-      '<span class="ds-name">' + esc(G.ch.name || "") + '</span>' +
-      '<button class="cap-info strap-info" id="strapInfo" aria-expanded="false" aria-label="This challenge\u2019s rules">i</button>' +
-      '</div>' +
-      (G.ch.blurb ? '<div class="ds-rule">' + esc(G.ch.blurb) + '</div>' : '') +
-      strapTipHtml(G.ch.blurb || "", G.ch.base) +
-      '</div>';
-  }
+  // Compact draft chrome (2026-07-17): utility bar + mode panel replace the
+  // old Start over slab, daily/challenge strap, cap money bar, pro hint, and
+  // every draft-screen (i). The rule that used to live on the strap is on the
+  // panel's status row, and the full brief is one HOW TO PLAY tap away, so it
+  // is still visible at the moment it blocks a pick.
   app().innerHTML =
-    startOverBtnHtml() +
-    dailyStrap +
+    draftUtilityHtml() +
+    modePanelHtml() +
     ticketHtml +
-    capBar +
     poolHeadHtml +
-    proHint +
     '<div class="pool" id="pool">' + poolHtml + "</div>" +
+    '<div class="pool-fade" id="poolFade" aria-hidden="true"></div>' +
     '<div class="tray"><div class="tray-inner" id="trayInner"></div></div>';
 
   updateTray();
+  renderPips();   // the utility bar's pips + PICK N OF 5 live inside the fresh markup
 
   wireStartOver();
+  var rulesBtn = el("rulesBtn");
+  if (rulesBtn) rulesBtn.addEventListener("click", openRulesSheet);
+  initDraftViewport();
+  tickBank();
   var searchEl = el("poolSearch");
   if (searchEl) {
     searchEl.addEventListener("input", function () { G.query = searchEl.value; refreshPool(); });
@@ -1664,22 +1973,6 @@ function renderDraft(anim) {
   if (teamSkippable) el("skipTeam").addEventListener("click", doTeamSkip);
   if (eraSkippable) el("skipEra").addEventListener("click", doEraSkip);
   if (yearRerollable) el("rerollYears").addEventListener("click", doYearReroll);
-  var capInfo = el("capInfo");
-  if (capInfo) capInfo.addEventListener("click", function () {
-    var tip = el("capTip");
-    if (!tip) return;
-    var hidden = tip.hasAttribute("hidden");
-    if (hidden) { tip.removeAttribute("hidden"); capInfo.setAttribute("aria-expanded", "true"); }
-    else { tip.setAttribute("hidden", ""); capInfo.setAttribute("aria-expanded", "false"); }
-  });
-  var strapInfo = el("strapInfo");   // THE DAILY / challenge strap: the rules brief, one tap away
-  if (strapInfo) strapInfo.addEventListener("click", function () {
-    var tip = el("strapTip");
-    if (!tip) return;
-    var hidden = tip.hasAttribute("hidden");
-    if (hidden) { tip.removeAttribute("hidden"); strapInfo.setAttribute("aria-expanded", "true"); }
-    else { tip.setAttribute("hidden", ""); strapInfo.setAttribute("aria-expanded", "false"); }
-  });
   el("pool").addEventListener("click", function (ev) {
     if (ev.target.closest(".year-sel")) return;     // the dropdown handles its own taps
     var btn = ev.target.closest(".player-row");
@@ -1715,10 +2008,10 @@ function renderDraft(anim) {
     if (MODE === "kaman") {
       if (anim.kaman) reveal("kamanBig");   // nothing to reel through — keep the pop
     } else if (anim.years) {
-      scramblePool("years", 620);           // cap-only: spin just the pool years/prices
+      scramblePool("years", 620);           // spin the pool years (+ prices in Presti)
     } else if (anim.dec || anim.fr) {
       var crestLand = spinReels(anim);       // ticket slot-reels: Classic / Pro / Presti
-      if (MODE === "cap") scramblePool("full", crestLand + 120); // pool roulette: cap only
+      scramblePool(MODE === "cap" ? "full" : "years", crestLand + 120);   // v12: pool roulette, every mode
     }
     window.scrollTo(0, 0);
   }
@@ -2475,7 +2768,7 @@ function shareText(e) {
     // Presti: result emoji moves up to the title (basketball = missed, trophy = 82-0);
     // line 2 swaps the result emoji for cap space ($ left under the $50 cap).
     head = (undef ? "\uD83C\uDFC6" : "\uD83C\uDFC0") + " TRUE 82 (Presti Mode)";
-    line2 = wins + "-" + losses + " | $" + G.budget + " Cap Spc | Net " + signed1(netVal);
+    line2 = wins + "-" + losses + " | " + fmtM(G.budget) + " Cap Spc | Net " + signed1(netVal);
   } else {
     head = "\uD83C\uDFC0 TRUE 82 (" + shareModeLabel() + ")";
     line2 = (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signed1(netVal);
@@ -3330,11 +3623,12 @@ function renderResults(e, keepScroll) {
     : daily.isOfficial ? "SHARE THE DAILY"
     : "SHARE OFFICIAL (" + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) + ")";
   document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
   app().innerHTML =
     resultsTopBarHtml() +
     '<section class="board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">' + boardEyebrow + "</p>" +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
-      (MODE === "cap" ? '<div class="cap-spent">$' + G.budget + ' cap space</div>' : "") +
+      (MODE === "cap" ? '<div class="cap-spent">' + fmtM(G.budget) + ' cap space</div>' : "") +
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
@@ -3431,6 +3725,7 @@ function kamanShareText() {
 function renderKamanResults() {
   renderPips();
   document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
   var picksHtml = G.picks.map(function (p) {
     var row = p.row, name = row[IDX.name];
     return '<div class="pick-card">' +
@@ -3545,6 +3840,7 @@ function renderDailyGate(board, target, variantTag) {
   G = null;
   if (window.T82DUI) T82DUI.stop();
   document.body.classList.remove("drafting");
+  document.body.classList.add("gating");   // full-screen gate: masthead + footer hide (styles.css)
   renderPips();
   var baseName = board.base === "cap" ? "Presti" : board.base === "pro" ? "Pro" : "Classic";
   var tip = (window.T82DAILY && T82DAILY.MODE_TIP && T82DAILY.MODE_TIP[board.base]) || "";
@@ -3574,6 +3870,7 @@ function renderDailyGate(board, target, variantTag) {
       '<div class="gate-tipoff" id="gateTipoff">' +
         '<p class="gate-pull">DUNK THE BALL TO START <i>\u2193</i></p>' +
         ballLeverHtml("gateLever", "gateArm", "Drag the basketball down through the hoop to start The Daily") +
+        '<button class="gate-play-btn presti-spin" id="gatePlayBtn" type="button" aria-label="Start The Daily without using the dunk interaction">PLAY IT</button>' +
       '</div>' +
     '</section>';
   el("gateBack").addEventListener("click", function () { renderIntro(); });
@@ -3588,12 +3885,16 @@ function renderDailyGate(board, target, variantTag) {
   // The real Hot Hand mechanic, wired to launch: pull the ball down through
   // the net, it ignites, the flames burn for a beat (and keep burning as the
   // loading state if site data is still on the way), then the draft begins.
-  var gLever = el("gateLever"), gArm = el("gateArm");
-  wireBallPull(gLever, gArm, function () {
+  function launchFromGate(delay, btn) {
+    if (btn) btn.disabled = true;
     setTimeout(function () {
-      queue(function () { startDailyRun(board, target, variantTag); }, null);
-    }, 700);
-  });
+      queue(function () { startDailyRun(board, target, variantTag); }, btn || null);
+    }, delay || 0);
+  }
+  var gLever = el("gateLever"), gArm = el("gateArm");
+  wireBallPull(gLever, gArm, function () { launchFromGate(700, null); });
+  var gPlay = el("gatePlayBtn");
+  if (gPlay) gPlay.addEventListener("click", function () { launchFromGate(0, gPlay); });
   // Same contract as renderIntro's queue: DATA_READY/PENDING_FN are
   // module-level, so the gate can hold the launch until the data lands.
   function queue(fn, btn) {

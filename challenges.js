@@ -426,7 +426,22 @@
       filter: function (row, t) { return row[t.IDX.season] % 4 === 0; } },
     { id: "blind_california", name: "Blind California", base: "pro",
       blurb: "The four California franchises, from memory. Showtime, Lob City, the Splash era — unlabeled.",
-      deal: function () { return { frs: ["LAKERS", "CLIPPERS", "WARRIORS", "KINGS"] }; } }
+      deal: function () { return { frs: ["LAKERS", "CLIPPERS", "WARRIORS", "KINGS"] }; } },
+    /* ---------- 2026-07-18 additions (manifest doctrine v2: append-only) ----------
+       Shipped ids above are IMMUTABLE: past daily boards and beat-links replay
+       through them forever. New content is new ids. small_ball_five replaces
+       small_ball_apoc in the daily rotation: the old height cap left the C slot
+       fillable only through same-name data collisions (a 6'3" Charles Jones
+       inheriting a 6'9" Charles Jones' center card). The fix is the unicorn
+       rule: shorties everywhere, but a true center of any height stays legal. */
+    { id: "small_ball_five", name: "The Small-Ball Apocalypse", base: "cap",
+      blurb: "Everyone 6'4\" and under, except true centers, who stay legal at any height. One unicorn, four shorties.",
+      cfg: { SPACERS_REQ: 4, SPACING_TAX: 2 },
+      filter: function (row, t) {
+        var set = t.CAREER_BUCKETS && t.CAREER_BUCKETS.get(row[t.IDX.name]);
+        if (set && set.C) return true;                      // the unicorn clause
+        return row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 76;
+      } }
   ];
 
   var byId = {};
@@ -448,8 +463,20 @@
     return w.year + "-W" + (w.week < 10 ? "0" : "") + w.week;
   }
   function weeklyFor(date) {
+    // FROZEN 2026-07-18: the modulus is pinned to the manifest's size on that
+    // date (98), so append-only additions never reshuffle the weekly schedule.
+    // BROKEN_WEEKLY: ids the playability audit proved dead or degenerate
+    // (99% unfinishable, or 1-2 draftable players per board). Weeks that land
+    // on one step deterministically forward; those weeks were unplayable
+    // anyway, so no real schedule is being rewritten.
+    var WEEKLY_FROZEN_N = 98;
+    var BROKEN_WEEKLY = { classmates: 1, escalator: 1, the_anchor: 1, tall_wings: 1,
+      superteam: 1, volume_scorers: 1, role_players: 1, pickpockets: 1, swat_team: 1,
+      dime_store: 1, glass_cleaners: 1, iron_men: 1, green_light: 1, humble_pie: 1 };
     var w = isoWeek(date);
-    var idx = (w.year * 53 + w.week) % CHALLENGES.length;
+    var idx = (w.year * 53 + w.week) % WEEKLY_FROZEN_N;
+    var guard = 0;
+    while (BROKEN_WEEKLY[CHALLENGES[idx].id] && guard++ < WEEKLY_FROZEN_N) idx = (idx + 1) % WEEKLY_FROZEN_N;
     return { key: weekKey(date), ch: CHALLENGES[idx] };
   }
   // seconds until the next ISO week rollover (Monday 00:00 UTC)

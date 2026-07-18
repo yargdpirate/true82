@@ -333,3 +333,166 @@ The funnel keys off the `variant` column; zero server changes were needed.
   only the gate's separate caption element changed.
 - QA: 244 suite, 51 smoke (caption assertion retargeted to the new text).
   Cache key v10 on app.js.
+
+## V11 (2026-07-17) — compact draft chrome + the rules sheet + the copy rewrite
+
+Design goal, verbatim from the brief: it must be beyond dead simple to find
+the rules, and the rules must be written so a first-timer can play to the
+full extent immediately. Three moves, all modes, draft screens only:
+
+- COMPACT CHROME: while a draft is live, body.drafting now hides the big
+  masthead (one CSS rule; intro, gate, results, Tribune all still remove the
+  class, so the full site-head returns there). A 46px utility bar replaces
+  it: EXIT RUN (keeps the startOverBtn id, so wireStartOver and run_abandon
+  are untouched), the five pick diamonds with a live PICK N OF 5 counter
+  (renderPips paints both homes), and a small hoop mark. The amber Start
+  over slab, the daily/challenge strap, the cap money bar, the pro hint,
+  and every draft-screen (i) are retired from this screen.
+- THE MODE PANEL: one plq-slim frame under the bar. Left: identity (DAILY #N
+  with a "1 OFFICIAL ATTEMPT" / "PRACTICE RUN" pill, or CLASSIC MODE /
+  PRESTI MODE / PRO MODE / WEEKLY / CHALLENGE), then a mechanical status
+  line (base rules, the day's twist in one breath, live $N LEFT in Presti,
+  beat-target when arriving by link). Right: a gold HOW TO PLAY button
+  (book icon + "rules + official attempt" style sublabel) that rides the
+  existing presti-spin slab treatment. Kaman keeps its mystery: bar only.
+- THE RULES SHEET: HOW TO PLAY opens a proper overlay (z 110, Escape /
+  backdrop / GOT IT close, focus restore, body scroll lock, rules_open
+  analytics with the run snapshot). Contents in order: THE DAILY law (daily
+  runs), TODAY'S RULE / THE TWIST framed insert with the full brief, THE
+  GAME IN 20 SECONDS (four steps), base-mode rules bullets, WHAT WINS GAMES
+  (talent / shooting / one ball / defense / the math, with the engine's real
+  numbers: 110 usage budget, 3-spacer target, 2-3 net pair-defense taxes,
+  net 0 = 41-41, +27 runs the table, 96 Bulls +13), and a "today's rule
+  wins any conflict" note on modified boards. Fallback chain for challenge
+  briefs: DAILY_COPY[id].g, then the manifest blurb.
+- THE COPY REWRITE (daily-core): every DAILY_COPY entry (43 ids), all three
+  VANILLA_COPY entries, and all three MODE_TIPs rewritten under a stated
+  copy law: what changed, by how much, what to do about it, plain english,
+  verified against the actual cfg/filter/pick/deal hooks. Real numbers
+  throughout (luxury_tax now says "more than four times" because 0.4 vs
+  0.09375 IS 4.3x; deep_pockets admits $82 at 1.6x prices is normal buying
+  power; gem odds taught as "about 1 in 7, half the mid-tier are rip-offs"
+  straight from capMisprice). Era-locked boards still name their dead skips.
+  Zero em-dashes across every user-facing string (asserted).
+- Intro Draft/Winning paragraphs and the static index.html crawler block
+  refreshed to the same standard; both now point at HOW TO PLAY.
+- decorate3dButtons exclusion list gains .du-exit and .rs-close so the quiet
+  chrome stays quiet; the rules button deliberately takes the gold slab.
+- QA (local jsdom walk, 70 checks): chrome + panel per mode, live $ after a
+  paid skip, pips advance on a real confirmed pick, sheet contents per mode,
+  Escape/GOT IT/backdrop close + scroll-lock release, gate dunk to official
+  draft, practice pill flip, results restore the masthead, copy laws
+  (coverage + em-dash zero), challenge and kaman paths, run_abandon and
+  rules_open events. Cache key v11 on app.js and styles.css.
+- TEST-LANE HEADS-UP: the repo's smoke-daily walk asserts the old strap (i)
+  and capTip surfaces (V7/V8 checks). Those assertions need retargeting to
+  #rulesBtn / #rulesOverlay when this lands in the accounts-test lane; the
+  gate (i) checks still pass as-is. MODE_TIP's mirror comment now points at
+  RULES_MODE in app.js instead of the deleted #capTip.
+
+## V11 hotfix (2026-07-17, same day) — subpage 404s: the share catch-all ate the explainer pages
+
+Root cause, reproduced locally on wrangler pages dev with byte-identical
+files (so: not a Cloudflare platform change, not the compatibility date).
+The Markdown-for-Agents feature added /faq, /faq/, /how-it-works, ... to
+the _routes.json include list so _middleware.js could content-negotiate
+them. But after the middleware's next(), the router's next match for any
+single-segment path is functions/[id].js (the Tribune root share handler),
+whose SLUG_RE requires ^[A-Z0-9] and exactly 5 chars. "faq" fails, and the
+old line returned plain("not found", 404). The share wildcards were
+uppercase and digits only precisely so lowercase paths stayed static; the
+five explicit page includes broke that invariant the day they shipped.
+Agents asking with Accept: text/markdown got 200s the whole time; humans
+got "not found".
+
+Fix in functions/[id].js (~L52-66): non-slug GET/HEAD falls through to
+env.ASSETS.fetch(request) instead of 404ing, so real pages serve their
+index.html and junk paths get the styled 404.html (still status 404).
+Non-slug POST still returns plain 404. Verified on the local Pages router:
+all five pages 200, /faq noslash 308 then 200, junk paths 404 with the
+styled page, slug-shaped paths still enter the DB branch, POST /faq still
+404, markdown negotiation still 200 text/markdown. Deploy note: this file
+ships in BOTH lanes; patch the accounts-test branch's copy too. Do not
+change the compatibility date; it was never the problem.
+
+## V12 (2026-07-17) — money in millions, the bank that ticks, and the year reel everywhere
+
+The Codex salary-cap spec, adapted to the house (vanilla JS, the V11 chrome
+as the real baseline) plus six same-day asks. Layout notes below; the full
+divergence log is in the session summary.
+
+- MONEY IS MILLIONS: new shared fmtM()/fmtMCost() in app.js. Every dynamic
+  amount now renders $NM with U+2212 for deductions: bank, skip chips, price
+  boxes, tray note, results cap line, both share-text cap segments (FORMAT
+  LAW amendment: "$12M Cap Spc"; test-lane byte pins need repinning). All
+  authored prose migrated inline: 57 conversions across DAILY_COPY,
+  VANILLA_COPY, MODE_TIP, plus RULES_MODE and the vanilla gate line. The
+  weekly tile now prefers DAILY_COPY over the raw manifest blurb, so
+  challenges.js stays untouched per the manifest law.
+- THE BANK: its own slot in the mode panel (BANK over a 26px amber amount),
+  and tickBank() counts spends down in red and refunds up in green, one
+  million at a time, surviving the per-round re-render via G.bankShown.
+  Reduced motion snaps.
+- SKIP CHIPS: Presti's three skips are label + gold-on-ink cost chips
+  (SKIP TEAM / −$1M) in a 3-up grid. flashRefund/flashFireSale now save and
+  restore innerHTML so the flashes don't flatten the chips. Classic keeps
+  its free-skip labels.
+- PRICE BOXES: cap rows carry a DRAFT + $NM box on the right; the row stays
+  the single tappable control and the box takes its pressed state from the
+  row. Fire-sale strike-through lives inside the box. The scramble reel
+  paints .cc-amt now.
+- YEAR REEL EVERYWHERE: yearControlHtml is a styled face + transparent
+  native select (same handler, same a11y, iOS zoom guarded), which makes the
+  season text spinnable, so every pick and skip in every mode runs the year
+  scramble (cap keeps the full name+price roulette). The face's gold caret
+  plus the new CHANGE THE YEARS callout in the rules sheet plus Classic's
+  panel line (TAP THE YEAR) answer "make year-changing obvious".
+- RULES BUTTON: subtitle removed, single-line HOW TO PLAY, and the book icon
+  is a drawn open book (ink cover, cream pages) instead of a silhouette.
+- DRAFT VIEWPORT: body.drafting locks to 100dvh, the pool is the only
+  scroller, its scrollport runs behind the tray with a gradient fade, and a
+  one-time MORE PLAYERS cue shows on round 1 overflow and dies on first
+  scroll. --tray-h tracks the real tray height (ResizeObserver + viewport
+  listeners), so selection growing the tray moves the fade automatically.
+- FULL-SCREEN GATE: body.gating hides the masthead and footer on the Daily
+  gate so the ball fits without scrolling; every exit path clears it.
+- Cache keys v12 on both copies. Local walk extended (fmtM units, tick
+  timing, chips, boxes, faces, gate class, callouts, and a bare-dollar
+  sweep across rendered DOM and the copy layer).
+
+## V13 (2026-07-18) — the playability audit and the second rotation
+
+A greedy bot played every manifest mode through the real engine (300 games
+each) and the daily schedule was rebuilt on the numbers.
+
+- THE FINDINGS: escalator (live in the daily hash) was 61% unfinishable;
+  classmates 99%; the_anchor 42%; tall_wings 24%. A dozen stat-threshold
+  weeklies deal 1-2 player boards. The height-capped modes (short_kings,
+  small_ball_apoc) only "completed" through a data quirk: career position
+  eligibility is keyed by NAME, so a 6'3" Charles Jones inherits a 6'9"
+  Charles Jones' center card. For humans the C slot was as dead as it
+  looked. That collision is documented, not fixed (replay law).
+- THE FIX FOR TODAY: 2026-07-18 is overridden mid-day to small_ball_five,
+  the same fantasy with the unicorn rule (everyone 6'4" and under, except
+  true centers, legal at any height; four spacers wanted). Audit: 0%
+  unfinishable, 42-player pools, real center supply. The morning's official
+  runs stand; the board simply became playable.
+- THE SECOND ROTATION: from 2026-07-19 the daily is a hand-ordered 42-day
+  cycle (POOL2), six weekly arcs with a deliberate cadence, drawing 18
+  previously unshipped manifest modes (loyalty, time_machine, rivalry,
+  decade_ladder, hyperinflation, kaman_epoch...). Every scheduled mode
+  audits 0% dead with healthy pools. The legacy hash pool is FROZEN and
+  still resolves every date before 7/19, so history and beat-links replay
+  byte-identically (proven against a 60-day fixture in the local walk).
+- MANIFEST DOCTRINE v2: challenges.js is append-only; shipped ids are
+  immutable. One new entry (small_ball_five). weeklyFor is frozen at
+  modulus 98 so additions never reshuffle the weekly schedule, and it now
+  steps deterministically past the audit-dead ids.
+- Retired from the daily rotation (ids stay live for replays): escalator,
+  short_kings, small_ball_apoc, grit_grind, two_way, even_money, gem_rush,
+  petty_cash, deflation, no_defense, analytics_dept, specialists, no_skips,
+  moneyball, seventies_money, and four of the seven blind boards.
+- Cache: challenges.js and daily-core.js were loading BARE (no version
+  key) — a same-day fix would never have reached cached clients. Both now
+  carry ?v=20260718-daily-v13 on both lanes.
+- Full numbers: AUDIT-DAILIES.md (session outputs).

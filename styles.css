@@ -2276,6 +2276,16 @@ main.content-page {
 }
 @keyframes gatePullArrow { 0%,100% { transform: translateY(0); opacity: 0.6; } 50% { transform: translateY(4px); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .gate-tipoff .gate-pull i { animation: none; } }
+.gate-play-btn {
+  margin-top: 12px;
+  min-width: 160px;
+  padding: 11px 18px 13px;
+  font-family: var(--disp);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gate-play-btn:focus-visible { outline: 2px solid rgba(255, 214, 131, 0.95); outline-offset: 4px; }
 .gate .hh-lever { cursor: grab; }
 .gate .hh-lever-hint { display: none; }   /* the caption above replaces it */
 .gate .hh-lever:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; border-radius: 8px; }
@@ -2287,4 +2297,417 @@ main.content-page {
 }
 @media (prefers-reduced-motion: reduce) {
   .gate .hh-lever:not(.pulling) .hh-ball { animation: none; }
+}
+
+/* ============ COMPACT DRAFT CHROME + RULES SHEET (2026-07-17, v11) ============
+   While body.drafting: the masthead hides and .draft-utility takes over
+   (EXIT RUN | pick pips + PICK N OF 5 | hoop mark). Intro, gate, results, and
+   the Tribune all remove .drafting, so the full site-head returns there.
+   The mode panel replaces the strap / cap bar / pro hint; HOW TO PLAY opens
+   the rules sheet. #app prefixes are the house specificity armor. */
+body.drafting .site-head { display: none; }
+
+#app .draft-utility {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  gap: 8px; min-height: 46px; margin: 0 0 10px; padding: 0 0 8px;
+  border-bottom: 1px solid var(--tunnel-2);
+}
+#app .du-exit {
+  justify-self: start; display: inline-flex; align-items: center; gap: 3px;
+  -webkit-appearance: none; appearance: none;
+  font-family: var(--disp); font-style: italic; font-weight: 600; font-size: 15px;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--chalk);
+  background: none; border: 0; box-shadow: none; padding: 8px 8px 8px 0;
+}
+#app .du-exit:active { color: var(--amber); }
+.du-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.du-pips span { width: 11px; height: 11px; }
+.du-count { font-size: 8.5px; letter-spacing: 0.16em; color: var(--chalk-dim); white-space: nowrap; }
+.du-brandbox { justify-self: end; display: inline-flex; }
+.du-brand { width: 24px; height: 27px; opacity: 0.9; }
+
+/* ---------- the mode panel ---------- */
+#app .mode-panel {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 10px; padding: 10px 12px 11px;
+}
+#app .cap-mode-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px 12px;
+}
+.mp-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.mp-row1 { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; min-width: 0; }
+.mp-id {
+  font-family: var(--disp); font-weight: 700; font-size: 21px; line-height: 1;
+  letter-spacing: 0.06em; color: var(--chalk); white-space: nowrap;
+}
+.mp-name {
+  font-family: var(--disp); font-weight: 600; font-size: 15px; line-height: 1.1;
+  letter-spacing: 0.04em; color: var(--amber); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.mp-row2 {
+  font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--chalk-dim); line-height: 1.6; overflow-wrap: anywhere;
+}
+.mp-row2 .mp-cash { color: var(--amber); font-weight: 700; font-size: 13px; letter-spacing: 0.05em; }
+.mp-target { font-size: 9.5px; letter-spacing: 0.09em; color: var(--amber); }
+
+/* HOW TO PLAY: explicit, fully contained CTA so it reads as a normal button
+   in the draft panel rather than a floating icon treatment. */
+#app .mp-rules-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 11px;
+  min-height: 64px;
+  min-width: 178px;
+  max-width: none;
+  padding: 11px 16px 13px;
+  border-radius: 12px;
+  text-align: left;
+  white-space: normal;
+}
+#app .mp-rules-btn .mp-book-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: rgba(42, 26, 5, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(42, 26, 5, 0.22), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+#app .mp-rules-btn .mp-book { width: 24px; height: 20px; flex: none; }
+.mp-rules-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; line-height: 1; }
+.mp-rules-main { font-family: var(--disp); font-weight: 700; font-size: 17px; letter-spacing: 0.06em; white-space: nowrap; }
+.mp-rules-sub {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.86;
+  white-space: nowrap;
+}
+@media (max-width: 349px) {
+  #app .mode-panel { flex-wrap: wrap; }
+  #app .mp-rules-btn { width: 100%; min-width: 0; justify-content: center; text-align: center; }
+}
+
+/* ---------- the rules sheet ---------- */
+
+body.rules-open { overflow: hidden; }
+.rules-overlay {
+  position: fixed; inset: 0; z-index: 110;
+  display: flex; align-items: center; justify-content: center;
+  padding: 14px; background: rgba(6, 8, 11, 0.87);
+}
+.rules-sheet {
+  width: min(440px, 96vw); max-height: 88vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.rs-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 12px 14px 8px;
+}
+.rs-title { font-family: var(--disp); font-weight: 700; font-size: 27px; line-height: 1; letter-spacing: 0.05em; color: var(--amber); }
+.rules-overlay .rs-close {
+  -webkit-appearance: none; appearance: none;
+  width: 34px; height: 34px; flex: none; border-radius: 8px;
+  border: 1px solid var(--maple-line); background: var(--ink); color: var(--chalk);
+  font-size: 15px; line-height: 1; box-shadow: none;
+}
+.rules-overlay .rs-close:active { color: var(--amber); border-color: var(--maple); }
+.rs-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 0 14px 14px; }
+.rs-eyebrow {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--maple); margin: 16px 0 7px;
+}
+.rs-law { border-left: 3px solid var(--amber); background: var(--ink); padding: 10px 12px; margin: 2px 0 0; }
+.rs-law p { margin: 0 0 7px; font-size: 13.5px; line-height: 1.45; }
+.rs-law p:last-child { margin-bottom: 0; }
+#app .rs-today, .rules-overlay .rs-today { margin: 14px 0 0; padding: 10px 12px 12px; }
+.rs-today-label { margin: 0 0 6px; color: var(--amber); }
+.rs-today-name { margin: 0 0 5px; font-family: var(--disp); font-weight: 700; font-size: 19px; line-height: 1.05; letter-spacing: 0.03em; color: var(--chalk); }
+.rs-today-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--chalk); }
+.rs-target { margin: 8px 0 0; font-size: 10.5px; letter-spacing: 0.06em; color: var(--amber); }
+.rs-steps { margin: 0; padding: 0 0 0 20px; }
+.rs-steps li { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
+.rs-steps li::marker { color: var(--amber); font-family: var(--mono); font-weight: 600; }
+.rs-list { margin: 0; padding: 0 0 0 18px; list-style: square; }
+.rs-list li { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
+.rs-list li::marker { color: var(--maple); }
+.rs-engine li strong { color: var(--amber); font-weight: 600; letter-spacing: 0.03em; }
+.rs-note { margin: 10px 0 0; font-family: var(--mono); font-style: italic; font-size: 10.5px; color: var(--chalk-dim); }
+.rs-foot {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px calc(11px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--tunnel-2);
+}
+.rs-link { flex: none; font-size: 10.5px; letter-spacing: 0.04em; color: var(--amber); text-decoration: none; }
+.rs-link:active { color: var(--chalk); }
+.rules-overlay .rs-got { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: 0.07em; padding: 10px 8px 11px; }
+
+/* ============ SALARY-CAP MONEY UI + DRAFT VIEWPORT (2026-07-17, v12) ============
+   Millions everywhere, the bank as the panel's loudest value with a tick
+   animation, label+chip skip buttons, DRAFT price boxes, spinnable year faces
+   in every mode, a pool that scrolls behind the tray with a continuation
+   fade, and a full-screen Daily gate. House materials only. */
+
+/* ---------- rules button refinements ---------- */
+#app .mp-rules-btn {
+  align-items: center;
+  gap: 11px;
+  padding: 11px 16px 13px;
+  font-family: inherit;
+}
+#app .mp-rules-btn .mp-rules-main { font-size: 16px; white-space: nowrap; }
+#app .mp-rules-btn:focus-visible { outline: 2px solid rgba(255, 214, 131, 0.95); outline-offset: 3px; }
+
+/* ---------- the bank ---------- */
+.mp-bank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 148px;
+  padding: 10px 14px 11px;
+  text-align: center;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 181, 46, 0.72);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 196, 74, 0.22), rgba(28, 18, 6, 0.96) 58%), var(--ink);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.46) inset,
+    0 0 20px rgba(255, 181, 46, 0.18),
+    0 10px 18px -12px rgba(0, 0, 0, 0.78);
+  position: relative;
+  overflow: hidden;
+}
+.mp-bank::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0) 38%);
+  pointer-events: none;
+}
+.mpb-lab {
+  position: relative;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: #FFE7B6;
+}
+.mpb-amt {
+  position: relative;
+  z-index: 1;
+  font-family: var(--disp);
+  font-weight: 800;
+  font-style: normal;
+  font-size: clamp(34px, 5vw, 44px);
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  color: #FFD98A;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 16px rgba(255, 181, 46, 0.30), 0 2px 0 rgba(0, 0, 0, 0.55);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.cap-mode-panel .mp-left { opacity: 0.92; }
+.cap-mode-panel .mp-rules-btn { transform: none; transform-origin: right center; justify-self: end; }
+.mp-bank.bank-down { animation: bankPulseDown 0.42s ease; }
+.mp-bank.bank-up { animation: bankPulseUp 0.42s ease; }
+.mp-bank.bank-down .mpb-amt { color: #FF8A77; transform: scale(1.08); }
+.mp-bank.bank-up .mpb-amt { color: #7AE08D; transform: scale(1.08); }
+@keyframes bankPulseDown {
+  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  50%  { transform: scale(1.03); box-shadow: 0 0 26px rgba(255,138,119,0.28), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+}
+@keyframes bankPulseUp {
+  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  50%  { transform: scale(1.03); box-shadow: 0 0 26px rgba(122,224,141,0.30), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+}
+@media (max-width: 640px) {
+  #app .cap-mode-panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "left bank"
+      "rules rules";
+    align-items: stretch;
+  }
+  #app .cap-mode-panel .mp-left { grid-area: left; }
+  #app .cap-mode-panel .mp-bank { grid-area: bank; min-width: 132px; }
+  #app .cap-mode-panel .mp-rules-btn {
+    grid-area: rules;
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+    transform: none;
+  }
+}
+@media (max-width: 349px) {
+  #app .cap-mode-panel {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "bank"
+      "left"
+      "rules";
+  }
+  #app .cap-mode-panel .mp-bank { min-width: 0; width: 100%; }
+}
+
+/* ---------- skip buttons: label + cost chip (Presti) ---------- */
+#app .ta-cap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#app .ta-cap .skip-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 7px; width: 100%; padding: 9px 9px 10px; min-height: 42px;
+}
+.sk-lab { font-family: var(--disp); font-weight: 700; font-size: 12.5px; letter-spacing: 0.05em; white-space: nowrap; }
+.sk-chip {
+  font-family: var(--mono); font-weight: 700; font-size: 11px; line-height: 1;
+  padding: 4px 7px 4px; border-radius: 6px; flex: 0 0 auto;
+  background: rgba(21, 13, 3, 0.82); color: #FFD98A;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+}
+#app .ta-cap .skip-btn:disabled .sk-chip { opacity: 0.5; }
+@media (max-width: 379px) {
+  #app .ta-cap { grid-template-columns: 1fr 1fr; }
+  #app .ta-cap #rerollYears { grid-column: 1 / -1; }
+}
+
+/* ---------- player price box: DRAFT + $NM ---------- */
+.cap-row .cap-cost {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
+  min-width: 58px; padding: 5px 8px 6px; flex: 0 0 auto; margin-left: 8px;
+  background: var(--ink); border: 1px solid var(--maple-line); border-radius: 8px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.cc-tag { font-family: var(--mono); font-weight: 700; font-size: 7.5px; letter-spacing: 0.16em; color: var(--maple); }
+.cc-amt { font-family: var(--disp); font-weight: 700; font-size: 16px; line-height: 1; color: var(--amber); white-space: nowrap; }
+.cc-amt s.cost-old { font-size: 11px; margin-right: 4px; }
+.player-row.cap-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.cap-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cap-main .pr-name {
+  line-height: 1.08;
+}
+.cap-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.cap-main .pr-pos {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  order: 1;
+}
+.cap-main .cap-season {
+  order: 2;
+}
+.player-row.sel .cap-cost { border-color: var(--amber); }
+.player-row:not(.off):active .cap-cost { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); }
+.player-row.off .cap-cost { opacity: 0.55; }
+@media (max-width: 430px) {
+  .player-row.cap-row { gap: 6px 8px; }
+  .cap-main .pr-name { font-size: 15px; }
+  .cap-meta { gap: 5px; }
+  .cap-main .pr-pos { font-size: 11.5px; }
+  .cap-main .cap-season { font-size: 10px; padding: 2px 5px; }
+  .cap-row .cap-cost { min-width: 54px; margin-left: 0; padding: 4px 7px 5px; }
+  .cap-row .cc-amt { font-size: 15px; }
+}
+
+/* ---------- year face: visible season control, spinnable text ---------- */
+.year-wrap { position: relative; display: inline-flex; max-width: 148px; }
+.year-face {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 11px; line-height: 1.3; color: var(--maple);
+  background: var(--ink); border: 1px solid var(--maple-line); border-radius: 5px;
+  padding: 2px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.yf-caret { color: var(--amber); font-style: normal; font-weight: 400; font-size: 9px; }
+.year-face.year-fixed { border-color: transparent; background: none; padding-left: 0; color: var(--chalk-dim); }
+.year-wrap .year-sel {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; margin: 0; padding: 0; border: 0; background: none;
+  font-size: 16px;   /* iOS: no focus zoom */
+}
+.year-wrap:focus-within .year-face { border-color: var(--maple); color: var(--amber); }
+
+/* ---------- draft viewport: the pool is the only scroller ---------- */
+body.drafting { height: 100vh; height: 100dvh; overflow: hidden; }
+body.drafting #app {
+  height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  padding-bottom: 0;
+}
+body.drafting.has-pick #app { padding-bottom: 0; }
+#app .draft-utility, #app .mode-panel, #app .ticket, #app .pool-head { flex: 0 0 auto; }
+body.drafting .pool {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  padding-bottom: calc(var(--tray-h, 96px) + 18px + env(safe-area-inset-bottom));
+}
+.pool-fade {
+  display: none; position: fixed; left: 0; right: 0;
+  bottom: var(--tray-h, 96px); height: 44px; z-index: 5; pointer-events: none;
+  background: linear-gradient(180deg, rgba(16, 20, 24, 0), var(--ink) 82%);
+}
+body.drafting .pool-fade { display: block; }
+.tray { z-index: 7; border-top-width: 1px; }
+.pool-cue {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--tray-h, 96px) + 10px); z-index: 6; pointer-events: none;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.16em; color: var(--amber);
+  background: rgba(16, 20, 24, 0.88); border: 1px solid var(--maple-line);
+  border-radius: 999px; padding: 5px 11px;
+  animation: cueNudge 1.6s ease-in-out infinite;
+}
+@keyframes cueNudge {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, 3px); }
+}
+
+/* ---------- compact ticket ---------- */
+#app .ticket { padding: 10px 12px 10px; margin-bottom: 10px; }
+#app .ticket-sub { margin: 2px 0 8px; }
+#app .ticket-actions { margin-top: 8px; }
+
+/* ---------- full-screen gate ---------- */
+body.gating .site-head, body.gating .site-foot { display: none; }
+body.gating #app { padding-top: 6px; }
+body.gating .gate { padding-top: 2px; }
+body.gating .gate-back {
+  font-family: var(--disp); font-style: italic; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+
+/* ---------- rules sheet: the years callout ---------- */
+.rs-years { border-left: 3px solid var(--amber); background: var(--ink); padding: 9px 12px 10px; margin: 14px 0 0; }
+.rs-years-label { margin: 0 0 5px; color: var(--amber); }
+.rs-years-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--chalk); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pool-cue { animation: none; }
+  .mpb-amt { transition: none; }
 }
