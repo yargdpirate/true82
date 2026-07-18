@@ -1121,9 +1121,9 @@ function modePanelHtml() {
       targetHtml +
     '</div>' +
     bankHtml +
-    '<button class="mp-rules-btn" id="rulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: the rules, today\u2019s twist, and how scoring works">' +
-      bookIconSvg() +
-      '<span class="mp-rules-main">HOW TO PLAY</span>' +
+    '<button class="mp-rules-btn presti-spin" id="rulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: the rules, today\u2019s twist, and how scoring works">' +
+      '<span class="mp-book-wrap">' + bookIconSvg() + '</span>' +
+      '<span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span><span class="mp-rules-sub mono">Rules & scoring</span></span>' +
     '</button>' +
   '</div>';
 }
@@ -1287,19 +1287,19 @@ function rulesSheetHtml() {
       (chBrief ? '<p class="rs-today-body">' + esc(chBrief) + '</p>' : '') +
       '</div>';
   }
-  h += '<p class="rs-eyebrow">THE GAME IN 20 SECONDS</p><ol class="rs-steps">' +
-    RULES_STEPS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>";
   var yearsTip = baseKey === "cap"
     ? "Seasons are locked to their price tag in Presti. To change the years, respin the whole board with SKIP YRS for \u2212$1M."
     : baseKey === "pro"
       ? "Every card has a year menu (\u25BE), and it works blind: seasons are randomized, and you can change any of them from memory before you draft."
       : "Every card has a year menu (\u25BE). You are drafting a season, not a career: 1996 Jordan and 2003 Jordan are different weapons. Check it on every pick and take the peak year.";
-  h += '<div class="rs-years"><p class="rs-eyebrow rs-years-label">CHANGE THE YEARS</p>' +
-    '<p class="rs-years-body">' + yearsTip + '</p></div>';
   h += '<p class="rs-eyebrow">' + baseName + ' MODE RULES</p><ul class="rs-list">' +
     (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+  h += '<div class="rs-years"><p class="rs-eyebrow rs-years-label">CHANGE THE YEARS</p>' +
+    '<p class="rs-years-body">' + yearsTip + '</p></div>';
   h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
-    RULES_ENGINE.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
+    RULES_ENGINE.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>";
+  h += '<p class="rs-eyebrow">THE GAME IN 20 SECONDS</p><ol class="rs-steps">' +
+    RULES_STEPS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>" +
     ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
   h += '</div><div class="rs-foot">' +
     '<a class="rs-link mono" href="/how-it-works/" target="_blank" rel="noopener">Full engine math \u2192</a>' +
@@ -3870,6 +3870,7 @@ function renderDailyGate(board, target, variantTag) {
       '<div class="gate-tipoff" id="gateTipoff">' +
         '<p class="gate-pull">DUNK THE BALL TO START <i>\u2193</i></p>' +
         ballLeverHtml("gateLever", "gateArm", "Drag the basketball down through the hoop to start The Daily") +
+        '<button class="gate-play-btn presti-spin" id="gatePlayBtn" type="button" aria-label="Start The Daily without using the dunk interaction">PLAY IT</button>' +
       '</div>' +
     '</section>';
   el("gateBack").addEventListener("click", function () { renderIntro(); });
@@ -3884,12 +3885,16 @@ function renderDailyGate(board, target, variantTag) {
   // The real Hot Hand mechanic, wired to launch: pull the ball down through
   // the net, it ignites, the flames burn for a beat (and keep burning as the
   // loading state if site data is still on the way), then the draft begins.
-  var gLever = el("gateLever"), gArm = el("gateArm");
-  wireBallPull(gLever, gArm, function () {
+  function launchFromGate(delay, btn) {
+    if (btn) btn.disabled = true;
     setTimeout(function () {
-      queue(function () { startDailyRun(board, target, variantTag); }, null);
-    }, 700);
-  });
+      queue(function () { startDailyRun(board, target, variantTag); }, btn || null);
+    }, delay || 0);
+  }
+  var gLever = el("gateLever"), gArm = el("gateArm");
+  wireBallPull(gLever, gArm, function () { launchFromGate(700, null); });
+  var gPlay = el("gatePlayBtn");
+  if (gPlay) gPlay.addEventListener("click", function () { launchFromGate(0, gPlay); });
   // Same contract as renderIntro's queue: DATA_READY/PENDING_FN are
   // module-level, so the gate can hold the launch until the data lands.
   function queue(fn, btn) {

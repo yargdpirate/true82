@@ -2276,6 +2276,16 @@ main.content-page {
 }
 @keyframes gatePullArrow { 0%,100% { transform: translateY(0); opacity: 0.6; } 50% { transform: translateY(4px); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .gate-tipoff .gate-pull i { animation: none; } }
+.gate-play-btn {
+  margin-top: 12px;
+  min-width: 160px;
+  padding: 11px 18px 13px;
+  font-family: var(--disp);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gate-play-btn:focus-visible { outline: 2px solid rgba(255, 214, 131, 0.95); outline-offset: 4px; }
 .gate .hh-lever { cursor: grab; }
 .gate .hh-lever-hint { display: none; }   /* the caption above replaces it */
 .gate .hh-lever:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; border-radius: 8px; }
@@ -2345,25 +2355,50 @@ body.drafting .site-head { display: none; }
 .mp-row2 .mp-cash { color: var(--amber); font-weight: 700; font-size: 13px; letter-spacing: 0.05em; }
 .mp-target { font-size: 9.5px; letter-spacing: 0.09em; color: var(--amber); }
 
-/* HOW TO PLAY: rides the presti-spin gold-slab treatment (decorate3dButtons
-   adds the class); this layers the book + two-line label layout on top. */
+/* HOW TO PLAY: explicit, fully contained CTA so it reads as a normal button
+   in the draft panel rather than a floating icon treatment. */
 #app .mp-rules-btn {
-  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
-  max-width: 47%; padding: 9px 12px 10px; border-radius: 10px; text-align: left;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 11px;
+  min-height: 64px;
+  min-width: 178px;
+  max-width: none;
+  padding: 11px 16px 13px;
+  border-radius: 12px;
+  text-align: left;
+  white-space: normal;
 }
-#app .mp-rules-btn .mp-book { width: 25px; height: 21px; flex: none; }
-.mp-rules-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; line-height: 1; }
+#app .mp-rules-btn .mp-book-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: rgba(42, 26, 5, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(42, 26, 5, 0.22), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+#app .mp-rules-btn .mp-book { width: 24px; height: 20px; flex: none; }
+.mp-rules-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; line-height: 1; }
 .mp-rules-main { font-family: var(--disp); font-weight: 700; font-size: 17px; letter-spacing: 0.06em; white-space: nowrap; }
 .mp-rules-sub {
-  font-family: var(--mono); font-style: italic; font-size: 8px; letter-spacing: 0.01em;
-  opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.86;
+  white-space: nowrap;
 }
 @media (max-width: 349px) {
   #app .mode-panel { flex-wrap: wrap; }
-  #app .mp-rules-btn { max-width: none; flex: 1 1 100%; justify-content: center; text-align: center; }
+  #app .mp-rules-btn { width: 100%; min-width: 0; justify-content: center; text-align: center; }
 }
 
 /* ---------- the rules sheet ---------- */
+
 body.rules-open { overflow: hidden; }
 .rules-overlay {
   position: fixed; inset: 0; z-index: 110;
@@ -2422,10 +2457,15 @@ body.rules-open { overflow: hidden; }
    in every mode, a pool that scrolls behind the tray with a continuation
    fade, and a full-screen Daily gate. House materials only. */
 
-/* ---------- rules button: one line, drawn book ---------- */
-#app .mp-rules-btn { align-items: center; gap: 9px; padding: 10px 13px 11px; }
-#app .mp-rules-btn .mp-book { width: 27px; height: 23px; }
+/* ---------- rules button refinements ---------- */
+#app .mp-rules-btn {
+  align-items: center;
+  gap: 11px;
+  padding: 11px 16px 13px;
+  font-family: inherit;
+}
 #app .mp-rules-btn .mp-rules-main { font-size: 16px; white-space: nowrap; }
+#app .mp-rules-btn:focus-visible { outline: 2px solid rgba(255, 214, 131, 0.95); outline-offset: 3px; }
 
 /* ---------- the bank ---------- */
 .mp-bank {
@@ -2478,7 +2518,7 @@ body.rules-open { overflow: hidden; }
   transition: color 0.15s ease, transform 0.15s ease;
 }
 .cap-mode-panel .mp-left { opacity: 0.92; }
-.cap-mode-panel .mp-rules-btn { transform: scale(0.96); transform-origin: right center; }
+.cap-mode-panel .mp-rules-btn { transform: none; transform-origin: right center; justify-self: end; }
 .mp-bank.bank-down { animation: bankPulseDown 0.42s ease; }
 .mp-bank.bank-up { animation: bankPulseUp 0.42s ease; }
 .mp-bank.bank-down .mpb-amt { color: #FF8A77; transform: scale(1.08); }
@@ -2506,6 +2546,8 @@ body.rules-open { overflow: hidden; }
   #app .cap-mode-panel .mp-rules-btn {
     grid-area: rules;
     max-width: none;
+    min-width: 0;
+    width: 100%;
     justify-content: center;
     transform: none;
   }
