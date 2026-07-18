@@ -53,7 +53,17 @@ export async function onRequest(context) {
   if (url.searchParams.get("share_health") === "1" && (request.method === "GET" || request.method === "HEAD")) {
     return shareHealth(env, request.method === "HEAD");
   }
-  if (!SLUG_RE.test(id)) return plain("not found", 404);
+  if (!SLUG_RE.test(id)) {
+    // Not a share slug. _routes.json routes the five markdown-negotiated pages
+    // through Functions for the agent middleware, so this root catch-all also
+    // receives /faq/, /how-it-works/, /what-is-bpm/, /can-you-go-82-0/ after
+    // the middleware's next(). Hand every non-slug GET/HEAD to the static
+    // layer: real pages serve their index.html, junk paths get the styled
+    // 404.html (still status 404). Never 404 the whole lowercase namespace
+    // from inside the share system again.
+    if (request.method === "GET" || request.method === "HEAD") return env.ASSETS.fetch(request);
+    return plain("not found", 404);
+  }
 
   if (request.method === "POST" && url.searchParams.get("open") === "1") {
     if (!env.DB) return new Response(null, { status: 204, headers: noStoreHeaders() });

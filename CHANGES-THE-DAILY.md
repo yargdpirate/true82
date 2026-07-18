@@ -389,3 +389,28 @@ full extent immediately. Three moves, all modes, draft screens only:
   #rulesBtn / #rulesOverlay when this lands in the accounts-test lane; the
   gate (i) checks still pass as-is. MODE_TIP's mirror comment now points at
   RULES_MODE in app.js instead of the deleted #capTip.
+
+## V11 hotfix (2026-07-17, same day) — subpage 404s: the share catch-all ate the explainer pages
+
+Root cause, reproduced locally on wrangler pages dev with byte-identical
+files (so: not a Cloudflare platform change, not the compatibility date).
+The Markdown-for-Agents feature added /faq, /faq/, /how-it-works, ... to
+the _routes.json include list so _middleware.js could content-negotiate
+them. But after the middleware's next(), the router's next match for any
+single-segment path is functions/[id].js (the Tribune root share handler),
+whose SLUG_RE requires ^[A-Z0-9] and exactly 5 chars. "faq" fails, and the
+old line returned plain("not found", 404). The share wildcards were
+uppercase and digits only precisely so lowercase paths stayed static; the
+five explicit page includes broke that invariant the day they shipped.
+Agents asking with Accept: text/markdown got 200s the whole time; humans
+got "not found".
+
+Fix in functions/[id].js (~L52-66): non-slug GET/HEAD falls through to
+env.ASSETS.fetch(request) instead of 404ing, so real pages serve their
+index.html and junk paths get the styled 404.html (still status 404).
+Non-slug POST still returns plain 404. Verified on the local Pages router:
+all five pages 200, /faq noslash 308 then 200, junk paths 404 with the
+styled page, slug-shaped paths still enter the DB branch, POST /faq still
+404, markdown negotiation still 200 text/markdown. Deploy note: this file
+ships in BOTH lanes; patch the accounts-test branch's copy too. Do not
+change the compatibility date; it was never the problem.
