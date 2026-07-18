@@ -2321,6 +2321,12 @@ body.drafting .site-head { display: none; }
   display: flex; align-items: center; gap: 10px;
   margin: 0 0 10px; padding: 10px 12px 11px;
 }
+#app .cap-mode-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px 12px;
+}
 .mp-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .mp-row1 { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; min-width: 0; }
 .mp-id {
@@ -2422,18 +2428,97 @@ body.rules-open { overflow: hidden; }
 #app .mp-rules-btn .mp-rules-main { font-size: 16px; white-space: nowrap; }
 
 /* ---------- the bank ---------- */
-.mp-bank { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; padding-right: 2px; }
-.mpb-lab { font-size: 8px; font-weight: 600; letter-spacing: 0.2em; color: var(--chalk-dim); }
-.mpb-amt {
-  font-family: var(--disp); font-weight: 700; font-style: normal;
-  font-size: 26px; line-height: 0.95; letter-spacing: 0.01em;
-  color: var(--amber); font-variant-numeric: tabular-nums;
-  transition: color 0.15s ease;
+.mp-bank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 148px;
+  padding: 10px 14px 11px;
+  text-align: center;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 181, 46, 0.72);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 196, 74, 0.22), rgba(28, 18, 6, 0.96) 58%), var(--ink);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.46) inset,
+    0 0 20px rgba(255, 181, 46, 0.18),
+    0 10px 18px -12px rgba(0, 0, 0, 0.78);
+  position: relative;
+  overflow: hidden;
 }
-.mp-bank.bank-down .mpb-amt { color: var(--whistle); }
-.mp-bank.bank-up .mpb-amt { color: #58c470; }
+.mp-bank::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0) 38%);
+  pointer-events: none;
+}
+.mpb-lab {
+  position: relative;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: #FFE7B6;
+}
+.mpb-amt {
+  position: relative;
+  z-index: 1;
+  font-family: var(--disp);
+  font-weight: 800;
+  font-style: normal;
+  font-size: clamp(34px, 5vw, 44px);
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  color: #FFD98A;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 16px rgba(255, 181, 46, 0.30), 0 2px 0 rgba(0, 0, 0, 0.55);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.cap-mode-panel .mp-left { opacity: 0.92; }
+.cap-mode-panel .mp-rules-btn { transform: scale(0.96); transform-origin: right center; }
+.mp-bank.bank-down { animation: bankPulseDown 0.42s ease; }
+.mp-bank.bank-up { animation: bankPulseUp 0.42s ease; }
+.mp-bank.bank-down .mpb-amt { color: #FF8A77; transform: scale(1.08); }
+.mp-bank.bank-up .mpb-amt { color: #7AE08D; transform: scale(1.08); }
+@keyframes bankPulseDown {
+  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  50%  { transform: scale(1.03); box-shadow: 0 0 26px rgba(255,138,119,0.28), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+}
+@keyframes bankPulseUp {
+  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  50%  { transform: scale(1.03); box-shadow: 0 0 26px rgba(122,224,141,0.30), 0 10px 18px -12px rgba(0,0,0,0.78); }
+  100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
+}
+@media (max-width: 640px) {
+  #app .cap-mode-panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "left bank"
+      "rules rules";
+    align-items: stretch;
+  }
+  #app .cap-mode-panel .mp-left { grid-area: left; }
+  #app .cap-mode-panel .mp-bank { grid-area: bank; min-width: 132px; }
+  #app .cap-mode-panel .mp-rules-btn {
+    grid-area: rules;
+    max-width: none;
+    justify-content: center;
+    transform: none;
+  }
+}
 @media (max-width: 349px) {
-  #app .mode-panel .mp-bank { order: 2; }
+  #app .cap-mode-panel {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "bank"
+      "left"
+      "rules";
+  }
+  #app .cap-mode-panel .mp-bank { min-width: 0; width: 100%; }
 }
 
 /* ---------- skip buttons: label + cost chip (Presti) ---------- */
@@ -2465,9 +2550,51 @@ body.rules-open { overflow: hidden; }
 .cc-tag { font-family: var(--mono); font-weight: 700; font-size: 7.5px; letter-spacing: 0.16em; color: var(--maple); }
 .cc-amt { font-family: var(--disp); font-weight: 700; font-size: 16px; line-height: 1; color: var(--amber); white-space: nowrap; }
 .cc-amt s.cost-old { font-size: 11px; margin-right: 4px; }
+.player-row.cap-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.cap-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cap-main .pr-name {
+  line-height: 1.08;
+}
+.cap-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.cap-main .pr-pos {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  order: 1;
+}
+.cap-main .cap-season {
+  order: 2;
+}
 .player-row.sel .cap-cost { border-color: var(--amber); }
 .player-row:not(.off):active .cap-cost { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); }
 .player-row.off .cap-cost { opacity: 0.55; }
+@media (max-width: 430px) {
+  .player-row.cap-row { gap: 6px 8px; }
+  .cap-main .pr-name { font-size: 15px; }
+  .cap-meta { gap: 5px; }
+  .cap-main .pr-pos { font-size: 11.5px; }
+  .cap-main .cap-season { font-size: 10px; padding: 2px 5px; }
+  .cap-row .cap-cost { min-width: 54px; margin-left: 0; padding: 4px 7px 5px; }
+  .cap-row .cc-amt { font-size: 15px; }
+}
 
 /* ---------- year face: visible season control, spinnable text ---------- */
 .year-wrap { position: relative; display: inline-flex; max-width: 148px; }

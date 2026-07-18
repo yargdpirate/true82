@@ -1113,7 +1113,8 @@ function modePanelHtml() {
   var bankHtml = MODE === "cap"
     ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + fmtM(G.budget) + '</b></div>'
     : "";
-  return '<div class="mode-panel plq-frame plq-slim" id="modePanel">' +
+  var panelCls = 'mode-panel plq-frame plq-slim' + (MODE === "cap" ? ' cap-mode-panel' : '');
+  return '<div class="' + panelCls + '" id="modePanel">' +
     '<div class="mp-left">' +
       '<div class="mp-row1">' + idHtml + '</div>' +
       '<div class="mp-row2 mono">' + sub.join(" \u00B7 ") + '</div>' +
@@ -1825,10 +1826,15 @@ function capRowHtml(bestRow) {
   var cls = "player-row cap-row" + (sel ? " sel" : "") + (open ? "" : " off");
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true" title="' + esc(block.why) + '"') + ">" +
-    '<span class="pr-top"><span class="pr-name">' + esc(name) + "</span>" +
-    '<span class="cap-cost">' + costHtml + "</span></span>" +
-    '<span class="pr-sub"><span class="cap-season">' + shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]) +
-    '</span><span class="pr-pos">' + bucketTag(row) + why + "</span></span></div>";
+    '<span class="cap-main">' +
+      '<span class="pr-name">' + esc(name) + '</span>' +
+      '<span class="cap-meta">' +
+        '<span class="pr-pos">' + bucketTag(row) + why + '</span>' +
+        '<span class="cap-season">' + shortSeason(row[IDX.season]) + ' ' + esc(row[IDX.team]) + '</span>' +
+      '</span>' +
+    '</span>' +
+    '<span class="cap-cost">' + costHtml + '</span>' +
+  '</div>';
 }
 
 function poolInnerHtml(rows) { return rows.map(poolRowHtml).join(""); }
