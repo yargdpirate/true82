@@ -163,8 +163,8 @@
     /* ---- POOL2 additions (2026-07-18): every line verified against the
        manifest hooks it describes. Money in millions per the format law. ---- */
     small_ball_five: {
-      s: "Everyone 6'4\" and under. One unicorn allowed.",
-      g: "Every guard and wing on this board is 6'4\" or under, but true centers stay legal at any height, so one tower can anchor four shorties. Presti pricing, and four floor spacers wanted at 2 net each. Small, fast, and everybody shoots around the big fella." },
+      s: "G/F slots are 6'4\" and under. Center must also qualify at forward.",
+      g: "Every guard and forward slot is capped at 6'4\". The one center slot ignores height, but only for a player who qualifies at both forward and center, so you get one tower instead of a frontcourt full of them. Presti pricing, and four floor spacers wanted at 2 net each." },
     loyalty: {
       s: "Your first pick locks the franchise for all five.",
       g: "Round 1 only deals franchises deep enough to field a whole team, and whoever you take first locks his team for the run: every later board is that franchise in another era. After pick one, team skips just change the era. Draft the logo, then the players." },
