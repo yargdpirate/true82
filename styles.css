@@ -2409,3 +2409,136 @@ body.rules-open { overflow: hidden; }
 .rs-link { flex: none; font-size: 10.5px; letter-spacing: 0.04em; color: var(--amber); text-decoration: none; }
 .rs-link:active { color: var(--chalk); }
 .rules-overlay .rs-got { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: 0.07em; padding: 10px 8px 11px; }
+
+/* ============ SALARY-CAP MONEY UI + DRAFT VIEWPORT (2026-07-17, v12) ============
+   Millions everywhere, the bank as the panel's loudest value with a tick
+   animation, label+chip skip buttons, DRAFT price boxes, spinnable year faces
+   in every mode, a pool that scrolls behind the tray with a continuation
+   fade, and a full-screen Daily gate. House materials only. */
+
+/* ---------- rules button: one line, drawn book ---------- */
+#app .mp-rules-btn { align-items: center; gap: 9px; padding: 10px 13px 11px; }
+#app .mp-rules-btn .mp-book { width: 27px; height: 23px; }
+#app .mp-rules-btn .mp-rules-main { font-size: 16px; white-space: nowrap; }
+
+/* ---------- the bank ---------- */
+.mp-bank { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; padding-right: 2px; }
+.mpb-lab { font-size: 8px; font-weight: 600; letter-spacing: 0.2em; color: var(--chalk-dim); }
+.mpb-amt {
+  font-family: var(--disp); font-weight: 700; font-style: normal;
+  font-size: 26px; line-height: 0.95; letter-spacing: 0.01em;
+  color: var(--amber); font-variant-numeric: tabular-nums;
+  transition: color 0.15s ease;
+}
+.mp-bank.bank-down .mpb-amt { color: var(--whistle); }
+.mp-bank.bank-up .mpb-amt { color: #58c470; }
+@media (max-width: 349px) {
+  #app .mode-panel .mp-bank { order: 2; }
+}
+
+/* ---------- skip buttons: label + cost chip (Presti) ---------- */
+#app .ta-cap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#app .ta-cap .skip-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 7px; width: 100%; padding: 9px 9px 10px; min-height: 42px;
+}
+.sk-lab { font-family: var(--disp); font-weight: 700; font-size: 12.5px; letter-spacing: 0.05em; white-space: nowrap; }
+.sk-chip {
+  font-family: var(--mono); font-weight: 700; font-size: 11px; line-height: 1;
+  padding: 4px 7px 4px; border-radius: 6px; flex: 0 0 auto;
+  background: rgba(21, 13, 3, 0.82); color: #FFD98A;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+}
+#app .ta-cap .skip-btn:disabled .sk-chip { opacity: 0.5; }
+@media (max-width: 379px) {
+  #app .ta-cap { grid-template-columns: 1fr 1fr; }
+  #app .ta-cap #rerollYears { grid-column: 1 / -1; }
+}
+
+/* ---------- player price box: DRAFT + $NM ---------- */
+.cap-row .cap-cost {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
+  min-width: 58px; padding: 5px 8px 6px; flex: 0 0 auto; margin-left: 8px;
+  background: var(--ink); border: 1px solid var(--maple-line); border-radius: 8px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.cc-tag { font-family: var(--mono); font-weight: 700; font-size: 7.5px; letter-spacing: 0.16em; color: var(--maple); }
+.cc-amt { font-family: var(--disp); font-weight: 700; font-size: 16px; line-height: 1; color: var(--amber); white-space: nowrap; }
+.cc-amt s.cost-old { font-size: 11px; margin-right: 4px; }
+.player-row.sel .cap-cost { border-color: var(--amber); }
+.player-row:not(.off):active .cap-cost { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); }
+.player-row.off .cap-cost { opacity: 0.55; }
+
+/* ---------- year face: visible season control, spinnable text ---------- */
+.year-wrap { position: relative; display: inline-flex; max-width: 148px; }
+.year-face {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 11px; line-height: 1.3; color: var(--maple);
+  background: var(--ink); border: 1px solid var(--maple-line); border-radius: 5px;
+  padding: 2px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.yf-caret { color: var(--amber); font-style: normal; font-weight: 400; font-size: 9px; }
+.year-face.year-fixed { border-color: transparent; background: none; padding-left: 0; color: var(--chalk-dim); }
+.year-wrap .year-sel {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; margin: 0; padding: 0; border: 0; background: none;
+  font-size: 16px;   /* iOS: no focus zoom */
+}
+.year-wrap:focus-within .year-face { border-color: var(--maple); color: var(--amber); }
+
+/* ---------- draft viewport: the pool is the only scroller ---------- */
+body.drafting { height: 100vh; height: 100dvh; overflow: hidden; }
+body.drafting #app {
+  height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  padding-bottom: 0;
+}
+body.drafting.has-pick #app { padding-bottom: 0; }
+#app .draft-utility, #app .mode-panel, #app .ticket, #app .pool-head { flex: 0 0 auto; }
+body.drafting .pool {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  padding-bottom: calc(var(--tray-h, 96px) + 18px + env(safe-area-inset-bottom));
+}
+.pool-fade {
+  display: none; position: fixed; left: 0; right: 0;
+  bottom: var(--tray-h, 96px); height: 44px; z-index: 5; pointer-events: none;
+  background: linear-gradient(180deg, rgba(16, 20, 24, 0), var(--ink) 82%);
+}
+body.drafting .pool-fade { display: block; }
+.tray { z-index: 7; border-top-width: 1px; }
+.pool-cue {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--tray-h, 96px) + 10px); z-index: 6; pointer-events: none;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.16em; color: var(--amber);
+  background: rgba(16, 20, 24, 0.88); border: 1px solid var(--maple-line);
+  border-radius: 999px; padding: 5px 11px;
+  animation: cueNudge 1.6s ease-in-out infinite;
+}
+@keyframes cueNudge {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, 3px); }
+}
+
+/* ---------- compact ticket ---------- */
+#app .ticket { padding: 10px 12px 10px; margin-bottom: 10px; }
+#app .ticket-sub { margin: 2px 0 8px; }
+#app .ticket-actions { margin-top: 8px; }
+
+/* ---------- full-screen gate ---------- */
+body.gating .site-head, body.gating .site-foot { display: none; }
+body.gating #app { padding-top: 6px; }
+body.gating .gate { padding-top: 2px; }
+body.gating .gate-back {
+  font-family: var(--disp); font-style: italic; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+
+/* ---------- rules sheet: the years callout ---------- */
+.rs-years { border-left: 3px solid var(--amber); background: var(--ink); padding: 9px 12px 10px; margin: 14px 0 0; }
+.rs-years-label { margin: 0 0 5px; color: var(--amber); }
+.rs-years-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--chalk); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pool-cue { animation: none; }
+  .mpb-amt { transition: none; }
+}

@@ -97,9 +97,45 @@
     { id: "small_blind" }, { id: "tall_blind" }
   ];
 
+  /* ---------- THE SECOND ROTATION (2026-07-19 onward) ----------
+     The legacy POOL above is FROZEN: boardFor hashes per-day into it, so its
+     length and order rewrite every historical board. It stays exactly as
+     shipped so past dailies and beat-links replay forever.
+
+     POOL2 is a true rotation (day index modulo 42), hand-ordered as six
+     weekly arcs starting Saturday 2026-07-19. Weekday texture: Sat franchise
+     flavor, Sun economy, Mon engine rules, Tue sequence puzzles, Wed era or
+     wildcard, Thu blind or bank, Fri a positive twist. Every id below passed
+     the 2026-07-18 playability audit (300 bot games each, 0% unfinishable,
+     healthy pools and center supply). The audit retired the modes that
+     bricked (escalator: 61% dead), starved (two_way: 4-player boards), or
+     filled slots only through same-name data collisions (short_kings,
+     small_ball_apoc). Retired ids stay live in the manifest for replays. */
+  var START2 = "2026-07-19";
+  var OVERRIDES = {
+    // 2026-07-18 shipped small_ball_apoc, whose C slot was fillable only via
+    // name-collision ghosts. Swapped mid-day for the fixed build of the same
+    // fantasy. Morning officials stand; the board simply became playable.
+    "2026-07-18": "small_ball_five"
+  };
+  var POOL2 = [
+    // week 1
+    "golden_age", "loyalty", "stoppers", "time_machine", "inflation", "blind_nineties", "seven_seconds",
+    // week 2
+    "rivalry", "small_ball_five", "luxury_tax", "the_descent", "pioneers", "memory_palace", "splash_only",
+    // week 3
+    "california_love", "minimum_wage", "lockdown", "benjamin_button", "kaman_epoch", "blind_modern", "iso_week",
+    // week 4
+    "texas_triangle", "balanced_books", "hand_check", "decade_ladder", "hyperinflation", "blind_california", "heliocentric",
+    // week 5
+    "expansion_class", "bargain_bin", "pace_and_space", "full_circle", "the_gauntlet", "deep_pockets", "y2k",
+    // week 6
+    "vhs_era", "odd_lots", "the_triangle", "twin_towers", "generalists", "post_up_week", "choosy_gm"
+  ];
+
   var VANILLA_NAME = { cap: "Straight Presti", classic: "Straight Classic", pro: "Straight Pro" };
   var VANILLA_BLURB = {
-    cap: "No modifier. $50, random prices, the board as dealt.",
+    cap: "No modifier. $50M, random prices, the board as dealt.",
     classic: "No modifier. Full stats, one skip each. Pure draft.",
     pro: "No modifier. No stats, random seasons. Memory only."
   };
@@ -112,10 +148,10 @@
      COPY LAW (2026-07-17 rewrite): information first, flavor a distant second.
      Every line tells a first-timer WHAT changed, by HOW MUCH, and what to DO
      about it, in plain english, using the engine's real numbers. Defaults for
-     reference: $50 cap budget, mid-tier gem odds about 1 in 7 with half the
+     reference: $50M cap budget, mid-tier gem odds about 1 in 7 with half the
      mid-tier rip-offs, usage budget 110 taxed at about 0.1 net per point over,
      3 floor spacers wanted (zero shooters bleeds about 6 net), pair-defense
-     taxes 2 to 3 net, one skip of each in classic, unlimited $1 rerolls in
+     taxes 2 to 3 net, one skip of each in classic, unlimited $1M rerolls in
      cap. Each brief below was verified against its manifest cfg/filter/pick/
      deal hooks in the same commit; if a hook changes, change the brief too.
      s = short line: menu tile subtitle + draft panel status row. One breath.
@@ -124,36 +160,92 @@
      or teams via deal hooks say so, so a dead skip button reads as a rule,
      not a bug. */
   var DAILY_COPY = {
-    inflation:       { s: "Every price doubled. Budget still $50.",
-                       g: "Every price on the board is doubled but your budget is still $50. The $1 steals survive the doubling, so live in the bargain bin, and pay up for one star at most." },
-    deflation:       { s: "Prices halved. Budget cut to $25.",
-                       g: "Every price is cut in half and your budget is cut to $25. Half a wallet in a half-off store plays like a normal day with zero margin for error. One rip-off ruins the run." },
-    petty_cash:      { s: "Budget cut to $35.",
-                       g: "Normal prices, but your budget is $35 instead of $50. Plan on two or three picks from the $1 to $4 shelf so one real star still fits under the cap." },
-    minimum_wage:    { s: "Budget $20 for five spots.",
-                       g: "Your budget is $20 against normal prices. That is $4 a man. Stars are decoration today: hunt the $1 gems hiding in the mid-tier and take the cheap guys who can actually play." },
-    deep_pockets:    { s: "$82 budget. Prices up 60 percent.",
-                       g: "You get $82, but every price is marked up 60 percent, which nets out to roughly normal buying power. Do not let the big wallet bait you into star-chasing. Spend like it is a regular $50 day." },
-    gem_rush:        { s: "Half the mid-tier players cost $1.",
-                       g: "Half of the mid-tier players are mispriced at $1 today (normal is about 1 in 7) and rip-offs are rare. The catch: your budget is $40. Fill most of your five with steals and spend the savings on one real star." },
-    the_gauntlet:    { s: "Everything slightly worse. Budget $45.",
-                       g: "Budget down to $45, prices up 25 percent, 4 in 5 mid-tier players are rip-offs, and the $1 gems have nearly vanished. No single rule kills you. Together they grind. Take the least-bad price on each board and keep moving." },
-    golden_age:      { s: "A third of the mid-tier costs $1.",
-                       g: "About 1 in 3 mid-tier players is a $1 steal today (normal is about 1 in 7), on a full $50 budget. Fill the back of the roster for pocket change, then buy the best star on the market." },
+    /* ---- POOL2 additions (2026-07-18): every line verified against the
+       manifest hooks it describes. Money in millions per the format law. ---- */
+    small_ball_five: {
+      s: "Everyone 6'4\" and under. One unicorn allowed.",
+      g: "Every guard and wing on this board is 6'4\" or under, but true centers stay legal at any height, so one tower can anchor four shorties. Presti pricing, and four floor spacers wanted at 2 net each. Small, fast, and everybody shoots around the big fella." },
+    loyalty: {
+      s: "Your first pick locks the franchise for all five.",
+      g: "Round 1 only deals franchises deep enough to field a whole team, and whoever you take first locks his team for the run: every later board is that franchise in another era. After pick one, team skips just change the era. Draft the logo, then the players." },
+    time_machine: {
+      s: "Each pick's season on or after the last.",
+      g: "Draft forward through history: every pick's season must be the same year or later than the pick before it. Open early and save the modern era for the finish. The year menu is the whole game here: the season you choose is the season the rule sees." },
+    benjamin_button: {
+      s: "Each pick's season on or before the last.",
+      g: "Draft backward through history: every pick's season must be the same year or earlier than the pick before it. Start modern, end where the game began. The year menu is the whole game here: the season you choose is the season the rule sees." },
+    decade_ladder: {
+      s: "Five picks, five different decades, climbing.",
+      g: "Every pick must come from a LATER decade than the last, so your five cover five decades in order. The dealer keeps enough runway, but do not spend a decade you will need. The year menu can move a player between decades: check it before you commit." },
+    full_circle: {
+      s: "Pick five returns to pick one's franchise.",
+      g: "Your opening board only offers deep franchises, and your fifth board comes back to your first pick's team. Whatever you open with, you finish with. Plan the reunion from round 1 and remember which eras that franchise still owes you." },
+    rivalry: {
+      s: "Celtics and Lakers. That is the whole board.",
+      g: "Every deal is Boston or Los Angeles, any era, with Presti pricing. Team skips just flip the rivalry. Pick a side, or build the treaty five and let history sort out the locker room." },
+    texas_triangle: {
+      s: "Mavericks, Rockets, Spurs. Nothing else.",
+      g: "Every board comes from the three Texas franchises, any era, full stats. Team skips rotate the triangle. The spacing rules still apply, so find the Texans who could actually shoot." },
+    california_love: {
+      s: "Lakers, Clippers, Warriors, Kings only.",
+      g: "Four California franchises, any era, full stats, one skip of each. Team skips shuffle the coastline. Showtime, Lob City, and the Splash era all count. The whole board has beach access." },
+    expansion_class: {
+      s: "Only franchises born after 1988.",
+      g: "Heat, Magic, Wolves, Raptors, Grizzlies, Pelicans, Hornets: the expansion class, with Presti pricing. No dynasties to lean on and shorter histories to mine, so scout the seasons that actually mattered." },
+    kaman_epoch: {
+      s: "2004 to 2016 seasons only. He watches.",
+      g: "Every eligible season on every board comes from 2004 through 2016, the age of Kaman, with Presti pricing. The year menu only offers the window. Somewhere, he judges your five." },
+    vhs_era: {
+      s: "'80s and '90s boards. Presti pricing.",
+      g: "Every deal comes from the 1980s or 1990s, so era skips just bounce between two decades. Prices are live and the steals still exist. Be kind, rewind, and remember the engine grades impact, not mixtapes." },
+    pioneers: {
+      s: "The 1970s and '80s. Before the arc mattered.",
+      g: "Every board comes from the 1970s and 1980s, full stats, one skip of each. Era skips bounce between the founding decades. The engine still grades modern impact, so find the pioneers whose games would travel." },
+    y2k: {
+      s: "The 2000s, wall to wall.",
+      g: "Every deal comes from the 2000s, full stats, one skip of each. Headbands, baggy shorts, and some of the highest-impact seasons in the whole dataset. This one is a joy board. Cook." },
+    memory_palace: {
+      s: "No stats. No skips. Five boards, final.",
+      g: "Pro rules with zero team skips and zero era skips: the boards you are dealt are the exam you take. The year menu still works, from memory. What you know is the entire strategy." },
+    seven_seconds: {
+      s: "Shooting pays extra. Two spacers is enough.",
+      g: "The spacing bonus is boosted half again, 1.5 net per qualifying shooter, and the shooter bar drops to two. Guns are pure profit today. Run, gun, and let the engine do the counting." },
+    splash_only: {
+      s: "Shooters only, all five slots.",
+      g: "Every player on the board stretches the floor, so the spacing tax cannot touch you and the bonus is everywhere. The separators are everything else: defense pairs, one ball to share, and raw star power." },
+    hyperinflation: {
+      s: "Prices tripled. Budget $75M. The math lies.",
+      g: "Every price tag is tripled and your budget rises to $75M, which is about $25M of real buying power once the tripling eats it. The $1M steals survive the multiplication. Find them and live on them." },
+    inflation:       { s: "Every price doubled. Budget still $50M.",
+                       g: "Every price on the board is doubled but your budget is still $50M. The $1M steals survive the doubling, so live in the bargain bin, and pay up for one star at most." },
+    deflation:       { s: "Prices halved. Budget cut to $25M.",
+                       g: "Every price is cut in half and your budget is cut to $25M. Half a wallet in a half-off store plays like a normal day with zero margin for error. One rip-off ruins the run." },
+    petty_cash:      { s: "Budget cut to $35M.",
+                       g: "Normal prices, but your budget is $35M instead of $50M. Plan on two or three picks from the $1M to $4M shelf so one real star still fits under the cap." },
+    minimum_wage:    { s: "Budget $20M for five spots.",
+                       g: "Your budget is $20M against normal prices. That is $4M a man. Stars are decoration today: hunt the $1M gems hiding in the mid-tier and take the cheap guys who can actually play." },
+    deep_pockets:    { s: "$82M budget. Prices up 60 percent.",
+                       g: "You get $82M, but every price is marked up 60 percent, which nets out to roughly normal buying power. Do not let the big wallet bait you into star-chasing. Spend like it is a regular $50M day." },
+    gem_rush:        { s: "Half the mid-tier players cost $1M.",
+                       g: "Half of the mid-tier players are mispriced at $1M today (normal is about 1 in 7) and rip-offs are rare. The catch: your budget is $40M. Fill most of your five with steals and spend the savings on one real star." },
+    the_gauntlet:    { s: "Everything slightly worse. Budget $45M.",
+                       g: "Budget down to $45M, prices up 25 percent, 4 in 5 mid-tier players are rip-offs, and the $1M gems have nearly vanished. No single rule kills you. Together they grind. Take the least-bad price on each board and keep moving." },
+    golden_age:      { s: "A third of the mid-tier costs $1M.",
+                       g: "About 1 in 3 mid-tier players is a $1M steal today (normal is about 1 in 7), on a full $50M budget. Fill the back of the roster for pocket change, then buy the best star on the market." },
     odd_lots:        { s: "You may only pay odd prices.",
-                       g: "Every price you pay must be an odd number: $1, $3, $5 and up. Even-priced players are locked. The $1 gems are all legal, so this is a bargain-hunting day in disguise, and a $1 year reroll reshuffles a board that comes up all even." },
+                       g: "Every price you pay must be an odd number: $1M, $3M, $5M and up. Even-priced players are locked. The $1M gems are all legal, so this is a bargain-hunting day in disguise, and a $1M year reroll reshuffles a board that comes up all even." },
     even_money:      { s: "You may only pay even prices.",
-                       g: "Every price you pay must be even: $2, $4, $6 and up. Every $1 gem is locked behind glass, which quietly raises the cost of a good team. Budget in even numbers and use $1 rerolls to reshuffle a dead board." },
-    balanced_books:  { s: "No single contract over $14.",
-                       g: "You cannot pay more than $14 for any one player, so the premium stars are locked. Spread the $50 across five very good players instead of two great ones. Depth wins today." },
-    bargain_bin:     { s: "No contract over $6.",
-                       g: "Nothing over $6, all five spots. Most of the board is locked, so the draft happens in the bins: $1 gems, cheap veterans, and whatever the randomizer marked down. Scouting is the whole game." },
+                       g: "Every price you pay must be even: $2M, $4M, $6M and up. Every $1M gem is locked behind glass, which quietly raises the cost of a good team. Budget in even numbers and use $1M rerolls to reshuffle a dead board." },
+    balanced_books:  { s: "No single contract over $14M.",
+                       g: "You cannot pay more than $14M for any one player, so the premium stars are locked. Spread the $50M across five very good players instead of two great ones. Depth wins today." },
+    bargain_bin:     { s: "No contract over $6M.",
+                       g: "Nothing over $6M, all five spots. Most of the board is locked, so the draft happens in the bins: $1M gems, cheap veterans, and whatever the randomizer marked down. Scouting is the whole game." },
     the_descent:     { s: "Each pick must cost the same or less.",
-                       g: "No pick may cost more than the one before it. Open with your most expensive player, because your ceiling only drops from there. An opening $1 gem locks the rest of the board to $1, so spend big first." },
+                       g: "No pick may cost more than the one before it. Open with your most expensive player, because your ceiling only drops from there. An opening $1M gem locks the rest of the board to $1M, so spend big first." },
     escalator:       { s: "Each pick must cost the same or more.",
-                       g: "No pick may cost less than the one before it, prices run 40 percent hot, gems are nearly gone, and the budget is $70. Open as cheap as you can find: every dollar spent on pick one raises the floor under all five." },
-    moneyball:       { s: "$30 budget. 2,500-minute seasons only.",
-                       g: "The board only deals seasons with 2,500 or more minutes played, and your budget is $30. Everyone is durable and almost nothing is cheap. The game is finding the iron-man seasons the market underpriced." },
+                       g: "No pick may cost less than the one before it, prices run 40 percent hot, gems are nearly gone, and the budget is $70M. Open as cheap as you can find: every dollar spent on pick one raises the floor under all five." },
+    moneyball:       { s: "$30M budget. 2,500-minute seasons only.",
+                       g: "The board only deals seasons with 2,500 or more minutes played, and your budget is $30M. Everyone is durable and almost nothing is cheap. The game is finding the iron-man seasons the market underpriced." },
     seventies_money: { s: "1970s only, with Presti pricing.",
                        g: "Every board comes from the 1970s, so era skips are dead today (they re-deal the same decade). Presti pricing still applies. The era's box scores run hot, but the engine grades impact, not points." },
     luxury_tax:      { s: "Usage tax at four times the rate.",
@@ -213,7 +305,7 @@
   };
   var VANILLA_COPY = {
     cap:     { s: "Straight Presti. No twist today.",
-               g: "No modifier today, just Presti rules: $50 budget, randomized prices and seasons, $1 skips and rerolls. The board as dealt. May the prices roll kindly." },
+               g: "No modifier today, just Presti rules: $50M budget, randomized prices and seasons, $1M skips and rerolls. The board as dealt. May the prices roll kindly." },
     classic: { s: "Straight Classic. No twist today.",
                g: "No modifier today, just Classic rules: full stats on every card and one skip of each. Pure draft. Nothing to blame but your reads." },
     pro:     { s: "Straight Pro. No twist today.",
@@ -224,7 +316,7 @@
   // app.js (RULES_MODE); if a mechanic changes, change both in the same
   // commit. Numbers here are the engine truth (sim-core + site_data scoring).
   var MODE_TIP = {
-    cap: "Presti rules: $50 budget for five players, and every card shows its price. Prices are randomized each round. The true stars are priced honestly, most fringe players run $1 to $6, and the mid-tier is the minefield: about 1 in 7 is a $1 steal and about half are rip-offs priced like stars. Skipping the team or era, or rerolling the years, costs $1 a pull, as often as the money allows, but every empty roster spot needs $1 kept in reserve. Some boards are unwinnable. That is the game.",
+    cap: "Presti rules: $50M budget for five players, and every card shows its price. Prices are randomized each round. The true stars are priced honestly, most fringe players run $1M to $6M, and the mid-tier is the minefield: about 1 in 7 is a $1M steal and about half are rip-offs priced like stars. Skipping the team or era, or rerolling the years, costs $1M a pull, as often as the money allows, but every empty roster spot needs $1M kept in reserve. Some boards are unwinnable. That is the game.",
     classic: "Classic rules: full stats on every card, and the season menu under each name lets you use any year of that player's career. One team skip and one era skip for the whole draft. The engine rewards star impact, wants about three shooters, taxes ball-hog pileups and bad-defense pairs, and turns your net rating into a record the moment pick five lands.",
     pro: "Pro rules: no stats are shown and every player's season is randomized. You can still change the season with the menu under his name, also blind. Draft from memory. The engine grades your five with the real numbers at the end."
   };
@@ -236,19 +328,26 @@
   }
 
   // The board for a day: deterministic pool pick, fail-soft to vanilla cap.
+  function coreForId(id) {
+    var CH = g.T82CH;
+    var ch = CH && CH.byId ? CH.byId[id] : null;
+    return ch ? { ch: ch, base: ch.base, name: DAILY_NAME[ch.id] || ch.name, blurb: ch.blurb,
+                  short: (DAILY_COPY[ch.id] && DAILY_COPY[ch.id].s) || ch.blurb,
+                  gate: (DAILY_COPY[ch.id] && DAILY_COPY[ch.id].g) || ch.blurb }
+              : vanillaBoard("cap");                       // manifest miss -> never a dead day
+  }
+
   function boardFor(key) {
     if (!validKey(key)) key = dayKey();
-    var pick = POOL[hash32("pick|" + key) % POOL.length];
     var core = null;
-    if (pick && pick.id) {
-      var CH = g.T82CH;
-      var ch = CH && CH.byId ? CH.byId[pick.id] : null;
-      core = ch ? { ch: ch, base: ch.base, name: DAILY_NAME[ch.id] || ch.name, blurb: ch.blurb,
-                    short: (DAILY_COPY[ch.id] && DAILY_COPY[ch.id].s) || ch.blurb,
-                    gate: (DAILY_COPY[ch.id] && DAILY_COPY[ch.id].g) || ch.blurb }
-                : vanillaBoard("cap");                     // manifest miss -> never a dead day
+    if (OVERRIDES[key]) {
+      core = coreForId(OVERRIDES[key]);
+    } else if (dayNum(key) >= dayNum(START2)) {
+      var i2 = (dayNum(key) - dayNum(START2)) % POOL2.length;
+      core = coreForId(POOL2[i2]);
     } else {
-      core = vanillaBoard(pick && pick.base);
+      var pick = POOL[hash32("pick|" + key) % POOL.length];   // legacy hash: history replays untouched
+      core = (pick && pick.id) ? coreForId(pick.id) : vanillaBoard(pick && pick.base);
     }
     return { key: key, num: dayNum(key), seed: seedFor(key),
              ch: core.ch, base: core.base, name: core.name, blurb: core.blurb,
@@ -317,7 +416,7 @@
     var wins = res.wins, losses = GAMES - wins, undef = wins >= GAMES;
     var head = (undef ? "\uD83C\uDFC6" : "\uD83C\uDFC0") + " TRUE 82 Daily #" + board.num + " \u00B7 " + board.name;
     var line2 = (res.cap != null)
-      ? wins + "-" + losses + " | $" + res.cap + " Cap Spc | Net " + signedNet(res.net)
+      ? wins + "-" + losses + " | $" + res.cap + "M Cap Spc | Net " + signedNet(res.net)
       : (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signedNet(res.net);
     var five = (res.five || []).join("\n");
     var tail = "Beat my five: " + beatLink(board.key, wins, res.net);
