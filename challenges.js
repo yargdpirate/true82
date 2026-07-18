@@ -433,14 +433,19 @@
        small_ball_apoc in the daily rotation: the old height cap left the C slot
        fillable only through same-name data collisions (a 6'3" Charles Jones
        inheriting a 6'9" Charles Jones' center card). The fix is the unicorn
-       rule: shorties everywhere, but a true center of any height stays legal. */
+       rule: shorties in the G/F slots, with one height-exempt F/C reserved for C. */
     { id: "small_ball_five", name: "The Small-Ball Apocalypse", base: "cap",
-      blurb: "Everyone 6'4\" and under, except true centers, who stay legal at any height. One unicorn, four shorties.",
+      blurb: "Guard and forward slots are 6'4\" and under. The one center may be any height, but must qualify at both forward and center.",
       cfg: { SPACERS_REQ: 4, SPACING_TAX: 2 },
       filter: function (row, t) {
         var set = t.CAREER_BUCKETS && t.CAREER_BUCKETS.get(row[t.IDX.name]);
-        if (set && set.C) return true;                      // the unicorn clause
-        return row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 76;
+        var shortEnough = row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 76;
+        return shortEnough || !!(set && set.F && set.C);   // keep only real C-slot unicorns in the pool
+      },
+      pick: function (S, row, slot, t) {
+        var set = t.CAREER_BUCKETS && t.CAREER_BUCKETS.get(row[t.IDX.name]);
+        if (slot === "C") return !!(set && set.F && set.C); // center must also be forward-eligible
+        return row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 76;     // no tall C/F sneaking into a forward slot
       } }
   ];
 
