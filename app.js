@@ -757,7 +757,7 @@ function scramblePool(mode, settleAt) {
   // Cosmetic only — must never touch G.rng.
   var yearVals = [];
   for (var y = 0; y < 10; y++) yearVals.push(shortSeason(decade + y));
-  var priceVals = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 23].map(fmtM);
+  var priceVals = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 23].map(function (n) { return mHtml(fmtM(n)); });
   var nameVals = mode === "full" ? decoyNames() : [];
 
   var live = 0, landed = false;
@@ -790,7 +790,8 @@ function scramblePool(mode, settleAt) {
         if (live === 0) finish();
         return;
       }
-      node.textContent = vals[Math.floor(Math.random() * vals.length)] + tail;
+      var vtxt = vals[Math.floor(Math.random() * vals.length)] + tail;
+      if (vtxt.indexOf("<") !== -1) node.innerHTML = vtxt; else node.textContent = vtxt;
       iv *= 1.2;                          // each flip a beat slower: the reel decelerating
       setTimeout(step, iv);
     })();
@@ -915,6 +916,30 @@ function sortPoolRows(rows) {
   }
 }
 
+function applyMetricYears(force) {
+  // Classic only: sorting by OBPM/DBPM repicks each undrafted player's
+  // default season to his best eligible year BY THAT METRIC, so the list
+  // order and the selected years agree. Switching back to Min/A-Z (force)
+  // restores the engine-value defaults. Non-force runs (each new deal) only
+  // fill players without a hand-picked year, so mid-mode tweaks survive.
+  // Pure client-side year choice: picks record their season, replay-safe.
+  if (MODE !== "classic" || !G || !G.cur) return;
+  var metric = G.sortMode === "obpm" ? IDX.obpm : G.sortMode === "dbpm" ? IDX.dbpm : null;
+  if (!metric && !force) return;
+  var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
+  if (!pool) return;
+  pool.forEach(function (row, name) {
+    if (G.drafted.has(name)) return;
+    if (!metric) { delete G.yearByName[name]; return; }
+    if (!force && G.yearByName[name] != null) return;
+    var arr = T82.poolYearsEligible(G, name);
+    if (!arr || !arr.length) return;
+    var best = arr[0];
+    for (var i = 1; i < arr.length; i++) if (arr[i][metric] > best[metric]) best = arr[i];
+    G.yearByName[name] = best[IDX.season];
+  });
+}
+
 function currentPoolRows() {
   if (MODE === "kaman") { return KAMAN_SEASONS.slice(); }
   var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
@@ -1022,6 +1047,11 @@ function fmtM(n) {
   var r = Math.round(a * 10) / 10;
   var s = (r % 1 === 0) ? String(Math.round(r)) : r.toFixed(1);
   return (neg ? "\u2212" : "") + "$" + s + "M";
+}
+function mHtml(txt) {
+  // Display layer only: "$ 17" with a thin space and a lighter trailing M.
+  // Underlying strings (share text, copy, reels' textContent) stay "$17M".
+  return String(txt).replace("$", "$\u2009").replace(/M$/, '<span class="m-lite">M</span>');
 }
 function fmtMCost(n) {              // a positive cost rendered as a deduction: 1 -> "−$1M"
   return "\u2212" + fmtM(Math.abs(Number(n) || 0));
@@ -1142,7 +1172,7 @@ function modePanelHtml() {
     sub.push("TAP THE YEAR \u25BE TO USE ANY SEASON");
   }
   var bankHtml = MODE === "cap"
-    ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + fmtM(G.budget) + '</b></div>'
+    ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(G.budget)) + '</b></div>'
     : "";
   var panelCls = 'mode-panel plq-frame plq-slim' + (MODE === "cap" ? ' cap-mode-panel' : '');
   return '<div class="' + panelCls + '" id="modePanel">' +
@@ -1230,18 +1260,18 @@ function tickBank() {
   var to = G.budget;
   var from = (typeof G.bankShown === "number") ? G.bankShown : to;
   G.bankShown = to;
-  if (from === to || prefersReduce()) { node.textContent = fmtM(to); return; }
+  if (from === to || prefersReduce()) { node.innerHTML = mHtml(fmtM(to)); return; }
   var box = node.closest(".mp-bank");
   var dir = to < from ? "bank-down" : "bank-up";
   if (box) box.classList.add(dir);
   var v = from;
   var step = to < from ? -1 : 1;
   var iv = Math.max(45, Math.min(140, Math.round(420 / Math.abs(to - from))));
-  node.textContent = fmtM(v);
+  node.innerHTML = mHtml(fmtM(v));
   var t = setInterval(function () {
     if (!node.isConnected) { clearInterval(t); return; }   // a newer render owns the panel now
     v += step;
-    node.textContent = fmtM(v);
+    node.innerHTML = mHtml(fmtM(v));
     if (v === to) {
       clearInterval(t);
       setTimeout(function () {
@@ -1862,8 +1892,8 @@ function capRowHtml(bestRow) {
   var costHtml = "";
   if (cost != null) {
     var amt = (G.fireSale && eff < cost)
-      ? '<s class="cost-old">' + fmtM(cost) + '</s><b class="cost-new">' + fmtM(eff) + '</b>'
-      : fmtM(cost);
+      ? '<s class="cost-old">' + mHtml(fmtM(cost)) + '</s><b class="cost-new">' + mHtml(fmtM(eff)) + '</b>'
+      : mHtml(fmtM(cost));
     costHtml = '<span class="cc-amt">' + amt + '</span>';   // v22: the number is the whole message
   }
   var why = block ? " \u00B7 " + block.tag : "";
@@ -1943,21 +1973,23 @@ function renderDraft(anim) {
       "</div>" +
       '<div class="ticket-actions' + (MODE === "cap" ? " ta-cap" : "") + '">' +
         (MODE === "cap"
-          ? '<button class="skip-btn' + spinCls + '" id="skipTeam"' + (teamSkippable ? "" : " disabled") + '><span class="sk-lab">SKIP TEAM</span><span class="sk-chip">' + fmtMCost(1) + "</span></button>" +
-            '<button class="skip-btn' + spinCls + '" id="skipEra"' + (eraSkippable ? "" : " disabled") + '><span class="sk-lab">SKIP ERA</span><span class="sk-chip">' + fmtMCost(1) + "</span></button>" +
-            '<button class="skip-btn presti-spin" id="rerollYears"' + (yearRerollable ? "" : " disabled") + '><span class="sk-lab">SKIP YRS</span><span class="sk-chip">' + fmtMCost(1) + "</span></button>"
+          ? '<button class="skip-btn' + spinCls + '" id="skipTeam"' + (teamSkippable ? "" : " disabled") + '><span class="sk-lab">SKIP TEAM</span><span class="sk-chip">' + mHtml(fmtMCost(1)) + "</span></button>" +
+            '<button class="skip-btn' + spinCls + '" id="skipEra"' + (eraSkippable ? "" : " disabled") + '><span class="sk-lab">SKIP ERA</span><span class="sk-chip">' + mHtml(fmtMCost(1)) + "</span></button>" +
+            '<button class="skip-btn presti-spin" id="rerollYears"' + (yearRerollable ? "" : " disabled") + '><span class="sk-lab">SKIP YRS</span><span class="sk-chip">' + mHtml(fmtMCost(1)) + "</span></button>"
           : '<button class="skip-btn' + spinCls + '" id="skipTeam"' + (teamSkippable ? "" : " disabled") + ">Skip team \u00B7 " + G.teamSkips + " left</button>" +
             '<button class="skip-btn' + spinCls + '" id="skipEra"' + (eraSkippable ? "" : " disabled") + ">Skip era \u00B7 " + G.eraSkips + " left</button>") +
       "</div>" +
     "</section>";
   }
 
+  applyMetricYears(false);   // a fresh deal under OBPM/DBPM sorting starts on metric years
+
   var poolHeadHtml;
   if (MODE === "kaman") {
     poolHeadHtml = '<div class="pool-head"><span class="pool-count">pick a Kaman season \u00B7 repeats welcome</span></div>';
   } else {
     var chips = MODE === "cap" ? [["cost", "$"], ["min", "Min"], ["az", "A\u2013Z"]] : [["min", "Min"], ["az", "A\u2013Z"]];
-    if (MODE === "classic") chips.push(["obpm", "Off"], ["dbpm", "Def"]);
+    if (MODE === "classic") chips.push(["obpm", "OBPM"], ["dbpm", "DBPM"]);
     var chipsHtml = chips.map(function (c) {
       var label = c[1];
       if (c[0] === "cost" && G.sortMode === "cost") label = "$ " + (G.costDir === "asc" ? "\u2191" : "\u2193");
@@ -2005,6 +2037,7 @@ function renderDraft(anim) {
         G.costDir = (G.costDir === "asc") ? "desc" : "asc";   // re-click flips most/least money
       } else {
         G.sortMode = mode;
+        applyMetricYears(true);
       }
       chipRow.querySelectorAll(".sort-chip").forEach(function (c) {
         c.classList.toggle("active", c.getAttribute("data-sort") === G.sortMode);
@@ -2129,6 +2162,7 @@ function twoWayHtml(e) {
 var HISTORY_COMPS = [
   { label: "OG Death Lineup", wins: 81 },
   { label: "5 Jokics", wins: 80 },
+  { label: "Prime Wilt Core", wins: 80 },
   { label: "5 LeBrons", wins: 79 },
   { label: "Hamptons 5", wins: 78 },
   { label: "Shaqobe Core", wins: 77 },
@@ -2149,7 +2183,17 @@ var HISTORY_COMPS = [
 ];
 
 function climbHtml(e, winsOverride) {
-  var legends = HISTORY_COMPS;
+  // Same-win teams share one pin and one combined tag ("5 Jokics · Prime
+  // Wilt Core 80") instead of stacking on top of each other.
+  var legends = (function () {
+    var out = [], byW = {};
+    HISTORY_COMPS.forEach(function (L) {
+      if (byW[L.wins]) { byW[L.wins].label += " \u00B7 " + L.label; return; }
+      var t = { label: L.label, wins: L.wins };
+      byW[L.wins] = t; out.push(t);
+    });
+    return out;
+  })();
   var G82 = CFG.GAMES_IN_SEASON;
   var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
   var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
@@ -2161,7 +2205,7 @@ function climbHtml(e, winsOverride) {
   // the Spurs for its marker, an on-board five ends flush at the Spurs. The empty
   // LADDER_TOP->82 span compresses into the top band. RX must equal --rail-x.
   var PX_PER_WIN = 200 / 11;                    // the original 62->73 cluster spacing
-  var BAND_PX = 60, CLUSTER_PX = Math.round((LADDER_TOP - FLOOR) * PX_PER_WIN), FLOOR_PX = BAND_PX + CLUSTER_PX;
+  var BAND_PX = 15, CLUSTER_PX = Math.round((LADDER_TOP - FLOOR) * PX_PER_WIN), FLOOR_PX = BAND_PX + CLUSTER_PX;
   var BOTTOM_PX = below ? 50 : 14, TRACK_PX = FLOOR_PX + BOTTOM_PX;
   var Y_SUMMIT = 0, RX = 56;
   var Y_TEAMTOP = BAND_PX / TRACK_PX * 100, Y_FLOOR = FLOOR_PX / TRACK_PX * 100;

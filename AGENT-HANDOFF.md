@@ -377,3 +377,11 @@ el("startDaily") does not exist once played (wiring is null-guarded). The
 walk is at 131 checks and asserts all of it. Keys `20260719-ui-v24`... note:
 keys actually read 20260718-ui-v24 if the date prefix was preserved; trust
 index.html.
+
+### V25 — glow, tiers, money type, metric years (2026-07-19)
+climbHtml groups HISTORY_COMPS by win total (shared pins); mHtml() is the
+display-layer money wrapper (thin space + .m-lite M) used at every BOLD
+money site including tickBank (now innerHTML) and the reel priceVals (reels
+detect "<" and use innerHTML); applyMetricYears(force) governs classic
+OBPM/DBPM year repicking (force=chip click, soft=per-deal fill). The walk
+is at 136 checks. Keys `20260719-ui-v25`.

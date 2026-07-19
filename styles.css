@@ -2898,3 +2898,23 @@ body.gating .gate-back {
 @media (max-width: 480px) {
   #app .gate-pull .gate-cue { position: static; display: flex; width: max-content; margin: 6px auto 0; }
 }
+
+/* ============ MARKER GLOW + MONEY TYPE (2026-07-19, v25) ============
+   YOUR FIVE burns: layered halos on the dot, hard amber bloom on the label.
+   Money type: a thin space after the $ and a lighter, slightly smaller
+   trailing M wherever amounts render bold (plaque, price boxes, skip chips,
+   the ticking bank, the price reels). */
+.cy-dot {
+  box-shadow:
+    0 0 0 3px rgba(255, 181, 46, 0.4),
+    0 0 14px 4px rgba(255, 181, 46, 0.6),
+    0 0 34px 10px rgba(255, 181, 46, 0.32);
+}
+.cy-label {
+  color: var(--amber);
+  text-shadow:
+    0 0 8px rgba(255, 181, 46, 0.95),
+    0 0 22px rgba(255, 181, 46, 0.6),
+    0 0 44px rgba(255, 181, 46, 0.35);
+}
+.m-lite { font-weight: 400; font-size: 0.8em; letter-spacing: 0; }

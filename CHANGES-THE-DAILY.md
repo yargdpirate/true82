@@ -621,3 +621,20 @@ each) and the daily schedule was rebuilt on the numbers.
 - Played daily tile: the tomorrow line is all gold (the ::first-letter
   hack is gone) and the practice button is removed; practice lives on the
   results screen's Run it back button. The tile keeps CHALLENGE A FRIEND.
+
+## V25 (2026-07-19) — glow, Wilt, money type, metric years
+- YOUR FIVE burns: triple-halo on the dot, hard amber bloom on the label.
+- Prime Wilt Core joins at 80; same-win teams now share one pin with a
+  combined tag ("5 Jokics · Prime Wilt Core 80") instead of stacking. The
+  comp line names the first team at the tier.
+- The 81-to-82 headroom on the climb is cut to a quarter (BAND_PX 60 -> 15).
+- Money typography, display layer only: a thin space after the $ and a
+  lighter, slightly smaller trailing M wherever amounts render bold: the
+  plaque, price boxes, skip chips, the ticking bank, and the price reels.
+  Share text, copy prose, and reel textContent stay plain "$17M".
+- Classic: the Off/Def chips are OBPM/DBPM, and engaging one repicks every
+  undrafted player's default season to his best eligible year BY THAT
+  METRIC, so list order and selected years agree. New deals under a metric
+  sort auto-fill missing years but never clobber hand-picked ones;
+  switching back to Min/A-Z restores engine-value defaults (an explicit
+  sort click does reset hand-picks, by design).
