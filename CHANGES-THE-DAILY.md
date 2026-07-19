@@ -1,3 +1,25 @@
+# CURRENT JULY 18 HANDOFF
+
+For the current deployable state, read `AGENT-HANDOFF.md` first. It documents
+post-V9 work not fully represented in this historical log: the prominent
+Presti BANK panel, compact salary-cap player rows, normalized HOW TO PLAY
+button, mode-first rules order, PLAY IT fallback on the Daily gate, and the
+slot-specific `small_ball_five` F/C center fix.
+
+## V14 (2026-07-18) — Small-Ball center-slot legality
+
+- `small_ball_five` no longer grants a global height exemption to every
+  center-eligible player.
+- G/F destinations require height <= 76 inches.
+- The C destination may ignore height only for a player whose career buckets
+  include both F and C.
+- Pool filtering retains short players plus genuine F/C center candidates;
+  the `pick` hook enforces the destination-specific rule.
+- Daily copy and challenge blurb were updated to describe the real mechanic.
+- `challenges.js` and `daily-core.js` cache keys bumped to the V14 build.
+
+---
+
 # THE DAILY — playtest handoff (2026-07-12)
 
 One shared board per calendar day. Same seed, same modifier, for everyone. First
@@ -496,3 +518,11 @@ each) and the daily schedule was rebuilt on the numbers.
   key) — a same-day fix would never have reached cached clients. Both now
   carry ?v=20260718-daily-v13 on both lanes.
 - Full numbers: AUDIT-DAILIES.md (session outputs).
+
+## V16 — Mobile Presti panel hierarchy fix (2026-07-18)
+- Mobile salary-cap / Presti mode panel layout was rebalanced because the bank lost priority.
+- On mobile, the **HOW TO PLAY** button now sits in the upper-right utility position.
+- The **BANK** now spans its own full-width row beneath the mode header so it becomes the obvious focal element.
+- Mobile bank styling was amplified further (larger amount, stronger glow, bigger tile, stronger contrast).
+- Cache keys in `index.html` were bumped to `ui-v16` so the CSS fix is not hidden by stale mobile assets.
+

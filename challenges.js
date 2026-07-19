@@ -434,6 +434,10 @@
        fillable only through same-name data collisions (a 6'3" Charles Jones
        inheriting a 6'9" Charles Jones' center card). The fix is the unicorn
        rule: shorties in the G/F slots, with one height-exempt F/C reserved for C. */
+    /* HANDOFF INVARIANT: the height exemption is destination-specific.
+       Tall players may survive the pool only as genuine career F/C options,
+       and ch.pick below must confine them to the single C slot. Do not reduce
+       this to a global "has C" filter; that recreates the multi-center bug. */
     { id: "small_ball_five", name: "The Small-Ball Apocalypse", base: "cap",
       blurb: "Guard and forward slots are 6'4\" and under. The one center may be any height, but must qualify at both forward and center.",
       cfg: { SPACERS_REQ: 4, SPACING_TAX: 2 },

@@ -1,3 +1,8 @@
+CURRENT AGENT HANDOFF:
+  Read AGENT-HANDOFF.md before modifying this build. It documents the current
+  UI hierarchy, Daily gate fallback, rules-sheet order, and the slot-specific
+  Small-Ball Apocalypse center rule.
+
 TRUE 82 — full live site with THE DAILY (no accounts). Deploy-ready.
 
 This is your ENTIRE public site plus The Daily. Nothing to merge, nothing

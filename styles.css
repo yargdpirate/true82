@@ -2537,30 +2537,104 @@ body.rules-open { overflow: hidden; }
   #app .cap-mode-panel {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "left bank"
-      "rules rules";
-    align-items: stretch;
+      "left rules"
+      "bank bank";
+    align-items: start;
+    gap: 12px;
   }
-  #app .cap-mode-panel .mp-left { grid-area: left; }
-  #app .cap-mode-panel .mp-bank { grid-area: bank; min-width: 132px; }
+  #app .cap-mode-panel .mp-left {
+    grid-area: left;
+    align-self: start;
+  }
   #app .cap-mode-panel .mp-rules-btn {
     grid-area: rules;
-    max-width: none;
-    min-width: 0;
-    width: 100%;
-    justify-content: center;
+    align-self: start;
+    justify-self: end;
+    width: auto;
+    min-width: 150px;
+    max-width: 168px;
+    min-height: 72px;
+    padding: 11px 14px 12px;
+    justify-content: flex-start;
     transform: none;
+  }
+  #app .cap-mode-panel .mp-rules-btn .mp-book-wrap {
+    width: 34px;
+    height: 34px;
+  }
+  #app .cap-mode-panel .mp-rules-btn .mp-rules-main {
+    font-size: 15px;
+  }
+  #app .cap-mode-panel .mp-rules-btn .mp-rules-sub {
+    font-size: 7.5px;
+    letter-spacing: 0.14em;
+  }
+  #app .cap-mode-panel .mp-bank {
+    grid-area: bank;
+    width: 100%;
+    min-width: 0;
+    min-height: 92px;
+    padding: 12px 16px 14px;
+    border-width: 3px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 24%, rgba(255, 216, 122, 0.34), rgba(31, 16, 3, 0.98) 58%), var(--ink);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.46) inset,
+      0 0 28px rgba(255, 181, 46, 0.22),
+      0 16px 22px -16px rgba(0, 0, 0, 0.82);
+  }
+  #app .cap-mode-panel .mpb-lab {
+    font-size: 10px;
+    letter-spacing: 0.34em;
+  }
+  #app .cap-mode-panel .mpb-amt {
+    font-size: clamp(52px, 13vw, 68px);
+    line-height: 0.86;
+    text-shadow: 0 0 18px rgba(255, 181, 46, 0.34), 0 3px 0 rgba(0, 0, 0, 0.58);
+  }
+}
+@media (max-width: 420px) {
+  #app .cap-mode-panel .mp-rules-btn {
+    min-width: 138px;
+    max-width: 152px;
+    min-height: 68px;
+    padding: 10px 12px 11px;
+    gap: 9px;
+  }
+  #app .cap-mode-panel .mp-rules-btn .mp-book-wrap {
+    width: 31px;
+    height: 31px;
+  }
+  #app .cap-mode-panel .mp-rules-btn .mp-rules-main {
+    font-size: 14px;
+  }
+  #app .cap-mode-panel .mp-rules-btn .mp-rules-sub {
+    font-size: 7px;
+    letter-spacing: 0.13em;
+  }
+  #app .cap-mode-panel .mp-bank {
+    min-height: 88px;
+  }
+  #app .cap-mode-panel .mpb-amt {
+    font-size: clamp(48px, 12vw, 62px);
   }
 }
 @media (max-width: 349px) {
   #app .cap-mode-panel {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "bank"
       "left"
-      "rules";
+      "rules"
+      "bank";
   }
-  #app .cap-mode-panel .mp-bank { min-width: 0; width: 100%; }
+  #app .cap-mode-panel .mp-rules-btn {
+    justify-self: stretch;
+    max-width: none;
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 /* ---------- skip buttons: label + cost chip (Presti) ---------- */
