@@ -542,3 +542,14 @@ each) and the daily schedule was rebuilt on the numbers.
   barred from G/F slots) re-certified by a slot-aware bot: 300 games, 0%
   unfinishable, wins 44/56/68. No legitimate short player is stranded.
 - Validation walk at 117 green, now pick-hook aware.
+
+## V19 (2026-07-18) — the bank lives in the tray
+- Moved the Presti bank from the top panel to a strip atop the tray: the
+  balance now sits where spending is confirmed, next to the medallions and
+  the draft button, in the zone the eye returns to after every action.
+- Live math: select a priced player and the pending cost appears beside
+  the balance; the real deduction then ticks down in the same spot.
+- Low-funds warning: the strip turns whistle-red as the balance approaches
+  the $1M-per-open-slot floor.
+- The mode panel sheds its bank column on desktop and its hero row on
+  mobile, returning vertical space to the pool.

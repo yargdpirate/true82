@@ -304,3 +304,26 @@ For Cloudflare Pages:
   arrow bounce is retired. Reduced motion disables the cue.
 - Cache keys: `app.js` and `styles.css` bumped to `20260718-ui-v18`;
   challenge/daily modules unchanged at `smallball-fix-v14`.
+
+### V19 — the bank moves to the tray (2026-07-18, owner-directed)
+SUPERSEDES the earlier bank invariants in section 2A and section 6.5. The
+owner judged the panel plaque "still not optimal" after v15-v17; the root
+cause was position, not size: the top panel is read-once chrome, and a live
+number dies there. Current design:
+- The bank is a strip on TOP of the tray (`.tray-bank`, outside `#trayInner`
+  so tray re-renders never clobber a mid-tick), above the slot medallions
+  and the confirm button: the checkout total next to the pay button.
+- LIVE MATH: selecting a priced player shows the pending hit beside the
+  balance (`#bankDelta`, fed by `updateTray()` via `effCost`). Confirm or
+  deselect clears it; `tickBank()` then plays the real deduction in the
+  same spot with the red/green pulse.
+- LOW-FUNDS STATE: `.bank-low` (toggled in `tickBank()`) turns the strip
+  whistle-red when budget <= open slots + 1, the approach to the
+  $1M-per-slot floor.
+- The Presti panel is back to identity + HOW TO PLAY (desktop two-column,
+  mobile single row); the orphaned `.mp-bank` CSS rules are inert and may
+  be deleted in a future cleanup.
+- New invariant: THE BANK LIVES IN THE TRAY. Its id (`bankAmt`) and the
+  tick classes (`bank-down` / `bank-up`, now on `.tray-bank`) are load-
+  bearing for the offline walk (119 checks).
+- Cache keys: app.js and styles.css at `20260718-ui-v19`.
