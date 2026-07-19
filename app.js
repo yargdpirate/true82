@@ -1123,7 +1123,7 @@ function modePanelHtml() {
     bankHtml +
     '<button class="mp-rules-btn presti-spin" id="rulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: the rules, today\u2019s twist, and how scoring works">' +
       '<span class="mp-book-wrap">' + bookIconSvg() + '</span>' +
-      '<span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span><span class="mp-rules-sub mono">Rules & scoring</span></span>' +
+      '<span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span></span>' +
     '</button>' +
   '</div>';
 }
@@ -1296,11 +1296,11 @@ function rulesSheetHtml() {
     (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   h += '<div class="rs-years"><p class="rs-eyebrow rs-years-label">CHANGE THE YEARS</p>' +
     '<p class="rs-years-body">' + yearsTip + '</p></div>';
-  h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
-    RULES_ENGINE.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>";
   h += '<p class="rs-eyebrow">THE GAME IN 20 SECONDS</p><ol class="rs-steps">' +
-    RULES_STEPS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>" +
-    ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
+    RULES_STEPS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>";
+  h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
+    RULES_ENGINE.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
+    ((isDaily || ch) ? '<p class="rs-note">Today’s rule wins any conflict with the normal numbers above.</p>' : "");
   h += '</div><div class="rs-foot">' +
     '<a class="rs-link mono" href="/how-it-works/" target="_blank" rel="noopener">Full engine math \u2192</a>' +
     '<button class="rs-got" id="rulesGotIt" type="button">GOT IT</button>' +
