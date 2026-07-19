@@ -355,3 +355,51 @@ Mobile plaque label vertically centered; skip labels center left of their
 chips at all viewports; price boxes are bare numbers (cc-tag removed from
 capRowHtml, the walk asserts its absence). Desktop verified: v21 stays
 caged in its media block. Keys `20260718-ui-v22`.
+
+### V23 — independent slot reels (2026-07-18)
+scramblePool rewritten from lockstep repaints to per-element reels: each
+season face / price amount / decoy name snapshots its innerHTML, flips
+random plausible values on its own decelerating timer, and restores the
+snapshot on the last tick (carets and fire-sale strikes survive). refreshPool
+still runs once at the end as the truth re-render, and a dur+900ms hard stop
+means the pool can never stay locked. The walk (121 checks) asserts the
+snapshot-restore pattern. Also: tray top padding 2px, "open" medallion
+caption removed in lineupRailHtml, sk-lab 14px/12.5px, hoop mark centered.
+Keys `20260718-ui-v23`.
+
+### V24 — results rework + canonical ladder (2026-07-19)
+HISTORY_COMPS in app.js is the single source for the climb pins and the
+results comp line; META.legends is no longer read. The daily results board
+carries plq-frame itself (.daily-framed); .daily-card/.daily-verdict/
+.daily-brand markup is gone (CSS inert). Practice is reachable ONLY via the
+results againBtn; the played tile offers CHALLENGE A FRIEND only, and
+el("startDaily") does not exist once played (wiring is null-guarded). The
+walk is at 131 checks and asserts all of it. Keys `20260719-ui-v24`... note:
+keys actually read 20260718-ui-v24 if the date prefix was preserved; trust
+index.html.
+
+### V25 — glow, tiers, money type, metric years (2026-07-19)
+climbHtml groups HISTORY_COMPS by win total (shared pins); mHtml() is the
+display-layer money wrapper (thin space + .m-lite M) used at every BOLD
+money site including tickBank (now innerHTML) and the reel priceVals (reels
+detect "<" and use innerHTML); applyMetricYears(force) governs classic
+OBPM/DBPM year repicking (force=chip click, soft=per-deal fill). The walk
+is at 136 checks. Keys `20260719-ui-v25`.
+
+### V26 — ladder fix, tight bank, daily head line (2026-07-19)
+mHtml(txt, tight) gains the tight flag (bank sites pass true). Daily
+results header is .daily-head-line (single gold line); .daily-stamp markup
+is gone from results. Summit cap: no background, z-index 3. The walk's
+skip-tick test validates against window.__t82test.dbg().budget because
+refund procs make the -$1M assumption false. 140 checks. Keys
+`20260719-ui-v26`.
+
+### V27 — daily analytics funnel (2026-07-19)
+The daily has no mode of its own; it inherits board.base. Diagnosis: mode
+totals silently absorb daily runs, and the gate step was untracked. Added
+daily_gate_view (emitted in renderDailyGate, allowlisted in
+functions/api/event.js) and two /avocado cards driven by three new queries
+in the main Promise.all (dailyFunnelRows / dailyShareRows / dailyByBaseRows),
+all keyed off variant LIKE 'daily%'. Funnel = gate->start->complete->share.
+Menu practice reruns skip the gate by design, so the card separates first vs
+practice starts. Keys 20260719-ui-v27. Client walk unchanged at 140.

@@ -3962,6 +3962,10 @@ function dailyResFromG(e) {
    on a cold visit. Practice reruns skip the gate; they have read it. */
 function renderDailyGate(board, target, variantTag) {
   G = null;
+  // Top of the daily funnel: the player tapped THE DAILY and is now looking at
+  // the instructions gate. mode carries the base so daily can be split out of
+  // the base-mode totals; variant marks the entry path.
+  window.t82track && window.t82track("daily_gate_view", { mode: board.base, variant: variantTag || ("daily:" + board.num) });
   if (window.T82DUI) T82DUI.stop();
   document.body.classList.remove("drafting");
   document.body.classList.add("gating");   // full-screen gate: masthead + footer hide (styles.css)

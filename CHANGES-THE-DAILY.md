@@ -586,3 +586,92 @@ each) and the daily schedule was rebuilt on the numbers.
   (verified programmatically); the two intentional cross-viewport changes
   are the label centering and the bare price box; grid, plaque column, and
   reel targets confirmed intact.
+
+## V23 (2026-07-18) — independent slot reels and chrome nits
+- Every price box and year face is now its own slot reel: staggered starts,
+  7-10 flips on a decelerating clock, and the REAL value dropping back in
+  on the final tick with a settle-pop. Years sweep the whole dealt era with
+  the team code held steady; prices flip through a cheap-heavy plausible
+  book; cap-mode names keep their decoy sheet. Cosmetic only: the reels
+  never touch the seeded RNG, and a hard stop guarantees the pool unlocks.
+- Tray top padding cut to 2px; the "open" caption under empty medallions is
+  gone (bare dashed circles), returning that line to the pool.
+- Skip labels up to 14px (12.5px on phones), still centered left of their
+  chips. The utility bar's hoop mark now centers on the bar's axis.
+
+## V24 (2026-07-19) — results rework, the canonical ladder, chrome fixes
+- Donate button is now a static "Feature requests? Bugs? Email me." mailto
+  to true82mailbox@gmail.com (jokes retired; /avocado history untouched).
+- HISTORY_COMPS: the owner's 19-team ladder supersedes META.legends for the
+  GOAT Climb pins and feeds a new comp line on every results screen:
+  "Almost as good as the {nearest team above}" (or "Better than the OG
+  Death Lineup" at 81+), replacing the cap-space line. Three old pins
+  retired (Showtime Lakers, '97 Bulls, '25 Thunder); Hamptons 5 recut to
+  78; the Celts Big 3 split into OG (76) and '08 (75); 70 wins is a
+  deliberate gap.
+- Daily results: the nested plaque is gone. Its ornate frame moved to the
+  board itself, the OFFICIAL RUN / PRACTICE stamp rides the top under the
+  eyebrow, the challenge line keeps its spot, and the verdict + brand
+  lines retired with the box.
+- Gate: the DRAG cue is out of the caption's flow, so DUNK THE BALL TO
+  START centers true over the ball; under 480px the cue drops to its own
+  centered bouncing row.
+- Slot reels keep their spin; the landing pop (names shifting, amounts
+  expanding) is retired.
+- Played daily tile: the tomorrow line is all gold (the ::first-letter
+  hack is gone) and the practice button is removed; practice lives on the
+  results screen's Run it back button. The tile keeps CHALLENGE A FRIEND.
+
+## V25 (2026-07-19) — glow, Wilt, money type, metric years
+- YOUR FIVE burns: triple-halo on the dot, hard amber bloom on the label.
+- Prime Wilt Core joins at 80; same-win teams now share one pin with a
+  combined tag ("5 Jokics · Prime Wilt Core 80") instead of stacking. The
+  comp line names the first team at the tier.
+- The 81-to-82 headroom on the climb is cut to a quarter (BAND_PX 60 -> 15).
+- Money typography, display layer only: a thin space after the $ and a
+  lighter, slightly smaller trailing M wherever amounts render bold: the
+  plaque, price boxes, skip chips, the ticking bank, and the price reels.
+  Share text, copy prose, and reel textContent stay plain "$17M".
+- Classic: the Off/Def chips are OBPM/DBPM, and engaging one repicks every
+  undrafted player's default season to his best eligible year BY THAT
+  METRIC, so list order and selected years agree. New deals under a metric
+  sort auto-fill missing years but never clobber hand-picked ones;
+  switching back to Min/A-Z restores engine-value defaults (an explicit
+  sort click does reset hand-picks, by design).
+
+## V26 (2026-07-19) — Wilt to 70, tight bank, one-line daily head, GOATs
+- Prime Wilt Core corrected to 70 wins, filling the ladder's gap between
+  Lob City (71) and the '72 Lakers (69). Twenty pins; same-win tier
+  grouping stays for any future ties.
+- The bank plaque reads "$50M" tight (no thin space); the lighter M stays.
+  Price boxes and skip chips keep the spaced treatment.
+- Daily results open on ONE prominent gold line: THE DAILY #8 . OFFICIAL
+  RUN . LOCKED (big dots, centered, display caps). Practice reads
+  PRACTICE RUN . OFFICIAL 66-16. The two-line eyebrow+stamp stack and the
+  mode name are gone from the header.
+- 82-0 flavor: "GREATEST OF ALL GOATS" replaces the comp line; the goat
+  fireworks divs on both the board and the climb are verified intact.
+- The 82-0 summit label lost its ink backing and dropped below the
+  marker's layer: no more black box over an undefeated run's glow ring; an
+  ink text-halo keeps it readable across the rail.
+- Harness: the skip-tick test is refund-aware now (a skip that procs the
+  $1M refund legitimately snaps instead of ticking); a latent seed-
+  dependent flake since v12, now closed. Walk at 140, three clean runs.
+
+## V27 (2026-07-19) — daily analytics funnel
+The dashboard could not see the daily: a daily run inherits its challenge's
+base mode (classic/pro/cap), so every daily game was tallied inside those
+mode totals with no way to split it out, and the instructions-screen step
+was not tracked at all.
+- New event daily_gate_view fires when the daily instructions gate opens
+  (the button-tap step), carrying the base mode and the entry variant. Added
+  to the event.js allowlist.
+- /avocado gains two cards. "THE DAILY · funnel": gate seen -> draft entered
+  -> season finished -> shared, with per-step drop-off, people counts, and a
+  first-attempt vs practice-rerun split. "Games initiated · daily vs
+  standalone": splits each base-mode total into standalone play vs daily, so
+  "671 Presti" resolves into real standalone volume vs daily volume.
+- All four daily entry paths already carried distinct variant tags
+  (daily:, daily-practice:, daily-menu:, daily-link:); the variant column was
+  stored but never queried. The new cards read it.
+- No client behavior change; cache key bump only so the new event ships.
