@@ -2826,11 +2826,11 @@ body.gating .gate-back {
 @media (max-width: 640px) {
   /* 1. the bank plaque: same object, half the height */
   #app .cap-mode-panel .mp-bank {
-    flex-direction: row; align-items: baseline; justify-content: center;
+    flex-direction: row; align-items: center; justify-content: center;
     gap: 12px; min-height: 0; padding: 8px 16px 9px;
     border-width: 2px; border-radius: 12px;
   }
-  #app .cap-mode-panel .mpb-lab { font-size: 9px; letter-spacing: 0.26em; transform: translateY(-3px); }
+  #app .cap-mode-panel .mpb-lab { font-size: 9px; letter-spacing: 0.26em; transform: none; }
   #app .cap-mode-panel .mpb-amt {
     font-size: clamp(30px, 8.5vw, 38px); line-height: 0.9;
     text-shadow: 0 0 14px rgba(255, 181, 46, 0.3), 0 2px 0 rgba(0, 0, 0, 0.5);
@@ -2866,3 +2866,10 @@ body.gating .gate-back {
   /* 5. filter row breathing space */
   .pool-head { margin: 2px 0 6px; }
 }
+
+/* ============ SKIP LABELS CENTERED + BARE PRICE BOX (2026-07-18, v22) ============
+   Skip-button labels center in the space left of the money chip (they were
+   pinned hard-left by space-between). The player price box drops the DRAFT
+   word: the number is the whole message. Both apply at every viewport. */
+#app .ta-cap .skip-btn .sk-lab { flex: 1 1 auto; text-align: center; }
+.cap-row .cap-cost { padding: 8px 10px 9px; gap: 0; }

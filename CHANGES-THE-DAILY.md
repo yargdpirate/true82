@@ -574,3 +574,15 @@ each) and the daily schedule was rebuilt on the numbers.
 - Net reclaim on a 390px phone: roughly 170px on long-name Presti boards,
   which puts the filter row and two to three player rows back above the
   fold. Desktop untouched.
+
+## V22 (2026-07-18) — detail polish
+- Mobile plaque: BANK label vertically centered against the number.
+- Skip buttons: labels center in the space left of the money chip at every
+  viewport, instead of pinning hard-left.
+- Player price boxes drop the DRAFT word; the number is the message. The
+  fire-sale strike-through and the reel repaint live inside the same box,
+  unchanged.
+- Desktop audit: the v21 diet is fully caged in its <=640px media block
+  (verified programmatically); the two intentional cross-viewport changes
+  are the label centering and the bare price box; grid, plaque column, and
+  reel targets confirmed intact.

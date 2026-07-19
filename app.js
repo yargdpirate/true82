@@ -1832,7 +1832,7 @@ function capRowHtml(bestRow) {
     var amt = (G.fireSale && eff < cost)
       ? '<s class="cost-old">' + fmtM(cost) + '</s><b class="cost-new">' + fmtM(eff) + '</b>'
       : fmtM(cost);
-    costHtml = '<span class="cc-tag">DRAFT</span><span class="cc-amt">' + amt + '</span>';
+    costHtml = '<span class="cc-amt">' + amt + '</span>';   // v22: the number is the whole message
   }
   var why = block ? " \u00B7 " + block.tag : "";
   var cls = "player-row cap-row" + (sel ? " sel" : "") + (open ? "" : " off");

@@ -349,3 +349,9 @@ One appended media block at the tail of styles.css slims every fixed band
 on <=640px (plaque horizontal at half height, ticket headline clamp
 22-28px, crest zone 88px, tray/panel/skip tightening). Desktop rules are
 untouched; the plaque doctrine from V20 stands. Keys `20260718-ui-v21`.
+
+### V22 — detail polish (2026-07-18)
+Mobile plaque label vertically centered; skip labels center left of their
+chips at all viewports; price boxes are bare numbers (cc-tag removed from
+capRowHtml, the walk asserts its absence). Desktop verified: v21 stays
+caged in its media block. Keys `20260718-ui-v22`.
