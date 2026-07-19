@@ -405,7 +405,8 @@ export async function onRequest(context) {
     </div>
     ${dateFilters(url, scope)}${migrationWarning}${queryWarning}`;
 
-  return html(page("TRUE 82 · analytics", header + `<div class="grid">${cards.join("")}</div>`));
+  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.6">build v27 · daily-analytics · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
+  return html(page("TRUE 82 · analytics", header + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 
 /* ---------- dashboard calculations ---------- */
