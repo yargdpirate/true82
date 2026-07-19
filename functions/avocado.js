@@ -91,7 +91,8 @@ export async function onRequest(context) {
   const [
     winCounts, hhHits, modeMix, funnelModes, roundFunnel,
     hcAction, hcSeg, shareByU, deviceMix, referrers, donateMix,
-    sessionRows, corrRows, newspaperRows
+    sessionRows, corrRows, newspaperRows,
+    dailyFunnelRows, dailyShareRows, dailyByBaseRows
   ] = await Promise.all([
     q(`SELECT mode, wins, COUNT(*) c, SUM(COALESCE(undefeated,0)) u
        FROM events WHERE ${W} AND name='game_complete' AND mode IN ${modesSql}
@@ -121,7 +122,26 @@ export async function onRequest(context) {
     q(corrSql, B),
     q(`SELECT name, COALESCE(variant,'?') variant, COUNT(*) c FROM events WHERE ${W}
        AND name IN ('recap_presented','recap_unwrap','recap_full_read','recap_action')
-       AND mode IN ${modesSql} GROUP BY name,variant`, B)
+       AND mode IN ${modesSql} GROUP BY name,variant`, B),
+    // THE DAILY funnel. The daily has no mode of its own (it inherits the
+    // challenge base), so every daily event is identified by its variant
+    // prefix. These pull the daily back out of the base-mode totals.
+    q(`SELECT name,
+         COUNT(*) c,
+         COUNT(DISTINCT sid) sids,
+         SUM(CASE WHEN variant LIKE 'daily-practice:%' THEN 1 ELSE 0 END) practice
+       FROM events WHERE ${W}
+         AND name IN ('daily_gate_view','game_start','game_complete')
+         AND variant LIKE 'daily%'
+       GROUP BY name`, B),
+    q(`SELECT COALESCE(variant,'?') variant, COUNT(*) c, COUNT(DISTINCT sid) sids
+       FROM events WHERE ${W} AND name='share' AND variant LIKE 'daily%'
+       GROUP BY variant ORDER BY c DESC`, B),
+    q(`SELECT COALESCE(mode,'?') base,
+         SUM(CASE WHEN variant LIKE 'daily%' THEN 1 ELSE 0 END) daily,
+         SUM(CASE WHEN variant IS NULL OR variant NOT LIKE 'daily%' THEN 1 ELSE 0 END) standalone
+       FROM events WHERE ${W} AND name='game_start' AND mode IN ${modesSql}
+       GROUP BY mode`, B)
   ]);
 
   const [
@@ -255,6 +275,45 @@ export async function onRequest(context) {
     <div class="sub">round reached · by mode</div>
     ${TRACKED_MODES.map((m) => roundBars(m, roundFunnel)).join("")}
     ${hasV2 ? "" : `<p class="warn">Apply <code>migrations/0004_analytics_v2.sql</code> to separate Start over from real page exits.</p>`}`));
+
+  // ---- THE DAILY: the funnel you actually asked about ----
+  {
+    const dfMap = {};
+    (dailyFunnelRows || []).forEach((r) => { dfMap[r.name] = r; });
+    const gate = dfMap["daily_gate_view"] || { c: 0, sids: 0 };
+    const start = dfMap["game_start"] || { c: 0, sids: 0, practice: 0 };
+    const done = dfMap["game_complete"] || { c: 0, sids: 0, practice: 0 };
+    const gateN = +gate.c || 0, startN = +start.c || 0, doneN = +done.c || 0;
+    const practiceStarts = +start.practice || 0;
+    const firstStarts = Math.max(0, startN - practiceStarts);
+    const shareTotal = (dailyShareRows || []).reduce((a, r) => a + (+r.c || 0), 0);
+    cards.push(card("THE DAILY · funnel", `
+    <table><thead><tr><th>step</th><th>events</th><th>people</th><th>of gate</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Tapped THE DAILY (gate seen)</td><td>${gateN}</td><td>${+gate.sids || 0}</td><td>—</td></tr>
+      <tr><td class="k">Entered the draft (game_start)</td><td>${startN}</td><td>${+start.sids || 0}</td><td class="big">${pct(startN, gateN)}%</td></tr>
+      <tr><td class="k">Finished the season</td><td>${doneN}</td><td>${+done.sids || 0}</td><td>${pct(doneN, gateN)}%</td></tr>
+      <tr><td class="k">Shared the daily</td><td>${shareTotal}</td><td>—</td><td>${pct(shareTotal, gateN)}%</td></tr>
+    </tbody></table>
+    <p class="muted">First attempts vs practice reruns among draft entries: <b>${firstStarts}</b> first · <b>${practiceStarts}</b> practice. Gate-to-draft drop-off = ${pct(Math.max(0, gateN - startN), gateN)}% leave on the instructions screen.</p>
+    ${gateN === 0 ? '<p class="warn">No daily_gate_view events in range. If this stays zero after deploy, the daily button itself is not being found or tapped — check placement, not tracking.</p>' : ""}
+    <p class="muted">Daily shares by entry path:</p>
+    ${(dailyShareRows || []).length ? (dailyShareRows).map((r) => bar(esc(r.variant), +r.c || 0, Math.max.apply(null, dailyShareRows.map((x) => +x.c || 0)))).join("") : muted("no daily shares in range")}`, "wide"));
+  }
+
+  // ---- base-mode totals, split daily vs standalone ----
+  {
+    const rowsByBase = {};
+    (dailyByBaseRows || []).forEach((r) => { rowsByBase[r.base] = r; });
+    cards.push(card("Games initiated · daily vs standalone", `
+    <p class="muted">Your Classic/Pro/Presti totals include daily runs (a daily inherits its challenge's base mode). This splits them.</p>
+    <table><thead><tr><th>base mode</th><th>standalone</th><th>daily</th><th>daily %</th></tr></thead>
+    <tbody>${TRACKED_MODES.map((m) => {
+      const r = rowsByBase[m] || { standalone: 0, daily: 0 };
+      const sN = +r.standalone || 0, dN = +r.daily || 0;
+      return `<tr><td class="k">${MODE_LABEL[m]}</td><td>${sN}</td><td>${dN}</td><td>${pct(dN, sN + dN)}%</td></tr>`;
+    }).join("")}</tbody></table>`));
+  }
 
   cards.push(card("Start-over bailout board", hasV2
     ? bailoutBoard(exposureRows, startOverRows)
