@@ -1048,10 +1048,12 @@ function fmtM(n) {
   var s = (r % 1 === 0) ? String(Math.round(r)) : r.toFixed(1);
   return (neg ? "\u2212" : "") + "$" + s + "M";
 }
-function mHtml(txt) {
-  // Display layer only: "$ 17" with a thin space and a lighter trailing M.
-  // Underlying strings (share text, copy, reels' textContent) stay "$17M".
-  return String(txt).replace("$", "$\u2009").replace(/M$/, '<span class="m-lite">M</span>');
+function mHtml(txt, tight) {
+  // Display layer only: a lighter trailing M everywhere; a thin space after
+  // the $ except where tight (the bank reads "$50M"). Underlying strings
+  // (share text, copy, reels' textContent) stay "$17M".
+  var t = String(txt).replace(/M$/, '<span class="m-lite">M</span>');
+  return tight ? t : t.replace("$", "$\u2009");
 }
 function fmtMCost(n) {              // a positive cost rendered as a deduction: 1 -> "−$1M"
   return "\u2212" + fmtM(Math.abs(Number(n) || 0));
@@ -1172,7 +1174,7 @@ function modePanelHtml() {
     sub.push("TAP THE YEAR \u25BE TO USE ANY SEASON");
   }
   var bankHtml = MODE === "cap"
-    ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(G.budget)) + '</b></div>'
+    ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(G.budget), true) + '</b></div>'
     : "";
   var panelCls = 'mode-panel plq-frame plq-slim' + (MODE === "cap" ? ' cap-mode-panel' : '');
   return '<div class="' + panelCls + '" id="modePanel">' +
@@ -1260,18 +1262,18 @@ function tickBank() {
   var to = G.budget;
   var from = (typeof G.bankShown === "number") ? G.bankShown : to;
   G.bankShown = to;
-  if (from === to || prefersReduce()) { node.innerHTML = mHtml(fmtM(to)); return; }
+  if (from === to || prefersReduce()) { node.innerHTML = mHtml(fmtM(to), true); return; }
   var box = node.closest(".mp-bank");
   var dir = to < from ? "bank-down" : "bank-up";
   if (box) box.classList.add(dir);
   var v = from;
   var step = to < from ? -1 : 1;
   var iv = Math.max(45, Math.min(140, Math.round(420 / Math.abs(to - from))));
-  node.innerHTML = mHtml(fmtM(v));
+  node.innerHTML = mHtml(fmtM(v), true);
   var t = setInterval(function () {
     if (!node.isConnected) { clearInterval(t); return; }   // a newer render owns the panel now
     v += step;
-    node.innerHTML = mHtml(fmtM(v));
+    node.innerHTML = mHtml(fmtM(v), true);
     if (v === to) {
       clearInterval(t);
       setTimeout(function () {
@@ -2162,7 +2164,6 @@ function twoWayHtml(e) {
 var HISTORY_COMPS = [
   { label: "OG Death Lineup", wins: 81 },
   { label: "5 Jokics", wins: 80 },
-  { label: "Prime Wilt Core", wins: 80 },
   { label: "5 LeBrons", wins: 79 },
   { label: "Hamptons 5", wins: 78 },
   { label: "Shaqobe Core", wins: 77 },
@@ -2172,6 +2173,7 @@ var HISTORY_COMPS = [
   { label: "\u201916 Warriors", wins: 73 },
   { label: "\u201996 Bulls", wins: 72 },
   { label: "Lob City Lineup", wins: 71 },
+  { label: "Prime Wilt Core", wins: 70 },
   { label: "\u201972 Lakers", wins: 69 },
   { label: "Fo' Fo' Fo' Co'", wins: 68 },
   { label: "\u201986 Celtics", wins: 67 },
@@ -3720,21 +3722,26 @@ function renderResults(e, keepScroll) {
   // itself, the OFFICIAL RUN stamp rides the top under the eyebrow, and the
   // challenge line (when present) keeps its old spot. Verdict + brand retired.
   var dailyBoardHtml = daily ? daily.targetHtml : "";
-  var stampHtml = daily
-    ? '<div class="daily-stamp stamp-top' + (daily.isOfficial ? " is-official" : " is-practice") + '">' +
-        (daily.isOfficial
-          ? '\u25CF OFFICIAL RUN \u00B7 LOCKED FOR #' + G.social.num
-          : 'PRACTICE \u00B7 OFFICIAL STAYS ' + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins)) +
-      '</div>'
-    : "";
+  var dailyHeadHtml = "";
+  if (daily) {
+    var dhlDot = ' <b class="dhl-dot">\u25CF</b> ';
+    dailyHeadHtml = '<div class="daily-head-line">' +
+      "THE DAILY #" + G.social.num + dhlDot +
+      (daily.isOfficial
+        ? "OFFICIAL RUN" + dhlDot + "LOCKED"
+        : "PRACTICE RUN" + dhlDot + "OFFICIAL " + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins)) +
+    '</div>';
+  }
   var compLadder = HISTORY_COMPS.slice().sort(function (a, b) { return a.wins - b.wins; });
   var compAbove = null;
   for (var ci = 0; ci < compLadder.length; ci++) {
     if (compLadder[ci].wins > e.winTally) { compAbove = compLadder[ci]; break; }
   }
-  var compTxt = compAbove
-    ? "Almost as good as the " + compAbove.label
-    : "Better than the " + compLadder[compLadder.length - 1].label;
+  var compTxt = e.winTally >= CFG.GAMES_IN_SEASON
+    ? "Greatest of all GOATs"
+    : compAbove
+      ? "Almost as good as the " + compAbove.label
+      : "Better than the " + compLadder[compLadder.length - 1].label;
   var shareLabel = !daily ? "SHARE YOUR TEAM"
     : daily.isOfficial ? "SHARE THE DAILY"
     : "SHARE OFFICIAL (" + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) + ")";
@@ -3742,7 +3749,8 @@ function renderResults(e, keepScroll) {
   document.body.classList.remove("gating");
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board' + (daily ? " plq-frame daily-framed" : "") + '"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">' + boardEyebrow + "</p>" + stampHtml +
+    '<section class="board' + (daily ? " plq-frame daily-framed" : "") + '"><div class="goat-fw" id="wlFw" aria-hidden="true"></div>' +
+    (daily ? dailyHeadHtml : '<p class="eyebrow">' + boardEyebrow + "</p>") +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       '<div class="res-comp">' + esc(compTxt) + '</div>' +
       dailyBoardHtml +

@@ -2918,3 +2918,23 @@ body.gating .gate-back {
     0 0 44px rgba(255, 181, 46, 0.35);
 }
 .m-lite { font-weight: 400; font-size: 0.8em; letter-spacing: 0; }
+
+/* ============ DAILY HEAD LINE + SUMMIT CAP FIX (2026-07-19, v26) ============
+   Daily results open on one prominent gold line (THE DAILY #8 . OFFICIAL
+   RUN . LOCKED, big dots). The 82-0 summit label loses its ink backing and
+   drops below the marker's layer, so an undefeated run's glow ring never
+   gets a black box painted over it; an ink text-halo keeps it legible where
+   it crosses the rail. */
+.daily-head-line {
+  font-family: var(--disp); font-weight: 700; font-size: 15px;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--amber);
+  text-align: center; margin: 0 0 12px;
+}
+.daily-head-line .dhl-dot {
+  font-style: normal; font-size: 0.72em; position: relative; top: -1px;
+  margin: 0 2px; color: var(--amber);
+}
+.climb-summit-cap {
+  background: none; padding: 0; z-index: 3;
+  text-shadow: 0 0 6px var(--ink), 0 0 3px var(--ink), 0 0 2px var(--ink);
+}
