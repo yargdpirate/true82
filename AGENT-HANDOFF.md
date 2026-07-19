@@ -327,3 +327,19 @@ number dies there. Current design:
   tick classes (`bank-down` / `bank-up`, now on `.tray-bank`) are load-
   bearing for the offline walk (119 checks).
 - Cache keys: app.js and styles.css at `20260718-ui-v19`.
+
+### V20 — plaque restored; the v19 experiment resolved (2026-07-18)
+SUPERSEDES V19. The tray-strip relocation was tried and the owner judged it
+a step back: the strip lacked the plaque's material presence and read as an
+afterthought. FINAL BANK DOCTRINE, do not re-litigate:
+- The bank is the v17 PLAQUE in the mode panel (`.mp-bank` / `#bankAmt`),
+  desktop 3-column grid, mobile full-width hero row. That object won.
+- The v19 innovations survive in better homes: the spend math rides the
+  CONFIRM LINE at the point of action ("<name> <yr> · $23M · leaves $27M",
+  built in `confirmHtml()`, now shown in BOTH single- and multi-bucket
+  paths), and the low-funds warning (`.bank-low`, toggled in `tickBank()`
+  when budget <= open slots + 1) turns the plaque whistle-red.
+- `tickBank()` classes (`bank-down`/`bank-up`) land on `.mp-bank`.
+- The tray contains medallions + confirm only. No `.tray-bank`, no
+  `#bankDelta`; that CSS was deleted, not orphaned.
+- Offline walk: 119 checks green. Cache keys `20260718-ui-v20`.

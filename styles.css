@@ -2333,7 +2333,7 @@ body.drafting .site-head { display: none; }
 }
 #app .cap-mode-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.86fr) auto;
   align-items: center;
   gap: 10px 12px;
 }
@@ -2531,7 +2531,8 @@ body.rules-open { overflow: hidden; }
   #app .cap-mode-panel {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "left rules";
+      "left rules"
+      "bank bank";
     align-items: start;
     gap: 12px;
   }
@@ -2801,41 +2802,15 @@ body.gating .gate-back {
   .gate-pull .gate-cue { animation: none; }
 }
 
-/* ============ BANK IN THE TRAY (2026-07-18, v19) ============
-   The bank lives where money is spent: a strip on top of the tray, above the
-   slot medallions and the confirm button. It does live math (pending cost
-   appears beside the balance on selection), ticks and pulses on real spends
-   through the existing tickBank classes, and turns whistle-red when the
-   balance nears the $1M-per-open-slot floor. The old panel plaque is gone;
-   its orphaned .mp-bank rules are inert. */
-.tray-bank {
-  display: flex; align-items: baseline; gap: 12px;
-  padding: 8px 16px 7px;
-  border-bottom: 1px solid var(--maple-line);
-}
-.tb-lab {
-  font-size: 8px; font-weight: 700; letter-spacing: 0.24em;
-  color: var(--chalk-dim); transform: translateY(-2px);
-}
-.tb-amt {
-  font-family: var(--disp); font-weight: 700; font-style: normal;
-  font-size: 24px; line-height: 0.9; letter-spacing: 0.01em;
-  color: var(--amber); font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 14px rgba(255, 181, 46, 0.28);
-  transition: color 0.15s ease;
-}
-.tb-delta {
-  font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em;
-  color: var(--whistle);
-  animation: deltaIn 0.18s ease;
-}
-@keyframes deltaIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
-.tray-bank.bank-down .tb-amt { color: var(--whistle); }
-.tray-bank.bank-up .tb-amt { color: #58c470; }
-.tray-bank.bank-down .tb-amt, .tray-bank.bank-up .tb-amt { animation: bankPulse 0.34s ease; }
-@keyframes bankPulse { 0% { transform: scale(1); } 45% { transform: scale(1.07); } 100% { transform: scale(1); } }
-.tray-bank.bank-low .tb-amt { color: var(--whistle); text-shadow: 0 0 14px rgba(224, 82, 60, 0.3); }
-.tray-bank.bank-low .tb-lab { color: var(--whistle); }
-@media (prefers-reduced-motion: reduce) {
-  .tb-delta, .tray-bank.bank-down .tb-amt, .tray-bank.bank-up .tb-amt { animation: none; }
-}
+
+
+/* ============ BANK PLAQUE, RESTORED + LOW STATE (2026-07-18, v20) ============
+   The v17 plaque is the bank's home: the owner judged it the stronger object,
+   and the v19 tray strip is retired. The v19 innovations survive elsewhere:
+   the spend math rides the confirm line ("leaves $NM") at the point of
+   action, and the low-funds warning lives here on the plaque, going whistle
+   when the balance nears the $1M-per-open-slot floor. tickBank's red/green
+   pulse classes land on .mp-bank as before. */
+.mp-bank.bank-low .mpb-amt { color: var(--whistle); text-shadow: 0 0 16px rgba(224, 82, 60, 0.35); }
+.mp-bank.bank-low .mpb-lab { color: var(--whistle); }
+.mp-bank.bank-low { border-color: rgba(224, 82, 60, 0.55); }

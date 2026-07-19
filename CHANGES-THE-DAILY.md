@@ -553,3 +553,12 @@ each) and the daily schedule was rebuilt on the numbers.
   the $1M-per-open-slot floor.
 - The mode panel sheds its bank column on desktop and its hero row on
   mobile, returning vertical space to the pool.
+
+## V20 (2026-07-18) — the plaque wins; the math moves to the moment
+- The bank plaque is back in the mode panel exactly as v17 built it; the
+  v19 tray strip is retired after a side-by-side verdict.
+- What the experiment proved out stays, relocated: the confirm line now
+  shows the full spend math ("$23M · leaves $27M") on every priced pick,
+  including single-slot confirms that previously showed no cost at all,
+  and the plaque itself turns whistle-red as the balance approaches the
+  $1M-per-open-slot floor.

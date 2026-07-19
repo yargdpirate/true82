@@ -1110,8 +1110,9 @@ function modePanelHtml() {
     idHtml = '<span class="mp-id">CLASSIC MODE</span>';
     sub.push("TAP THE YEAR \u25BE TO USE ANY SEASON");
   }
-  // v19: the bank moved to the tray, where spending is confirmed. The panel
-  // is read-once chrome; a live number was dying up here. See tray-bank below.
+  var bankHtml = MODE === "cap"
+    ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + fmtM(G.budget) + '</b></div>'
+    : "";
   var panelCls = 'mode-panel plq-frame plq-slim' + (MODE === "cap" ? ' cap-mode-panel' : '');
   return '<div class="' + panelCls + '" id="modePanel">' +
     '<div class="mp-left">' +
@@ -1119,6 +1120,7 @@ function modePanelHtml() {
       '<div class="mp-row2 mono">' + sub.join(" \u00B7 ") + '</div>' +
       targetHtml +
     '</div>' +
+    bankHtml +
     '<button class="mp-rules-btn presti-spin" id="rulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: the rules, today\u2019s twist, and how scoring works">' +
       '<span class="mp-book-wrap">' + bookIconSvg() + '</span>' +
       '<span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span></span>' +
@@ -1189,7 +1191,7 @@ function initDraftViewport() {
 function tickBank() {
   var node = el("bankAmt");
   if (!node || MODE !== "cap" || !G) return;
-  var strip = node.closest(".tray-bank");
+  var strip = node.closest(".mp-bank");
   if (strip) {
     var remaining = 5 - ((G.picks && G.picks.length) || 0);
     strip.classList.toggle("bank-low", G.budget <= remaining + 1);
@@ -1198,7 +1200,7 @@ function tickBank() {
   var from = (typeof G.bankShown === "number") ? G.bankShown : to;
   G.bankShown = to;
   if (from === to || prefersReduce()) { node.textContent = fmtM(to); return; }
-  var box = node.closest(".tray-bank, .mp-bank");
+  var box = node.closest(".mp-bank");
   var dir = to < from ? "bank-down" : "bank-up";
   if (box) box.classList.add(dir);
   var v = from;
@@ -1692,11 +1694,18 @@ function confirmHtml() {
   if (!opts.length) return "";
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
-  var costNote = (MODE === "cap" && effCost(G.selected) != null) ? " \u00B7 " + fmtM(effCost(G.selected)) : "";
+  // v20: the money math happens where the thumb is. The confirm line shows
+  // the price AND what the bank holds after: "· $23M · leaves $27M".
+  var costNote = "";
+  if (MODE === "cap" && effCost(G.selected) != null) {
+    var _c = effCost(G.selected);
+    costNote = " \u00B7 " + fmtM(_c) + " \u00B7 leaves " + fmtM(G.budget - _c);
+  }
   var spinCls = " presti-spin";   // casino skin on the draft/position buttons, all modes
   if (opts.length === 1) {
     var ok1 = bucketLegal(row, opts[0]);
-    return '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '"' +
+    return (costNote ? '<div class="confirm-label">' + who + " " + yr + costNote + "</div>" : "") +
+      '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '"' +
       (ok1 ? "" : ' disabled title="' + esc(chBlockWhy()) + '"') + '>Draft your player</button>';
   }
   return '<div class="confirm-label">Assign ' + who + " " + yr + costNote + " to:</div>" +
@@ -1746,15 +1755,6 @@ function updateTray() {
   inner.innerHTML = trayHtml() + confirmHtml();
   bindConfirm();
   bindLineupMoves();
-  // v19: the bank does live math. Select a priced player and the pending hit
-  // shows next to the balance; deselect or confirm and it clears (tickBank
-  // then plays the real deduction in the same spot).
-  var d = el("bankDelta");
-  if (d) {
-    var c = (MODE === "cap" && G.selected) ? effCost(G.selected) : null;
-    if (c != null) { d.textContent = fmtMCost(c); d.hidden = false; }
-    else { d.textContent = ""; d.hidden = true; }
-  }
 }
 
 /* the season picker shown in each player row (only when >1 season exists) */
@@ -1949,15 +1949,7 @@ function renderDraft(anim) {
     poolHeadHtml +
     '<div class="pool" id="pool">' + poolHtml + "</div>" +
     '<div class="pool-fade" id="poolFade" aria-hidden="true"></div>' +
-    '<div class="tray">' +
-      (MODE === "cap"
-        ? '<div class="tray-bank" id="trayBank">' +
-            '<span class="tb-lab mono">BANK</span>' +
-            '<b class="tb-amt" id="bankAmt">' + fmtM(G.budget) + '</b>' +
-            '<span class="tb-delta mono" id="bankDelta" hidden></span>' +
-          '</div>'
-        : "") +
-      '<div class="tray-inner" id="trayInner"></div></div>';
+    '<div class="tray"><div class="tray-inner" id="trayInner"></div></div>';
 
   updateTray();
   renderPips();   // the utility bar's pips + PICK N OF 5 live inside the fresh markup
