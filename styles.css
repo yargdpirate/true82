@@ -2634,7 +2634,7 @@ body.rules-open { overflow: hidden; }
   display: flex; align-items: center; justify-content: space-between;
   gap: 7px; width: 100%; padding: 9px 9px 10px; min-height: 42px;
 }
-.sk-lab { font-family: var(--disp); font-weight: 700; font-size: 12.5px; letter-spacing: 0.05em; white-space: nowrap; }
+.sk-lab { font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: 0.05em; white-space: nowrap; }
 .sk-chip {
   font-family: var(--mono); font-weight: 700; font-size: 11px; line-height: 1;
   padding: 4px 7px 4px; border-radius: 6px; flex: 0 0 auto;
@@ -2852,11 +2852,11 @@ body.gating .gate-back {
   #app .ticket-actions { margin-top: 6px; }
   #app .ta-cap { gap: 6px; }
   #app .ta-cap .skip-btn { min-height: 36px; padding: 6px 8px 8px; gap: 5px; }
-  .sk-lab { font-size: 11px; }
+  .sk-lab { font-size: 12.5px; }
   .sk-chip { font-size: 10px; padding: 3px 6px; }
 
   /* 4. tray: tighter frame around the medallions */
-  .tray { padding: 6px 14px calc(7px + env(safe-area-inset-bottom)); }
+  .tray { padding: 2px 14px calc(7px + env(safe-area-inset-bottom)); }
   .lineup-rail { margin-bottom: 5px; gap: 5px; }
   .lineup-slot { gap: 3px; }
   .ls-token { width: 40px; height: 40px; font-size: 15px; }
@@ -2873,3 +2873,16 @@ body.gating .gate-back {
    word: the number is the whole message. Both apply at every viewport. */
 #app .ta-cap .skip-btn .sk-lab { flex: 1 1 auto; text-align: center; }
 .cap-row .cap-cost { padding: 8px 10px 9px; gap: 0; }
+
+/* ============ REEL LANDINGS + CHROME NITS (2026-07-18, v23) ============
+   reel-land: the little settle-pop when a slot reel drops its real value.
+   The utility bar's hoop mark centers on the bar's vertical axis, and open
+   medallions are bare circles (the "open" caption is gone, height returned
+   to the pool). */
+.reel-land { display: inline-block; animation: reelLand 0.18s ease; }
+@keyframes reelLand { 0% { transform: scale(1.16); } 100% { transform: scale(1); } }
+#app .draft-utility { align-items: center; }
+#app .du-brandbox { display: inline-flex; align-items: center; align-self: center; }
+@media (prefers-reduced-motion: reduce) {
+  .reel-land { animation: none; }
+}

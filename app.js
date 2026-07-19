@@ -749,26 +749,59 @@ function scramblePool(mode, settleAt) {
   var decade = (G.cur && G.cur.dec) ? G.cur.dec : 1990;
   pool.classList.add("scrambling");
 
-  function rSeason() { return shortSeason(decade + Math.floor(Math.random() * 10)); }
-  function rCost() { return fmtM(1 + Math.floor(Math.random() * 20)); }
-  function paint() {
-    var i;
-    if (mode === "full") { var _dn = decoyNames(); for (i = 0; i < names.length; i++) names[i].textContent = _dn[Math.floor(Math.random() * _dn.length)]; }   // cosmetic reel — must never touch G.rng
-    for (i = 0; i < seasons.length; i++) seasons[i].textContent = rSeason();
-    for (i = 0; i < costs.length; i++) costs[i].textContent = rCost();
-  }
+  // v23: every element is its own slot reel. Years sweep the whole dealt era
+  // (team code held steady), prices sweep a cheap-heavy plausible book, names
+  // flip through the decoy sheet — each with its own stagger, its own
+  // decelerating clock, and the REAL value dropping back in on the last tick
+  // (innerHTML snapshot, so carets and fire-sale strikes return intact).
+  // Cosmetic only — must never touch G.rng.
+  var yearVals = [];
+  for (var y = 0; y < 10; y++) yearVals.push(shortSeason(decade + y));
+  var priceVals = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 23].map(fmtM);
+  var nameVals = mode === "full" ? decoyNames() : [];
 
-  paint();                                // immediate, so the first paint shows decoys not the real pool
-  var gaps = [], t = 55, total = 0;
-  while (total + t < dur) { gaps.push(t); total += t; t *= 1.18; }
-  var acc = 0;
-  gaps.forEach(function (g) { setTimeout(function () { if (pool.isConnected) paint(); }, acc); acc += g; });
-  setTimeout(function () {
+  var live = 0, landed = false;
+  function finish() {
+    if (landed) return;
+    landed = true;
     if (!pool.isConnected) return;
     pool.classList.remove("scrambling");
-    refreshPool();                        // restore the real rows + re-enable interaction
+    refreshPool();                        // truth re-render: belt over the per-reel restores
     buzz(20);                             // final thump as everything locks in
-  }, dur);
+  }
+  function reel(node, vals, keepTail) {
+    var snap = node.innerHTML;            // the real value, markup and all
+    var tail = "";
+    if (keepTail) {
+      var bare = node.textContent.trim().replace(/\s*\u25BE\s*$/, "");
+      var m = bare.match(/\s(\S+)$/);
+      if (m) tail = " " + m[1];           // "76-77 KCK": the KCK stays put
+    }
+    live++;
+    var ticks = 7 + Math.floor(Math.random() * 4);
+    var iv = Math.max(26, (dur * (0.8 + Math.random() * 0.14)) / 21);
+    var t = 0;
+    (function step() {
+      if (!pool.isConnected) return;      // a newer render owns the pool now
+      t++;
+      if (t >= ticks) {
+        node.innerHTML = snap;
+        node.classList.add("reel-land");
+        setTimeout(function () { if (node.isConnected) node.classList.remove("reel-land"); }, 220);
+        live--;
+        if (live === 0) finish();
+        return;
+      }
+      node.textContent = vals[Math.floor(Math.random() * vals.length)] + tail;
+      iv *= 1.2;                          // each flip a beat slower: the reel decelerating
+      setTimeout(step, iv);
+    })();
+  }
+  var i;
+  for (i = 0; i < seasons.length; i++) (function (n) { setTimeout(function () { reel(n, yearVals, true); }, Math.random() * 150); })(seasons[i]);
+  for (i = 0; i < costs.length; i++) (function (n) { setTimeout(function () { reel(n, priceVals, false); }, Math.random() * 150); })(costs[i]);
+  if (mode === "full") for (i = 0; i < names.length; i++) (function (n) { setTimeout(function () { reel(n, nameVals, false); }, Math.random() * 150); })(names[i]);
+  setTimeout(finish, dur + 900);          // hard stop: the pool never stays locked
 }
 
 // Orchestrate the staggered reel landings for a respin (Classic / Pro / Presti).
@@ -1675,7 +1708,7 @@ function lineupRailHtml() {
           (openTarget ? ' tabindex="0" aria-label="Move ' + esc(G.picks[moving].row[IDX.name]) + " to " + BUCKET_NAME[b] + '"' : "") + ">" +
           '<span class="ls-token is-open">' +
             (openTarget ? '<span class="ls-swap is-here" aria-hidden="true">HERE</span>' : "") + b + "</span>" +
-          '<span class="ls-name ls-open">open</span></div>');
+          '</div>');
       }
     }
   });
