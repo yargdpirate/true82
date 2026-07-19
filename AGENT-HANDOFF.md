@@ -278,3 +278,29 @@ For Cloudflare Pages:
   3. second row = full-width **BANK** hero tile
 - If the panel looks wrong again on mobile, inspect the `.cap-mode-panel` media-query grid areas first.
 
+### V17 layout and rules-order invariant
+- **HOW TO PLAY has no subtitle.** Do not restore “Rules & scoring”; it wastes horizontal room needed by the bank.
+- On wider panels, `.cap-mode-panel` explicitly gives the bank a `minmax(210px, 0.86fr)` column while HOW TO PLAY is capped at 150px.
+- On mobile, the bank remains a full-width hero row; HOW TO PLAY is intentionally compact in the upper-right.
+- In every mode, rules-sheet order must remain: mode rules, change the years, game in 20 seconds, then what wins games.
+
+
+### V18 — gate DRAG cue + re-certification of the small-ball rework (2026-07-18)
+- Adopted the v17 archive as canon; the prior lane's determinism laws all
+  survived it (60-day legacy fixture: 0 mismatches; POOL2 rotation, the 7/18
+  override, and the frozen weeklyFor verified intact).
+- The reworked `small_ball_five` (slot-specific `pick` hook) was re-certified
+  with a slot-aware bot: 300 full games, 0% unfinishable, median pool 35,
+  median C supply 16, wins 44/56/68. Supporting data: 0 legitimate short
+  C-only careers are stranded by the F+C requirement; 667 tall F/C careers
+  supply the unicorn slot; the name-collision path narrows to 2 careers.
+- The offline validation walk (/home/claude/validate.js in the working
+  session; 117 checks) now filters bot bucket choices through `ch.pick`,
+  matching `bucketLegal()`. Any future slot-dependent challenge hook is
+  covered automatically.
+- Gate: the caption's arrow and a new DRAG pill are wrapped in `.gate-cue`,
+  animated with the SAME `gateNudge 1.7s` as the idle ball, so ball, arrow,
+  and word bob in parallel (drag = move ball = dunk). The old standalone
+  arrow bounce is retired. Reduced motion disables the cue.
+- Cache keys: `app.js` and `styles.css` bumped to `20260718-ui-v18`;
+  challenge/daily modules unchanged at `smallball-fix-v14`.

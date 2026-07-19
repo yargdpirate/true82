@@ -526,3 +526,19 @@ each) and the daily schedule was rebuilt on the numbers.
 - Mobile bank styling was amplified further (larger amount, stronger glow, bigger tile, stronger contrast).
 - Cache keys in `index.html` were bumped to `ui-v16` so the CSS fix is not hidden by stale mobile assets.
 
+## V17 — Bank width and rules-sheet scan order (2026-07-18)
+- Removed the redundant subtitle beneath **HOW TO PLAY**.
+- Compacted the HOW TO PLAY control globally and especially on mobile.
+- Expanded the bank column on wider draft panels; mobile bank remains the full-width hero row.
+- Global rules-sheet order is now: mode rules → change the years → game in 20 seconds → what wins games.
+- Cache keys bumped to `ui-v17`.
+
+
+## V18 (2026-07-18) — the DRAG cue and the small-ball re-certification
+- Gate caption now reads DUNK THE BALL TO START with the arrow and a DRAG
+  pill riding the ball's own gateNudge rhythm: three things tugging in
+  parallel teach the interaction without words of explanation.
+- The v17 small-ball rework (center slot requires F+C eligibility; talls
+  barred from G/F slots) re-certified by a slot-aware bot: 300 games, 0%
+  unfinishable, wins 44/56/68. No legitimate short player is stranded.
+- Validation walk at 117 green, now pick-hook aware.
