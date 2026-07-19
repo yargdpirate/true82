@@ -366,3 +366,14 @@ means the pool can never stay locked. The walk (121 checks) asserts the
 snapshot-restore pattern. Also: tray top padding 2px, "open" medallion
 caption removed in lineupRailHtml, sk-lab 14px/12.5px, hoop mark centered.
 Keys `20260718-ui-v23`.
+
+### V24 — results rework + canonical ladder (2026-07-19)
+HISTORY_COMPS in app.js is the single source for the climb pins and the
+results comp line; META.legends is no longer read. The daily results board
+carries plq-frame itself (.daily-framed); .daily-card/.daily-verdict/
+.daily-brand markup is gone (CSS inert). Practice is reachable ONLY via the
+results againBtn; the played tile offers CHALLENGE A FRIEND only, and
+el("startDaily") does not exist once played (wiring is null-guarded). The
+walk is at 131 checks and asserts all of it. Keys `20260719-ui-v24`... note:
+keys actually read 20260718-ui-v24 if the date prefix was preserved; trust
+index.html.

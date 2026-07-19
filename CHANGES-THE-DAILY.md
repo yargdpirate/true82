@@ -598,3 +598,26 @@ each) and the daily schedule was rebuilt on the numbers.
   gone (bare dashed circles), returning that line to the pool.
 - Skip labels up to 14px (12.5px on phones), still centered left of their
   chips. The utility bar's hoop mark now centers on the bar's axis.
+
+## V24 (2026-07-19) — results rework, the canonical ladder, chrome fixes
+- Donate button is now a static "Feature requests? Bugs? Email me." mailto
+  to true82mailbox@gmail.com (jokes retired; /avocado history untouched).
+- HISTORY_COMPS: the owner's 19-team ladder supersedes META.legends for the
+  GOAT Climb pins and feeds a new comp line on every results screen:
+  "Almost as good as the {nearest team above}" (or "Better than the OG
+  Death Lineup" at 81+), replacing the cap-space line. Three old pins
+  retired (Showtime Lakers, '97 Bulls, '25 Thunder); Hamptons 5 recut to
+  78; the Celts Big 3 split into OG (76) and '08 (75); 70 wins is a
+  deliberate gap.
+- Daily results: the nested plaque is gone. Its ornate frame moved to the
+  board itself, the OFFICIAL RUN / PRACTICE stamp rides the top under the
+  eyebrow, the challenge line keeps its spot, and the verdict + brand
+  lines retired with the box.
+- Gate: the DRAG cue is out of the caption's flow, so DUNK THE BALL TO
+  START centers true over the ball; under 480px the cue drops to its own
+  centered bouncing row.
+- Slot reels keep their spin; the landing pop (names shifting, amounts
+  expanding) is retired.
+- Played daily tile: the tomorrow line is all gold (the ::first-letter
+  hack is gone) and the practice button is removed; practice lives on the
+  results screen's Run it back button. The tile keeps CHALLENGE A FRIEND.

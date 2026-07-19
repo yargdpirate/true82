@@ -786,8 +786,6 @@ function scramblePool(mode, settleAt) {
       t++;
       if (t >= ticks) {
         node.innerHTML = snap;
-        node.classList.add("reel-land");
-        setTimeout(function () { if (node.isConnected) node.classList.remove("reel-land"); }, 220);
         live--;
         if (live === 0) finish();
         return;
@@ -1392,10 +1390,12 @@ var DONATE_MSGS = [
   "Prove my parents wrong"
 ];
 function resultsTopBarHtml() {
-  var msg = DONATE_MSGS[Math.floor(Math.random() * DONATE_MSGS.length)];
+  // v24: the rotating donate jokes are retired in favor of a straight line to
+  // the mailbox. DONATE_MSGS/DONATE_URL stay defined for the /avocado history.
+  var msg = "Feature requests? Bugs? Email me.";
   return '<div class="results-topbar">' +
     startOverBtnHtml() +
-    '<a class="donate-btn" id="donateBtn" href="' + DONATE_URL + '" target="_blank" rel="noopener" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
+    '<a class="donate-btn" id="donateBtn" href="mailto:true82mailbox@gmail.com" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
   '</div>';
 }
 function wireDonate() {
@@ -1449,7 +1449,6 @@ function renderIntro() {
           ' \u00B7 Net ' + T82DAILY.signedNet(dailyOfficial.net) + '</span>' +
         '<span class="dt-actions">' +
           '<button class="dt-act dt-act-share" id="dailyChallengeBtn" data-share-label="CHALLENGE A FRIEND">CHALLENGE A FRIEND</button>' +
-          '<button class="dt-act dt-act-ghost" id="startDaily">RUN IT BACK \u00B7 PRACTICE</button>' +
         '</span>' +
         (dailyTomorrow ? '<span class="dt-tomorrow mono">TOMORROW #' + dailyTomorrow.num + ' \u00B7 ' + esc(dailyTomorrow.name.toUpperCase()) + '</span>' : '') +
       '</div>';
@@ -2123,8 +2122,34 @@ function twoWayHtml(e) {
   return '<div class="twoway">' + off + def + "</div>";
 }
 
+// The historical comp ladder (owner sheet, 2026-07-19). This SUPERSEDES
+// META.legends: values were recut (Hamptons 5 to 78, the Celts Big 3 split
+// into OG/'08) and three old pins retired. One team per win value; 70 is a
+// deliberate gap. Feeds both the GOAT Climb pins and the results comp line.
+var HISTORY_COMPS = [
+  { label: "OG Death Lineup", wins: 81 },
+  { label: "5 Jokics", wins: 80 },
+  { label: "5 LeBrons", wins: 79 },
+  { label: "Hamptons 5", wins: 78 },
+  { label: "Shaqobe Core", wins: 77 },
+  { label: "OG Celts Big 3", wins: 76 },
+  { label: "\u201908 Celts Big 3", wins: 75 },
+  { label: "3-peat Bulls Core", wins: 74 },
+  { label: "\u201916 Warriors", wins: 73 },
+  { label: "\u201996 Bulls", wins: 72 },
+  { label: "Lob City Lineup", wins: 71 },
+  { label: "\u201972 Lakers", wins: 69 },
+  { label: "Fo' Fo' Fo' Co'", wins: 68 },
+  { label: "\u201986 Celtics", wins: 67 },
+  { label: "Heatles", wins: 66 },
+  { label: "\u201916 Spurs", wins: 65 },
+  { label: "The Last Shot Jazz", wins: 64 },
+  { label: "Bad Boy Pistons", wins: 63 },
+  { label: "Beautiful Game Spurs", wins: 62 }
+];
+
 function climbHtml(e, winsOverride) {
-  var legends = META.legends || [];
+  var legends = HISTORY_COMPS;
   var G82 = CFG.GAMES_IN_SEASON;
   var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
   var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
@@ -3647,23 +3672,25 @@ function renderResults(e, keepScroll) {
   var boardEyebrow = daily
     ? "The Daily #" + G.social.num + " \u00B7 " + esc(G.social.name)
     : "Front office projection \u00B7 " + (MODE === "pro" ? "pro draft" : MODE === "cap" ? "salary cap" : "classic draft");
-  var dailyBoardHtml = "";
-  if (daily) {
-    // One ornate frame, frameless interior: verdict, a hairline-ruled status
-    // line (no separate dashed box), the brand. The plaque border carries the
-    // ceremony now; nested boxes are gone.
-    dailyBoardHtml =
-      '<div class="daily-card plq-frame">' +
-      '<div class="daily-verdict" id="dailyVerdict">' + esc(T82DAILY.verdict(daily.res.wins)) + "</div>" +
-      daily.targetHtml +
-      '<div class="daily-stamp' + (daily.isOfficial ? " is-official" : " is-practice") + '">' +
+  // v24: the nested plaque is gone. Its ornate border moved to the board
+  // itself, the OFFICIAL RUN stamp rides the top under the eyebrow, and the
+  // challenge line (when present) keeps its old spot. Verdict + brand retired.
+  var dailyBoardHtml = daily ? daily.targetHtml : "";
+  var stampHtml = daily
+    ? '<div class="daily-stamp stamp-top' + (daily.isOfficial ? " is-official" : " is-practice") + '">' +
         (daily.isOfficial
           ? '\u25CF OFFICIAL RUN \u00B7 LOCKED FOR #' + G.social.num
           : 'PRACTICE \u00B7 OFFICIAL STAYS ' + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins)) +
-      '</div>' +
-      '<div class="daily-brand mono">true82.net \u00B7 same board for everyone</div>' +
-      '</div>';
+      '</div>'
+    : "";
+  var compLadder = HISTORY_COMPS.slice().sort(function (a, b) { return a.wins - b.wins; });
+  var compAbove = null;
+  for (var ci = 0; ci < compLadder.length; ci++) {
+    if (compLadder[ci].wins > e.winTally) { compAbove = compLadder[ci]; break; }
   }
+  var compTxt = compAbove
+    ? "Almost as good as the " + compAbove.label
+    : "Better than the " + compLadder[compLadder.length - 1].label;
   var shareLabel = !daily ? "SHARE YOUR TEAM"
     : daily.isOfficial ? "SHARE THE DAILY"
     : "SHARE OFFICIAL (" + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) + ")";
@@ -3671,9 +3698,9 @@ function renderResults(e, keepScroll) {
   document.body.classList.remove("gating");
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">' + boardEyebrow + "</p>" +
+    '<section class="board' + (daily ? " plq-frame daily-framed" : "") + '"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">' + boardEyebrow + "</p>" + stampHtml +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
-      (MODE === "cap" ? '<div class="cap-spent">' + fmtM(G.budget) + ' cap space</div>' : "") +
+      '<div class="res-comp">' + esc(compTxt) + '</div>' +
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
