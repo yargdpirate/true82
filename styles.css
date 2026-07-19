@@ -2814,3 +2814,55 @@ body.gating .gate-back {
 .mp-bank.bank-low .mpb-amt { color: var(--whistle); text-shadow: 0 0 16px rgba(224, 82, 60, 0.35); }
 .mp-bank.bank-low .mpb-lab { color: var(--whistle); }
 .mp-bank.bank-low { border-color: rgba(224, 82, 60, 0.55); }
+
+/* ============ MOBILE VERTICAL DIET (2026-07-18, v21) ============
+   Small screens were losing the entire pool below the fold: the bank plaque
+   ran 52-68px type on a 92px-minimum tile, long franchise names (TRAIL
+   BLAZERS) wrapped the 40px ticket headline three deep, and chrome padding
+   compounded. This block slims every fixed band on <=640px. The plaque keeps
+   its v17 materials (border, radial glow, inset ring) but goes horizontal:
+   label left of the number, roughly half the height. Nothing here touches
+   desktop. */
+@media (max-width: 640px) {
+  /* 1. the bank plaque: same object, half the height */
+  #app .cap-mode-panel .mp-bank {
+    flex-direction: row; align-items: baseline; justify-content: center;
+    gap: 12px; min-height: 0; padding: 8px 16px 9px;
+    border-width: 2px; border-radius: 12px;
+  }
+  #app .cap-mode-panel .mpb-lab { font-size: 9px; letter-spacing: 0.26em; transform: translateY(-3px); }
+  #app .cap-mode-panel .mpb-amt {
+    font-size: clamp(30px, 8.5vw, 38px); line-height: 0.9;
+    text-shadow: 0 0 14px rgba(255, 181, 46, 0.3), 0 2px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /* 2. panel chrome */
+  #app .cap-mode-panel { gap: 8px 10px; }
+  #app .mode-panel { padding: 10px 12px 11px; }
+  #app .cap-mode-panel .mp-rules-btn { min-height: 44px; padding: 7px 11px 9px; }
+  #app .cap-mode-panel .mp-rules-btn .mp-book-wrap { width: 22px; height: 22px; }
+  #app .cap-mode-panel .mp-rules-btn .mp-book { width: 17px; height: 14px; }
+
+  /* 3. the ticket: long franchise names stop eating the screen */
+  .ticket-dec, .ticket-fr { font-size: clamp(22px, 6.8vw, 28px); }
+  .ticket-roll { row-gap: 2px; }
+  .ticket-sub { margin: 2px 0 6px; font-size: 10px; }
+  .ticket-art { flex: 0 0 88px; width: 84px; height: 84px; }
+  #app .ticket { padding: 9px 11px 9px; margin-bottom: 8px; }
+  #app .ticket-actions { margin-top: 6px; }
+  #app .ta-cap { gap: 6px; }
+  #app .ta-cap .skip-btn { min-height: 36px; padding: 6px 8px 8px; gap: 5px; }
+  .sk-lab { font-size: 11px; }
+  .sk-chip { font-size: 10px; padding: 3px 6px; }
+
+  /* 4. tray: tighter frame around the medallions */
+  .tray { padding: 6px 14px calc(7px + env(safe-area-inset-bottom)); }
+  .lineup-rail { margin-bottom: 5px; gap: 5px; }
+  .lineup-slot { gap: 3px; }
+  .ls-token { width: 40px; height: 40px; font-size: 15px; }
+  .ls-token.is-open { font-size: 13px; }
+  .ls-name { font-size: 9.5px; }
+
+  /* 5. filter row breathing space */
+  .pool-head { margin: 2px 0 6px; }
+}

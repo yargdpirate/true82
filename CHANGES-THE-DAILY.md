@@ -562,3 +562,15 @@ each) and the daily schedule was rebuilt on the numbers.
   including single-slot confirms that previously showed no cost at all,
   and the plaque itself turns whistle-red as the balance approaches the
   $1M-per-open-slot floor.
+
+## V21 (2026-07-18) — the mobile vertical diet
+- Small screens were burying the pool below the fold. Every fixed band
+  slimmed on <=640px: the bank plaque keeps its v17 materials but goes
+  horizontal at roughly half the height (30-38px figure instead of
+  52-68px on a 92px tile); the ticket headline drops from 40px to a
+  22-28px clamp so TRAIL BLAZERS-length names stop wrapping three deep;
+  the crest zone narrows from 116px to 88px, returning width to the name;
+  panel, skip-button, tray, medallion, and filter-row padding all tighten.
+- Net reclaim on a 390px phone: roughly 170px on long-name Presti boards,
+  which puts the filter row and two to three player rows back above the
+  fold. Desktop untouched.

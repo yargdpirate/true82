@@ -343,3 +343,9 @@ afterthought. FINAL BANK DOCTRINE, do not re-litigate:
 - The tray contains medallions + confirm only. No `.tray-bank`, no
   `#bankDelta`; that CSS was deleted, not orphaned.
 - Offline walk: 119 checks green. Cache keys `20260718-ui-v20`.
+
+### V21 — mobile vertical diet (2026-07-18)
+One appended media block at the tail of styles.css slims every fixed band
+on <=640px (plaque horizontal at half height, ticket headline clamp
+22-28px, crest zone 88px, tray/panel/skip tightening). Desktop rules are
+untouched; the plaque doctrine from V20 stands. Keys `20260718-ui-v21`.
