@@ -533,3 +533,32 @@ each) and the daily schedule was rebuilt on the numbers.
 - Global rules-sheet order is now: mode rules → change the years → game in 20 seconds → what wins games.
 - Cache keys bumped to `ui-v17`.
 
+
+## V18 (2026-07-18) — the DRAG cue and the small-ball re-certification
+- Gate caption now reads DUNK THE BALL TO START with the arrow and a DRAG
+  pill riding the ball's own gateNudge rhythm: three things tugging in
+  parallel teach the interaction without words of explanation.
+- The v17 small-ball rework (center slot requires F+C eligibility; talls
+  barred from G/F slots) re-certified by a slot-aware bot: 300 games, 0%
+  unfinishable, wins 44/56/68. No legitimate short player is stranded.
+- Validation walk at 117 green, now pick-hook aware.
+
+## V19 (2026-07-18) — the bank lives in the tray
+- Moved the Presti bank from the top panel to a strip atop the tray: the
+  balance now sits where spending is confirmed, next to the medallions and
+  the draft button, in the zone the eye returns to after every action.
+- Live math: select a priced player and the pending cost appears beside
+  the balance; the real deduction then ticks down in the same spot.
+- Low-funds warning: the strip turns whistle-red as the balance approaches
+  the $1M-per-open-slot floor.
+- The mode panel sheds its bank column on desktop and its hero row on
+  mobile, returning vertical space to the pool.
+
+## V20 (2026-07-18) — the plaque wins; the math moves to the moment
+- The bank plaque is back in the mode panel exactly as v17 built it; the
+  v19 tray strip is retired after a side-by-side verdict.
+- What the experiment proved out stays, relocated: the confirm line now
+  shows the full spend math ("$23M · leaves $27M") on every priced pick,
+  including single-slot confirms that previously showed no cost at all,
+  and the plaque itself turns whistle-red as the balance approaches the
+  $1M-per-open-slot floor.

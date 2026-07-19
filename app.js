@@ -1191,6 +1191,11 @@ function initDraftViewport() {
 function tickBank() {
   var node = el("bankAmt");
   if (!node || MODE !== "cap" || !G) return;
+  var strip = node.closest(".mp-bank");
+  if (strip) {
+    var remaining = 5 - ((G.picks && G.picks.length) || 0);
+    strip.classList.toggle("bank-low", G.budget <= remaining + 1);
+  }
   var to = G.budget;
   var from = (typeof G.bankShown === "number") ? G.bankShown : to;
   G.bankShown = to;
@@ -1689,11 +1694,18 @@ function confirmHtml() {
   if (!opts.length) return "";
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
-  var costNote = (MODE === "cap" && effCost(G.selected) != null) ? " \u00B7 " + fmtM(effCost(G.selected)) : "";
+  // v20: the money math happens where the thumb is. The confirm line shows
+  // the price AND what the bank holds after: "· $23M · leaves $27M".
+  var costNote = "";
+  if (MODE === "cap" && effCost(G.selected) != null) {
+    var _c = effCost(G.selected);
+    costNote = " \u00B7 " + fmtM(_c) + " \u00B7 leaves " + fmtM(G.budget - _c);
+  }
   var spinCls = " presti-spin";   // casino skin on the draft/position buttons, all modes
   if (opts.length === 1) {
     var ok1 = bucketLegal(row, opts[0]);
-    return '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '"' +
+    return (costNote ? '<div class="confirm-label">' + who + " " + yr + costNote + "</div>" : "") +
+      '<button class="confirm-btn' + spinCls + '" data-bucket="' + opts[0] + '"' +
       (ok1 ? "" : ' disabled title="' + esc(chBlockWhy()) + '"') + '>Draft your player</button>';
   }
   return '<div class="confirm-label">Assign ' + who + " " + yr + costNote + " to:</div>" +
@@ -3868,7 +3880,8 @@ function renderDailyGate(board, target, variantTag) {
           : '') +
       '</div>' +
       '<div class="gate-tipoff" id="gateTipoff">' +
-        '<p class="gate-pull">DUNK THE BALL TO START <i>\u2193</i></p>' +
+        '<p class="gate-pull">DUNK THE BALL TO START ' +
+          '<span class="gate-cue" aria-hidden="true"><i>\u2193</i><b class="gate-drag">DRAG</b></span></p>' +
         ballLeverHtml("gateLever", "gateArm", "Drag the basketball down through the hoop to start The Daily") +
         '<button class="gate-play-btn presti-spin" id="gatePlayBtn" type="button" aria-label="Start The Daily without using the dunk interaction">PLAY IT</button>' +
       '</div>' +

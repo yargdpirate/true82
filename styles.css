@@ -2776,3 +2776,41 @@ body.gating .gate-back {
   .pool-cue { animation: none; }
   .mpb-amt { transition: none; }
 }
+
+/* ============ GATE DRAG CUE (2026-07-18, v18) ============
+   The arrow and the word DRAG ride the SAME gateNudge animation as the idle
+   ball (same name, duration, easing), so all three bob in visible parallel:
+   drag = move the ball = dunk. The old standalone arrow bounce is retired in
+   favor of the shared rhythm. */
+.gate-pull .gate-cue {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 8px;
+  vertical-align: middle;
+  animation: gateNudge 1.7s ease-in-out infinite;
+}
+.gate-pull .gate-cue i { margin: 0; animation: none; }
+.gate-drag {
+  font-family: var(--mono); font-weight: 700; font-style: normal;
+  font-size: 0.56em; line-height: 1; letter-spacing: 0.16em;
+  padding: 3px 8px 3px 9px; border-radius: 999px;
+  color: var(--amber); background: var(--ink);
+  border: 1px solid var(--maple-line);
+}
+@media (max-width: 420px) {
+  .gate-tipoff .gate-pull { font-size: 1.15rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate-pull .gate-cue { animation: none; }
+}
+
+
+
+/* ============ BANK PLAQUE, RESTORED + LOW STATE (2026-07-18, v20) ============
+   The v17 plaque is the bank's home: the owner judged it the stronger object,
+   and the v19 tray strip is retired. The v19 innovations survive elsewhere:
+   the spend math rides the confirm line ("leaves $NM") at the point of
+   action, and the low-funds warning lives here on the plaque, going whistle
+   when the balance nears the $1M-per-open-slot floor. tickBank's red/green
+   pulse classes land on .mp-bank as before. */
+.mp-bank.bank-low .mpb-amt { color: var(--whistle); text-shadow: 0 0 16px rgba(224, 82, 60, 0.35); }
+.mp-bank.bank-low .mpb-lab { color: var(--whistle); }
+.mp-bank.bank-low { border-color: rgba(224, 82, 60, 0.55); }

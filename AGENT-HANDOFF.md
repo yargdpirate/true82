@@ -284,3 +284,62 @@ For Cloudflare Pages:
 - On mobile, the bank remains a full-width hero row; HOW TO PLAY is intentionally compact in the upper-right.
 - In every mode, rules-sheet order must remain: mode rules, change the years, game in 20 seconds, then what wins games.
 
+
+### V18 — gate DRAG cue + re-certification of the small-ball rework (2026-07-18)
+- Adopted the v17 archive as canon; the prior lane's determinism laws all
+  survived it (60-day legacy fixture: 0 mismatches; POOL2 rotation, the 7/18
+  override, and the frozen weeklyFor verified intact).
+- The reworked `small_ball_five` (slot-specific `pick` hook) was re-certified
+  with a slot-aware bot: 300 full games, 0% unfinishable, median pool 35,
+  median C supply 16, wins 44/56/68. Supporting data: 0 legitimate short
+  C-only careers are stranded by the F+C requirement; 667 tall F/C careers
+  supply the unicorn slot; the name-collision path narrows to 2 careers.
+- The offline validation walk (/home/claude/validate.js in the working
+  session; 117 checks) now filters bot bucket choices through `ch.pick`,
+  matching `bucketLegal()`. Any future slot-dependent challenge hook is
+  covered automatically.
+- Gate: the caption's arrow and a new DRAG pill are wrapped in `.gate-cue`,
+  animated with the SAME `gateNudge 1.7s` as the idle ball, so ball, arrow,
+  and word bob in parallel (drag = move ball = dunk). The old standalone
+  arrow bounce is retired. Reduced motion disables the cue.
+- Cache keys: `app.js` and `styles.css` bumped to `20260718-ui-v18`;
+  challenge/daily modules unchanged at `smallball-fix-v14`.
+
+### V19 — the bank moves to the tray (2026-07-18, owner-directed)
+SUPERSEDES the earlier bank invariants in section 2A and section 6.5. The
+owner judged the panel plaque "still not optimal" after v15-v17; the root
+cause was position, not size: the top panel is read-once chrome, and a live
+number dies there. Current design:
+- The bank is a strip on TOP of the tray (`.tray-bank`, outside `#trayInner`
+  so tray re-renders never clobber a mid-tick), above the slot medallions
+  and the confirm button: the checkout total next to the pay button.
+- LIVE MATH: selecting a priced player shows the pending hit beside the
+  balance (`#bankDelta`, fed by `updateTray()` via `effCost`). Confirm or
+  deselect clears it; `tickBank()` then plays the real deduction in the
+  same spot with the red/green pulse.
+- LOW-FUNDS STATE: `.bank-low` (toggled in `tickBank()`) turns the strip
+  whistle-red when budget <= open slots + 1, the approach to the
+  $1M-per-slot floor.
+- The Presti panel is back to identity + HOW TO PLAY (desktop two-column,
+  mobile single row); the orphaned `.mp-bank` CSS rules are inert and may
+  be deleted in a future cleanup.
+- New invariant: THE BANK LIVES IN THE TRAY. Its id (`bankAmt`) and the
+  tick classes (`bank-down` / `bank-up`, now on `.tray-bank`) are load-
+  bearing for the offline walk (119 checks).
+- Cache keys: app.js and styles.css at `20260718-ui-v19`.
+
+### V20 — plaque restored; the v19 experiment resolved (2026-07-18)
+SUPERSEDES V19. The tray-strip relocation was tried and the owner judged it
+a step back: the strip lacked the plaque's material presence and read as an
+afterthought. FINAL BANK DOCTRINE, do not re-litigate:
+- The bank is the v17 PLAQUE in the mode panel (`.mp-bank` / `#bankAmt`),
+  desktop 3-column grid, mobile full-width hero row. That object won.
+- The v19 innovations survive in better homes: the spend math rides the
+  CONFIRM LINE at the point of action ("<name> <yr> · $23M · leaves $27M",
+  built in `confirmHtml()`, now shown in BOTH single- and multi-bucket
+  paths), and the low-funds warning (`.bank-low`, toggled in `tickBank()`
+  when budget <= open slots + 1) turns the plaque whistle-red.
+- `tickBank()` classes (`bank-down`/`bank-up`) land on `.mp-bank`.
+- The tray contains medallions + confirm only. No `.tray-bank`, no
+  `#bankDelta`; that CSS was deleted, not orphaned.
+- Offline walk: 119 checks green. Cache keys `20260718-ui-v20`.
