@@ -343,3 +343,26 @@ afterthought. FINAL BANK DOCTRINE, do not re-litigate:
 - The tray contains medallions + confirm only. No `.tray-bank`, no
   `#bankDelta`; that CSS was deleted, not orphaned.
 - Offline walk: 119 checks green. Cache keys `20260718-ui-v20`.
+
+### V21 — mobile vertical diet (2026-07-18)
+One appended media block at the tail of styles.css slims every fixed band
+on <=640px (plaque horizontal at half height, ticket headline clamp
+22-28px, crest zone 88px, tray/panel/skip tightening). Desktop rules are
+untouched; the plaque doctrine from V20 stands. Keys `20260718-ui-v21`.
+
+### V22 — detail polish (2026-07-18)
+Mobile plaque label vertically centered; skip labels center left of their
+chips at all viewports; price boxes are bare numbers (cc-tag removed from
+capRowHtml, the walk asserts its absence). Desktop verified: v21 stays
+caged in its media block. Keys `20260718-ui-v22`.
+
+### V23 — independent slot reels (2026-07-18)
+scramblePool rewritten from lockstep repaints to per-element reels: each
+season face / price amount / decoy name snapshots its innerHTML, flips
+random plausible values on its own decelerating timer, and restores the
+snapshot on the last tick (carets and fire-sale strikes survive). refreshPool
+still runs once at the end as the truth re-render, and a dur+900ms hard stop
+means the pool can never stay locked. The walk (121 checks) asserts the
+snapshot-restore pattern. Also: tray top padding 2px, "open" medallion
+caption removed in lineupRailHtml, sk-lab 14px/12.5px, hoop mark centered.
+Keys `20260718-ui-v23`.

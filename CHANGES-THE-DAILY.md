@@ -562,3 +562,39 @@ each) and the daily schedule was rebuilt on the numbers.
   including single-slot confirms that previously showed no cost at all,
   and the plaque itself turns whistle-red as the balance approaches the
   $1M-per-open-slot floor.
+
+## V21 (2026-07-18) — the mobile vertical diet
+- Small screens were burying the pool below the fold. Every fixed band
+  slimmed on <=640px: the bank plaque keeps its v17 materials but goes
+  horizontal at roughly half the height (30-38px figure instead of
+  52-68px on a 92px tile); the ticket headline drops from 40px to a
+  22-28px clamp so TRAIL BLAZERS-length names stop wrapping three deep;
+  the crest zone narrows from 116px to 88px, returning width to the name;
+  panel, skip-button, tray, medallion, and filter-row padding all tighten.
+- Net reclaim on a 390px phone: roughly 170px on long-name Presti boards,
+  which puts the filter row and two to three player rows back above the
+  fold. Desktop untouched.
+
+## V22 (2026-07-18) — detail polish
+- Mobile plaque: BANK label vertically centered against the number.
+- Skip buttons: labels center in the space left of the money chip at every
+  viewport, instead of pinning hard-left.
+- Player price boxes drop the DRAFT word; the number is the message. The
+  fire-sale strike-through and the reel repaint live inside the same box,
+  unchanged.
+- Desktop audit: the v21 diet is fully caged in its <=640px media block
+  (verified programmatically); the two intentional cross-viewport changes
+  are the label centering and the bare price box; grid, plaque column, and
+  reel targets confirmed intact.
+
+## V23 (2026-07-18) — independent slot reels and chrome nits
+- Every price box and year face is now its own slot reel: staggered starts,
+  7-10 flips on a decelerating clock, and the REAL value dropping back in
+  on the final tick with a settle-pop. Years sweep the whole dealt era with
+  the team code held steady; prices flip through a cheap-heavy plausible
+  book; cap-mode names keep their decoy sheet. Cosmetic only: the reels
+  never touch the seeded RNG, and a hard stop guarantees the pool unlocks.
+- Tray top padding cut to 2px; the "open" caption under empty medallions is
+  gone (bare dashed circles), returning that line to the pool.
+- Skip labels up to 14px (12.5px on phones), still centered left of their
+  chips. The utility bar's hoop mark now centers on the bar's axis.
