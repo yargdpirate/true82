@@ -3668,9 +3668,11 @@ function showNewspaper(gate) {
 
   if (bundle) {
     bundle.addEventListener("click", function () { unwrap(false); });
-    // A perfect 82-0 still opens itself after a beat; every ordinary edition waits
-    // for the prominent READ STORY action.
-    if (wins >= CFG.GAMES_IN_SEASON) autoT = setTimeout(function () { unwrap(true); }, 1500);
+    // v32 (owner-directed): the edition NEVER opens itself — not even a
+    // perfect 82-0. Publishing a public /r/{slug} URL is a side effect of
+    // opening the paper, so opening must always be a deliberate tap on the
+    // bundle (or the READ STORY action). The old auto-unwrap at 82 wins was
+    // removed here; no win count auto-opens or auto-publishes anymore.
   }
 
   skip.addEventListener("click", function () {
@@ -4323,7 +4325,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v31";
+var BUILD_V = "v32";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
