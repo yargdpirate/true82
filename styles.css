@@ -3000,5 +3000,21 @@ body.gating .gate-back {
    link on verified players. Same quiet dotted family as .pr-bref; no arrow
    (one arrow per card is the budget — the action line under the five
    explains the rest). */
-.pr-szn-link { color: inherit; text-decoration: underline dotted; text-decoration-color: rgba(230,179,61,0.4); text-underline-offset: 2px; }
-@media (hover: hover) { .pr-szn-link:hover { color: var(--amber); text-decoration-color: var(--amber); } }
+/* v34: .pr-szn-link retired with the game-log door; .pr-team (below) is the season link now */
+
+/* V34 — the maximal-doors pass. .pr-team: team-year links on the pick cards
+   (replaces the retired season game-log door). .art-bref: newspaper-style
+   citations inside the Tribune article. .cl-link: climb tags + the results
+   comp label, quiet by default so the graphic stays a graphic. .hh-bref:
+   the third Heat Check action, ghost-skinned so the spin stays primary.
+   .gate-scout: one whisper inside the info tip, zero new rows. */
+.pr-team { color: inherit; text-decoration: underline dotted; text-decoration-color: rgba(230,179,61,0.4); text-underline-offset: 2px; }
+@media (hover: hover) { .pr-team:hover { color: var(--amber); text-decoration-color: var(--amber); } }
+.art-bref { color: inherit; text-decoration: underline dotted; text-decoration-color: rgba(122,90,44,0.6); text-underline-offset: 2px; }
+.cl-link { color: inherit; text-decoration: none; }
+@media (hover: hover) { .cl-link:hover { color: var(--amber); text-decoration: underline dotted; } }
+.res-comp .cl-link { text-decoration: underline dotted; text-decoration-color: rgba(230,179,61,0.45); text-underline-offset: 2px; }
+.hh-btn.hh-bref { background: transparent; border: 1px solid rgba(255,181,46,0.5); color: var(--amber); box-shadow: none; text-decoration: none; display: inline-block; }
+@media (hover: hover) { .hh-btn.hh-bref:hover { border-color: var(--amber); } }
+.gate-scout { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.05em; color: var(--chalk-dim); margin: 8px 0 0; }
+.gate-scout a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }

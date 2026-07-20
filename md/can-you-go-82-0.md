@@ -26,9 +26,9 @@ all 82 games.
 
 Nobody has even come close.
 
-- [2015-16 Golden State Warriors](https://www.basketball-reference.com/teams/GSW/2016.html), 73-9, +10.7 net rating (+25.4 away from a >50% chance at undefeated)
-- [1995-96 Chicago Bulls](https://www.basketball-reference.com/teams/CHI/1996.html), 72-10, +13.4 net rating (+23.1 away)
-- [1971-72 Los Angeles Lakers](https://www.basketball-reference.com/teams/LAL/1972.html), 69-13, +10.7 net rating (+23.4 away)
+- [2015-16 Golden State Warriors](https://www.basketball-reference.com/teams/GSW/2016.html?utm_source=true82.net&utm_campaign=article), 73-9, +10.7 net rating (+25.4 away from a >50% chance at undefeated)
+- [1995-96 Chicago Bulls](https://www.basketball-reference.com/teams/CHI/1996.html?utm_source=true82.net&utm_campaign=article), 72-10, +13.4 net rating (+23.1 away)
+- [1971-72 Los Angeles Lakers](https://www.basketball-reference.com/teams/LAL/1972.html?utm_source=true82.net&utm_campaign=article), 69-13, +10.7 net rating (+23.4 away)
 
 ## How TRUE 82 turns the question into a game
 

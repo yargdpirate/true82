@@ -746,3 +746,81 @@ fetch), unrelated to the recap. No other win count triggers open or publish.
 
 Walk guards the exact removed pattern (win-count-gated auto-unwrap timer)
 plus the surviving manual click handler, so auto-open can't creep back.
+
+### V33 — net-ranked percentile, thin-board fallback, comp article law, copy trims (owner-directed)
+Client keys 20260718-ui-v33 + daily-core 20260718-share2-v16; BUILD_V "v33".
+Walk: 207, three greens.
+
+- PERCENTILE LAW REWRITTEN (functions/api/percentile.js): ranks by NET, not
+  wins — wins bunch at the ceiling (Classic especially) and stopped
+  discriminating. D1's net column is the RAW engine result (finishGame
+  writes e.net before any Hot Hand boost), so the population is hot-free BY
+  CONSTRUCTION and history ranks from day one — no cold start. The client
+  (scheduleSharePct) sends e.net rounded to 2dp and NEVER the Hot Hand
+  numbers; the old 81-win pct edge note is moot and removed.
+- THIN-BOARD FALLBACK (owner delegated the design): a daily board under
+  MIN_N=10 ranks the finisher against ALL daily runs of the same base mode
+  (variant LIKE 'daily%', practice excluded) instead of hiding the line;
+  once the board's own field reaches 10, the board takes over. Chosen over
+  blending because it is honest at both ends (a real population either
+  way), invisible in copy, and one extra query only on young boards. The
+  reply's pool field ("board"|"dailies"|"mode") says which population
+  answered — useful in devtools. Client sends &mode={base} on daily
+  requests to enable it.
+- COMP ARTICLE LAW: compArticle(label) prepends "the" unless the label
+  starts with a digit ("Tied 5 Jokics") or carries its own article — which
+  also fixes a live bug the owner's request surfaced: 64 wins was shipping
+  "Better than the The Last Shot Jazz". Used by shareCompFor AND the
+  results climb line so the surfaces can't drift.
+- COPY: share line 3 is bare "Top X%" (both builders + FORMAT LAW comments
+  updated). The results feedback button reads exactly "Feature requests?
+  Bugs?" (mailto unchanged; the old "Email me." tail is gone; walk pins the
+  exact label).
+
+### V34 — the maximal-doors pass (owner-directed) + attribution audit
+Client keys 20260718-ui-v34; BUILD_V "v34". Walk: 216, three greens.
+
+- REALITY CHECK first: the "ledger" pitched last session is TAX LINES
+  (Usage tax, Spacing bonus) — no player or team names live there. The
+  owner's ruling lands on the PICK CARDS, where player-seasons actually
+  argue value: the name keeps its career link (his "overall stats page"
+  preference, already true), and the TEAM name now links
+  /teams/{CODE}/{endYear}.html (deterministic, renders live, TOT-style
+  multi-team codes stay plain). The v30 season -> game-log door is RETIRED
+  ("too hard to read every game log"); .pr-szn-link CSS deleted, upgrader's
+  game-log branch now serves ONLY explicit data-bb-gl anchors.
+- ARTICLE CITATIONS: bbrefLinkifyArticle (app.js) + bbLinkifyArticle
+  ([id].js twin, same-commit law) turn the FIRST mention of each roster
+  surname into a career link — overlay AND shared editions. Claims are
+  taken on untouched escaped text and spliced from the end so an inserted
+  href can never be re-matched.
+- COMP DOORS: every HISTORY_COMPS rung carries bbT (team-season) or bbP
+  (player) — composites are owner-delegated picks, noted inline (OG Death
+  Lineup -> GSW/2016; Shaqobe -> LAL/2000; 3-peat Bulls -> CHI/1992; Prime
+  Wilt -> PHI/1967; Fo' Fo' Fo' -> PHI/1983; Last Shot Jazz -> UTA/1997;
+  clones -> jokicni01 / jamesle01). The results comp label and ALL twenty
+  climb-tag segments are anchors (merged tags get one anchor per segment).
+  The SHARE comp stays plain text by law.
+- HOT HAND: third action under the two spins — "HIS REAL HEATERS ↗",
+  ghost-skinned anchor to the hot player's season game log once the map
+  verifies (data-bb-gl path), search until then. hh-actions was already a
+  column, so it stacks with zero layout change.
+- GATE: the scout whisper lives INSIDE the existing info tip (zero new
+  rows — owner's symmetry constraint). No franchise code exists on the
+  board object, so it links the tagged homepage, campaign "gate".
+- STATHEAD LAW: never linked (paygated); plain-text references read
+  "Basketball Reference's Stathead" (owner phrase). faq + md + llms
+  updated; the affiliation disclaimers keep their entity list untouched.
+- UTM CAMPAIGN LAW: every bbref link carries utm_source=true82.net AND
+  utm_campaign={surface} via bbrefTag / bbTag. Campaigns live:
+  results_five, results_team, results_credit, climb, hothand, gate,
+  article, edition_roster, edition_article, info, llms, site (fallback).
+  The referrer header proves the origin; the campaign proves which door.
+ATTRIBUTION AUDIT (the "make damn sure" checklist, all verified green):
+_headers ships strict-origin-when-cross-origin site-wide and [id].js
+pageHeaders matches, so every click sends the true82.net origin; no
+noreferrer anywhere (pinned, comments excluded); every outbound URL is
+utm-tagged (dynamic via bbrefTag, statics patched, walk pins each file);
+the referral is therefore visible to Sports Reference three independent
+ways — referrer, utm_source, utm_campaign — plus the outreach note in the
+session log that tells them exactly what to look for.
