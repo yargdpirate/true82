@@ -669,3 +669,46 @@ keys 20260718-ui-v30 (styles, app). Walk: 195, three greens.
   /players/ on the fixture board, game-log links present), resolver unit
   truths (Don Buse direct, Mike James search, virgin base constructs,
   unknowns never throw), map-file spot pins, edition source pin.
+
+### V30.1 — deploy fix + a new gate (2026-07-20)
+The v30 edition resolver shipped an `await loadBbrefMap(context)` inside
+renderEdition, which is SYNC (and context wasn't even in scope) — wrangler's
+esbuild refused the deploy; `node --check` had greenlit it. Fix: the map
+loads at the async boundary (onRequest) and is PASSED into
+renderEdition(row, origin, bbmap). NEW LAW for the lane: node --check is
+not deploy parity for Functions — the walk now esbuild-parses every file
+under functions/ (loader js, format esm, same rules wrangler applies) and
+fails on the first error. devtools gained an esbuild dependency (npm i
+esbuild next to jsdom). Walk: 196, three greens.
+
+### V30.2 — session review pass (2026-07-20)
+Full review of the v28-v30 additions after the deploy miss. One hardening
+shipped: renderResults now re-runs upgradeBbrefLinks at entry (idempotent,
+no-op pre-map) so a future keepScroll re-render can't silently revert
+verified hrefs to search URLs — today's single call site + the Heat Check's
+in-place patching meant no live bug, but the invariant is now self-healing
+rather than call-site-dependent. Walk: 197, three greens.
+
+VERIFIED CLEAN in review: avocado's dailyShareRows shape change reaches all
+three consumers (every one filters by r.name); esc() covers the data-bb
+attribute round-trip (double-quoted attrs; apoststrophe names survive
+getAttribute intact); scheduleSharePct's captured g makes a late fetch
+harmless across a new game (dead-g write, nonce-guarded amend); the ticker's
+stray timers self-guard on isConnected; upgradeBbrefLinks is idempotent;
+bbref-map.json revalidates via etag (no _headers cache rule) with ?v= as
+belt-and-braces; the [id].js loader caches a failed load as null per isolate
+(accepted: fail-soft beats retry storms).
+
+OPS ITEM FOR THE OWNER (cannot be run from the dev lane — Cloudflare
+dashboard -> D1 -> events database -> console): /api/percentile now scans
+events on every finished run, and avocado/stats scan it on every dashboard
+view. Fine at today's volume, linearly worse forever. Run once:
+  CREATE INDEX IF NOT EXISTS idx_ev_name_variant ON events(name, variant);
+  CREATE INDEX IF NOT EXISTS idx_ev_name_mode ON events(name, mode);
+
+KNOWN GAPS, accepted and recorded: Functions logic (percentile math, the
+edition resolver) is parse-gated by esbuild but has no unit lane — a mock-D1
+harness would close it if the surface grows; the walk's meter pin divides by
+50 (fixture-coupled — re-pin if a fixture daily ever ships a nonstandard
+cap); scheduleSharePct snapshots wins pre-Heat-Check (81-win edge, already
+documented in V28).

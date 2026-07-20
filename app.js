@@ -3892,6 +3892,10 @@ function upgradeBbrefLinks() {
   }
 }
 function renderResults(e, keepScroll) {
+  // v30.2 hardening: if this render ever runs again (a future keepScroll
+  // path), freshly built anchors must not quietly revert to search URLs.
+  // The upgrade is idempotent and no-ops until the map has landed.
+  setTimeout(function () { upgradeBbrefLinks(); }, 0);
   renderPips();
   var scrollY = keepScroll ? window.scrollY : 0;
   // SPORTSREF LAW (v30, supersedes v28's search-only rule): names render
