@@ -107,7 +107,7 @@ export async function onRequest(context) {
   if (context.waitUntil) {
     context.waitUntil(env.DB.prepare("UPDATE recaps SET views_raw=views_raw+1 WHERE id=?").bind(id).run().catch(() => {}));
   }
-  return new Response(renderEdition(row, url.origin), { status: 200, headers: pageHeaders() });
+  return new Response(renderEdition(row, url.origin, await loadBbrefMap(context)), { status: 200, headers: pageHeaders() });
 }
 
 async function shareHealth(env, head) {
@@ -194,7 +194,7 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
-function renderEdition(row, origin) {
+function renderEdition(row, origin, bbmap) {
   let players = [];
   try { players = JSON.parse(row.players_json) || []; } catch (_) {}
   const wins = Math.max(0, Math.min(82, Number(row.wins) || 0));
@@ -210,8 +210,9 @@ function renderEdition(row, origin) {
   // anything unverified falls back to the search URL. noopener, never
   // noreferrer — the page's referrer-policy hands Sports Reference a clean
   // true82.net origin. If the client resolver's law changes, change this in
-  // the same commit.
-  const bbmap = await loadBbrefMap(context);
+  // the same commit. The map is loaded in onRequest (the async boundary)
+  // and PASSED in — renderEdition stays sync; wrangler's esbuild rejects
+  // await here, which node --check silently does not (see V30.1).
   const bbHref = (name) => {
     const slug = bbmap && bbmap.p && bbmap.p[name];
     return slug

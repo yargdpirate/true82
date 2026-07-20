@@ -712,3 +712,18 @@ harness would close it if the surface grows; the walk's meter pin divides by
 50 (fixture-coupled — re-pin if a fixture daily ever ships a nonstandard
 cap); scheduleSharePct snapshots wins pre-Heat-Check (81-win edge, already
 documented in V28).
+
+### V31 — version fingerprint in the footer (owner-directed, perpetual law)
+Renamed the pending deploy v31 for clarity after the double-failed v30
+build. Client keys 20260718-ui-v31 (styles, app). Walk: 199, three greens.
+
+FOOTER VERSION LAW, PERPETUAL: app.js carries `BUILD_V = "v31"` next to
+setFootStats. It renders as the LAST segment of the footer stat line
+("... | Presti WR 5.1% | v31") and ALONE when /api/stats fails, returns
+zeros, or hasn't answered yet — a degraded deploy must still answer "which
+build is this?" from the footer. BUMP BUILD_V IN THE SAME COMMIT as any
+client cache-key bump in index.html. The walk enforces this forever: a
+parity pin extracts the ui-v number from index.html and the BUILD_V number
+from app.js and fails on drift, and a DOM pin requires the fingerprint to
+render with stats stubbed dead. Deploy verification is now: load the page,
+read the footer.

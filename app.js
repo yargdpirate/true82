@@ -4317,26 +4317,39 @@ function scheduleCrests() {
   else setTimeout(start, 0);
 }
 
+// FOOTER VERSION LAW (v31, perpetual): BUILD_V is the deploy fingerprint.
+// It renders at the end of the footer stat line — and ALONE when stats are
+// absent or zero — so "which build is live" is answered by loading the page
+// and reading the footer, especially on a degraded deploy. Bump BUILD_V in
+// the SAME COMMIT as any client cache-key bump in index.html; the walk
+// enforces key/BUILD_V parity and fails the lane on drift.
+var BUILD_V = "v31";
+function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
-// footer can't disagree with the dashboard. Fails soft: on any error the footer just
-// shows the contact line with no dangling separator.
+// footer can't disagree with the dashboard. Fails soft: on any error the footer
+// falls back to the version fingerprint alone — never a fake "0 drafts" row, and
+// never a blank slot where the deploy check should be.
 function setFootStats(d) {
   var el = document.getElementById("footStats");
-  if (!el || !d || typeof d.presti !== "number") return;
-  // All zeros = DB unbound or brand-new database. Show nothing rather than a fake
-  // "0 drafts" row — a degraded deploy must not look like a dead game.
-  if (!((d.presti || 0) + (d.classic || 0) + (d.pro || 0))) { el.innerHTML = ""; return; }
+  if (!el) return;
+  if (!d || typeof d.presti !== "number" ||
+      !((d.presti || 0) + (d.classic || 0) + (d.pro || 0))) {
+    el.innerHTML = footSeg(BUILD_V);
+    return;
+  }
   var rate = d.presti ? Math.round(1000 * (d.presti82 || 0) / d.presti) / 10 : 0;
-  function seg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
   el.innerHTML = [
-    seg(d.presti.toLocaleString() + " Presti drafts"),
-    seg((d.classic || 0).toLocaleString() + " Classic drafts"),
-    seg((d.pro || 0).toLocaleString() + " Pro drafts"),
-    seg("Presti WR " + rate + "%")
+    footSeg(d.presti.toLocaleString() + " Presti drafts"),
+    footSeg((d.classic || 0).toLocaleString() + " Classic drafts"),
+    footSeg((d.pro || 0).toLocaleString() + " Pro drafts"),
+    footSeg("Presti WR " + rate + "%"),
+    footSeg(BUILD_V)
   ].join(" | ");
 }
 function fetchFootStats() {
+  var fe = document.getElementById("footStats");
+  if (fe && !fe.innerHTML) fe.innerHTML = footSeg(BUILD_V);   // visible before (or without) the stats reply
   try {
     fetch("/api/stats")
       .then(function (r) { return r.json(); })
