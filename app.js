@@ -1173,9 +1173,23 @@ function modePanelHtml() {
     idHtml = '<span class="mp-id">CLASSIC MODE</span>';
     sub.push("TAP THE YEAR \u25BE TO USE ANY SEASON");
   }
-  var bankHtml = MODE === "cap"
-    ? '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span><b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(G.budget), true) + '</b></div>'
-    : "";
+  // v29 (owner-directed, mockup-sourced; supersedes the V20 plaque doctrine):
+  // the bank is a flat charcoal SCOREBOARD in the same panel slot — thin
+  // amber outline like the price badges, no bronze, no gloss. Anatomy: BANK
+  // label, the balance (#bankAmt, still the loudest thing), a transient
+  // deduction chip (#bankDed — NOT #bankDelta; that id died with v19), and a
+  // segmented budget meter whose fill is proportional truth (#bankFill).
+  // G.meterMax pins the denominator to the run's starting cap at first
+  // render, so challenge caps and reroll math can't skew the bar.
+  var bankHtml = "";
+  if (MODE === "cap") {
+    if (typeof G.meterMax !== "number" || G.meterMax <= 0) G.meterMax = Math.max(G.budget, 1);
+    var bankPct = Math.max(0, Math.min(100, (G.budget / G.meterMax) * 100));
+    bankHtml = '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span>' +
+      '<b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(G.budget), true) + '</b>' +
+      '<span class="mpb-delta mono" id="bankDed" aria-hidden="true"></span>' +
+      '<div class="mpb-meter" aria-hidden="true"><i class="mpb-fill" id="bankFill" style="width:' + bankPct + '%"></i></div></div>';
+  }
   var panelCls = 'mode-panel plq-frame plq-slim' + (MODE === "cap" ? ' cap-mode-panel' : '');
   return '<div class="' + panelCls + '" id="modePanel">' +
     '<div class="mp-left">' +
@@ -1245,40 +1259,74 @@ function initDraftViewport() {
   }
 }
 
-/* ---------- the bank ticker (2026-07-17, v12) ----------
-   Money never just refreshes: when the bank changes, the amount counts to the
-   new value one million at a time, dropping in red on a spend and climbing in
-   green on a refund. G.bankShown remembers what the panel last displayed, so
-   the tick survives the full re-render every skip and pick triggers, and a
-   fresh game starts silent. Reduced-motion users get the snap. */
+/* ---------- the bank ticker (v29 scoreboard rework) ----------
+   Money never just refreshes. On a change the balance runs a stepped
+   odometer to the new value (a handful of integer steps over ~380ms — never
+   a per-million crawl), the meter fill depletes in the same beat, a
+   transient chip shows the delta (−$15M red / +$2M green), and bank-down /
+   bank-up flash the amount + fill orange-red or green (class names are
+   load-bearing for the walk). G.bankShown survives the full re-render every
+   pick and skip triggers, so a fresh game starts silent. States, painted on
+   every call: .bank-low keeps the V20 slots-aware law (budget <= open
+   slots + 1 — smarter than a fixed floor because $4M with one slot open is
+   fine and $6M with five open is dire), .bank-mid is the soft orange band
+   at <= $15M above it, .bank-zero is the depleted stamp. Reduced motion:
+   instant value + fill, brief flash class only. Timing law: settle + flash
+   clear must land inside ~560ms or the walk's 600ms settle assert races. */
 function tickBank() {
   var node = el("bankAmt");
   if (!node || MODE !== "cap" || !G) return;
-  var strip = node.closest(".mp-bank");
-  if (strip) {
-    var remaining = 5 - ((G.picks && G.picks.length) || 0);
-    strip.classList.toggle("bank-low", G.budget <= remaining + 1);
-  }
+  var box = node.closest(".mp-bank");
   var to = G.budget;
+  if (typeof G.meterMax !== "number" || G.meterMax <= 0) G.meterMax = Math.max(to, 1);
+  if (box) {
+    var remaining = 5 - ((G.picks && G.picks.length) || 0);
+    var low = to <= remaining + 1;
+    box.classList.toggle("bank-low", low);
+    box.classList.toggle("bank-mid", !low && to <= 15);
+    box.classList.toggle("bank-zero", to === 0);
+  }
+  var paint = function (v) {
+    node.innerHTML = mHtml(fmtM(v), true);
+    var fill = el("bankFill");
+    if (fill) fill.style.width = Math.max(0, Math.min(100, (v / G.meterMax) * 100)) + "%";
+  };
   var from = (typeof G.bankShown === "number") ? G.bankShown : to;
   G.bankShown = to;
-  if (from === to || prefersReduce()) { node.innerHTML = mHtml(fmtM(to), true); return; }
-  var box = node.closest(".mp-bank");
-  var dir = to < from ? "bank-down" : "bank-up";
+  if (from === to) { paint(to); return; }
+  var d = to - from;
+  var ded = el("bankDed");
+  if (ded) {
+    ded.textContent = d < 0 ? "\u2212$" + (-d) + "M" : "+$" + d + "M";
+    ded.className = "mpb-delta mono show " + (d < 0 ? "neg" : "pos");
+    if (G.bankDedT) clearTimeout(G.bankDedT);
+    G.bankDedT = setTimeout(function () {
+      if (ded.isConnected) ded.className = "mpb-delta mono";
+    }, 900);
+  }
+  var dir = d < 0 ? "bank-down" : "bank-up";
+  if (prefersReduce()) {
+    paint(to);
+    if (box) {
+      box.classList.add(dir);
+      setTimeout(function () { if (box.isConnected) box.classList.remove("bank-down", "bank-up"); }, 240);
+    }
+    return;
+  }
   if (box) box.classList.add(dir);
-  var v = from;
-  var step = to < from ? -1 : 1;
-  var iv = Math.max(45, Math.min(140, Math.round(420 / Math.abs(to - from))));
-  node.innerHTML = mHtml(fmtM(v), true);
+  var STEPS = Math.min(4, Math.abs(d));
+  var i = 0;
+  var iv = Math.round(380 / STEPS);
+  paint(from);   // the re-render already shows the new value; rewind so the odometer runs
   var t = setInterval(function () {
     if (!node.isConnected) { clearInterval(t); return; }   // a newer render owns the panel now
-    v += step;
-    node.innerHTML = mHtml(fmtM(v), true);
-    if (v === to) {
+    i++;
+    paint(i >= STEPS ? to : Math.round(from + (d * i) / STEPS));
+    if (i >= STEPS) {
       clearInterval(t);
       setTimeout(function () {
         if (box && box.isConnected) box.classList.remove("bank-down", "bank-up");
-      }, 320);
+      }, 180);
     }
   }, iv);
 }
@@ -1461,7 +1509,9 @@ function renderIntro() {
   // anywhere on this surface; the streak renders as a patch you earned, never
   // a leash. Once today is played, the tile's PRIMARY action becomes
   // CHALLENGE A FRIEND: the retention surface feeds the share loop instead of
-  // farming compulsive re-opens.
+  // farming compulsive re-opens. RUN IT BACK · PRACTICE rides second (v28,
+  // owner reversal of the v24 removal): practice is reachable from the tile
+  // again, ghost-skinned so the share action stays the loudest thing here.
   var dailyTomorrow = null;
   try { dailyTomorrow = T82DAILY.boardFor(T82DAILY.dayKey(Date.now() + 86400000)); } catch (e) {}
   var dtStreak = dailyStreak >= 2 ? ' \u00B7 \uD83D\uDD25 ' + dailyStreak : '';
@@ -1481,6 +1531,7 @@ function renderIntro() {
           ' \u00B7 Net ' + T82DAILY.signedNet(dailyOfficial.net) + '</span>' +
         '<span class="dt-actions">' +
           '<button class="dt-act dt-act-share" id="dailyChallengeBtn" data-share-label="CHALLENGE A FRIEND">CHALLENGE A FRIEND</button>' +
+          '<button class="dt-act dt-act-ghost" id="dailyPracticeBtn">RUN IT BACK \u00B7 PRACTICE</button>' +
         '</span>' +
         (dailyTomorrow ? '<span class="dt-tomorrow mono">TOMORROW #' + dailyTomorrow.num + ' \u00B7 ' + esc(dailyTomorrow.name.toUpperCase()) + '</span>' : '') +
       '</div>';
@@ -1571,15 +1622,26 @@ function renderIntro() {
       var off = T82DAILY.officialFor(dailyBoard.key);
       if (!off) return;
       if (window.t82track) {
-        window.t82track("share", { mode: dailyBoard.base, wins: off.wins,
+        window.t82track("share_click", { mode: dailyBoard.base, wins: off.wins,
           undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
           variant: "daily-menu:" + dailyBoard.num });
       }
       shareOrCopy(T82DAILY.shareTextDaily(
         { key: dailyBoard.key, num: dailyBoard.num, name: dailyBoard.name },
         { wins: off.wins, net: off.net, five: off.five || [],
-          cap: off.cap !== undefined ? off.cap : null }
-      ), dailyChb);
+          emoji: shareEmojiFor(off.wins, (dailyBoard.ch && dailyBoard.ch.shareEmoji) || null, dailyBoard.base),
+          comp: shareCompFor(off.wins),
+          pct: (typeof off.pct === "number") ? off.pct : null }
+      ), dailyChb, { mode: dailyBoard.base, wins: off.wins,
+        undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
+        variant: "daily-menu:" + dailyBoard.num });
+    });
+    var dailyPrb = el("dailyPracticeBtn");
+    if (dailyPrb) dailyPrb.addEventListener("click", function () {
+      // v28: the v24 removal reversed. Same launch as the results againBtn —
+      // deterministic board rebuild, no gate (they read the law on the
+      // official run), and the official record stays untouchable by law.
+      queue(function () { startDailyRun(dailyBoard, null, "daily-practice:" + dailyBoard.num); }, dailyPrb);
     });
     var dl = DAILY_LINK;
     if (dl) {
@@ -2874,21 +2936,71 @@ function publishRecap() {
   }
   return G.recapPublishPromise;
 }
+/* ---------- SHARE FORMAT LAW v2 (2026-07-19, owner-locked) ----------
+   TRUE 82 {#N | Classic Mode | Presti Mode | Pro Mode}
+   {emoji }REC | {comp}
+   Top X% of drafters          <- omitted when /api/percentile has no sample
+   (blank)
+   'YY Surname  x5             <- years are the flex; slot badges retired
+   (blank)
+   {beat link | recap link | true82.net}
+   One shape for every mode. daily-core's shareTextDaily formats the daily
+   from parts built HERE (HISTORY_COMPS and the emoji bands live in this
+   file; daily-core loads before app.js and never reaches back into it).
+   Laws carried forward: en-dash on an undefeated record, money (if it ever
+   returns to a share) stays plain "$17M", U+2212 for negatives, no
+   em-dashes anywhere in shipped copy.
+   Emojis are TONE, not data: no rails, no boxes, nothing that needs a
+   legend. The median band is deliberately EMPTY — scarcity is the signal.
+   Bands below are the session-direction defaults; per-mode sets go in
+   SHARE_EMOJI_BY_MODE and a particular daily may carry its own via
+   ch.shareEmoji = [{min,e},...], which wins outright. */
+var SHARE_EMOJI_BANDS = [
+  { min: 82, e: "\uD83D\uDC10" },   // goat
+  { min: 78, e: "\uD83C\uDFC6" },   // trophy
+  { min: 70, e: "\uD83D\uDD25" },   // fire
+  { min: 45, e: "" },               // the median mass: clean, on purpose
+  { min: 0,  e: "\uD83E\uDD76" }    // disaster ice
+];
+var SHARE_EMOJI_BY_MODE = { /* cap: [...], classic: [...], pro: [...] — owner to fill */ };
+function shareEmojiFor(wins, chBands, mode) {
+  var bands = (chBands && chBands.length) ? chBands
+            : (SHARE_EMOJI_BY_MODE[mode || MODE] || SHARE_EMOJI_BANDS);
+  for (var i = 0; i < bands.length; i++) if (wins >= bands[i].min) return bands[i].e || "";
+  return "";
+}
+// TIE LAW (proposed, awaiting owner ratification): landing exactly on a tier
+// reads "Tied the {team}" — 66-16 did not beat the Heatles, it matched them,
+// and "Tied" is its own flex. To adopt the sketch's >= reading instead,
+// delete the first branch inside the loop. Below the 62-win floor the comp
+// segment is omitted (line 2 is emoji + record). HISTORY_COMPS is descending,
+// so the first hit is the highest tier and same-win tiers resolve to the
+// first team listed (the V25 comp-line law).
+function shareCompFor(wins) {
+  if (wins >= CFG.GAMES_IN_SEASON) return "Greatest of all GOATs";
+  for (var i = 0; i < HISTORY_COMPS.length; i++) {
+    if (HISTORY_COMPS[i].wins === wins) return "Tied the " + HISTORY_COMPS[i].label;
+    if (HISTORY_COMPS[i].wins < wins) return "Better than the " + HISTORY_COMPS[i].label;
+  }
+  return "";
+}
+function shareHeadCtx() {
+  return MODE === "cap" ? "Presti Mode" : MODE === "pro" ? "Pro Mode"
+       : MODE === "kaman" ? "Kaman Mode" : "Classic Mode";
+}
+function shareRecord(wins) {
+  var undef = wins >= CFG.GAMES_IN_SEASON;
+  return wins + (undef ? "\u2013" : "-") + (CFG.GAMES_IN_SEASON - wins);
+}
+function shareLine2(wins, emoji) {
+  var comp = shareCompFor(wins);
+  return (emoji ? emoji + " " : "") + shareRecord(wins) + (comp ? " | " + comp : "");
+}
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
-  var netVal = hot ? G.hotNewNet : e.net;
-  var losses = CFG.GAMES_IN_SEASON - wins, undef = wins >= CFG.GAMES_IN_SEASON;
-  var head, line2;
-  if (MODE === "cap") {
-    // Presti: result emoji moves up to the title (basketball = missed, trophy = 82-0);
-    // line 2 swaps the result emoji for cap space ($ left under the $50 cap).
-    head = (undef ? "\uD83C\uDFC6" : "\uD83C\uDFC0") + " TRUE 82 (Presti Mode)";
-    line2 = wins + "-" + losses + " | " + fmtM(G.budget) + " Cap Spc | Net " + signed1(netVal);
-  } else {
-    head = "\uD83C\uDFC0 TRUE 82 (" + shareModeLabel() + ")";
-    line2 = (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signed1(netVal);
-  }
+  var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE))];
+  if (typeof G.sharePct === "number") lines.push("Top " + G.sharePct + "% of drafters");
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     var flame = "";
@@ -2896,11 +3008,10 @@ function shareText(e) {
       if (G.hotLvl === 4) flame = " \uD83C\uDF0B";               // SUPERNOVA -> volcano
       else if (G.hotLvl >= 2) flame = " \uD83D\uDD25";           // HOT / ON FIRE -> fire
     }
-    return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
+    return "'" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
-  var nick = (G.recapHead && G.recapHead.nickname) ? '"' + G.recapHead.nickname + '"\n' : "";
   var tail = (G.recapPublished && G.recapSlug) ? "\uD83D\uDCF0 " + recapShareHost() + "/" + G.recapSlug : "true82.net";
-  return head + "\n" + line2 + "\n\n" + nick + rows.join("\n") + "\n\n" + tail;
+  return lines.join("\n") + "\n\n" + rows.join("\n") + "\n\n" + tail;
 }
 
 function shareButtonLabel(b) {
@@ -2958,7 +3069,18 @@ function copyToClipboard(txt) {
 // user gesture as the share call. If the platform can't share (or it's blocked, e.g. a
 // sandboxed preview), we still copy and flash COPIED!, and if even clipboard is blocked we
 // reveal an on-page selectable box so the text is always reachable.
-function shareOrCopy(txt, button) {
+// FUNNEL SPLIT (v28): callers emit "share_click" at the tap (intent); the
+// completed "share" fires HERE, at most once, when the payload verifiably
+// left the building — the OS sheet resolved, or (no sheet on this platform /
+// sheet broken) the clipboard write succeeded. A DISMISSED sheet counts as
+// intent only, even though the clipboard has the text: they looked at the
+// door and backed out. The reveal-box fallback never counts.
+function shareOrCopy(txt, button, track) {
+  var done = false;
+  var completed = function () {
+    if (done) return; done = true;
+    if (track && window.t82track) window.t82track("share", track);
+  };
   var copyP = copyToClipboard(txt);
   var copiedFlash = function () { copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); }); };
   if (navigator.share) {
@@ -2966,14 +3088,14 @@ function shareOrCopy(txt, button) {
     try { sp = navigator.share({ text: txt }); }
     catch (e) { sp = null; }
     if (sp && sp.then) {
-      sp.then(copiedFlash, function (err) {
-        if (err && err.name === "AbortError") { copiedFlash(); return; }  // user dismissed the sheet
-        copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); else revealShareText(txt, button); });
+      sp.then(function () { completed(); copiedFlash(); }, function (err) {
+        if (err && err.name === "AbortError") { copiedFlash(); return; }  // user dismissed the sheet: intent only
+        copyP.then(function (ok) { if (ok) { completed(); flashShareBtn("COPIED!", button); } else revealShareText(txt, button); });
       });
       return;
     }
   }
-  copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); else revealShareText(txt, button); });
+  copyP.then(function (ok) { if (ok) { completed(); flashShareBtn("COPIED!", button); } else revealShareText(txt, button); });
 }
 
 /* ---------- season recap: The True 82 Tribune ----------
@@ -3552,11 +3674,10 @@ function showNewspaper(gate) {
     }
     trackRecapAction("share_article");
     var e2 = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
-    if (window.t82track) {
-      var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
-      window.t82track("share", { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0, variant: "tribune_article" });
-    }
-    shareOrCopy(shareText(e2), read);
+    var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
+    var rTrack = { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0, variant: "tribune_article" };
+    if (window.t82track) window.t82track("share_click", rTrack);
+    shareOrCopy(shareText(e2), read, rTrack);
   });
 
   // The in-paper action is the canonical article share. It stays visibly present
@@ -3661,16 +3782,30 @@ function showResults() {
     gc.undefeated = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
     window.t82track("game_complete", gc);
   }
+  scheduleSharePct(e);
   gameFinishedPings();
 }
 
 function renderResults(e, keepScroll) {
   renderPips();
   var scrollY = keepScroll ? window.scrollY : 0;
+  // SPORTSREF LAW (v28): PLAYER links use the search-URL form only —
+  // constructed profile URLs break on name collisions; a unique search hit
+  // redirects straight to the player page anyway. In the game loop they ride
+  // the results five and the Tribune editions ONLY, never mid-draft. The
+  // static explainer pages and llms.txt carry curated deep links too (the
+  // BPM explainer, franchise-season pages: /teams/{CODE}/{endYear}.html is
+  // deterministic, unlike player slugs). Homepage credit links carry
+  // utm_source=true82.net; content deep links stay clean (referrer covers
+  // them). The name ITSELF is the link (no buttons, no icon
+  // rows: zero clutter). rel is noopener WITHOUT noreferrer on purpose: the
+  // site's strict-origin-when-cross-origin policy hands Sports Reference a
+  // clean true82.net referral for every click, which is the point.
   var picksHtml = picksInSlotOrder().map(function (entry) {
     var p = entry.p, i = entry.i, row = p.row, name = row[IDX.name];
     return '<div class="pick-card" data-pick="' + i + '">' +
-      '<div class="pick-top"><span class="pr-name"><span class="slot-badge">' + p.slot + "</span>" + esc(name) + "</span>" +
+      '<div class="pick-top"><span class="pr-name"><span class="slot-badge">' + p.slot + "</span>" +
+        '<a class="pr-bref" href="https://www.basketball-reference.com/search/?search=' + encodeURIComponent(name) + '" target="_blank" rel="noopener">' + esc(name) + "</a></span>" +
       '<span class="pr-v"><small>V</small>' + valueOf(row).toFixed(2) + "</span></div>" +
       '<div class="pr-sub"><span>' + shortSeason(row[IDX.season]) + " " + esc(titleCase(p.fr)) + "</span>" + chipsFor(row) + "</div>" +
       '<div class="pr-sub pr-stats">' + statLine(row) + "</div></div>";
@@ -3756,7 +3891,8 @@ function renderResults(e, keepScroll) {
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
-    '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml + "</section>" +
+    '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml +
+      '<p class="bref-credit">Player pages via <a href="https://www.basketball-reference.com/?utm_source=true82.net" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
     '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
@@ -3783,25 +3919,30 @@ function renderResults(e, keepScroll) {
       // beat link, no Tribune slug, no nickname). The 5-square grade and the
       // named five are the payload; the AI layer stays in-session.
       var off = T82DAILY.officialFor(G.social.key) || daily.res;
-      if (window.t82track) {
-        window.t82track("share", { mode: MODE, wins: off.wins,
-          undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
-          variant: "daily:" + G.social.num });
-      }
+      var dTrack = { mode: MODE, wins: off.wins,
+        undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
+        variant: "daily:" + G.social.num };
+      if (window.t82track) window.t82track("share_click", dTrack);
+      // pct rides the official record once /api/percentile amends it; a
+      // practice run shares the OFFICIAL numbers, so its own fresh G.sharePct
+      // only applies when this run IS the official one. Fail-soft: no pct,
+      // no line 3.
       shareOrCopy(T82DAILY.shareTextDaily(
         { key: G.social.key, num: G.social.num, name: G.social.name },
         { wins: off.wins, net: off.net,
           five: off.five && off.five.length ? off.five : dailyFiveLines(),
-          cap: off.cap !== undefined ? off.cap : daily.res.cap }
-      ));
+          emoji: shareEmojiFor(off.wins, (G.social && G.social.shareEmoji) || null, G.social.base),
+          comp: shareCompFor(off.wins),
+          pct: (typeof off.pct === "number") ? off.pct
+             : (daily.isOfficial && typeof G.sharePct === "number") ? G.sharePct : null }
+      ), null, dTrack);
       return;
     }
-    if (window.t82track) {
-      var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
-      window.t82track("share", { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0 });
-    }
+    var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
+    var sTrack = { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0 };
+    if (window.t82track) window.t82track("share_click", sTrack);
     publishRecap();
-    shareOrCopy(shareText(e2));
+    shareOrCopy(shareText(e2), null, sTrack);
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
   // The Tribune is now the season-end ceremony. The Heat Check lever survives ONLY
@@ -3934,8 +4075,11 @@ var DAILY_LINK = (function () {   // ?d=YYYYMMDD&w=&n= beat-my-five landing; con
     return p;
   } catch (e) { return null; }
 })();
-// The five share lines (slot 'YY Surname + flame), identical formatting to the
-// classic shareText rows so a daily share never drifts from the house style.
+// The five share lines ('YY Surname + flame), identical formatting to the
+// shareText rows so a daily share never drifts from the house style. v2 law:
+// slot badges are retired from shares; the year is the flex. Officials stored
+// before v2 carry the old "G '16 Curry" lines — shareTextDaily strips the
+// leading slot token at format time, so history shares in the new shape.
 function dailyFiveLines() {
   return picksInSlotOrder().map(function (entry) {
     var p = entry.p, flame = "";
@@ -3943,7 +4087,7 @@ function dailyFiveLines() {
       if (G.hotLvl === 4) flame = " \uD83C\uDF0B";
       else if (G.hotLvl >= 2) flame = " \uD83D\uDD25";
     }
-    return p.slot + " '" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
+    return "'" + String(p.row[IDX.season]).slice(-2) + " " + shareSurname(p.row[IDX.name]) + flame;
   });
 }
 function dailyResFromG(e) {
@@ -3962,6 +4106,10 @@ function dailyResFromG(e) {
    on a cold visit. Practice reruns skip the gate; they have read it. */
 function renderDailyGate(board, target, variantTag) {
   G = null;
+  // Top of the daily funnel: the player tapped THE DAILY and is now looking at
+  // the instructions gate. mode carries the base so daily can be split out of
+  // the base-mode totals; variant marks the entry path.
+  window.t82track && window.t82track("daily_gate_view", { mode: board.base, variant: variantTag || ("daily:" + board.num) });
   if (window.T82DUI) T82DUI.stop();
   document.body.classList.remove("drafting");
   document.body.classList.add("gating");   // full-screen gate: masthead + footer hide (styles.css)
@@ -4033,7 +4181,8 @@ function startDailyRun(board, target, variantTag) {
     variant: variantTag,
     social: { key: board.key, num: board.num, name: board.name,
               short: board.short || board.blurb || "", gate: board.gate || board.blurb || "",
-              base: board.base, chId: board.ch ? board.ch.id : null, target: target || null }
+              base: board.base, chId: board.ch ? board.ch.id : null,
+              shareEmoji: (board.ch && board.ch.shareEmoji) || null, target: target || null }
   });
 }
 
@@ -4095,6 +4244,39 @@ function pingGames(method) {
   try {
     fetch("/api/games", { method: method }).catch(function () {});
   } catch (e) {}
+}
+// SHARE v2 line 3: fetch this run's "Top X% of drafters" once, 1.6s after the
+// game_complete beacon so our own row has had a moment to land in D1 (the
+// footer's wait, same reasoning). Daily runs amend the official record with
+// the pct (nonce-matched, so only the official run's own fetch can write it);
+// that keeps the menu tile's CHALLENGE A FRIEND share correct on later visits.
+// Fail-soft everywhere: no reply, thin sample, or a pre-v2 official simply
+// means no line 3. Note: an 81-win Presti Heat Check that boosts AFTER this
+// fires shares an 81-population pct; the HH amend path already owns that
+// record and the error is one point of flattery in the right direction.
+function scheduleSharePct(e) {
+  if (MODE === "kaman") return;
+  var hot = (typeof G.hotNewNet === "number");
+  var wins = hot ? G.hotWins : e.winTally;
+  var g = G;                                      // the run this fetch belongs to
+  var qs = g.social ? "variant=daily:" + g.social.num : "mode=" + MODE;
+  setTimeout(function () {
+    fetch("/api/percentile?wins=" + wins + "&" + qs)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || typeof d.pct !== "number") return;
+        g.sharePct = d.pct;
+        if (g.social && g.social.nonce && window.T82DAILY) {
+          var off = T82DAILY.officialFor(g.social.key);
+          if (off && off.nonce === g.social.nonce) {
+            T82DAILY.recordOfficial(g.social.key, g.social.num,
+              { wins: off.wins, net: off.net, five: off.five, chId: off.chId,
+                hot: off.hot, cap: off.cap, pct: d.pct }, g.social.nonce);
+          }
+        }
+      })
+      .catch(function () {});
+  }, 1600);
 }
 // One game just finished: bump the KV counter, then refresh the footer once the
 // game_complete insert has had a moment to land in D1. Best effort — a miss here
