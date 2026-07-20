@@ -727,3 +727,22 @@ parity pin extracts the ui-v number from index.html and the BUILD_V number
 from app.js and fails on drift, and a DOM pin requires the fingerprint to
 render with stats stubbed dead. Deploy verification is now: load the page,
 read the footer.
+
+### V32 — the Tribune never auto-opens (owner-directed)
+Client keys 20260718-ui-v32; BUILD_V "v32". Walk: 202, three greens.
+
+REMOVED the single auto-open path: the results overlay's bundle had an
+autoT = setTimeout(unwrap(true), 1500) armed only when
+wins >= CFG.GAMES_IN_SEASON, so a perfect 82-0 opened its own edition after
+a beat. Opening the paper is what pre-publishes the public /r/{slug} URL, so
+that was also the only auto-PUBLISH path. Gone. The edition now opens ONLY
+on a deliberate tap — the bundle's click -> unwrap(false), or the READ STORY
+action. Every other publishRecap() call is downstream of a manual open or a
+SHARE ARTICLE tap (both correct: sharing the article needs a live URL).
+
+For the record, 81 wins never auto-opened anything — the "maybe 81?" was the
+documented percentile edge (an 81-win Heat Check boosting after the pct
+fetch), unrelated to the recap. No other win count triggers open or publish.
+
+Walk guards the exact removed pattern (win-count-gated auto-unwrap timer)
+plus the surviving manual click handler, so auto-open can't creep back.
