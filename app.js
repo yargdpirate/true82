@@ -1184,9 +1184,14 @@ function modePanelHtml() {
   var bankHtml = "";
   if (MODE === "cap") {
     if (typeof G.meterMax !== "number" || G.meterMax <= 0) G.meterMax = Math.max(G.budget, 1);
-    var bankPct = Math.max(0, Math.min(100, (G.budget / G.meterMax) * 100));
+    // Render what is currently DISPLAYED, not the target: G.bankShown tracks
+    // the odometer's on-screen value, so a re-render mid-animation redraws
+    // the in-flight number and the chaser keeps counting — no snap, no
+    // rewind. When the ticker is idle the two are equal anyway.
+    var shownV = (typeof G.bankShown === "number") ? G.bankShown : G.budget;
+    var bankPct = Math.max(0, Math.min(100, (shownV / G.meterMax) * 100));
     bankHtml = '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span>' +
-      '<b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(G.budget), true) + '</b>' +
+      '<b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(shownV), true) + '</b>' +
       '<span class="mpb-delta mono" id="bankDed" aria-hidden="true"></span>' +
       '<div class="mpb-meter" aria-hidden="true"><i class="mpb-fill" id="bankFill" style="width:' + bankPct + '%"></i></div></div>';
   }
@@ -1259,74 +1264,101 @@ function initDraftViewport() {
   }
 }
 
-/* ---------- the bank ticker (v29 scoreboard rework) ----------
-   Money never just refreshes. On a change the balance runs a stepped
-   odometer to the new value (a handful of integer steps over ~380ms — never
-   a per-million crawl), the meter fill depletes in the same beat, a
-   transient chip shows the delta (−$15M red / +$2M green), and bank-down /
-   bank-up flash the amount + fill orange-red or green (class names are
-   load-bearing for the walk). G.bankShown survives the full re-render every
-   pick and skip triggers, so a fresh game starts silent. States, painted on
-   every call: .bank-low keeps the V20 slots-aware law (budget <= open
-   slots + 1 — smarter than a fixed floor because $4M with one slot open is
-   fine and $6M with five open is dire), .bank-mid is the soft orange band
-   at <= $15M above it, .bank-zero is the depleted stamp. Reduced motion:
-   instant value + fill, brief flash class only. Timing law: settle + flash
-   clear must land inside ~560ms or the walk's 600ms settle assert races. */
+/* ---------- the bank ticker (v29.1 single-writer chaser) ----------
+   AUDIT FIX (owner report: the count rubber-banded). Root cause, threefold:
+   tickBank runs on EVERY draft re-render (the master render tail), the old
+   ticker treated G.bankShown as "target accepted" instead of "currently
+   displayed", and each call span up its own interval closed over its own
+   node. A re-render mid-count therefore snapped the markup to the final
+   value, orphaned the live interval, and killed the count; skip-spam left
+   rival intervals fighting over the same node; the rewind paint jumped the
+   number back up whenever a frame slipped in. New model:
+   - G.bankShown is the on-screen truth, updated on every paint; the panel
+     builder renders it, so re-renders have continuity instead of a snap.
+   - ONE writer: G.bankAnim. Every call clears it before starting another.
+   - The interval re-resolves el("bankAmt") each tick, so re-renders never
+     orphan the count; it dies only when the bank leaves the DOM or a new
+     game replaces G.
+   - A spend mid-count RETARGETS: the odometer chases the new balance from
+     wherever it is, monotonic, one direction per leg. The chip shows the
+     true transaction (new target minus previous target), not the leftover.
+   Steps stay integer and few (<=4 over ~380ms). Reduced motion: instant
+   paint, 240ms flash. Timing law: settle + flash clear inside ~560ms or
+   the walk's 600ms settle assert races. */
 function tickBank() {
-  var node = el("bankAmt");
-  if (!node || MODE !== "cap" || !G) return;
-  var box = node.closest(".mp-bank");
-  var to = G.budget;
-  if (typeof G.meterMax !== "number" || G.meterMax <= 0) G.meterMax = Math.max(to, 1);
+  if (MODE !== "cap" || !G || !el("bankAmt")) return;
+  var g = G;
+  var to = g.budget;
+  var box = el("bankAmt").closest(".mp-bank");
   if (box) {
-    var remaining = 5 - ((G.picks && G.picks.length) || 0);
+    var remaining = 5 - ((g.picks && g.picks.length) || 0);
     var low = to <= remaining + 1;
     box.classList.toggle("bank-low", low);
     box.classList.toggle("bank-mid", !low && to <= 15);
     box.classList.toggle("bank-zero", to === 0);
   }
   var paint = function (v) {
-    node.innerHTML = mHtml(fmtM(v), true);
+    var n = el("bankAmt");
+    if (!n) return false;
+    n.innerHTML = mHtml(fmtM(v), true);
+    g.bankShown = v;
     var fill = el("bankFill");
-    if (fill) fill.style.width = Math.max(0, Math.min(100, (v / G.meterMax) * 100)) + "%";
+    if (fill) fill.style.width = Math.max(0, Math.min(100, (v / g.meterMax) * 100)) + "%";
+    return true;
   };
-  var from = (typeof G.bankShown === "number") ? G.bankShown : to;
-  G.bankShown = to;
-  if (from === to) { paint(to); return; }
-  var d = to - from;
+  var stopAnim = function () {
+    if (g.bankAnim) { clearInterval(g.bankAnim); g.bankAnim = null; }
+    if (g.bankFlashT) { clearTimeout(g.bankFlashT); g.bankFlashT = null; }
+  };
+  var clearFlash = function () {
+    var n = el("bankAmt"), b = n && n.closest(".mp-bank");
+    if (b) b.classList.remove("bank-down", "bank-up");
+  };
+  var shown = (typeof g.bankShown === "number") ? g.bankShown : to;
+  if (shown === to) {
+    // settled, a money-free re-render, or a refund landing us back where the
+    // display already sits: make sure no stale count or flash survives.
+    if (g.bankAnim) { stopAnim(); clearFlash(); }
+    g.bankAnimTo = null;
+    paint(to);
+    return;
+  }
+  // The chip reports the TRANSACTION: against the previous target when a
+  // count is in flight (retarget), against the display when idle.
+  var prevTarget = (g.bankAnim && typeof g.bankAnimTo === "number") ? g.bankAnimTo : shown;
+  var chipD = to - prevTarget;
   var ded = el("bankDed");
-  if (ded) {
-    ded.textContent = d < 0 ? "\u2212$" + (-d) + "M" : "+$" + d + "M";
-    ded.className = "mpb-delta mono show " + (d < 0 ? "neg" : "pos");
-    if (G.bankDedT) clearTimeout(G.bankDedT);
-    G.bankDedT = setTimeout(function () {
+  if (ded && chipD !== 0) {
+    ded.textContent = chipD < 0 ? "\u2212$" + (-chipD) + "M" : "+$" + chipD + "M";
+    ded.className = "mpb-delta mono show " + (chipD < 0 ? "neg" : "pos");
+    if (g.bankDedT) clearTimeout(g.bankDedT);
+    g.bankDedT = setTimeout(function () {
       if (ded.isConnected) ded.className = "mpb-delta mono";
     }, 900);
   }
-  var dir = d < 0 ? "bank-down" : "bank-up";
+  var dir = to < shown ? "bank-down" : "bank-up";
+  if (box) {
+    box.classList.remove(dir === "bank-down" ? "bank-up" : "bank-down");
+    box.classList.add(dir);
+  }
+  stopAnim();
+  g.bankAnimTo = to;
   if (prefersReduce()) {
     paint(to);
-    if (box) {
-      box.classList.add(dir);
-      setTimeout(function () { if (box.isConnected) box.classList.remove("bank-down", "bank-up"); }, 240);
-    }
+    g.bankAnimTo = null;
+    g.bankFlashT = setTimeout(function () { clearFlash(); g.bankFlashT = null; }, 240);
     return;
   }
-  if (box) box.classList.add(dir);
-  var STEPS = Math.min(4, Math.abs(d));
-  var i = 0;
-  var iv = Math.round(380 / STEPS);
-  paint(from);   // the re-render already shows the new value; rewind so the odometer runs
-  var t = setInterval(function () {
-    if (!node.isConnected) { clearInterval(t); return; }   // a newer render owns the panel now
+  var from = shown, d = to - from;
+  var STEPS = Math.min(4, Math.abs(d)), i = 0, iv = Math.round(380 / STEPS);
+  g.bankAnim = setInterval(function () {
+    if (g !== G || !el("bankAmt")) { stopAnim(); return; }   // new game or no bank on this screen
     i++;
     paint(i >= STEPS ? to : Math.round(from + (d * i) / STEPS));
     if (i >= STEPS) {
-      clearInterval(t);
-      setTimeout(function () {
-        if (box && box.isConnected) box.classList.remove("bank-down", "bank-up");
-      }, 180);
+      stopAnim();
+      g.bankAnimTo = null;
+      g.bankFlashT = setTimeout(function () { clearFlash(); g.bankFlashT = null; }, 180);
     }
   }, iv);
 }
