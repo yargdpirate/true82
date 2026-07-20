@@ -3815,31 +3815,105 @@ function showResults() {
     window.t82track("game_complete", gc);
   }
   scheduleSharePct(e);
+  loadBbrefMap().then(function () { upgradeBbrefLinks(); });   // v30: swap search hrefs for verified player pages
   gameFinishedPings();
 }
 
+/* ---------- SPORTSREF DEEP-LINK LAW (v30) ----------
+   Direct player pages, verified — never a blind guess. bbref-map.json is
+   built at dev time from the SAME upstream as site_data.json (sumitrodatta's
+   Basketball-Reference datasets): p = name -> slug for every pool player the
+   build could verify (season+team joins break name ties), a = names the pool
+   genuinely cannot disambiguate (some pool entries merge two real careers —
+   search is CORRECT for them, not a fallback), b = every slug base in
+   history, so a post-dataset rookie gets a constructed {base}01 ONLY when
+   the base is virgin; a contested base means 01 belongs to someone else.
+   Anchors RENDER with the search URL (always right) and upgrade in place
+   when the map lands — no race, no boot cost; the map is fetched once per
+   session at finish time. Verified names also earn a season -> game-log
+   link (/players/x/slug/gamelog/year — deterministic once the slug is
+   verified). Regenerating the map: re-run the build against the upstream
+   CSVs and bump the ?v= below. Referrer law unchanged: noopener, never
+   noreferrer. */
+var BBREF_MAP = null, BBREF_MAP_P = null;
+function loadBbrefMap() {
+  if (BBREF_MAP_P) return BBREF_MAP_P;
+  BBREF_MAP_P = fetch("/bbref-map.json?v=1")
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) { BBREF_MAP = (d && d.p) ? d : null; return BBREF_MAP; })
+    .catch(function () { return null; });
+  return BBREF_MAP_P;
+}
+function bbrefSearch(name) {
+  return "https://www.basketball-reference.com/search/?search=" + encodeURIComponent(name);
+}
+function bbrefBaseGuess(name) {
+  var ascii = (name.normalize ? name.normalize("NFD") : name).replace(/[\u0300-\u036f]/g, "");
+  ascii = ascii.replace(/\s+(Jr|Sr|II|III|IV|V)\.?$/i, "");
+  var parts = ascii.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return null;
+  var first = parts[0].replace(/[^A-Za-z]/g, "").toLowerCase();
+  var last = parts[parts.length - 1].replace(/[^A-Za-z]/g, "").toLowerCase();
+  if (!first || !last) return null;
+  return last.slice(0, 5) + first.slice(0, 2);
+}
+function bbrefHref(name) {
+  var m = BBREF_MAP;
+  if (m) {
+    var slug = m.p[name];
+    if (slug) return "https://www.basketball-reference.com/players/" + slug.charAt(0) + "/" + slug + ".html";
+    if (m.a && m.a.indexOf(name) !== -1) return bbrefSearch(name);
+    var base = bbrefBaseGuess(name);
+    if (base && m.b && m.b.indexOf(base) === -1) {
+      return "https://www.basketball-reference.com/players/" + base.charAt(0) + "/" + base + "01.html";
+    }
+  }
+  return bbrefSearch(name);
+}
+// Upgrade in place: career hrefs on every tagged name, and a game-log link
+// wrapped around the season text of VERIFIED players only (unverified
+// seasons stay plain text — a wrong game log is worse than none).
+function upgradeBbrefLinks() {
+  if (!BBREF_MAP) return;
+  var as = document.querySelectorAll("a.pr-bref[data-bb]");
+  for (var i = 0; i < as.length; i++) as[i].setAttribute("href", bbrefHref(as[i].getAttribute("data-bb")));
+  var szs = document.querySelectorAll("span.pr-szn[data-bb]");
+  for (var j = 0; j < szs.length; j++) {
+    var sp = szs[j], nm = sp.getAttribute("data-bb"), yr = sp.getAttribute("data-yr");
+    var slug = BBREF_MAP.p[nm];
+    if (!slug || !/^\d{4}$/.test(yr || "")) continue;
+    var a = document.createElement("a");
+    a.className = "pr-szn-link";
+    a.setAttribute("href", "https://www.basketball-reference.com/players/" + slug.charAt(0) + "/" + slug + "/gamelog/" + yr);
+    a.setAttribute("target", "_blank");
+    a.setAttribute("rel", "noopener");
+    while (sp.firstChild) a.appendChild(sp.firstChild);
+    sp.parentNode.replaceChild(a, sp);
+  }
+}
 function renderResults(e, keepScroll) {
+  // v30.2 hardening: if this render ever runs again (a future keepScroll
+  // path), freshly built anchors must not quietly revert to search URLs.
+  // The upgrade is idempotent and no-ops until the map has landed.
+  setTimeout(function () { upgradeBbrefLinks(); }, 0);
   renderPips();
   var scrollY = keepScroll ? window.scrollY : 0;
-  // SPORTSREF LAW (v28): PLAYER links use the search-URL form only —
-  // constructed profile URLs break on name collisions; a unique search hit
-  // redirects straight to the player page anyway. In the game loop they ride
-  // the results five and the Tribune editions ONLY, never mid-draft. The
-  // static explainer pages and llms.txt carry curated deep links too (the
-  // BPM explainer, franchise-season pages: /teams/{CODE}/{endYear}.html is
-  // deterministic, unlike player slugs). Homepage credit links carry
-  // utm_source=true82.net; content deep links stay clean (referrer covers
-  // them). The name ITSELF is the link (no buttons, no icon
-  // rows: zero clutter). rel is noopener WITHOUT noreferrer on purpose: the
-  // site's strict-origin-when-cross-origin policy hands Sports Reference a
-  // clean true82.net referral for every click, which is the point.
+  // SPORTSREF LAW (v30, supersedes v28's search-only rule): names render
+  // with the search URL and UPGRADE to verified direct player pages when
+  // bbref-map.json lands (see the deep-link law above renderResults);
+  // verified seasons upgrade to that year's game log. Surfaces unchanged:
+  // results five + Tribune editions in the game loop, never mid-draft.
+  // Homepage credits carry utm_source=true82.net; deep links stay clean.
+  // rel is noopener WITHOUT noreferrer on purpose: the site's
+  // strict-origin-when-cross-origin policy hands Sports Reference a clean
+  // true82.net referral for every click, which is the point.
   var picksHtml = picksInSlotOrder().map(function (entry) {
     var p = entry.p, i = entry.i, row = p.row, name = row[IDX.name];
     return '<div class="pick-card" data-pick="' + i + '">' +
       '<div class="pick-top"><span class="pr-name"><span class="slot-badge">' + p.slot + "</span>" +
-        '<a class="pr-bref" href="https://www.basketball-reference.com/search/?search=' + encodeURIComponent(name) + '" target="_blank" rel="noopener">' + esc(name) + "</a></span>" +
+        '<a class="pr-bref" data-bb="' + esc(name) + '" href="' + bbrefSearch(name) + '" target="_blank" rel="noopener">' + esc(name) + "</a></span>" +
       '<span class="pr-v"><small>V</small>' + valueOf(row).toFixed(2) + "</span></div>" +
-      '<div class="pr-sub"><span>' + shortSeason(row[IDX.season]) + " " + esc(titleCase(p.fr)) + "</span>" + chipsFor(row) + "</div>" +
+      '<div class="pr-sub"><span class="pr-szn" data-bb="' + esc(name) + '" data-yr="' + row[IDX.season] + '">' + shortSeason(row[IDX.season]) + " " + esc(titleCase(p.fr)) + "</span>" + chipsFor(row) + "</div>" +
       '<div class="pr-sub pr-stats">' + statLine(row) + "</div></div>";
   }).join("");
 
@@ -3924,7 +3998,7 @@ function renderResults(e, keepScroll) {
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml +
-      '<p class="bref-credit">Player pages via <a href="https://www.basketball-reference.com/?utm_source=true82.net" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
+      '<p class="bref-credit">Tap a name for the career, the season for that year\u2019s game log \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
     '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
@@ -4243,26 +4317,39 @@ function scheduleCrests() {
   else setTimeout(start, 0);
 }
 
+// FOOTER VERSION LAW (v31, perpetual): BUILD_V is the deploy fingerprint.
+// It renders at the end of the footer stat line — and ALONE when stats are
+// absent or zero — so "which build is live" is answered by loading the page
+// and reading the footer, especially on a degraded deploy. Bump BUILD_V in
+// the SAME COMMIT as any client cache-key bump in index.html; the walk
+// enforces key/BUILD_V parity and fails the lane on drift.
+var BUILD_V = "v31";
+function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
-// footer can't disagree with the dashboard. Fails soft: on any error the footer just
-// shows the contact line with no dangling separator.
+// footer can't disagree with the dashboard. Fails soft: on any error the footer
+// falls back to the version fingerprint alone — never a fake "0 drafts" row, and
+// never a blank slot where the deploy check should be.
 function setFootStats(d) {
   var el = document.getElementById("footStats");
-  if (!el || !d || typeof d.presti !== "number") return;
-  // All zeros = DB unbound or brand-new database. Show nothing rather than a fake
-  // "0 drafts" row — a degraded deploy must not look like a dead game.
-  if (!((d.presti || 0) + (d.classic || 0) + (d.pro || 0))) { el.innerHTML = ""; return; }
+  if (!el) return;
+  if (!d || typeof d.presti !== "number" ||
+      !((d.presti || 0) + (d.classic || 0) + (d.pro || 0))) {
+    el.innerHTML = footSeg(BUILD_V);
+    return;
+  }
   var rate = d.presti ? Math.round(1000 * (d.presti82 || 0) / d.presti) / 10 : 0;
-  function seg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
   el.innerHTML = [
-    seg(d.presti.toLocaleString() + " Presti drafts"),
-    seg((d.classic || 0).toLocaleString() + " Classic drafts"),
-    seg((d.pro || 0).toLocaleString() + " Pro drafts"),
-    seg("Presti WR " + rate + "%")
+    footSeg(d.presti.toLocaleString() + " Presti drafts"),
+    footSeg((d.classic || 0).toLocaleString() + " Classic drafts"),
+    footSeg((d.pro || 0).toLocaleString() + " Pro drafts"),
+    footSeg("Presti WR " + rate + "%"),
+    footSeg(BUILD_V)
   ].join(" | ");
 }
 function fetchFootStats() {
+  var fe = document.getElementById("footStats");
+  if (fe && !fe.innerHTML) fe.innerHTML = footSeg(BUILD_V);   // visible before (or without) the stats reply
   try {
     fetch("/api/stats")
       .then(function (r) { return r.json(); })
