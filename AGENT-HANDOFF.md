@@ -403,3 +403,238 @@ in the main Promise.all (dailyFunnelRows / dailyShareRows / dailyByBaseRows),
 all keyed off variant LIKE 'daily%'. Funnel = gate->start->complete->share.
 Menu practice reruns skip the gate by design, so the card separates first vs
 practice starts. Keys 20260719-ui-v27. Client walk unchanged at 140.
+
+### FLAGGED, NOT BUILT (2026-07-19, owner-queued)
+1. RESTORE practice replay on the played daily tile. V24 removed the RUN IT
+   BACK button per instruction; owner has reversed: practice must be
+   reachable from the tile again (currently results-screen againBtn only).
+   Do not restore the old first-letter styling bug with it.
+2. Daily SHARE TEXT redesign in prototyping: direction is brand+day line,
+   win-bar emoji rail (8 blocks of 82), fused percentile + historical-comp
+   line, the five, verdict/challenge voice, beat link. Comp line is
+   buildable now (HISTORY_COMPS client-side); percentile requires a
+   same-day score-distribution endpoint. Design the FORMAT LAW change once
+   to accept both. share_click (intent) vs share (completed) event split
+   also queued for the funnel.
+
+## SESSION HANDOFF (2026-07-19, context rollover)
+This session ends at build v27.1. The next session starts here. Read this
+whole file top to bottom first; the sections below are the active work.
+
+### SHARE TEXT v2 — FORMAT LOCKED BY OWNER (build this next)
+The share text for ALL modes moves to this exact shape (owner-final):
+
+    TRUE 82 {#9 | Classic Mode | Presti Mode}
+    {emoji} 66-16 | Better than the Heatles
+    Top X% of drafters
+
+    '96 Jordan
+    '01 Duncan
+    '75 Walton
+    '11 Curry
+    '82 McHale
+
+    true82.net/D9X4K2
+
+Decisions already made:
+- Line 1 context slot: daily number for dailies, mode name otherwise. The
+  format applies to every mode's share, not just the daily.
+- Line 2: leading emoji, record, PIPE separator, then the historical comp.
+  Owner's sketch uses "Better than {team}" (highest tier cleared), NOT the
+  results screen's "Almost as good as {next above}". Resolve the tie case
+  (66 wins vs the 66-win Heatles) before shipping; comp data =
+  HISTORY_COMPS in app.js.
+- Line 3 "Top X% of drafters" is REQUIRED in v1, so the same-day score
+  distribution endpoint must be built (D1, game_complete events, variant
+  scoped). Open: what population for non-daily modes (all-time same-mode?).
+- The five: vertical, one per line, WITH years. This is the flex; keep it.
+- No emoji boxes/rails ever: encodings that need a legend are dead (owner
+  ruling after three iterations). Emojis are TONE, not data.
+- EMOJI BANDS ARE THE OPEN DESIGN WORK: the owner wants the emoji tailored
+  BY MODE and BY PARTICULAR DAILY (a small-ball day can carry its own), on
+  win bands, with the median band showing NO emoji (scarcity is the
+  signal). Direction from this session: 82-0 goat, 78+ trophy, 70-77 fire,
+  median clean, disaster ice. Bands + per-mode/per-daily sets are NOT
+  final; work with the owner to pick them.
+- The visual layer (colors, wordmark, dressed five) belongs to the LINK
+  CARD: extend the Tribune share function to render per-run OG previews.
+  The text stays plain.
+- Shipping it is a FORMAT LAW amendment: update shareTextDaily (daily-core)
+  + the vanilla share builders (app.js), repin the real repo's test-lane
+  byte pins, keep "$17M" plain in share strings (mHtml is display-only),
+  no em-dashes, U+2212 for negatives.
+- Also queued with it: share_click (intent) vs share (completed) event
+  split, and aggressive Basketball-Reference outbound links on the results
+  five (search-URL form: basketball-reference.com/search/?search=NAME —
+  never constructed profile URLs, name collisions break them; results
+  screen only, never mid-draft).
+
+### DEV TOOLS (they live OUTSIDE the repo and die with the session)
+The offline validation walk (validate.js, 140 checks), the playability
+audit bot (audit.js), and the 60-day legacy schedule fixture
+(legacy-fixture.json) are packaged separately as true82-devtools.zip. To
+run: put the repo at /home/claude/true82 (or edit ROOT at the top of each
+script), npm install jsdom in the parent dir, then `node validate.js` and
+`node audit.js 300 [pool2|synth|one <id>]`. Traps the scripts already
+handle, do not regress them: bots must filter buckets through ch.pick
+(slot-dependent hooks exist), money asserts normalize the thin space
+(M$ helper), the skip-tick test is refund-aware, reel asserts wait out the
+animation. Shell trap for the next agent: a heredoc inside a bash
+&&-chain ends the chain at its terminator; run multi-step edits as
+separate commands or via script files.
+
+### STATE AT HANDOFF
+Live build v27.1 (client keys 20260719-ui-v26; the v27 changes were
+Function-side plus one client event, keys ui-v27 in index.html). Walk: 140
+green, three consecutive runs. Today = Daily #8 golden_age; rotation is
+live and verified against the fixture. Everything shipped this session is
+logged above in the V13-V27.1 sections and in CHANGES-THE-DAILY.md.
+
+### V28 — practice restored, SHARE FORMAT LAW v2, percentile, Sports-Reference outbound (2026-07-19)
+Both FLAGGED items above are now BUILT; the queued share/bbref work from the
+session handoff shipped with them. Client keys `20260718-ui-v28` (styles,
+app), `20260718-share2-v15` (daily-core); challenges.js untouched at v14.
+Walk: 174 checks, three consecutive greens; audit bot clean on pool2.
+
+- PRACTICE RESTORED (v24 reversal): the played tile carries
+  `RUN IT BACK · PRACTICE` again (`#dailyPracticeBtn`, ghost-skinned with the
+  existing `.dt-act-ghost` so CHALLENGE A FRIEND stays primary). It launches
+  the same `startDailyRun(board, null, "daily-practice:N")` as the results
+  againBtn — no gate, official untouchable. The first-letter bug stayed dead
+  (walk pins it). The old null-guarded `startDaily` practice branch in the
+  tile wiring is now unreachable and left in place deliberately.
+- SHARE FORMAT LAW v2 (owner-locked shape) is live for EVERY mode:
+  `TRUE 82 {#N|Classic Mode|Presti Mode|Pro Mode}` / `{emoji }REC | comp` /
+  `Top X% of drafters` (omitted when null) / blank / five as `'YY Surname`
+  (slot badges retired; legacy stored officials get their slot token
+  stripped at format time) / blank / beat link (daily), recap link or bare
+  domain (standalone). Cap Spc and Net left the text; net still rides the
+  beat link. Emoji bands + comp + pct are built in app.js
+  (SHARE_EMOJI_BANDS / SHARE_EMOJI_BY_MODE / ch.shareEmoji hook,
+  shareCompFor, shareHeadCtx, shareLine2); daily-core's shareTextDaily is
+  now a pure formatter fed those parts. Nickname line: dropped (see
+  ratifications).
+- PERCENTILE: new `functions/api/percentile.js`.
+  `?wins&variant=daily:N` counts that board's `daily:N`+`daily-link:N`
+  game_completes (practice excluded by construction);
+  `?wins&mode=cap|classic|pro` counts all-time standalone same-mode. Reply
+  `{pct,n}`, pct clamped 1..99, `null` under MIN_N=10; always 200, always
+  fail-soft. Client: `scheduleSharePct()` fires once per finish, 1.6s after
+  the game_complete beacon (the footer's wait), stashes `G.sharePct`, and on
+  an official daily run nonce-amends the official record with `pct` so the
+  menu tile's CHALLENGE A FRIEND carries line 3 on later visits
+  (`recordOfficial` now stores `pct`; storage comment updated). Known edge:
+  an 81-win Heat Check that boosts after the fetch shares an 81-population
+  pct.
+- FUNNEL SPLIT: every share button now emits `share_click` at the tap;
+  the completed `share` fires inside `shareOrCopy` (new third arg = track
+  payload) exactly once when the OS sheet resolves or, sheetless/broken, the
+  clipboard write succeeds. A DISMISSED sheet is intent only; the reveal-box
+  fallback never counts. event.js allowlists `share_click`; /avocado's
+  daily-share query now groups by name and the funnel card gains a
+  "Tapped share (intent)" row + no-back-history caveat (path bars stay
+  completed-only). Kaman's share stays untracked, as before.
+- SPORTSREF LAW: on the RESULTS five only (never mid-draft), each player
+  name is the link — `basketball-reference.com/search/?search={name}`
+  (search-URL form only; constructed profile URLs break on name
+  collisions), `target="_blank" rel="noopener"` and NEVER noreferrer: with
+  `_headers`' strict-origin-when-cross-origin, every click hands Sports
+  Reference a clean `https://true82.net/` referral. One mono credit whisper
+  under the five links their homepage with `utm_source=true82.net`. CSS
+  appended at the styles tail (`.pr-bref`, `.bref-credit`): dotted amber
+  underline + quiet ↗, zero clutter. ADDENDUM (same session, owner-directed
+  "throw more in, no bloat"): existing PROSE mentions became links — no new
+  copy was written. what-is-bpm + faq link the official BPM explainer
+  (`/about/bpm2.html`); faq's data answer links their homepage + Stathead
+  (both `utm_source=true82.net`); can-you-go-82-0's three near-miss seasons
+  deep-link `/teams/{CODE}/{endYear}.html` (franchise-season URLs are
+  deterministic, unlike player slugs — the search-URL law is for PLAYERS);
+  the md/ mirrors match their html twins; llms.txt gains a Data section so
+  agents cite the source; and the Tribune edition roster ([id].js:195-200)
+  links every name search-URL style with a matching quiet style in
+  shareCss. Law comment in app.js updated to the expanded surface set.
+
+OPEN OWNER RATIFICATIONS (v2 ships with these defaults; each is a
+one-line flip):
+1. TIE LAW, sharpened: HISTORY_COMPS is contiguous 62..81 today, so every
+   in-range total lands ON a tier — the sketch's "Better than the Heatles"
+   at 66 and this build's "Tied the Heatles" are the two live readings, and
+   the strictly-above branch is latent until a gap reopens. Current code:
+   exact match reads "Tied". To adopt the sketch, delete the tie branch in
+   shareCompFor (app.js) and re-pin the walk.
+2. Emoji bands: defaults 82 goat / 78+ trophy / 70-77 fire / 45-69 clean /
+   <45 ice. SHARE_EMOJI_BY_MODE is empty (owner to fill); per-daily
+   ch.shareEmoji hook is live and wins outright.
+3. Non-daily percentile population = all-time same-mode. Alternative
+   (rolling 30d) is a one-clause ts filter in percentile.js.
+4. Nickname line dropped from the standalone share (not in the locked
+   sketch). Restore = one line in shareText.
+5. Slot badges dropped from the shared five per the sketch; results SCREEN
+   keeps them.
+6. Suggestion, not built: extend comps DOWNWARD ('12 Bobcats, Process
+   Sixers...) so sub-62 runs get an anti-flex line instead of a bare
+   record. Keep it a separate array from the climb ladder or the 20-pin
+   walk assert breaks.
+
+Devtools: validate.js expects the repo at /home/claude/true82 AND
+legacy-fixture.json at /home/claude/ (copy it up from the devtools folder).
+New helpers export through window.__t82test (app.js evals strict; bare
+window.fn pins will miss).
+
+### V29 — the bank becomes a scoreboard (2026-07-19, owner-directed, mockup-sourced)
+SUPERSEDES the V20 "final bank doctrine" BY OWNER ORDER (two mockups + a
+spec, with explicit creative license). Same slot, same panel, same
+load-bearing ids (#mpBank, #bankAmt, .mp-bank, bank-down/bank-up) — new
+object. Client keys 20260718-ui-v29 (styles, app). Walk: 185, three greens.
+
+- MATERIAL: flat charcoal (--tunnel) with a 1px amber outline in the
+  price-badge family. The bronze radial, gloss ::before, glow shadows, and
+  bankPulseDown/Up keyframes are DELETED, not orphaned.
+- ANATOMY: BANK label / balance (#bankAmt, mHtml tight, still the loudest
+  thing) / segmented budget meter. Desktop: column, centered. Mobile
+  (<=640): one row — outlined BANK chip, balance, meter flexing to fill;
+  the meter shortens before the balance shrinks; nothing wraps; the box is
+  SHORTER than the plaque it replaces. The v21 tail patch's bank chunk was
+  retired in place (one mobile truth in the main 640 block now).
+- METER: one proportional fill (#bankFill, width = budget / G.meterMax)
+  under a repeating-gradient notch overlay painted in the box background —
+  ten notches desktop, five on mobile — so uneven balances render
+  truthfully and the two layouts state the same number. G.meterMax pins the
+  denominator to the run's starting cap at first render (challenge caps and
+  reroll math can't skew it).
+- TICKER (tickBank rewrite): stepped odometer — at most 4 integer steps
+  over ~380ms, never the old per-million crawl — deduction chip
+  (#bankDed: "−$15M" red / "+$2M" green, self-clears at 900ms), meter
+  depletes in the same beat, bank-down/up flash amount + fill (no box
+  scale). Reduced motion: instant paint, 240ms flash only, fill transition
+  disabled. TIMING LAW: settle + flash-clear must stay inside ~560ms or the
+  walk's 600ms settle assert races.
+- STATES: .bank-low KEEPS the V20 slots-aware law (budget <= open slots +
+  1) as the red trigger — deliberately chosen over the spec's fixed <=$5M
+  because $4M with one slot open is fine and $6M with five open is dire.
+  .bank-mid (new) is the soft orange band at <=$15M above low; .bank-zero
+  dims the depleted stamp; the meter's border keeps contrast at $0.
+- SPEC DEVIATIONS, on the owner's "take the wheel": slots-aware red (above);
+  refund symmetry kept (green +$XM chip — the spec only covered spends);
+  the deduction chip id is #bankDed, NOT #bankDelta — v19's grave stays
+  undisturbed and greppable. "AVAILABLE TO SPEND" never existed in prod;
+  the walk now pins it absent forever. No unaffordable-player error state
+  was added (grayed rows remain the whole signal), per spec.
+
+### V29.1 — bank ticker audit fix (same deploy; owner bug report: rubber-band count)
+Root cause was threefold and architectural, not cosmetic: tickBank runs on
+EVERY draft re-render (master render tail, one call site), the ticker
+treated G.bankShown as "target accepted" instead of "currently displayed",
+and each call span up its own interval closed over its own node. A
+re-render mid-count snapped the markup to the final value and killed the
+count; skip-spam left rival intervals fighting; the rewind paint jumped the
+number back up. Fix (tickBank rewritten as a single-writer chaser):
+G.bankShown is now the ON-SCREEN truth updated on every paint and the panel
+builder renders it (re-renders get continuity, never a snap); ONE global
+writer (G.bankAnim) cleared on every call; the interval re-resolves
+el("bankAmt") per tick so re-renders can't orphan it (it dies only on a new
+game or a bankless screen); a spend mid-count RETARGETS from the shown
+value — monotonic per leg — and the chip reports the true transaction (new
+target minus previous target). Walk +2: rapid double-spend must converge on
+dbg().budget with no stuck flash (187, three greens). If the count ever
+misbehaves again, suspect a second writer before touching the easing.

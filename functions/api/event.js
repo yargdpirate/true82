@@ -5,9 +5,9 @@
 const NAMES = new Set([
   "session_start", "session_end", "data_ready", "data_error",
   "game_start", "round_advance", "deal_view", "game_complete", "run_abandon",
-  "replay", "share", "heatcheck_shown", "heatcheck_action", "heatcheck_result",
+  "replay", "share", "share_click", "heatcheck_shown", "heatcheck_action", "heatcheck_result",
   "donate_click", "recap_presented", "recap_shown", "recap_read", "recap_full_read", "recap_action",
-  "recap_skip", "recap_unwrap", "recap_results"
+  "recap_skip", "recap_unwrap", "recap_results", "daily_gate_view"
 ]);
 const MODES = new Set(["classic", "pro", "cap", "kaman"]);
 const VIEWPORTS = new Set(["sm", "md", "lg"]);

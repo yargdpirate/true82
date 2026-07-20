@@ -134,9 +134,9 @@ export async function onRequest(context) {
          AND name IN ('daily_gate_view','game_start','game_complete')
          AND variant LIKE 'daily%'
        GROUP BY name`, B),
-    q(`SELECT COALESCE(variant,'?') variant, COUNT(*) c, COUNT(DISTINCT sid) sids
-       FROM events WHERE ${W} AND name='share' AND variant LIKE 'daily%'
-       GROUP BY variant ORDER BY c DESC`, B),
+    q(`SELECT name, COALESCE(variant,'?') variant, COUNT(*) c, COUNT(DISTINCT sid) sids
+       FROM events WHERE ${W} AND name IN ('share','share_click') AND variant LIKE 'daily%'
+       GROUP BY name, variant ORDER BY c DESC`, B),
     q(`SELECT COALESCE(mode,'?') base,
          SUM(CASE WHEN variant LIKE 'daily%' THEN 1 ELSE 0 END) daily,
          SUM(CASE WHEN variant IS NULL OR variant NOT LIKE 'daily%' THEN 1 ELSE 0 END) standalone
@@ -286,19 +286,46 @@ export async function onRequest(context) {
     const gateN = +gate.c || 0, startN = +start.c || 0, doneN = +done.c || 0;
     const practiceStarts = +start.practice || 0;
     const firstStarts = Math.max(0, startN - practiceStarts);
-    const shareTotal = (dailyShareRows || []).reduce((a, r) => a + (+r.c || 0), 0);
+    // v28 split: share_click = tapped a share button (intent); share = the OS
+    // sheet resolved or the clipboard verifiably took it (completed). Like
+    // daily_gate_view before it, share_click only begins collecting at the
+    // v28 deploy, so early intent counts will read low against share history.
+    const shareTotal = (dailyShareRows || []).filter((r) => r.name === "share")
+      .reduce((a, r) => a + (+r.c || 0), 0);
+    const intentTotal = (dailyShareRows || []).filter((r) => r.name === "share_click")
+      .reduce((a, r) => a + (+r.c || 0), 0);
+    // Percentages anchor to game_start (the first step with full history):
+    // daily_gate_view only began collecting at the v27 deploy, so basing % on
+    // it would divide days of history by minutes of it. Once gate history
+    // accrues, gateN drives the true top-of-funnel and its own % lights up.
+    const haveGate = gateN > 0;
+    const baseN = haveGate ? gateN : startN;
+    const baseLabel = haveGate ? "of gate" : "of draft";
+    // Fold the per-day variants (daily:8, daily-menu:8...) into entry paths
+    // (daily, daily-menu, daily-link) so shares group by HOW, not WHICH day.
+    const pathMap = {};
+    (dailyShareRows || []).filter((r) => r.name === "share").forEach((r) => {
+      const path = String(r.variant || "?").replace(/:\d+$/, "");
+      pathMap[path] = (pathMap[path] || 0) + (+r.c || 0);
+    });
+    const sharePaths = Object.keys(pathMap).map((k) => ({ path: k, c: pathMap[k] })).sort((a, b) => b.c - a.c);
+    const shareMax = sharePaths.reduce((m, r) => Math.max(m, r.c), 0);
     cards.push(card("THE DAILY · funnel", `
-    <table><thead><tr><th>step</th><th>events</th><th>people</th><th>of gate</th></tr></thead>
+    <table><thead><tr><th>step</th><th>events</th><th>people</th><th>${baseLabel}</th></tr></thead>
     <tbody>
-      <tr><td class="k">Tapped THE DAILY (gate seen)</td><td>${gateN}</td><td>${+gate.sids || 0}</td><td>—</td></tr>
-      <tr><td class="k">Entered the draft (game_start)</td><td>${startN}</td><td>${+start.sids || 0}</td><td class="big">${pct(startN, gateN)}%</td></tr>
-      <tr><td class="k">Finished the season</td><td>${doneN}</td><td>${+done.sids || 0}</td><td>${pct(doneN, gateN)}%</td></tr>
-      <tr><td class="k">Shared the daily</td><td>${shareTotal}</td><td>—</td><td>${pct(shareTotal, gateN)}%</td></tr>
+      <tr><td class="k">Tapped THE DAILY (gate seen)</td><td>${gateN}</td><td>${+gate.sids || 0}</td><td>${haveGate ? "100%" : "—"}</td></tr>
+      <tr><td class="k">Entered the draft (game_start)</td><td>${startN}</td><td>${+start.sids || 0}</td><td class="big">${pct(startN, baseN)}%</td></tr>
+      <tr><td class="k">Finished the season</td><td>${doneN}</td><td>${+done.sids || 0}</td><td>${pct(doneN, baseN)}%</td></tr>
+      <tr><td class="k">Tapped share (intent)</td><td>${intentTotal}</td><td>—</td><td>${pct(intentTotal, baseN)}%</td></tr>
+      <tr><td class="k">Shared the daily</td><td>${shareTotal}</td><td>—</td><td>${pct(shareTotal, baseN)}%</td></tr>
     </tbody></table>
-    <p class="muted">First attempts vs practice reruns among draft entries: <b>${firstStarts}</b> first · <b>${practiceStarts}</b> practice. Gate-to-draft drop-off = ${pct(Math.max(0, gateN - startN), gateN)}% leave on the instructions screen.</p>
-    ${gateN === 0 ? '<p class="warn">No daily_gate_view events in range. If this stays zero after deploy, the daily button itself is not being found or tapped — check placement, not tracking.</p>' : ""}
+    <p class="muted">Among draft entries: <b>${firstStarts}</b> first attempts · <b>${practiceStarts}</b> practice reruns. Finish rate ${pct(doneN, startN)}% of drafts started.</p>
+    ${haveGate
+      ? `<p class="muted">Gate-to-draft drop-off: <b>${pct(Math.max(0, gateN - startN), gateN)}%</b> leave on the instructions screen.</p>`
+      : '<p class="muted">Gate views (daily_gate_view) began collecting at the v27 deploy, so the top step has no back-history yet and percentages anchor to draft entries for now. Give it a day, then gate-to-draft drop-off appears here.</p>'}
+    <p class="muted">The intent step (share_click) began collecting at the v28 deploy; completed-share history predates it, so intent can read lower than shares until it accrues.</p>
     <p class="muted">Daily shares by entry path:</p>
-    ${(dailyShareRows || []).length ? (dailyShareRows).map((r) => bar(esc(r.variant), +r.c || 0, Math.max.apply(null, dailyShareRows.map((x) => +x.c || 0)))).join("") : muted("no daily shares in range")}`, "wide"));
+    ${sharePaths.length ? sharePaths.map((r) => bar(esc(r.path), r.c, shareMax)).join("") : muted("no daily shares in range")}`, "wide"));
   }
 
   // ---- base-mode totals, split daily vs standalone ----
@@ -405,7 +432,7 @@ export async function onRequest(context) {
     </div>
     ${dateFilters(url, scope)}${migrationWarning}${queryWarning}`;
 
-  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.6">build v27 · daily-analytics · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
+  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.6">build v27.1 · daily-funnel-fix · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
   return html(page("TRUE 82 · analytics", header + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 

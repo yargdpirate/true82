@@ -404,28 +404,38 @@
       };
     } catch (e) { return null; }
   }
-  // res: { wins, net, five: ["G '16 Curry", ...], cap: number|null } — five
-  // lines are prebuilt by app.js with its own surname logic so flames stay
-  // consistent. FORMAT LAW: this is the house shareText format byte-for-byte
-  // (separators, blank lines, emoji promotion, the "|  Net" double space and
-  // the en-dash on an undefeated record) with exactly two lines swapped: the
-  // header carries the board identity instead of a mode label, and the footer
-  // carries the beat link instead of a bare domain. If shareText's format ever
-  // changes, change this in the same commit.
+  // FORMAT LAW v2 (2026-07-19, owner-locked; full spec lives with the share
+  // helpers in app.js):
+  //   TRUE 82 #N
+  //   {emoji }REC | {comp}
+  //   Top X% of drafters        <- res.pct == null omits the line
+  //   (blank) five (blank) beat link
+  // res: { wins, net, five, emoji, comp, pct } — emoji/comp/pct are prebuilt
+  // by app.js (HISTORY_COMPS and the emoji bands live there; this file loads
+  // first and never reaches forward). Five lines arrive as "'16 Curry"; a
+  // pre-v2 official stored "G '16 Curry", so the leading slot token is
+  // stripped here and history shares in the new shape. The en-dash on an
+  // undefeated record survives from v1; net leaves the text but still rides
+  // the beat link. If app.js's shareText shape ever changes, change this in
+  // the same commit.
   function shareTextDaily(board, res) {
-    var wins = res.wins, losses = GAMES - wins, undef = wins >= GAMES;
-    var head = (undef ? "\uD83C\uDFC6" : "\uD83C\uDFC0") + " TRUE 82 Daily #" + board.num + " \u00B7 " + board.name;
-    var line2 = (res.cap != null)
-      ? wins + "-" + losses + " | $" + res.cap + "M Cap Spc | Net " + signedNet(res.net)
-      : (undef ? "\uD83C\uDFC6" : "\uD83D\uDCCA") + " " + wins + (undef ? "\u2013" : "-") + losses + " |  Net " + signedNet(res.net);
-    var five = (res.five || []).join("\n");
+    var wins = res.wins, undef = wins >= GAMES;
+    var rec = wins + (undef ? "\u2013" : "-") + (GAMES - wins);
+    var lines = [
+      "TRUE 82 #" + board.num,
+      (res.emoji ? res.emoji + " " : "") + rec + (res.comp ? " | " + res.comp : "")
+    ];
+    if (res.pct != null) lines.push("Top " + res.pct + "% of drafters");
+    var five = (res.five || []).map(function (s) {
+      return String(s).replace(/^[GFC]\s+(?=')/, "");
+    }).join("\n");
     var tail = "Beat my five: " + beatLink(board.key, wins, res.net);
-    return head + "\n" + line2 + "\n\n" + five + "\n\n" + tail;
+    return lines.join("\n") + "\n\n" + five + "\n\n" + tail;
   }
 
   /* ---------- local record: official run + streak ----------
      Storage shape (key t82_daily1): {
-       official: { [dayKey]: { num, wins, net, five, chId, nonce, hot } },
+       official: { [dayKey]: { num, wins, net, five, chId, nonce, hot, cap, pct } },
        streak: { count, lastKey }
      }
      Kept tiny: only the last 14 day-entries survive a write (pruned oldest-
@@ -473,7 +483,10 @@
       num: num, wins: res.wins, net: Math.round(res.net * 10) / 10,
       five: (res.five || []).slice(0, 5), chId: res.chId || null,
       nonce: nonce || "", hot: res.hot ? 1 : 0,
-      cap: (res.cap == null ? null : res.cap)
+      cap: (res.cap == null ? null : res.cap),
+      // v28: /api/percentile's answer, written by the official run's own
+      // nonce-matched amend so the menu-tile share carries line 3 later.
+      pct: (res.pct == null ? null : res.pct)
     };
     if (!cur) {                                            // streak advances once per day
       var prevKey = dayKey(keyToNoon(key).getTime() - 86400000);

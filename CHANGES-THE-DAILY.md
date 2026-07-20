@@ -675,3 +675,18 @@ was not tracked at all.
   (daily:, daily-practice:, daily-menu:, daily-link:); the variant column was
   stored but never queried. The new cards read it.
 - No client behavior change; cache key bump only so the new event ships.
+
+## V27.1 (2026-07-19) — daily funnel math + share grouping
+Two fixes to the v27 daily funnel card after first live data:
+- Percentages anchored to daily_gate_view, which only began collecting at the
+  v27 deploy, so every "of gate" % read 0 against days of backfilled
+  game_start history. The card now anchors % to game_start (the first step
+  with full history) and labels the column "of draft" until gate views accrue
+  a day of history, at which point it flips back to "of gate" and lights up
+  the gate-to-draft drop-off. The false "no gate views, check placement"
+  warning is replaced with an explanatory note. Added an explicit finish-rate
+  (% of drafts started) line: the headline conversion number.
+- Daily shares were split per day number (daily:5, daily:7, daily-menu:6...).
+  They now fold to entry PATH (daily, daily-menu, daily-link), which is what
+  the card promised: shares grouped by how, not which day.
+- Build stamp v27.1.

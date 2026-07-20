@@ -2460,33 +2460,31 @@ body.rules-open { overflow: hidden; }
 #app .mp-rules-btn:focus-visible { outline: 2px solid rgba(255, 214, 131, 0.95); outline-offset: 3px; }
 
 /* ---------- the bank ---------- */
+/* v29 SCOREBOARD (owner-directed; supersedes the v17-v22 bronze plaque).
+   Flat charcoal, thin amber outline in the price-badge family, no gradient,
+   no gloss, no glow. Desktop: BANK / balance / segmented meter in a column.
+   The meter is ONE proportional fill (#bankFill, width = budget/meterMax)
+   under a notch overlay, so uneven balances render truthfully; notches are
+   painted in the box background color. States: .bank-mid soft orange,
+   .bank-low whistle red (slots-aware, set in tickBank), .bank-zero depleted.
+   bank-down / bank-up flash the amount + fill; no box scale, no casino. */
 .mp-bank {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   flex: 0 0 auto;
   min-width: 210px;
   width: 100%;
-  padding: 10px 18px 11px;
+  padding: 8px 16px 9px;
   text-align: center;
-  border-radius: 14px;
-  border: 2px solid rgba(255, 181, 46, 0.72);
-  background: radial-gradient(circle at 50% 30%, rgba(255, 196, 74, 0.22), rgba(28, 18, 6, 0.96) 58%), var(--ink);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.46) inset,
-    0 0 20px rgba(255, 181, 46, 0.18),
-    0 10px 18px -12px rgba(0, 0, 0, 0.78);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 181, 46, 0.55);
+  background: var(--tunnel);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.22);
   position: relative;
   overflow: hidden;
-}
-.mp-bank::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0) 38%);
-  pointer-events: none;
 }
 .mpb-lab {
   position: relative;
@@ -2494,7 +2492,7 @@ body.rules-open { overflow: hidden; }
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.28em;
-  color: #FFE7B6;
+  color: rgba(255, 181, 46, 0.78);
 }
 .mpb-amt {
   position: relative;
@@ -2502,30 +2500,64 @@ body.rules-open { overflow: hidden; }
   font-family: var(--disp);
   font-weight: 800;
   font-style: normal;
-  font-size: clamp(34px, 5vw, 44px);
+  font-size: clamp(28px, 4vw, 36px);
   line-height: 0.9;
   letter-spacing: 0.01em;
-  color: #FFD98A;
+  color: var(--amber);
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 16px rgba(255, 181, 46, 0.30), 0 2px 0 rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
   transition: color 0.15s ease, transform 0.15s ease;
 }
+.mpb-meter {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 8px;
+  margin-top: 2px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 181, 46, 0.35);
+  background: rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+.mpb-fill {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  background: var(--amber);
+  border-radius: 2px;
+  transition: width 0.3s ease, background-color 0.18s ease;
+}
+.mpb-meter::after {
+  content: "";
+  position: absolute;
+  inset: -1px 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--tunnel) calc(10% - 2px) 10%);
+  pointer-events: none;
+}
+.mpb-delta {
+  position: absolute;
+  top: 5px;
+  right: 9px;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  pointer-events: none;
+}
+.mpb-delta.show { opacity: 1; transform: none; }
+.mpb-delta.neg { color: #FF8A77; }
+.mpb-delta.pos { color: var(--ok); }
+.mp-bank.bank-mid .mpb-amt { color: #FFA043; }
+.mp-bank.bank-mid .mpb-fill { background: #FFA043; }
+.mp-bank.bank-zero .mpb-amt { color: var(--whistle); opacity: 0.85; }
 .cap-mode-panel .mp-left { opacity: 0.92; }
 .cap-mode-panel .mp-rules-btn { transform: none; transform-origin: right center; justify-self: end; }
-.mp-bank.bank-down { animation: bankPulseDown 0.42s ease; }
-.mp-bank.bank-up { animation: bankPulseUp 0.42s ease; }
-.mp-bank.bank-down .mpb-amt { color: #FF8A77; transform: scale(1.08); }
-.mp-bank.bank-up .mpb-amt { color: #7AE08D; transform: scale(1.08); }
-@keyframes bankPulseDown {
-  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
-  50%  { transform: scale(1.03); box-shadow: 0 0 26px rgba(255,138,119,0.28), 0 10px 18px -12px rgba(0,0,0,0.78); }
-  100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
-}
-@keyframes bankPulseUp {
-  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
-  50%  { transform: scale(1.03); box-shadow: 0 0 26px rgba(122,224,141,0.30), 0 10px 18px -12px rgba(0,0,0,0.78); }
-  100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,181,46,0.18), 0 10px 18px -12px rgba(0,0,0,0.78); }
-}
+.mp-bank.bank-down .mpb-amt { color: #FF8A77; transform: scale(1.05); }
+.mp-bank.bank-down .mpb-fill { background: #FF8A77; }
+.mp-bank.bank-up .mpb-amt { color: #7AE08D; transform: scale(1.05); }
+.mp-bank.bank-up .mpb-fill { background: #7AE08D; }
 @media (max-width: 640px) {
   #app .cap-mode-panel {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2567,25 +2599,43 @@ body.rules-open { overflow: hidden; }
     grid-area: bank;
     width: 100%;
     min-width: 0;
-    min-height: 92px;
-    padding: 12px 16px 14px;
-    border-width: 3px;
-    border-radius: 16px;
-    background: radial-gradient(circle at 50% 24%, rgba(255, 216, 122, 0.34), rgba(31, 16, 3, 0.98) 58%), var(--ink);
-    box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.46) inset,
-      0 0 28px rgba(255, 181, 46, 0.22),
-      0 16px 22px -16px rgba(0, 0, 0, 0.82);
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 7px 12px 8px;
+    border-width: 1px;
+    border-radius: 10px;
+    background: var(--tunnel);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.22);
   }
   #app .cap-mode-panel .mpb-lab {
-    font-size: 10px;
-    letter-spacing: 0.34em;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    padding: 3px 7px 4px;
+    border: 1px solid rgba(255, 181, 46, 0.45);
+    border-radius: 6px;
+    flex: 0 0 auto;
   }
   #app .cap-mode-panel .mpb-amt {
-    font-size: clamp(52px, 13vw, 68px);
-    line-height: 0.86;
-    text-shadow: 0 0 18px rgba(255, 181, 46, 0.34), 0 3px 0 rgba(0, 0, 0, 0.58);
+    font-size: clamp(26px, 7.6vw, 32px);
+    line-height: 0.9;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+    flex: 0 0 auto;
   }
+  #app .cap-mode-panel .mpb-meter {
+    flex: 1 1 auto;
+    min-width: 56px;
+    width: auto;
+    margin-top: 0;
+    align-self: center;
+  }
+  /* mobile meter: five fat segments, not ten slivers */
+  #app .cap-mode-panel .mpb-meter::after {
+    background: repeating-linear-gradient(90deg, transparent 0 calc(20% - 2px), var(--tunnel) calc(20% - 2px) 20%);
+  }
+  #app .cap-mode-panel .mpb-delta { top: 2px; right: 7px; font-size: 10px; }
 }
 @media (max-width: 420px) {
   #app .cap-mode-panel .mp-rules-btn {
@@ -2602,12 +2652,10 @@ body.rules-open { overflow: hidden; }
   #app .cap-mode-panel .mp-rules-btn .mp-rules-main {
     font-size: 12px;
   }
-  #app .cap-mode-panel .mp-bank {
-    min-height: 88px;
-  }
   #app .cap-mode-panel .mpb-amt {
-    font-size: clamp(48px, 12vw, 62px);
+    font-size: clamp(24px, 8vw, 28px);
   }
+  #app .cap-mode-panel .mp-bank { gap: 8px; padding: 6px 10px 7px; }
 }
 @media (max-width: 349px) {
   #app .cap-mode-panel {
@@ -2774,6 +2822,8 @@ body.gating .gate-back {
 @media (prefers-reduced-motion: reduce) {
   .pool-cue { animation: none; }
   .mpb-amt { transition: none; }
+  .mpb-fill { transition: none; }
+  .mpb-delta { transition: opacity 0.12s ease; transform: none; }
 }
 
 /* ============ GATE DRAG CUE (2026-07-18, v18) ============
@@ -2810,9 +2860,11 @@ body.gating .gate-back {
    action, and the low-funds warning lives here on the plaque, going whistle
    when the balance nears the $1M-per-open-slot floor. tickBank's red/green
    pulse classes land on .mp-bank as before. */
-.mp-bank.bank-low .mpb-amt { color: var(--whistle); text-shadow: 0 0 16px rgba(224, 82, 60, 0.35); }
-.mp-bank.bank-low .mpb-lab { color: var(--whistle); }
+.mp-bank.bank-low .mpb-amt { color: var(--whistle); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.mp-bank.bank-low .mpb-lab { color: var(--whistle); border-color: rgba(224, 82, 60, 0.5); }
 .mp-bank.bank-low { border-color: rgba(224, 82, 60, 0.55); }
+.mp-bank.bank-low .mpb-fill { background: var(--whistle); }
+.mp-bank.bank-low .mpb-meter { border-color: rgba(224, 82, 60, 0.4); }
 
 /* ============ MOBILE VERTICAL DIET (2026-07-18, v21) ============
    Small screens were losing the entire pool below the fold: the bank plaque
@@ -2823,17 +2875,9 @@ body.gating .gate-back {
    label left of the number, roughly half the height. Nothing here touches
    desktop. */
 @media (max-width: 640px) {
-  /* 1. the bank plaque: same object, half the height */
-  #app .cap-mode-panel .mp-bank {
-    flex-direction: row; align-items: center; justify-content: center;
-    gap: 12px; min-height: 0; padding: 8px 16px 9px;
-    border-width: 2px; border-radius: 12px;
-  }
-  #app .cap-mode-panel .mpb-lab { font-size: 9px; letter-spacing: 0.26em; transform: none; }
-  #app .cap-mode-panel .mpb-amt {
-    font-size: clamp(30px, 8.5vw, 38px); line-height: 0.9;
-    text-shadow: 0 0 14px rgba(255, 181, 46, 0.3), 0 2px 0 rgba(0, 0, 0, 0.5);
-  }
+  /* 1. (v29) the bank rules that lived here moved into the main 640px
+     block above: one mobile truth for the scoreboard, no stacked
+     generations. Chrome + ticket rules below are untouched. */
 
   /* 2. panel chrome */
   #app .cap-mode-panel { gap: 8px 10px; }
@@ -2938,3 +2982,16 @@ body.gating .gate-back {
   background: none; padding: 0; z-index: 3;
   text-shadow: 0 0 6px var(--ink), 0 0 3px var(--ink), 0 0 2px var(--ink);
 }
+
+/* V28 — practice back on the played tile + Basketball-Reference outbound
+   (2026-07-19). .pr-bref: the player's NAME is the link — a dotted amber
+   underline and a quiet corner arrow are the whole affordance; no buttons,
+   no icon rows, zero clutter. .bref-credit: one mono whisper under the five.
+   The tile's practice button reuses the existing .dt-act-ghost skin. */
+.pr-bref { color: inherit; text-decoration: underline dotted; text-decoration-color: rgba(230,179,61,0.55); text-underline-offset: 3px; }
+.pr-bref::after { content: "\2197"; font-size: 0.68em; opacity: 0.5; margin-left: 0.3em; }
+@media (hover: hover) { .pr-bref:hover { text-decoration-color: var(--amber); color: var(--amber); } }
+.pr-bref:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 2px; }
+.bref-credit { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; color: var(--chalk-dim); margin: 10px 2px 0; }
+.bref-credit a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+@media (hover: hover) { .bref-credit a:hover { color: var(--amber); } }
