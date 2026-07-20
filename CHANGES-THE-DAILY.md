@@ -638,3 +638,55 @@ each) and the daily schedule was rebuilt on the numbers.
   sort auto-fill missing years but never clobber hand-picked ones;
   switching back to Min/A-Z restores engine-value defaults (an explicit
   sort click does reset hand-picks, by design).
+
+## V26 (2026-07-19) — Wilt to 70, tight bank, one-line daily head, GOATs
+- Prime Wilt Core corrected to 70 wins, filling the ladder's gap between
+  Lob City (71) and the '72 Lakers (69). Twenty pins; same-win tier
+  grouping stays for any future ties.
+- The bank plaque reads "$50M" tight (no thin space); the lighter M stays.
+  Price boxes and skip chips keep the spaced treatment.
+- Daily results open on ONE prominent gold line: THE DAILY #8 . OFFICIAL
+  RUN . LOCKED (big dots, centered, display caps). Practice reads
+  PRACTICE RUN . OFFICIAL 66-16. The two-line eyebrow+stamp stack and the
+  mode name are gone from the header.
+- 82-0 flavor: "GREATEST OF ALL GOATS" replaces the comp line; the goat
+  fireworks divs on both the board and the climb are verified intact.
+- The 82-0 summit label lost its ink backing and dropped below the
+  marker's layer: no more black box over an undefeated run's glow ring; an
+  ink text-halo keeps it readable across the rail.
+- Harness: the skip-tick test is refund-aware now (a skip that procs the
+  $1M refund legitimately snaps instead of ticking); a latent seed-
+  dependent flake since v12, now closed. Walk at 140, three clean runs.
+
+## V27 (2026-07-19) — daily analytics funnel
+The dashboard could not see the daily: a daily run inherits its challenge's
+base mode (classic/pro/cap), so every daily game was tallied inside those
+mode totals with no way to split it out, and the instructions-screen step
+was not tracked at all.
+- New event daily_gate_view fires when the daily instructions gate opens
+  (the button-tap step), carrying the base mode and the entry variant. Added
+  to the event.js allowlist.
+- /avocado gains two cards. "THE DAILY · funnel": gate seen -> draft entered
+  -> season finished -> shared, with per-step drop-off, people counts, and a
+  first-attempt vs practice-rerun split. "Games initiated · daily vs
+  standalone": splits each base-mode total into standalone play vs daily, so
+  "671 Presti" resolves into real standalone volume vs daily volume.
+- All four daily entry paths already carried distinct variant tags
+  (daily:, daily-practice:, daily-menu:, daily-link:); the variant column was
+  stored but never queried. The new cards read it.
+- No client behavior change; cache key bump only so the new event ships.
+
+## V27.1 (2026-07-19) — daily funnel math + share grouping
+Two fixes to the v27 daily funnel card after first live data:
+- Percentages anchored to daily_gate_view, which only began collecting at the
+  v27 deploy, so every "of gate" % read 0 against days of backfilled
+  game_start history. The card now anchors % to game_start (the first step
+  with full history) and labels the column "of draft" until gate views accrue
+  a day of history, at which point it flips back to "of gate" and lights up
+  the gate-to-draft drop-off. The false "no gate views, check placement"
+  warning is replaced with an explanatory note. Added an explicit finish-rate
+  (% of drafts started) line: the headline conversion number.
+- Daily shares were split per day number (daily:5, daily:7, daily-menu:6...).
+  They now fold to entry PATH (daily, daily-menu, daily-link), which is what
+  the card promised: shares grouped by how, not which day.
+- Build stamp v27.1.

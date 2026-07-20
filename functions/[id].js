@@ -45,6 +45,18 @@ async function hmacHex(secret, msg) {
 const MODE_LABEL = { classic: "Classic", pro: "Pro", cap: "Presti" };
 const SLUG_RE = /^[A-Z0-9][A-Za-z0-9_-]{4}$/;
 
+// v30: the verified name->slug map, fetched from our own static assets and
+// cached for the isolate's lifetime. Absence fails soft to search URLs.
+let BBMAP_CACHE;
+async function loadBbrefMap(context) {
+  if (BBMAP_CACHE !== undefined) return BBMAP_CACHE;
+  try {
+    const res = await context.env.ASSETS.fetch(new URL("/bbref-map.json", context.request.url));
+    BBMAP_CACHE = res && res.ok ? await res.json() : null;
+  } catch (e) { BBMAP_CACHE = null; }
+  return BBMAP_CACHE;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -192,7 +204,21 @@ function renderEdition(row, origin) {
   const canonical = `${origin}/${encodeURIComponent(row.id)}`;
   const playUrl = `/?ref=${encodeURIComponent(row.id)}`;
   const date = new Date(Number(row.created_ts) || Date.now()).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
-  const roster = players.map((p) => `<li><span>${esc(p.slot)} · ${esc(p.yr)}</span><b>${esc(p.name)}</b><em>${esc(p.v)} value</em></li>`).join("");
+  // SPORTSREF LAW (v30): the shared edition is a referral surface too.
+  // Names resolve through bbref-map.json (same file the client uses, read
+  // via ASSETS and cached per isolate) to VERIFIED direct player pages;
+  // anything unverified falls back to the search URL. noopener, never
+  // noreferrer — the page's referrer-policy hands Sports Reference a clean
+  // true82.net origin. If the client resolver's law changes, change this in
+  // the same commit.
+  const bbmap = await loadBbrefMap(context);
+  const bbHref = (name) => {
+    const slug = bbmap && bbmap.p && bbmap.p[name];
+    return slug
+      ? `https://www.basketball-reference.com/players/${slug[0]}/${slug}.html`
+      : `https://www.basketball-reference.com/search/?search=${encodeURIComponent(name)}`;
+  };
+  const roster = players.map((p) => `<li><span>${esc(p.slot)} · ${esc(p.yr)}</span><b><a class="bref" href="${bbHref(p.name)}" target="_blank" rel="noopener">${esc(p.name)}</a></b><em>${esc(p.v)} value</em></li>`).join("");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}"><meta name="robots" content="noindex,nofollow">
@@ -220,7 +246,7 @@ function unavailablePage(head, status) {
 }
 
 function shareCss() {
-  return `:root{color-scheme:light;--ink:#18130e;--paper:#f1e6cd;--amber:#f5ad24}*{box-sizing:border-box}body{margin:0;background:#11151a;color:var(--ink);font-family:Georgia,"Times New Roman",serif;padding:24px 12px}.sheet{width:min(720px,100%);margin:auto;background:radial-gradient(rgba(24,19,14,.055) 1px,transparent 1.2px) 0 0/5px 5px,linear-gradient(#f7efdc,var(--paper));padding:22px clamp(18px,5vw,44px) 28px;box-shadow:0 30px 80px #000b;border:1px solid #3d3328}.sheet header{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px;font:600 10px ui-monospace,monospace;letter-spacing:.09em}.sheet header h1{font:700 clamp(24px,6vw,44px) Georgia,serif;letter-spacing:-.035em;text-align:center;margin:0;white-space:nowrap}.sheet header div:last-child{text-align:right}.rule{border-top:4px double var(--ink);margin:7px 0}.edition,.kicker,.byline,footer{font:600 10px ui-monospace,monospace;letter-spacing:.16em;text-transform:uppercase}.edition{text-align:center;margin:8px 0 18px}.hero{display:grid;grid-template-columns:minmax(150px,.7fr) 1.7fr;gap:24px;align-items:center;border-bottom:2px solid var(--ink);padding-bottom:18px}.record{font-size:clamp(46px,12vw,76px);font-weight:700;line-height:.9;letter-spacing:-.06em}.hero h2{font-size:clamp(32px,7vw,58px);line-height:.91;letter-spacing:-.045em;margin:0}.byline{border-bottom:1px solid #665b4d;padding-bottom:6px;margin-top:18px}article>p:last-child{font-size:clamp(18px,3vw,23px);line-height:1.52;text-align:justify}article>p:last-child:first-letter{float:left;font-size:58px;line-height:.75;padding:8px 7px 0 0;font-weight:700}.roster{border-top:3px double var(--ink);margin-top:22px;padding-top:10px}.roster h3{font-size:23px;margin:0 0 8px}.roster ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}.roster li{display:grid;grid-template-columns:64px 1fr auto;gap:7px;border-bottom:1px dotted #756a5b;padding:5px 0;align-items:baseline}.roster li span,.roster li em,.net{font:11px ui-monospace,monospace}.roster li em{font-style:normal;color:#51483e}.net{text-align:right}.cta{display:block;margin:24px 0 14px;background:var(--amber);color:#15110d;text-decoration:none;text-align:center;padding:16px 14px;font:800 19px system-ui,sans-serif;letter-spacing:.04em;border:2px solid #15110d;box-shadow:0 5px 0 #15110d;transform:translateY(-2px)}.cta:active{box-shadow:0 1px 0 #15110d;transform:translateY(2px)}footer{text-align:center}.missing{text-align:center}.missing h2{font-size:38px;margin:32px 0 10px}@media(max-width:560px){body{padding:8px}.sheet{padding:16px 14px 22px}.sheet header{grid-template-columns:1fr}.sheet header h1{grid-row:1;text-align:left}.sheet header div:last-child{text-align:left}.hero{grid-template-columns:1fr;gap:12px}.roster ul{grid-template-columns:1fr}.roster li{grid-template-columns:58px 1fr auto}}`;
+  return `:root{color-scheme:light;--ink:#18130e;--paper:#f1e6cd;--amber:#f5ad24}*{box-sizing:border-box}body{margin:0;background:#11151a;color:var(--ink);font-family:Georgia,"Times New Roman",serif;padding:24px 12px}.sheet{width:min(720px,100%);margin:auto;background:radial-gradient(rgba(24,19,14,.055) 1px,transparent 1.2px) 0 0/5px 5px,linear-gradient(#f7efdc,var(--paper));padding:22px clamp(18px,5vw,44px) 28px;box-shadow:0 30px 80px #000b;border:1px solid #3d3328}.sheet header{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px;font:600 10px ui-monospace,monospace;letter-spacing:.09em}.sheet header h1{font:700 clamp(24px,6vw,44px) Georgia,serif;letter-spacing:-.035em;text-align:center;margin:0;white-space:nowrap}.sheet header div:last-child{text-align:right}.rule{border-top:4px double var(--ink);margin:7px 0}.edition,.kicker,.byline,footer{font:600 10px ui-monospace,monospace;letter-spacing:.16em;text-transform:uppercase}.edition{text-align:center;margin:8px 0 18px}.hero{display:grid;grid-template-columns:minmax(150px,.7fr) 1.7fr;gap:24px;align-items:center;border-bottom:2px solid var(--ink);padding-bottom:18px}.record{font-size:clamp(46px,12vw,76px);font-weight:700;line-height:.9;letter-spacing:-.06em}.hero h2{font-size:clamp(32px,7vw,58px);line-height:.91;letter-spacing:-.045em;margin:0}.byline{border-bottom:1px solid #665b4d;padding-bottom:6px;margin-top:18px}article>p:last-child{font-size:clamp(18px,3vw,23px);line-height:1.52;text-align:justify}article>p:last-child:first-letter{float:left;font-size:58px;line-height:.75;padding:8px 7px 0 0;font-weight:700}.roster{border-top:3px double var(--ink);margin-top:22px;padding-top:10px}.roster h3{font-size:23px;margin:0 0 8px}.roster ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}.roster li{display:grid;grid-template-columns:64px 1fr auto;gap:7px;border-bottom:1px dotted #756a5b;padding:5px 0;align-items:baseline}.roster li span,.roster li em,.net{font:11px ui-monospace,monospace}.roster li em{font-style:normal;color:#51483e}.net{text-align:right}.roster li a.bref{color:inherit;text-decoration:underline dotted;text-decoration-color:#75633f;text-underline-offset:2px}.cta{display:block;margin:24px 0 14px;background:var(--amber);color:#15110d;text-decoration:none;text-align:center;padding:16px 14px;font:800 19px system-ui,sans-serif;letter-spacing:.04em;border:2px solid #15110d;box-shadow:0 5px 0 #15110d;transform:translateY(-2px)}.cta:active{box-shadow:0 1px 0 #15110d;transform:translateY(2px)}footer{text-align:center}.missing{text-align:center}.missing h2{font-size:38px;margin:32px 0 10px}@media(max-width:560px){body{padding:8px}.sheet{padding:16px 14px 22px}.sheet header{grid-template-columns:1fr}.sheet header h1{grid-row:1;text-align:left}.sheet header div:last-child{text-align:left}.hero{grid-template-columns:1fr;gap:12px}.roster ul{grid-template-columns:1fr}.roster li{grid-template-columns:58px 1fr auto}}`;
 }
 function pageHeaders() {
   return new Headers({

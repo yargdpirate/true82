@@ -91,7 +91,8 @@ export async function onRequest(context) {
   const [
     winCounts, hhHits, modeMix, funnelModes, roundFunnel,
     hcAction, hcSeg, shareByU, deviceMix, referrers, donateMix,
-    sessionRows, corrRows, newspaperRows
+    sessionRows, corrRows, newspaperRows,
+    dailyFunnelRows, dailyShareRows, dailyByBaseRows
   ] = await Promise.all([
     q(`SELECT mode, wins, COUNT(*) c, SUM(COALESCE(undefeated,0)) u
        FROM events WHERE ${W} AND name='game_complete' AND mode IN ${modesSql}
@@ -121,7 +122,26 @@ export async function onRequest(context) {
     q(corrSql, B),
     q(`SELECT name, COALESCE(variant,'?') variant, COUNT(*) c FROM events WHERE ${W}
        AND name IN ('recap_presented','recap_unwrap','recap_full_read','recap_action')
-       AND mode IN ${modesSql} GROUP BY name,variant`, B)
+       AND mode IN ${modesSql} GROUP BY name,variant`, B),
+    // THE DAILY funnel. The daily has no mode of its own (it inherits the
+    // challenge base), so every daily event is identified by its variant
+    // prefix. These pull the daily back out of the base-mode totals.
+    q(`SELECT name,
+         COUNT(*) c,
+         COUNT(DISTINCT sid) sids,
+         SUM(CASE WHEN variant LIKE 'daily-practice:%' THEN 1 ELSE 0 END) practice
+       FROM events WHERE ${W}
+         AND name IN ('daily_gate_view','game_start','game_complete')
+         AND variant LIKE 'daily%'
+       GROUP BY name`, B),
+    q(`SELECT name, COALESCE(variant,'?') variant, COUNT(*) c, COUNT(DISTINCT sid) sids
+       FROM events WHERE ${W} AND name IN ('share','share_click') AND variant LIKE 'daily%'
+       GROUP BY name, variant ORDER BY c DESC`, B),
+    q(`SELECT COALESCE(mode,'?') base,
+         SUM(CASE WHEN variant LIKE 'daily%' THEN 1 ELSE 0 END) daily,
+         SUM(CASE WHEN variant IS NULL OR variant NOT LIKE 'daily%' THEN 1 ELSE 0 END) standalone
+       FROM events WHERE ${W} AND name='game_start' AND mode IN ${modesSql}
+       GROUP BY mode`, B)
   ]);
 
   const [
@@ -256,6 +276,72 @@ export async function onRequest(context) {
     ${TRACKED_MODES.map((m) => roundBars(m, roundFunnel)).join("")}
     ${hasV2 ? "" : `<p class="warn">Apply <code>migrations/0004_analytics_v2.sql</code> to separate Start over from real page exits.</p>`}`));
 
+  // ---- THE DAILY: the funnel you actually asked about ----
+  {
+    const dfMap = {};
+    (dailyFunnelRows || []).forEach((r) => { dfMap[r.name] = r; });
+    const gate = dfMap["daily_gate_view"] || { c: 0, sids: 0 };
+    const start = dfMap["game_start"] || { c: 0, sids: 0, practice: 0 };
+    const done = dfMap["game_complete"] || { c: 0, sids: 0, practice: 0 };
+    const gateN = +gate.c || 0, startN = +start.c || 0, doneN = +done.c || 0;
+    const practiceStarts = +start.practice || 0;
+    const firstStarts = Math.max(0, startN - practiceStarts);
+    // v28 split: share_click = tapped a share button (intent); share = the OS
+    // sheet resolved or the clipboard verifiably took it (completed). Like
+    // daily_gate_view before it, share_click only begins collecting at the
+    // v28 deploy, so early intent counts will read low against share history.
+    const shareTotal = (dailyShareRows || []).filter((r) => r.name === "share")
+      .reduce((a, r) => a + (+r.c || 0), 0);
+    const intentTotal = (dailyShareRows || []).filter((r) => r.name === "share_click")
+      .reduce((a, r) => a + (+r.c || 0), 0);
+    // Percentages anchor to game_start (the first step with full history):
+    // daily_gate_view only began collecting at the v27 deploy, so basing % on
+    // it would divide days of history by minutes of it. Once gate history
+    // accrues, gateN drives the true top-of-funnel and its own % lights up.
+    const haveGate = gateN > 0;
+    const baseN = haveGate ? gateN : startN;
+    const baseLabel = haveGate ? "of gate" : "of draft";
+    // Fold the per-day variants (daily:8, daily-menu:8...) into entry paths
+    // (daily, daily-menu, daily-link) so shares group by HOW, not WHICH day.
+    const pathMap = {};
+    (dailyShareRows || []).filter((r) => r.name === "share").forEach((r) => {
+      const path = String(r.variant || "?").replace(/:\d+$/, "");
+      pathMap[path] = (pathMap[path] || 0) + (+r.c || 0);
+    });
+    const sharePaths = Object.keys(pathMap).map((k) => ({ path: k, c: pathMap[k] })).sort((a, b) => b.c - a.c);
+    const shareMax = sharePaths.reduce((m, r) => Math.max(m, r.c), 0);
+    cards.push(card("THE DAILY · funnel", `
+    <table><thead><tr><th>step</th><th>events</th><th>people</th><th>${baseLabel}</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Tapped THE DAILY (gate seen)</td><td>${gateN}</td><td>${+gate.sids || 0}</td><td>${haveGate ? "100%" : "—"}</td></tr>
+      <tr><td class="k">Entered the draft (game_start)</td><td>${startN}</td><td>${+start.sids || 0}</td><td class="big">${pct(startN, baseN)}%</td></tr>
+      <tr><td class="k">Finished the season</td><td>${doneN}</td><td>${+done.sids || 0}</td><td>${pct(doneN, baseN)}%</td></tr>
+      <tr><td class="k">Tapped share (intent)</td><td>${intentTotal}</td><td>—</td><td>${pct(intentTotal, baseN)}%</td></tr>
+      <tr><td class="k">Shared the daily</td><td>${shareTotal}</td><td>—</td><td>${pct(shareTotal, baseN)}%</td></tr>
+    </tbody></table>
+    <p class="muted">Among draft entries: <b>${firstStarts}</b> first attempts · <b>${practiceStarts}</b> practice reruns. Finish rate ${pct(doneN, startN)}% of drafts started.</p>
+    ${haveGate
+      ? `<p class="muted">Gate-to-draft drop-off: <b>${pct(Math.max(0, gateN - startN), gateN)}%</b> leave on the instructions screen.</p>`
+      : '<p class="muted">Gate views (daily_gate_view) began collecting at the v27 deploy, so the top step has no back-history yet and percentages anchor to draft entries for now. Give it a day, then gate-to-draft drop-off appears here.</p>'}
+    <p class="muted">The intent step (share_click) began collecting at the v28 deploy; completed-share history predates it, so intent can read lower than shares until it accrues.</p>
+    <p class="muted">Daily shares by entry path:</p>
+    ${sharePaths.length ? sharePaths.map((r) => bar(esc(r.path), r.c, shareMax)).join("") : muted("no daily shares in range")}`, "wide"));
+  }
+
+  // ---- base-mode totals, split daily vs standalone ----
+  {
+    const rowsByBase = {};
+    (dailyByBaseRows || []).forEach((r) => { rowsByBase[r.base] = r; });
+    cards.push(card("Games initiated · daily vs standalone", `
+    <p class="muted">Your Classic/Pro/Presti totals include daily runs (a daily inherits its challenge's base mode). This splits them.</p>
+    <table><thead><tr><th>base mode</th><th>standalone</th><th>daily</th><th>daily %</th></tr></thead>
+    <tbody>${TRACKED_MODES.map((m) => {
+      const r = rowsByBase[m] || { standalone: 0, daily: 0 };
+      const sN = +r.standalone || 0, dN = +r.daily || 0;
+      return `<tr><td class="k">${MODE_LABEL[m]}</td><td>${sN}</td><td>${dN}</td><td>${pct(dN, sN + dN)}%</td></tr>`;
+    }).join("")}</tbody></table>`));
+  }
+
   cards.push(card("Start-over bailout board", hasV2
     ? bailoutBoard(exposureRows, startOverRows)
     : `<p class="warn">Analytics v2 migration required. New events already fail soft, but team/era bailout dimensions cannot be stored until the columns exist.</p>`, "wide"));
@@ -346,7 +432,8 @@ export async function onRequest(context) {
     </div>
     ${dateFilters(url, scope)}${migrationWarning}${queryWarning}`;
 
-  return html(page("TRUE 82 · analytics", header + `<div class="grid">${cards.join("")}</div>`));
+  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.6">build v27.1 · daily-funnel-fix · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
+  return html(page("TRUE 82 · analytics", header + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 
 /* ---------- dashboard calculations ---------- */

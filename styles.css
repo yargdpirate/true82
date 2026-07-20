@@ -2995,3 +2995,10 @@ body.gating .gate-back {
 .bref-credit { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; color: var(--chalk-dim); margin: 10px 2px 0; }
 .bref-credit a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
 @media (hover: hover) { .bref-credit a:hover { color: var(--amber); } }
+
+/* V30 — verified deep links: the season text becomes that year's game-log
+   link on verified players. Same quiet dotted family as .pr-bref; no arrow
+   (one arrow per card is the budget — the action line under the five
+   explains the rest). */
+.pr-szn-link { color: inherit; text-decoration: underline dotted; text-decoration-color: rgba(230,179,61,0.4); text-underline-offset: 2px; }
+@media (hover: hover) { .pr-szn-link:hover { color: var(--amber); text-decoration-color: var(--amber); } }

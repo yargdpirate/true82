@@ -7,7 +7,7 @@ title: What is BPM in basketball?
 BPM — Box Plus/Minus — is a box-score-based estimate of a player's contribution
 per 100 possessions, relative to a league-average player. Zero is average, +5
 or better is an All-NBA-caliber season, and around -2 is replacement level.
-Basketball Reference publishes BPM back to the 1973-74 season, split into
+[Basketball Reference publishes BPM](https://www.basketball-reference.com/about/bpm2.html) back to the 1973-74 season, split into
 offensive (OBPM) and defensive (DBPM) halves.
 
 ## What BPM tries to measure
@@ -41,6 +41,6 @@ keep the floor spaced, and penalizes a backcourt or wing rotation that can't
 defend. BPM tells you how good a player was; the engine decides whether your
 five would actually work together for 82 games.
 
-BPM and its underlying data are the work of Basketball Reference / Sports
+BPM and its underlying data are the work of [Basketball Reference](https://www.basketball-reference.com/?utm_source=true82.net) / Sports
 Reference LLC. TRUE 82 is an independent fan project and claims no endorsement
 by or affiliation with Basketball Reference, Stathead, or Sports Reference LLC.

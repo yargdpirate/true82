@@ -47,7 +47,7 @@ player.
 
 ## Why does TRUE 82 use BPM?
 
-Box Plus/Minus estimates a player's per-100-possession impact relative to
+[Box Plus/Minus](https://www.basketball-reference.com/about/bpm2.html) estimates a player's per-100-possession impact relative to
 league average from the box score, which makes it comparable across eras and
 available for the whole modern record. That lets the game price a 1970s big man
 and a 2020s guard on the same scale. It's also why the player pool starts in
@@ -68,6 +68,6 @@ plays the same in a desktop browser.
 
 ## Where does the player data come from?
 
-Player and team data comes from Basketball Reference and Stathead, maintained
+Player and team data comes from [Basketball Reference](https://www.basketball-reference.com/?utm_source=true82.net) and [Stathead](https://stathead.com/?utm_source=true82.net), maintained
 by Sports Reference LLC. TRUE 82 is an independent fan project with no
 affiliation or endorsement.
