@@ -17,7 +17,7 @@
 
 var CFG = {
   SITE_NAME: "PERFECT FIVE",
-  DATA_URL: "site_data.json",
+  DATA_URL: "site_data.json?v=sc-v36",
   GAMES_IN_SEASON: 82,
   POS_THRESHOLD: 20,
   KAMAN_LO: 2004,
@@ -1504,7 +1504,7 @@ var DONATE_MSGS = [
 function resultsTopBarHtml() {
   // v24: the rotating donate jokes are retired in favor of a straight line to
   // the mailbox. DONATE_MSGS/DONATE_URL stay defined for the /avocado history.
-  var msg = "Feature requests? Bugs? Email me.";
+  var msg = "Feature requests? Bugs?";
   return '<div class="results-topbar">' +
     startOverBtnHtml() +
     '<a class="donate-btn" id="donateBtn" href="mailto:true82mailbox@gmail.com" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
@@ -2255,28 +2255,37 @@ function twoWayHtml(e) {
 // META.legends: values were recut (Hamptons 5 to 78, the Celts Big 3 split
 // into OG/'08) and three old pins retired. One team per win value; 70 is a
 // deliberate gap. Feeds both the GOAT Climb pins and the results comp line.
+// bbT/bbP (v34): every rung links out — real teams to their season page,
+// composites to the owner-delegated best-year pick (noted inline), player
+// clones to the player. Feeds the climb tags and the results comp line;
+// the SHARE comp stays plain text by law.
 var HISTORY_COMPS = [
-  { label: "OG Death Lineup", wins: 81 },
-  { label: "5 Jokics", wins: 80 },
-  { label: "5 LeBrons", wins: 79 },
-  { label: "Hamptons 5", wins: 78 },
-  { label: "Shaqobe Core", wins: 77 },
-  { label: "OG Celts Big 3", wins: 76 },
-  { label: "\u201908 Celts Big 3", wins: 75 },
-  { label: "3-peat Bulls Core", wins: 74 },
-  { label: "\u201916 Warriors", wins: 73 },
-  { label: "\u201996 Bulls", wins: 72 },
-  { label: "Lob City Lineup", wins: 71 },
-  { label: "Prime Wilt Core", wins: 70 },
-  { label: "\u201972 Lakers", wins: 69 },
-  { label: "Fo' Fo' Fo' Co'", wins: 68 },
-  { label: "\u201986 Celtics", wins: 67 },
-  { label: "Heatles", wins: 66 },
-  { label: "\u201916 Spurs", wins: 65 },
-  { label: "The Last Shot Jazz", wins: 64 },
-  { label: "Bad Boy Pistons", wins: 63 },
-  { label: "Beautiful Game Spurs", wins: 62 }
+  { label: "OG Death Lineup", wins: 81, bbT: "GSW/2016" },
+  { label: "5 Jokics", wins: 80, bbP: "jokicni01" },
+  { label: "5 LeBrons", wins: 79, bbP: "jamesle01" },
+  { label: "Hamptons 5", wins: 78, bbT: "GSW/2017" },
+  { label: "Shaqobe Core", wins: 77, bbT: "LAL/2000" },
+  { label: "OG Celts Big 3", wins: 76, bbT: "BOS/1986" },
+  { label: "\u201908 Celts Big 3", wins: 75, bbT: "BOS/2008" },
+  { label: "3-peat Bulls Core", wins: 74, bbT: "CHI/1992" },
+  { label: "\u201916 Warriors", wins: 73, bbT: "GSW/2016" },
+  { label: "\u201996 Bulls", wins: 72, bbT: "CHI/1996" },
+  { label: "Lob City Lineup", wins: 71, bbT: "LAC/2014" },
+  { label: "Prime Wilt Core", wins: 70, bbT: "PHI/1967" },
+  { label: "\u201972 Lakers", wins: 69, bbT: "LAL/1972" },
+  { label: "Fo' Fo' Fo' Co'", wins: 68, bbT: "PHI/1983" },
+  { label: "\u201986 Celtics", wins: 67, bbT: "BOS/1986" },
+  { label: "Heatles", wins: 66, bbT: "MIA/2013" },
+  { label: "\u201916 Spurs", wins: 65, bbT: "SAS/2016" },
+  { label: "The Last Shot Jazz", wins: 64, bbT: "UTA/1997" },
+  { label: "Bad Boy Pistons", wins: 63, bbT: "DET/1989" },
+  { label: "Beautiful Game Spurs", wins: 62, bbT: "SAS/2014" }
 ];
+function compEntryHref(entry, camp) {
+  if (entry.bbT) return bbrefTag("https://www.basketball-reference.com/teams/" + entry.bbT + ".html", camp);
+  if (entry.bbP) return bbrefTag("https://www.basketball-reference.com/players/" + entry.bbP.charAt(0) + "/" + entry.bbP + ".html", camp);
+  return null;
+}
 
 function climbHtml(e, winsOverride) {
   // Same-win teams share one pin and one combined tag ("5 Jokics · Prime
@@ -2284,12 +2293,20 @@ function climbHtml(e, winsOverride) {
   var legends = (function () {
     var out = [], byW = {};
     HISTORY_COMPS.forEach(function (L) {
-      if (byW[L.wins]) { byW[L.wins].label += " \u00B7 " + L.label; return; }
-      var t = { label: L.label, wins: L.wins };
+      if (byW[L.wins]) { byW[L.wins].parts.push(L); byW[L.wins].label += " \u00B7 " + L.label; return; }
+      var t = { label: L.label, wins: L.wins, parts: [L] };
       byW[L.wins] = t; out.push(t);
     });
     return out;
   })();
+  // v34: each label segment is its own outbound anchor (campaign "climb") —
+  // merged tags like "5 Jokics \u00B7 Prime Wilt Core" get two doors, not one.
+  function tagLabelHtml(t) {
+    return t.parts.map(function (L) {
+      var h = compEntryHref(L, "climb");
+      return h ? '<a class="cl-link" href="' + h + '" target="_blank" rel="noopener">' + esc(L.label) + "</a>" : esc(L.label);
+    }).join(" \u00B7 ");
+  }
   var G82 = CFG.GAMES_IN_SEASON;
   var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
   var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
@@ -2328,7 +2345,7 @@ function climbHtml(e, winsOverride) {
     var isC = i === compIdx;
     var rec = L.wins + "\u2013" + (G82 - L.wins);
     return '<span class="climb-pin' + (isC ? " comp" : "") + '" style="top:' + y + '%" title="' + esc(L.label) + " " + rec + '"></span>' +
-      '<span class="climb-tag' + (isC ? " comp" : "") + '" style="top:' + y + '%">' + esc(L.label) + ' <b>' + L.wins + "</b></span>";
+      '<span class="climb-tag' + (isC ? " comp" : "") + '" style="top:' + y + '%">' + tagLabelHtml(L) + ' <b>' + L.wins + "</b></span>";
   }).join("");
 
   // Plain straight rail, summit to floor, amber fill from the dot down to the floor. The
@@ -2519,6 +2536,7 @@ function hotHand(e) {
         '<div class="hh-actions" id="hhActions">' +
           '<button class="hh-btn presti-spin" id="hhSee">SEE YOUR TEAM</button>' +
           '<button class="hh-btn presti-spin" id="hhAgain">RUN IT BACK</button>' +
+          '<a class="hh-btn hh-bref" id="hhBref" data-bb="' + esc(G.picks[hotIdx].row[IDX.name]) + '" data-bb-gl="' + G.picks[hotIdx].row[IDX.season] + '" data-camp="hothand" href="' + bbrefSearch(G.picks[hotIdx].row[IDX.name], "hothand") + '" target="_blank" rel="noopener">HIS REAL HEATERS \u2197</a>' +
         '</div>' +
       '</div>'
     : '';
@@ -2530,6 +2548,7 @@ function hotHand(e) {
     '<div class="hh-card"><div class="goat-fw" id="hhFw" aria-hidden="true"></div>' +
       titleHtml +
       ballLeverHtml("hhLever", "hhArm", "Pull the basketball through the hoop") +
+      (clutch ? '<button class="hh-charity" id="hhCharity">I DON\u2019T WANT YOUR CHARITY</button>' : '') +
       stageHtml + '</div>';
   document.body.appendChild(ov);
   if (clutch) {
@@ -2730,6 +2749,8 @@ function hotHand(e) {
   var lever = ov.querySelector("#hhLever"), arm = ov.querySelector("#hhArm");
   var pullState = wireBallPull(lever, arm, function () {
     if (clutch) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 1 });
+    var chBtn = ov.querySelector("#hhCharity");
+    if (chBtn) chBtn.classList.add("gone");                                  // the pull committed; the spin owns the outcome
     setTimeout(function () {
       if (!clutch) {                                                       // <=80 wins: the pull just reveals the results
         ov.classList.remove("in");                                         // fade the overlay away...
@@ -2740,8 +2761,18 @@ function hotHand(e) {
     }, 640);
   });
 
+  var charityBtn = ov.querySelector("#hhCharity");
+  if (charityBtn) charityBtn.addEventListener("click", function () {
+    if (pullState.fired()) return;                                           // spin already running; too late to refuse
+    window.t82track && window.t82track("heatcheck_declined", { mode: MODE });
+    if (window.T82 && T82.declineHeat) T82.declineHeat(G);                   // "hx" — the refusal replays and verifies
+    dismiss();
+  });
   ov.querySelector("#hhSkip").addEventListener("click", function () {
-    if (clutch && !pullState.fired()) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
+    if (clutch && !pullState.fired()) {
+      window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
+      if (window.T82 && T82.declineHeat) T82.declineHeat(G);                 // v37: silent skip at 81 was ALREADY a decline; now the contract knows it
+    }
     dismiss();
   });
   var seeBtn = ov.querySelector("#hhSee");
@@ -2971,7 +3002,7 @@ function publishRecap() {
 /* ---------- SHARE FORMAT LAW v2 (2026-07-19, owner-locked) ----------
    TRUE 82 {#N | Classic Mode | Presti Mode | Pro Mode}
    {emoji }REC | {comp}
-   Top X% of drafters          <- omitted when /api/percentile has no sample
+   Top X%                      <- omitted when /api/percentile has no sample
    (blank)
    'YY Surname  x5             <- years are the flex; slot badges retired
    (blank)
@@ -3008,11 +3039,21 @@ function shareEmojiFor(wins, chBands, mode) {
 // segment is omitted (line 2 is emoji + record). HISTORY_COMPS is descending,
 // so the first hit is the highest tier and same-win tiers resolve to the
 // first team listed (the V25 comp-line law).
+// COMP ARTICLE LAW (v33): "the" is prepended unless the label starts with a
+// digit ("5 Jokics" reads bare) or already carries its own article ("The
+// Last Shot Jazz" — the old concat shipped "the The"). One helper, used by
+// the share comp AND the results climb line, so the surfaces can't drift.
+function compArticle(label) {
+  var c = label.charAt(0);
+  if (c >= "0" && c <= "9") return label;
+  if (/^the\b/i.test(label)) return label;
+  return "the " + label;
+}
 function shareCompFor(wins) {
   if (wins >= CFG.GAMES_IN_SEASON) return "Greatest of all GOATs";
   for (var i = 0; i < HISTORY_COMPS.length; i++) {
-    if (HISTORY_COMPS[i].wins === wins) return "Tied the " + HISTORY_COMPS[i].label;
-    if (HISTORY_COMPS[i].wins < wins) return "Better than the " + HISTORY_COMPS[i].label;
+    if (HISTORY_COMPS[i].wins === wins) return "Tied " + compArticle(HISTORY_COMPS[i].label);
+    if (HISTORY_COMPS[i].wins < wins) return "Better than " + compArticle(HISTORY_COMPS[i].label);
   }
   return "";
 }
@@ -3032,7 +3073,7 @@ function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
   var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE))];
-  if (typeof G.sharePct === "number") lines.push("Top " + G.sharePct + "% of drafters");
+  if (typeof G.sharePct === "number") lines.push("Top " + G.sharePct + "%");
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     var flame = "";
@@ -3766,7 +3807,9 @@ function showNewspaper(gate) {
     ticker.style.display = "none";
     art.textContent = "";
     art.appendChild(div("np-byline", "From the Tribune wire desk"));
-    var body = document.createElement("p"); body.className = "np-body ink-in"; body.textContent = G.recapArt.article;
+    var body = document.createElement("p"); body.className = "np-body ink-in";
+    body.innerHTML = bbrefLinkifyArticle(G.recapArt.article,
+      picksInSlotOrder().map(function (en) { return en.p.row[IDX.name]; }), "article");
     art.appendChild(body);
     if (G.recapSig && G.recapHead && G.recapHead.source === "api" && G.recapArt.source === "api") {
       G.npShareState(G.recapPublished ? "ready" : "preparing");
@@ -3846,8 +3889,16 @@ function loadBbrefMap() {
     .catch(function () { return null; });
   return BBREF_MAP_P;
 }
-function bbrefSearch(name) {
-  return "https://www.basketball-reference.com/search/?search=" + encodeURIComponent(name);
+// UTM CAMPAIGN LAW (v34): every Basketball-Reference link carries
+// utm_source=true82.net AND utm_campaign={surface}, so Sports Reference's
+// analytics shows SEGMENTED referral volume per product surface — the
+// referrer header proves the origin, the campaign proves which door.
+function bbrefTag(url, camp) {
+  return url + (url.indexOf("?") === -1 ? "?" : "&") +
+    "utm_source=true82.net&utm_campaign=" + (camp || "site");
+}
+function bbrefSearch(name, camp) {
+  return bbrefTag("https://www.basketball-reference.com/search/?search=" + encodeURIComponent(name), camp);
 }
 function bbrefBaseGuess(name) {
   var ascii = (name.normalize ? name.normalize("NFD") : name).replace(/[\u0300-\u036f]/g, "");
@@ -3859,38 +3910,78 @@ function bbrefBaseGuess(name) {
   if (!first || !last) return null;
   return last.slice(0, 5) + first.slice(0, 2);
 }
-function bbrefHref(name) {
+function bbrefHref(name, camp) {
   var m = BBREF_MAP;
   if (m) {
     var slug = m.p[name];
-    if (slug) return "https://www.basketball-reference.com/players/" + slug.charAt(0) + "/" + slug + ".html";
-    if (m.a && m.a.indexOf(name) !== -1) return bbrefSearch(name);
+    if (slug) return bbrefTag("https://www.basketball-reference.com/players/" + slug.charAt(0) + "/" + slug + ".html", camp);
+    if (m.a && m.a.indexOf(name) !== -1) return bbrefSearch(name, camp);
     var base = bbrefBaseGuess(name);
     if (base && m.b && m.b.indexOf(base) === -1) {
-      return "https://www.basketball-reference.com/players/" + base.charAt(0) + "/" + base + "01.html";
+      return bbrefTag("https://www.basketball-reference.com/players/" + base.charAt(0) + "/" + base + "01.html", camp);
     }
   }
-  return bbrefSearch(name);
+  return bbrefSearch(name, camp);
 }
-// Upgrade in place: career hrefs on every tagged name, and a game-log link
-// wrapped around the season text of VERIFIED players only (unverified
-// seasons stay plain text — a wrong game log is worse than none).
+// Upgrade in place: every a[data-bb] gets its verified career href (campaign
+// from data-camp); an anchor that ALSO carries data-bb-gl="{year}" (the Hot
+// Hand button) gets that season's game log when the slug is verified,
+// otherwise it keeps the search URL. Idempotent; no-ops until the map lands.
+// ARTICLE LINKIFY LAW (v34): the Tribune article gets newspaper-style
+// citations — the FIRST occurrence of each of the five's surnames becomes a
+// career link (campaign "article"). Positions are claimed on the untouched
+// escaped text and spliced from the end, so an inserted href can never be
+// re-matched by a later surname. The server twin lives in functions/[id].js;
+// change both in one commit.
+function bbrefLastName(nm) {
+  var parts = String(nm).trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  var rest = parts.slice(1);
+  while (rest.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(rest[rest.length - 1])) rest.pop();
+  return rest.join(" ");
+}
+function bbrefLinkifyArticle(article, names, camp) {
+  var text = esc(String(article || ""));
+  var claims = [];
+  for (var i = 0; i < names.length; i++) {
+    var last = bbrefLastName(names[i]);
+    if (!last) continue;
+    var re = new RegExp("\\b" + last.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
+    var from = 0, pos = -1;
+    while (from < text.length) {
+      var m = re.exec(text.slice(from));
+      if (!m) break;
+      var at = from + m.index;
+      var clash = false;
+      for (var k = 0; k < claims.length; k++) {
+        if (at < claims[k].end && at + last.length > claims[k].start) { clash = true; break; }
+      }
+      if (!clash) { pos = at; break; }
+      from = at + last.length;
+    }
+    if (pos !== -1) claims.push({ start: pos, end: pos + last.length, name: names[i], txt: last });
+  }
+  claims.sort(function (a, b) { return b.start - a.start; });
+  for (var j = 0; j < claims.length; j++) {
+    var c = claims[j];
+    text = text.slice(0, c.start) +
+      '<a class="art-bref" href="' + bbrefHref(c.name, camp) + '" target="_blank" rel="noopener">' + c.txt + "</a>" +
+      text.slice(c.end);
+  }
+  return text;
+}
 function upgradeBbrefLinks() {
   if (!BBREF_MAP) return;
-  var as = document.querySelectorAll("a.pr-bref[data-bb]");
-  for (var i = 0; i < as.length; i++) as[i].setAttribute("href", bbrefHref(as[i].getAttribute("data-bb")));
-  var szs = document.querySelectorAll("span.pr-szn[data-bb]");
-  for (var j = 0; j < szs.length; j++) {
-    var sp = szs[j], nm = sp.getAttribute("data-bb"), yr = sp.getAttribute("data-yr");
+  var as = document.querySelectorAll("a[data-bb]");
+  for (var i = 0; i < as.length; i++) {
+    var a = as[i], nm = a.getAttribute("data-bb"), camp = a.getAttribute("data-camp") || "site";
+    var gl = a.getAttribute("data-bb-gl");
     var slug = BBREF_MAP.p[nm];
-    if (!slug || !/^\d{4}$/.test(yr || "")) continue;
-    var a = document.createElement("a");
-    a.className = "pr-szn-link";
-    a.setAttribute("href", "https://www.basketball-reference.com/players/" + slug.charAt(0) + "/" + slug + "/gamelog/" + yr);
-    a.setAttribute("target", "_blank");
-    a.setAttribute("rel", "noopener");
-    while (sp.firstChild) a.appendChild(sp.firstChild);
-    sp.parentNode.replaceChild(a, sp);
+    if (gl && slug && /^\d{4}$/.test(gl)) {
+      a.setAttribute("href", bbrefTag("https://www.basketball-reference.com/players/" + slug.charAt(0) + "/" + slug + "/gamelog/" + gl, camp));
+    } else {
+      a.setAttribute("href", bbrefHref(nm, camp));
+    }
   }
 }
 function renderResults(e, keepScroll) {
@@ -3909,13 +4000,25 @@ function renderResults(e, keepScroll) {
   // rel is noopener WITHOUT noreferrer on purpose: the site's
   // strict-origin-when-cross-origin policy hands Sports Reference a clean
   // true82.net referral for every click, which is the point.
+  // v34 (owner ruling): the TEAM name links that season's team page
+  // (/teams/{CODE}/{endYear} — deterministic, live immediately, no map
+  // needed); the season game-log door is retired ("too hard to read every
+  // game log"). Multi-team season codes (TOT/2TM style) stay plain text.
+  function prTeamHtml(row, fr) {
+    var code = String(row[IDX.team] || ""), yr = row[IDX.season];
+    var linkable = /^[A-Z]{3}$/.test(code) && code !== "TOT";
+    var team = esc(titleCase(fr));
+    return '<span class="pr-yr">' + shortSeason(yr) + '</span> ' + (linkable
+      ? '<a class="pr-team" href="' + bbrefTag("https://www.basketball-reference.com/teams/" + code + "/" + yr + ".html", "results_team") + '" target="_blank" rel="noopener">' + team + "</a>"
+      : '<span>' + team + "</span>");
+  }
   var picksHtml = picksInSlotOrder().map(function (entry) {
     var p = entry.p, i = entry.i, row = p.row, name = row[IDX.name];
     return '<div class="pick-card" data-pick="' + i + '">' +
       '<div class="pick-top"><span class="pr-name"><span class="slot-badge">' + p.slot + "</span>" +
-        '<a class="pr-bref" data-bb="' + esc(name) + '" href="' + bbrefSearch(name) + '" target="_blank" rel="noopener">' + esc(name) + "</a></span>" +
+        '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></span>" +
       '<span class="pr-v"><small>V</small>' + valueOf(row).toFixed(2) + "</span></div>" +
-      '<div class="pr-sub"><span class="pr-szn" data-bb="' + esc(name) + '" data-yr="' + row[IDX.season] + '">' + shortSeason(row[IDX.season]) + " " + esc(titleCase(p.fr)) + "</span>" + chipsFor(row) + "</div>" +
+      '<div class="pr-sub">' + prTeamHtml(row, p.fr) + chipsFor(row) + "</div>" +
       '<div class="pr-sub pr-stats">' + statLine(row) + "</div></div>";
   }).join("");
 
@@ -3926,10 +4029,22 @@ function renderResults(e, keepScroll) {
       ? ledgerCreditRow("Spacing bonus", e.sumSp + " shooters \u2014 extra spacing stretches the defense past the requirement.", e.spacingBonus)
       : ledgerRow("Spacing tax", e.sumSp + " of " + SC.SPACERS_REQ + " required spacers \u2014 without shooting, the floor shrinks.", e.spacingTax, e.spacingTax > 0)) +
     (e.backDefTax > 0
-      ? ledgerRow("Backcourt defense", "Both guards rank bottom-" + (e.backDefTier === 10 ? "10" : "25") + "% among guard defenders (DBPM) \u2014 the perimeter leaks.", e.backDefTax, true)
+      ? ledgerRow("Backcourt defense", "Both guards rank bottom-" + (e.backDefTier === 20 ? "20" : "33") + "% among guard defenders (DBPM) \u2014 the perimeter leaks.", e.backDefTax, true)
       : "") +
     (e.wingDefTax > 0
-      ? ledgerRow("Wing defense", "Both forwards rank bottom-" + (e.wingDefTier === 10 ? "10" : "25") + "% among forward defenders (DBPM) \u2014 the frontcourt gets cooked.", e.wingDefTax, true)
+      ? ledgerRow("Wing defense", "Both forwards rank bottom-" + (e.wingDefTier === 20 ? "20" : "33") + "% among forward defenders (DBPM) \u2014 the frontcourt gets cooked.", e.wingDefTax, true)
+      : "") +
+    (e.rimDefTax > 0
+      ? ledgerRow("Rim protection", "None of your two forwards or center ranks top-20% among frontcourt defenders (DBPM) \u2014 bad rim defense; the paint stays open.", e.rimDefTax, true)
+      : "") +
+    (e.glassTax > 0
+      ? ledgerRow("Glass", "Your five don\u2019t rebound \u2014 era-adjusted board rate is bottom of the league; second chances all go the other way.", e.glassTax, true)
+      : "") +
+    (e.creatorTax > 0
+      ? ledgerRow("No creator", "Nobody\u2019s era-adjusted assist rate says he can run an offense \u2014 good luck beating a set defense 82 times.", e.creatorTax, true)
+      : "") +
+    (e.ageTax > 0
+      ? ledgerRow("Mileage", e.vetCount + " players past their " + SC.AGE_VET_YEAR + "th season \u2014 heavy legs; an 82-game schedule is the sixth defender.", e.ageTax, true)
       : "") +
     '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>";
 
@@ -3980,11 +4095,19 @@ function renderResults(e, keepScroll) {
   for (var ci = 0; ci < compLadder.length; ci++) {
     if (compLadder[ci].wins > e.winTally) { compAbove = compLadder[ci]; break; }
   }
-  var compTxt = e.winTally >= CFG.GAMES_IN_SEASON
-    ? "Greatest of all GOATs"
+  function compLinkHtml(prefix, entry) {
+    var h = compEntryHref(entry, "climb");
+    var lbl = compArticle(entry.label);
+    if (!h) return esc(prefix + lbl);
+    // the article word stays plain text; only the label itself is the anchor
+    var lead = lbl.slice(0, lbl.length - entry.label.length);
+    return esc(prefix + lead) + '<a class="cl-link" href="' + h + '" target="_blank" rel="noopener">' + esc(entry.label) + "</a>";
+  }
+  var compHtml = e.winTally >= CFG.GAMES_IN_SEASON
+    ? esc("Greatest of all GOATs")
     : compAbove
-      ? "Almost as good as the " + compAbove.label
-      : "Better than the " + compLadder[compLadder.length - 1].label;
+      ? compLinkHtml("Almost as good as ", compAbove)
+      : compLinkHtml("Better than ", compLadder[compLadder.length - 1]);
   var shareLabel = !daily ? "SHARE YOUR TEAM"
     : daily.isOfficial ? "SHARE THE DAILY"
     : "SHARE OFFICIAL (" + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) + ")";
@@ -3995,12 +4118,12 @@ function renderResults(e, keepScroll) {
     '<section class="board' + (daily ? " plq-frame daily-framed" : "") + '"><div class="goat-fw" id="wlFw" aria-hidden="true"></div>' +
     (daily ? dailyHeadHtml : '<p class="eyebrow">' + boardEyebrow + "</p>") +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
-      '<div class="res-comp">' + esc(compTxt) + '</div>' +
+      '<div class="res-comp">' + compHtml + '</div>' +
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml +
-      '<p class="bref-credit">Tap a name for the career, the season for that year\u2019s game log \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
+      '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
     '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
@@ -4255,6 +4378,15 @@ function renderDailyGate(board, target, variantTag) {
       '</div>' +
     '</section>';
   el("gateBack").addEventListener("click", function () { renderIntro(); });
+  var gTip = el("gateTip");
+  if (gTip) {
+    // v34: the scout door lives INSIDE the existing info tip — zero new
+    // rows, zero symmetry risk (owner constraint). Campaign "gate".
+    var scout = document.createElement("p");
+    scout.className = "gate-scout";
+    scout.innerHTML = 'Scout the era on <a href="' + bbrefTag("https://www.basketball-reference.com/", "gate") + '" target="_blank" rel="noopener">Basketball Reference</a> \u2197';
+    gTip.appendChild(scout);
+  }
   var gInfo = el("gateInfo");
   if (gInfo) gInfo.addEventListener("click", function () {
     var t = el("gateTip");
@@ -4325,7 +4457,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v32";
+var BUILD_V = "v37";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -4366,23 +4498,23 @@ function pingGames(method) {
     fetch("/api/games", { method: method }).catch(function () {});
   } catch (e) {}
 }
-// SHARE v2 line 3: fetch this run's "Top X% of drafters" once, 1.6s after the
-// game_complete beacon so our own row has had a moment to land in D1 (the
-// footer's wait, same reasoning). Daily runs amend the official record with
-// the pct (nonce-matched, so only the official run's own fetch can write it);
-// that keeps the menu tile's CHALLENGE A FRIEND share correct on later visits.
-// Fail-soft everywhere: no reply, thin sample, or a pre-v2 official simply
-// means no line 3. Note: an 81-win Presti Heat Check that boosts AFTER this
-// fires shares an 81-population pct; the HH amend path already owns that
-// record and the error is one point of flattery in the right direction.
+// SHARE v2 line 3 (v33: net-ranked). One fetch per finished run, 1.6s after
+// the game_complete beacon so our own row has landed. RANKS BY RAW ENGINE
+// NET — the Hot Hand never touches the ranking on either side: we send
+// e.net, and D1's population is e.net by construction. Daily runs send the
+// base mode too so a thin board can fall back to the all-dailies pool
+// server-side (see percentile.js). Official dailies amend the record with
+// pct (nonce-matched) so the menu tile's share carries line 3 later.
+// Fail-soft everywhere: no reply or thin sample just means no line 3.
 function scheduleSharePct(e) {
   if (MODE === "kaman") return;
-  var hot = (typeof G.hotNewNet === "number");
-  var wins = hot ? G.hotWins : e.winTally;
+  var net = Math.round(e.net * 100) / 100;        // raw engine net: never the Hot Hand numbers
   var g = G;                                      // the run this fetch belongs to
-  var qs = g.social ? "variant=daily:" + g.social.num : "mode=" + MODE;
+  var qs = g.social
+    ? "variant=daily:" + g.social.num + "&mode=" + (g.social.base || MODE)
+    : "mode=" + MODE;
   setTimeout(function () {
-    fetch("/api/percentile?wins=" + wins + "&" + qs)
+    fetch("/api/percentile?net=" + net + "&" + qs)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || typeof d.pct !== "number") return;

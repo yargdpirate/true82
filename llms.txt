@@ -15,4 +15,4 @@
 
 ## Data
 
-- [Box Plus/Minus at Basketball Reference](https://www.basketball-reference.com/about/bpm2.html): The advanced metric TRUE 82's player values are built on. Player and team history comes from Basketball Reference and Stathead (Sports Reference LLC).
+- [Box Plus/Minus at Basketball Reference](https://www.basketball-reference.com/about/bpm2.html?utm_source=true82.net&utm_campaign=llms): The advanced metric TRUE 82's player values are built on. Player and team history comes from Basketball Reference and Basketball Reference's Stathead (Sports Reference LLC).

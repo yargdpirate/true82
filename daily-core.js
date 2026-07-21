@@ -408,7 +408,7 @@
   // helpers in app.js):
   //   TRUE 82 #N
   //   {emoji }REC | {comp}
-  //   Top X% of drafters        <- res.pct == null omits the line
+  //   Top X%                    <- res.pct == null omits the line
   //   (blank) five (blank) beat link
   // res: { wins, net, five, emoji, comp, pct } — emoji/comp/pct are prebuilt
   // by app.js (HISTORY_COMPS and the emoji bands live there; this file loads
@@ -425,7 +425,7 @@
       "TRUE 82 #" + board.num,
       (res.emoji ? res.emoji + " " : "") + rec + (res.comp ? " | " + res.comp : "")
     ];
-    if (res.pct != null) lines.push("Top " + res.pct + "% of drafters");
+    if (res.pct != null) lines.push("Top " + res.pct + "%");
     var five = (res.five || []).map(function (s) {
       return String(s).replace(/^[GFC]\s+(?=')/, "");
     }).join("\n");

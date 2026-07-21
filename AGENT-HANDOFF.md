@@ -638,3 +638,321 @@ value — monotonic per leg — and the chip reports the true transaction (new
 target minus previous target). Walk +2: rapid double-spend must converge on
 dbg().budget with no stuck flash (187, three greens). If the count ever
 misbehaves again, suspect a second writer before touching the easing.
+
+### V30 — verified Basketball-Reference deep links (owner-directed: "exit payout")
+The v28 search-only player law is SUPERSEDED by a verified-map law. Client
+keys 20260718-ui-v30 (styles, app). Walk: 195, three greens.
+
+- bbref-map.json (repo root, ~147KB, fetched lazily with ?v=1): built THIS
+  session from the pool's own upstream (sumitrodatta/bball-reference-datasets
+  — the same source site_data.json's meta names). p = 3,485 of 3,509 pool
+  names verified to slugs, with (season, team) joins from Player Season
+  Info.csv breaking name ties; a = 21 names the pool genuinely cannot
+  disambiguate (several pool entries MERGE two real careers — Mike James,
+  Mike Dunleavy, Dee Brown... — so search is CORRECT for them, not a
+  compromise); b = every slug base in bbref history, so post-dataset rookies
+  get a constructed {base}01 only on a virgin base. REGENERATING: rerun the
+  build against the upstream CSVs (career + season info, branch master) and
+  bump the ?v= in loadBbrefMap.
+- CLIENT (app.js): SPORTSREF DEEP-LINK LAW block above renderResults —
+  loadBbrefMap / bbrefHref / bbrefBaseGuess / upgradeBbrefLinks. Anchors
+  RENDER with the search URL (always right) and upgrade IN PLACE when the
+  map lands (kicked in finishGame; no race, no boot cost, no re-render).
+  Verified players also earn a season -> game-log link
+  (/players/x/slug/gamelog/YEAR) wrapped around the pick card's season
+  text; unverified seasons stay plain — a wrong game log is worse than
+  none. The credit whisper became an action line naming both doors.
+- EDITIONS (functions/[id].js): same map via env.ASSETS.fetch, cached per
+  isolate, verified pages with search fallback. Same-commit law with the
+  client resolver.
+- Walk: stub serves bbref-map.json; end-to-end pin (five upgrade to
+  /players/ on the fixture board, game-log links present), resolver unit
+  truths (Don Buse direct, Mike James search, virgin base constructs,
+  unknowns never throw), map-file spot pins, edition source pin.
+
+### V30.1 — deploy fix + a new gate (2026-07-20)
+The v30 edition resolver shipped an `await loadBbrefMap(context)` inside
+renderEdition, which is SYNC (and context wasn't even in scope) — wrangler's
+esbuild refused the deploy; `node --check` had greenlit it. Fix: the map
+loads at the async boundary (onRequest) and is PASSED into
+renderEdition(row, origin, bbmap). NEW LAW for the lane: node --check is
+not deploy parity for Functions — the walk now esbuild-parses every file
+under functions/ (loader js, format esm, same rules wrangler applies) and
+fails on the first error. devtools gained an esbuild dependency (npm i
+esbuild next to jsdom). Walk: 196, three greens.
+
+### V30.2 — session review pass (2026-07-20)
+Full review of the v28-v30 additions after the deploy miss. One hardening
+shipped: renderResults now re-runs upgradeBbrefLinks at entry (idempotent,
+no-op pre-map) so a future keepScroll re-render can't silently revert
+verified hrefs to search URLs — today's single call site + the Heat Check's
+in-place patching meant no live bug, but the invariant is now self-healing
+rather than call-site-dependent. Walk: 197, three greens.
+
+VERIFIED CLEAN in review: avocado's dailyShareRows shape change reaches all
+three consumers (every one filters by r.name); esc() covers the data-bb
+attribute round-trip (double-quoted attrs; apoststrophe names survive
+getAttribute intact); scheduleSharePct's captured g makes a late fetch
+harmless across a new game (dead-g write, nonce-guarded amend); the ticker's
+stray timers self-guard on isConnected; upgradeBbrefLinks is idempotent;
+bbref-map.json revalidates via etag (no _headers cache rule) with ?v= as
+belt-and-braces; the [id].js loader caches a failed load as null per isolate
+(accepted: fail-soft beats retry storms).
+
+OPS ITEM FOR THE OWNER (cannot be run from the dev lane — Cloudflare
+dashboard -> D1 -> events database -> console): /api/percentile now scans
+events on every finished run, and avocado/stats scan it on every dashboard
+view. Fine at today's volume, linearly worse forever. Run once:
+  CREATE INDEX IF NOT EXISTS idx_ev_name_variant ON events(name, variant);
+  CREATE INDEX IF NOT EXISTS idx_ev_name_mode ON events(name, mode);
+
+KNOWN GAPS, accepted and recorded: Functions logic (percentile math, the
+edition resolver) is parse-gated by esbuild but has no unit lane — a mock-D1
+harness would close it if the surface grows; the walk's meter pin divides by
+50 (fixture-coupled — re-pin if a fixture daily ever ships a nonstandard
+cap); scheduleSharePct snapshots wins pre-Heat-Check (81-win edge, already
+documented in V28).
+
+### V31 — version fingerprint in the footer (owner-directed, perpetual law)
+Renamed the pending deploy v31 for clarity after the double-failed v30
+build. Client keys 20260718-ui-v31 (styles, app). Walk: 199, three greens.
+
+FOOTER VERSION LAW, PERPETUAL: app.js carries `BUILD_V = "v31"` next to
+setFootStats. It renders as the LAST segment of the footer stat line
+("... | Presti WR 5.1% | v31") and ALONE when /api/stats fails, returns
+zeros, or hasn't answered yet — a degraded deploy must still answer "which
+build is this?" from the footer. BUMP BUILD_V IN THE SAME COMMIT as any
+client cache-key bump in index.html. The walk enforces this forever: a
+parity pin extracts the ui-v number from index.html and the BUILD_V number
+from app.js and fails on drift, and a DOM pin requires the fingerprint to
+render with stats stubbed dead. Deploy verification is now: load the page,
+read the footer.
+
+### V32 — the Tribune never auto-opens (owner-directed)
+Client keys 20260718-ui-v32; BUILD_V "v32". Walk: 202, three greens.
+
+REMOVED the single auto-open path: the results overlay's bundle had an
+autoT = setTimeout(unwrap(true), 1500) armed only when
+wins >= CFG.GAMES_IN_SEASON, so a perfect 82-0 opened its own edition after
+a beat. Opening the paper is what pre-publishes the public /r/{slug} URL, so
+that was also the only auto-PUBLISH path. Gone. The edition now opens ONLY
+on a deliberate tap — the bundle's click -> unwrap(false), or the READ STORY
+action. Every other publishRecap() call is downstream of a manual open or a
+SHARE ARTICLE tap (both correct: sharing the article needs a live URL).
+
+For the record, 81 wins never auto-opened anything — the "maybe 81?" was the
+documented percentile edge (an 81-win Heat Check boosting after the pct
+fetch), unrelated to the recap. No other win count triggers open or publish.
+
+Walk guards the exact removed pattern (win-count-gated auto-unwrap timer)
+plus the surviving manual click handler, so auto-open can't creep back.
+
+### V33 — net-ranked percentile, thin-board fallback, comp article law, copy trims (owner-directed)
+Client keys 20260718-ui-v33 + daily-core 20260718-share2-v16; BUILD_V "v33".
+Walk: 207, three greens.
+
+- PERCENTILE LAW REWRITTEN (functions/api/percentile.js): ranks by NET, not
+  wins — wins bunch at the ceiling (Classic especially) and stopped
+  discriminating. D1's net column is the RAW engine result (finishGame
+  writes e.net before any Hot Hand boost), so the population is hot-free BY
+  CONSTRUCTION and history ranks from day one — no cold start. The client
+  (scheduleSharePct) sends e.net rounded to 2dp and NEVER the Hot Hand
+  numbers; the old 81-win pct edge note is moot and removed.
+- THIN-BOARD FALLBACK (owner delegated the design): a daily board under
+  MIN_N=10 ranks the finisher against ALL daily runs of the same base mode
+  (variant LIKE 'daily%', practice excluded) instead of hiding the line;
+  once the board's own field reaches 10, the board takes over. Chosen over
+  blending because it is honest at both ends (a real population either
+  way), invisible in copy, and one extra query only on young boards. The
+  reply's pool field ("board"|"dailies"|"mode") says which population
+  answered — useful in devtools. Client sends &mode={base} on daily
+  requests to enable it.
+- COMP ARTICLE LAW: compArticle(label) prepends "the" unless the label
+  starts with a digit ("Tied 5 Jokics") or carries its own article — which
+  also fixes a live bug the owner's request surfaced: 64 wins was shipping
+  "Better than the The Last Shot Jazz". Used by shareCompFor AND the
+  results climb line so the surfaces can't drift.
+- COPY: share line 3 is bare "Top X%" (both builders + FORMAT LAW comments
+  updated). The results feedback button reads exactly "Feature requests?
+  Bugs?" (mailto unchanged; the old "Email me." tail is gone; walk pins the
+  exact label).
+
+### V34 — the maximal-doors pass (owner-directed) + attribution audit
+Client keys 20260718-ui-v34; BUILD_V "v34". Walk: 216, three greens.
+
+- REALITY CHECK first: the "ledger" pitched last session is TAX LINES
+  (Usage tax, Spacing bonus) — no player or team names live there. The
+  owner's ruling lands on the PICK CARDS, where player-seasons actually
+  argue value: the name keeps its career link (his "overall stats page"
+  preference, already true), and the TEAM name now links
+  /teams/{CODE}/{endYear}.html (deterministic, renders live, TOT-style
+  multi-team codes stay plain). The v30 season -> game-log door is RETIRED
+  ("too hard to read every game log"); .pr-szn-link CSS deleted, upgrader's
+  game-log branch now serves ONLY explicit data-bb-gl anchors.
+- ARTICLE CITATIONS: bbrefLinkifyArticle (app.js) + bbLinkifyArticle
+  ([id].js twin, same-commit law) turn the FIRST mention of each roster
+  surname into a career link — overlay AND shared editions. Claims are
+  taken on untouched escaped text and spliced from the end so an inserted
+  href can never be re-matched.
+- COMP DOORS: every HISTORY_COMPS rung carries bbT (team-season) or bbP
+  (player) — composites are owner-delegated picks, noted inline (OG Death
+  Lineup -> GSW/2016; Shaqobe -> LAL/2000; 3-peat Bulls -> CHI/1992; Prime
+  Wilt -> PHI/1967; Fo' Fo' Fo' -> PHI/1983; Last Shot Jazz -> UTA/1997;
+  clones -> jokicni01 / jamesle01). The results comp label and ALL twenty
+  climb-tag segments are anchors (merged tags get one anchor per segment).
+  The SHARE comp stays plain text by law.
+- HOT HAND: third action under the two spins — "HIS REAL HEATERS ↗",
+  ghost-skinned anchor to the hot player's season game log once the map
+  verifies (data-bb-gl path), search until then. hh-actions was already a
+  column, so it stacks with zero layout change.
+- GATE: the scout whisper lives INSIDE the existing info tip (zero new
+  rows — owner's symmetry constraint). No franchise code exists on the
+  board object, so it links the tagged homepage, campaign "gate".
+- STATHEAD LAW: never linked (paygated); plain-text references read
+  "Basketball Reference's Stathead" (owner phrase). faq + md + llms
+  updated; the affiliation disclaimers keep their entity list untouched.
+- UTM CAMPAIGN LAW: every bbref link carries utm_source=true82.net AND
+  utm_campaign={surface} via bbrefTag / bbTag. Campaigns live:
+  results_five, results_team, results_credit, climb, hothand, gate,
+  article, edition_roster, edition_article, info, llms, site (fallback).
+  The referrer header proves the origin; the campaign proves which door.
+ATTRIBUTION AUDIT (the "make damn sure" checklist, all verified green):
+_headers ships strict-origin-when-cross-origin site-wide and [id].js
+pageHeaders matches, so every click sends the true82.net origin; no
+noreferrer anywhere (pinned, comments excluded); every outbound URL is
+utm-tagged (dynamic via bbrefTag, statics patched, walk pins each file);
+the referral is therefore visible to Sports Reference three independent
+ways — referrer, utm_source, utm_campaign — plus the outreach note in the
+session log that tells them exactly what to look for.
+
+### V35 — duo-defense retune + the rim-protection rule (owner-directed)
+Client keys 20260720-ui-v35; BUILD_V "v35"; sim-core gains its FIRST cache
+key (?v=20260720-rimtune-v35); challenges.js touched for the first time
+since v14 (?v=20260720-duo-keys-v15); DATA_URL now site_data.json?v=sc-v35.
+Walk: 230, three greens.
+
+- DUO TIERS RETUNED: both-bad pairs now trip at bottom-20% (tax 3) and
+  bottom-33% (tax 2), from 10/25. New DBPM cutoffs computed from the pool
+  itself — the derivation method was VERIFIED first by reproducing all four
+  v34-era constants exactly (unweighted season rows, g_pct/f_pct >= 20,
+  linear-interp percentile, 1dp): guards -1.2 / -0.8, forwards -1.1 / -0.7.
+- NEW RIM RULE: among the two F slots + the C slot, at least one player
+  must be a top-20% frontcourt defender (DBPM >= 0.9, p80 over all
+  F-or-C-eligible rows, n=14,107) or the team pays RIM_D_TAX (2.0). One
+  protector clears the whole frontcourt. Ledger row: "Rim protection …
+  bad rim defense; the paint stays open."
+- HONEST NAMES: config keys renamed GD_/FD_BOTTOM20/33 and *_D_TAX_20/33;
+  tier codes now 20/33; challenges.js's four override cfgs renamed with
+  them (values unchanged — their intent was always "multiply/zero the
+  taxes", which carries to the new tiers).
+- SHIM: the eight v34-era keys REMAIN in meta.scoring so a stale cached
+  sim-core keeps working through the transition. REMOVE IN V36.
+- STALE PIN FIXED: "historical comp line" demanded "as good as THE" and
+  predated v33's drop-the-article law; the retune moved the walk draft
+  onto a digit-led rung and exposed it. Pin now matches the law.
+OPEN ITEMS THE OWNER MUST KNOW (also in the session report):
+(1) site_data.json is GENERATED — the ten new scoring keys must be
+mirrored into the data pipeline's config or the next data refresh reverts
+the retune. (2) Difficulty dropped measurably (the walk draft slid down
+the comp ladder); BASELINE recalibration is a game-balance call the owner
+owns. (3) Percentile boards now mix old-rules and new-rules nets;
+same-day mixing on whichever daily is live at deploy time. (4) Rim bar
+population = frontcourt-eligible rows (F or C, g_pct-style threshold);
+if the owner meant top-20% of ALL defenders, it is a one-constant swap.
+
+### V36 — glass, creator, and mileage taxes (owner-directed)
+Client keys 20260720-ui-v36; sim-core ?v=20260720-taxes-v36; DATA_URL
+sc-v36; BUILD_V "v36". Walk: 240, three greens, all three taxes pinned on
+REAL pool rows, not synthetics.
+
+- MACHINERY (initDataCore, one pass at boot): within-season percentile
+  ranks for rpg and apg per row — the owner's "per possession" requirement
+  translated to what the data supports: a 1975 rebounder is judged only
+  against 1975 peers, so league pace cancels exactly. Plus career-year per
+  row with SEGMENT logic (a 5+ season gap starts a new career), so
+  returning players / shared names (the two Mike Jameses) never inherit
+  decades of mileage. Tables ride T.t for inspection.
+- GLASS TAX: sum of the five's rebound percentiles; < 3.3 pays 2,
+  < 3.0 pays 3. Calibrated on REAL fives, not simulation — the first cut
+  (from random plausible fives) would have fined the actual '22 champion
+  Warriors (3.46) within .01 of the max; real anchors: '17 GSW 4.04,
+  '96 Bulls 3.89, '01 Lakers 3.78, '22 GSW 3.46 (smallest champ, dodges
+  by .16), five elite PGs 3.23 (pays 2 — correctly), true forfeit five
+  (Nash/IT/Trae/Muggsy/Murphy) 2.33 (pays 3).
+- CREATOR FLOOR (light-touch per owner): best assist percentile on the
+  five < 0.80 pays 2. Real fives sit .93-.98; Wallace-ball sits .52 —
+  pure psychopath filter, exactly as ordered. STAT-ONLY by owner ruling:
+  no flag/labeling dependencies (the rim/pm flag idea is DEAD — owner is
+  done with manual labeling projects after the shooter pass; do not
+  propose flag-based rules again).
+- MILEAGE TAX: more than 1 player at career year >= 12 pays 1. Owner
+  calibration target hit exactly: the '22 Warriors carry ONE such player
+  (Curry, y13; Klay y11) and dodge by one man — pinned. Swap in LeBron
+  '22 (y19) and it fires — pinned. Age proxy = career year (no age
+  column); pool starts 1974 so pre-'74 debuts read slightly young —
+  lenient direction, disclosed.
+- All nine constants in meta.scoring (GLASS_LOW/DIRE, GLASS_TAX_LOW/DIRE,
+  CREATOR_PCT, CREATOR_TAX, AGE_VET_YEAR, AGE_VET_FREE, AGE_TAX);
+  challenge-overridable via C() automatically. PIPELINE MIRROR REQUIRED
+  (same as v35's ten). v34-era shim keys still present — remove only
+  after the keyed sim-core is confirmed live.
+- Difficulty dropped again (three new taxes); BASELINE recalibration
+  remains the owner's open balance call, now more pressing.
+
+### V36.1 — balance calibration verdict (no site change; BUILD_V stays v36)
+Owner supplied last-week live win histograms per mode (pre-v35 engine) and
+directed calibration against HUMAN curves, not raw Monte Carlo. Built
+devtools/balance-bench.js (see README-DEV): policy bot through the real
+headless core, tau fitted to the human curves under old-rules emulation,
+then DIFFERENCE-IN-BOTS (bot-new vs bot-old, same tau, current baseline)
+so bot-vs-human skill bias cancels. 81+82 fitted as one bucket — Heat
+Check only ever converts 81->82, so the fit is immune to spin odds and
+player choice.
+VERDICT (n=4000/batch, SE~0.8pt): the four v35/v36 taxes cost realistic
+drafts LESS THAN HALF A POINT of 81+ rate (classic .487->.483, Presti
+.070->.066) — statistically zero. BASELINE HOLDS AT 3.98. The earlier
+"difficulty dropped measurably" warning came from ONE walk fixture draft
+sliding the comp ladder — anecdote; the population measurement supersedes
+it. This is the taxes working as designed: they fence the degenerate
+builds without taxing honest fives.
+Residuals, disclosed: bot slightly trails humans in Presti (skips and
+year rerolls unused; survivorship — only finished games log); classic
+bot hi .487 vs human .574 pre-fit gap absorbed by tau. Both cancel in
+difference-in-bots. The bench is the STANDING TOOL for every future
+balance patch: refresh the HUMAN table from live screenshots first.
+
+### V37 — "I don't want your charity" + DEPLOYMENT CANDIDATE
+Client keys 20260720-ui-v37 (app AND styles — styles' first bump since
+v34); sim-core ?v=20260720-heatcheck-v37; DATA_URL stays sc-v36 (no data
+change); BUILD_V "v37". Walk: 244, three greens.
+
+- THE CHARITY BUTTON (owner-directed): clutch-only ghost button centered
+  under the ball lever — "I DON'T WANT YOUR CHARITY" — declines the Heat
+  Check and dismisses straight to the un-boosted 81-0 results. Hidden the
+  instant the pull commits (the spin owns the outcome after that);
+  centered block = symmetry preserved; compact mono sizing for SE-height
+  screens; the hoop-ball drag path is untouched (button sits below the
+  lever, outside its hit area). Owner should still eyeball once on a real
+  iPhone SE — jsdom cannot measure layout.
+- THE CONTRACT (the important part): declining is now a first-class core
+  op. declineHeat(S) sets S.hhDeclined and logs "hx"; replay speaks "hx";
+  finish() STILL consumes the two Heat Check draws (clients draw at
+  overlay build, so rngDraws parity demands it) but applies nothing —
+  res.hh = {declined:1,...}, record stands at 81. This also fixes a
+  LATENT pre-existing hole: the silent "skip →" at 81 was already a
+  decline that replay could not represent (verifyRun would have upgraded
+  the wins and failed the claim); hhSkip now registers declineHeat too.
+DEPLOYMENT CHECKLIST (the whole v28->v37 batch ships as ONE new commit —
+never "Retry", which rebuilds the failed commit):
+1. Drag the full-state zip contents to GitHub, commit, wait for Pages.
+2. Load the site; footer must read v37 (renders even if /api/stats
+   degrades — that is the law's whole point).
+3. Mirror the NINETEEN scoring constants (v35's ten + v36's nine) into
+   the data pipeline's config BEFORE its next refresh, or the whole
+   retune reverts silently.
+4. Run the two D1 CREATE INDEX statements (v30.2 note) in the Cloudflare
+   D1 console.
+5. Submit the Sports Reference outreach note (drafted in session log) —
+   tell them to watch utm_source=true82.net, campaigns per surface.
+6. NEXT VERSION (v38): after the keyed sim-core is confirmed live,
+   delete the eight v34-era shim keys from meta.scoring.

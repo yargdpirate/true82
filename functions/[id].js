@@ -45,6 +45,63 @@ async function hmacHex(secret, msg) {
 const MODE_LABEL = { classic: "Classic", pro: "Pro", cap: "Presti" };
 const SLUG_RE = /^[A-Z0-9][A-Za-z0-9_-]{4}$/;
 
+// v30: the verified name->slug map, fetched from our own static assets and
+// cached for the isolate's lifetime. Absence fails soft to search URLs.
+// UTM CAMPAIGN LAW (v34) — server twin of app.js's bbrefTag; change both
+// in one commit.
+const bbTag = (url, camp) =>
+  url + (url.includes("?") ? "&" : "?") + "utm_source=true82.net&utm_campaign=" + camp;
+// ARTICLE LINKIFY LAW (v34) — server twin of app.js's bbrefLinkifyArticle:
+// first occurrence of each roster surname becomes a career link. Operates on
+// ALREADY-ESCAPED text; claims are taken on untouched text and spliced from
+// the end so inserted hrefs are never re-matched.
+function bbLastName(nm) {
+  const parts = String(nm).trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const rest = parts.slice(1);
+  while (rest.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(rest[rest.length - 1])) rest.pop();
+  return rest.join(" ");
+}
+function bbLinkifyArticle(escapedText, players, bbmap) {
+  let text = String(escapedText || "");
+  const claims = [];
+  for (const p of players) {
+    const last = bbLastName(p.name);
+    if (!last) continue;
+    const re = new RegExp("\\b" + last.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
+    let from = 0, pos = -1;
+    while (from < text.length) {
+      const m = re.exec(text.slice(from));
+      if (!m) break;
+      const at = from + m.index;
+      const clash = claims.some((c) => at < c.end && at + last.length > c.start);
+      if (!clash) { pos = at; break; }
+      from = at + last.length;
+    }
+    if (pos !== -1) claims.push({ start: pos, end: pos + last.length, name: p.name, txt: last });
+  }
+  claims.sort((a, b) => b.start - a.start);
+  for (const c of claims) {
+    const slug = bbmap && bbmap.p && bbmap.p[c.name];
+    const href = slug
+      ? bbTag(`https://www.basketball-reference.com/players/${slug[0]}/${slug}.html`, "edition_article")
+      : bbTag(`https://www.basketball-reference.com/search/?search=${encodeURIComponent(c.name)}`, "edition_article");
+    text = text.slice(0, c.start) +
+      `<a class="bref" href="${href}" target="_blank" rel="noopener">${c.txt}</a>` +
+      text.slice(c.end);
+  }
+  return text;
+}
+let BBMAP_CACHE;
+async function loadBbrefMap(context) {
+  if (BBMAP_CACHE !== undefined) return BBMAP_CACHE;
+  try {
+    const res = await context.env.ASSETS.fetch(new URL("/bbref-map.json", context.request.url));
+    BBMAP_CACHE = res && res.ok ? await res.json() : null;
+  } catch (e) { BBMAP_CACHE = null; }
+  return BBMAP_CACHE;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -95,7 +152,7 @@ export async function onRequest(context) {
   if (context.waitUntil) {
     context.waitUntil(env.DB.prepare("UPDATE recaps SET views_raw=views_raw+1 WHERE id=?").bind(id).run().catch(() => {}));
   }
-  return new Response(renderEdition(row, url.origin), { status: 200, headers: pageHeaders() });
+  return new Response(renderEdition(row, url.origin, await loadBbrefMap(context)), { status: 200, headers: pageHeaders() });
 }
 
 async function shareHealth(env, head) {
@@ -182,7 +239,7 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
-function renderEdition(row, origin) {
+function renderEdition(row, origin, bbmap) {
   let players = [];
   try { players = JSON.parse(row.players_json) || []; } catch (_) {}
   const wins = Math.max(0, Math.min(82, Number(row.wins) || 0));
@@ -192,11 +249,22 @@ function renderEdition(row, origin) {
   const canonical = `${origin}/${encodeURIComponent(row.id)}`;
   const playUrl = `/?ref=${encodeURIComponent(row.id)}`;
   const date = new Date(Number(row.created_ts) || Date.now()).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
-  // SPORTSREF LAW: the shared edition is a referral surface too — every
-  // roster name links out via the search-URL form (player slugs collide;
-  // search redirects on a unique hit), noopener and never noreferrer so the
-  // page's referrer-policy hands Sports Reference a clean true82.net origin.
-  const roster = players.map((p) => `<li><span>${esc(p.slot)} · ${esc(p.yr)}</span><b><a class="bref" href="https://www.basketball-reference.com/search/?search=${encodeURIComponent(p.name)}" target="_blank" rel="noopener">${esc(p.name)}</a></b><em>${esc(p.v)} value</em></li>`).join("");
+  // SPORTSREF LAW (v30): the shared edition is a referral surface too.
+  // Names resolve through bbref-map.json (same file the client uses, read
+  // via ASSETS and cached per isolate) to VERIFIED direct player pages;
+  // anything unverified falls back to the search URL. noopener, never
+  // noreferrer — the page's referrer-policy hands Sports Reference a clean
+  // true82.net origin. If the client resolver's law changes, change this in
+  // the same commit. The map is loaded in onRequest (the async boundary)
+  // and PASSED in — renderEdition stays sync; wrangler's esbuild rejects
+  // await here, which node --check silently does not (see V30.1).
+  const bbHref = (name) => {
+    const slug = bbmap && bbmap.p && bbmap.p[name];
+    return slug
+      ? bbTag(`https://www.basketball-reference.com/players/${slug[0]}/${slug}.html`, "edition_roster")
+      : bbTag(`https://www.basketball-reference.com/search/?search=${encodeURIComponent(name)}`, "edition_roster");
+  };
+  const roster = players.map((p) => `<li><span>${esc(p.slot)} · ${esc(p.yr)}</span><b><a class="bref" href="${bbHref(p.name)}" target="_blank" rel="noopener">${esc(p.name)}</a></b><em>${esc(p.v)} value</em></li>`).join("");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}"><meta name="robots" content="noindex,nofollow">
@@ -207,7 +275,7 @@ function renderEdition(row, origin) {
 <main class="sheet"><header><div>${esc(date)}</div><h1>The True 82 Tribune</h1><div>SPORTS FINAL · 5¢</div></header>
 <div class="rule"></div><p class="edition">SPECIAL EDITION · ${esc(MODE_LABEL[row.mode] || "TRUE 82")}</p>
 <section class="hero"><div><p class="kicker">FINAL RECORD</p><div class="record">${wins}–${losses}!</div></div><h2>${esc(row.nickname)} finish ${wins}–${losses}!</h2></section>
-<article><p class="byline">By the TRUE 82 sports desk</p><p>${esc(row.article)}</p></article>
+<article><p class="byline">By the TRUE 82 sports desk</p><p>${bbLinkifyArticle(esc(row.article), players, bbmap)}</p></article>
 <section class="roster"><h3>The five</h3><ul>${roster}</ul><p class="net">Projected net rating ${fmtSigned(row.net)}</p></section>
 <a class="cta" href="${esc(playUrl)}">BUILD YOUR OWN FIVE →</a><footer>TRUE82.NET · THE 82–0 CHASE</footer></main>
 <script>(function(){try{var k="t82-recap-open:${escJs(row.id)}";if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,"1");var u=location.pathname+"?open=1";if(navigator.sendBeacon){navigator.sendBeacon(u,new Blob(["1"],{type:"text/plain"}));}else{fetch(u,{method:"POST",keepalive:true,credentials:"same-origin"}).catch(function(){});}}catch(e){}})();</script>

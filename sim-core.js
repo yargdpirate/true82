@@ -560,8 +560,9 @@ function engine(S, pickRows, slots) {
   }
 
   // Backcourt / wing defense penalties on the two G-slot and two F-slot players
-  // (needs slot info): both bottom-25% defenders by DBPM = -2, both bottom-10% = -3
-  // (ladder, per position group).
+  // (needs slot info): both bottom-33% defenders by DBPM = -2, both bottom-20% = -3
+  // (ladder, per position group; retuned v35 from 25/10). Cutoffs are DBPM values
+  // computed from THIS pool's distribution — see AGENT-HANDOFF V35 for the method.
   var backDefTax = 0, backDefTier = 0, wingDefTax = 0, wingDefTier = 0;
   if (slots) {
     var gr = [], fr = [];
@@ -571,17 +572,55 @@ function engine(S, pickRows, slots) {
     }
     if (gr.length === 2) {
       var da = gr[0][IDX.dbpm], db = gr[1][IDX.dbpm];
-      if (da <= C(S,"GD_BOTTOM10") && db <= C(S,"GD_BOTTOM10")) { backDefTax = C(S,"BACKCOURT_D_TAX_10"); backDefTier = 10; }
-      else if (da <= C(S,"GD_BOTTOM25") && db <= C(S,"GD_BOTTOM25")) { backDefTax = C(S,"BACKCOURT_D_TAX_25"); backDefTier = 25; }
+      if (da <= C(S,"GD_BOTTOM20") && db <= C(S,"GD_BOTTOM20")) { backDefTax = C(S,"BACKCOURT_D_TAX_20"); backDefTier = 20; }
+      else if (da <= C(S,"GD_BOTTOM33") && db <= C(S,"GD_BOTTOM33")) { backDefTax = C(S,"BACKCOURT_D_TAX_33"); backDefTier = 33; }
     }
     if (fr.length === 2) {
       var fa = fr[0][IDX.dbpm], fb = fr[1][IDX.dbpm];
-      if (fa <= C(S,"FD_BOTTOM10") && fb <= C(S,"FD_BOTTOM10")) { wingDefTax = C(S,"WING_D_TAX_10"); wingDefTier = 10; }
-      else if (fa <= C(S,"FD_BOTTOM25") && fb <= C(S,"FD_BOTTOM25")) { wingDefTax = C(S,"WING_D_TAX_25"); wingDefTier = 25; }
+      if (fa <= C(S,"FD_BOTTOM20") && fb <= C(S,"FD_BOTTOM20")) { wingDefTax = C(S,"WING_D_TAX_20"); wingDefTier = 20; }
+      else if (fa <= C(S,"FD_BOTTOM33") && fb <= C(S,"FD_BOTTOM33")) { wingDefTax = C(S,"WING_D_TAX_33"); wingDefTier = 33; }
     }
   }
 
-  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax;
+  // Rim protection (v35, owner rule): among the two F-slot players and the
+  // C-slot player, at least ONE must be a top-20% defender by DBPM (bar
+  // computed over all frontcourt-eligible pool rows) — otherwise a flat tax.
+  // One protector clears the whole frontcourt; the tax never stacks with the
+  // wing duo penalty conceptually but both CAN fire (different sins).
+  var rimDefTax = 0;
+  if (slots) {
+    var front = [];
+    for (var s2 = 0; s2 < pickRows.length; s2++) {
+      if (slots[s2] === "F" || slots[s2] === "C") front.push(pickRows[s2]);
+    }
+    if (front.length === 3) {
+      var bar = C(S, "RIM_TOP20"), guarded = false;
+      for (var r2 = 0; r2 < front.length; r2++) {
+        if (front[r2][IDX.dbpm] >= bar) { guarded = true; break; }
+      }
+      if (!guarded) rimDefTax = C(S, "RIM_D_TAX");
+    }
+  }
+
+  // Glass / creator / mileage (v36, owner rules). Roster-wide — no slots
+  // needed. Unknown rows (unit synthetics) fall to neutral 0.5 / year 1.
+  var glassSum = 0, bestAst = 0, vetCount = 0;
+  for (var i3 = 0; i3 < pickRows.length; i3++) {
+    var k3 = pickRows[i3][IDX.name] + "|" + pickRows[i3][IDX.season];
+    var rp = RATE_PCT && RATE_PCT.get(k3);
+    glassSum += rp ? rp.r : 0.5;
+    var ap = rp ? rp.a : 0.5;
+    if (ap > bestAst) bestAst = ap;
+    var cy = (CAREER_YR && CAREER_YR.get(k3)) || 1;
+    if (cy >= C(S, "AGE_VET_YEAR")) vetCount++;
+  }
+  var glassTax = 0;
+  if (glassSum < C(S, "GLASS_DIRE")) glassTax = C(S, "GLASS_TAX_DIRE");
+  else if (glassSum < C(S, "GLASS_LOW")) glassTax = C(S, "GLASS_TAX_LOW");
+  var creatorTax = bestAst < C(S, "CREATOR_PCT") ? C(S, "CREATOR_TAX") : 0;
+  var ageTax = vetCount > C(S, "AGE_VET_FREE") ? C(S, "AGE_TAX") : 0;
+
+  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax - rimDefTax - glassTax - creatorTax - ageTax;
   var net = score - BASELINE;
   var p = phi(S, net / SC.NET_SD);
   return {
@@ -590,6 +629,10 @@ function engine(S, pickRows, slots) {
     usageTax: usageTax, spacingTax: spacingTax, spacingBonus: spacingBonus,
     backDefTax: backDefTax, backDefTier: backDefTier,
     wingDefTax: wingDefTax, wingDefTier: wingDefTier,
+    rimDefTax: rimDefTax,
+    glassTax: glassTax, glassSum: glassSum,
+    creatorTax: creatorTax, creatorBest: bestAst,
+    ageTax: ageTax, vetCount: vetCount,
     score: score, net: net, p: p,
     projW: CFG.GAMES_IN_SEASON * p,
     winTally: Math.min(CFG.GAMES_IN_SEASON, Math.ceil(CFG.GAMES_IN_SEASON * p)),
@@ -664,6 +707,12 @@ function chargeReroll(S, spinId) {
   return true;
 }
 
+// v36 rate/mileage tables: within-season percentile ranks for rpg and apg
+// (the pace-proof "per possession" proxy — a 1975 rebounder is judged only
+// against 1975 peers, so era pace cancels), plus career-year per row with
+// segment logic (a gap of 5+ seasons starts a new career, so returning
+// players and shared names never inherit decades of mileage).
+var RATE_PCT = null, CAREER_YR = null;
 function initDataCore(data) {
   var S = null;   // valueOf's S param is unused; alias for the threaded calls below
   META = data.meta;
@@ -674,6 +723,41 @@ function initDataCore(data) {
   SC = META.scoring;
   IDX = {};
   META.cols.forEach(function (c, i) { IDX[c] = i; });
+
+  // v36: build the rate-percentile and career-year tables in one pass.
+  (function () {
+    var bySeason = {}, byName = {};
+    data.players.forEach(function (row) {
+      var yr = row[IDX.season], nm = row[IDX.name];
+      (bySeason[yr] = bySeason[yr] || []).push(row);
+      (byName[nm] = byName[nm] || {})[yr] = 1;
+    });
+    function upperBound(arr, v) {
+      var lo = 0, hi = arr.length;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (arr[mid] <= v) lo = mid + 1; else hi = mid; }
+      return lo;
+    }
+    RATE_PCT = new Map(); CAREER_YR = new Map();
+    Object.keys(bySeason).forEach(function (yr) {
+      var peers = bySeason[yr];
+      var rSorted = peers.map(function (r) { return r[IDX.rpg] || 0; }).sort(function (a, b) { return a - b; });
+      var aSorted = peers.map(function (r) { return r[IDX.apg] || 0; }).sort(function (a, b) { return a - b; });
+      peers.forEach(function (r) {
+        RATE_PCT.set(r[IDX.name] + "|" + yr, {
+          r: upperBound(rSorted, r[IDX.rpg] || 0) / rSorted.length,
+          a: upperBound(aSorted, r[IDX.apg] || 0) / aSorted.length
+        });
+      });
+    });
+    Object.keys(byName).forEach(function (nm) {
+      var ss = Object.keys(byName[nm]).map(Number).sort(function (a, b) { return a - b; });
+      var segStart = ss[0];
+      ss.forEach(function (yr, i) {
+        if (i > 0 && yr - ss[i - 1] > 4) segStart = yr;
+        CAREER_YR.set(nm + "|" + yr, yr - segStart + 1);
+      });
+    });
+  })();
   var m = /-\s*([0-9.]+)/.exec(String(SC.net || ""));
   BASELINE = (typeof SC.BASELINE === "number") ? SC.BASELINE : (m ? parseFloat(m[1]) : 10);
 
@@ -877,7 +961,7 @@ function initDataCore(data) {
       budget: 0, maxCap: 0,
       fireSale: false, fireSaleFlash: null, refundFlash: null,
       yearRerollN: 0, moveIdx: null, screen: "draft",
-      actions: [], done: false
+      hhDeclined: false, actions: [], done: false
     };
     S.mode = mode || "classic";
     var isCap = S.mode === "cap";
@@ -1037,6 +1121,13 @@ function initDataCore(data) {
 
   // Terminal resolution. Hot Hand (cap, exactly 81) draws hot player + segment
   // from the SAME stream — always the final draws of a game. Kaman: 82-0, law.
+  // Refusing the Heat Check. Logged as op "hx" so a declined 81 replays and
+  // verifies exactly (finish still consumes the draws, applies nothing).
+  function declineHeat(S) {
+    S.hhDeclined = true;
+    if (S.actions) S.actions.push("hx");
+    return true;
+  }
   function finish(S) {
     if (S.mode === "kaman") {
       return { mode: S.mode, wins: CFG.GAMES_IN_SEASON, losses: 0, net: null, hh: null,
@@ -1060,11 +1151,18 @@ function initDataCore(data) {
       var seg = HH_SEGMENTS[segIdx];
       var hotV = valueOf(S, S.picks[hotIdx].row);
       var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
-      var win = newNet > hhNet82(S);
-      res.hh = { hotIdx: hotIdx, segIdx: segIdx, segLabel: seg.label, m: seg.m,
-                 newNet: newNet, win: win ? 1 : 0 };
-      if (win) { res.wins = CFG.GAMES_IN_SEASON; res.losses = 0; res.netFinal = newNet; }
-      else if (hhWins(newNet) > res.wins) { res.wins = hhWins(newNet); res.losses = CFG.GAMES_IN_SEASON - res.wins; res.netFinal = newNet; }
+      // v37: a declined Heat Check ("I don't want your charity") consumes the
+      // SAME two draws — clients draw at overlay build, so rngDraws parity
+      // demands it — but applies nothing. The record stands at 81.
+      if (S.hhDeclined) {
+        res.hh = { declined: 1, hotIdx: hotIdx, segIdx: segIdx };
+      } else {
+        var win = newNet > hhNet82(S);
+        res.hh = { hotIdx: hotIdx, segIdx: segIdx, segLabel: seg.label, m: seg.m,
+                   newNet: newNet, win: win ? 1 : 0 };
+        if (win) { res.wins = CFG.GAMES_IN_SEASON; res.losses = 0; res.netFinal = newNet; }
+        else if (hhWins(newNet) > res.wins) { res.wins = hhWins(newNet); res.losses = CFG.GAMES_IN_SEASON - res.wins; res.netFinal = newNet; }
+      }
     }
     return res;
   }
@@ -1101,6 +1199,7 @@ function initDataCore(data) {
       } else if (op === "st") { okOp = !!skipTeam(S); if (okOp) S.actions.pop(); }
       else if (op === "se")   { okOp = !!skipEra(S);  if (okOp) S.actions.pop(); }
       else if (op === "yr")   { okOp = !!yearReroll(S); if (okOp) S.actions.pop(); }
+      else if (op === "hx")   { okOp = declineHeat(S); if (okOp) S.actions.pop(); }
       else if (op.slice(0, 3) === "mv:") {
         var mv = op.slice(3).split(","); okOp = moveSlot(S, parseInt(mv[0], 10), mv[1]); if (okOp) S.actions.pop();
       } else if (op.slice(0, 3) === "sw:") {
@@ -1144,10 +1243,11 @@ function initDataCore(data) {
               DECADES: DECADES, FR_BY_DEC: FR_BY_DEC, DEC_SPAN: DEC_SPAN,
               SEASON_SPAN: SEASON_SPAN, TEAM2FR: TEAM2FR, BEST_BY_NAME: BEST_BY_NAME,
               FRANCHISES: FRANCHISES, CAREER_BUCKETS: CAREER_BUCKETS,
-              KAMAN_SEASONS: KAMAN_SEASONS, DRAFT_ROWS: DRAFT_ROWS, dataVersion: DATA_VERSION };
+              KAMAN_SEASONS: KAMAN_SEASONS, DRAFT_ROWS: DRAFT_ROWS, dataVersion: DATA_VERSION,
+              RATE_PCT: RATE_PCT, CAREER_YR: CAREER_YR };
       return T.t;
     },
-    newState: newState, dealRound: dealRound,
+    newState: newState, dealRound: dealRound, declineHeat: declineHeat,
     skipTeam: skipTeam, skipEra: skipEra, yearReroll: yearReroll,
     applyPick: applyPick, moveSlot: moveSlot, swapSlots: swapSlots,
     finish: finish, replay: replay, verifyRun: verifyRun,
