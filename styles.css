@@ -3018,3 +3018,10 @@ body.gating .gate-back {
 @media (hover: hover) { .hh-btn.hh-bref:hover { border-color: var(--amber); } }
 .gate-scout { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.05em; color: var(--chalk-dim); margin: 8px 0 0; }
 .gate-scout a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+
+/* V37 — the charity refusal. Centered block under the ball lever, clutch
+   only, ghost-quiet so the hoop stays the protagonist; hidden the moment
+   the pull commits. Compact enough for SE-height screens. */
+.hh-charity { display: block; margin: 14px auto 0; background: transparent; border: 1px solid rgba(255,181,46,0.35); color: var(--chalk-dim); font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.09em; padding: 9px 14px; border-radius: 6px; cursor: pointer; }
+.hh-charity.gone { display: none; }
+@media (hover: hover) { .hh-charity:hover { color: var(--amber); border-color: var(--amber); } }

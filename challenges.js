@@ -26,7 +26,7 @@
    HOOK API: filter(row,t) · pick(S,row,slot,t) · deal(S,t)→{decs?,frs?} ·
    cfg{} (whitelist: CAP_BUDGET, PRICE_MULT, CAP_GEM, CAP_TRAP, TEAM_SKIPS,
    ERA_SKIPS, USAGE_RATE, USAGE_BUDGET, SPACING_TAX, SPACING_BONUS,
-   SPACERS_REQ, GD_/FD_BOTTOM10/25, BACKCOURT_/WING_D_TAX_10/25).
+   SPACERS_REQ, GD_/FD_BOTTOM20/33, BACKCOURT_/WING_D_TAX_20/33 — renamed v35 with the tier retune).
    Hooks are pure functions of (S,row,tables) — no Date/random/fetch. Helpers
    below (last, cost, decOf) keep entries honest and compact. */
 (function (g) {
@@ -132,14 +132,14 @@
       cfg: { USAGE_BUDGET: 130, USAGE_RATE: 0.05 } },
     { id: "lockdown", name: "The Lockdown", base: "classic",
       blurb: "Defensive penalties doubled. Two bad defenders in the same position group is a felony now.",
-      cfg: { BACKCOURT_D_TAX_10: 6, BACKCOURT_D_TAX_25: 4, WING_D_TAX_10: 6, WING_D_TAX_25: 4 } },
+      cfg: { BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4, WING_D_TAX_20: 6, WING_D_TAX_33: 4 } },
     { id: "no_defense", name: "No-Defense November", base: "classic",
       blurb: "All defensive taxes waived. Nobody guards anybody. Draft the arsonists.",
-      cfg: { BACKCOURT_D_TAX_10: 0, BACKCOURT_D_TAX_25: 0, WING_D_TAX_10: 0, WING_D_TAX_25: 0 } },
+      cfg: { BACKCOURT_D_TAX_20: 0, BACKCOURT_D_TAX_33: 0, WING_D_TAX_20: 0, WING_D_TAX_33: 0 } },
     { id: "hand_check", name: "Hand-Check Week", base: "classic",
       blurb: "The '90s board, with '90s consequences — defensive penalties half again as painful.",
       deal: function () { return { decs: [1990] }; },
-      cfg: { BACKCOURT_D_TAX_10: 4.5, BACKCOURT_D_TAX_25: 3, WING_D_TAX_10: 4.5, WING_D_TAX_25: 3 } },
+      cfg: { BACKCOURT_D_TAX_20: 4.5, BACKCOURT_D_TAX_33: 3, WING_D_TAX_20: 4.5, WING_D_TAX_33: 3 } },
     { id: "pace_and_space", name: "Pace and Space", base: "classic",
       blurb: "Modern boards only, and the suits want four shooters minimum. It's 2016 forever in here.",
       deal: function () { return { decs: [2010, 2020] }; },
@@ -386,7 +386,7 @@
     { id: "twin_towers", name: "Twin Towers Forever", base: "classic",
       blurb: "6'8\" minimum across the board — and wing defense goes untaxed. It's 1994 in the frontcourt.",
       filter: function (row, t) { return row[t.IDX.ht] >= 80; },
-      cfg: { WING_D_TAX_10: 0, WING_D_TAX_25: 0 } },
+      cfg: { WING_D_TAX_20: 0, WING_D_TAX_33: 0 } },
 
     /* ═══════════ THE BLIND WEEKS (pro base — memory is the mechanic) ═══════════ */
     { id: "small_blind", name: "The Small Blind", base: "pro",

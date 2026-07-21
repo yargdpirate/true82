@@ -17,7 +17,7 @@
 
 var CFG = {
   SITE_NAME: "PERFECT FIVE",
-  DATA_URL: "site_data.json",
+  DATA_URL: "site_data.json?v=sc-v36",
   GAMES_IN_SEASON: 82,
   POS_THRESHOLD: 20,
   KAMAN_LO: 2004,
@@ -2548,6 +2548,7 @@ function hotHand(e) {
     '<div class="hh-card"><div class="goat-fw" id="hhFw" aria-hidden="true"></div>' +
       titleHtml +
       ballLeverHtml("hhLever", "hhArm", "Pull the basketball through the hoop") +
+      (clutch ? '<button class="hh-charity" id="hhCharity">I DON\u2019T WANT YOUR CHARITY</button>' : '') +
       stageHtml + '</div>';
   document.body.appendChild(ov);
   if (clutch) {
@@ -2748,6 +2749,8 @@ function hotHand(e) {
   var lever = ov.querySelector("#hhLever"), arm = ov.querySelector("#hhArm");
   var pullState = wireBallPull(lever, arm, function () {
     if (clutch) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 1 });
+    var chBtn = ov.querySelector("#hhCharity");
+    if (chBtn) chBtn.classList.add("gone");                                  // the pull committed; the spin owns the outcome
     setTimeout(function () {
       if (!clutch) {                                                       // <=80 wins: the pull just reveals the results
         ov.classList.remove("in");                                         // fade the overlay away...
@@ -2758,8 +2761,18 @@ function hotHand(e) {
     }, 640);
   });
 
+  var charityBtn = ov.querySelector("#hhCharity");
+  if (charityBtn) charityBtn.addEventListener("click", function () {
+    if (pullState.fired()) return;                                           // spin already running; too late to refuse
+    window.t82track && window.t82track("heatcheck_declined", { mode: MODE });
+    if (window.T82 && T82.declineHeat) T82.declineHeat(G);                   // "hx" — the refusal replays and verifies
+    dismiss();
+  });
   ov.querySelector("#hhSkip").addEventListener("click", function () {
-    if (clutch && !pullState.fired()) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
+    if (clutch && !pullState.fired()) {
+      window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
+      if (window.T82 && T82.declineHeat) T82.declineHeat(G);                 // v37: silent skip at 81 was ALREADY a decline; now the contract knows it
+    }
     dismiss();
   });
   var seeBtn = ov.querySelector("#hhSee");
@@ -4016,10 +4029,22 @@ function renderResults(e, keepScroll) {
       ? ledgerCreditRow("Spacing bonus", e.sumSp + " shooters \u2014 extra spacing stretches the defense past the requirement.", e.spacingBonus)
       : ledgerRow("Spacing tax", e.sumSp + " of " + SC.SPACERS_REQ + " required spacers \u2014 without shooting, the floor shrinks.", e.spacingTax, e.spacingTax > 0)) +
     (e.backDefTax > 0
-      ? ledgerRow("Backcourt defense", "Both guards rank bottom-" + (e.backDefTier === 10 ? "10" : "25") + "% among guard defenders (DBPM) \u2014 the perimeter leaks.", e.backDefTax, true)
+      ? ledgerRow("Backcourt defense", "Both guards rank bottom-" + (e.backDefTier === 20 ? "20" : "33") + "% among guard defenders (DBPM) \u2014 the perimeter leaks.", e.backDefTax, true)
       : "") +
     (e.wingDefTax > 0
-      ? ledgerRow("Wing defense", "Both forwards rank bottom-" + (e.wingDefTier === 10 ? "10" : "25") + "% among forward defenders (DBPM) \u2014 the frontcourt gets cooked.", e.wingDefTax, true)
+      ? ledgerRow("Wing defense", "Both forwards rank bottom-" + (e.wingDefTier === 20 ? "20" : "33") + "% among forward defenders (DBPM) \u2014 the frontcourt gets cooked.", e.wingDefTax, true)
+      : "") +
+    (e.rimDefTax > 0
+      ? ledgerRow("Rim protection", "None of your two forwards or center ranks top-20% among frontcourt defenders (DBPM) \u2014 bad rim defense; the paint stays open.", e.rimDefTax, true)
+      : "") +
+    (e.glassTax > 0
+      ? ledgerRow("Glass", "Your five don\u2019t rebound \u2014 era-adjusted board rate is bottom of the league; second chances all go the other way.", e.glassTax, true)
+      : "") +
+    (e.creatorTax > 0
+      ? ledgerRow("No creator", "Nobody\u2019s era-adjusted assist rate says he can run an offense \u2014 good luck beating a set defense 82 times.", e.creatorTax, true)
+      : "") +
+    (e.ageTax > 0
+      ? ledgerRow("Mileage", e.vetCount + " players past their " + SC.AGE_VET_YEAR + "th season \u2014 heavy legs; an 82-game schedule is the sixth defender.", e.ageTax, true)
       : "") +
     '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>";
 
@@ -4432,7 +4457,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v34";
+var BUILD_V = "v37";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
