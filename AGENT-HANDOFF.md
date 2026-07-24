@@ -1159,3 +1159,20 @@ PRESTI PREP (next build, owner-specified):
   so everyone faces the same 82 and identical fives tie exactly.
 - res.expWins is carried but surfaced nowhere; "expected 81, ran 79" is
   a ready-made results line when wanted.
+
+### V42 amended (same build, pre-deploy): the calendar + the 10% retune
+Shared key 20260724-reel2-v42; DATA_URL sc-v42b; BUILD_V stays v42
+(nothing shipped yet, so this folds in). Walk 276 x3, smoke 89,
+browser-smoke 26.
+- PG_CAP retuned 0.97 -> 0.978 (owner: Classic is the easy mode).
+  Expected Classic 82-0 ~10.5% on the live curve, tail-proof; juggernaut
+  ceiling 16%. The named rule's copy now reads "about 98 times in 100."
+  PIPELINE MIRROR: the twentieth key's VALUE changed with it.
+- THE CALENDAR: each month act renders date-numbered squares that cascade
+  in (48ms apart), wins amber, losses ember with a pop; the header record
+  ticks square by square; the commentary line lands after the month
+  fills. The league schedule (dates) is deterministic and SHARED across
+  all runs — only outcomes differ — so it never touches the rng stream.
+  Loss commentary now carries the real date: "The zero died in Denver,
+  Jan 14." Walk pins the squares, their day numbers, and their win/loss
+  classes live in the DOM.

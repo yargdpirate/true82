@@ -17,7 +17,7 @@
 
 var CFG = {
   SITE_NAME: "PERFECT FIVE",
-  DATA_URL: "site_data.json?v=sc-v42",
+  DATA_URL: "site_data.json?v=sc-v42b",
   GAMES_IN_SEASON: 82,
   POS_THRESHOLD: 20,
   KAMAN_LO: 2004,
@@ -1650,7 +1650,7 @@ function rulesSheetHtml() {
   var engineRules = RULES_ENGINE;
   if (baseKey === "classic" && !isDaily && !ch) {
     engineRules = RULES_ENGINE.concat([["ANY GIVEN NIGHT",
-      "The season is played out one game at a time. No five wins a given night more than 97 times in 100, so a perfect season has to survive all 82."]]);
+      "The season is played out one game at a time. No five wins a given night more than about 98 times in 100, so a perfect season has to survive all 82."]]);
   }
   h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
     engineRules.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
@@ -4313,6 +4313,19 @@ var REEL_CITIES = ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cle
   "Detroit", "Golden State", "Houston", "Indiana", "Los Angeles", "Memphis", "Miami", "Milwaukee",
   "Minnesota", "New Orleans", "New York", "Oklahoma City", "Orlando", "Philadelphia", "Phoenix",
   "Portland", "Sacramento", "San Antonio", "Toronto", "Utah", "Washington"];
+function reelDay(mi, gi) {
+  var count = REEL_MONTHS[mi][1];
+  var first = mi === 0 ? 21 : 1;
+  var last = mi === 0 ? 31 : (mi === 6 ? 12 : (mi === 4 ? 27 : 29));
+  if (count === 1) return first;
+  return Math.round(first + gi * (last - first) / (count - 1));
+}
+function reelDate(gameIdx) {
+  var g = gameIdx, mi = 0;
+  while (mi < REEL_MONTHS.length - 1 && g >= REEL_MONTHS[mi][1]) { g -= REEL_MONTHS[mi][1]; mi++; }
+  var mo = REEL_MONTHS[mi][0];
+  return mo.charAt(0) + mo.slice(1).toLowerCase() + " " + reelDay(mi, g);
+}
 function reelHash(str) {
   var h = 2166136261;
   for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
@@ -4329,7 +4342,7 @@ function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
       "Still zero in the loss column. The building holds its breath."][mi % 3];
   }
   if (firstLossIdx !== null && firstLossIdx >= monthStart && firstLossIdx < monthStart + mw + ml) {
-    return "The zero died in " + reelCity(firstLossIdx) + ", game " + (firstLossIdx + 1) + ".";
+    return "The zero died in " + reelCity(firstLossIdx) + ", " + reelDate(firstLossIdx) + ".";
   }
   if (ml === 0) return "A spotless " + mw + " and 0 month steadies the run.";
   if (ml >= 5) return mw + " and " + ml + ". The schedule bit back.";
@@ -4357,27 +4370,47 @@ function showSeasonReel(season, e, done) {
   ov.querySelector("#reelSkip").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
   ov.addEventListener("click", finishReel);
   var firstLossIdx = null;
-  for (var g = 0; g < season.games.length; g++) { if (!season.games[g]) { firstLossIdx = g; break; } }
-  var start = 0, runW = 0, runL = 0, step = 0;
+  for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { firstLossIdx = g0; break; } }
+  // cumulative record per game, so the header ticks square by square
+  var cum = [], cw = 0;
+  for (var g1 = 0; g1 < season.games.length; g1++) { if (season.games[g1]) cw++; cum.push([cw, g1 + 1 - cw]); }
+  var t = 650, start = 0;
   REEL_MONTHS.forEach(function (m, mi) {
     var count = m[1], s0 = start;
     var mw = 0;
-    for (var i = s0; i < s0 + count; i++) if (season.games[i]) mw++;
+    for (var i2 = s0; i2 < s0 + count; i2++) if (season.games[i2]) mw++;
     var ml = count - mw;
     start += count;
-    var rw = runW + mw, rl = runL + ml;
+    var endRec = cum[s0 + count - 1];
     timers.push(setTimeout(function () {
       var row = document.createElement("div");
       row.className = "reel-act";
       row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + m[0] + '</span>' +
         '<span class="reel-mo-rec mono">' + mw + '\u2013' + ml + '</span></div>' +
-        '<p class="reel-note">' + esc(reelLine(mi, mw, ml, rw, rl, firstLossIdx, s0)) + '</p>';
+        '<div class="reel-grid"></div>' +
+        '<p class="reel-note reel-note-pending"></p>';
+      row.__grid = row.querySelector(".reel-grid");
       acts.appendChild(row);
-      runEl.textContent = rw + "\u2013" + rl;
       acts.scrollTop = acts.scrollHeight;
-    }, 650 + step * 1250));
-    step++;
-    runW = rw; runL = rl;
+      for (var i = 0; i < count; i++) (function (i) {
+        timers.push(setTimeout(function () {
+          var sq = document.createElement("span");
+          var win = season.games[s0 + i];
+          sq.className = "reel-day " + (win ? "w" : "l");
+          sq.textContent = reelDay(mi, i);
+          row.__grid.appendChild(sq);
+          var c = cum[s0 + i];
+          runEl.textContent = c[0] + "\u2013" + c[1];
+        }, 140 + i * 48));
+      })(i);
+      timers.push(setTimeout(function () {
+        var note = row.querySelector(".reel-note");
+        note.textContent = reelLine(mi, mw, ml, endRec[0], endRec[1], firstLossIdx, s0);
+        note.classList.remove("reel-note-pending");
+        acts.scrollTop = acts.scrollHeight;
+      }, 140 + count * 48 + 120));
+    }, t));
+    t += 320 + count * 48 + 340;
   });
   timers.push(setTimeout(function () {
     var fin = document.createElement("div");
@@ -4386,8 +4419,8 @@ function showSeasonReel(season, e, done) {
       '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>';
     acts.appendChild(fin);
     acts.scrollTop = acts.scrollHeight;
-  }, 650 + step * 1250 + 250));
-  timers.push(setTimeout(finishReel, 650 + step * 1250 + 1900));
+  }, t + 200));
+  timers.push(setTimeout(finishReel, t + 1900));
 }
 
 /* ---------- SPORTSREF DEEP-LINK LAW (v30) ----------

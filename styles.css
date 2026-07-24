@@ -3070,3 +3070,14 @@ body.gating .gate-back {
 .reel-final-rec { font-family: var(--disp); font-weight: 700; font-size: 44px; letter-spacing: 0.04em; color: var(--amber); line-height: 1; }
 .reel-final .reel-note { text-align: center; margin-top: 6px; }
 @keyframes reelIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+
+/* V42.1 — the calendar. Date-numbered squares cascade per month act, wins
+   in amber, losses in ember with a pop; the header record ticks square by
+   square. The commentary line lands after the month fills. */
+.reel-grid { display: flex; flex-wrap: wrap; gap: 4px; margin: 7px 0 2px; }
+.reel-day { width: 21px; height: 21px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0; border: 1px solid var(--tunnel-2); color: var(--chalk-dim); animation: dayIn 0.22s ease-out; }
+.reel-day.w { background: var(--amber); border-color: var(--amber); color: var(--ink); font-weight: 700; }
+.reel-day.l { background: #7e2a24; border-color: #a33a32; color: var(--chalk); font-weight: 700; animation: dayLoss 0.3s ease-out; }
+.reel-note-pending { min-height: 18px; }
+@keyframes dayIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+@keyframes dayLoss { 0% { opacity: 0; transform: scale(0.5); } 60% { transform: scale(1.22); } 100% { opacity: 1; transform: none; } }
