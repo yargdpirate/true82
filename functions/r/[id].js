@@ -1,7 +1,7 @@
 // /r/:id — publish and render signed TRUE 82 Tribune editions.
 //
 // POST /r/:id             Publish a signed AI edition (idempotent).
-// POST /r/:id?open=1      Count one human page-open beacon.
+// POST /r/:id?open=1      Count one in-page open beacon.
 // GET  /r/:id             Render the permanent newsprint share page.
 // HEAD /r/:id             Probe existence without incrementing counters.
 //
@@ -142,7 +142,7 @@ function renderEdition(row, origin) {
   const title = `The True 82 Tribune — ${row.nickname} finish ${wins}–${losses}!`;
   const description = String(row.article || "").slice(0, 180);
   const canonical = `${origin}/r/${encodeURIComponent(row.id)}`;
-  const playUrl = `/?ref=${encodeURIComponent(row.id)}`;
+  const playUrl = `/?ref=${encodeURIComponent(row.id)}&src=tribune_legacy`;
   const date = new Date(Number(row.created_ts) || Date.now()).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
   const roster = players.map((p) => `<li><span>${esc(p.slot)} · ${esc(p.yr)}</span><b>${esc(p.name)}</b><em>${esc(p.v)} value</em></li>`).join("");
   return `<!doctype html>
@@ -157,17 +157,18 @@ function renderEdition(row, origin) {
 <section class="hero"><div><p class="kicker">FINAL RECORD</p><div class="record">${wins}–${losses}!</div></div><h2>${esc(row.nickname)} finish ${wins}–${losses}!</h2></section>
 <article><p class="byline">By the TRUE 82 sports desk</p><p>${esc(row.article)}</p></article>
 <section class="roster"><h3>The five</h3><ul>${roster}</ul><p class="net">Projected net rating ${fmtSigned(row.net)}</p></section>
-<a class="cta" href="${esc(playUrl)}">BUILD YOUR OWN FIVE →</a><footer>TRUE82.NET · THE 82–0 CHASE</footer></main>
-<script>(function(){try{var k="t82-recap-open:${escJs(row.id)}";if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,"1");var u=location.pathname+"?open=1";if(navigator.sendBeacon){navigator.sendBeacon(u,new Blob(["1"],{type:"text/plain"}));}else{fetch(u,{method:"POST",keepalive:true,credentials:"same-origin"}).catch(function(){});}}catch(e){}})();</script>
+<a class="cta" data-action="tribune_build_your_own" href="${esc(playUrl)}">BUILD YOUR OWN FIVE →</a><footer>TRUE82.NET · THE 82–0 CHASE</footer></main>
+<script src="/analytics.js?v=20260721-analytics-v39" defer></script>
+<script>(function(){try{var u=location.pathname+"?open=1";if(navigator.sendBeacon){navigator.sendBeacon(u,new Blob(["1"],{type:"text/plain"}));}else{fetch(u,{method:"POST",keepalive:true,credentials:"same-origin"}).catch(function(){});}}catch(e){}})();</script>
 </body></html>`;
 }
 
 function soldOutPage(id, head) {
-  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Edition unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>ARCHIVE DESK</div><h1>The True 82 Tribune</h1><div>FINAL</div></header><div class="rule"></div><h2>This edition missed the press.</h2><p>The link may have arrived before the paper finished publishing, or the edition is no longer available.</p><a class="cta" href="/?ref=${encodeURIComponent(id)}">BUILD YOUR OWN FIVE →</a></main></body></html>`;
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Edition unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>ARCHIVE DESK</div><h1>The True 82 Tribune</h1><div>FINAL</div></header><div class="rule"></div><h2>This edition missed the press.</h2><p>The link may have arrived before the paper finished publishing, or the edition is no longer available.</p><a class="cta" data-action="tribune_missing_cta" href="/?ref=${encodeURIComponent(id)}&amp;src=tribune_missing_legacy">BUILD YOUR OWN FIVE →</a></main><script src="/analytics.js?v=20260721-analytics-v39" defer></script></body></html>`;
   return new Response(head ? null : body, { status: 404, headers: pageHeaders() });
 }
 function unavailablePage(head, status) {
-  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Pressroom unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>PRESSROOM</div><h1>The True 82 Tribune</h1><div>HOLD</div></header><div class="rule"></div><h2>The archive is temporarily off press.</h2><a class="cta" href="/">PLAY TRUE 82 →</a></main></body></html>`;
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Pressroom unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>PRESSROOM</div><h1>The True 82 Tribune</h1><div>HOLD</div></header><div class="rule"></div><h2>The archive is temporarily off press.</h2><a class="cta" data-action="tribune_unavailable_cta" href="/?src=tribune_unavailable_legacy">PLAY TRUE 82 →</a></main><script src="/analytics.js?v=20260721-analytics-v39" defer></script></body></html>`;
   return new Response(head ? null : body, { status, headers: pageHeaders() });
 }
 

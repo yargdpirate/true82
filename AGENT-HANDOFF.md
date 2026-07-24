@@ -1,10 +1,10 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** this folder, as packaged in `true82-live-v15-documented.zip`.
+**Current source of truth:** this folder, packaged as `true82-full-state-v39-analytics.zip`.
 
-**Date:** 2026-07-18  
-**Current build label:** `20260718-ui-v15`  
-**Most recent functional fix:** Daily #7 / `small_ball_five` center-slot legality.
+**Date:** 2026-07-21
+**Current build label:** `v39` / cache key `20260721-analytics-v39`
+**Most recent functional change:** privacy-maximal first-party analytics v3 and the expanded `/avocado` dashboard.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
@@ -956,3 +956,206 @@ never "Retry", which rebuilds the failed commit):
    tell them to watch utm_source=true82.net, campaigns per surface.
 6. NEXT VERSION (v38): after the keyed sim-core is confirmed live,
    delete the eight v34-era shim keys from meta.scoring.
+
+### V39 — cookieless analytics v3 + Avocado decision dashboard
+Client/build: analytics.js and app.js identify as v39; index.html carries the
+v39 cache keys and build meta. Migration: migrations/0006_analytics_v3.sql.
+Deploy the migration once, then the entire site atomically.
+
+PRIVACY LAW OF THIS BUILD:
+- Analytics may not create/read cookies, localStorage, sessionStorage,
+  fingerprints, ad ids, account ids, raw IPs, IP hashes, or a durable browser
+  id. Visit and run ids are random in-memory values only.
+- The Daily's pre-existing functional local record may be read only for coarse
+  counts: active_days, streak, days_since_last. Never send dates, lineups,
+  nonces, query text, or a hidden stable identifier.
+- Referrers are origin-only. Unknown local paths bucket as 404_or_other. Full
+  outbound URLs, full User-Agent strings, and raw client IPs do not enter D1.
+- Do not “improve retention” later by quietly persisting the analytics sid. An
+  exact cross-day cohort would be a different owner/privacy decision.
+
+EVENT CONTRACT:
+- functions/api/event.js owns the allowlist and sanitization. Every new client
+  event must be added there and to analytics-smoke.js expectations when it
+  changes the schema.
+- analytics.js owns visit/run ids, landing/build context, session/performance
+  summaries, generic stable control ids, external-link capture, and scrubbed
+  client errors. Generic controls never record button text from player rows.
+- app.js owns game semantics: mode/Daily selections, gate, run state, draft,
+  result, share, Tribune, Heat Check, data readiness, percentile, and replay.
+- `run_state` is local-only and MUST NOT be added as a D1 event. It refreshes
+  the in-memory active-run snapshot used by abandon and terminal events.
+- Canonical share diagnosis is share_click -> share_result outcome. The legacy
+  `share` row remains success-only for historical dashboard continuity. Share
+  rows carry wins/net; on share events only, `value` means the displayed Top X%
+  rank when it was available before the tap. Do not reuse that meaning on run
+  terminal rows, where `value` remains the reroll count.
+- Daily link runs preserve variant daily-link for referral attribution. If the
+  device already has an official result for that board, practice=1 and
+  official=0 even though the link path remains daily-link.
+
+AVOCADO CONTRACT:
+- The Live pulse ignores date/build filters by design. It is the silent-ingest
+  alarm. Build comparison obeys date but ignores the selected build chip.
+- The Daily funnel is gate-matched by visit and separates practice; it must
+  never exceed 100%. The lower daily-vs-standalone card reconciles inherited
+  base modes. Mode-discovery SQL normalizes both Daily game_start and
+  game_complete rows to Daily instead of their inherited base mode.
+- Daily return behavior is explicitly a local-history proxy, never D1/D7.
+- Tribune in-page opens are page-load beacons and can count a reload. “Fetched,
+  no beacon” includes unfurl crawlers and is not proof of an intentional send.
+- Do not remove migration/build warnings or privacy labels to make cards look
+  cleaner. They prevent the old dashboard's false certainty.
+- Keep Avocado's `queryLimiter(5)`. The dashboard deliberately caps concurrent
+  D1 statements; do not replace the bounded helpers with an unbounded
+  `Promise.all` across all cards.
+- Kaman result/share rows are collected for operational visibility but are separated from canonical Classic/Pro/Presti share rates and record/rank propensity tables. This v39 rule supersedes the historical v29 note that Kaman sharing was untracked.
+- Search diagnostics may store query length/result count but never query text.
+  Abandonment and time-to-value cards are run/visit aggregates joined only by
+  the in-memory ids. All new v39 dimensions are forward-only.
+
+VALIDATION:
+- Companion folder true82-devtools-v39 contains analytics-smoke.js. It has no
+  jsdom dependency and is the mandatory pre-deploy analytics check. It executes
+  the real migration, ingestion Worker, and every Avocado query against Node's
+  in-memory SQLite in addition to source/privacy assertions.
+- browser-smoke.py uses Python Playwright plus Chromium to drive the actual UI
+  through a privacy-safe search and abandonment, a completed Classic run, an
+  outbound click, a confirmed clipboard share, and a Daily gate start. It
+  captures the real event payloads and asserts that typed search text and
+  analytics storage/cookies are absent. It stubs network responses, so it
+  complements rather than replaces analytics-smoke.js.
+- Run `node analytics-smoke.js`, `python browser-smoke.py`, and
+  `node audit.js 100 pool2`.
+- The legacy full UI walk still requires npm install because it uses jsdom and
+  esbuild; absence of those packages is an environment limitation, not a green
+  UI result.
+
+### V40 — the game sees its own engine (tax telemetry + curves)
+Recovered v39 absorbed as baseline (checksums verified). Build identity
+v40 everywhere it is version-coupled: meta tag, ANALYTICS_BUILD, BUILD_V,
+and ONE shared cache key on analytics.js + app.js across index, 404, and
+all four info pages (the keys-move-together law).
+
+- MIGRATION 0007 (additive, AFTER 0006): nine Scoring Card columns on
+  events. Insert tier is v40-first, failing soft v40->v3->v2->legacy with
+  marker analytics-v40-migration-required. Zeros are real zeros;
+  pre-0007 rows are NULL and excluded from incidence math.
+- game_complete now carries every engine tax + the spacing bonus (2dp).
+- THREE NEW CARDS: "Scoring Card · tax incidence" (fire rate + magnitude
+  per tax per mode; migration warning when 0007 unapplied), "Heat Check ·
+  clutch and charity" (shown / pulled / refused / silent-skip / wheel
+  segments / hit-82), "Pool coverage · the half that never gets picked"
+  (constants 21525/3509 are build-time; re-pin on dataset refresh).
+- CURVES API: /avocado?api=curves — practice-excluded win histograms,
+  date/build scoped, JSON. balance-bench --live consumes it (n>=300 per
+  mode or hardcoded fallback). The balance tether now reads the live
+  game; screenshots retire.
+VALIDATION — ALL THREE LANES GREEN, a first for this project:
+analytics-smoke 88/88 (both migrations, fail-soft proof, taxed-row
+round-trip, all cards, curves); legacy jsdom walk 244/244 x3 (FIRST EVER
+run against the v39 rebuild — jsdom/esbuild installed; two stale pins
+healed: the ui-v key regex predating v39's key rename, and a v38 funnel
+label predating the v39 dashboard); browser-smoke 26/26 in real Chromium,
+78 live payloads captured with the v40 fields flowing. Devtools ROOT is
+now ../true82 or $T82_ROOT everywhere.
+DEPLOY ORDER: 0006 (if not yet), then 0007, then the whole site in one
+commit; footer reads v40; Live pulse should show v40 rows; the tax card
+warns until 0007 lands and fills from the first post-deploy finish.
+
+### V41 — the rules sheet, owner-rewritten and reordered
+Shared cache key 20260723-howto-v41 on styles.css + analytics.js + app.js;
+meta t82-build, ANALYTICS_BUILD, and BUILD_V all read v41. No migration, no
+schema change. Walk 249 x3, analytics-smoke 89, browser-smoke 26.
+
+- SECTION ORDER (owner-specified, walk-pinned so it cannot silently drift):
+  GAME BASICS -> HOW TO PLAY THIS MODE (X) -> [today's rule / twist box] ->
+  NEED A REFRESHER -> WHAT WINS GAMES -> footer.
+- RETIRED: RULES_STEPS ("THE GAME IN 20 SECONDS") and the standalone
+  CHANGE THE YEARS box, plus their CSS (.rs-steps, .rs-years). GAME BASICS
+  absorbs the first; each mode block now owns its own season/reroll
+  instructions. RULES_LAW folded into RULES_MODE.daily.
+- THE DAILY now has its own mode block and still renders the base mode's
+  rules underneath it ("PLUS CLASSIC MODE RULES").
+- WHAT WINS GAMES gained THE DIRTY WORK, which finally documents the v35
+  and v36 fences (glass, creator, mileage); rim protection folded into
+  DEFENSE. Before v41 those four taxes could fire with no rule anywhere in
+  the product explaining them. Walk-pinned.
+- NEED A REFRESHER links the BBRef year-by-year BPM top-10 leaderboard
+  (verified live 2026-07-23; that page also documents why the pool starts
+  in 1974, since BPM only exists from 1973-74 on) plus the BBRef home.
+  Campaign "howto" so this surface reports separately from "info".
+  Stathead stays PLAIN TEXT per the standing v34 law; walk pins both the
+  phrase and the absence of any stathead URL in the sheet.
+- FOOTER keeps /how-it-works/, adds STATS REFRESHER, and GOT IT becomes an
+  amber-filled primary; the close control goes gold. Footer wraps below
+  340px so an SE never clips the primary button.
+- COPY NUMBERS VERIFIED against live config before shipping: net 0 = 41-41,
+  82-0 needs +27 (exactly 27.01 at BASELINE 3.98 / NET_SD 12), zero
+  shooters = 6 (SPACING_TAX 2.0 x 3), usage budget = 110. All correct.
+- REGRESSION THE OWNER SHOULD RATIFY: the new Presti copy drops the old
+  line teaching the explicit gem odds ("about 1 in 7 is a $1M steal, about
+  half are rip-offs priced like stars"). The walk pin was rewritten to the
+  new wording rather than deleted. Restore in one line if wanted.
+- TEST HYGIENE: analytics-smoke's build/cache-key assertions no longer
+  contain version literals. They now assert meta == ANALYTICS_BUILD ==
+  BUILD_V and that styles/analytics/app share one key ending in that build.
+  Future bumps need no test edits. Do not reintroduce literals.
+
+### V42 — ANY GIVEN NIGHT: classic plays the season out (owner-directed)
+Shared key 20260724-season-v42 (styles+analytics+app AND sim-core);
+DATA_URL sc-v42; meta/ANALYTICS_BUILD/BUILD_V v42. Walk 274 x3 (now
+includes a FULL standalone-classic playthrough through the real UI),
+analytics-smoke 89, browser-smoke 26 in real Chromium through the reel.
+
+ARCHITECTURE (the replay law survives by construction):
+- Arming is an ACTION: op "ss" -> S.simSeason. The app arms ONLY
+  standalone classic (MODE classic, no G.social, no G.ch). Daily boards,
+  weekly twists, pro, and Presti stay analytic this build. Replays of
+  pre-v42 runs carry no "ss" and stay analytic forever.
+- simSeason(S, e) in sim-core rolls 82 games from the run's OWN rng
+  stream as the game's final draws: same seed, same five, same record,
+  live and in replay. finish() realizes when armed; res gains
+  wins/losses (realized), expWins (the analytic tally), season{games,
+  pGame, pRaw}.
+- Per-game p = clamp(phi(net/NET_SD), 1-PG_CAP, PG_CAP). PG_CAP = 0.97
+  in meta.scoring (PIPELINE MIRROR now TWENTY keys). Expected classic
+  82-0 lands ~6% (from ~35%); the cap makes the estimate tail-proof.
+  The mean is untouched wherever the cap does not bind (net < ~22.6).
+- Opponent cities are COSMETIC: app-side, FNV-hashed from seed+game
+  index, never the rng stream. Flavor edits can never break rngDraws.
+- The reel: seven real month acts (OCT 5 / NOV 15 / DEC 15 / JAN 15 /
+  FEB 11 / MAR 15 / APR 6 = 82), auto-advance ~1.25s, desk commentary
+  per act ("The zero died in Denver, game 47."), running record, one
+  SKIP, tap-anywhere skips too. bbref map preloads behind it. Tribune
+  pregen deliberately NOT enabled (demand-priced law stands; enabling
+  it is an owner cost decision, ~every classic finish would bill).
+- The rule is NAMED, not hidden: WHAT WINS GAMES gains ANY GIVEN NIGHT
+  on the standalone-classic sheet only (walk pins presence there and
+  absence on Presti's sheet).
+
+WHAT FLOWS REALIZED WINS: results record, comp ladder + climb, share
+record + emoji bands, recap/Tribune wins, editions, game_complete.wins,
+curves API (the bench also arms classic now, so the tether stays honest).
+WHAT STAYS ANALYTIC AND UNTOUCHED: net, score, every tax, percentile /
+Top X% (ranked by net since v33 — that decision carries this feature),
+leaderboards, Heat Check (cap-only, still keyed on the analytic tally,
+walk-pinned untouched).
+
+PRESTI PREP (next build, owner-specified):
+- Heat Check fires on a LITERAL realized 81-1 only. Draw ORDER LAW: the
+  82 season rolls come FIRST, then the two Heat Check draws — client
+  overlay and finish() must consume in that exact order or rngDraws
+  parity breaks. The clutch gate flips from e.winTally === 81 to
+  realized wins === 81; FORCE_CLUTCH (?clutch=1) should force through
+  the realized path.
+- Heat Check flavor upgrade available: the spin can be framed as
+  replaying the one loss (the city is known from the cosmetic schedule).
+- Expect tuning: Presti's 2% perfection collapses under sim+cap; owner
+  may want a separate PG_CAP for cap mode (config key, one line) or a
+  gentler cap. Realized 81s become far more common, so Heat Check
+  frequency rises sharply — the economy of the spin needs an owner look.
+- Daily adaptation later: seed the schedule from the BOARD, not the run,
+  so everyone faces the same 82 and identical fives tie exactly.
+- res.expWins is carried but surfaced nowhere; "expected 81, ran 79" is
+  a ready-made results line when wanted.

@@ -1,0 +1,36 @@
+TRUE 82 V39 ANALYTICS PATCH
+
+DEPLOY FIRST — APPLY ONCE TO THE D1 DATABASE BOUND AS DB:
+  migrations/0006_analytics_v3.sql
+
+THEN DEPLOY ALL VERSION-COUPLED FILES IN THIS PATCH TOGETHER:
+  analytics.js
+  app.js
+  index.html
+  functions/api/event.js
+  functions/avocado.js
+  functions/[id].js
+  functions/r/[id].js
+  404.html
+  faq/index.html
+  how-it-works/index.html
+  can-you-go-82-0/index.html
+  what-is-bpm/index.html
+  md/faq.md
+  ANALYTICS-V39.md
+  README-DEPLOY.txt
+  AGENT-HANDOFF.md
+
+DO NOT DEPLOY ONLY THE DASHBOARD OR ONLY APP.JS.
+The browser cache keys, event allowlist, D1 columns, and Avocado queries are one unit.
+
+PRIVACY BOUNDARY:
+  No analytics cookies, analytics localStorage/sessionStorage, account id,
+  fingerprint, IP hash, or durable browser id. Visit and run ids exist only
+  in page memory. Exact cross-day person-level retention is intentionally not
+  available; the dashboard labels the coarse Daily local-history proxy.
+
+FORWARD-ONLY V39 CARDS:
+  Search detail, abandonment detail, time-to-value, results-section reach,
+  share outcome/rank diagnostics, performance, and error telemetry begin at
+  deployment. Historical rows are not backfilled.

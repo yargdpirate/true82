@@ -20,6 +20,16 @@ Yes. TRUE 82 is completely free to play in any modern browser, with no account,
 no download, no ads, and no cookies. There's an optional donate button if you
 enjoy it, and that's the extent of the commerce.
 
+## Does TRUE 82 track me?
+
+TRUE 82 uses first-party, cookieless usage analytics to see where visits start,
+where games are abandoned, and whether features such as sharing work. The
+analytics system uses random visit and game identifiers that disappear on
+reload or tab close; it does not create an analytics cookie, account,
+fingerprint, IP hash, or durable browser identifier. The Daily keeps your
+official result and streak on your own device so that feature works, and the
+site reports only coarse counts from that local history.
+
 ## How do you play TRUE 82?
 
 Draft a five-man roster with two guards, two forwards, and a center. Each of

@@ -17,7 +17,7 @@
 
 var CFG = {
   SITE_NAME: "PERFECT FIVE",
-  DATA_URL: "site_data.json?v=sc-v36",
+  DATA_URL: "site_data.json?v=sc-v42",
   GAMES_IN_SEASON: 82,
   POS_THRESHOLD: 20,
   KAMAN_LO: 2004,
@@ -214,12 +214,19 @@ function loadScriptOnce(src) {
   if (SCRIPT_LOADS[src]) return SCRIPT_LOADS[src];
   SCRIPT_LOADS[src] = new Promise(function (resolve) {
     if (typeof document === "undefined" || !document.createElement || !document.head) return resolve(false);
+    var started = Date.now();
     var tag = document.createElement("script");
     tag.src = src;
     tag.async = true;
     tag.setAttribute("data-t82-feature", src);
-    tag.onload = function () { resolve(true); };
-    tag.onerror = function () { delete SCRIPT_LOADS[src]; resolve(false); };
+    tag.onload = function () {
+      analyticsTrack("data_ready", { action: "feature_script", source: src, outcome: "success", load_ms: Date.now() - started });
+      resolve(true);
+    };
+    tag.onerror = function () {
+      analyticsTrack("data_error", { action: "feature_script", source: src, outcome: "error", error_code: "script_load", load_ms: Date.now() - started });
+      delete SCRIPT_LOADS[src]; resolve(false);
+    };
     document.head.appendChild(tag);
   });
   return SCRIPT_LOADS[src];
@@ -338,15 +345,93 @@ function initData(data) {
   CAREER_BUCKETS = t.CAREER_BUCKETS; KAMAN_SEASONS = t.KAMAN_SEASONS;
 }
 
+// Anonymous analytics state. No analytics id is written to cookies, localStorage,
+// or sessionStorage. analytics.js owns one random in-memory visit id; each game gets
+// one random in-memory run id. The only persistent state read below is The Daily's
+// already-existing 14-day game record, and only coarse counts leave the browser.
+var ANALYTICS_RETURN_SENT = false;
+var ANALYTICS_RULES_OPEN_TS = 0;
+var ANALYTICS_SEARCH_TIMER = 0;
+var ANALYTICS_HOME_N = 0;
+var ANALYTICS_RESULT_OBSERVER = null;
+
+function analyticsTrack(name, props) {
+  if (window.t82track) window.t82track(name, props || {});
+}
+function analyticsDailyProfile() {
+  if (!window.T82DAILY || !T82DAILY.getState) return null;
+  try {
+    var s = T82DAILY.getState();
+    var keys = Object.keys((s && s.official) || {}).sort();
+    var today = T82DAILY.dayKey();
+    var last = keys.length ? keys[keys.length - 1] : "";
+    var days = null;
+    if (last) {
+      var a = Date.parse(today + "T12:00:00Z"), b = Date.parse(last + "T12:00:00Z");
+      if (Number.isFinite(a) && Number.isFinite(b)) days = Math.max(0, Math.round((a - b) / 86400000));
+    }
+    return {
+      active_days: keys.length,
+      streak: T82DAILY.streakFor(today),
+      days_since_last: days,
+      outcome: keys.length ? "returning_daily_player" : "no_daily_history"
+    };
+  } catch (e) { return null; }
+}
+function analyticsSendReturnProfile() {
+  if (ANALYTICS_RETURN_SENT) return;
+  ANALYTICS_RETURN_SENT = true;
+  var p = analyticsDailyProfile();
+  if (p) analyticsTrack("return_profile", p);
+}
+function analyticsVariant() {
+  if (!G) return "";
+  if (G.analyticsVariant) return G.analyticsVariant;
+  if (G.social) return (G.social.target ? "daily-link:" : "daily:") + G.social.num;
+  return "";
+}
+
+// analytics.js calls this lazily for every row, so UI screens and the current run
+// are attached without another persistent identifier or duplicate event stream.
+window.t82AnalyticsContext = function () {
+  var p = { mode: MODE, screen: G && G.screen ? G.screen : (document.body.classList.contains("gating") ? "daily_gate" : "home") };
+  if (!G) return p;
+  var v = analyticsVariant();
+  if (v) p.variant = v;
+  if (G.ch && G.ch.id) p.challenge = G.ch.id;
+  if (G.social) {
+    p.daily_num = G.social.num;
+    p.practice = G.analyticsPractice != null ? G.analyticsPractice : (/^daily-practice:/.test(v) ? 1 : 0);
+    p.official = G.analyticsOfficial != null ? G.analyticsOfficial : (p.practice ? 0 : 1);
+    if (G.social.target) {
+      p.target_wins = G.social.target.w;
+      p.target_net = G.social.target.n;
+    }
+  }
+  return p;
+};
+
 // Anonymous run telemetry stays in memory until an actual event needs it. This gives
 // page-exit and Start over events the current round/team/era plus an accurate Presti
-// split without writing a row for every tap. The initial cap is UI-only metadata;
-// changing it cannot affect replay determinism or the engine result.
+// split without writing a row for every state mutation. The initial cap is UI-only
+// metadata; changing it cannot affect replay determinism or the engine result.
 function analyticsRunSnapshot(reason) {
   var p = { mode: MODE };
   if (!G) return p;
-  p.round = G.round || 0;
-  if (G.social) p.variant = (G.social.target ? "daily-link:" : "daily:") + G.social.num;   // THE DAILY funnel key (kill criteria read this)
+  p.round = Math.min(CFG.ROUNDS, G.round || 0);
+  p.screen = G.screen || "";
+  var v = analyticsVariant();
+  if (v) p.variant = v;
+  if (G.ch && G.ch.id) p.challenge = G.ch.id;
+  if (G.social) {
+    p.daily_num = G.social.num;
+    p.practice = G.analyticsPractice != null ? G.analyticsPractice : (/^daily-practice:/.test(v) ? 1 : 0);
+    p.official = G.analyticsOfficial != null ? G.analyticsOfficial : (p.practice ? 0 : 1);
+    if (G.social.target) {
+      p.target_wins = G.social.target.w;
+      p.target_net = G.social.target.n;
+    }
+  }
   if (G.cur) {
     if (G.cur.fr) p.franchise = G.cur.fr;
     if (G.cur.dec != null) p.decade = G.cur.dec;
@@ -364,44 +449,105 @@ function analyticsRunSnapshot(reason) {
   return p;
 }
 function trackRunState() {
-  window.t82track && window.t82track("run_state", analyticsRunSnapshot());
+  analyticsTrack("run_state", analyticsRunSnapshot());
 }
 function trackDealView(source) {
   var p = analyticsRunSnapshot();
-  p.variant = source;
-  window.t82track && window.t82track("deal_view", p);
+  p.action = source;
+  analyticsTrack("deal_view", p);
+}
+function trackResultSections() {
+  if (ANALYTICS_RESULT_OBSERVER && ANALYTICS_RESULT_OBSERVER.disconnect) {
+    ANALYTICS_RESULT_OBSERVER.disconnect();
+  }
+  ANALYTICS_RESULT_OBSERVER = null;
+  var nodes = Array.prototype.slice.call(document.querySelectorAll("[data-result-section]"));
+  if (!nodes.length) return;
+  var seen = Object.create(null);
+  function mark(node) {
+    var key = node && node.getAttribute("data-result-section");
+    if (!key || seen[key]) return;
+    seen[key] = 1;
+    analyticsTrack("result_section_view", Object.assign(analyticsRunSnapshot(), {
+      surface: "results", action: key
+    }));
+  }
+  if (typeof IntersectionObserver !== "function") {
+    nodes.forEach(mark);
+    return;
+  }
+  ANALYTICS_RESULT_OBSERVER = new IntersectionObserver(function (entries, obs) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting || entry.intersectionRatio < 0.2) return;
+      mark(entry.target);
+      obs.unobserve(entry.target);
+    });
+  }, { threshold: [0.2, 0.5] });
+  nodes.forEach(function (node) { ANALYTICS_RESULT_OBSERVER.observe(node); });
 }
 
 function newGame(mode, seed, challenge, opts) {
+  if (ANALYTICS_RESULT_OBSERVER && ANALYTICS_RESULT_OBSERVER.disconnect) {
+    ANALYTICS_RESULT_OBSERVER.disconnect();
+    ANALYTICS_RESULT_OBSERVER = null;
+  }
   if (mode) MODE = mode;
   G = T82.newState(MODE, seed, challenge || null);
   G.analyticsInitialCap = G.maxCap;
   if (opts && opts.social) G.social = opts.social;   // THE DAILY: {key,num,name,chId,target} rides the run
+  if (opts && opts.practice != null) G.analyticsPractice = opts.practice ? 1 : 0;
+  if (opts && opts.official != null) G.analyticsOfficial = opts.official ? 1 : 0;
   var shareRef = SHARE_REF;
   if (shareRef) SHARE_REF = "";  // one conversion per referred landing, not every replay in the visit
   var sv = opts && opts.variant;   // daily / daily-link / daily-practice start tags
-  window.t82track && window.t82track("game_start", shareRef ? { mode: MODE, variant: "recap:" + shareRef } : sv ? { mode: MODE, variant: sv } : { mode: MODE });
+  G.analyticsVariant = shareRef ? "recap:" + shareRef : (sv || "");
+  G.analyticsStartedAt = Date.now();
+  var startEvent = analyticsRunSnapshot();
+  startEvent.surface = opts && opts.surface ? opts.surface : (G.social ? (/^daily-link:/.test(G.analyticsVariant) ? "referral" : "daily") : "home");
+  startEvent.action = "start";
+  analyticsTrack("game_start", startEvent);
   nextRound(true);
 }
 function nextRound(animate) {
   var r = T82.dealRound(G);
   if (r === "done") { showResults(); return; }
   var snap = analyticsRunSnapshot();
-  window.t82track && window.t82track("round_advance", snap);
+  analyticsTrack("round_advance", snap);
   renderDraft(animate ? r : false);
 }
 function doTeamSkip() {
+  var before = G && G.cur ? { fr: G.cur.fr, dec: G.cur.dec, budget: G.budget } : {};
   var f = T82.skipTeam(G);
-  if (f) { trackDealView("team_reroll"); trackRunState(); renderDraft(f); }
+  if (f) {
+    var p = analyticsRunSnapshot();
+    p.action = "team"; p.source = before.fr || ""; p.outcome = G.refundFlash ? "refund" : G.fireSaleFlash ? "fire_sale" : "normal";
+    p.amount = Math.max(0, (before.budget == null ? G.budget : before.budget) - G.budget);
+    analyticsTrack("reroll", p);
+    trackDealView("team_reroll"); trackRunState(); renderDraft(f);
+  }
 }
 function doEraSkip() {
+  var before = G && G.cur ? { fr: G.cur.fr, dec: G.cur.dec, budget: G.budget } : {};
   var f = T82.skipEra(G);
-  if (f) { trackDealView("era_reroll"); trackRunState(); renderDraft(f); }
+  if (f) {
+    var p = analyticsRunSnapshot();
+    p.action = "era"; p.source = String(before.dec || ""); p.outcome = G.refundFlash ? "refund" : G.fireSaleFlash ? "fire_sale" : "normal";
+    p.amount = Math.max(0, (before.budget == null ? G.budget : before.budget) - G.budget);
+    analyticsTrack("reroll", p);
+    trackDealView("era_reroll"); trackRunState(); renderDraft(f);
+  }
 }
 function doYearReroll() {
   if (MODE !== "cap") return;
+  var beforeBudget = G.budget;
   var f = T82.yearReroll(G);
-  if (f) { trackRunState(); renderDraft(f); }
+  if (f) {
+    var p = analyticsRunSnapshot();
+    p.action = "years"; p.outcome = G.refundFlash ? "refund" : G.fireSaleFlash ? "fire_sale" : "normal";
+    p.amount = Math.max(0, beforeBudget - G.budget);
+    analyticsTrack("reroll", p);
+    trackRunState(); renderDraft(f);
+  }
 }
 /* Why a card can't be drafted right now, in the order the engine checks it.
    null = draftable. Challenge filters and pick-hooks were invisible to the cap
@@ -451,14 +597,46 @@ function denyTray(msg) {
   denyTray._t = setTimeout(function () { if (note.parentNode) note.parentNode.removeChild(note); }, 1800);
 }
 function confirmPick(bucket) {
-  if (!G.selected) { denyTray("Pick a player first."); return; }
+  if (!G.selected) {
+    analyticsTrack("pick_denied", Object.assign(analyticsRunSnapshot(), { action: "no_player", slot: bucket }));
+    denyTray("Pick a player first."); return;
+  }
   var row = resolveRow(G.selected);
   if (!row) return;
-  if (T82.applyPick(G, G.selected, row[IDX.season], bucket)) { trackRunState(); nextRound(true); return; }
+  var selected = G.selected;
+  var season = row[IDX.season];
+  var cost = MODE === "cap" ? effCost(selected) : null;
+  if (T82.applyPick(G, selected, season, bucket)) {
+    var p = analyticsRunSnapshot();
+    p.player = row[IDX.name]; p.season = season; p.slot = bucket;
+    p.ordinal = G.picks.length; p.value = cost; p.source = G.cur && G.cur.fr;
+    analyticsTrack("draft_pick", p);
+    trackRunState(); nextRound(true); return;
+  }
+  analyticsTrack("pick_denied", Object.assign(analyticsRunSnapshot(), {
+    action: "rule_block", player: row[IDX.name], season: season, slot: bucket
+  }));
   denyTray(chBlockWhy());
 }
-function doLineupMove(pickIdx, bucket) { if (T82.moveSlot(G, pickIdx, bucket)) afterLineupChange(); }
-function doLineupSwap(i, j) { if (T82.swapSlots(G, i, j)) afterLineupChange(); }
+function doLineupMove(pickIdx, bucket) {
+  var p0 = G.picks[pickIdx], from = p0 && p0.slot, name = p0 && p0.row && p0.row[IDX.name];
+  if (T82.moveSlot(G, pickIdx, bucket)) {
+    analyticsTrack("lineup_change", Object.assign(analyticsRunSnapshot(), {
+      action: "move", player: name, source: from, slot: bucket, ordinal: pickIdx + 1
+    }));
+    afterLineupChange();
+  }
+}
+function doLineupSwap(i, j) {
+  var a = G.picks[i], b = G.picks[j];
+  if (T82.swapSlots(G, i, j)) {
+    analyticsTrack("lineup_change", Object.assign(analyticsRunSnapshot(), {
+      action: "swap", player: a && a.row && a.row[IDX.name], source: b && b.row && b.row[IDX.name],
+      slot: a && a.slot, ordinal: i + 1, value: j + 1
+    }));
+    afterLineupChange();
+  }
+}
 
 /* ---------- game (UI-side) ---------- */
 
@@ -1092,7 +1270,9 @@ function wireStartOver() {
     // Only an unfinished draft is a bailout. Results/newspaper navigation is already
     // represented by game_complete and its own action events.
     if (G && G.screen === "draft") {
-      window.t82track && window.t82track("run_abandon", analyticsRunSnapshot("start_over"));
+      analyticsTrack("run_abandon", Object.assign(analyticsRunSnapshot("start_over"), {
+        surface: "draft", action: "start_over"
+      }));
     }
     renderIntro();
   });
@@ -1369,28 +1549,38 @@ function tickBank() {
    explainers live in daily-core MODE_TIP; the bullets here are the long form.
    If a mechanic or an engine constant (site_data meta.scoring) changes,
    update all three in the same commit. */
-var RULES_LAW = [
-  "One shared board per day. Everyone gets the same teams, the same players, the same prices.",
-  "Your first finished run is your official score. Replays are practice and can never overwrite it.",
-  "Finish, then share: your link drops friends onto this exact board to beat your number."
-];
-var RULES_STEPS = [
-  "Five rounds. Each one deals a random NBA franchise and decade. Draft one player who suited up for that team in that era.",
-  "Fill five slots: two guards, two forwards, one center. A player only fits slots he really played.",
-  "When your fifth pick lands, the season engine turns your five into an 82-game record using advanced impact stats (BPM). No dice: the same five always posts the same record.",
-  "The chase is 82-0. Nobody said it was likely."
+// v41 RULES SHEET COPY (owner-authored, owner-ordered). Section order is
+// GAME BASICS -> HOW TO PLAY THIS MODE -> [today's rule box] -> NEED A
+// REFRESHER -> WHAT WINS GAMES. RULES_STEPS and the standalone CHANGE THE
+// YEARS box retired here: GAME BASICS covers the first, and each mode block
+// now owns its own season/reroll instructions.
+// COPY LAW: zero em-dashes (walk-pinned). Money reads plain, "$1M".
+var RULES_BASICS = [
+  "Draft a team of 2 guards, 2 forwards, and a center from 1974\u20132026. Assemble an actual coherent team.",
+  "In each round, draft one player from a random NBA franchise + decade combo.",
+  "The system uses real advanced stats to calculate an actual win-loss record.",
+  "Try to go 82-0. Share to prove you know ball."
 ];
 var RULES_MODE = {
   classic: [
-    "Full stats on every card. The season menu (\u25BE) under each name lets you use any year of that player's career.",
-    "One team skip and one era skip for the whole draft. Spend them on dead boards; they do not carry over.",
-    "The sort chips (Min, A\u2013Z, Off, Def) and the search box are your scouting tools."
+    "Full player stats on every card. The season menu (\u25BE) under each name lets you pick any year of that player's career. The best overall season is selected by default, but worth changing to balance team offense/defense.",
+    "One team skip and one era skip for the whole draft if there are no high-quality fits.",
+    "Use the sort chips to order by A\u2013Z, Offensive BPM, Defensive BPM, or use the search box.",
+    "Players are default sorted by peak minutes per game in a season.",
+    "Shift player positions around at the bottom to fit in players."
   ],
   cap: [
-    "You have a $50M bank for all five picks. Every card shows its price.",
-    "Prices are randomized each round. True stars are priced honestly and fringe players run cheap; the mid-tier is the minefield, where about 1 in 7 is a $1M steal and about half are rip-offs priced like stars.",
-    "Skip team, skip era, or reroll the years for $1M each, as often as the money allows. Every empty roster spot needs $1M held in reserve.",
-    "Seasons are randomized too, and some boards are flat unwinnable. That is Presti."
+    "You have a salary cap. $50M to draft your five.",
+    "Player salaries vary greatly, with rip-offs, bargains, and bait choices included.",
+    "Pay $1M to reroll decade, team, or player seasons within that combo. Unlimited rerolls, but every empty roster spot needs $1M held in reserve.",
+    "Players are default sorted by salary; also sort by peak minutes played, A\u2013Z, or use the search box.",
+    "Occasional random perks when rerolling era/team/player: REFUND (green) gives your dollar back. FIRE SALE (red) drops the next roll's player salaries by $2M."
+  ],
+  daily: [
+    "One shared board per day. Everyone gets the same teams, the same players, the same prices.",
+    "Your first finished run is your official score. Replays are practice and can never overwrite it.",
+    "Today's rule appears below, and it beats the normal numbers wherever they disagree.",
+    "Finish, then share: your link drops friends onto this exact board to beat your number."
   ],
   pro: [
     "No stats. Every card is a name, a position, and a randomized season.",
@@ -1402,9 +1592,19 @@ var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
   ["ONE BALL", "Team usage above 110 gets taxed. Two high-usage alphas fit. Four is a turf war your net pays for."],
-  ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. Never stack two liabilities in one position group."],
+  ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. And someone up front, a forward or your center, has to protect the rim, or that is 2 more."],
+  ["THE DIRTY WORK", "Your five still have to rebound and somebody has to pass. A bottom-of-the-league board rate costs 2 to 3, no real playmaker costs 2, and more than one player past his 12th season costs 1."],
   ["THE MATH", "Net 0 is a 41-41 team, and one point of net is worth 2 to 3 wins in the middle. The 96 Bulls grade about +13. An 82-0 five needs about +27."]
 ];
+// Campaign "howto": this surface reports separately from the info pages.
+var BBREF_BPM_LEADERS = "https://www.basketball-reference.com/leaders/bpm_top_10.html";
+function rulesRefresherHtml() {
+  return '<p class="rs-ref-body">Our engine is based on BPM, so <a href="' +
+    bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">this page</a> is a good place to start. ' +
+    'Check out <a href="' + bbrefTag("https://www.basketball-reference.com/", "howto") +
+    '" target="_blank" rel="noopener">Basketball Reference</a> and Basketball Reference\u2019s Stathead for deeper dives. ' +
+    'No affiliation, I just use them all the time, including the stats behind this site.</p>';
+}
 function rulesSheetHtml() {
   var isDaily = !!(G && G.social);
   var ch = G && G.ch;
@@ -1414,9 +1614,18 @@ function rulesSheetHtml() {
   var h = '<div class="rs-head"><span class="rs-title">HOW TO PLAY</span>' +
     '<button class="rs-close" id="rulesClose" type="button" aria-label="Close the rules">\u2715</button></div>' +
     '<div class="rs-scroll">';
+
+  h += '<p class="rs-eyebrow">GAME BASICS</p><ul class="rs-list">' +
+    RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+
+  h += '<p class="rs-eyebrow">HOW TO PLAY THIS MODE (' + (isDaily ? "THE DAILY" : baseName) + ')</p><ul class="rs-list">' +
+    (RULES_MODE[isDaily ? "daily" : baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   if (isDaily) {
-    h += '<p class="rs-eyebrow">THE DAILY \u00B7 THE LAW</p><div class="rs-law">' +
-      RULES_LAW.map(function (t) { return "<p>" + t + "</p>"; }).join("") + '</div>';
+    h += '<p class="rs-eyebrow">PLUS ' + baseName + ' MODE RULES</p><ul class="rs-list">' +
+      (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+  }
+
+  if (isDaily) {
     var brief = G.social.gate || G.social.short || "";
     h += '<div class="rs-today plq-frame plq-slim">' +
       '<p class="rs-eyebrow rs-today-label">TODAY\u2019S RULE \u00B7 DAILY #' + G.social.num + '</p>' +
@@ -1435,35 +1644,40 @@ function rulesSheetHtml() {
       (chBrief ? '<p class="rs-today-body">' + esc(chBrief) + '</p>' : '') +
       '</div>';
   }
-  var yearsTip = baseKey === "cap"
-    ? "Seasons are locked to their price tag in Presti. To change the years, respin the whole board with SKIP YRS for \u2212$1M."
-    : baseKey === "pro"
-      ? "Every card has a year menu (\u25BE), and it works blind: seasons are randomized, and you can change any of them from memory before you draft."
-      : "Every card has a year menu (\u25BE). You are drafting a season, not a career: 1996 Jordan and 2003 Jordan are different weapons. Check it on every pick and take the peak year.";
-  h += '<p class="rs-eyebrow">' + baseName + ' MODE RULES</p><ul class="rs-list">' +
-    (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
-  h += '<div class="rs-years"><p class="rs-eyebrow rs-years-label">CHANGE THE YEARS</p>' +
-    '<p class="rs-years-body">' + yearsTip + '</p></div>';
-  h += '<p class="rs-eyebrow">THE GAME IN 20 SECONDS</p><ol class="rs-steps">' +
-    RULES_STEPS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>";
+
+  h += '<div class="rs-ref"><p class="rs-eyebrow rs-ref-label">NEED A REFRESHER?</p>' + rulesRefresherHtml() + '</div>';
+
+  var engineRules = RULES_ENGINE;
+  if (baseKey === "classic" && !isDaily && !ch) {
+    engineRules = RULES_ENGINE.concat([["ANY GIVEN NIGHT",
+      "The season is played out one game at a time. No five wins a given night more than 97 times in 100, so a perfect season has to survive all 82."]]);
+  }
   h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
-    RULES_ENGINE.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
-    ((isDaily || ch) ? '<p class="rs-note">Today’s rule wins any conflict with the normal numbers above.</p>' : "");
+    engineRules.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
+    ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
+
   h += '</div><div class="rs-foot">' +
     '<a class="rs-link mono" href="/how-it-works/" target="_blank" rel="noopener">Full engine math \u2192</a>' +
+    '<a class="rs-link mono" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
     '<button class="rs-got" id="rulesGotIt" type="button">GOT IT</button>' +
   '</div>';
   return h;
 }
 var RULES_PREV_FOCUS = null;
-function rulesEscListener(ev) { if (ev.key === "Escape") closeRulesSheet(); }
-function closeRulesSheet() {
+function rulesEscListener(ev) { if (ev.key === "Escape") closeRulesSheet("escape"); }
+function closeRulesSheet(method) {
   var ov = el("rulesOverlay");
+  if (!ov) return;
+  analyticsTrack("rules_close", Object.assign(analyticsRunSnapshot(), {
+    action: method || "button",
+    duration: ANALYTICS_RULES_OPEN_TS ? Math.max(0, Date.now() - ANALYTICS_RULES_OPEN_TS) : null
+  }));
   if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
   document.body.classList.remove("rules-open");
   document.removeEventListener("keydown", rulesEscListener);
   if (RULES_PREV_FOCUS && RULES_PREV_FOCUS.focus) { try { RULES_PREV_FOCUS.focus(); } catch (e) {} }
   RULES_PREV_FOCUS = null;
+  ANALYTICS_RULES_OPEN_TS = 0;
 }
 function openRulesSheet() {
   if (el("rulesOverlay")) return;
@@ -1477,12 +1691,13 @@ function openRulesSheet() {
   ov.innerHTML = '<div class="rules-sheet plq-frame" id="rulesSheet">' + rulesSheetHtml() + '</div>';
   document.body.appendChild(ov);
   document.body.classList.add("rules-open");
-  ov.addEventListener("click", function (ev2) { if (ev2.target === ov) closeRulesSheet(); });
-  el("rulesClose").addEventListener("click", closeRulesSheet);
-  el("rulesGotIt").addEventListener("click", closeRulesSheet);
+  ov.addEventListener("click", function (ev2) { if (ev2.target === ov) closeRulesSheet("backdrop"); });
+  el("rulesClose").addEventListener("click", function () { closeRulesSheet("x"); });
+  el("rulesGotIt").addEventListener("click", function () { closeRulesSheet("got_it"); });
   document.addEventListener("keydown", rulesEscListener);
   try { el("rulesClose").focus(); } catch (e) {}
-  window.t82track && window.t82track("rules_open", analyticsRunSnapshot("rules"));
+  ANALYTICS_RULES_OPEN_TS = Date.now();
+  analyticsTrack("rules_open", Object.assign(analyticsRunSnapshot(), { action: "how_to_play" }));
 }
 
 /* ---------- donate ---------- */
@@ -1513,12 +1728,13 @@ function resultsTopBarHtml() {
 function wireDonate() {
   var b = el("donateBtn");
   if (b) b.addEventListener("click", function () {
-    window.t82track && window.t82track("donate_click", { variant: b.getAttribute("data-msg"), mode: MODE });
+    analyticsTrack("feedback_click", { variant: b.getAttribute("data-msg"), mode: MODE, surface: "results" });
   });
 }
 
 function renderIntro() {
   G = null;
+  ANALYTICS_HOME_N += 1;
   if (window.T82DUI) T82DUI.stop();   // leaving a duel screen kills its poll
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
@@ -1534,6 +1750,7 @@ function renderIntro() {
       dailyStreak = T82DAILY.streakFor(dailyBoard.key);
     } catch (e) { dailyBoard = null; }
   }
+  analyticsSendReturnProfile();
   var dailyDate = "";
   try { dailyDate = new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }).toUpperCase(); } catch (e) {}
   // Tomorrow's board name is deterministic and free: anticipation is the
@@ -1596,7 +1813,37 @@ function renderIntro() {
       '<p class="eyebrow">Winning</p>' +
       "<p>The engine grades your five on advanced impact (BPM), then converts net rating into an 82-game record. It rewards real stars, wants about <strong>3 shooters</strong>, and punishes ball-hog pileups and bad-defense pairs. Every draft screen has a <strong>HOW TO PLAY</strong> button with the full rules and the day's twist.</p>" +
     "</section>";
+  analyticsTrack("home_view", {
+    surface: "home", action: ANALYTICS_HOME_N === 1 ? "landing" : "return_to_menu",
+    outcome: dailyOfficial ? "daily_played" : "daily_unplayed",
+    streak: dailyStreak || 0,
+    daily_num: dailyBoard ? dailyBoard.num : null
+  });
+  (function trackVisibleModeTiles() {
+    var specs = [
+      ["startClassic", "classic"], ["startCap", "cap"], ["startPro", "pro"],
+      ["startDaily", "daily"], ["dailyChallengeBtn", "daily_share"], ["dailyPracticeBtn", "daily_practice"],
+      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"]
+    ];
+    var seen = {};
+    function mark(node, key) {
+      if (!node || node.hidden || seen[key]) return;
+      seen[key] = 1;
+      analyticsTrack("mode_impression", { surface: "home", action: key, mode: key === "daily" && dailyBoard ? dailyBoard.base : (key === "cap" ? "cap" : key) });
+    }
+    if (typeof IntersectionObserver === "function") {
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var key = entry.target.getAttribute("data-analytics-tile");
+          mark(entry.target, key); obs.unobserve(entry.target);
+        });
+      }, { threshold: 0.35 });
+      specs.forEach(function (s) { var n = el(s[0]); if (n && !n.hidden) { n.setAttribute("data-analytics-tile", s[1]); obs.observe(n); } });
+    } else specs.forEach(function (s) { mark(el(s[0]), s[1]); });
+  })();
   function start(mode) {
+    analyticsTrack("mode_select", { mode: mode, surface: "home", action: mode });
     if (DATA_READY) { newGame(mode); return; }
     PENDING_MODE = mode;   // data still downloading — remember the choice and launch the moment it lands
     ["startClassic", "startPro", "startCap", "startDaily"].forEach(function (id) { var b = el(id); if (b) b.disabled = true; });
@@ -1613,6 +1860,7 @@ function renderIntro() {
   if (proBtn) proBtn.addEventListener("click", function () { start("pro"); });
   el("startCap").addEventListener("click", function () { start("cap"); });
   el("startDuel").addEventListener("click", function () {
+    analyticsTrack("feature_select", { surface: "home", action: "duel" });
     var btn = el("startDuel"), label = btn.textContent;
     queue(function () {
       btn.disabled = true; btn.textContent = "Opening duel\u2026";
@@ -1622,6 +1870,7 @@ function renderIntro() {
     }, btn);
   });
   el("arenaChip").addEventListener("click", function () {   // no site data needed
+    analyticsTrack("feature_select", { surface: "home", action: "arena" });
     var btn = el("arenaChip"), label = btn.textContent;
     btn.disabled = true; btn.textContent = "Opening\u2026";
     ensureArenaUI().then(function (ok) {
@@ -1629,6 +1878,7 @@ function renderIntro() {
     });
   });
   el("startLeague").addEventListener("click", function () {   // league office needs no site data
+    analyticsTrack("feature_select", { surface: "home", action: "league" });
     var btn = el("startLeague"), label = btn.textContent;
     btn.disabled = true; btn.textContent = "Opening league\u2026";
     ensureLeagueUI().then(function (ok) {
@@ -1644,19 +1894,33 @@ function renderIntro() {
     var dailyTile = el("startDaily");
     if (dailyTile) dailyTile.addEventListener("click", function () {
       if (dailyOfficial) {                       // practice rerun: they have read the gate
+        analyticsTrack("mode_select", { mode: dailyBoard.base, surface: "home", action: "daily_practice", daily_num: dailyBoard.num, practice: 1 });
         queue(function () { startDailyRun(dailyBoard, null, "daily-practice:" + dailyBoard.num); }, dailyTile);
         return;
       }
+      analyticsTrack("mode_select", { mode: dailyBoard.base, surface: "home", action: "daily", daily_num: dailyBoard.num, official: 1 });
       renderDailyGate(dailyBoard, null, "daily:" + dailyBoard.num);
     });
     var dailyChb = el("dailyChallengeBtn");
     if (dailyChb) dailyChb.addEventListener("click", function () {
       var off = T82DAILY.officialFor(dailyBoard.key);
       if (!off) return;
+      var menuShareTrack = {
+        mode: dailyBoard.base,
+        wins: off.wins,
+        net: off.net,
+        value: (typeof off.pct === "number") ? off.pct : null,
+        undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
+        variant: "daily-menu:" + dailyBoard.num,
+        surface: "daily_menu",
+        action: "challenge_friend",
+        daily_num: dailyBoard.num,
+        challenge: dailyBoard.ch && dailyBoard.ch.id ? dailyBoard.ch.id : null,
+        official: 1,
+        practice: 0
+      };
       if (window.t82track) {
-        window.t82track("share_click", { mode: dailyBoard.base, wins: off.wins,
-          undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
-          variant: "daily-menu:" + dailyBoard.num });
+        window.t82track("share_click", menuShareTrack);
       }
       shareOrCopy(T82DAILY.shareTextDaily(
         { key: dailyBoard.key, num: dailyBoard.num, name: dailyBoard.name },
@@ -1664,15 +1928,14 @@ function renderIntro() {
           emoji: shareEmojiFor(off.wins, (dailyBoard.ch && dailyBoard.ch.shareEmoji) || null, dailyBoard.base),
           comp: shareCompFor(off.wins),
           pct: (typeof off.pct === "number") ? off.pct : null }
-      ), dailyChb, { mode: dailyBoard.base, wins: off.wins,
-        undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
-        variant: "daily-menu:" + dailyBoard.num });
+      ), dailyChb, menuShareTrack);
     });
     var dailyPrb = el("dailyPracticeBtn");
     if (dailyPrb) dailyPrb.addEventListener("click", function () {
       // v28: the v24 removal reversed. Same launch as the results againBtn —
       // deterministic board rebuild, no gate (they read the law on the
       // official run), and the official record stays untouchable by law.
+      analyticsTrack("mode_select", { mode: dailyBoard.base, surface: "daily_menu", action: "daily_practice", daily_num: dailyBoard.num, practice: 1 });
       queue(function () { startDailyRun(dailyBoard, null, "daily-practice:" + dailyBoard.num); }, dailyPrb);
     });
     var dl = DAILY_LINK;
@@ -1680,11 +1943,19 @@ function renderIntro() {
       DAILY_LINK = null;   // one landing per visit, same law as ?ref
       if (dl.key === dailyBoard.key) {
         var tgt = (dl.w != null && dl.n != null) ? { w: dl.w, n: dl.n } : null;
+        analyticsTrack("referral_open", {
+          mode: dailyBoard.base, surface: "landing", action: "daily_link", outcome: "current",
+          daily_num: dailyBoard.num, target_wins: tgt ? tgt.w : null, target_net: tgt ? tgt.n : null
+        });
         // Flag now, fire after the rest of the intro is wired (the gate
         // replaces #app, and the header egg still needs its listener). The
         // receiver then reads what they were challenged to while data loads.
         DAILY_GATE_PENDING = { board: dailyBoard, tgt: tgt, tag: "daily-link:" + dailyBoard.num };
       } else if (dailyTile && dailyTile.parentNode) {
+        analyticsTrack("referral_open", {
+          mode: dailyBoard.base, surface: "landing", action: "daily_link", outcome: "stale",
+          daily_num: T82DAILY.dayNum(dl.key)
+        });
         var staleNote = document.createElement("p");
         staleNote.className = "daily-stale mono";
         staleNote.textContent = "That link was for Daily #" + T82DAILY.dayNum(dl.key) + ". Today's board is #" + dailyBoard.num + ".";
@@ -1699,7 +1970,7 @@ function renderIntro() {
     var now = Date.now();
     kTaps = kTaps.filter(function (t) { return now - t < 2500; });
     kTaps.push(now);
-    if (kTaps.length >= 5) { kTaps = []; start("kaman"); }
+    if (kTaps.length >= 5) { kTaps = []; analyticsTrack("feature_select", { surface: "home", action: "kaman_egg", mode: "kaman" }); start("kaman"); }
   });
 
   // daily strip — the server mints today's seed; anonymous can play, sign-in makes it count
@@ -1710,9 +1981,11 @@ function renderIntro() {
     var label = d.mode === "cap" ? "Presti" : d.mode.charAt(0).toUpperCase() + d.mode.slice(1);
     strip.textContent = "\uD83D\uDCC5 Today's board \u00B7 " + label + " \u00B7 " + hrs + "h left";
     strip.hidden = false;
+    analyticsTrack("mode_impression", { mode: d.mode, surface: "home", action: "account_daily", source: d.label || "" });
     strip.addEventListener("click", function () {
+      analyticsTrack("mode_select", { mode: d.mode, surface: "home", action: "account_daily", source: d.label || "" });
       queue(function () {
-        newGame(d.mode, d.seed);
+        newGame(d.mode, d.seed, null, { surface: "account_daily", variant: "account-daily" });
         if (G) G.official = { label: d.label };
       }, strip);
     });
@@ -1731,9 +2004,15 @@ function renderIntro() {
     el("wkMeta").textContent = baseChip + " \u00B7 " + days + (days === 1 ? " day" : " days") + " left" +
       (w.best ? " \u00B7 your best: " + w.best.wins + " W" : "");
     tile.hidden = false;
+    analyticsTrack("mode_impression", {
+      mode: ch.base, surface: "home", action: "weekly", challenge: ch.id, source: String(w.week || w.id || "")
+    });
     tile.addEventListener("click", function () {
+      analyticsTrack("mode_select", {
+        mode: ch.base, surface: "home", action: "weekly", challenge: ch.id, source: String(w.week || w.id || "")
+      });
       queue(function () {
-        newGame(ch.base, undefined, ch);
+        newGame(ch.base, undefined, ch, { surface: "weekly", variant: "weekly:" + String(w.week || w.id || "") });
         if (G) G.weekly = { challengeId: ch.id, week: w.week };
       }, tile);
     });
@@ -2017,6 +2296,11 @@ function selectRow(node) {
   node.classList.add("sel");
   node.setAttribute("aria-pressed", "true");
   G.selected = MODE === "kaman" ? node.getAttribute("data-season") : node.getAttribute("data-name");
+  var row = resolveRow(G.selected);
+  if (row) analyticsTrack("player_select", Object.assign(analyticsRunSnapshot(), {
+    player: row[IDX.name], season: row[IDX.season], value: MODE === "cap" ? effCost(G.selected) : null,
+    ordinal: G.round || 0
+  }));
   updateTray();
 }
 
@@ -2121,7 +2405,18 @@ function renderDraft(anim) {
   tickBank();
   var searchEl = el("poolSearch");
   if (searchEl) {
-    searchEl.addEventListener("input", function () { G.query = searchEl.value; refreshPool(); });
+    searchEl.addEventListener("input", function () {
+      G.query = searchEl.value; refreshPool();
+      clearTimeout(ANALYTICS_SEARCH_TIMER);
+      ANALYTICS_SEARCH_TIMER = setTimeout(function () {
+        var qlen = String(G.query || "").trim().length;
+        if (!qlen) return;
+        analyticsTrack("search_use", Object.assign(analyticsRunSnapshot(), {
+          amount: qlen, ordinal: currentPoolRows().length,
+          outcome: currentPoolRows().length ? "results" : "zero_results"
+        }));
+      }, 500);
+    });
   }
   var chipRow = el("sortChips");
   if (chipRow) {
@@ -2135,6 +2430,9 @@ function renderDraft(anim) {
         G.sortMode = mode;
         applyMetricYears(true);
       }
+      analyticsTrack("sort_change", Object.assign(analyticsRunSnapshot(), {
+        action: G.sortMode, outcome: G.sortMode === "cost" ? G.costDir : "selected"
+      }));
       chipRow.querySelectorAll(".sort-chip").forEach(function (c) {
         c.classList.toggle("active", c.getAttribute("data-sort") === G.sortMode);
       });
@@ -2150,14 +2448,27 @@ function renderDraft(anim) {
     if (ev.target.closest(".year-sel")) return;     // the dropdown handles its own taps
     var btn = ev.target.closest(".player-row");
     if (!btn) return;
-    if (btn.classList.contains("off")) { denyRow(btn, btn.getAttribute("title") || ""); return; }
+    if (btn.classList.contains("off")) {
+      analyticsTrack("pick_denied", Object.assign(analyticsRunSnapshot(), {
+        action: btn.getAttribute("title") || "disabled_card", player: btn.getAttribute("data-name") || "",
+        season: parseInt(btn.getAttribute("data-season"), 10) || null
+      }));
+      denyRow(btn, btn.getAttribute("title") || ""); return;
+    }
     selectRow(btn);
   });
   el("pool").addEventListener("keydown", function (ev) {
     var t = ev.target;
     if (!t.classList || !t.classList.contains("player-row")) return;  // not the card (e.g. the <select>)
     if (ev.key !== "Enter" && ev.key !== " " && ev.key !== "Spacebar") return;
-    if (t.classList.contains("off")) { ev.preventDefault(); denyRow(t, t.getAttribute("title") || ""); return; }
+    if (t.classList.contains("off")) {
+      ev.preventDefault();
+      analyticsTrack("pick_denied", Object.assign(analyticsRunSnapshot(), {
+        action: t.getAttribute("title") || "disabled_card", player: t.getAttribute("data-name") || "",
+        season: parseInt(t.getAttribute("data-season"), 10) || null
+      }));
+      denyRow(t, t.getAttribute("title") || ""); return;
+    }
     ev.preventDefault();
     selectRow(t);
   });
@@ -2168,6 +2479,9 @@ function renderDraft(anim) {
     var season = parseInt(s.value, 10);
     if (isNaN(season)) return;
     G.yearByName[name] = season;
+    analyticsTrack("year_change", Object.assign(analyticsRunSnapshot(), {
+      player: name, season: season, action: "season_menu"
+    }));
     if (G.selected === name && !rowDraftable(resolveRow(name))) G.selected = null;  // chosen year fits no open slot
     refreshPool();
   });
@@ -2558,7 +2872,9 @@ function hotHand(e) {
     bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (red, glowing)
     bonusEl.style.width = "0%";
   }
-  if (clutch) window.t82track && window.t82track("heatcheck_shown", { mode: MODE });
+  if (clutch) analyticsTrack("heatcheck_shown", Object.assign(analyticsRunSnapshot(), {
+    surface: "heat_check", action: "offer", wins: e.winTally, net: e.net
+  }));
 
   function dismiss() {
     if (!G.recapPayload) prepareRecap(e, e.winTally, e.net, null);   // ceremony skipped before verdict -> stage the payload so the bundle can pop (no model call yet)
@@ -2568,7 +2884,12 @@ function hotHand(e) {
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
   function verdict() {
-    window.t82track && window.t82track("heatcheck_result", { mode: MODE, segment: seg.label, hit_82: win ? 1 : 0 });
+    analyticsTrack("heatcheck_result", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check", action: "spin_result", segment: seg.label,
+      outcome: win ? "hit_82" : "miss", hit_82: win ? 1 : 0,
+      wins: segIdx > 0 ? hhWins(newNet) : e.winTally,
+      net: segIdx > 0 ? newNet : e.net
+    }));
     // Final record is now known (any non-COLD segment moves it): stage the Tribune.
     prepareRecap(e,
       segIdx > 0 ? hhWins(newNet) : e.winTally,
@@ -2748,7 +3069,9 @@ function hotHand(e) {
   // this callback is the ceremony's own staging, verbatim.
   var lever = ov.querySelector("#hhLever"), arm = ov.querySelector("#hhArm");
   var pullState = wireBallPull(lever, arm, function () {
-    if (clutch) window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 1 });
+    if (clutch) analyticsTrack("heatcheck_action", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check", action: "pull", pulled: 1
+    }));
     var chBtn = ov.querySelector("#hhCharity");
     if (chBtn) chBtn.classList.add("gone");                                  // the pull committed; the spin owns the outcome
     setTimeout(function () {
@@ -2764,13 +3087,17 @@ function hotHand(e) {
   var charityBtn = ov.querySelector("#hhCharity");
   if (charityBtn) charityBtn.addEventListener("click", function () {
     if (pullState.fired()) return;                                           // spin already running; too late to refuse
-    window.t82track && window.t82track("heatcheck_declined", { mode: MODE });
+    analyticsTrack("heatcheck_declined", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check", action: "decline"
+    }));
     if (window.T82 && T82.declineHeat) T82.declineHeat(G);                   // "hx" — the refusal replays and verifies
     dismiss();
   });
   ov.querySelector("#hhSkip").addEventListener("click", function () {
     if (clutch && !pullState.fired()) {
-      window.t82track && window.t82track("heatcheck_action", { mode: MODE, pulled: 0 });
+      analyticsTrack("heatcheck_action", Object.assign(analyticsRunSnapshot(), {
+        surface: "heat_check", action: "skip", pulled: 0
+      }));
       if (window.T82 && T82.declineHeat) T82.declineHeat(G);                 // v37: silent skip at 81 was ALREADY a decline; now the contract knows it
     }
     dismiss();
@@ -2782,7 +3109,9 @@ function hotHand(e) {
   });
   var againBtn = ov.querySelector("#hhAgain");
   if (againBtn) againBtn.addEventListener("click", function () {
-    window.t82track && window.t82track("replay", { mode: MODE });
+    analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check", action: "run_it_back"
+    }));
     dismiss(); newGame();
   });
 }
@@ -2907,12 +3236,14 @@ function publishRecap() {
     var pre = { reason: "missing_signature_or_payload" };
     if (G) G.recapPublishError = pre;
     recapDebugEvent("share_publish_blocked", pre);
+    analyticsTrack("recap_publish", { mode: MODE, surface: "newspaper", action: "blocked", outcome: pre.reason });
     return Promise.resolve(false);
   }
   if (!G.recapHead || G.recapHead.source !== "api" || !G.recapArt || G.recapArt.source !== "api") {
     var sourceFail = { reason: "local_fallback", headlineSource: G.recapHead && G.recapHead.source, articleSource: G.recapArt && G.recapArt.source };
     G.recapPublishError = sourceFail;
     recapDebugEvent("share_publish_blocked", sourceFail);
+    analyticsTrack("recap_publish", { mode: MODE, surface: "newspaper", action: "blocked", outcome: sourceFail.reason });
     return Promise.resolve(false);
   }
   if (G.recapPublished) return Promise.resolve(true);
@@ -2935,6 +3266,11 @@ function publishRecap() {
     if (token !== G) return false;
     G.recapPublishError = detail || { reason: "unknown" };
     recapDebugEvent("share_publish_failed", G.recapPublishError);
+    analyticsTrack("recap_publish", {
+      mode: MODE, surface: "newspaper", action: "publish", outcome: "error",
+      error_code: String(G.recapPublishError.reason || "unknown"), http_status: G.recapPublishError.httpStatus || null,
+      duration: G.recapPublishError.elapsedMs || null
+    });
     setShareState("failed");
     return false;
   }
@@ -2974,6 +3310,10 @@ function publishRecap() {
           G.recapPublished = 1;
           G.recapPublishError = null;
           recapDebugEvent("share_publish_ready", detail);
+          analyticsTrack("recap_publish", {
+            mode: MODE, surface: "newspaper", action: "publish", outcome: "success",
+            http_status: res.status, duration: detail.elapsedMs
+          });
           setShareState("ready");
           return true;
         }
@@ -3150,25 +3490,46 @@ function copyToClipboard(txt) {
 // door and backed out. The reveal-box fallback never counts.
 function shareOrCopy(txt, button, track) {
   var done = false;
-  var completed = function () {
+  var eventProps = function (method, outcome, err) {
+    var p = Object.assign({}, track || {});
+    p.action = method;
+    p.outcome = outcome;
+    if (err) p.error_code = String(err.name || err.message || err).slice(0, 80);
+    return p;
+  };
+  var completed = function (method) {
     if (done) return; done = true;
-    if (track && window.t82track) window.t82track("share", track);
+    if (track && window.t82track) {
+      window.t82track("share", eventProps(method, "success"));
+      window.t82track("share_result", eventProps(method, "success"));
+    }
+  };
+  var failed = function (method, outcome, err) {
+    if (!track || !window.t82track) return;
+    window.t82track(outcome === "cancel" ? "share_cancel" : "share_error", eventProps(method, outcome, err));
+    window.t82track("share_result", eventProps(method, outcome, err));
   };
   var copyP = copyToClipboard(txt);
   var copiedFlash = function () { copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); }); };
   if (navigator.share) {
     var sp;
     try { sp = navigator.share({ text: txt }); }
-    catch (e) { sp = null; }
+    catch (e) { failed("native_share", "error", e); sp = null; }
     if (sp && sp.then) {
-      sp.then(function () { completed(); copiedFlash(); }, function (err) {
-        if (err && err.name === "AbortError") { copiedFlash(); return; }  // user dismissed the sheet: intent only
-        copyP.then(function (ok) { if (ok) { completed(); flashShareBtn("COPIED!", button); } else revealShareText(txt, button); });
+      sp.then(function () { completed("native_share"); copiedFlash(); }, function (err) {
+        if (err && err.name === "AbortError") { failed("native_share", "cancel", err); copiedFlash(); return; }  // user dismissed the sheet: intent only
+        copyP.then(function (ok) {
+          if (ok) { completed("clipboard_fallback"); flashShareBtn("COPIED!", button); }
+          else { failed("manual_reveal", "error", err); revealShareText(txt, button); }
+        });
       });
       return;
     }
   }
-  copyP.then(function (ok) { if (ok) { completed(); flashShareBtn("COPIED!", button); } else revealShareText(txt, button); });
+  copyP.then(function (ok) {
+    if (ok) { completed("clipboard"); flashShareBtn("COPIED!", button); }
+    else { failed("manual_reveal", "error", null); revealShareText(txt, button); }
+  });
 }
 
 /* ---------- season recap: The True 82 Tribune ----------
@@ -3287,6 +3648,9 @@ function requestEdition() {
   var requestId = "r" + started.toString(36) + "-" + Math.random().toString(36).slice(2, 9);
   var fallbackHead = localHeadline(G.recapPayload);
   var fallbackArt = localArticle(G.recapPayload);
+  analyticsTrack("recap_generation", {
+    mode: MODE, wins: G.recapPayload.wins, surface: "newspaper", action: "start"
+  });
   var debug = recapDebugSet({
     build: T82_RECAP_BUILD,
     state: "requesting",
@@ -3346,6 +3710,10 @@ function requestEdition() {
         cfRay: debug.responseHeaders && debug.responseHeaders.cfRay
       });
       if (console && console.log) console.log("[tribune] AI edition ready", recapDebugClone(debug));
+      analyticsTrack("recap_generation", {
+        mode: MODE, wins: G.recapPayload.wins, surface: "newspaper", action: "complete",
+        outcome: "api", duration: debug.elapsedMs, http_status: debug.httpStatus
+      });
     } else {
       G.recapHead = Object.assign({}, fallbackHead, { source: "fallback" });
       G.recapArt = Object.assign({}, fallbackArt, { source: "fallback" });
@@ -3370,6 +3738,11 @@ function requestEdition() {
         cfRay: debug.responseHeaders && debug.responseHeaders.cfRay
       });
       if (console && console.warn) console.warn("[tribune] local edition used", recapDebugClone(debug));
+      analyticsTrack("recap_generation", {
+        mode: MODE, wins: G.recapPayload.wins, surface: "newspaper", action: "complete",
+        outcome: "fallback", duration: debug.elapsedMs, http_status: debug.httpStatus,
+        error_code: String(debug.reason || "invalid_response")
+      });
     }
     stampHeadline();
     inkInArticle();
@@ -3513,6 +3886,7 @@ function showNewspaper(gate) {
   // Tribune expands underneath. There is no object swap and no spin animation.
   var bundle = null, autoT = null, openingT = null, statusTimers = [];
   var fullReadTimer = null, fullReadTracked = false, fullReadScrollBound = false;
+  var recapOpenedAt = 0;
   if (!G.recapReq) {
     paper.classList.add("np-hidden");
     bundle = document.createElement("button");
@@ -3591,7 +3965,9 @@ function showNewspaper(gate) {
   document.body.appendChild(ov);
   if (!G.recapPresentedTracked) {
     G.recapPresentedTracked = 1;
-    window.t82track && window.t82track("recap_presented", { mode: MODE, wins: wins });
+    analyticsTrack("recap_presented", Object.assign(analyticsRunSnapshot(), {
+      surface: "newspaper", action: "bundle_presented", wins: wins
+    }));
   }
   buzz(20);
 
@@ -3617,7 +3993,9 @@ function showNewspaper(gate) {
     pressStatus.textContent = txt;
   }
   function trackRecapAction(variant) {
-    window.t82track && window.t82track("recap_action", { mode: MODE, variant: variant });
+    analyticsTrack("recap_action", Object.assign(analyticsRunSnapshot(), {
+      surface: "newspaper", action: variant, variant: variant
+    }));
   }
   // "Full read" is an engagement proxy, not an eye-tracker: count it once when the
   // reader either reaches the article bottom or keeps the finished edition visible
@@ -3626,11 +4004,11 @@ function showNewspaper(gate) {
     if (fullReadTracked || !ov.parentNode || !G.recapArt) return;
     fullReadTracked = true;
     clearTimeout(fullReadTimer);
-    window.t82track && window.t82track("recap_full_read", {
-      mode: MODE,
-      variant: signal,
-      segment: (G.recapHead && G.recapHead.source) || "unknown"
-    });
+    analyticsTrack("recap_full_read", Object.assign(analyticsRunSnapshot(), {
+      surface: "newspaper", action: signal, variant: signal,
+      segment: (G.recapHead && G.recapHead.source) || "unknown",
+      duration: recapOpenedAt ? Math.max(0, Date.now() - recapOpenedAt) : null
+    }));
   }
   function armFullRead() {
     if (fullReadTracked || fullReadTimer || !ov.parentNode || !G.recapArt ||
@@ -3668,8 +4046,17 @@ function showNewspaper(gate) {
   function unwrap(auto) {
     if (!bundle || G.recapReq) return;
     clearTimeout(autoT);
-    window.t82track && window.t82track("recap_unwrap", { mode: MODE, wins: wins, segment: auto ? "auto" : "tap" });
-    if (!G.recapReadTracked) { G.recapReadTracked = 1; window.t82track && window.t82track("recap_read", { mode: MODE }); }
+    recapOpenedAt = Date.now();
+    analyticsTrack("recap_unwrap", Object.assign(analyticsRunSnapshot(), {
+      surface: "newspaper", action: auto ? "auto" : "tap", wins: wins,
+      segment: auto ? "auto" : "tap"
+    }));
+    if (!G.recapReadTracked) {
+      G.recapReadTracked = 1;
+      analyticsTrack("recap_read", Object.assign(analyticsRunSnapshot(), {
+        surface: "newspaper", action: "story_opened"
+      }));
+    }
 
     var b = bundle;
     bundle = null;
@@ -3719,20 +4106,26 @@ function showNewspaper(gate) {
   skip.addEventListener("click", function () {
     if (stage.classList.contains("np-opening")) return;
     trackRecapAction("skip_results");
-    window.t82track && window.t82track("recap_skip", { mode: MODE });
+    analyticsTrack("recap_skip", Object.assign(analyticsRunSnapshot(), {
+      surface: "newspaper", action: "skip_results"
+    }));
     close(true);
   });
   again.addEventListener("click", function () {
     if (stage.classList.contains("np-opening")) return;
     trackRecapAction("run_it_back");
-    window.t82track && window.t82track("replay", { mode: MODE });
+    analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), {
+      surface: "newspaper", action: "run_it_back"
+    }));
     close(false);
     newGame();
   });
   ov.addEventListener("click", function (ev) {
     if (ev.target === ov && !stage.classList.contains("np-opening")) {
       trackRecapAction("backdrop_dismiss");
-      window.t82track && window.t82track("recap_skip", { mode: MODE });
+      analyticsTrack("recap_skip", Object.assign(analyticsRunSnapshot(), {
+        surface: "newspaper", action: "backdrop_dismiss"
+      }));
       close(true);
     }
   });
@@ -3750,7 +4143,11 @@ function showNewspaper(gate) {
     trackRecapAction("share_article");
     var e2 = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
     var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
-    var rTrack = { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0, variant: "tribune_article" };
+    var sn = (typeof G.hotNewNet === "number") ? G.hotNewNet : e2.net;
+    var rTrack = { mode: MODE, wins: sw, net: sn,
+      value: (typeof G.sharePct === "number") ? G.sharePct : null,
+      undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0,
+      variant: "tribune_article", surface: "newspaper", action: "share_article" };
     if (window.t82track) window.t82track("share_click", rTrack);
     shareOrCopy(shareText(e2), read, rTrack);
   });
@@ -3797,7 +4194,10 @@ function showNewspaper(gate) {
     paper.classList.add("ready");
     if (!G.recapShownTracked) {
       G.recapShownTracked = 1;
-      window.t82track && window.t82track("recap_shown", { mode: MODE, wins: wins, segment: G.recapHead.source || "api", variant: String(G.recapHead.nickname).slice(0, 78) });
+      analyticsTrack("recap_shown", Object.assign(analyticsRunSnapshot(), {
+        surface: "newspaper", action: "edition_ready", wins: wins,
+        segment: G.recapHead.source || "api", variant: String(G.recapHead.nickname).slice(0, 78)
+      }));
     }
   };
   G.npInk = function () {
@@ -3846,22 +4246,148 @@ function showResults() {
   G.screen = "results";
   if (MODE === "kaman") {
     renderKamanResults();
-    window.t82track && window.t82track("game_complete", { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1 });
+    var kp = Object.assign(analyticsRunSnapshot(), { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1, surface: "results" });
+    analyticsTrack("results_view", kp);
+    analyticsTrack("game_complete", kp);
     gameFinishedPings();
     return;
   }
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+  // v42 ANY GIVEN NIGHT: standalone Classic plays the season out game by
+  // game. Daily boards, challenges, pro, and Presti stay analytic until
+  // their own adaptations (Presti next: Heat Check on a literal 81-1).
+  // The arming op "ss" rides the action stream so replays realize too.
+  if (MODE === "classic" && !G.social && !G.ch && window.T82 && T82.simSeason) {
+    T82.armSeasonSim(G);
+    var season = T82.simSeason(G, e);
+    e.expWins = e.winTally;
+    e.winTally = season.wins;
+    e.season = season;
+    loadBbrefMap();                              // preload the map during the reel
+    showSeasonReel(season, e, function () { finishRunTail(e); });
+    return;
+  }
+  finishRunTail(e);
+}
+function finishRunTail(e) {
   renderResults(e, false);
   if (window.t82track) {
     var gc = analyticsRunSnapshot();
     gc.wins = e.winTally;
     gc.net = e.net;
     gc.undefeated = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
+    gc.surface = "results";
+    // v40: the Scoring Card, wired to D1 — how often each fence fires on
+    // real humans, and how hard. Rounded 2dp; zeros are real zeros.
+    var r2 = function (x) { return Math.round((x || 0) * 100) / 100; };
+    gc.t_usage = r2(e.usageTax); gc.t_spacing = r2(e.spacingTax); gc.b_spacing = r2(e.spacingBonus);
+    gc.t_backd = r2(e.backDefTax); gc.t_wingd = r2(e.wingDefTax); gc.t_rim = r2(e.rimDefTax);
+    gc.t_glass = r2(e.glassTax); gc.t_creator = r2(e.creatorTax); gc.t_age = r2(e.ageTax);
+    if (G.social && G.social.target) {
+      gc.result_delta = e.winTally - G.social.target.w;
+      gc.outcome = e.winTally > G.social.target.w || (e.winTally === G.social.target.w && e.net > G.social.target.n + 1e-9)
+        ? "beat" : (e.winTally === G.social.target.w && Math.abs(e.net - G.social.target.n) <= 1e-9 ? "tie" : "lost");
+    }
+    if (G.social && window.T82DAILY) {
+      var off = T82DAILY.officialFor(G.social.key);
+      gc.official = !!(G.social.nonce && off && off.nonce === G.social.nonce) ? 1 : 0;
+      gc.practice = gc.official ? 0 : 1;
+    }
+    window.t82track("results_view", Object.assign({}, gc));
     window.t82track("game_complete", gc);
   }
   scheduleSharePct(e);
   loadBbrefMap().then(function () { upgradeBbrefLinks(); });   // v30: swap search hrefs for verified player pages
   gameFinishedPings();
+}
+
+/* ---------- v42 THE SEASON REEL (Any Given Night, classic) ----------
+   82 realized games in seven month acts, auto-advancing with one line of
+   desk commentary per act. No per-month button (the lab finding: bounded
+   closure beats, delivered, not requested). One SKIP for repeat players;
+   tapping the card skips too. The reel is also the preload window: the
+   bbref map loads behind it. Cities are cosmetic, seed-hashed, never the
+   rng stream. Copy law: zero em-dashes. */
+var REEL_MONTHS = [["OCT", 5], ["NOV", 15], ["DEC", 15], ["JAN", 15], ["FEB", 11], ["MAR", 15], ["APR", 6]];
+var REEL_CITIES = ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cleveland", "Dallas", "Denver",
+  "Detroit", "Golden State", "Houston", "Indiana", "Los Angeles", "Memphis", "Miami", "Milwaukee",
+  "Minnesota", "New Orleans", "New York", "Oklahoma City", "Orlando", "Philadelphia", "Phoenix",
+  "Portland", "Sacramento", "San Antonio", "Toronto", "Utah", "Washington"];
+function reelHash(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h;
+}
+function reelCity(gameIdx) {
+  return REEL_CITIES[reelHash(String(G.seed || "x") + "|" + gameIdx) % REEL_CITIES.length];
+}
+function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
+  var mo = REEL_MONTHS[mi][0];
+  if (runL === 0) {
+    return ["Perfect through " + mo + ". " + runW + " and 0. History is watching.",
+      "Not a blemish yet. " + runW + " straight.",
+      "Still zero in the loss column. The building holds its breath."][mi % 3];
+  }
+  if (firstLossIdx !== null && firstLossIdx >= monthStart && firstLossIdx < monthStart + mw + ml) {
+    return "The zero died in " + reelCity(firstLossIdx) + ", game " + (firstLossIdx + 1) + ".";
+  }
+  if (ml === 0) return "A spotless " + mw + " and 0 month steadies the run.";
+  if (ml >= 5) return mw + " and " + ml + ". The schedule bit back.";
+  if (ml >= 3) return mw + " and " + ml + ". Heavy legs, short rotations, long month.";
+  return mw + " and " + ml + ". The engine hums.";
+}
+function showSeasonReel(season, e, done) {
+  var ov = document.createElement("div");
+  ov.className = "reel-overlay";
+  ov.innerHTML = '<div class="reel-card">' +
+    '<div class="reel-head"><span class="reel-eyebrow">THE SEASON \u00B7 GAME BY GAME</span>' +
+    '<span class="reel-run mono" id="reelRun">0\u20130</span>' +
+    '<button class="reel-skip mono" id="reelSkip" type="button">SKIP \u2192</button></div>' +
+    '<div class="reel-acts" id="reelActs"></div></div>';
+  document.body.appendChild(ov);
+  var acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
+  var finished = false, timers = [];
+  function finishReel() {
+    if (finished) return;
+    finished = true;
+    timers.forEach(clearTimeout);
+    ov.remove();
+    done();
+  }
+  ov.querySelector("#reelSkip").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
+  ov.addEventListener("click", finishReel);
+  var firstLossIdx = null;
+  for (var g = 0; g < season.games.length; g++) { if (!season.games[g]) { firstLossIdx = g; break; } }
+  var start = 0, runW = 0, runL = 0, step = 0;
+  REEL_MONTHS.forEach(function (m, mi) {
+    var count = m[1], s0 = start;
+    var mw = 0;
+    for (var i = s0; i < s0 + count; i++) if (season.games[i]) mw++;
+    var ml = count - mw;
+    start += count;
+    var rw = runW + mw, rl = runL + ml;
+    timers.push(setTimeout(function () {
+      var row = document.createElement("div");
+      row.className = "reel-act";
+      row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + m[0] + '</span>' +
+        '<span class="reel-mo-rec mono">' + mw + '\u2013' + ml + '</span></div>' +
+        '<p class="reel-note">' + esc(reelLine(mi, mw, ml, rw, rl, firstLossIdx, s0)) + '</p>';
+      acts.appendChild(row);
+      runEl.textContent = rw + "\u2013" + rl;
+      acts.scrollTop = acts.scrollHeight;
+    }, 650 + step * 1250));
+    step++;
+    runW = rw; runL = rl;
+  });
+  timers.push(setTimeout(function () {
+    var fin = document.createElement("div");
+    fin.className = "reel-final";
+    fin.innerHTML = '<span class="reel-final-rec">' + season.wins + '\u2013' + season.losses + '</span>' +
+      '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>';
+    acts.appendChild(fin);
+    acts.scrollTop = acts.scrollHeight;
+  }, 650 + step * 1250 + 250));
+  timers.push(setTimeout(finishReel, 650 + step * 1250 + 1900));
 }
 
 /* ---------- SPORTSREF DEEP-LINK LAW (v30) ----------
@@ -3883,10 +4409,35 @@ function showResults() {
 var BBREF_MAP = null, BBREF_MAP_P = null;
 function loadBbrefMap() {
   if (BBREF_MAP_P) return BBREF_MAP_P;
+  var started = Date.now();
+  var httpFailed = false;
   BBREF_MAP_P = fetch("/bbref-map.json?v=1")
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (d) { BBREF_MAP = (d && d.p) ? d : null; return BBREF_MAP; })
-    .catch(function () { return null; });
+    .then(function (r) {
+      if (!r.ok) {
+        httpFailed = true;
+        analyticsTrack("data_error", { action: "bbref_map", source: "bbref-map.json", outcome: "http", http_status: r.status, load_ms: Date.now() - started });
+        return null;
+      }
+      return r.json();
+    })
+    .then(function (d) {
+      BBREF_MAP = (d && d.p) ? d : null;
+      if (!httpFailed) {
+        analyticsTrack(BBREF_MAP ? "data_ready" : "data_error", {
+          action: "bbref_map", source: "bbref-map.json", outcome: BBREF_MAP ? "success" : "invalid",
+          load_ms: Date.now() - started
+        });
+      }
+      return BBREF_MAP;
+    })
+    .catch(function (err) {
+      analyticsTrack("data_error", {
+        action: "bbref_map", source: "bbref-map.json", outcome: "network",
+        error_code: String(err && err.name || "fetch_error"), detail: String(err && err.message || err || "").slice(0, 180),
+        load_ms: Date.now() - started
+      });
+      return null;
+    });
   return BBREF_MAP_P;
 }
 // UTM CAMPAIGN LAW (v34): every Basketball-Reference link carries
@@ -4072,6 +4623,11 @@ function renderResults(e, keepScroll) {
         (beat ? "You take the board." : tied ? "Dead heat. Run it back." : "They hold the board.") + "</div>";
     }
     daily = { res: dres, official: dOfficial, isOfficial: dIsOfficial, targetHtml: dTargetHtml };
+    var postDailyProfile = analyticsDailyProfile();
+    if (postDailyProfile) analyticsTrack("return_profile", Object.assign(postDailyProfile, {
+      mode: G.social.base || MODE, surface: "results", action: "post_daily_finish",
+      daily_num: G.social.num, official: dIsOfficial ? 1 : 0, practice: dIsOfficial ? 0 : 1
+    }));
   }
   var boardEyebrow = daily
     ? "The Daily #" + G.social.num + " \u00B7 " + esc(G.social.name)
@@ -4115,22 +4671,24 @@ function renderResults(e, keepScroll) {
   document.body.classList.remove("gating");
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board' + (daily ? " plq-frame daily-framed" : "") + '"><div class="goat-fw" id="wlFw" aria-hidden="true"></div>' +
+    '<section class="board' + (daily ? " plq-frame daily-framed" : "") + '" data-result-section="summary"><div class="goat-fw" id="wlFw" aria-hidden="true"></div>' +
     (daily ? dailyHeadHtml : '<p class="eyebrow">' + boardEyebrow + "</p>") +
       '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
       '<div class="res-comp">' + compHtml + '</div>' +
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
-    '<section class="section twoway-sec">' + twoWayHtml(e) + "</section>" +
-    '<section class="section"><p class="eyebrow">Your five</p>' + picksHtml +
+    '<section class="section twoway-sec" data-result-section="two_way">' + twoWayHtml(e) + "</section>" +
+    '<section class="section" data-result-section="roster"><p class="eyebrow">Your five</p>' + picksHtml +
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
-    '<section class="section"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
-    '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
-    '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
+    '<section class="section" data-result-section="goat_climb"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
+    '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
+    '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
     '<p class="run-status" id="runStatus"></p>';
 
+  trackResultSections();
+
   el("againBtn").addEventListener("click", function () {
-    window.t82track && window.t82track("replay", { mode: MODE });
+    analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), { surface: "results", action: daily ? "daily_practice" : "same_mode" }));
     if (daily) {
       // Same board, same modifier, target kept: a practice rematch, never a
       // fresh random game. boardFor is deterministic, so a rerun after local
@@ -4150,9 +4708,14 @@ function renderResults(e, keepScroll) {
       // beat link, no Tribune slug, no nickname). The 5-square grade and the
       // named five are the payload; the AI layer stays in-session.
       var off = T82DAILY.officialFor(G.social.key) || daily.res;
-      var dTrack = { mode: MODE, wins: off.wins,
+      var dTrack = { mode: MODE, wins: off.wins, net: off.net,
+        value: (typeof off.pct === "number") ? off.pct
+          : (daily.isOfficial && typeof G.sharePct === "number") ? G.sharePct : null,
         undefeated: off.wins >= CFG.GAMES_IN_SEASON ? 1 : 0,
-        variant: "daily:" + G.social.num };
+        // Preserve how this run was entered (official tile, friend link, or
+        // practice). The payload still shares the locked official result.
+        variant: analyticsVariant() || ("daily:" + G.social.num),
+        surface: "results", action: "daily_result" };
       if (window.t82track) window.t82track("share_click", dTrack);
       // pct rides the official record once /api/percentile amends it; a
       // practice run shares the OFFICIAL numbers, so its own fresh G.sharePct
@@ -4170,7 +4733,11 @@ function renderResults(e, keepScroll) {
       return;
     }
     var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
-    var sTrack = { mode: MODE, wins: sw, undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0 };
+    var sn = (typeof G.hotNewNet === "number") ? G.hotNewNet : e2.net;
+    var sTrack = { mode: MODE, wins: sw, net: sn,
+      value: (typeof G.sharePct === "number") ? G.sharePct : null,
+      undefeated: sw >= CFG.GAMES_IN_SEASON ? 1 : 0,
+      surface: "results", action: "team_result" };
     if (window.t82track) window.t82track("share_click", sTrack);
     publishRecap();
     shareOrCopy(shareText(e2), null, sTrack);
@@ -4240,22 +4807,28 @@ function renderKamanResults() {
 
   app().innerHTML =
     resultsTopBarHtml() +
-    '<section class="board kaman-board"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
+    '<section class="board kaman-board" data-result-section="summary"><div class="goat-fw" id="goatFw" aria-hidden="true"></div>' +
       '<p class="eyebrow">Front office projection \u00B7 KAMAN MODE</p>' +
       '<div class="big">82\u20130</div><div class="big-label">net rating +\u221E</div>' +
       '<p class="kaman-flavor">' + kamanFlavor() + "</p>" +
       '<button class="btn btn-primary btn-block presti-spin elite-result" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
-    '<section class="section twoway-sec"><div class="twoway">' + kamanBar("Offense") + kamanBar("Defense") + "</div></section>" +
-    '<section class="section"><p class="eyebrow">Your five \u00B7 all centers, as nature intended</p>' + picksHtml + "</section>" +
-    '<section class="section"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
-    '<div class="actions"><button class="btn btn-primary presti-spin" id="againBtn">Kaman</button></div>';
+    '<section class="section twoway-sec" data-result-section="two_way"><div class="twoway">' + kamanBar("Offense") + kamanBar("Defense") + "</div></section>" +
+    '<section class="section" data-result-section="roster"><p class="eyebrow">Your five \u00B7 all centers, as nature intended</p>' + picksHtml + "</section>" +
+    '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
+    '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">Kaman</button></div>';
 
-  el("againBtn").addEventListener("click", function () { renderIntro(); });
+  trackResultSections();
+
+  el("againBtn").addEventListener("click", function () {
+    analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), { surface: "results", action: "kaman_menu" }));
+    renderIntro();
+  });
   wireStartOver();
   wireDonate();
   el("shareTeamBtn").addEventListener("click", function () {
-    window.t82track && window.t82track("share", { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1 });
-    shareOrCopy(kamanShareText());
+    var kt = { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1, surface: "results", action: "kaman_result" };
+    analyticsTrack("share_click", kt);
+    shareOrCopy(kamanShareText(), null, kt);
   });
   setupGoatFireworks(true);
   window.scrollTo(0, 0);
@@ -4340,7 +4913,11 @@ function renderDailyGate(board, target, variantTag) {
   // Top of the daily funnel: the player tapped THE DAILY and is now looking at
   // the instructions gate. mode carries the base so daily can be split out of
   // the base-mode totals; variant marks the entry path.
-  window.t82track && window.t82track("daily_gate_view", { mode: board.base, variant: variantTag || ("daily:" + board.num) });
+  analyticsTrack("daily_gate_view", {
+    mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num,
+    surface: "daily_gate", action: target ? "challenge" : "official",
+    target_wins: target ? target.w : null, target_net: target ? target.n : null
+  });
   if (window.T82DUI) T82DUI.stop();
   document.body.classList.remove("drafting");
   document.body.classList.add("gating");   // full-screen gate: masthead + footer hide (styles.css)
@@ -4377,7 +4954,10 @@ function renderDailyGate(board, target, variantTag) {
         '<button class="gate-play-btn presti-spin" id="gatePlayBtn" type="button" aria-label="Start The Daily without using the dunk interaction">PLAY IT</button>' +
       '</div>' +
     '</section>';
-  el("gateBack").addEventListener("click", function () { renderIntro(); });
+  el("gateBack").addEventListener("click", function () {
+    analyticsTrack("daily_gate_exit", { mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num, action: "back" });
+    renderIntro();
+  });
   var gTip = el("gateTip");
   if (gTip) {
     // v34: the scout door lives INSIDE the existing info tip — zero new
@@ -4394,20 +4974,28 @@ function renderDailyGate(board, target, variantTag) {
     var hidden = t.hasAttribute("hidden");
     if (hidden) { t.removeAttribute("hidden"); gInfo.setAttribute("aria-expanded", "true"); }
     else { t.setAttribute("hidden", ""); gInfo.setAttribute("aria-expanded", "false"); }
+    analyticsTrack("daily_gate_action", {
+      mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num,
+      action: hidden ? "info_open" : "info_close"
+    });
   });
   // The real Hot Hand mechanic, wired to launch: pull the ball down through
   // the net, it ignites, the flames burn for a beat (and keep burning as the
   // loading state if site data is still on the way), then the draft begins.
-  function launchFromGate(delay, btn) {
+  function launchFromGate(delay, btn, method) {
     if (btn) btn.disabled = true;
+    analyticsTrack("daily_gate_start", {
+      mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num,
+      action: method || "unknown", target_wins: target ? target.w : null, target_net: target ? target.n : null
+    });
     setTimeout(function () {
       queue(function () { startDailyRun(board, target, variantTag); }, btn || null);
     }, delay || 0);
   }
   var gLever = el("gateLever"), gArm = el("gateArm");
-  wireBallPull(gLever, gArm, function () { launchFromGate(700, null); });
+  wireBallPull(gLever, gArm, function () { launchFromGate(700, null, "dunk"); });
   var gPlay = el("gatePlayBtn");
-  if (gPlay) gPlay.addEventListener("click", function () { launchFromGate(0, gPlay); });
+  if (gPlay) gPlay.addEventListener("click", function () { launchFromGate(0, gPlay, "play_button"); });
   // Same contract as renderIntro's queue: DATA_READY/PENDING_FN are
   // module-level, so the gate can hold the launch until the data lands.
   function queue(fn, btn) {
@@ -4417,8 +5005,15 @@ function renderDailyGate(board, target, variantTag) {
   }
 }
 function startDailyRun(board, target, variantTag) {
+  var explicitPractice = /^daily-practice:/.test(variantTag || "");
+  var alreadyOfficial = false;
+  try { alreadyOfficial = !!(window.T82DAILY && T82DAILY.officialFor(board.key)); } catch (e) {}
+  var isPractice = explicitPractice || alreadyOfficial;
   newGame(board.base, board.seed, board.ch, {
     variant: variantTag,
+    surface: /^daily-link:/.test(variantTag || "") ? "daily_referral" : explicitPractice ? "daily_practice" : "daily_gate",
+    practice: isPractice ? 1 : 0,
+    official: isPractice ? 0 : 1,
     social: { key: board.key, num: board.num, name: board.name,
               short: board.short || board.blurb || "", gate: board.gate || board.blurb || "",
               base: board.base, chId: board.ch ? board.ch.id : null,
@@ -4432,16 +5027,34 @@ var CRESTS_REQUESTED = false;
 function loadCrests() {
   if (CRESTS_REQUESTED) return;
   CRESTS_REQUESTED = true;
+  var started = Date.now();
+  var httpFailed = false;
   fetch("crests.json")
-    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (res) {
+      if (!res.ok) {
+        httpFailed = true;
+        analyticsTrack("data_error", { action: "crests", source: "crests.json", outcome: "http", http_status: res.status, load_ms: Date.now() - started });
+        return null;
+      }
+      return res.json();
+    })
     .then(function (c) {
       if (c && typeof c === "object") {
         Object.keys(c).forEach(function (k) { CRESTS[k] = c[k]; });
         CREST_POOL = null;   // rebuild the decoy pool now that real crests exist
         refreshTicketArt();  // ticket already on screen? paint the logo in now
+        analyticsTrack("data_ready", { action: "crests", source: "crests.json", outcome: "success", load_ms: Date.now() - started });
+      } else if (!httpFailed) {
+        analyticsTrack("data_error", { action: "crests", source: "crests.json", outcome: "invalid", load_ms: Date.now() - started });
       }
     })
-    .catch(function () {});
+    .catch(function (err) {
+      analyticsTrack("data_error", {
+        action: "crests", source: "crests.json", outcome: "network",
+        error_code: String(err && err.name || "fetch_error"), detail: String(err && err.message || err || "").slice(0, 180),
+        load_ms: Date.now() - started
+      });
+    });
 }
 function scheduleCrests() {
   var start = function () { loadCrests(); };
@@ -4457,7 +5070,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v37";
+var BUILD_V = "v42";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -4517,8 +5130,15 @@ function scheduleSharePct(e) {
     fetch("/api/percentile?net=" + net + "&" + qs)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (!d || typeof d.pct !== "number") return;
+        if (!d || typeof d.pct !== "number") {
+          analyticsTrack("percentile_error", Object.assign(analyticsRunSnapshot(), { action: "empty_response" }));
+          return;
+        }
         g.sharePct = d.pct;
+        analyticsTrack("percentile_result", Object.assign(analyticsRunSnapshot(), {
+          value: d.pct, ordinal: d.n == null ? null : d.n,
+          source: d.pool || (g.social ? "daily" : "mode")
+        }));
         if (g.social && g.social.nonce && window.T82DAILY) {
           var off = T82DAILY.officialFor(g.social.key);
           if (off && off.nonce === g.social.nonce) {
@@ -4528,7 +5148,11 @@ function scheduleSharePct(e) {
           }
         }
       })
-      .catch(function () {});
+      .catch(function (err) {
+        analyticsTrack("percentile_error", Object.assign(analyticsRunSnapshot(), {
+          action: "fetch", error_code: String(err && err.name || "fetch_error")
+        }));
+      });
   }, 1600);
 }
 // One game just finished: bump the KV counter, then refresh the footer once the
@@ -4541,6 +5165,9 @@ function gameFinishedPings() {
 }
 
 function boot() {
+  if (SHARE_REF) analyticsTrack("referral_open", {
+    surface: "landing", action: "tribune_share", outcome: "open", source: SHARE_REF
+  });
   bindGlobalButtonStyle();
   bindHaptics();
   bindVisibilityResync();
@@ -4553,13 +5180,18 @@ function boot() {
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var dataHttpStatus = 0;
   fetch(CFG.DATA_URL)
-    .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+    .then(function (res) { dataHttpStatus = res.status; if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
     .then(function (data) {
       initData(data);
       DATA_READY = true;
       var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
-      window.t82track && window.t82track("data_ready", { load_ms: ms });
+      analyticsTrack("data_ready", {
+        action: "site_data", source: CFG.DATA_URL, outcome: "success", load_ms: ms,
+        http_status: dataHttpStatus || 200,
+        amount: Array.isArray(data && data.players) ? data.players.length : null
+      });
       scheduleCrests();   // decorative payload waits until the critical dataset is ready, then uses idle time
       if (DUEL_ID) {
         var di = DUEL_ID; DUEL_ID = null;
@@ -4569,7 +5201,12 @@ function boot() {
       else if (PENDING_MODE) { var pm = PENDING_MODE; PENDING_MODE = null; newGame(pm); }   // player tapped a mode while data was still loading
     })
     .catch(function (err) {
-      window.t82track && window.t82track("data_error", {});
+      var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
+      analyticsTrack("data_error", {
+        action: "site_data", source: CFG.DATA_URL, outcome: dataHttpStatus ? "http_or_parse" : "network",
+        http_status: dataHttpStatus || null, load_ms: ms,
+        error_code: String(err && err.name || "load_error"), detail: String(err && err.message || err || "").slice(0, 180)
+      });
       showError("Couldn\u2019t load " + esc(CFG.DATA_URL) + " (" + esc(err.message) + "). Serve this folder over HTTP \u2014 e.g. <span class=\"mono\">python3 -m http.server</span> \u2014 rather than opening index.html as a file.");
     });
 }
