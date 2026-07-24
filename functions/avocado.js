@@ -29,31 +29,38 @@ export async function onRequest(context) {
   }
 
   const queryErrors = [];
+  let querySeq = 0;
   // Cloudflare D1 permits only a small number of simultaneous statements per
   // Worker invocation. Avocado has many independent cards, so cap the fan-out
   // rather than letting Promise.all open every query at once.
   const withDbSlot = queryLimiter(5);
-  const q = (sql, binds = []) => withDbSlot(async () => {
+  const q = (sql, binds = [], label = "") => {
+    const queryId = label || `q${String(++querySeq).padStart(2, "0")}`;
+    return withDbSlot(async () => {
     try {
       let stmt = env.DB.prepare(sql);
       if (binds.length) stmt = stmt.bind(...binds);
       const r = await stmt.all();
       return r.results || [];
     } catch (e) {
-      queryErrors.push(String(e && e.message || e).slice(0, 220));
+      queryErrors.push(queryFailure(queryId, e, sql));
       return [];
     }
-  });
-  const one = (sql, binds = []) => withDbSlot(async () => {
+    });
+  };
+  const one = (sql, binds = [], label = "") => {
+    const queryId = label || `q${String(++querySeq).padStart(2, "0")}`;
+    return withDbSlot(async () => {
     try {
       let stmt = env.DB.prepare(sql);
       if (binds.length) stmt = stmt.bind(...binds);
       return await stmt.first();
     } catch (e) {
-      queryErrors.push(String(e && e.message || e).slice(0, 220));
+      queryErrors.push(queryFailure(queryId, e, sql));
       return null;
     }
-  });
+    });
+  };
 
   const schema = await q(`PRAGMA table_info(events)`);
   const cols = new Set(schema.map((r) => r.name));
@@ -214,7 +221,10 @@ export async function onRequest(context) {
            MAX(CASE WHEN name='game_start' THEN 1 ELSE 0 END) started,
            MAX(CASE WHEN name='game_complete' THEN 1 ELSE 0 END) finished,
            MAX(CASE WHEN name='share_click' THEN 1 ELSE 0 END) intended,
-           MAX(CASE WHEN name='share' THEN 1 ELSE 0 END) shared
+           MAX(CASE
+             WHEN name='share_result' AND outcome='success' THEN 1
+             WHEN (build IS NULL OR build='') AND name='share' THEN 1
+             ELSE 0 END) shared
          FROM scoped GROUP BY sid
        )
        SELECT sessions.entry bucket, COUNT(*) visits,
@@ -288,7 +298,13 @@ export async function onRequest(context) {
            AND COALESCE(practice,CASE WHEN variant LIKE 'daily-practice:%' THEN 1 ELSE 0 END)=0
        ),
        intent AS (SELECT DISTINCT sid FROM scoped WHERE name='share_click' AND variant LIKE 'daily%'),
-       shared AS (SELECT DISTINCT sid FROM scoped WHERE name='share' AND variant LIKE 'daily%')
+       shared AS (
+         SELECT DISTINCT sid FROM scoped
+         WHERE variant LIKE 'daily%' AND (
+           (name='share_result' AND outcome='success') OR
+           ((build IS NULL OR build='') AND name='share')
+         )
+       )
        SELECT
          (SELECT COUNT(*) FROM scoped WHERE name='daily_gate_view') gate_events,
          (SELECT COUNT(*) FROM gate) gate_people,
@@ -308,7 +324,10 @@ export async function onRequest(context) {
          (SELECT COUNT(*) FROM scoped WHERE name='share_click' AND variant LIKE 'daily%') intent_events,
          (SELECT COUNT(*) FROM intent) intent_people,
          (SELECT COUNT(*) FROM intent i JOIN gate g USING(sid)) matched_intent_people,
-         (SELECT COUNT(*) FROM scoped WHERE name='share' AND variant LIKE 'daily%') share_events,
+         (SELECT COUNT(*) FROM scoped WHERE variant LIKE 'daily%' AND (
+           (name='share_result' AND outcome='success') OR
+           ((build IS NULL OR build='') AND name='share')
+         )) share_events,
          (SELECT COUNT(*) FROM shared) share_people,
          (SELECT COUNT(*) FROM shared s JOIN gate g USING(sid)) matched_share_people`, B),
     q(`WITH scoped AS (SELECT * FROM events WHERE ${W}), steps AS (
@@ -324,7 +343,8 @@ export async function onRequest(context) {
            WHEN name='results_view' AND variant LIKE 'daily-link:%' AND outcome='tie' THEN 'tied_sender'
            WHEN name='results_view' AND variant LIKE 'daily-link:%' AND outcome='lost' THEN 'lost_to_sender'
            WHEN name='share_click' AND variant LIKE 'daily-link:%' THEN 'reshare_intent'
-           WHEN name='share' AND variant LIKE 'daily-link:%' THEN 'reshared'
+           WHEN name='share_result' AND outcome='success' AND variant LIKE 'daily-link:%' THEN 'reshared'
+           WHEN (build IS NULL OR build='') AND name='share' AND variant LIKE 'daily-link:%' THEN 'reshared'
            ELSE NULL END step
        FROM scoped WHERE (name='referral_open' AND action='daily_link') OR variant LIKE 'daily-link:%'
        )
@@ -354,18 +374,35 @@ export async function onRequest(context) {
          COUNT(*) c,COUNT(DISTINCT run_id) runs,COUNT(DISTINCT sid) people
        FROM events WHERE ${W} AND name IN ('results_view','result_section_view','replay','percentile_result','percentile_error')
        GROUP BY name,action,outcome ORDER BY c DESC`, B),
-    q(`SELECT name,COALESCE(NULLIF(outcome,''),'unknown') outcome,COALESCE(NULLIF(action,''),'unknown') action,
-         COALESCE(NULLIF(surface,''),'unknown') surface,COALESCE(NULLIF(device,''),'unknown') device,
-         COALESCE(NULLIF(browser,''),'unknown') browser,COALESCE(NULLIF(mode,''),'unknown') mode,
-         COALESCE(wins,-1) wins,net,value percentile,
-         CASE WHEN variant LIKE 'daily-link:%' THEN 'daily-link'
-              WHEN variant LIKE 'daily-practice:%' THEN 'daily-practice'
-              WHEN variant LIKE 'daily%' THEN 'daily'
-              WHEN variant LIKE 'recap:%' THEN 'tribune-referral'
-              ELSE 'standalone' END path,
+    q(`WITH share_events AS (
+         SELECT CASE
+             WHEN name='share_click' THEN 'share_click'
+             WHEN name='share_result' AND outcome='success' THEN 'share_complete'
+             WHEN (build IS NULL OR build='') AND name='share' THEN 'share_complete'
+             WHEN name='share_result' THEN 'share_result'
+             ELSE name END event_name,
+           COALESCE(NULLIF(outcome,''),'unknown') outcome,
+           COALESCE(NULLIF(action,''),'unknown') action,
+           COALESCE(NULLIF(surface,''),'unknown') surface,
+           COALESCE(NULLIF(device,''),'unknown') device,
+           COALESCE(NULLIF(browser,''),'unknown') browser,
+           COALESCE(NULLIF(mode,''),'unknown') mode,
+           COALESCE(wins,-1) wins,net,value percentile,sid,
+           CASE WHEN variant LIKE 'daily-link:%' THEN 'daily-link'
+                WHEN variant LIKE 'daily-practice:%' THEN 'daily-practice'
+                WHEN variant LIKE 'daily%' THEN 'daily'
+                WHEN variant LIKE 'recap:%' THEN 'tribune-referral'
+                ELSE 'standalone' END path
+         FROM events WHERE ${W} AND (
+           name='share_click' OR name='share_result' OR
+           ((build IS NULL OR build='') AND name='share')
+         )
+       )
+       SELECT event_name name,outcome,action,surface,device,browser,mode,wins,net,percentile,path,
          COUNT(*) c,COUNT(DISTINCT sid) people
-       FROM events WHERE ${W} AND name IN ('share_click','share','share_result','share_cancel','share_error')
-       GROUP BY name,outcome,action,surface,device,browser,mode,wins,net,percentile,path ORDER BY c DESC`, B),
+       FROM share_events
+       GROUP BY event_name,outcome,action,surface,device,browser,mode,wins,net,percentile,path
+       ORDER BY c DESC`, B),
     q(`SELECT name,COALESCE(NULLIF(action,''),'unknown') action,COALESCE(NULLIF(outcome,''),'unknown') outcome,
          COALESCE(NULLIF(variant,''),'unknown') variant,COALESCE(NULLIF(segment,''),'unknown') segment,
          COUNT(*) c,ROUND(AVG(duration),0) avg_ms
@@ -376,13 +413,15 @@ export async function onRequest(context) {
          COUNT(*) c,COUNT(DISTINCT sid) people
        FROM events WHERE ${W} AND name='link_out'
        GROUP BY host,surface,action,detail ORDER BY c DESC LIMIT 30`, B),
-    q(`SELECT 'device' kind,COALESCE(NULLIF(device,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY device
-       UNION ALL SELECT 'browser',COALESCE(NULLIF(browser,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY browser
-       UNION ALL SELECT 'os',COALESCE(NULLIF(os,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY os
-       UNION ALL SELECT 'country',COALESCE(NULLIF(country,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY country
-       UNION ALL SELECT 'connection',COALESCE(NULLIF(connection,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY connection
-       UNION ALL SELECT 'nav_type',COALESCE(NULLIF(nav_type,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY nav_type
-       UNION ALL SELECT 'local_hour',COALESCE(CAST(local_hour AS TEXT),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY local_hour`, B.concat(B, B, B, B, B, B)),
+    Promise.all([
+      q(`SELECT 'device' kind,COALESCE(NULLIF(device,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY device`, B, "environment_device"),
+      q(`SELECT 'browser' kind,COALESCE(NULLIF(browser,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY browser`, B, "environment_browser"),
+      q(`SELECT 'os' kind,COALESCE(NULLIF(os,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY os`, B, "environment_os"),
+      q(`SELECT 'country' kind,COALESCE(NULLIF(country,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY country`, B, "environment_country"),
+      q(`SELECT 'connection' kind,COALESCE(NULLIF(connection,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY connection`, B, "environment_connection"),
+      q(`SELECT 'nav_type' kind,COALESCE(NULLIF(nav_type,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY nav_type`, B, "environment_navigation"),
+      q(`SELECT 'local_hour' kind,COALESCE(CAST(local_hour AS TEXT),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY local_hour`, B, "environment_local_hour")
+    ]).then((parts) => parts.flat()),
     one(`SELECT COUNT(*) c,
          ROUND(AVG(ttfb_ms),0) ttfb,ROUND(AVG(lcp_ms),0) lcp,ROUND(AVG(inp_ms),0) inp,
          ROUND(AVG(cls),3) cls,ROUND(AVG(load_ms),0) load_ms,ROUND(AVG(duration),0) dcl
@@ -457,7 +496,7 @@ export async function onRequest(context) {
          SUM(CASE WHEN name='share_click' THEN 1 ELSE 0 END) intents,
          SUM(CASE
            WHEN COALESCE(NULLIF(build,''),'')='' AND name='share' THEN 1
-           WHEN COALESCE(NULLIF(build,''),'')<>'' AND name='share_result' AND outcome='success' THEN 1
+           WHEN name='share_result' AND outcome='success' THEN 1
            ELSE 0 END) shares,
          SUM(CASE WHEN name IN ('client_error','data_error','share_error','percentile_error') THEN 1 ELSE 0 END) errors,
          MAX(ts) last_seen
@@ -578,7 +617,48 @@ export async function onRequest(context) {
   const segMax = Math.max(1, ...hcSeg.map((r) => +r.c || 0));
   const modeMax = Math.max(1, ...modeMix.map((r) => +r.c || 0));
 
+  // One canonical sharing definition everywhere: v39+ uses share_result=success;
+  // pre-v39 rows fall back to the legacy share event in the query above.
+  const canonicalShareRows = hasV3 ? shareRows.filter((r) => r.mode !== "kaman") : [];
+  const kamanShareRows = hasV3 ? shareRows.filter((r) => r.mode === "kaman") : [];
+  const shareKpis = hasV3 ? shareSummary(canonicalShareRows) : null;
+  const dailyRefMap = hasV3 ? Object.fromEntries(dailyReferralRows.map((r) => [r.step, r])) : {};
+  const dailyCurrentOpens = +(dailyRefMap.link_open_current && dailyRefMap.link_open_current.people) || 0;
+  const dailyLinkedStarts = +(dailyRefMap.game_started && dailyRefMap.game_started.people) || 0;
+  const dailyLinkedFinishes = +(dailyRefMap.game_finished && dailyRefMap.game_finished.people) || 0;
+  const dailyReshares = +(dailyRefMap.reshared && dailyRefMap.reshared.people) || 0;
+
   const cards = [];
+
+  // -------------------- owner decision board --------------------
+  if (hasV3) {
+    const dailyFunnel = dailyFunnelRows[0] || {};
+    const qualityWarnings = [];
+    if (trackedStarts && completesN > trackedStarts) qualityWarnings.push("Tracked finishes exceed starts in this scope; the date/build boundary may be splitting runs or duplicate completion events are landing.");
+    if (shareKpis.intents && shareKpis.completed > shareKpis.intents) qualityWarnings.push("Completed shares exceed share intents; old and new share definitions may be mixed in the selected build.");
+    if (sessions && startSids > sessions) qualityWarnings.push("Starting visits exceed session starts; session_start coverage is incomplete for this scope.");
+    if (dailyCurrentOpens && dailyLinkedStarts > dailyCurrentOpens) qualityWarnings.push("Friend-link starts exceed current-link opens; referral_open coverage is missing or the selected date boundary split the funnel.");
+    if (+dailyFunnel.unanchored_start_people > 0) qualityWarnings.push(`${+dailyFunnel.unanchored_start_people} Daily starting visits have no matching gate row.`);
+    const growthSteps = [
+      growthStep("Visit → game start", startSids, sessions, "Make the front door and mode choice clearer."),
+      growthStep("Start → finish", completesN, trackedStarts, "Reduce draft friction or shorten the path to a result."),
+      growthStep("Finish → share intent", shareKpis.intents, completesN, "Make the result feel more brag-worthy and the share CTA harder to miss."),
+      growthStep("Share intent → handoff", shareKpis.completed, shareKpis.intents, "Fix share-sheet/copy friction or improve the share payload preview."),
+      growthStep("Friend open → start", dailyLinkedStarts, dailyCurrentOpens, "Strengthen the challenge gate and sender-versus-recipient framing."),
+      growthStep("Friend start → finish", dailyLinkedFinishes, dailyLinkedStarts, "Make referred players reach the payoff faster."),
+      growthStep("Friend finish → reshare", dailyReshares, dailyLinkedFinishes, "Give recipients a stronger reason to pass the challenge onward.")
+    ].filter((r) => r.d >= 5).sort((a, b) => a.rate - b.rate);
+    const weakest = growthSteps[0];
+    cards.push(card("Growth scorecard · what matters", `
+      <div class="stat4">${stat(startRate + "%", "visits that start")}${stat(completeRate + "%", "starts that finish")}${stat(pct(shareKpis.intents, completesN) + "%", "finishes with share intent")}${stat(pct(shareKpis.completed, shareKpis.intents) + "%", "intents handed off")}</div>
+      <div class="stat4">${stat(pct(dailyLinkedStarts, dailyCurrentOpens) + "%", "friend opens that start")}${stat(pct(dailyLinkedFinishes, dailyLinkedStarts) + "%", "friend starts that finish")}${stat(pct(dailyReshares, dailyLinkedFinishes) + "%", "friend finishes reshared")}${stat(round2(dailyCurrentOpens ? dailyReshares / dailyCurrentOpens : 0), "reshares per friend open")}</div>
+      ${weakest ? `<div class="decision"><b>Fix first: ${esc(weakest.label)} (${weakest.rate}%).</b> ${esc(weakest.advice)}</div>` : `<p class="muted">More traffic is needed before the dashboard can identify a reliable weakest conversion step.</p>`}
+      ${qualityWarnings.length ? `<div class="quality bad"><b>Instrumentation checks:</b><br>${qualityWarnings.map(esc).join("<br>")}</div>` : `<div class="quality"><b>Instrumentation checks passed:</b> no impossible funnel relationships detected in this scope.</div>`}
+      <table><thead><tr><th>conversion step</th><th>made it</th><th>eligible</th><th>rate</th></tr></thead><tbody>
+        ${growthSteps.length ? growthSteps.map((r) => `<tr><td class="k">${esc(r.label)}</td><td>${r.n}</td><td>${r.d}</td><td class="${r===weakest?"warncell":""}">${r.rate}%</td></tr>`).join("") : emptyRow(4)}
+      </tbody></table>
+      <p class="muted">This is the executive view: acquisition, play completion, share motivation, handoff reliability, and the Daily friend-to-friend loop. Rates are shown only in the leak ranking once a step has at least five eligible visits/runs.</p>`, "wide priority"));
+  }
 
   // -------------------- health and instrumentation --------------------
   if (hasV3) {
@@ -922,9 +1002,7 @@ export async function onRequest(context) {
     // Kaman is a hidden guaranteed-82–0 easter egg. Keep its raw events for
     // operational visibility, but never let them inflate the canonical share
     // conversion rate or the record/rank propensity tables.
-    const canonicalShareRows = shareRows.filter((r) => r.mode !== "kaman");
-    const kamanShareRows = shareRows.filter((r) => r.mode === "kaman");
-    const sh = shareSummary(canonicalShareRows);
+    const sh = shareKpis;
     const kamanSh = shareSummary(kamanShareRows);
     const shareByResult = shareResultBreakdown(canonicalShareRows,allCounts);
     const shareByPercentile = sharePercentileBreakdown(canonicalShareRows);
@@ -1042,7 +1120,7 @@ export async function onRequest(context) {
     cards.push(card("Traffic & tech", `<p class="muted">Average data load <b>${loadRow && loadRow.ms != null ? loadRow.ms+" ms" : "—"}</b> · load errors <b>${errors}</b>. Apply analytics v3 for entry, campaign, page, browser, OS, performance, outbound, and scrubbed error diagnostics.</p>`));
   }
 
-  cards.push(card("Heat Check", `
+  if (!hasV3) cards.push(card("Heat Check", `
     <div class="stat3">${stat(shown,"shown")}${stat(pullRate+"%","pull rate")}${stat(hitTotal,"hit 82–0")}</div>
     <p class="muted">pulled <b>${pulled}</b> · skipped <b>${skipped}</b></p>
     <div class="sub">segment landed · hits</div>${hcSeg.length ? hcSeg.map((r)=>bar(r.segment,+r.c||0,segMax,`${r.c}${(+r.h||0)?" · "+r.h:""}`)).join("") : muted("no spins yet")}`));
@@ -1055,7 +1133,15 @@ export async function onRequest(context) {
   if (!hasV2) migrationWarnings.push(`<b>Analytics v2 columns are missing.</b> Spend/bailout detail cannot be stored.`);
   if (!hasV3) migrationWarnings.push(`<b>Analytics v3 migration required.</b> Apply <code>migrations/0006_analytics_v3.sql</code>; the endpoint fails soft, but v39 cards cannot populate until the columns exist.`);
   const migrationWarning = migrationWarnings.length ? `<div class="migration">${migrationWarnings.join("<br>")}</div>` : "";
-  const queryWarning = queryErrors.length ? `<div class="migration bad"><b>Dashboard query warning:</b> ${esc(queryErrors[0])}${queryErrors.length>1?` <span class="muted">(${queryErrors.length} queries reported errors)</span>`:""}</div>` : "";
+  const debugOn = url.searchParams.get("debug") === "1";
+  if (queryErrors.length || debugOn) {
+    cards.push(card("Dashboard diagnostics", `
+      <div class="stat4">${stat(queryErrors.length,"failed queries")}${stat(querySeq,"queries attempted")}${stat(hasV3?"yes":"no","analytics v3")}${stat(hasV40?"yes":"no","scoring-card schema")}</div>
+      ${queryErrors.length ? `<table><thead><tr><th>query</th><th>error</th><th>statement</th></tr></thead><tbody>${queryErrors.map((e)=>`<tr><td class="k">${esc(e.id)}</td><td class="warncell">${esc(e.message)}</td><td title="${esc(e.statement)}">${esc(shortText(e.statement,90))}</td></tr>`).join("")}</tbody></table>` : `<p class="okcell">All dashboard queries completed successfully.</p>`}
+      <p class="muted">Append <code>&amp;debug=1</code> to keep this card visible after the error is gone. Query ids and SQL summaries identify the exact failing card without exposing data or changing the database.</p>`, "wide diagnostics"));
+  }
+  const firstQueryError = queryErrors[0];
+  const queryWarning = firstQueryError ? `<div class="migration bad"><b>Dashboard query warning [${esc(firstQueryError.id)}]:</b> ${esc(firstQueryError.message)}${queryErrors.length>1?` <span class="muted">(${queryErrors.length} queries reported errors)</span>`:""}</div>` : "";
 
   const header = `<div class="head"><div><h1>TRUE 82 <span class="dot">·</span> analytics</h1>
       <div class="muted">${sessions.toLocaleString()} visits · ${startsAll.toLocaleString()} games initiated · ${completesN.toLocaleString()} tracked games finished · ${esc(scope.label)}${requestedBuild?` · build ${esc(requestedBuild)}`:""}</div></div>
@@ -1063,7 +1149,7 @@ export async function onRequest(context) {
     ${filters(url,scope,buildRows,requestedBuild,hasV3)}${migrationWarning}${queryWarning}`;
 
   const privacyNote = `<section class="privacy"><b>Privacy boundary:</b> no analytics cookies, local/session storage, IP hash, fingerprint, account id, or durable browser id. Visit/run ids exist in memory only. Daily return figures are coarse counts derived from the game’s existing local Daily record, not cross-device identity.</section>`;
-  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v39 · cookieless-analytics-v3 · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
+  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v42.1 · cookieless analytics · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
   return html(page("TRUE 82 · analytics", header + privacyNote + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 
@@ -1081,6 +1167,14 @@ function queryLimiter(max) {
       if (next) next();
     }
   };
+}
+function queryFailure(id, error, sql) {
+  const message = String(error && error.message || error || "unknown D1 error").slice(0, 260);
+  const statement = String(sql || "").replace(/\s+/g, " ").trim().slice(0, 220);
+  return { id, message, statement };
+}
+function growthStep(label, n, d, advice) {
+  return { label, n: +n || 0, d: +d || 0, rate: pct(n, d), advice };
 }
 function cnt(row) { return row && row.c != null ? +row.c : 0; }
 function round1(n) { return Math.round((+n || 0) * 10) / 10; }
@@ -1221,17 +1315,17 @@ function summarizeDraft(rows) {
 }
 function shareSummary(rows) {
   const intents=rows.filter((r)=>r.name==="share_click").reduce((s,r)=>s+(+r.c||0),0);
-  const completed=rows.filter((r)=>r.name==="share").reduce((s,r)=>s+(+r.c||0),0);
+  const completed=rows.filter((r)=>r.name==="share_complete").reduce((s,r)=>s+(+r.c||0),0);
   // share_cancel/share_error are emitted alongside the canonical share_result
   // row. Count only share_result here so one failed handoff is never doubled.
   const canceled=rows.filter((r)=>r.name==="share_result"&&r.outcome==="cancel").reduce((s,r)=>s+(+r.c||0),0);
   const errors=rows.filter((r)=>r.name==="share_result"&&r.outcome==="error").reduce((s,r)=>s+(+r.c||0),0);
   const pathMap={};
-  rows.forEach((r)=>{ if (r.name!=="share_click"&&r.name!=="share") return; const key=`${r.surface} · ${r.path}`; const x=pathMap[key]||(pathMap[key]={label:human(r.surface)+" · "+human(r.path),intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
+  rows.forEach((r)=>{ if (r.name!=="share_click"&&r.name!=="share_complete") return; const key=`${r.surface} · ${r.path}`; const x=pathMap[key]||(pathMap[key]={label:human(r.surface)+" · "+human(r.path),intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
   const paths=Object.values(pathMap).sort((a,b)=>b.intents-a.intents);
-  const methodMap={}; rows.filter((r)=>r.name==="share").forEach((r)=>{ const x=methodMap[r.action]||(methodMap[r.action]={action:r.action,c:0}); x.c+=+r.c||0; });
+  const methodMap={}; rows.filter((r)=>r.name==="share_complete").forEach((r)=>{ const x=methodMap[r.action]||(methodMap[r.action]={action:r.action,c:0}); x.c+=+r.c||0; });
   const methods=Object.values(methodMap).sort((a,b)=>b.c-a.c);
-  const deviceMap={}; rows.forEach((r)=>{ if(r.name!=="share_click"&&r.name!=="share")return; const key=`${r.device} · ${r.browser}`; const x=deviceMap[key]||(deviceMap[key]={label:key,intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
+  const deviceMap={}; rows.forEach((r)=>{ if(r.name!=="share_click"&&r.name!=="share_complete")return; const key=`${r.device} · ${r.browser}`; const x=deviceMap[key]||(deviceMap[key]={label:key,intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
   const devices=Object.values(deviceMap).sort((a,b)=>b.intents-a.intents).slice(0,12);
   return {intents,completed,canceled,errors,paths,methods,devices,pathMax:Math.max(1,...paths.map((r)=>r.intents)),methodMax:Math.max(1,...methods.map((r)=>r.c)),deviceMax:Math.max(1,...devices.map((r)=>r.intents))};
 }
@@ -1248,7 +1342,7 @@ function shareResultBreakdown(rows,counts) {
   ];
   const map=Object.fromEntries(defs.map((d)=>[d.key,Object.assign({intents:0,completed:0},d)]));
   (rows||[]).forEach((r)=>{
-    if((r.name!=="share_click"&&r.name!=="share")||r.mode==="kaman")return;
+    if((r.name!=="share_click"&&r.name!=="share_complete")||r.mode==="kaman")return;
     const w=+r.wins;
     const key=Number.isFinite(w)&&w>=0?(w>=77?String(Math.min(82,Math.round(w))):"under77"):"unknown";
     const x=map[key]||map.unknown;
@@ -1264,7 +1358,7 @@ function sharePercentileBreakdown(rows) {
   ];
   const map=Object.fromEntries(defs.map((d)=>[d.key,Object.assign({intents:0,completed:0},d)]));
   (rows||[]).forEach((r)=>{
-    if(r.name!=="share_click"&&r.name!=="share")return;
+    if(r.name!=="share_click"&&r.name!=="share_complete")return;
     const v=+r.percentile;
     const key=!Number.isFinite(v)||r.percentile==null?"unknown":v<=1?"top1":v<=5?"top5":v<=10?"top10":v<=25?"top25":v<=50?"top50":"lower";
     const x=map[key];
@@ -1308,5 +1402,5 @@ function emptyRow(cols){return `<tr><td colspan="${cols}" class="muted">no data 
 function html(body){return new Response(body,{headers:{"content-type":"text/html;charset=utf-8","cache-control":"no-store","x-robots-tag":"noindex, nofollow","x-content-type-options":"nosniff","referrer-policy":"no-referrer"}});}
 function page(title,inner){return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title><style>
 :root{--ink:#101418;--tunnel:#1A2027;--tunnel2:#2b3540;--chalk:#E8E4D8;--dim:#9AA0A6;--maple:#B98A4F;--amber:#FFB52E;--whistle:#E2654E;--ok:#8FB99B}
-*{box-sizing:border-box}body{margin:0;background:var(--ink);color:var(--chalk);font:15px/1.5 Barlow,system-ui,sans-serif;-webkit-font-smoothing:antialiased}.wrap{max-width:1240px;margin:0 auto;padding:22px 16px 60px}.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 2px 14px}h1{font:700 26px/1 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:0 0 6px;text-transform:uppercase}.dot{color:var(--maple)}h2{font:700 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:0 0 12px}h3{font:700 15px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}.muted{color:var(--dim);font-size:13px;margin:10px 0 0}.muted b{color:var(--chalk)}code{font-family:'IBM Plex Mono',monospace;color:var(--maple)}a{color:#9bb7ff}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}@media(max-width:790px){.grid{grid-template-columns:1fr}.wide{grid-column:auto!important}}.card{min-width:0;background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:16px}.wide{grid-column:1/-1}.refresh{background:none;border:1px solid var(--tunnel2);color:var(--dim);font:600 12px 'IBM Plex Mono',monospace;padding:7px 12px;border-radius:8px;cursor:pointer}.refresh:active{border-color:var(--maple);color:var(--chalk)}table{width:100%;border-collapse:collapse;font-size:14px;display:block;overflow-x:auto}thead,tbody{display:table;width:100%;table-layout:auto}th{text-align:right;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.05em;color:var(--dim);text-transform:uppercase;padding:0 6px 8px;white-space:nowrap}th:first-child,td:first-child{text-align:left}td{text-align:right;padding:6px;border-top:1px solid var(--tunnel2);font-family:'IBM Plex Mono',monospace;white-space:nowrap}td.k{color:var(--chalk)}td.big{color:var(--amber);font-weight:600}.warncell{color:#f1b0a3}.okcell{color:var(--ok)}.stat3{display:flex;gap:10px;margin-bottom:8px}.s{flex:1;min-width:0;background:var(--ink);border:1px solid var(--tunnel2);border-radius:9px;padding:11px 8px;text-align:center}.sv{font:600 21px 'IBM Plex Mono',monospace;color:var(--chalk)}.sl{font-size:10.5px;color:var(--dim);margin-top:3px;letter-spacing:.02em}.sub{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin:14px 0 8px}.row{display:flex;align-items:center;gap:9px;margin:5px 0}.rl{flex:0 0 145px;font-size:12px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rt{flex:1;height:16px;background:var(--ink);border-radius:5px;overflow:hidden}.fill{display:block;height:100%;background:linear-gradient(90deg,var(--maple),var(--amber));border-radius:5px}.rv{flex:0 0 116px;font:600 11px 'IBM Plex Mono',monospace;color:var(--chalk);white-space:nowrap}.mode-block+.mode-block{border-top:1px solid var(--tunnel2);margin-top:15px;padding-top:2px}.mini-mode{margin:8px 0 14px}.mini-mode>b{display:block;font:600 12px 'IBM Plex Mono',monospace;color:var(--chalk);margin-bottom:5px}.bail-mode+.bail-mode{border-top:1px solid var(--tunnel2);margin-top:16px}.bail-grid,.tech-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.filters{background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:12px 14px;margin-bottom:14px}.filter-row,.custom{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.custom,.build-row{margin-top:9px}.filter-label{font:600 11px 'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--dim);margin-right:4px}.chip{display:inline-block;border:1px solid var(--tunnel2);background:var(--ink);color:var(--dim);text-decoration:none;border-radius:8px;padding:6px 10px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer}.chip.on,.chip:hover{border-color:var(--amber);color:var(--chalk)}.custom label{font:11px 'IBM Plex Mono',monospace;color:var(--dim)}.custom input{margin-left:5px;background:var(--ink);border:1px solid var(--tunnel2);color:var(--chalk);border-radius:6px;padding:5px}.scope-note{margin-top:8px}.migration{border:1px solid var(--whistle);background:rgba(226,101,78,.08);border-radius:10px;padding:10px 12px;margin:0 0 14px;color:var(--chalk);font-size:13px}.migration.bad{border-color:var(--amber)}.warn{color:#f1b0a3;font-size:13px}.privacy{background:#141a20;border-left:3px solid var(--ok);padding:10px 13px;margin:0 0 14px;border-radius:4px;color:var(--dim);font-size:12.5px}.privacy b{color:var(--chalk)}@media(max-width:940px){.bail-grid,.tech-grid{grid-template-columns:1fr 1fr}.stat3{flex-wrap:wrap}.s{min-width:30%}}@media(max-width:560px){.wrap{padding:14px 10px 50px}.head{align-items:flex-start}.bail-grid,.tech-grid{grid-template-columns:1fr}.rl{flex-basis:112px}.rv{flex-basis:100px}.sv{font-size:19px}.card{padding:14px 12px}}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:var(--chalk);font:15px/1.5 Barlow,system-ui,sans-serif;-webkit-font-smoothing:antialiased}.wrap{max-width:1240px;margin:0 auto;padding:22px 16px 60px}.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 2px 14px}h1{font:700 26px/1 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:0 0 6px;text-transform:uppercase}.dot{color:var(--maple)}h2{font:700 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:0 0 12px}h3{font:700 15px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}.muted{color:var(--dim);font-size:13px;margin:10px 0 0}.muted b{color:var(--chalk)}code{font-family:'IBM Plex Mono',monospace;color:var(--maple)}a{color:#9bb7ff}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}@media(max-width:790px){.grid{grid-template-columns:1fr}.wide{grid-column:auto!important}}.card{min-width:0;background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:16px}.card.priority{border-color:rgba(255,181,46,.7);box-shadow:0 0 0 1px rgba(255,181,46,.08) inset}.wide{grid-column:1/-1}.refresh{background:none;border:1px solid var(--tunnel2);color:var(--dim);font:600 12px 'IBM Plex Mono',monospace;padding:7px 12px;border-radius:8px;cursor:pointer}.refresh:active{border-color:var(--maple);color:var(--chalk)}table{width:100%;border-collapse:collapse;font-size:14px;display:block;overflow-x:auto}thead,tbody{display:table;width:100%;table-layout:auto}th{text-align:right;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.05em;color:var(--dim);text-transform:uppercase;padding:0 6px 8px;white-space:nowrap}th:first-child,td:first-child{text-align:left}td{text-align:right;padding:6px;border-top:1px solid var(--tunnel2);font-family:'IBM Plex Mono',monospace;white-space:nowrap}td.k{color:var(--chalk)}td.big{color:var(--amber);font-weight:600}.warncell{color:#f1b0a3}.okcell{color:var(--ok)}.stat3,.stat4{display:flex;gap:10px;margin-bottom:8px}.stat4 .s{min-width:0}.decision{margin:12px 0;background:rgba(255,181,46,.08);border-left:3px solid var(--amber);border-radius:5px;padding:10px 12px;color:var(--chalk)}.decision b{color:var(--amber)}.quality{margin:10px 0 12px;background:rgba(143,185,155,.07);border-left:3px solid var(--ok);border-radius:5px;padding:9px 12px;color:var(--dim);font-size:12.5px}.quality b{color:var(--ok)}.quality.bad{background:rgba(226,101,78,.08);border-color:var(--whistle);color:var(--chalk)}.quality.bad b{color:#f1b0a3}.s{flex:1;min-width:0;background:var(--ink);border:1px solid var(--tunnel2);border-radius:9px;padding:11px 8px;text-align:center}.sv{font:600 21px 'IBM Plex Mono',monospace;color:var(--chalk)}.sl{font-size:10.5px;color:var(--dim);margin-top:3px;letter-spacing:.02em}.sub{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin:14px 0 8px}.row{display:flex;align-items:center;gap:9px;margin:5px 0}.rl{flex:0 0 145px;font-size:12px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rt{flex:1;height:16px;background:var(--ink);border-radius:5px;overflow:hidden}.fill{display:block;height:100%;background:linear-gradient(90deg,var(--maple),var(--amber));border-radius:5px}.rv{flex:0 0 116px;font:600 11px 'IBM Plex Mono',monospace;color:var(--chalk);white-space:nowrap}.mode-block+.mode-block{border-top:1px solid var(--tunnel2);margin-top:15px;padding-top:2px}.mini-mode{margin:8px 0 14px}.mini-mode>b{display:block;font:600 12px 'IBM Plex Mono',monospace;color:var(--chalk);margin-bottom:5px}.bail-mode+.bail-mode{border-top:1px solid var(--tunnel2);margin-top:16px}.bail-grid,.tech-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.filters{background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:12px 14px;margin-bottom:14px}.filter-row,.custom{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.custom,.build-row{margin-top:9px}.filter-label{font:600 11px 'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--dim);margin-right:4px}.chip{display:inline-block;border:1px solid var(--tunnel2);background:var(--ink);color:var(--dim);text-decoration:none;border-radius:8px;padding:6px 10px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer}.chip.on,.chip:hover{border-color:var(--amber);color:var(--chalk)}.custom label{font:11px 'IBM Plex Mono',monospace;color:var(--dim)}.custom input{margin-left:5px;background:var(--ink);border:1px solid var(--tunnel2);color:var(--chalk);border-radius:6px;padding:5px}.scope-note{margin-top:8px}.migration{border:1px solid var(--whistle);background:rgba(226,101,78,.08);border-radius:10px;padding:10px 12px;margin:0 0 14px;color:var(--chalk);font-size:13px}.migration.bad{border-color:var(--amber)}.warn{color:#f1b0a3;font-size:13px}.privacy{background:#141a20;border-left:3px solid var(--ok);padding:10px 13px;margin:0 0 14px;border-radius:4px;color:var(--dim);font-size:12.5px}.privacy b{color:var(--chalk)}@media(max-width:940px){.bail-grid,.tech-grid{grid-template-columns:1fr 1fr}.stat3,.stat4{flex-wrap:wrap}.s{min-width:30%}}@media(max-width:560px){.wrap{padding:14px 10px 50px}.head{align-items:flex-start}.bail-grid,.tech-grid{grid-template-columns:1fr}.stat4 .s{min-width:46%}.rl{flex-basis:112px}.rv{flex-basis:100px}.sv{font-size:19px}.card{padding:14px 12px}}
 </style></head><body><div class="wrap">${inner}</div></body></html>`;}
