@@ -1,5 +1,5 @@
-// GET /api/retention-dashboard — private same-browser retention dashboard for TRUE 82 v40.
-// Reads only the isolated retention_events_v1 table. DASH_KEY remains the gate.
+// GET /api/retention-dashboard — legacy detailed retention view for TRUE 82 v40.
+// The primary retention cards now also live inside /avocado. DASH_KEY remains the gate.
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -330,14 +330,14 @@ function coverageCard(retentionVisits, allVisits) {
   const coverage = total === null ? "not available" : rate(identified, total);
   return card("Measurement coverage", `
     <div class="coverage"><strong>${esc(coverage)}</strong><span>of ordinary analytics visits also created an eligible retention visit</span></div>
-    <p class="muted">Identified visits: ${fmt(identified)}${total === null ? "" : ` · all session starts: ${fmt(total)}`}. Excluded regions, DNT/GPC, private browsing, blocked storage, and failed policy requests are intentionally absent.</p>`);
+    <p class="muted">Identified visits: ${fmt(identified)}${total === null ? "" : ` · all session starts: ${fmt(total)}`}. Excluded consent regions, unknown/Tor geolocation, explicit site opt-outs, blocked storage, and failed policy requests are absent. DNT/GPC are observed but no longer suppress strictly first-party retention measurement.</p>`);
 }
 
 function notes() {
   return `<section class="card notes"><h2>Interpretation limits</h2>
     <p>This is <strong>same-browser retention</strong>, not person-level identity. A different device/browser, cleared site data, private browsing, or the 180-day rotation appears as a new browser.</p>
     <p>Exact D1 means another game start on the next local calendar date. “Within 7 days” is broader and usually more stable at low traffic. No historical rows can be backfilled.</p>
-    <p>The retention stream is disabled where the policy endpoint requires consent and whenever DNT or GPC is present. It is not used for advertising or cross-site tracking.</p>
+    <p>The retention stream uses a random first-party TRUE 82 browser id with a secure cookie and local-storage fallback for up to 400 days. It is disabled in consent regions, unknown/Tor geolocation, and after the explicit TRUE 82 opt-out. DNT/GPC are observed but do not suppress strictly first-party product analytics. It is not used for advertising or cross-site tracking.</p>
   </section>`;
 }
 

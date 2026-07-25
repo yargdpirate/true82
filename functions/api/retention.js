@@ -1,5 +1,6 @@
 // POST /api/retention — isolated same-browser retention stream for TRUE 82 v40.
-// This endpoint never writes to `events` or `analytics_events_v4`.
+// DNT/GPC do not disable this strictly first-party stream. Consent regions,
+// unknown geolocation, and the explicit TRUE 82 opt-out remain hard stops.
 
 const EVENTS = new Set(["visit", "game_start", "game_complete", "share_success", "referral_open"]);
 const MODES = new Set(["classic", "pro", "cap", "kaman"]);
@@ -8,6 +9,10 @@ const CONSENT_REGIONS = new Set([
   "IT","LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE","IS","LI","NO",
   "GB","CH"
 ]);
+const RID_COOKIE = "t82_rid";
+const OPTOUT_COOKIE = "t82_ro";
+const MAX_AGE_SECONDS = 400 * 86400;
+const ID_RE = /^v1-[A-Za-z0-9-]{16,60}$/;
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -21,11 +26,10 @@ export async function onRequest(context) {
     } catch { return noContent("bad-origin"); }
   }
 
+  const cookies = parseCookies(request.headers.get("cookie") || "");
   const country = String((request.cf && request.cf.country) || "").toUpperCase();
-  const privacySignal = request.headers.get("sec-gpc") === "1" || /^(1|yes)$/i.test(request.headers.get("dnt") || "");
-  if (!country || country === "XX" || country === "T1" || privacySignal || CONSENT_REGIONS.has(country)) {
-    return noContent("policy");
-  }
+  if (cookies[OPTOUT_COOKIE] === "1") return noContent("site-opt-out");
+  if (!country || country === "XX" || country === "T1" || CONSENT_REGIONS.has(country)) return noContent("policy");
 
   const declaredLength = Number(request.headers.get("content-length") || 0);
   if (declaredLength > 4096) return noContent("too-large");
@@ -39,7 +43,10 @@ export async function onRequest(context) {
 
   if (!b || typeof b !== "object" || Array.isArray(b)) return noContent("bad-event");
   if (!EVENTS.has(b.event_name)) return noContent("bad-event");
-  if (typeof b.visitor_id !== "string" || !/^v1-[A-Za-z0-9-]{16,60}$/.test(b.visitor_id)) return noContent("bad-id");
+  const cookieId = validId(cookies[RID_COOKIE]);
+  const bodyId = validId(b.visitor_id);
+  const visitorId = cookieId || bodyId;
+  if (!visitorId) return noContent("bad-id");
   if (typeof b.event_id !== "string" || !/^e-[A-Za-z0-9-]{16,60}$/.test(b.event_id)) return noContent("bad-event-id");
   if (typeof b.local_day !== "string" || !/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(b.local_day)) return noContent("bad-day");
 
@@ -69,7 +76,7 @@ export async function onRequest(context) {
   const row = {
     ts: Date.now(),
     event_id: b.event_id,
-    visitor_id: b.visitor_id,
+    visitor_id: visitorId,
     local_day: b.local_day,
     event_name: b.event_name,
     sid: clean(b.sid, 64),
@@ -89,16 +96,32 @@ export async function onRequest(context) {
     const fields = Object.keys(row);
     const sql = `INSERT OR IGNORE INTO retention_events_v1 (${fields.join(",")}) VALUES (${fields.map(() => "?").join(",")})`;
     await env.DB.prepare(sql).bind(...fields.map((k) => row[k])).run();
-    return noContent(null, "retention-v1");
+    const headers = {};
+    if (!cookieId && bodyId) headers["set-cookie"] = `${RID_COOKIE}=${bodyId}; Max-Age=${MAX_AGE_SECONDS}; Path=/; Secure; HttpOnly; SameSite=Lax`;
+    const signals = [];
+    if (request.headers.get("sec-gpc") === "1") signals.push("gpc");
+    if (/^(1|yes)$/i.test(request.headers.get("dnt") || "")) signals.push("dnt");
+    if (signals.length) headers["x-t82-privacy-signals-observed"] = signals.join(",");
+    return noContent(null, "retention-v2", headers);
   } catch (e) {
-    // Analytics must never affect gameplay. A missing migration or D1 failure is
-    // exposed only through a response header for diagnostics.
     return noContent(String(e && e.message || e));
   }
 }
 
-function noContent(err, schema) {
-  const headers = { "cache-control": "no-store" };
+function parseCookies(raw) {
+  const out = {};
+  raw.split(";").forEach((part) => {
+    const i = part.indexOf("=");
+    if (i < 0) return;
+    const k = part.slice(0, i).trim();
+    const v = part.slice(i + 1).trim();
+    if (k) out[k] = v;
+  });
+  return out;
+}
+function validId(v) { return typeof v === "string" && ID_RE.test(v) ? v : ""; }
+function noContent(err, schema, extra = {}) {
+  const headers = { "cache-control": "no-store", ...extra };
   if (schema) headers["x-t82-retention-schema"] = schema;
   if (err) headers["x-t82-retention-err"] = String(err).slice(0, 120);
   return new Response(null, { status: 204, headers });

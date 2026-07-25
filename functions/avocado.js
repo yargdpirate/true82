@@ -1,8 +1,8 @@
 // GET /avocado — private, no-store analytics viewer for TRUE 82.
 // Reads anonymous first-party event aggregates from D1. DASH_KEY remains the gate.
-// v39 deliberately has no user/account table: visit ids and run ids are random,
-// in-memory client values that disappear on reload. Cross-day behavior is shown only
-// through the coarse Daily local-history profile already needed by the game itself.
+// Ordinary event analytics remains session-scoped. The isolated retention stream
+// uses a random first-party browser id so Avocado can measure forward-only,
+// same-browser day-level cohorts without accounts, fingerprints, or third parties.
 
 const TRACKED_MODES = ["classic", "pro", "cap"];
 const ALL_MODES = ["classic", "pro", "cap", "kaman"];
@@ -70,6 +70,10 @@ export async function onRequest(context) {
   const hasV40 = V40_REQUIRED.every((c) => cols.has(c));
   const recapSchema = await q(`PRAGMA table_info(recaps)`);
   const hasRecaps = recapSchema.length > 0;
+  const retentionSchema = await q(`PRAGMA table_info(retention_events_v1)`, [], "retention_schema");
+  const coverageSchema = await q(`PRAGMA table_info(retention_coverage_v1)`, [], "retention_coverage_schema");
+  const hasRetention = retentionSchema.length > 0;
+  const hasRetentionCoverage = coverageSchema.length > 0;
 
   const scope = dateScope(url);
   const dateW = scope.all ? "1=1" : "ts>=? AND ts<?";
@@ -548,7 +552,146 @@ export async function onRequest(context) {
        ORDER BY ts DESC LIMIT 10000`, B)
   ]) : Promise.resolve(Array(32).fill([]));
 
-  const [core, v2, v3] = await Promise.all([corePromise, v2Promise, v3Promise]);
+  const retentionStartDay = scope.all ? "0000-01-01" : new Date(scope.start).toISOString().slice(0, 10);
+  const retentionEndDay = scope.all ? "9999-12-31" : new Date(scope.end).toISOString().slice(0, 10);
+  const retentionPromise = hasRetention ? (async () => {
+    const maxDayRow = await one(`SELECT MAX(local_day) max_day, COUNT(*) events
+      FROM retention_events_v1 WHERE local_day>=? AND local_day<?`, [retentionStartDay, retentionEndDay], "retention_max_day") || {};
+    const dataDay = maxDayRow.max_day || new Date().toISOString().slice(0, 10);
+    return Promise.all([
+      Promise.resolve(maxDayRow),
+      one(`WITH firsts AS (
+          SELECT visitor_id, MIN(local_day) first_day
+          FROM retention_events_v1 WHERE event_name='game_start' GROUP BY visitor_id
+        ), scoped AS (
+          SELECT * FROM firsts WHERE first_day>=? AND first_day<?
+        ), flags AS (
+          SELECT s.visitor_id,s.first_day,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day=date(s.first_day,'+1 day')) d1_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_complete' AND e.local_day=date(s.first_day,'+1 day')) d1_finish,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day=date(s.first_day,'+3 day')) d3_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day=date(s.first_day,'+7 day')) d7_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day>s.first_day AND e.local_day<=date(s.first_day,'+7 day')) w1_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day>s.first_day AND e.local_day<=date(s.first_day,'+30 day')) m1_start
+          FROM scoped s
+        )
+        SELECT COUNT(*) new_players,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) d1_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN d1_start ELSE 0 END) d1_started,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN d1_finish ELSE 0 END) d1_finished,
+          SUM(CASE WHEN first_day<=date(?,'-3 day') THEN 1 ELSE 0 END) d3_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-3 day') THEN d3_start ELSE 0 END) d3_started,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN 1 ELSE 0 END) d7_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN d7_start ELSE 0 END) d7_started,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN w1_start ELSE 0 END) w1_started,
+          SUM(CASE WHEN first_day<=date(?,'-30 day') THEN 1 ELSE 0 END) m1_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-30 day') THEN m1_start ELSE 0 END) m1_started
+        FROM flags`, [retentionStartDay,retentionEndDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay], "retention_summary"),
+      q(`WITH firsts AS (
+          SELECT visitor_id,MIN(local_day) first_day FROM retention_events_v1
+          WHERE event_name='game_start' GROUP BY visitor_id
+        )
+        SELECT f.first_day,COUNT(*) new_players,
+          SUM(CASE WHEN f.first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) d1_eligible,
+          SUM(CASE WHEN f.first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=f.visitor_id AND e.event_name='game_start' AND e.local_day=date(f.first_day,'+1 day')) THEN 1 ELSE 0 END) d1_started,
+          SUM(CASE WHEN f.first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=f.visitor_id AND e.event_name='game_complete' AND e.local_day=date(f.first_day,'+1 day')) THEN 1 ELSE 0 END) d1_finished,
+          SUM(CASE WHEN f.first_day<=date(?,'-7 day') THEN 1 ELSE 0 END) d7_eligible,
+          SUM(CASE WHEN f.first_day<=date(?,'-7 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=f.visitor_id AND e.event_name='game_start' AND e.local_day=date(f.first_day,'+7 day')) THEN 1 ELSE 0 END) d7_started
+        FROM firsts f WHERE f.first_day>=? AND f.first_day<?
+        GROUP BY f.first_day ORDER BY f.first_day DESC LIMIT 31`, [dataDay,dataDay,dataDay,dataDay,dataDay,retentionStartDay,retentionEndDay], "retention_cohorts"),
+      q(`WITH ranked AS (
+          SELECT visitor_id,local_day first_day,COALESCE(mode,'unknown') first_mode,
+            ROW_NUMBER() OVER (PARTITION BY visitor_id ORDER BY ts,id) rn
+          FROM retention_events_v1 WHERE event_name='game_start'
+        ), firsts AS (
+          SELECT visitor_id,first_day,first_mode FROM ranked
+          WHERE rn=1 AND first_day>=? AND first_day<?
+        )
+        SELECT first_mode,COUNT(*) new_players,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) eligible,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=firsts.visitor_id AND e.event_name='game_start' AND e.local_day=date(firsts.first_day,'+1 day')) THEN 1 ELSE 0 END) returned,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN 1 ELSE 0 END) w1_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=firsts.visitor_id AND e.event_name='game_start' AND e.local_day>firsts.first_day AND e.local_day<=date(firsts.first_day,'+7 day')) THEN 1 ELSE 0 END) w1_returned
+        FROM firsts GROUP BY first_mode ORDER BY new_players DESC`, [retentionStartDay,retentionEndDay,dataDay,dataDay,dataDay,dataDay], "retention_by_mode"),
+      q(`WITH ranked AS (
+          SELECT visitor_id,local_day first_day,COALESCE(NULLIF(entry,''),'unknown') first_entry,
+            ROW_NUMBER() OVER (PARTITION BY visitor_id ORDER BY ts,id) rn
+          FROM retention_events_v1 WHERE event_name='game_start'
+        ), firsts AS (
+          SELECT visitor_id,first_day,first_entry FROM ranked
+          WHERE rn=1 AND first_day>=? AND first_day<?
+        )
+        SELECT first_entry,COUNT(*) new_players,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) eligible,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=firsts.visitor_id AND e.event_name='game_start' AND e.local_day=date(firsts.first_day,'+1 day')) THEN 1 ELSE 0 END) returned
+        FROM firsts GROUP BY first_entry ORDER BY new_players DESC LIMIT 12`, [retentionStartDay,retentionEndDay,dataDay,dataDay], "retention_by_entry"),
+      q(`WITH days AS (
+          SELECT visitor_id,COUNT(DISTINCT local_day) active_days
+          FROM retention_events_v1 WHERE event_name='game_start' GROUP BY visitor_id
+        ), scoped AS (
+          SELECT d.* FROM days d WHERE EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=d.visitor_id AND e.event_name='game_start' AND e.local_day>=? AND e.local_day<?)
+        )
+        SELECT CASE WHEN active_days>=8 THEN '8+' ELSE CAST(active_days AS TEXT) END bucket,COUNT(*) players
+        FROM scoped GROUP BY CASE WHEN active_days>=8 THEN '8+' ELSE CAST(active_days AS TEXT) END
+        ORDER BY CASE bucket WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4 WHEN '5' THEN 5 WHEN '6' THEN 6 WHEN '7' THEN 7 ELSE 8 END`, [retentionStartDay,retentionEndDay], "retention_active_days"),
+      q(`WITH days AS (
+          SELECT DISTINCT visitor_id,local_day FROM retention_events_v1 WHERE event_name='game_start'
+        ), numbered AS (
+          SELECT visitor_id,local_day,julianday(local_day)-ROW_NUMBER() OVER (PARTITION BY visitor_id ORDER BY local_day) grp FROM days
+        ), runs AS (
+          SELECT visitor_id,COUNT(*) streak FROM numbered GROUP BY visitor_id,grp
+        ), best AS (
+          SELECT visitor_id,MAX(streak) best_streak FROM runs GROUP BY visitor_id
+        )
+        SELECT CASE WHEN best_streak=1 THEN '1 day' WHEN best_streak=2 THEN '2 days' WHEN best_streak=3 THEN '3 days'
+          WHEN best_streak BETWEEN 4 AND 6 THEN '4–6 days' ELSE '7+ days' END bucket,COUNT(*) players,MIN(best_streak) sort_key
+        FROM best WHERE EXISTS(
+          SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=best.visitor_id AND e.event_name='game_start' AND e.local_day>=? AND e.local_day<?)
+        GROUP BY bucket ORDER BY sort_key`, [retentionStartDay,retentionEndDay], "retention_streaks"),
+      q(`WITH firsts AS (
+          SELECT visitor_id,MIN(local_day) first_day FROM retention_events_v1 WHERE event_name='game_start' GROUP BY visitor_id
+        ), activity AS (
+          SELECT DISTINCT visitor_id,local_day FROM retention_events_v1
+          WHERE event_name='game_start' AND local_day>=? AND local_day<?
+        )
+        SELECT a.local_day,
+          SUM(CASE WHEN a.local_day=f.first_day THEN 1 ELSE 0 END) new_players,
+          SUM(CASE WHEN a.local_day>f.first_day THEN 1 ELSE 0 END) returning_players,
+          COUNT(*) active_players
+        FROM activity a JOIN firsts f USING(visitor_id)
+        GROUP BY a.local_day ORDER BY a.local_day DESC LIMIT 31`, [retentionStartDay,retentionEndDay], "retention_daily_mix")
+    ]);
+  })() : Promise.resolve([{},null,[],[],[],[],[],[]]);
+
+  const coveragePromise = hasRetentionCoverage ? Promise.all([
+    one(`SELECT COUNT(*) checks,
+        SUM(CASE WHEN decision='enabled' THEN 1 ELSE 0 END) enabled,
+        SUM(CASE WHEN decision='disabled' THEN 1 ELSE 0 END) disabled,
+        SUM(CASE WHEN gpc=1 THEN 1 ELSE 0 END) gpc,
+        SUM(CASE WHEN dnt=1 THEN 1 ELSE 0 END) dnt,
+        SUM(CASE WHEN decision='enabled' AND (gpc=1 OR dnt=1) THEN 1 ELSE 0 END) measured_signals,
+        SUM(CASE WHEN storage_ok=0 THEN 1 ELSE 0 END) storage_blocked,
+        SUM(CASE WHEN device='mobile' THEN 1 ELSE 0 END) mobile
+      FROM retention_coverage_v1 WHERE ${dateW}`, dateB, "retention_coverage_summary"),
+    q(`SELECT reason,decision,COUNT(*) c FROM retention_coverage_v1 WHERE ${dateW}
+      GROUP BY reason,decision ORDER BY c DESC`, dateB, "retention_coverage_reasons"),
+    q(`SELECT COALESCE(identity_source,'none') identity_source,COUNT(*) c FROM retention_coverage_v1
+      WHERE ${dateW} AND decision='enabled' GROUP BY identity_source ORDER BY c DESC`, dateB, "retention_identity_sources"),
+    q(`SELECT COALESCE(browser,'Other') browser,COALESCE(device,'unknown') device,COUNT(*) checks,
+        SUM(CASE WHEN decision='enabled' THEN 1 ELSE 0 END) enabled,
+        SUM(CASE WHEN gpc=1 OR dnt=1 THEN 1 ELSE 0 END) signals
+      FROM retention_coverage_v1 WHERE ${dateW}
+      GROUP BY browser,device ORDER BY checks DESC LIMIT 14`, dateB, "retention_browser_coverage")
+  ]) : Promise.resolve([null,[],[],[]]);
+
+  const [core, v2, v3, retention, retentionCoverage] = await Promise.all([corePromise, v2Promise, v3Promise, retentionPromise, coveragePromise]);
   const [
     winCounts, hhHits, modeMix, funnelModes, roundFunnel, hcAction, hcSeg,
     sessionRows, corrRows, newspaperRowsLegacy, dailyByBaseRows,
@@ -563,6 +706,8 @@ export async function onRequest(context) {
     uiRows = [], errorRows = [], buildCompareRows = [], perfRawRows = [], searchDetailRows = [],
     abandonDetailRows = [], milestoneRows = [], runTimingRows = []
   ] = v3;
+  const [retentionMax = {}, retentionSummary = null, retentionCohorts = [], retentionByMode = [], retentionByEntry = [], retentionActivity = [], retentionStreaks = [], retentionDailyMix = []] = retention;
+  const [coverageSummary = null, coverageReasons = [], retentionIdentitySources = [], retentionBrowserCoverage = []] = retentionCoverage;
 
   const sessions = cnt(sessionsRow);
   const startsAll = cnt(startsRow);
@@ -658,6 +803,72 @@ export async function onRequest(context) {
         ${growthSteps.length ? growthSteps.map((r) => `<tr><td class="k">${esc(r.label)}</td><td>${r.n}</td><td>${r.d}</td><td class="${r===weakest?"warncell":""}">${r.rate}%</td></tr>`).join("") : emptyRow(4)}
       </tbody></table>
       <p class="muted">This is the executive view: acquisition, play completion, share motivation, handoff reliability, and the Daily friend-to-friend loop. Rates are shown only in the leak ranking once a step has at least five eligible visits/runs.</p>`, "wide priority"));
+  }
+
+  // -------------------- same-browser retention --------------------
+  if (hasRetention && retentionSummary) {
+    const rs = retentionSummary || {};
+    const identifiedPlayers = +rs.new_players || 0;
+    const repeatPlayers = retentionActivity.reduce((n, r) => n + (String(r.bucket) === "1" ? 0 : (+r.players || 0)), 0);
+    const coverageChecks = coverageSummary ? +coverageSummary.checks || 0 : 0;
+    const coverageEnabled = coverageSummary ? +coverageSummary.enabled || 0 : 0;
+    const d1Text = maturePct(rs.d1_started, rs.d1_eligible);
+    const d1FinishText = maturePct(rs.d1_finished, rs.d1_eligible);
+    const d7Text = maturePct(rs.d7_started, rs.d7_eligible);
+    const w1Text = maturePct(rs.w1_started, rs.d7_eligible);
+    cards.push(card("Retention · does the game create another day?", `
+      <div class="stat4">${stat(d1Text,"D1 played again")}${stat(d1FinishText,"D1 finished again")}${stat(d7Text,"exact D7")}${stat(w1Text,"returned within 7d")}</div>
+      <div class="stat4">${stat(identifiedPlayers,"new identified browsers")}${stat(repeatPlayers,"played on 2+ days")}${stat(maturePct(repeatPlayers,identifiedPlayers),"repeat-day share")}${stat(coverageChecks?maturePct(coverageEnabled,coverageChecks):"—","measurement coverage")}</div>
+      <div class="decision"><b>The survival number is D1 played again.</b> It counts browsers that started a game on the very next local calendar day. D1 finished again is the stricter product-quality version.</div>
+      <p class="muted">Forward-only, same-browser cohorts. Recent cohorts are excluded from denominators until they have had enough time to return. Retention deliberately spans build changes and therefore ignores the build chip above.</p>`, "wide priority"));
+
+    cards.push(card("Retention cohorts · first game day", `
+      <table><thead><tr><th>first day</th><th>new</th><th>D1 played</th><th>D1 finished</th><th>D7 played</th></tr></thead><tbody>
+        ${retentionCohorts.length ? retentionCohorts.map((r)=>`<tr><td class="k">${esc(r.first_day)}</td><td>${+r.new_players||0}</td><td>${+r.d1_eligible?`${pct(+r.d1_started||0,+r.d1_eligible||0)}% · ${+r.d1_started||0}/${+r.d1_eligible||0}`:'<span class="pending">not mature</span>'}</td><td>${+r.d1_eligible?`${pct(+r.d1_finished||0,+r.d1_eligible||0)}% · ${+r.d1_finished||0}/${+r.d1_eligible||0}`:'<span class="pending">not mature</span>'}</td><td>${+r.d7_eligible?`${pct(+r.d7_started||0,+r.d7_eligible||0)}% · ${+r.d7_started||0}/${+r.d7_eligible||0}`:'<span class="pending">not mature</span>'}</td></tr>`).join("") : emptyRow(5)}
+      </tbody></table>
+      <p class="muted">Do not judge a cohort that says “not mature.” At low traffic, use the multi-day total above and the within-7-day number before reacting to one noisy date.</p>`, "wide"));
+
+    cards.push(card("Retention · first experience", `
+      <div class="sub">by first mode</div>
+      <table><thead><tr><th>mode</th><th>new</th><th>D1</th><th>within 7d</th></tr></thead><tbody>
+        ${retentionByMode.length ? retentionByMode.map((r)=>`<tr><td class="k">${esc(MODE_LABEL[r.first_mode]||human(r.first_mode))}</td><td>${+r.new_players||0}</td><td>${maturePct(r.returned,r.eligible)}</td><td>${maturePct(r.w1_returned,r.w1_eligible)}</td></tr>`).join("") : emptyRow(4)}
+      </tbody></table>
+      <div class="sub">by first entry</div>
+      <table><thead><tr><th>entry</th><th>new</th><th>D1</th></tr></thead><tbody>
+        ${retentionByEntry.length ? retentionByEntry.map((r)=>`<tr><td class="k">${esc(human(r.first_entry))}</td><td>${+r.new_players||0}</td><td>${maturePct(r.returned,r.eligible)}</td></tr>`).join("") : emptyRow(3)}
+      </tbody></table>
+      <p class="muted">This tells you whether The Daily/challenge traffic creates a habit or merely a one-time click, and which first mode deserves the homepage emphasis.</p>`, "wide"));
+
+    const activityMax = Math.max(1,...retentionActivity.map((r)=>+r.players||0));
+    const streakMax = Math.max(1,...retentionStreaks.map((r)=>+r.players||0));
+    cards.push(card("Habit depth · active days and streaks", `
+      <div class="sub">distinct days with a game start</div>${retentionActivity.length?retentionActivity.map((r)=>bar(String(r.bucket)+" days",+r.players||0,activityMax)).join(""):muted("no repeat-day data yet")}
+      <div class="sub">best consecutive-day streak</div>${retentionStreaks.length?retentionStreaks.map((r)=>bar(r.bucket,+r.players||0,streakMax)).join(""):muted("no streak data yet")}
+      <div class="sub">daily active mix</div>
+      <table><thead><tr><th>day</th><th>new</th><th>returning</th><th>active</th></tr></thead><tbody>
+        ${retentionDailyMix.length?retentionDailyMix.slice(0,14).map((r)=>`<tr><td class="k">${esc(r.local_day)}</td><td>${+r.new_players||0}</td><td>${+r.returning_players||0}</td><td>${+r.active_players||0}</td></tr>`).join(""):emptyRow(4)}
+      </tbody></table>`, "wide"));
+  } else {
+    cards.push(card("Retention · deployment status", `<p class="warn"><b>Retention table not detected.</b> Run <code>migrations/0008_retention_events_v1.sql</code>, then deploy the retention client and endpoints. Existing gameplay tables are untouched.</p>`, "wide"));
+  }
+
+  if (hasRetentionCoverage && coverageSummary) {
+    const cs = coverageSummary || {};
+    const checks = +cs.checks || 0, enabled = +cs.enabled || 0;
+    const reasonMax = Math.max(1,...coverageReasons.map((r)=>+r.c||0));
+    const sourceMax = Math.max(1,...retentionIdentitySources.map((r)=>+r.c||0));
+    cards.push(card("Retention measurement coverage · pushed hard", `
+      <div class="stat4">${stat(checks,"identity checks")}${stat(maturePct(enabled,checks),"enabled")}${stat(+cs.measured_signals||0,"DNT/GPC visits still measured")}${stat(+cs.mobile||0,"mobile checks")}</div>
+      <div class="quality"><b>Aggressive boundary:</b> DNT and GPC are recorded but no longer suppress strictly first-party product analytics. Explicit TRUE 82 opt-out, EEA/UK/Swiss traffic, and unknown/Tor geolocation remain disabled.</div>
+      <div class="sub">policy outcomes</div>${coverageReasons.length?coverageReasons.map((r)=>bar(`${human(r.reason)} · ${r.decision}`,+r.c||0,reasonMax)).join(""):muted("no policy checks yet")}
+      <div class="sub">identity continuity source</div>${retentionIdentitySources.length?retentionIdentitySources.map((r)=>bar(human(r.identity_source),+r.c||0,sourceMax)).join(""):muted("no enabled identities yet")}
+      <div class="sub">browser/device coverage</div>
+      <table><thead><tr><th>browser</th><th>device</th><th>checks</th><th>enabled</th><th>DNT/GPC</th></tr></thead><tbody>
+        ${retentionBrowserCoverage.length?retentionBrowserCoverage.map((r)=>`<tr><td class="k">${esc(r.browser)}</td><td>${esc(r.device)}</td><td>${+r.checks||0}</td><td>${maturePct(r.enabled,r.checks)}</td><td>${+r.signals||0}</td></tr>`).join(""):emptyRow(5)}
+      </tbody></table>
+      <p class="muted">Cookie is the primary identity on Safari/Chrome iOS; local storage is the fallback/cache. “Local recovery” means a valid same-site id existed locally when the first-party cookie was absent. Storage-blocked checks: <b>${+cs.storage_blocked||0}</b>.</p>`, "wide"));
+  } else {
+    cards.push(card("Retention coverage diagnostics", `<p class="warn">Run <code>migrations/0009_retention_coverage_v1.sql</code> to see exclusions, DNT/GPC incidence, identity source, and Safari/Chrome iOS measurement coverage.</p>`, "wide"));
   }
 
   // -------------------- health and instrumentation --------------------
@@ -1136,7 +1347,7 @@ export async function onRequest(context) {
   const debugOn = url.searchParams.get("debug") === "1";
   if (queryErrors.length || debugOn) {
     cards.push(card("Dashboard diagnostics", `
-      <div class="stat4">${stat(queryErrors.length,"failed queries")}${stat(querySeq,"queries attempted")}${stat(hasV3?"yes":"no","analytics v3")}${stat(hasV40?"yes":"no","scoring-card schema")}</div>
+      <div class="stat4">${stat(queryErrors.length,"failed queries")}${stat(querySeq,"queries attempted")}${stat(hasRetention?"yes":"no","retention schema")}${stat(hasRetentionCoverage?"yes":"no","coverage schema")}</div>
       ${queryErrors.length ? `<table><thead><tr><th>query</th><th>error</th><th>statement</th></tr></thead><tbody>${queryErrors.map((e)=>`<tr><td class="k">${esc(e.id)}</td><td class="warncell">${esc(e.message)}</td><td title="${esc(e.statement)}">${esc(shortText(e.statement,90))}</td></tr>`).join("")}</tbody></table>` : `<p class="okcell">All dashboard queries completed successfully.</p>`}
       <p class="muted">Append <code>&amp;debug=1</code> to keep this card visible after the error is gone. Query ids and SQL summaries identify the exact failing card without exposing data or changing the database.</p>`, "wide diagnostics"));
   }
@@ -1148,8 +1359,8 @@ export async function onRequest(context) {
       <button class="refresh" onclick="location.reload()">refresh</button></div>
     ${filters(url,scope,buildRows,requestedBuild,hasV3)}${migrationWarning}${queryWarning}`;
 
-  const privacyNote = `<section class="privacy"><b>Privacy boundary:</b> no analytics cookies, local/session storage, IP hash, fingerprint, account id, or durable browser id. Visit/run ids exist in memory only. Daily return figures are coarse counts derived from the game’s existing local Daily record, not cross-device identity.</section>`;
-  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v42.1 · cookieless analytics · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
+  const privacyNote = `<section class="privacy"><b>Privacy boundary:</b> ordinary product analytics remains anonymous and session-scoped. The separate retention stream uses one random first-party TRUE 82 browser id, stored in a secure first-party cookie with local-storage fallback for up to 400 days. No account, fingerprint, IP-derived id, ad network, sale/sharing, or cross-site enrichment. Consent regions, unknown/Tor geolocation, and explicit site opt-out are disabled; DNT/GPC are observed but do not suppress first-party product measurement.</section>`;
+  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v42.2 · first-party retention · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
   return html(page("TRUE 82 · analytics", header + privacyNote + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 
@@ -1180,6 +1391,7 @@ function cnt(row) { return row && row.c != null ? +row.c : 0; }
 function round1(n) { return Math.round((+n || 0) * 10) / 10; }
 function round2(n) { return Math.round((+n || 0) * 100) / 100; }
 function pct(n, d) { return d ? round1(100 * (+n || 0) / (+d || 1)) : 0; }
+function maturePct(n, d) { return +d > 0 ? `${pct(n,d)}%` : "—"; }
 function sum(a) { return a.reduce((s, x) => s + (+x || 0), 0); }
 function numSort(a, b) { return a - b; }
 function pick(rows, key, val) { const r = rows.find((x) => +x[key] === val); return r ? +r.c || 0 : 0; }

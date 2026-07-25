@@ -1,10 +1,10 @@
-/* TRUE 82 v40 companion retention client.
-   This file is intentionally independent from analytics.js and app.js.
-   Load it after analytics.js and before app.js.
+/* TRUE 82 v40 aggressive first-party retention client.
+   Load after analytics.js and before app.js.
 
-   No cookie, account, fingerprint, IP-derived id, advertising id, or third-party
-   tracker is used. In eligible regions, one random first-party browser id is
-   stored for up to 180 days solely to measure same-browser return behavior.
+   Uses a random TRUE 82-only browser id. The server-set first-party cookie is
+   primary; localStorage is a same-site fallback/cache for browsers that do not
+   retain the cookie. No fingerprint, IP-derived id, ad id, account, or third
+   party is used. Consent regions and the explicit TRUE 82 opt-out remain off.
 */
 (function () {
   "use strict";
@@ -14,15 +14,21 @@
   var POLICY_ENDPOINT = "/api/identity";
   var EVENT_ENDPOINT = "/api/retention";
   var STORAGE_KEY = "t82_anon_retention_v1";
-  var MAX_AGE_MS = 180 * 86400000;
+  var OPTOUT_KEY = "t82_retention_optout_v1";
+  var MAX_AGE_MS = 400 * 86400000;
   var state = "pending";
   var reason = "pending";
   var visitorId = "";
+  var identitySource = "none";
   var queued = [];
-  var settled = false;
+  var policyGeneration = 0;
   var originalTrack = typeof window.t82track === "function" ? window.t82track : null;
   var lastShareSig = "";
   var lastShareAt = 0;
+  var signals = {
+    gpc: navigator.globalPrivacyControl === true,
+    dnt: /^(1|yes)$/i.test(String(navigator.doNotTrack || window.doNotTrack || ""))
+  };
 
   function token(value, max) {
     var s = value == null ? "" : String(value);
@@ -32,9 +38,7 @@
 
   function uid(prefix) {
     var raw = "";
-    try {
-      raw = window.crypto && crypto.randomUUID ? crypto.randomUUID() : "";
-    } catch (e) {}
+    try { raw = window.crypto && crypto.randomUUID ? crypto.randomUUID() : ""; } catch (e) {}
     if (!raw) raw = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
     return prefix + "-" + raw.replace(/[^A-Za-z0-9-]/g, "").slice(0, 60);
   }
@@ -45,15 +49,13 @@
   }
 
   function debugContext() {
-    try {
-      return typeof window.t82AnalyticsDebug === "function" ? (window.t82AnalyticsDebug() || {}) : {};
-    } catch (e) { return {}; }
+    try { return typeof window.t82AnalyticsDebug === "function" ? (window.t82AnalyticsDebug() || {}) : {}; }
+    catch (e) { return {}; }
   }
 
   function gameContext() {
-    try {
-      return typeof window.t82AnalyticsContext === "function" ? (window.t82AnalyticsContext() || {}) : {};
-    } catch (e) { return {}; }
+    try { return typeof window.t82AnalyticsContext === "function" ? (window.t82AnalyticsContext() || {}) : {}; }
+    catch (e) { return {}; }
   }
 
   function landingEntry() {
@@ -68,10 +70,22 @@
   }
 
   function landingSource() {
+    try { return token(new URL(location.href).searchParams.get("utm_source") || "", 80); }
+    catch (e) { return ""; }
+  }
+
+  function storageWorks() {
     try {
-      var u = new URL(location.href);
-      return token(u.searchParams.get("utm_source") || "", 80);
-    } catch (e) { return ""; }
+      var k = "__t82_storage_test__";
+      localStorage.setItem(k, "1");
+      localStorage.removeItem(k);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function siteOptedOut() {
+    try { return localStorage.getItem(OPTOUT_KEY) === "1"; }
+    catch (e) { return false; }
   }
 
   function storedIdentity(now) {
@@ -85,21 +99,25 @@
     return "";
   }
 
-  function loadOrCreateIdentity() {
-    var now = Date.now();
-    var existing = storedIdentity(now);
-    if (existing) return existing;
+  function saveIdentity(id) {
+    if (!/^v1-[A-Za-z0-9-]{16,60}$/.test(String(id || ""))) return false;
     try {
-      var fresh = { id: uid("v1"), created: now };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
-      return fresh.id;
-    } catch (e) { return ""; }
+      var current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      var created = current && current.id === id && Number.isFinite(Number(current.created)) ? Number(current.created) : Date.now();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ id: id, created: created }));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function clearIdentity() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    visitorId = "";
+    identitySource = "none";
   }
 
   function allowedName(name, props) {
     if (name === "game_start" || name === "game_complete" || name === "referral_open") return name;
     if (name === "share_result" && props && props.outcome === "success") return "share_success";
-    // v40 emits legacy `share` alongside the newer result event. Dedupe below.
     if (name === "share") return "share_success";
     return "";
   }
@@ -128,7 +146,7 @@
   }
 
   function postNow(eventName, props) {
-    if (!visitorId) return;
+    if (!visitorId || state !== "enabled") return;
     var payload = makePayload(eventName, props);
     try {
       fetch(EVENT_ENDPOINT, {
@@ -142,11 +160,9 @@
   }
 
   function enqueue(eventName, props) {
-    if (settled) {
-      if (state === "enabled") postNow(eventName, props);
-      return;
-    }
-    if (queued.length < 24) queued.push([eventName, props || {}]);
+    if (state === "enabled") { postNow(eventName, props); return; }
+    if (state === "disabled") return;
+    if (queued.length < 32) queued.push([eventName, props || {}]);
   }
 
   function flush() {
@@ -156,18 +172,83 @@
     q.forEach(function (x) { postNow(x[0], x[1]); });
   }
 
-  function settle(enabled, why) {
-    if (settled) return;
-    settled = true;
+  function applyPolicy(enabled, why, id, source) {
     state = enabled ? "enabled" : "disabled";
     reason = token(why || (enabled ? "eligible" : "policy"), 48);
-    visitorId = enabled ? loadOrCreateIdentity() : "";
-    if (enabled && !visitorId) {
+    visitorId = enabled && /^v1-[A-Za-z0-9-]{16,60}$/.test(String(id || "")) ? String(id) : "";
+    identitySource = enabled ? token(source || "unknown", 32) : "none";
+    if (enabled && visitorId) saveIdentity(visitorId);
+    if (!enabled) queued = [];
+    if (state === "enabled" && visitorId) {
+      postNow("visit", { entry: landingEntry(), source: landingSource() });
+      flush();
+    } else if (enabled) {
       state = "disabled";
-      reason = "storage_unavailable";
+      reason = "identity_unavailable";
+      queued = [];
     }
-    if (state === "enabled") enqueue("visit", { entry: landingEntry(), source: landingSource() });
-    flush();
+  }
+
+  function policyHeaders(existing, storageOk) {
+    var dbg = debugContext();
+    var h = {
+      "accept": "application/json",
+      "x-t82-local-day": localDay(),
+      "x-t82-storage": storageOk ? "ok" : "blocked",
+      "x-t82-gpc": signals.gpc ? "1" : "0",
+      "x-t82-dnt": signals.dnt ? "1" : "0"
+    };
+    if (existing) h["x-t82-local-id"] = existing;
+    if (dbg.sid) h["x-t82-sid"] = token(dbg.sid, 64);
+    return h;
+  }
+
+  function initPolicy() {
+    var generation = ++policyGeneration;
+    if (siteOptedOut()) {
+      applyPolicy(false, "site_opt_out", "", "none");
+      try {
+        fetch(POLICY_ENDPOINT, {
+          method: "POST", credentials: "same-origin", cache: "no-store",
+          headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "optout" })
+        }).catch(function () {});
+      } catch (e) {}
+      return;
+    }
+
+    state = "pending";
+    reason = "pending";
+    var ok = storageWorks();
+    var existing = storedIdentity(Date.now());
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = setTimeout(function () {
+      if (controller) controller.abort();
+      if (generation === policyGeneration) applyPolicy(false, "policy_timeout", "", "none");
+    }, 2500);
+
+    try {
+      fetch(POLICY_ENDPOINT, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: policyHeaders(existing, ok),
+        signal: controller ? controller.signal : undefined
+      }).then(function (res) {
+        if (!res.ok) throw new Error("identity_http_" + res.status);
+        return res.json();
+      }).then(function (x) {
+        if (generation !== policyGeneration) return;
+        clearTimeout(timer);
+        applyPolicy(!!(x && x.persistent), x && x.reason, x && x.visitor_id, x && x.identity_source);
+      }).catch(function () {
+        if (generation !== policyGeneration) return;
+        clearTimeout(timer);
+        applyPolicy(false, "policy_unavailable", "", "none");
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      if (generation === policyGeneration) applyPolicy(false, "policy_unavailable", "", "none");
+    }
   }
 
   function wrapTrack() {
@@ -188,44 +269,37 @@
     };
   }
 
-  function initPolicy() {
-    var dnt = String(navigator.doNotTrack || window.doNotTrack || "").toLowerCase();
-    if (navigator.globalPrivacyControl === true || dnt === "1" || dnt === "yes") {
-      settle(false, "privacy_signal");
-      return;
-    }
-    var timer = setTimeout(function () { settle(false, "policy_timeout"); }, 1500);
-    try {
-      fetch(POLICY_ENDPOINT, {
-        method: "GET",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { "accept": "application/json" }
-      }).then(function (res) {
-        if (!res.ok) throw new Error("identity_http_" + res.status);
-        return res.json();
-      }).then(function (x) {
-        clearTimeout(timer);
-        settle(!!(x && x.persistent), x && x.reason);
-      }).catch(function () {
-        clearTimeout(timer);
-        settle(false, "policy_unavailable");
-      });
-    } catch (e) {
-      clearTimeout(timer);
-      settle(false, "policy_unavailable");
-    }
-  }
-
   window.t82RetentionDebug = function () {
     return {
       state: state,
       reason: reason,
       visitorIdPresent: !!visitorId,
+      identitySource: identitySource,
       queuedEvents: queued.length,
       localDay: localDay(),
-      endpoint: EVENT_ENDPOINT
+      endpoint: EVENT_ENDPOINT,
+      privacySignalsObserved: { gpc: signals.gpc, dnt: signals.dnt },
+      localStorageAvailable: storageWorks(),
+      siteOptOut: siteOptedOut()
     };
+  };
+
+  window.t82RetentionOptOut = function () {
+    try { localStorage.setItem(OPTOUT_KEY, "1"); } catch (e) {}
+    clearIdentity();
+    applyPolicy(false, "site_opt_out", "", "none");
+    try {
+      return fetch(POLICY_ENDPOINT, {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "optout" })
+      }).then(function () { return window.t82RetentionDebug(); });
+    } catch (e) { return Promise.resolve(window.t82RetentionDebug()); }
+  };
+
+  window.t82RetentionOptIn = function () {
+    try { localStorage.removeItem(OPTOUT_KEY); } catch (e) {}
+    initPolicy();
+    return window.t82RetentionDebug();
   };
 
   wrapTrack();
