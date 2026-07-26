@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS trait_rules_v1 (
   updated_at INTEGER NOT NULL
 );
 
+-- Thresholds live in configuration, never in scoring code (handoff rule).
+-- eligible = yes + no; Not Sure is counted and displayed but never rules.
 INSERT OR IGNORE INTO trait_rules_v1 (rule_key, rule_value, updated_at) VALUES
   ('min_eligible_votes', '25', CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('qualify_yes_share', '0.62', CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -85,6 +87,7 @@ INSERT OR IGNORE INTO trait_rules_v1 (rule_key, rule_value, updated_at) VALUES
   ('vote_min_spacing_ms', '1200', CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('rules_version', '1', CAST(strftime('%s','now') AS INTEGER) * 1000);
 
+-- DRAFT trait set: the handoff's five example labels, plain basketball terms.
 INSERT OR IGNORE INTO traits_v1 (id, display_name, short_definition, category, definition_version, status, created_at, updated_at) VALUES
   ('three-point-shooter', 'Three-Point Shooter', 'Defenses had to guard him hard at the arc: real volume, real accuracy, real gravity.', 'spacing', 1, 'experimental', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('wing-defender', 'Wing Defender', 'You could put him on a high-level scoring wing for real possessions and live with it.', 'defense', 1, 'experimental', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),

@@ -17,7 +17,7 @@
 
 var CFG = {
   SITE_NAME: "PERFECT FIVE",
-  DATA_URL: "site_data.json?v=sc-v42b",
+  DATA_URL: "site_data.json?v=sc-v42c",
   GAMES_IN_SEASON: 82,
   POS_THRESHOLD: 20,
   KAMAN_LO: 2004,
@@ -1619,19 +1619,22 @@ function rulesSheetHtml() {
     '<button class="rs-close" id="rulesClose" type="button" aria-label="Close the rules">\u2715</button></div>' +
     '<div class="rs-scroll">';
 
-  h += '<p class="rs-eyebrow">GAME BASICS</p><ul class="rs-list">' +
+  // Block builders; assembly order depends on the mode. On the Daily the
+  // daily-specific material (today's rule, then the Daily's own rules) leads
+  // and GAME BASICS follows: a Daily player opening the sheet wants today,
+  // not the tutorial (owner directive, v45).
+  var basicsBlock = '<p class="rs-eyebrow">GAME BASICS</p><ul class="rs-list">' +
     RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
-
-  h += '<p class="rs-eyebrow">HOW TO PLAY THIS MODE (' + (isDaily ? "THE DAILY" : baseName) + ')</p><ul class="rs-list">' +
+  var modeBlock = '<p class="rs-eyebrow">HOW TO PLAY THIS MODE (' + (isDaily ? "THE DAILY" : baseName) + ')</p><ul class="rs-list">' +
     (RULES_MODE[isDaily ? "daily" : baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   if (isDaily) {
-    h += '<p class="rs-eyebrow">PLUS ' + baseName + ' MODE RULES</p><ul class="rs-list">' +
+    modeBlock += '<p class="rs-eyebrow">PLUS ' + baseName + ' MODE RULES</p><ul class="rs-list">' +
       (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   }
-
+  var todayBlock = "";
   if (isDaily) {
     var brief = G.social.gate || G.social.short || "";
-    h += '<div class="rs-today plq-frame plq-slim">' +
+    todayBlock = '<div class="rs-today plq-frame plq-slim">' +
       '<p class="rs-eyebrow rs-today-label">TODAY\u2019S RULE \u00B7 DAILY #' + G.social.num + '</p>' +
       '<p class="rs-today-name">' + esc(G.social.name) + '</p>' +
       (brief ? '<p class="rs-today-body">' + esc(brief) + '</p>' : '') +
@@ -1640,7 +1643,9 @@ function rulesSheetHtml() {
           (CFG.GAMES_IN_SEASON - G.social.target.w) + ', Net ' + T82DAILY.signedNet(G.social.target.n) + '.</p>'
         : '') +
       '</div>';
-  } else if (ch) {
+  }
+  h += isDaily ? (todayBlock + modeBlock + basicsBlock) : (basicsBlock + modeBlock);
+  if (!isDaily && ch) {
     var chBrief = (copy[ch.id] && copy[ch.id].g) || ch.blurb || "";
     h += '<div class="rs-today plq-frame plq-slim">' +
       '<p class="rs-eyebrow rs-today-label">' + (G.weekly ? "THIS WEEK\u2019S TWIST" : "THE TWIST") + '</p>' +
@@ -1654,7 +1659,7 @@ function rulesSheetHtml() {
   var engineRules = RULES_ENGINE;
   if (baseKey === "classic" && !isDaily && !ch) {
     engineRules = RULES_ENGINE.concat([["ANY GIVEN NIGHT",
-      "The season is played out one game at a time. No five wins a given night more than about 98 times in 100, so a perfect season has to survive all 82."]]);
+      "The season is played out one game at a time. No five wins a given night more than 99 times in 100, so a perfect season has to survive all 82."]]);
   }
   h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
     engineRules.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
@@ -1756,7 +1761,14 @@ function ensureTraitsCss() {
     ".traits-prompt .tp-split{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#8b98a5}" +
     ".traits-prompt .tp-cta{display:inline-block;margin-top:8px;background:transparent;border:1px solid #FFB52E;" +
       "color:#FFB52E;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;" +
-      "letter-spacing:.12em;border-radius:9px;padding:7px 13px;text-decoration:none}";
+      "letter-spacing:.12em;border-radius:9px;padding:7px 13px;text-decoration:none}" +
+    ".tchips{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}" +
+    ".tchip{position:relative;display:inline-block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
+      "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#FFB52E;" +
+      "border:1.5px solid #FFB52E;border-radius:6px;padding:2px 7px 1px}" +
+    ".tchip.anti{color:#E5533C;border-color:#E5533C}" +
+    ".tchip.anti::after{content:'';position:absolute;left:5%;right:5%;top:50%;height:2px;margin-top:-1px;" +
+      "background:#E5533C;transform:rotate(-5deg);border-radius:1px}";
   document.head.appendChild(st);
 }
 function traitsModuleHtml() {
@@ -1794,6 +1806,35 @@ function wireTraitsPrompt() {
       var cta = el("traitsPromptCta");
       if (cta) cta.addEventListener("click", function () {
         analyticsTrack("feature_select", { surface: "results", action: "traits_prompt", challenge: q.id });
+      });
+    })
+    .catch(function () {});
+}
+// Shadow-mode labels on the results roster: each pick card gets the community
+// tags its player-season has EARNED (gold) or been RULED OUT of (the crossed
+// anti-label). Read-only, zero scoring effect, absent on any failure or when
+// no ruling exists for the exact player-season.
+function wireTraitsLabels(entries) {
+  if (!window.fetch || !entries || !entries.length) return;
+  var qs = entries.map(function (e) { return encodeURIComponent(e.name) + "~" + e.season; }).join(",");
+  fetch("/api/traits?op=labels&players=" + qs, { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (x) {
+      if (!x || !x.ok || !x.labels) return;
+      ensureTraitsCss();
+      entries.forEach(function (e) {
+        var hits = x.labels[String(e.name).toLowerCase() + "~" + e.season];
+        if (!hits || !hits.length) return;
+        var card = document.querySelector('.pick-card[data-pick="' + e.i + '"]');
+        if (!card || card.querySelector(".tchips")) return;
+        var wrap = document.createElement("div");
+        wrap.className = "tchips";
+        wrap.innerHTML = hits.slice(0, 4).map(function (hh) {
+          return '<span class="tchip' + (hh.anti ? " anti" : "") + '"' +
+            (hh.anti ? ' role="img" aria-label="NOT ' + esc(String(hh.t).toUpperCase()) + '"' : "") +
+            '>' + esc(hh.t) + "</span>";
+        }).join("");
+        card.appendChild(wrap);
       });
     })
     .catch(function () {});
@@ -2654,9 +2695,9 @@ function twoWayHtml(e) {
 // clones to the player. Feeds the climb tags and the results comp line;
 // the SHARE comp stays plain text by law.
 var HISTORY_COMPS = [
-  { label: "OG Death Lineup", wins: 81, bbT: "GSW/2016" },
-  { label: "5 Jokics", wins: 80, bbP: "jokicni01" },
-  { label: "5 LeBrons", wins: 79, bbP: "jamesle01" },
+  { label: "Dream Team", wins: 81 },
+  { label: "Redeem Team", wins: 80 },
+  { label: "OG Death Lineup", wins: 79, bbT: "GSW/2016" },
   { label: "Hamptons 5", wins: 78, bbT: "GSW/2017" },
   { label: "Shaqobe Core", wins: 77, bbT: "LAL/2000" },
   { label: "OG Celts Big 3", wins: 76, bbT: "BOS/1986" },
@@ -2682,7 +2723,7 @@ function compEntryHref(entry, camp) {
 }
 
 function climbHtml(e, winsOverride) {
-  // Same-win teams share one pin and one combined tag ("5 Jokics · Prime
+  // Same-win teams share one pin and one combined tag ("Redeem Team · Prime
   // Wilt Core 80") instead of stacking on top of each other.
   var legends = (function () {
     var out = [], byW = {};
@@ -2694,7 +2735,7 @@ function climbHtml(e, winsOverride) {
     return out;
   })();
   // v34: each label segment is its own outbound anchor (campaign "climb") —
-  // merged tags like "5 Jokics \u00B7 Prime Wilt Core" get two doors, not one.
+  // merged tags like "Redeem Team \u00B7 Prime Wilt Core" get two doors, not one.
   function tagLabelHtml(t) {
     return t.parts.map(function (L) {
       var h = compEntryHref(L, "climb");
@@ -2704,7 +2745,8 @@ function climbHtml(e, winsOverride) {
   var G82 = CFG.GAMES_IN_SEASON;
   var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
   var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
-  var youWins = (typeof winsOverride === "number") ? winsOverride : e.winTally;   // post-boost wins when the Hot Hand fired
+  var youWins = (typeof winsOverride === "number") ? winsOverride
+    : CFG.GAMES_IN_SEASON * T82.phi(null, e.net / T82.t.SC.NET_SD);   // v42: the pin rides NET (continuous quality wins); Hot Hand override still honored
   var below = youWins < FLOOR;
 
   // Layout in pixels so per-win spacing in the cluster stays fixed (~18px/win) no matter how
@@ -2739,7 +2781,7 @@ function climbHtml(e, winsOverride) {
     var isC = i === compIdx;
     var rec = L.wins + "\u2013" + (G82 - L.wins);
     return '<span class="climb-pin' + (isC ? " comp" : "") + '" style="top:' + y + '%" title="' + esc(L.label) + " " + rec + '"></span>' +
-      '<span class="climb-tag' + (isC ? " comp" : "") + '" style="top:' + y + '%">' + tagLabelHtml(L) + ' <b>' + L.wins + "</b></span>";
+      '<span class="climb-tag' + (isC ? " comp" : "") + '" style="top:' + y + '%">' + tagLabelHtml(L) + "</span>";
   }).join("");
 
   // Plain straight rail, summit to floor, amber fill from the dot down to the floor. The
@@ -3460,7 +3502,7 @@ function shareEmojiFor(wins, chBands, mode) {
 // so the first hit is the highest tier and same-win tiers resolve to the
 // first team listed (the V25 comp-line law).
 // COMP ARTICLE LAW (v33): "the" is prepended unless the label starts with a
-// digit ("5 Jokics" reads bare) or already carries its own article ("The
+// digit ("3-peat Bulls Core" reads bare) or already carries its own article ("The
 // Last Shot Jazz" — the old concat shipped "the The"). One helper, used by
 // the share comp AND the results climb line, so the surfaces can't drift.
 function compArticle(label) {
@@ -3469,11 +3511,26 @@ function compArticle(label) {
   if (/^the\b/i.test(label)) return label;
   return "the " + label;
 }
-function shareCompFor(wins) {
-  if (wins >= CFG.GAMES_IN_SEASON) return "Greatest of all GOATs";
+// v42: comps key on NET, the skill measurement, so a +26 five that ran into
+// a bad Tuesday still ranks beside the teams it deserves. Rung nets are the
+// analytic inverse of their win totals (memoized binary search on the same
+// curve the engine uses), which keeps the ladder's spacing identical to the
+// old wins axis. The Tied tier retires with the integer axis; GOAT alone
+// stays keyed on the REALIZED perfect season.
+var COMP_NET_CACHE = {};
+function compNetFor(wins) {
+  if (COMP_NET_CACHE[wins] != null) return COMP_NET_CACHE[wins];
+  var lo = -60, hi = 80;
+  for (var i = 0; i < 60; i++) {
+    var mid = (lo + hi) / 2;
+    if (Math.ceil(CFG.GAMES_IN_SEASON * T82.phi(null, mid / T82.t.SC.NET_SD)) >= wins) hi = mid; else lo = mid;
+  }
+  return (COMP_NET_CACHE[wins] = hi);
+}
+function shareCompFor(net, undefeated) {
+  if (undefeated) return "Greatest of all GOATs";
   for (var i = 0; i < HISTORY_COMPS.length; i++) {
-    if (HISTORY_COMPS[i].wins === wins) return "Tied " + compArticle(HISTORY_COMPS[i].label);
-    if (HISTORY_COMPS[i].wins < wins) return "Better than " + compArticle(HISTORY_COMPS[i].label);
+    if (compNetFor(HISTORY_COMPS[i].wins) <= net + 1e-9) return "Better than " + compArticle(HISTORY_COMPS[i].label);
   }
   return "";
 }
@@ -3485,15 +3542,16 @@ function shareRecord(wins) {
   var undef = wins >= CFG.GAMES_IN_SEASON;
   return wins + (undef ? "\u2013" : "-") + (CFG.GAMES_IN_SEASON - wins);
 }
-function shareLine2(wins, emoji) {
-  var comp = shareCompFor(wins);
-  return (emoji ? emoji + " " : "") + shareRecord(wins) + (comp ? " | " + comp : "");
+function shareLine2(wins, emoji, net) {
+  var comp = shareCompFor(net, wins >= CFG.GAMES_IN_SEASON);
+  var pctTail = (typeof G.sharePct === "number") ? " \u2022 Top " + G.sharePct + "%" : "";
+  var body = comp ? comp + pctTail : (pctTail ? pctTail.slice(3) : "");
+  return (emoji ? emoji + " " : "") + shareRecord(wins) + (body ? " | " + body : "");
 }
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
-  var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE))];
-  if (typeof G.sharePct === "number") lines.push("Top " + G.sharePct + "%");
+  var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE), hot ? G.hotNewNet : e.net)];
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     var flame = "";
@@ -4429,6 +4487,14 @@ function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
   if (ml >= 3) return mw + " and " + ml + ". Heavy legs, short rotations, long month.";
   return mw + " and " + ml + ". The engine hums.";
 }
+function reelBlame(mi) {
+  var pk = G.picks[reelHash(String(G.seed || "x") + "b" + mi) % G.picks.length];
+  var nm = bbrefLastName(pk.row[IDX.name]) || pk.row[IDX.name];
+  var T = ["missed a buzzer beater", "no-showed", "had a flu game", "shot 4 for 19",
+    "left his legs at the hotel", "got cooked on every switch", "airballed the game winner",
+    "argued with the ref instead of getting back"];
+  return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
+}
 function showSeasonReel(season, e, done) {
   var ov = document.createElement("div");
   ov.className = "reel-overlay";
@@ -4448,7 +4514,6 @@ function showSeasonReel(season, e, done) {
     done();
   }
   ov.querySelector("#reelSkip").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
-  ov.addEventListener("click", finishReel);
   var firstLossIdx = null;
   for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { firstLossIdx = g0; break; } }
   // cumulative record per game, so the header ticks square by square
@@ -4477,7 +4542,7 @@ function showSeasonReel(season, e, done) {
           var sq = document.createElement("span");
           var win = season.games[s0 + i];
           sq.className = "reel-day " + (win ? "w" : "l");
-          sq.textContent = reelDay(mi, i);
+          sq.textContent = win ? "W" : "L";
           row.__grid.appendChild(sq);
           var c = cum[s0 + i];
           runEl.textContent = c[0] + "\u2013" + c[1];
@@ -4485,22 +4550,23 @@ function showSeasonReel(season, e, done) {
       })(i);
       timers.push(setTimeout(function () {
         var note = row.querySelector(".reel-note");
-        note.textContent = reelLine(mi, mw, ml, endRec[0], endRec[1], firstLossIdx, s0);
+        note.textContent = reelLine(mi, mw, ml, endRec[0], endRec[1], firstLossIdx, s0) + (ml > 0 ? " " + reelBlame(mi) : "");
         note.classList.remove("reel-note-pending");
         acts.scrollTop = acts.scrollHeight;
       }, 140 + count * 48 + 120));
     }, t));
-    t += 320 + count * 48 + 340;
+    t += 320 + count * 48 + 640;
   });
   timers.push(setTimeout(function () {
     var fin = document.createElement("div");
     fin.className = "reel-final";
     fin.innerHTML = '<span class="reel-final-rec">' + season.wins + '\u2013' + season.losses + '</span>' +
-      '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>';
+      '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>' +
+      '<button class="reel-done" id="reelDone" type="button">SEE THE FULL RESULTS \u2192</button>';
     acts.appendChild(fin);
+    fin.querySelector("#reelDone").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
     acts.scrollTop = acts.scrollHeight;
   }, t + 200));
-  timers.push(setTimeout(finishReel, t + 1900));
 }
 
 /* ---------- SPORTSREF DEEP-LINK LAW (v30) ----------
@@ -4736,6 +4802,11 @@ function renderResults(e, keepScroll) {
         (beat ? "You take the board." : tied ? "Dead heat. Run it back." : "They hold the board.") + "</div>";
     }
     daily = { res: dres, official: dOfficial, isOfficial: dIsOfficial, targetHtml: dTargetHtml };
+    var postDailyProfile = analyticsDailyProfile();
+    if (postDailyProfile) analyticsTrack("return_profile", Object.assign(postDailyProfile, {
+      mode: G.social.base || MODE, surface: "results", action: "post_daily_finish",
+      daily_num: G.social.num, official: dIsOfficial ? 1 : 0, practice: dIsOfficial ? 0 : 1
+    }));
   }
   var boardEyebrow = daily
     ? "The Daily #" + G.social.num + " \u00B7 " + esc(G.social.name)
@@ -4757,7 +4828,7 @@ function renderResults(e, keepScroll) {
   var compLadder = HISTORY_COMPS.slice().sort(function (a, b) { return a.wins - b.wins; });
   var compAbove = null;
   for (var ci = 0; ci < compLadder.length; ci++) {
-    if (compLadder[ci].wins > e.winTally) { compAbove = compLadder[ci]; break; }
+    if (compNetFor(compLadder[ci].wins) > e.net + 1e-9) { compAbove = compLadder[ci]; break; }
   }
   function compLinkHtml(prefix, entry) {
     var h = compEntryHref(entry, "climb");
@@ -4796,6 +4867,9 @@ function renderResults(e, keepScroll) {
 
   trackResultSections();
   wireTraitsPrompt();
+  wireTraitsLabels(picksInSlotOrder().map(function (en) {
+    return { i: en.i, name: en.p.row[IDX.name], season: en.p.row[IDX.season] };
+  }));
 
   el("againBtn").addEventListener("click", function () {
     analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), { surface: "results", action: daily ? "daily_practice" : "same_mode" }));
@@ -5180,7 +5254,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v44";
+var BUILD_V = "v45";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -5245,6 +5319,12 @@ function scheduleSharePct(e) {
           return;
         }
         g.sharePct = d.pct;
+        if (g === G) {
+          var rc = document.querySelector(".res-comp");
+          if (rc && !rc.querySelector(".comp-pct")) {
+            rc.insertAdjacentHTML("beforeend", ' <span class="comp-pct">\u2022 Top ' + d.pct + "%</span>");
+          }
+        }
         analyticsTrack("percentile_result", Object.assign(analyticsRunSnapshot(), {
           value: d.pct, ordinal: d.n == null ? null : d.n,
           source: d.pool || (g.social ? "daily" : "mode")

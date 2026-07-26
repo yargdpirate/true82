@@ -1296,3 +1296,47 @@ Both in-workspace harnesses were updated to the post-0011 truth (traits
 stamp assertions) and are green: 50+36+13+16 and 40+42. Note to the
 parallel agent: your test-traits.js expectations and three question ids
 were updated for 0011; diff against your copy before extending it.
+
+### v45 IN PROGRESS (2026-07-26): the v42 branch gap + labels on the roster
+
+CRITICAL FINDING for anyone touching this tree: the v43 patch branch was cut
+from MID-v42, before the final v42 amendments. Absent from this codebase and
+from the live site: the reel's W/L letter squares at 25px (squares here still
+print calendar dates), the SEE THE FULL RESULTS terminal button, the removal
+of tap-anywhere-to-skip (the phone-hazard path is still live here), the
+PG_CAP 0.99 retune (no PG_CAP constant exists in this app.js), the NET-keyed
+comps/climb (no compNetFor), the Dream Team/Redeem Team ladder top, the
+share percentile-on-comp-segment format, and the scapegoat loss commentary.
+ALSO: styles.css has never been in any patch zip since v40, so the live
+stylesheet predates the reel entirely (reel squares render unstyled), the
+v42 charity-button treatment, and the v41 sheet restyle. Canonical final
+code lives in the owner's true82-full-state-v42.zip; the finals will be
+grafted from it exactly, never reconstructed from prose. Do not attempt a
+reconstruction.
+
+Already built and validated for v45 (unpackaged until the graft): Daily
+rules sheet reorder (today's rule + Daily rules lead, GAME BASICS follows,
+on the Daily sheet only); /api/traits?op=labels (settled core-trait labels
++ anti-labels for up to eight player-seasons, exact lower(name)+season
+match, retired traits never label); wireTraitsLabels roster chips on the
+results player cards (gold earned tag, crossed anti-label with aria,
+maximum four per card, fail-soft absent). BUILD_V v45, app token
+20260726-labels-v45, meta v45. Suites: 56+36+13+16 and 42+42, all green.
+
+
+### v45 SHIPPED (2026-07-26): the v42 graft is done
+
+The owner uploaded canonical v42-final app.js + styles.css. All 22 amendment
+hunks were grafted with exact-text anchors and verified at marker parity
+against the canonical file (compNetFor, shareCompFor(net,...), reel-done,
+Dream/Redeem Team, post_daily_finish, comp-pct). styles.css ships WHOLE.
+The per-game cap is DATA: sd.meta.scoring.PG_CAP in site_data.json (hence
+DATA_URL sc-v42c); the deploy check is T82.t.SC.PG_CAP === 0.99. Manual
+tags shipped as trait_editorial_v1 (0012) with community supremacy in
+op=labels; roster chips render both sources identically. In-workspace
+suites 62+36+13+16 and 43+42, all green. The devtools zip's
+analytics-smoke and validate lanes need full-repo files the patch tree
+does not carry (0006, sim-core.js, site_data.json): run them on the repo
+checkout as `TRUE82_ROOT=<repo> node analytics-smoke.js` and
+`TRUE82_ROOT=<repo> node validate.js`; the v42 walk asserts the W/L
+squares and the cap binding directly.

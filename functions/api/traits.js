@@ -6,6 +6,11 @@
 //        Serve one genuinely divided question for the results-screen prompt.
 // GET  /api/traits?op=result&q=<question_id>
 //        Consensus snapshot for one question.
+// GET  /api/traits?op=labels&players=<name>~<season>,<name>~<season>...
+//        Settled labels for up to eight player-seasons: which core traits each
+//        has EARNED (qualifies) or been ruled OUT of (does_not_qualify, the
+//        anti-label). Shadow-mode read for the results roster; retired traits
+//        never label. Exact match on lower(player_name) + season end year.
 // POST /api/traits  {op:"vote", question_id, response, source, sid}
 //        Record or change one call, then settle that question's consensus
 //        in the same request and return the fresh snapshot.
@@ -74,6 +79,52 @@ async function handleGet(context) {
     if (!question) return json({ ok: false, reason: "unknown_question" }, 200);
     const consensus = await consensusFor(env.DB, qid, rules);
     return json({ ok: true, question, consensus, rules: publicRules(rules) });
+  }
+
+  if (op === "labels") {
+    const raw = String(url.searchParams.get("players") || "");
+    const pairs = raw.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8)
+      .map((s) => {
+        const cut = s.lastIndexOf("~");
+        if (cut < 1) return null;
+        const name = s.slice(0, cut).trim().toLowerCase();
+        const season = Number(s.slice(cut + 1));
+        return name && name.length <= 60 && Number.isInteger(season) && season > 1940 && season < 2100
+          ? { name, season } : null;
+      }).filter(Boolean);
+    if (!pairs.length) return json({ ok: false, reason: "bad_players" }, 200);
+    const rows = await env.DB.prepare(`
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, c.status status
+      FROM trait_consensus_v1 c
+      JOIN trait_questions_v1 q ON q.id = c.question_id
+      JOIN traits_v1 t ON t.id = q.trait_id
+      WHERE t.status = 'core' AND c.status IN ('qualifies','does_not_qualify')`)
+      .all().then((r) => r.results || []).catch(() => null);
+    if (!rows) return json({ ok: false, reason: "labels_query" }, 200);
+    // Editorial desk rulings (0012) fill in before community volume exists;
+    // a settled COMMUNITY ruling on the same question always supersedes.
+    // Table absent (0012 unapplied) degrades to community-only.
+    const edRows = await env.DB.prepare(`
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, e.verdict verdict
+      FROM trait_editorial_v1 e
+      JOIN trait_questions_v1 q ON q.id = e.question_id
+      JOIN traits_v1 t ON t.id = q.trait_id
+      WHERE t.status = 'core' AND q.status = 'active'`)
+      .all().then((r) => r.results || []).catch(() => []);
+    const labels = {};
+    for (const p of pairs) {
+      const seen = new Set();
+      const hits = rows
+        .filter((r) => r.pname === p.name && Number(r.season) === p.season)
+        .map((r) => { seen.add(r.tname); return { t: r.tname, anti: r.status === "does_not_qualify" }; });
+      for (const r of edRows) {
+        if (r.pname === p.name && Number(r.season) === p.season && !seen.has(r.tname)) {
+          hits.push({ t: r.tname, anti: r.verdict === "does_not_qualify", e: 1 });
+        }
+      }
+      if (hits.length) labels[p.name + "~" + p.season] = hits;
+    }
+    return json({ ok: true, labels, count: Object.keys(labels).length });
   }
 
   if (op === "prompt") {

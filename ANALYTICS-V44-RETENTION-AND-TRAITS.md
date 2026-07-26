@@ -188,3 +188,16 @@ vocabulary.
 
 Page build stamp: v44.1 (traits page only; no versioned asset changed, so
 no cache-token or BUILD_V bump; index.html is untouched by this patch).
+
+
+## 8. v45 addendum: editorial desk rulings + roster labels live (2026-07-26)
+
+Migration 0012 creates `trait_editorial_v1`: per-question desk verdicts
+(qualifies / does_not_qualify) with a note, seeded with 21 consensus-obvious
+calls so the results roster wears labels before any question reaches 25
+community votes. The ledger stays pure: editorial rulings never touch
+trait_votes_v1 or trait_consensus_v1. `op=labels` merges the two sources
+per question with COMMUNITY SUPREMACY: a settled community ruling always
+replaces the desk row in the response; editorial rows carry `e: 1`.
+The marquee disputes (2008 Kobe iso defense) are deliberately unseeded.
+wireTraitsLabels renders both sources identically on the pick cards.

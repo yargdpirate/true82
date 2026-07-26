@@ -1,12 +1,24 @@
-TRUE 82 v44 retention merge + Player Traits
-v44.1 ADDENDUM (final trait roster + anti-labels)
-  NEW      migrations/0011_traits_final_roster_v1.sql  eleven core traits, three retirements, 69 questions
-  CHANGED  traits/index.html    tag-as-label stamps, crossed anti-label + aria, longtag guard, build v44.1
-  CHANGED  TRAITS-OWNER-DECISIONS.md  roster decision recorded
-  CHANGED  ANALYTICS-V44-RETENTION-AND-TRAITS.md  section 7 addendum
-  DB       apply 0010 then 0011 (0011 alone if 0010 is already live)
+TRUE 82 v45 (current) - v42 finals graft + manual tags + Daily sheet + roster labels
+  NEW      styles.css           COMPLETE v42-final stylesheet, first styles.css shipped since v40
+                                (reel 25px W/L squares, reel-done button, charity treatment, v41 sheet)
+  NEW      migrations/0012_trait_editorial_v1.sql  desk seed rulings (21), community supersedes at volume
+  CHANGED  app.js               v42 FINALS GRAFTED from the owner's canonical v42 file (22 hunks):
+                                W/L squares, SEE THE FULL RESULTS + tap-skip removed + no auto-dismiss,
+                                scapegoat loss lines, slower month pacing, NET-keyed comps/climb
+                                (compNetFor), Dream/Redeem/OG ladder top, percentile rides the comp
+                                segment + on-screen comp-pct, post_daily_finish return_profile,
+                                DATA_URL sc-v42c, cap copy 99-in-100; PLUS Daily rules sheet reorder
+                                (today's rule + Daily rules lead), wireTraitsLabels roster chips,
+                                BUILD_V v45
+  CHANGED  functions/api/traits.js  op=labels merges editorial desk rulings (e:1), community wins
+  CHANGED  index.html           app + styles tokens 20260726-labels-v45; meta v45
+  DB       apply 0010, 0011, 0012 (whichever are not yet live; all rerun-safe)
+  DATA     site_data.json must be the v42-final one (meta.scoring.PG_CAP = 0.99); console check:
+           T82.t.SC.PG_CAP after deploy. If 0.978 or undefined, drop site_data.json from
+           true82-full-state-v42.zip into the repo. sim-core.js: live already realizes seasons
+           (the reel runs), so v42 sim-core is present; the guard is fail-soft regardless.
 
-
+v44.1 (superseded by v45 above)
 NEW
   traits/index.html                       Player Traits voting page (self-contained)
   functions/api/traits.js                 session serving, prompt, vote + settle-on-write

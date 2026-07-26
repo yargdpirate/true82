@@ -19,6 +19,14 @@ DEPLOY IN THIS ORDER:
      (Cloudflare console paste, same as always). It is additive and safe to
      re-run; it creates five trait tables and seeds 5 draft traits, 27
      questions, and the threshold rules. It touches no existing table.
+     v45: apply 0010, 0011, AND 0012_trait_editorial_v1.sql (desk seed
+     rulings so roster labels exist on day one; community supersedes at
+     volume). All three are rerun-safe. v45 also SHIPS styles.css for the
+     first time since v40: it is the complete v42-final stylesheet and must
+     land with the rest of the folder. After deploy run T82.t.SC.PG_CAP in
+     the console: 0.99 means the data file is v42-final; 0.978 or undefined
+     means site_data.json from true82-full-state-v42.zip still needs to be
+     dropped into the repo (data only, no code).
      v44.1: ALSO apply migrations/0011_traits_final_roster_v1.sql after it
      (the owner's final eleven traits + anti-labels; additive, idempotent,
      vote-preserving). If 0010 is already live, 0011 alone completes v44.1.
