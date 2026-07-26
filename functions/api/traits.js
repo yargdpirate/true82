@@ -1,4 +1,9 @@
-// /api/traits — Player Traits community voting for TRUE 82 (v44).
+// /api/traits — PLAYER BONUSES community voting for TRUE 82 (v46).
+// (Internal names keep the traits_* vocabulary; the public product name,
+// routes, and all end-user copy say PLAYER BONUSES per the final spec.)
+//
+// GET  /api/traits?op=featured
+//        One curated homepage question (homepage_eligible pool, daily rotation).
 //
 // GET  /api/traits?op=session[&q=<question_id>][&exclude=a,b,c]
 //        Serve a five-question voting session. A pinned ?q= question leads.
@@ -77,21 +82,21 @@ async function handleGet(context) {
     if (!qid) return json({ ok: false, reason: "bad_question" }, 200);
     const question = await questionById(env.DB, qid);
     if (!question) return json({ ok: false, reason: "unknown_question" }, 200);
-    const consensus = await consensusFor(env.DB, qid, rules);
-    return json({ ok: true, question, consensus, rules: publicRules(rules) });
+    const consensus = await consensusFor(env.DB, question.id, rules);
+    let mine = null;
+    try {
+      const voter = await voterKey(request, url.searchParams.get("sid"));
+      const row = await env.DB.prepare(
+        `SELECT response FROM trait_votes_v1 WHERE question_id = ?1 AND voter_hash = ?2`
+      ).bind(question.id, voter.hash).all().then((r) => (r.results || [])[0]);
+      mine = row ? row.response : null;
+    } catch {}
+    return json({ ok: true, question, consensus, my_response: mine,
+      display: displayFor(consensus, mine, rules), rules: publicRules(rules) });
   }
 
   if (op === "labels") {
-    const raw = String(url.searchParams.get("players") || "");
-    const pairs = raw.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8)
-      .map((s) => {
-        const cut = s.lastIndexOf("~");
-        if (cut < 1) return null;
-        const name = s.slice(0, cut).trim().toLowerCase();
-        const season = Number(s.slice(cut + 1));
-        return name && name.length <= 60 && Number.isInteger(season) && season > 1940 && season < 2100
-          ? { name, season } : null;
-      }).filter(Boolean);
+    const pairs = parsePlayerPairs(url.searchParams.get("players"));
     if (!pairs.length) return json({ ok: false, reason: "bad_players" }, 200);
     const rows = await env.DB.prepare(`
       SELECT lower(q.player_name) pname, q.season season, t.display_name tname, c.status status
@@ -127,30 +132,72 @@ async function handleGet(context) {
     return json({ ok: true, labels, count: Object.keys(labels).length });
   }
 
-  if (op === "prompt") {
-    // The results screen wants a genuinely divided call: enough votes to be a
-    // real fight, yes-share nearest 50%. Fall back to the loudest unheard
-    // question so a young database still produces a prompt.
-    const disputed = await env.DB.prepare(`
-      SELECT q.id, q.player_name, q.season_label, t.display_name trait_name,
-             c.yes_share, c.eligible_votes, c.status
-      FROM trait_questions_v1 q
+  if (op === "featured") {
+    // One curated homepage question: editorially flagged pool, rotated by day
+    // so the module changes between visits without ever going random-obscure.
+    const pool = await env.DB.prepare(`
+      SELECT q.id, m.slug, m.public_question
+      FROM trait_question_meta_v1 m
+      JOIN trait_questions_v1 q ON q.id = m.question_id
       JOIN traits_v1 t ON t.id = q.trait_id
-      JOIN trait_consensus_v1 c ON c.question_id = q.id
-      WHERE q.status = 'active' AND c.eligible_votes >= 5
-      ORDER BY ABS(COALESCE(c.yes_share, 0.5) - 0.5) ASC, c.eligible_votes DESC
-      LIMIT 1`).all().then((r) => (r.results || [])[0]).catch(() => null);
-    if (disputed) return json({ ok: true, divided: true, question: publicQuestionRow(disputed), consensus: snapshotFromRow(disputed, rules) });
+      WHERE m.homepage_eligible = 1 AND m.active = 1 AND q.status = 'active'
+      ORDER BY q.editorial_priority DESC, m.slug
+      LIMIT 12`).all().then((r) => r.results || []).catch(() => []);
+    if (!pool.length) return json({ ok: false, reason: "no_questions" }, 200);
+    const pick = pool[Math.floor(Date.now() / 86400000) % pool.length];
+    return json({ ok: true, question: { id: pick.id, slug: pick.slug, public_question: pick.public_question } });
+  }
 
-    const fresh = await env.DB.prepare(`
-      SELECT q.id, q.player_name, q.season_label, t.display_name trait_name
+  if (op === "prompt") {
+    // The results screen wants ONE compact question, preferring the players
+    // this user just drafted: a disputed fight about a drafted player-season
+    // first, then any curated question about a drafted player, then the most
+    // divided question overall, then the loudest unheard one.
+    const promptCols = `q.id, q.player_name, q.season, m.slug, m.public_question,
+             COALESCE(c.yes_share, 0.5) yes_share, COALESCE(c.eligible_votes, 0) eligible_votes, c.status`;
+    const promptFrom = `
       FROM trait_questions_v1 q
       JOIN traits_v1 t ON t.id = q.trait_id
-      WHERE q.status = 'active'
-      ORDER BY q.editorial_priority DESC, q.id
-      LIMIT 1`).all().then((r) => (r.results || [])[0]).catch(() => null);
-    if (!fresh) return json({ ok: false, reason: "no_questions" }, 200);
-    return json({ ok: true, divided: false, question: publicQuestionRow(fresh) });
+      JOIN trait_question_meta_v1 m ON m.question_id = q.id AND m.active = 1
+      LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
+      WHERE q.status = 'active'`;
+    const pairs = parsePlayerPairs(url.searchParams.get("players"));
+    let row = null;
+    if (pairs.length) {
+      const seasonClause = pairs.map(() => "(lower(q.player_name) = ? AND q.season = ?)").join(" OR ");
+      const seasonBinds = pairs.flatMap((p) => [p.name, p.season]);
+      row = await env.DB.prepare(
+        `SELECT ${promptCols} ${promptFrom} AND (${seasonClause})
+         ORDER BY CASE WHEN COALESCE(c.eligible_votes,0) >= 5 THEN ABS(COALESCE(c.yes_share,0.5) - 0.5) ELSE 0.51 END ASC,
+                  q.editorial_priority DESC LIMIT 1`
+      ).bind(...seasonBinds).all().then((r) => (r.results || [])[0]).catch(() => null);
+      if (!row) {
+        const nameClause = pairs.map(() => "lower(q.player_name) = ?").join(" OR ");
+        row = await env.DB.prepare(
+          `SELECT ${promptCols} ${promptFrom} AND (${nameClause})
+           ORDER BY CASE WHEN COALESCE(c.eligible_votes,0) >= 5 THEN ABS(COALESCE(c.yes_share,0.5) - 0.5) ELSE 0.51 END ASC,
+                    q.editorial_priority DESC LIMIT 1`
+        ).bind(...pairs.map((p) => p.name)).all().then((r) => (r.results || [])[0]).catch(() => null);
+      }
+    }
+    if (!row) {
+      row = await env.DB.prepare(
+        `SELECT ${promptCols} ${promptFrom} AND COALESCE(c.eligible_votes,0) >= 5
+         ORDER BY ABS(COALESCE(c.yes_share,0.5) - 0.5) ASC, c.eligible_votes DESC LIMIT 1`
+      ).all().then((r) => (r.results || [])[0]).catch(() => null);
+    }
+    if (!row) {
+      row = await env.DB.prepare(
+        `SELECT ${promptCols} ${promptFrom}
+         ORDER BY q.editorial_priority DESC, q.id LIMIT 1`
+      ).all().then((r) => (r.results || [])[0]).catch(() => null);
+    }
+    if (!row) return json({ ok: false, reason: "no_questions" }, 200);
+    return json({
+      ok: true,
+      divided: Number(row.eligible_votes) >= 5 && row.status === "disputed",
+      question: { id: row.id, slug: row.slug, public_question: row.public_question }
+    });
   }
 
   // op=session — five questions, pinned direct link first, then a ranked mix
@@ -166,13 +213,14 @@ async function handleGet(context) {
 
   if (pinnedId && !seen.has(pinnedId)) {
     const pinned = await questionById(env.DB, pinnedId);
-    if (pinned && pinned.status === "active") { picked.push(pinned); seen.add(pinnedId); }
+    if (pinned && pinned.status === "active" && pinned.curated) { picked.push(pinned); seen.add(pinned.id); }
   }
 
   const rankSql = (skipAnswered) => `
     SELECT q.id, q.trait_id, q.player_name, q.season, q.season_label,
            q.prompt_override, q.status, t.display_name trait_name,
            t.short_definition definition,
+           m.slug, m.public_question, m.what_counts, m.metadata_line, m.active meta_active,
            COALESCE(c.eligible_votes, 0) eligible_votes,
            COALESCE(c.yes_share, 0.5) yes_share,
            ( q.editorial_priority
@@ -183,6 +231,7 @@ async function handleGet(context) {
              + (ABS(RANDOM()) % 25) ) score
     FROM trait_questions_v1 q
     JOIN traits_v1 t ON t.id = q.trait_id
+    JOIN trait_question_meta_v1 m ON m.question_id = q.id AND m.active = 1
     LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
     WHERE q.status = 'active'
       ${skipAnswered ? "AND NOT EXISTS (SELECT 1 FROM trait_votes_v1 v WHERE v.question_id = q.id AND v.voter_hash = ?1)" : ""}
@@ -207,10 +256,20 @@ async function handleGet(context) {
   }
 
   if (!picked.length) return json({ ok: false, reason: "no_questions" }, 200);
+  const finalPicks = picked.slice(0, SESSION_SIZE).map(publicQuestion);
+  try {
+    const marks = finalPicks.map(() => "?").join(",");
+    const mine = await env.DB.prepare(
+      `SELECT question_id, response FROM trait_votes_v1 WHERE voter_hash = ?1 AND question_id IN (${marks})`
+    ).bind(voter.hash, ...finalPicks.map((q) => q.id)).all().then((r) => r.results || []);
+    const byId = {};
+    for (const m of mine) byId[m.question_id] = m.response;
+    for (const q of finalPicks) q.my_response = byId[q.id] || null;
+  } catch { for (const q of finalPicks) q.my_response = null; }
   return json({
     ok: true,
     voter_class: voter.klass,
-    questions: picked.slice(0, SESSION_SIZE).map(publicQuestion),
+    questions: finalPicks,
     rules: publicRules(rules)
   });
 }
@@ -235,6 +294,7 @@ async function handleVote(context) {
 
   const question = await questionById(env.DB, qid);
   if (!question || question.status !== "active") return json({ ok: false, reason: "unknown_question" }, 200);
+  const canonicalId = question.id;
 
   const rules = await loadRules(env.DB);
   const voter = await voterKey(request, body.sid);
@@ -262,7 +322,7 @@ async function handleVote(context) {
   // the product treats as a first-class action, not an error.
   const prior = await env.DB.prepare(
     `SELECT response FROM trait_votes_v1 WHERE question_id = ?1 AND voter_hash = ?2`
-  ).bind(qid, voter.hash).all().then((r) => (r.results || [])[0]).catch(() => null);
+  ).bind(canonicalId, voter.hash).all().then((r) => (r.results || [])[0]).catch(() => null);
 
   await env.DB.prepare(`
     INSERT INTO trait_votes_v1
@@ -273,14 +333,18 @@ async function handleVote(context) {
       source = excluded.source,
       changed = trait_votes_v1.changed + 1,
       updated_at = excluded.updated_at`
-  ).bind(qid, voter.hash, voter.klass, response, source, now).run();
+  ).bind(canonicalId, voter.hash, voter.klass, response, source, now).run();
 
   // Settle-on-write: one aggregate pass for this question, upserted so reads
   // (session ranking, prompt, result, Avocado) stay a single indexed lookup.
-  const consensus = await settleQuestion(env.DB, qid, rules, now);
+  const consensus = await settleQuestion(env.DB, canonicalId, rules, now);
 
   const outcome = prior ? (prior.response === response ? "duplicate" : "changed") : "counted";
-  return json({ ok: true, outcome, voter_class: voter.klass, consensus });
+  return json({
+    ok: true, outcome, voter_class: voter.klass, consensus,
+    vote: { response },
+    display: displayFor(consensus, response, rules)
+  });
 }
 
 async function settleQuestion(db, qid, rules, now) {
@@ -378,14 +442,49 @@ function publicRules(rules) {
   return { min_eligible_votes: rules.min_eligible_votes };
 }
 
+function parsePlayerPairs(raw) {
+  return String(raw || "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8)
+    .map((s) => {
+      const cut = s.lastIndexOf("~");
+      if (cut < 1) return null;
+      const name = s.slice(0, cut).trim().toLowerCase();
+      const season = Number(s.slice(cut + 1));
+      return name && name.length <= 60 && Number.isInteger(season) && season > 1940 && season < 2100
+        ? { name, season } : null;
+    }).filter(Boolean);
+}
+
+// Display block for the result state (final spec section 8/22): whole-number
+// percentages once the official minimum sample is met, raw counts before it.
+// agree_pct is the share of voters standing with THIS voter's answer.
+function displayFor(consensus, myResponse, rules) {
+  const yes = consensus.yes_count || 0, no = consensus.no_count || 0, unsure = consensus.unsure_count || 0;
+  const eligible = yes + no, total = eligible + unsure;
+  const early = eligible < rules.min_eligible_votes;
+  let agree = null;
+  if (myResponse === "yes" && eligible > 0) agree = Math.round(100 * yes / eligible);
+  else if (myResponse === "no" && eligible > 0) agree = Math.round(100 * no / eligible);
+  else if (myResponse === "unsure" && total > 0) agree = Math.round(100 * unsure / total);
+  return {
+    mode: early ? "counts" : "pct",
+    yes, no, unsure,
+    yes_pct: eligible > 0 ? Math.round(100 * yes / eligible) : null,
+    agree_pct: agree,
+    status: consensus.status
+  };
+}
+
 async function questionById(db, qid) {
   const row = await db.prepare(`
     SELECT q.id, q.trait_id, q.player_name, q.season, q.season_label,
            q.prompt_override, q.status, t.display_name trait_name,
-           t.short_definition definition
+           t.short_definition definition,
+           m.slug, m.public_question, m.what_counts, m.metadata_line,
+           m.active meta_active
     FROM trait_questions_v1 q
     JOIN traits_v1 t ON t.id = q.trait_id
-    WHERE q.id = ?1`).bind(qid).all()
+    LEFT JOIN trait_question_meta_v1 m ON m.question_id = q.id
+    WHERE q.id = ?1 OR m.slug = ?1`).bind(qid).all()
     .then((r) => (r.results || [])[0]).catch(() => null);
   return row ? publicQuestion(row) : null;
 }
@@ -400,7 +499,12 @@ function publicQuestion(row) {
     season: row.season || null,
     season_label: row.season_label || (row.season ? String(row.season) : "Career"),
     prompt: row.prompt_override || null,
-    status: row.status || "active"
+    status: row.status || "active",
+    slug: row.slug || null,
+    public_question: row.public_question || null,
+    what_counts: row.what_counts || null,
+    metadata_line: row.metadata_line || null,
+    curated: row.slug ? (Number(row.meta_active === undefined ? 1 : row.meta_active) === 1 ? 1 : 0) : 0
   };
 }
 

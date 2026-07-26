@@ -1,32 +1,15 @@
--- 0011_traits_final_roster_v1.sql
--- The owner's final trait roster (2026-07-26): eleven core traits, chosen to
--- name what qualitative basketball talk sees and the statistical engine does
--- not. Three of the 0010 draft traits are superseded and retire; their best
--- disputed cases are re-homed as fresh questions under the successor traits.
--- ANTI-LABELS need no schema: a consensus status of does_not_qualify IS the
--- anti-label (rendered as the trait tag with a cross-out). Requires 0010.
--- Additive + idempotent: INSERT OR IGNORE and repeat-safe UPDATEs only.
--- Retiring serves nothing new and deletes nothing: standing votes and settled
--- consensus rows on retired questions are preserved for later analysis.
-
--- ---- 1. Retire the superseded draft traits (and stop serving their pool) ----
 UPDATE traits_v1 SET status = 'retired',
   updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000
   WHERE id IN ('wing-defender', 'primary-creator', 'help-defender')
     AND status <> 'retired';
-
 UPDATE trait_questions_v1 SET status = 'retired',
   updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000
   WHERE trait_id IN ('wing-defender', 'primary-creator', 'help-defender')
     AND status <> 'retired';
-
--- ---- 2. Promote the two survivors to core ----
 UPDATE traits_v1 SET status = 'core',
   updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000
   WHERE id IN ('three-point-shooter', 'rim-protector')
     AND status <> 'core';
-
--- ---- 3. The nine new core traits ----
 INSERT OR IGNORE INTO traits_v1 (id, display_name, short_definition, category, definition_version, status, created_at, updated_at) VALUES
   ('super-three-point-shooter', 'Super Three-Point Shooter', 'The other team gameplans around his three-point gravity: top-locks, face-guards, changed coverages.', 'spacing',  1, 'core', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('iso-defender',              'Iso Defender',              'Put him on the other team''s best scorer one-on-one and live with what happens.',                    'defense',  1, 'core', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -37,12 +20,7 @@ INSERT OR IGNORE INTO traits_v1 (id, display_name, short_definition, category, d
   ('off-ball-scorer',           'Off-Ball Scorer',           'Dangerous without the ball in his hands: cuts, relocations, catch-and-shoot, constant motion.',      'creation', 1, 'core', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('tough-shot-maker',          'Tough Shot Maker',          'Gets buckets without an advantage: contested, late-clock, self-created, still goes in.',             'creation', 1, 'core', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('clutch',                    'Clutch',                    'When the game tightens, you want the moment in his hands, and so does he.',                          'moment',   1, 'core', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000);
-
--- ---- 4. Question pools ----
--- season uses the Basketball-Reference end-year convention (2008 = 2007-08).
--- Priorities: 100 = marquee, 90s = anchors and famous fights, 80s = pool depth.
 INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, season_label, status, editorial_priority, definition_version, created_at, updated_at) VALUES
-  -- ISO DEFENDER (re-homed marquee + fresh anchors)
   ('kobe-bryant-2008-iso-defender',             'iso-defender',       'Kobe Bryant',        2008, '2007-08', 'active', 100, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('kawhi-leonard-2019-iso-defender',           'iso-defender',       'Kawhi Leonard',      2019, '2018-19', 'active',  92, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('klay-thompson-2016-iso-defender',           'iso-defender',       'Klay Thompson',      2016, '2015-16', 'active',  90, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -51,8 +29,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('luka-doncic-2024-iso-defender',             'iso-defender',       'Luka Doncic',        2024, '2023-24', 'active',  85, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('paul-george-2019-iso-defender',             'iso-defender',       'Paul George',        2019, '2018-19', 'active',  84, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('james-harden-2019-iso-defender',            'iso-defender',       'James Harden',       2019, '2018-19', 'active',  82, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- TEAM DEFENDER (help-defender's heirs + the organizers)
   ('draymond-green-2017-team-defender',         'team-defender',      'Draymond Green',     2017, '2016-17', 'active',  96, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('kevin-garnett-2004-team-defender',          'team-defender',      'Kevin Garnett',      2004, '2003-04', 'active',  92, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('rudy-gobert-2021-team-defender',            'team-defender',      'Rudy Gobert',        2021, '2020-21', 'active',  90, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -61,8 +37,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('brook-lopez-2023-team-defender',            'team-defender',      'Brook Lopez',        2023, '2022-23', 'active',  84, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('kobe-bryant-2008-team-defender',            'team-defender',      'Kobe Bryant',        2008, '2007-08', 'active',  83, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('james-harden-2019-team-defender',           'team-defender',      'James Harden',       2019, '2018-19', 'active',  80, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- SWITCHABLE DEFENDER
   ('draymond-green-2017-switchable-defender',   'switchable-defender','Draymond Green',     2017, '2016-17', 'active',  94, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('ben-simmons-2021-switchable-defender',      'switchable-defender','Ben Simmons',        2021, '2020-21', 'active',  92, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('bam-adebayo-2022-switchable-defender',      'switchable-defender','Bam Adebayo',        2022, '2021-22', 'active',  90, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -70,8 +44,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('pj-tucker-2021-switchable-defender',        'switchable-defender','PJ Tucker',          2021, '2020-21', 'active',  86, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('giannis-antetokounmpo-2021-switchable-defender', 'switchable-defender', 'Giannis Antetokounmpo', 2021, '2020-21', 'active', 85, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('andrew-wiggins-2022-switchable-defender',   'switchable-defender','Andrew Wiggins',     2022, '2021-22', 'active',  83, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- PLAYMAKER (primary-creator's heirs, redefined as advantage creation)
   ('nikola-jokic-2023-playmaker',               'playmaker',          'Nikola Jokic',       2023, '2022-23', 'active',  96, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('steve-nash-2005-playmaker',                 'playmaker',          'Steve Nash',         2005, '2004-05', 'active',  92, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('draymond-green-2016-playmaker',             'playmaker',          'Draymond Green',     2016, '2015-16', 'active',  90, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -80,8 +52,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('kyrie-irving-2016-playmaker',               'playmaker',          'Kyrie Irving',       2016, '2015-16', 'active',  86, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('ben-simmons-2021-playmaker',                'playmaker',          'Ben Simmons',        2021, '2020-21', 'active',  85, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('james-harden-2019-playmaker',               'playmaker',          'James Harden',       2019, '2018-19', 'active',  84, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- SUPER THREE-POINT SHOOTER (the gravity tier; Curry enters the pool here)
   ('stephen-curry-2016-super-three-point-shooter', 'super-three-point-shooter', 'Stephen Curry',   2016, '2015-16', 'active',  98, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('klay-thompson-2016-super-three-point-shooter', 'super-three-point-shooter', 'Klay Thompson',   2016, '2015-16', 'active',  92, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('reggie-miller-1997-super-three-point-shooter', 'super-three-point-shooter', 'Reggie Miller',   1997, '1996-97', 'active',  90, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -90,8 +60,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('kyle-korver-2015-super-three-point-shooter',   'super-three-point-shooter', 'Kyle Korver',     2015, '2014-15', 'active',  86, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('trae-young-2022-super-three-point-shooter',    'super-three-point-shooter', 'Trae Young',      2022, '2021-22', 'active',  85, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('duncan-robinson-2020-super-three-point-shooter','super-three-point-shooter','Duncan Robinson', 2020, '2019-20', 'active',  83, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- CLUTCH (the label product; Simmons is the anti-label showcase)
   ('damian-lillard-2020-clutch',                'clutch',             'Damian Lillard',     2020, '2019-20', 'active',  95, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('ben-simmons-2021-clutch',                   'clutch',             'Ben Simmons',        2021, '2020-21', 'active',  94, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('james-harden-2018-clutch',                  'clutch',             'James Harden',       2018, '2017-18', 'active',  92, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -100,8 +68,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('paul-george-2019-clutch',                   'clutch',             'Paul George',        2019, '2018-19', 'active',  87, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('russell-westbrook-2017-clutch',             'clutch',             'Russell Westbrook',  2017, '2016-17', 'active',  86, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('lebron-james-2013-clutch',                  'clutch',             'LeBron James',       2013, '2012-13', 'active',  85, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- RIM PRESSURER
   ('giannis-antetokounmpo-2021-rim-pressurer',  'rim-pressurer',      'Giannis Antetokounmpo', 2021, '2020-21', 'active', 94, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('ja-morant-2022-rim-pressurer',              'rim-pressurer',      'Ja Morant',          2022, '2021-22', 'active',  91, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('zion-williamson-2021-rim-pressurer',        'rim-pressurer',      'Zion Williamson',    2021, '2020-21', 'active',  89, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -109,8 +75,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('demar-derozan-2018-rim-pressurer',          'rim-pressurer',      'DeMar DeRozan',      2018, '2017-18', 'active',  86, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('luka-doncic-2024-rim-pressurer',            'rim-pressurer',      'Luka Doncic',        2024, '2023-24', 'active',  85, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('trae-young-2022-rim-pressurer',             'rim-pressurer',      'Trae Young',         2022, '2021-22', 'active',  83, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- OFF-BALL SCORER
   ('klay-thompson-2016-off-ball-scorer',        'off-ball-scorer',    'Klay Thompson',      2016, '2015-16', 'active',  93, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('jj-redick-2016-off-ball-scorer',            'off-ball-scorer',    'JJ Redick',          2016, '2015-16', 'active',  90, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('kevin-durant-2014-off-ball-scorer',         'off-ball-scorer',    'Kevin Durant',       2014, '2013-14', 'active',  88, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -118,8 +82,6 @@ INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, sea
   ('bradley-beal-2017-off-ball-scorer',         'off-ball-scorer',    'Bradley Beal',       2017, '2016-17', 'active',  86, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('kyrie-irving-2016-off-ball-scorer',         'off-ball-scorer',    'Kyrie Irving',       2016, '2015-16', 'active',  85, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('carmelo-anthony-2013-off-ball-scorer',      'off-ball-scorer',    'Carmelo Anthony',    2013, '2012-13', 'active',  84, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
-
-  -- TOUGH SHOT MAKER
   ('demar-derozan-2018-tough-shot-maker',       'tough-shot-maker',   'DeMar DeRozan',      2018, '2017-18', 'active',  95, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('kevin-durant-2014-tough-shot-maker',        'tough-shot-maker',   'Kevin Durant',       2014, '2013-14', 'active',  93, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('dirk-nowitzki-2011-tough-shot-maker',       'tough-shot-maker',   'Dirk Nowitzki',      2011, '2010-11', 'active',  91, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),

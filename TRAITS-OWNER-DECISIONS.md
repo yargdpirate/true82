@@ -97,3 +97,49 @@ do not invent values for it.
   - The three out-of-repo test lanes still need their v44 additions before
     the next full lane run: the three event names in the analytics-smoke
     allowlist and a /traits/ five-call path in browser-smoke.
+
+
+## v46: Player Bonuses editorial layer (2026-07-26)
+
+The curated pool IS the product surface. All 76 launch questions carry an
+editorially written sentence, slug, WHAT COUNTS? line, and metadata line
+in 0013; five seeded questions launch dormant (Brook Lopez 2023, PJ
+Tucker 2021, Andrew Wiggins 2022, Duncan Robinson 2020, Bradley Beal
+2017) and can be published any time by inserting a meta row. Nine
+questions rotate on the homepage (Kobe 08 wing defense, Jokic rim
+protection, Luka defense, Draymond on centers, Klay gravity, MVP Harden
+clutch, Playoff P clutch, 2013 LeBron clutch, DeRozan tough shots).
+Extending the pool is an INSERT; pulling a question is active=0; the
+sentence is copy, not generated text.
+
+Per-question link previews ship as text metadata (title and description
+carry the full question). Dedicated per-question OG IMAGES need an image
+pipeline this stack does not have yet; the typography-only static brand
+image stands in. Flagged as the one open follow-up from the spec.
+
+PRESTI UNCAP (owner ruling, same date): cap mode plays without the Any
+Given Night ceiling. Implemented as a per-run override of the data
+constant (PG_CAP forced to 1 for cap-mode games, restored for everything
+else), so it covers the analytic record today and game-by-game
+realization whenever Presti gets it. The 99-in-100 rules line renders
+only for classic, so no copy contradicts the uncap.
+
+
+## v46 design pass + iOS haptics (owner ruling, 2026-07-26)
+
+iOS haptics posture: the web's only door to the Taptic Engine is the
+checkbox switch control. Real taps on a real switch fire on every iOS;
+Apple patched SYNTHETIC toggles in iOS 26.5. So tap-moment haptics
+(YES, NO, UNSURE, NEXT QUESTION, VOTE ON 5 MORE) work everywhere via
+invisible switch overlays, while async moments (the result landing, the
+completion double-tap, the game's timed reel ticks) reach iOS 17.4-26.4
+and quietly do nothing on 26.5+. Nothing haptic touches an audio
+session: playback never ducks. If Apple ships the proposed web haptics
+API, upgrading is one function (hapticTick) in the page plus buzz() in
+app.js.
+
+The nine OG cards are generated from 0013's share_preview column, so
+the image copy can never drift from the shipped data. To add a card for
+a newly promoted homepage question: render a 1200x630 PNG in the same
+style into /og/bonus-<slug>.png and add the slug to OG_CARDS in
+functions/bonuses/[slug].js. Slugs without a card keep the brand image.

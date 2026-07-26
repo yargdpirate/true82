@@ -1340,3 +1340,41 @@ does not carry (0006, sim-core.js, site_data.json): run them on the repo
 checkout as `TRUE82_ROOT=<repo> node analytics-smoke.js` and
 `TRUE82_ROOT=<repo> node validate.js`; the v42 walk asserts the W/L
 squares and the cap binding directly.
+
+
+### v46 SHIPPED (2026-07-26): PLAYER BONUSES + Presti uncap
+
+The final Player Bonuses spec replaced the Player Traits front-end
+direction; end-user copy in that spec is binding and was implemented
+verbatim (PLAYER BONUSES, 1 / 5, UNSURE, WHAT COUNTS?, TRY AGAIN, the
+four status chips, 5 VOTES IN, VOTE ON 5 MORE, BACK TO TRUE 82, the
+share templates, no build numbers on the page). Internal names stay
+traits_* everywhere. The voting page moved to /bonuses/ with per-question
+routes at /bonuses/<slug> (Pages function swaps title/OG and injects a
+preload; failures serve the untouched shell). /traits/ is a redirect
+preserving q and src; pins by uncurated or retired ids degrade to a
+normal curated session. Serving is curated-only through 0013's meta
+table. Votes always store the canonical id even when cast by slug.
+
+For the parallel agent: both harness suites were updated for v46.
+test-traits.js runs migrations through 0013 and gained featured and
+my_response checks. test-integration.js now builds its db with the full
+0008-0013 chain and its jsdom walk drives /bonuses/ (selector [data-v],
+chips instead of stamps, the new completion copy). If your local copy
+predates this, take these versions.
+
+
+### v46.1 addendum: design pass + haptics (same day)
+
+The senior design pass landed on /bonuses/ (sequenced result reveal,
+skeleton, atmosphere, amber discipline, focus management, sentence-case
+question) with every animation behind prefers-reduced-motion and a
+matchMedia-absence guard, which is why the jsdom walks pass unchanged in
+timing. Haptics: buzz() in app.js now falls through to the iOS switch
+toggle; the Bonuses page adds real switch overlays inside its five
+primary buttons (tap forwarding via a stopPropagation click bridge, one
+fire per tap, parent pointer-events lock covers the overlay when
+controls lock). Walk assertions cover the skeleton, the overlays, and
+result focus. OG: nine PNGs in /og/ generated from the 0013
+share_preview values; regenerate with the same text if 0013 copy ever
+changes.

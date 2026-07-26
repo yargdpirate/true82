@@ -15,10 +15,33 @@ WHAT V44 IS:
   See ANALYTICS-V44-RETENTION-AND-TRAITS.md for the full contract.
 
 DEPLOY IN THIS ORDER:
+  0. The pasteable .sql files are PURE SQL, zero comment lines: some copy
+     paths smart-convert the double hyphen into a dash and error mid-paste,
+     leaving a migration PARTIALLY applied. If any earlier paste errored,
+     just re-paste the clean file: every statement is idempotent and
+     self-heals. Verify with one paste of migrations/CHECK-STATE.sql
+     (expect traits 14, core 11, retired 3, questions 96, rules 6,
+     editorial 21). Commentary lives in migrations/MIGRATIONS-NOTES.md.
   1. Apply migrations/0010_traits_v1.sql ONCE to the production D1 DB
      (Cloudflare console paste, same as always). It is additive and safe to
      re-run; it creates five trait tables and seeds 5 draft traits, 27
      questions, and the threshold rules. It touches no existing table.
+     v46: ALSO paste migrations/0013_bonuses_meta_v1.sql (the curated
+     Player Bonuses pool; pure SQL, rerun-safe). Smoke after deploy:
+     open /bonuses/2008-kobe-elite-wing-defender directly (question loads
+     with vote controls, page title carries the question), vote, check the
+     result state and SHARE QUESTION, then confirm the homepage module
+     shows one big rotating question with a VOTE button and the results
+     screen shows the compact PLAYER BONUS card. Presti uncap check: start
+     a cap-mode game and run T82.t.SC.PG_CAP in the console (expect 1),
+     then a classic game (expect the shipped value, 0.99 with v42-final
+     data). Legacy /traits/ links redirect with their q intact. Feel checks
+     on a phone: tapping YES should tick in your hand on any iPhone (iOS
+     17.4 up, including 26.5) and any Android; the result landing adds a
+     tick on Android and iOS up to 26.4; music or a podcast playing in
+     the background must keep playing untouched through all of it. A
+     shared marquee link (the nine homepage questions) should unfurl
+     with its own typography card, not the generic brand image.
      v45: apply 0010, 0011, AND 0012_trait_editorial_v1.sql (desk seed
      rulings so roster labels exist on day one; community supersedes at
      volume). All three are rerun-safe. v45 also SHIPS styles.css for the

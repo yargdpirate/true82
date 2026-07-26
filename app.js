@@ -496,6 +496,17 @@ function newGame(mode, seed, challenge, opts) {
     ANALYTICS_RESULT_OBSERVER = null;
   }
   if (mode) MODE = mode;
+  // Presti runs uncapped (owner ruling, 2026-07-26): cap mode is hard enough
+  // without the Any Given Night ceiling, so a true murderers' row may project
+  // and realize all 82. The constant lives in site data; override it per mode
+  // here so every sim-core read sees the right ceiling for the run. Classic
+  // keeps the shipped value untouched.
+  try {
+    if (window.T82 && T82.t && T82.t.SC && typeof T82.t.SC.PG_CAP === "number") {
+      if (window.__t82PgCapOrig == null) window.__t82PgCapOrig = T82.t.SC.PG_CAP;
+      T82.t.SC.PG_CAP = (MODE === "cap") ? 1 : window.__t82PgCapOrig;
+    }
+  } catch (e) {}
   G = T82.newState(MODE, seed, challenge || null);
   G.analyticsInitialCap = G.maxCap;
   if (opts && opts.social) G.social = opts.social;   // THE DAILY: {key,num,name,chId,target} rides the run
@@ -672,7 +683,29 @@ function doLineupSwap(i, j) {
 // Chrome/Android; iOS Safari ignores it (silent no-op). try/catch guards the few
 // webviews that throw on the call.
 function buzz(ms) {
-  try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {}
+  // Android: the real Vibration API. iOS Safari has no vibration API; the one
+  // web door to the Taptic Engine is toggling an <input type="checkbox"
+  // switch> (Safari 17.4+). Synthetic toggles were patched out in iOS 26.5,
+  // so this programmatic path reaches iOS 17.4-26.4 and is a harmless no-op
+  // beyond; tap-moment haptics on 26.5+ ride real switch overlays where they
+  // matter (the Bonuses page). Neither path touches the audio session, so
+  // music and podcasts are never ducked.
+  try {
+    if (navigator.vibrate && navigator.vibrate(ms || 15)) return;
+  } catch (e) {}
+  try {
+    if (!buzz._sw) {
+      var sw = document.createElement("input");
+      sw.type = "checkbox";
+      try { sw.setAttribute("switch", ""); } catch (e2) {}
+      sw.setAttribute("aria-hidden", "true");
+      sw.tabIndex = -1;
+      sw.style.cssText = "position:fixed;left:-40px;top:-40px;width:1px;height:1px;opacity:0;pointer-events:none";
+      document.body.appendChild(sw);
+      buzz._sw = sw;
+    }
+    buzz._sw.click();
+  } catch (e) {}
 }
 
 // Every true button except the deliberately flat Start over, compact Sort/info
@@ -1734,9 +1767,11 @@ function resultsTopBarHtml() {
     '<a class="donate-btn" id="donateBtn" href="mailto:true82mailbox@gmail.com" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
   '</div>';
 }
-/* ---------- Player Traits (v44) ---------- */
-// The voting mode lives at /traits/ as its own page; app.js only owns the two
-// doorways: the homepage module and the results-screen disputed-call prompt.
+/* ---------- PLAYER BONUSES (v46; internal traits_* names unchanged) ---------- */
+// The voting mode lives at /bonuses/ (per-question slugs at /bonuses/<slug>);
+// app.js owns the two doorways: the homepage module (one curated rotating
+// question from op=featured) and the compact results-screen prompt, which
+// prefers a question about a player this user just drafted.
 // Styling is injected here, scoped under .traits-*, so the shared styles.css
 // stays untouched this build (fold into styles.css on its next owner pass).
 var TRAITS_CSS_ID = "traitsCss";
@@ -1746,19 +1781,19 @@ function ensureTraitsCss() {
   st.id = TRAITS_CSS_ID;
   st.textContent =
     ".traits-module{display:block;text-decoration:none;color:inherit;text-align:left;" +
-      "background:#161c23;border:1px solid #2a333d;border-radius:14px;padding:14px 14px 12px;margin:10px 0}" +
-    ".traits-module .tm-eyebrow{display:block;font-family:'IBM Plex Mono',monospace;font-size:12px;" +
-      "letter-spacing:.18em;color:#FFB52E}" +
+      "background:#161c23;border:1px solid #2a333d;border-radius:20px;padding:20px;margin:10px 0}" +
+    ".traits-module .tm-eyebrow{display:block;font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
+      "letter-spacing:.2em;color:#FFB52E}" +
     ".traits-module .tm-q{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
-      "font-size:21px;line-height:1.12;margin-top:4px}" +
-    ".traits-module .tm-why{display:block;font-size:13px;color:#8b98a5;margin-top:5px}" +
-    ".traits-module .tm-cta{display:inline-block;margin-top:9px;background:#FFB52E;color:#221a05;" +
-      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:.12em;" +
-      "border-radius:9px;padding:8px 14px}" +
+      "font-size:27px;line-height:1.06;margin-top:9px;text-transform:uppercase}" +
+    ".traits-module .tm-why{display:block;font-size:15px;color:#8b98a5;margin-top:9px}" +
+    ".traits-module .tm-cta{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;" +
+      "background:#FFB52E;color:#221a05;min-width:118px;height:52px;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:.12em;" +
+      "border-radius:12px;padding:0 18px}" +
     ".traits-prompt{background:#161c23;border:1px solid #2a333d;border-radius:14px;padding:14px}" +
     ".traits-prompt .tp-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;color:#FFB52E}" +
-    ".traits-prompt .tp-q{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin:5px 0 3px}" +
-    ".traits-prompt .tp-split{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#8b98a5}" +
+    ".traits-prompt .tp-q{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;margin:6px 0 4px}" +
     ".traits-prompt .tp-cta{display:inline-block;margin-top:8px;background:transparent;border:1px solid #FFB52E;" +
       "color:#FFB52E;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;" +
       "letter-spacing:.12em;border-radius:9px;padding:7px 13px;text-decoration:none}" +
@@ -1773,11 +1808,29 @@ function ensureTraitsCss() {
 }
 function traitsModuleHtml() {
   ensureTraitsCss();
-  return '<a class="traits-module" id="traitsModule" href="/traits/?src=home_module">' +
-    '<span class="tm-eyebrow">PLAYER TRAITS \u00B7 NEW</span>' +
-    '<span class="tm-q">Was 2008 Kobe a wing defender? Is Jokic a rim protector?</span>' +
-    '<span class="tm-why">Make five quick calls. Community rulings shape how TRUE 82 scores lineup fit.</span>' +
-    '<span class="tm-cta">MAKE 5 CALLS</span></a>';
+  // Ships hidden; wireBonusesModule reveals it only with a curated featured
+  // question in hand, so the homepage never shows a stale or empty debate.
+  return '<a class="traits-module" id="traitsModule" href="/bonuses/?src=home_module" hidden>' +
+    '<span class="tm-eyebrow">PLAYER BONUSES \u00B7 NEW</span>' +
+    '<span class="tm-q" id="tmQ"></span>' +
+    '<span class="tm-why">Community votes set lineup-fit bonuses.</span>' +
+    '<span class="tm-cta">VOTE</span></a>';
+}
+function wireBonusesModule() {
+  var mod = el("traitsModule");
+  if (!mod || !window.fetch) return;
+  fetch("/api/traits?op=featured", { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (x) {
+      if (!x || !x.ok || !x.question || !x.question.public_question || !el("traitsModule")) return;
+      var q = x.question;
+      el("tmQ").textContent = q.public_question.toUpperCase();
+      mod.href = q.slug ? "/bonuses/" + q.slug + "?src=home_module"
+                        : "/bonuses/?q=" + encodeURIComponent(q.id) + "&src=home_module";
+      mod.hidden = false;
+      analyticsTrack("mode_impression", { surface: "home", action: "traits", challenge: q.id });
+    })
+    .catch(function () {});
 }
 // Fail-soft by construction: the section ships hidden and empty; only a clean
 // /api/traits answer ever reveals it. Any network or schema failure leaves the
@@ -1785,24 +1838,26 @@ function traitsModuleHtml() {
 function wireTraitsPrompt() {
   var sec = el("traitsPromptSec");
   if (!sec || !window.fetch) return;
-  fetch("/api/traits?op=prompt", { credentials: "same-origin" })
+  var pairs = "";
+  try {
+    pairs = picksInSlotOrder().map(function (en) {
+      return encodeURIComponent(en.p.row[IDX.name]) + "~" + en.p.row[IDX.season];
+    }).join(",");
+  } catch (e) {}
+  fetch("/api/traits?op=prompt" + (pairs ? "&players=" + pairs : ""), { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (x) {
-      if (!x || !x.ok || !x.question || !el("traitsPromptSec")) return;
+      if (!x || !x.ok || !x.question || !x.question.public_question || !el("traitsPromptSec")) return;
       ensureTraitsCss();
       var q = x.question;
-      var split = "";
-      if (x.divided && x.consensus && x.consensus.yes_pct != null) {
-        split = '<div class="tp-split">' + x.consensus.yes_pct + "% say yes \u00B7 " +
-          (100 - x.consensus.yes_pct) + "% say no</div>";
-      }
+      var href = q.slug ? "/bonuses/" + q.slug + "?src=results_prompt"
+                        : "/bonuses/?q=" + encodeURIComponent(q.id) + "&src=results_prompt";
       sec.innerHTML =
-        '<div class="tp-eyebrow">' + (x.divided ? "COMMUNITY IS DIVIDED" : "MAKE THE CALL") + '</div>' +
-        '<div class="tp-q">Does ' + esc(q.season_label || "") + " " + esc(q.player_name) +
-          " qualify as a " + esc(q.trait_name) + "?</div>" + split +
-        '<a class="tp-cta" id="traitsPromptCta" href="/traits/?q=' + encodeURIComponent(q.id) +
-          '&src=results_prompt">VOTE NOW</a>';
+        '<div class="tp-eyebrow">PLAYER BONUS</div>' +
+        '<div class="tp-q">' + esc(q.public_question) + "</div>" +
+        '<a class="tp-cta" id="traitsPromptCta" href="' + href + '">VOTE</a>';
       sec.hidden = false;
+      analyticsTrack("mode_impression", { surface: "results", action: "traits_prompt", challenge: q.id });
       var cta = el("traitsPromptCta");
       if (cta) cta.addEventListener("click", function () {
         analyticsTrack("feature_select", { surface: "results", action: "traits_prompt", challenge: q.id });
@@ -1939,8 +1994,7 @@ function renderIntro() {
     var specs = [
       ["startClassic", "classic"], ["startCap", "cap"], ["startPro", "pro"],
       ["startDaily", "daily"], ["dailyChallengeBtn", "daily_share"], ["dailyPracticeBtn", "daily_practice"],
-      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"],
-      ["traitsModule", "traits"]
+      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"]
     ];
     var seen = {};
     function mark(node, key) {
@@ -1998,6 +2052,7 @@ function renderIntro() {
   if (traitsMod) traitsMod.addEventListener("click", function () {
     analyticsTrack("feature_select", { surface: "home", action: "traits" });
   });
+  wireBonusesModule();
   el("startLeague").addEventListener("click", function () {   // league office needs no site data
     analyticsTrack("feature_select", { surface: "home", action: "league" });
     var btn = el("startLeague"), label = btn.textContent;
@@ -5254,7 +5309,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v45";
+var BUILD_V = "v46";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

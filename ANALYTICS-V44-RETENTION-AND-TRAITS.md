@@ -201,3 +201,32 @@ per question with COMMUNITY SUPREMACY: a settled community ruling always
 replaces the desk row in the response; editorial rows carry `e: 1`.
 The marquee disputes (2008 Kobe iso defense) are deliberately unseeded.
 wireTraitsLabels renders both sources identically on the pick cards.
+
+
+## 9. v46 addendum: the PLAYER BONUSES contract (2026-07-26)
+
+The public product is PLAYER BONUSES; every internal name stays traits_*
+(events, tables, the /api/traits endpoint) so the funnel and dashboards
+read continuously across the rename. New in the contract:
+
+Serving is curated-only. 0013's trait_question_meta_v1 is the launch pool:
+sessions, the homepage module (op=featured, daily rotation over the nine
+homepage_eligible rows), and the results prompt all serve only questions
+with an active meta row. op=prompt accepts players= (name~season pairs,
+the labels format) and prefers a disputed question about a drafted
+player-season, then any curated question about a drafted name, then the
+most divided question overall, then the loudest unheard.
+
+Responses carry a display block alongside the legacy consensus payload:
+mode (counts below min_eligible_votes, pct at or above), yes/no/unsure,
+yes_pct, agree_pct (the share standing with this voter), and the internal
+status. The client maps status to the four public chips (BONUS ACTIVE,
+NO BONUS, STILL DISPUTED, BONUS PENDING) and never infers status from a
+percentage. Votes by slug store the canonical question id.
+
+New action values on the existing three event names: traits_question
+gains next, try_again, share_open, share_copy; result_view sets value=1
+when the early (counts) state showed. Session sources now include the
+compact share referral (src=s arrives as source "s" is not allowlisted;
+the page maps it through the existing source vocabulary as "share").
+Entry via /bonuses/<slug> is a normal session start with its source.

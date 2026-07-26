@@ -1,3 +1,56 @@
+TRUE 82 v46 (current) - PLAYER BONUSES + Presti uncap
+  NEW      bonuses/index.html   the voting page, rebuilt to the final Player Bonuses
+                                spec: editorial question sentences, quiet 1 / 5 progress,
+                                WHAT COUNTS? expander, YES/NO/UNSURE, percentage-led
+                                result with BONUS ACTIVE / NO BONUS / STILL DISPUTED /
+                                BONUS PENDING chips, EARLY RESULT counts, TRY AGAIN that
+                                never advances, native share + copy with factual
+                                templates, five-vote completion state, no build numbers
+  NEW      functions/bonuses/[slug].js  direct question routes /bonuses/<slug>: serves the
+                                shell with per-question title/OG metadata and a preload
+                                payload; any failure serves the untouched shell
+  NEW      migrations/0013_bonuses_meta_v1.sql  curated launch pool: 76 editorial rows
+                                (slug, public question, WHAT COUNTS?, metadata line,
+                                homepage flag x9, share preview); 5 questions left dormant
+  CHANGED  functions/api/traits.js  serving is curated-only (meta join); slugs resolve
+                                everywhere; op=featured (daily homepage rotation);
+                                op=prompt prefers a drafted player's dispute
+                                (players= pairs); vote/result responses carry the
+                                display block (counts pre-quorum, whole percentages
+                                after, agreement, status); votes always store the
+                                canonical question id
+  CHANGED  traits/index.html    now a redirect stub to /bonuses/ preserving q and src
+  CHANGED  app.js               homepage module reworked (PLAYER BONUSES / NEW, one
+                                rotating curated question via op=featured, VOTE, whole
+                                card tappable, ~40% shorter); results prompt reworked
+                                (compact PLAYER BONUS card, drafted-player preference);
+                                PRESTI UNCAP: cap mode overrides PG_CAP to 1 per run,
+                                classic keeps the shipped value; BUILD_V v46
+  CHANGED  index.html           app token 20260726-bonuses-v46, meta v46 (styles token
+                                unchanged: styles.css untouched this build)
+  DB       paste 0010, 0011, 0012, 0013 (all pure SQL, rerun-safe)
+  DESIGN   v46 senior pass on /bonuses/: header steps back so the question is
+           the biggest thing on screen; result reveals in sequence (count-up
+           percentage, staggered lines, bar fills, chip lands) inside the
+           spec's motion budget with full reduced-motion fallbacks; page
+           atmosphere (court-line texture, vignette, card depth) matches the
+           game's material; skeleton card while the session loads; amber
+           discipline (BONUS ACTIVE is an outline chip so one amber hero per
+           state); UNSURE contrast raised; focus moves to the result;
+           question renders sentence case
+  HAPTICS  site-wide buzz() gains the iOS door (checkbox switch toggle,
+           Safari 17.4+; synthetic path patched by Apple in iOS 26.5, so
+           timed/async ticks reach 17.4-26.4 and no-op beyond). The Bonuses
+           page adds real invisible switch overlays on YES / NO / UNSURE /
+           NEXT QUESTION / VOTE ON 5 MORE, so tap-moment haptics fire on ALL
+           iOS versions including 26.5+. Android keeps navigator.vibrate
+           patterns. No audio-session path anywhere: music and podcasts are
+           never ducked or paused.
+  NEW      og/bonus-<slug>.png  nine hand-cut 1200x630 typography previews
+           for the homepage-eligible questions; functions/bonuses/[slug].js
+           swaps og:image for those slugs (brand image for all others);
+           shell adds twitter:card summary_large_image
+
 TRUE 82 v45 (current) - v42 finals graft + manual tags + Daily sheet + roster labels
   NEW      styles.css           COMPLETE v42-final stylesheet, first styles.css shipped since v40
                                 (reel 25px W/L squares, reel-done button, charity treatment, v41 sheet)

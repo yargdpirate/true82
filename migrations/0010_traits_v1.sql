@@ -1,19 +1,3 @@
--- TRUE 82 v44: Player Traits community voting mode.
--- SAFE / IDEMPOTENT: creates five new isolated tables and their indexes, plus
--- seed rows via INSERT OR IGNORE. It never ALTERs, UPDATEs, DELETEs, DROPs,
--- copies, or rewrites events, analytics_events_v4, recaps, retention_events_v1,
--- or retention_coverage_v1. Safe to run before or after the code deploy and
--- safe to run more than once.
---
--- Traits are DATA, not columns (per the product handoff): add, pause, or
--- redefine a trait by editing rows, never by migrating schema.
---
--- SEED NOTE FOR THE OWNER: the five traits below are the handoff's own example
--- set, seeded as status='experimental' placeholders so the mode is playable.
--- The final set of 10 public traits is an owner decision the handoff says must
--- not be made silently during implementation. Swapping the set is row edits
--- plus new questions; no schema change.
-
 CREATE TABLE IF NOT EXISTS traits_v1 (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
@@ -24,7 +8,6 @@ CREATE TABLE IF NOT EXISTS traits_v1 (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS trait_questions_v1 (
   id TEXT PRIMARY KEY,
   trait_id TEXT NOT NULL,
@@ -41,7 +24,6 @@ CREATE TABLE IF NOT EXISTS trait_questions_v1 (
 );
 CREATE INDEX IF NOT EXISTS idx_tqv1_status ON trait_questions_v1(status, editorial_priority);
 CREATE INDEX IF NOT EXISTS idx_tqv1_trait ON trait_questions_v1(trait_id);
-
 CREATE TABLE IF NOT EXISTS trait_votes_v1 (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   question_id TEXT NOT NULL,
@@ -58,7 +40,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_tvv1_unique ON trait_votes_v1(question_id,
 CREATE INDEX IF NOT EXISTS idx_tvv1_hash_time ON trait_votes_v1(voter_hash, created_at);
 CREATE INDEX IF NOT EXISTS idx_tvv1_hash_activity ON trait_votes_v1(voter_hash, updated_at);
 CREATE INDEX IF NOT EXISTS idx_tvv1_question ON trait_votes_v1(question_id);
-
 CREATE TABLE IF NOT EXISTS trait_consensus_v1 (
   question_id TEXT PRIMARY KEY,
   eligible_votes INTEGER NOT NULL DEFAULT 0,
@@ -70,15 +51,11 @@ CREATE TABLE IF NOT EXISTS trait_consensus_v1 (
   rules_version INTEGER NOT NULL DEFAULT 1,
   calculated_at INTEGER
 );
-
 CREATE TABLE IF NOT EXISTS trait_rules_v1 (
   rule_key TEXT PRIMARY KEY,
   rule_value TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
-
--- Thresholds live in configuration, never in scoring code (handoff rule).
--- eligible = yes + no; Not Sure is counted and displayed but never rules.
 INSERT OR IGNORE INTO trait_rules_v1 (rule_key, rule_value, updated_at) VALUES
   ('min_eligible_votes', '25', CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('qualify_yes_share', '0.62', CAST(strftime('%s','now') AS INTEGER) * 1000),
@@ -86,18 +63,12 @@ INSERT OR IGNORE INTO trait_rules_v1 (rule_key, rule_value, updated_at) VALUES
   ('vote_burst_limit_10min', '40', CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('vote_min_spacing_ms', '1200', CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('rules_version', '1', CAST(strftime('%s','now') AS INTEGER) * 1000);
-
--- DRAFT trait set: the handoff's five example labels, plain basketball terms.
 INSERT OR IGNORE INTO traits_v1 (id, display_name, short_definition, category, definition_version, status, created_at, updated_at) VALUES
   ('three-point-shooter', 'Three-Point Shooter', 'Defenses had to guard him hard at the arc: real volume, real accuracy, real gravity.', 'spacing', 1, 'experimental', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('wing-defender', 'Wing Defender', 'You could put him on a high-level scoring wing for real possessions and live with it.', 'defense', 1, 'experimental', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('rim-protector', 'Rim Protector', 'Shots at the rim changed because he was there: contests, blocks, and altered drives.', 'defense', 1, 'experimental', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('primary-creator', 'Primary Creator', 'The offense could run through his hands: good shots for himself and others against a set defense.', 'creation', 1, 'experimental', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('help-defender', 'Help Defender', 'Away from his man he made the defense better: rotations, digs, and clean-up plays on time.', 'defense', 1, 'experimental', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000);
-
--- Seed question pool: recognizable players, deliberately disputed reputations,
--- a few near-consensus calibration calls, eras from the 90s to the 2020s.
--- season uses the Basketball-Reference end-year convention (2008 = 2007-08).
 INSERT OR IGNORE INTO trait_questions_v1 (id, trait_id, player_name, season, season_label, status, editorial_priority, definition_version, created_at, updated_at) VALUES
   ('kobe-bryant-2008-wing-defender',            'wing-defender',       'Kobe Bryant',         2008, '2007-08', 'active', 100, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
   ('nikola-jokic-2023-rim-protector',           'rim-protector',       'Nikola Jokic',        2023, '2022-23', 'active',  95, 1, CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000),
