@@ -345,10 +345,14 @@ function initData(data) {
   CAREER_BUCKETS = t.CAREER_BUCKETS; KAMAN_SEASONS = t.KAMAN_SEASONS;
 }
 
-// Anonymous analytics state. No analytics id is written to cookies, localStorage,
-// or sessionStorage. analytics.js owns one random in-memory visit id; each game gets
-// one random in-memory run id. The only persistent state read below is The Daily's
-// already-existing 14-day game record, and only coarse counts leave the browser.
+// Product analytics state. analytics.js owns one random in-memory visit id and
+// nothing durable: the v43 localStorage identity experiment was retired before
+// it ever deployed. The durable same-browser id lives with retention-client.js
+// and /api/identity (the v40r2 layer): a 400-day first-party HttpOnly cookie
+// with a localStorage fallback, disabled in consent regions and by the site
+// opt-out; DNT/GPC are recorded there as diagnostics only. Each game still
+// receives a random in-memory run id. The Daily's separate 14-day
+// game record remains feature state and only coarse counts leave the browser.
 var ANALYTICS_RETURN_SENT = false;
 var ANALYTICS_RULES_OPEN_TS = 0;
 var ANALYTICS_SEARCH_TIMER = 0;
@@ -1725,6 +1729,76 @@ function resultsTopBarHtml() {
     '<a class="donate-btn" id="donateBtn" href="mailto:true82mailbox@gmail.com" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
   '</div>';
 }
+/* ---------- Player Traits (v44) ---------- */
+// The voting mode lives at /traits/ as its own page; app.js only owns the two
+// doorways: the homepage module and the results-screen disputed-call prompt.
+// Styling is injected here, scoped under .traits-*, so the shared styles.css
+// stays untouched this build (fold into styles.css on its next owner pass).
+var TRAITS_CSS_ID = "traitsCss";
+function ensureTraitsCss() {
+  if (document.getElementById(TRAITS_CSS_ID)) return;
+  var st = document.createElement("style");
+  st.id = TRAITS_CSS_ID;
+  st.textContent =
+    ".traits-module{display:block;text-decoration:none;color:inherit;text-align:left;" +
+      "background:#161c23;border:1px solid #2a333d;border-radius:14px;padding:14px 14px 12px;margin:10px 0}" +
+    ".traits-module .tm-eyebrow{display:block;font-family:'IBM Plex Mono',monospace;font-size:12px;" +
+      "letter-spacing:.18em;color:#FFB52E}" +
+    ".traits-module .tm-q{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
+      "font-size:21px;line-height:1.12;margin-top:4px}" +
+    ".traits-module .tm-why{display:block;font-size:13px;color:#8b98a5;margin-top:5px}" +
+    ".traits-module .tm-cta{display:inline-block;margin-top:9px;background:#FFB52E;color:#221a05;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:.12em;" +
+      "border-radius:9px;padding:8px 14px}" +
+    ".traits-prompt{background:#161c23;border:1px solid #2a333d;border-radius:14px;padding:14px}" +
+    ".traits-prompt .tp-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;color:#FFB52E}" +
+    ".traits-prompt .tp-q{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin:5px 0 3px}" +
+    ".traits-prompt .tp-split{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#8b98a5}" +
+    ".traits-prompt .tp-cta{display:inline-block;margin-top:8px;background:transparent;border:1px solid #FFB52E;" +
+      "color:#FFB52E;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;" +
+      "letter-spacing:.12em;border-radius:9px;padding:7px 13px;text-decoration:none}";
+  document.head.appendChild(st);
+}
+function traitsModuleHtml() {
+  ensureTraitsCss();
+  return '<a class="traits-module" id="traitsModule" href="/traits/?src=home_module">' +
+    '<span class="tm-eyebrow">PLAYER TRAITS \u00B7 NEW</span>' +
+    '<span class="tm-q">Was 2008 Kobe a wing defender? Is Jokic a rim protector?</span>' +
+    '<span class="tm-why">Make five quick calls. Community rulings shape how TRUE 82 scores lineup fit.</span>' +
+    '<span class="tm-cta">MAKE 5 CALLS</span></a>';
+}
+// Fail-soft by construction: the section ships hidden and empty; only a clean
+// /api/traits answer ever reveals it. Any network or schema failure leaves the
+// results screen exactly as it was.
+function wireTraitsPrompt() {
+  var sec = el("traitsPromptSec");
+  if (!sec || !window.fetch) return;
+  fetch("/api/traits?op=prompt", { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (x) {
+      if (!x || !x.ok || !x.question || !el("traitsPromptSec")) return;
+      ensureTraitsCss();
+      var q = x.question;
+      var split = "";
+      if (x.divided && x.consensus && x.consensus.yes_pct != null) {
+        split = '<div class="tp-split">' + x.consensus.yes_pct + "% say yes \u00B7 " +
+          (100 - x.consensus.yes_pct) + "% say no</div>";
+      }
+      sec.innerHTML =
+        '<div class="tp-eyebrow">' + (x.divided ? "COMMUNITY IS DIVIDED" : "MAKE THE CALL") + '</div>' +
+        '<div class="tp-q">Does ' + esc(q.season_label || "") + " " + esc(q.player_name) +
+          " qualify as a " + esc(q.trait_name) + "?</div>" + split +
+        '<a class="tp-cta" id="traitsPromptCta" href="/traits/?q=' + encodeURIComponent(q.id) +
+          '&src=results_prompt">VOTE NOW</a>';
+      sec.hidden = false;
+      var cta = el("traitsPromptCta");
+      if (cta) cta.addEventListener("click", function () {
+        analyticsTrack("feature_select", { surface: "results", action: "traits_prompt", challenge: q.id });
+      });
+    })
+    .catch(function () {});
+}
+
 function wireDonate() {
   var b = el("donateBtn");
   if (b) b.addEventListener("click", function () {
@@ -1808,6 +1882,7 @@ function renderIntro() {
       thirdSlotHtml +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
+      traitsModuleHtml() +
       '<p class="eyebrow">Draft</p>' +
       "<p>Five rounds. Each one deals a random NBA franchise and decade; draft one player who suited up for that team in that era, any season of his career. Fill 2 guards, 2 forwards, and a center. In Classic you can skip the team once and the era once.</p>" +
       '<p class="eyebrow">Winning</p>' +
@@ -1823,7 +1898,8 @@ function renderIntro() {
     var specs = [
       ["startClassic", "classic"], ["startCap", "cap"], ["startPro", "pro"],
       ["startDaily", "daily"], ["dailyChallengeBtn", "daily_share"], ["dailyPracticeBtn", "daily_practice"],
-      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"]
+      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"],
+      ["traitsModule", "traits"]
     ];
     var seen = {};
     function mark(node, key) {
@@ -1876,6 +1952,10 @@ function renderIntro() {
     ensureArenaUI().then(function (ok) {
       if (ok) T82ARENA.route(); else featureLoadFailed(btn, label);
     });
+  });
+  var traitsMod = el("traitsModule");
+  if (traitsMod) traitsMod.addEventListener("click", function () {
+    analyticsTrack("feature_select", { surface: "home", action: "traits" });
   });
   el("startLeague").addEventListener("click", function () {   // league office needs no site data
     analyticsTrack("feature_select", { surface: "home", action: "league" });
@@ -4656,11 +4736,6 @@ function renderResults(e, keepScroll) {
         (beat ? "You take the board." : tied ? "Dead heat. Run it back." : "They hold the board.") + "</div>";
     }
     daily = { res: dres, official: dOfficial, isOfficial: dIsOfficial, targetHtml: dTargetHtml };
-    var postDailyProfile = analyticsDailyProfile();
-    if (postDailyProfile) analyticsTrack("return_profile", Object.assign(postDailyProfile, {
-      mode: G.social.base || MODE, surface: "results", action: "post_daily_finish",
-      daily_num: G.social.num, official: dIsOfficial ? 1 : 0, practice: dIsOfficial ? 0 : 1
-    }));
   }
   var boardEyebrow = daily
     ? "The Daily #" + G.social.num + " \u00B7 " + esc(G.social.name)
@@ -4715,10 +4790,12 @@ function renderResults(e, keepScroll) {
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section" data-result-section="goat_climb"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
+    '<section class="section traits-prompt" data-result-section="traits_prompt" id="traitsPromptSec" hidden></section>' +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
     '<p class="run-status" id="runStatus"></p>';
 
   trackResultSections();
+  wireTraitsPrompt();
 
   el("againBtn").addEventListener("click", function () {
     analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), { surface: "results", action: daily ? "daily_practice" : "same_mode" }));
@@ -5103,7 +5180,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v42";
+var BUILD_V = "v44";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

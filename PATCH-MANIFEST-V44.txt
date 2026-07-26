@@ -1,0 +1,66 @@
+TRUE 82 v44 retention merge + Player Traits
+v44.1 ADDENDUM (final trait roster + anti-labels)
+  NEW      migrations/0011_traits_final_roster_v1.sql  eleven core traits, three retirements, 69 questions
+  CHANGED  traits/index.html    tag-as-label stamps, crossed anti-label + aria, longtag guard, build v44.1
+  CHANGED  TRAITS-OWNER-DECISIONS.md  roster decision recorded
+  CHANGED  ANALYTICS-V44-RETENTION-AND-TRAITS.md  section 7 addendum
+  DB       apply 0010 then 0011 (0011 alone if 0010 is already live)
+
+
+NEW
+  traits/index.html                       Player Traits voting page (self-contained)
+  functions/api/traits.js                 session serving, prompt, vote + settle-on-write
+  migrations/0010_traits_v1.sql           trait tables, rules, 5 draft traits, 27 questions
+  retention-client.js                     v40r2 client, upgraded to the subscriber hook
+  functions/api/identity.js               v40r2 cookie identity + coverage (replaces v43 file)
+  functions/api/retention.js              v40r2 isolated retention ingestion
+  functions/api/retention-dashboard.js    v40r2 standalone retention report (stale 180-day line fixed)
+  migrations/0008_retention_events_v1.sql already applied in production; repo truth
+  migrations/0009_retention_coverage_v1.sql already applied in production; repo truth
+  ANALYTICS-V44-RETENTION-AND-TRAITS.md   merged analytics + traits contract
+  TRAITS-OWNER-DECISIONS.md               the decisions only the owner can make
+  PATCH-MANIFEST-V44.txt
+
+CHANGED
+  analytics.js          v43 identity experiment stripped; t82AnalyticsSubscribe hook;
+                        /traits page key; retention state surfaced in t82AnalyticsDebug;
+                        ANALYTICS_BUILD v44
+  app.js                BUILD_V v44; PLAYER TRAITS homepage module + impression + wiring;
+                        results-screen disputed-call prompt (fail-soft, hidden by default);
+                        stale analytics comment corrected
+  functions/api/event.js  v43 visitor_id/local_day tier removed (v40-first ladder);
+                        traits_session / traits_question / traits_vote allowlisted
+  functions/avocado.js  v40r2 Avocado v42.2 base + two Player Traits cards
+                        (funnel + ledger), schema-guarded, limiter-conformant;
+                        dashboard stamp v44
+  index.html            meta v44; retention-client.js loaded between analytics.js and
+                        sim-core.js; tokens 20260725-traits-v44 on changed files;
+                        privacy disclosure rewritten to the live v40r2 model plus the
+                        traits hash note; Player Traits in static links and footer nav
+  404.html              analytics token bump
+  faq/index.html        privacy answer rewritten; "no cookies" corrected to
+                        "no sign-in of any kind"; Player Traits FAQ entry; token bump
+  md/faq.md             same privacy rewrite + Player Traits entry
+  how-it-works/index.html   analytics token bump
+  what-is-bpm/index.html    analytics token bump
+  can-you-go-82-0/index.html analytics token bump
+  README-DEPLOY.txt     rewritten for v44
+  AGENT-HANDOFF.md      V44 section appended; header + load order updated
+
+REMOVED (deliberately absent)
+  migrations/0008_retention_identity.sql  the retired v43 experiment; never apply
+  ANALYTICS-V43-RETENTION.md              instructed applying the retired migration
+  PATCH-MANIFEST-V43.txt                  superseded
+
+UNTOUCHED (not in this patch; live repo versions remain canonical)
+  sim-core.js, challenges.js, daily-core.js, styles.css, logo.png,
+  functions/[id].js and functions/r/[id].js ship unchanged from v43,
+  _routes.json, all account-lane files
+
+DATABASE
+  Apply migrations/0010_traits_v1.sql once. Nothing else. Additive, idempotent.
+
+CACHE KEYS (index.html)
+  analytics.js, retention-client.js, app.js -> 20260725-traits-v44
+  styles.css, sim-core.js -> 20260724-retention-v43 (unchanged files, v43's keys kept)
+  challenges.js, daily-core.js -> unchanged from v43

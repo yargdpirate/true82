@@ -1,57 +1,130 @@
+TRUE 82 V44 — RETENTION MERGE + PLAYER TRAITS — CURRENT DEPLOY
+
+WHAT V44 IS:
+  The forward merge of two async branches, plus one new mode.
+  1. The v43 gameplay/frontend patch (ANY GIVEN NIGHT era code, info pages,
+     event vocabulary) is the base.
+  2. The deployed v40r2 retention layer (isolated retention_events_v1 +
+     retention_coverage_v1, 400-day first-party HttpOnly cookie identity,
+     Avocado v42.2) is preserved exactly as it runs in production. The v43
+     localStorage retention experiment is RETIRED UNSHIPPED: its migration
+     (0008_retention_identity.sql) is intentionally absent from this package
+     and must never be applied.
+  3. PLAYER TRAITS: community voting mode at /traits/ with its own D1 tables,
+     API, homepage module, results-screen prompt, and Avocado cards.
+  See ANALYTICS-V44-RETENTION-AND-TRAITS.md for the full contract.
+
+DEPLOY IN THIS ORDER:
+  1. Apply migrations/0010_traits_v1.sql ONCE to the production D1 DB
+     (Cloudflare console paste, same as always). It is additive and safe to
+     re-run; it creates five trait tables and seeds 5 draft traits, 27
+     questions, and the threshold rules. It touches no existing table.
+     v44.1: ALSO apply migrations/0011_traits_final_roster_v1.sql after it
+     (the owner's final eleven traits + anti-labels; additive, idempotent,
+     vote-preserving). If 0010 is already live, 0011 alone completes v44.1.
+     THESE ARE THE ONLY MIGRATIONS V44/V44.1 NEED. 0008_retention_events_v1 and
+     0009_retention_coverage_v1 are already live from the v40r2 deploy and
+     ship here only as repository truth.
+  2. Drag the CONTENTS of this folder to the repository root and let
+     Cloudflare Pages build the commit. DELETE migrations/
+     0008_retention_identity.sql from the repo if a copy exists there from
+     the v43 packaging: it belongs to the retired experiment.
+  3. Load the game and confirm the footer reads v44.
+  4. In the console run t82AnalyticsDebug() and confirm:
+     - build: "v44"
+     - retention.state: "enabled" on an ordinary U.S. browser
+     - retention.identitySource: "cookie" on a reload
+  5. Open /traits/, play five calls on a phone, confirm the ruling stamp,
+     the completion screen, and MAKE 5 MORE CALLS serving fresh questions.
+  6. Open /avocado?...&debug=1 and confirm: retention schema = yes, coverage
+     schema = yes, the two Player Traits cards render, and there is no
+     Dashboard query warning.
+  7. Finish a game and confirm the results screen shows the disputed-call
+     prompt once /api/traits has at least one question with 5+ votes (it
+     ships hidden and fail-soft until then).
+
+SAFETY:
+  - Migration 0010 is additive only and idempotent (IF NOT EXISTS +
+    INSERT OR IGNORE throughout).
+  - Rolling the website back needs no database rollback; the trait tables
+    are inert without the code.
+  - Every traits surface fails soft: a dead /api/traits leaves the game,
+    the results screen, and the homepage exactly as they were.
+  - /api/event now inserts on the v40 schema first (the v43 tier is gone),
+    so ordinary events stop attempting a doomed v43 insert per row.
+
+PRIVACY BOUNDARY (v44):
+  Ordinary product analytics remains anonymous and session-scoped. The
+  separate retention stream uses one random first-party TRUE 82 browser id
+  in a secure HttpOnly cookie with local-storage fallback, up to 400 days;
+  disabled for EEA/UK/Swiss traffic, unknown/Tor geolocation, and the
+  explicit site opt-out (t82RetentionOptOut() / t82RetentionOptIn()).
+  DNT/GPC are recorded as diagnostics and do not suppress strictly
+  first-party measurement. Player Traits votes are stored as anonymous
+  tallies keyed by a one-way purpose-scoped hash; the raw retention id
+  never enters the trait tables. The public disclosure in index.html,
+  the FAQ, and the Avocado privacy note all state this model; keep them
+  in sync with any future change.
+
+OFFLINE CHECKS (this build):
+  Syntax: node --check on every shipped client and Worker file: clean.
+  Harness (lives outside the repo, true82-devtools style):
+    node test-traits.js        38 checks: migration idempotence x2, seed
+                               integrity, session serving, pinning, vote /
+                               revote / duplicate, unsure exclusion,
+                               threshold transitions (qualifies, disputed,
+                               does not qualify), prompt selection, answered
+                               rotation, burst fence, cadence fence, hostile
+                               input, no-DB fail-soft.
+    node test-integration.js   42 checks: traits funnel ingestion lands
+                               first-try on schema v40, allowlist holds,
+                               Avocado renders traits + retention + coverage
+                               cards with no query warning behind DASH_KEY,
+                               full jsdom five-call walk against the real
+                               worker (stamps, completion, MAKE 5 MORE,
+                               question rotation, funnel events, standing
+                               rows), and the analytics<->retention hook
+                               contract (subscriber preferred, no monkey-
+                               patch, enriched run_id, no event leakage,
+                               debug surfaces retention state).
+  STILL OWED BEFORE PROMOTING TO MAIN: the legacy jsdom walk, analytics-
+  smoke, and real-Chromium browser-smoke lanes live outside this package.
+  Add the three new event names (traits_session, traits_question,
+  traits_vote) to the analytics-smoke allowlist and give browser-smoke a
+  /traits/ five-call path, then run all three lanes. A real iPhone Safari
+  pass on /traits/ is strongly recommended: the no-scroll voting layout is
+  the product.
+
+-------------------------------------------------------------------------------
+HISTORICAL DEPLOY NOTES FOLLOW
+-------------------------------------------------------------------------------
+
+TRUE 82 V43 RETENTION ANALYTICS — RETIRED BEFORE DEPLOY
+  v43's localStorage retention experiment was superseded by the v40r2
+  isolated backport, which the owner deployed to production directly. Its
+  migration 0008_retention_identity.sql was never applied and is not part
+  of this package. Do not apply it. The v43 gameplay and frontend work
+  carries forward inside v44.
+
+TRUE 82 V42.1 ANALYTICS PATCH NOTICE
+  - Avocado dashboard repair was v42.1 and required NO new D1 migration.
+  - Existing migrations 0006 and 0007 are still required only if they were
+    never applied.
+  - Use /avocado?...&debug=1 for query ids and SQL fingerprints.
+
+HISTORICAL V39 BASE DEPLOY NOTES (analytics schema origin):
+
 CURRENT AGENT HANDOFF:
   Read AGENT-HANDOFF.md before modifying this build. It documents the current
   UI hierarchy, Daily rules, engine invariants, and analytics privacy boundary.
 
 TRUE 82 v39 — full live site with THE DAILY and cookieless analytics.
-This is the entire public site. Nothing needs to be merged into another build.
-Duel/League/Weekly entry points remain hidden in the no-accounts live lane.
-
-FIRST V39 DEPLOY — DO THIS IN ORDER:
-  1. In the Cloudflare D1 console for the database bound to the site as DB,
-     run migrations/0006_analytics_v3.sql once. It is additive only.
-  2. Put the CONTENTS of this folder at the root of the deployment branch,
-     commit once, and let Cloudflare Pages build the commit.
-  3. Load the game and confirm the footer reads v39.
-  4. Open /avocado with the existing DASH_KEY query. The Live pulse card
-     should show fresh session_start, home_view, and data_ready rows with v39.
-  5. Play one short test run and confirm game_start, game_complete, and the
-     relevant share/result rows appear. Check the Build comparison card and
-     confirm there is no Dashboard query warning before relying on any rate.
-  6. Treat the new v39 cards as forward-only. Search detail, time-to-value,
-     abandonment detail, section reach, and share-rank history start now.
-
-ROLLBACK / SAFETY:
-  - The event endpoint fails soft to the older schema if the site deploy lands
-    before the migration. The game does not fail, but v39-only cards stay blank.
-  - The migration cannot be re-run as written because SQLite rejects duplicate
-    ADD COLUMN statements. Apply it once only.
-  - The migration is additive, so rolling the client back does not require a
-    database rollback.
-
-ANALYTICS PRIVACY BOUNDARY:
-  The analytics client creates no cookies, localStorage entry, sessionStorage
-  entry, fingerprint, advertising id, account id, IP hash, or durable browser
-  identifier. Visit and run ids are random and exist in page memory only.
-  The Daily already stores its official result/streak locally for game
-  functionality; v39 sends only coarse counts from that existing record.
-  See ANALYTICS-V39.md for the exact event coverage and limitations. This
-  technical design does not promise that every jurisdiction permits analytics
-  without a notice or consent flow; retain the added privacy disclosure.
-
-BEAT-MY-FIVE LINK:
-  Links build from the page's own origin, so they work on preview and live HTTPS
-  origins. They do not work from a local file URL.
-
-CRITICAL VERSION-COUPLED CHAIN:
-  analytics.js, app.js, index.html, functions/api/event.js,
-  functions/avocado.js, migrations/0006_analytics_v3.sql
-
-OFFLINE CHECKS:
-  Keep true82-devtools-v39 beside this folder and run:
-    node analytics-smoke.js
-    python browser-smoke.py
-    node audit.js 100 pool2
-  browser-smoke.py requires Python Playwright plus Chromium and drives the real
-  UI through search, abandonment, completion, share, outbound, and Daily paths.
-  The older jsdom full UI walk additionally needs npm install in the devtools
-  folder.
+  First-deploy instructions, rollback law, and the beat-my-five link note
+  are preserved in the repository history; the operative rules that survive:
+  - The event endpoint fails soft to older schemas if a site deploy lands
+    before a migration. The game does not fail.
+  - Additive migrations cannot be re-run as written when they use ADD
+    COLUMN; the retention and traits migrations use IF NOT EXISTS and are
+    safe to re-run.
+  - The critical version-coupled chain is analytics.js, app.js, index.html,
+    functions/api/event.js, functions/avocado.js, and the migrations.

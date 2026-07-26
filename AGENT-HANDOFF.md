@@ -1,10 +1,10 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** this folder, packaged as `true82-full-state-v39-analytics.zip`.
+**Current source of truth:** this folder, packaged as `true82-v44-merged-traits.zip`.
 
-**Date:** 2026-07-21
-**Current build label:** `v39` / cache key `20260721-analytics-v39`
-**Most recent functional change:** privacy-maximal first-party analytics v3 and the expanded `/avocado` dashboard.
+**Date:** 2026-07-25
+**Current build label:** `v44` / cache key `20260725-traits-v44`
+**Most recent functional change:** the v43 x v40r2 retention merge and the PLAYER TRAITS community voting mode (see the V44 section at the end of this file).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
@@ -21,12 +21,13 @@ This archive is already flattened and deployable. Its contents belong directly a
 Critical browser load order in `index.html`:
 
 1. `analytics.js`
-2. `sim-core.js`
-3. `challenges.js`
-4. `daily-core.js`
-5. `app.js`
+2. `retention-client.js`
+3. `sim-core.js`
+4. `challenges.js`
+5. `daily-core.js`
+6. `app.js`
 
-The Daily depends on `challenges.js` loading before `daily-core.js`, and both loading before `app.js`.
+The Daily depends on `challenges.js` loading before `daily-core.js`, and both loading before `app.js`. The retention client must load right after `analytics.js` so its subscriber is attached before any gameplay script can emit.
 
 ---
 
@@ -962,7 +963,7 @@ Client/build: analytics.js and app.js identify as v39; index.html carries the
 v39 cache keys and build meta. Migration: migrations/0006_analytics_v3.sql.
 Deploy the migration once, then the entire site atomically.
 
-PRIVACY LAW OF THIS BUILD:
+HISTORICAL V39 PRIVACY LAW (SUPERSEDED BY THE EXPLICIT V43 OWNER DECISION BELOW):
 - Analytics may not create/read cookies, localStorage, sessionStorage,
   fingerprints, ad ids, account ids, raw IPs, IP hashes, or a durable browser
   id. Visit and run ids are random in-memory values only.
@@ -971,8 +972,9 @@ PRIVACY LAW OF THIS BUILD:
   nonces, query text, or a hidden stable identifier.
 - Referrers are origin-only. Unknown local paths bucket as 404_or_other. Full
   outbound URLs, full User-Agent strings, and raw client IPs do not enter D1.
-- Do not “improve retention” later by quietly persisting the analytics sid. An
-  exact cross-day cohort would be a different owner/privacy decision.
+- Do not persist the visit-level analytics sid. V43 implements the later owner
+  decision with a separate random retention id, regional gating, rotation, and
+  Worker-side enforcement; those safeguards must not be removed.
 
 EVENT CONTRACT:
 - functions/api/event.js owns the allowlist and sanitization. Every new client
@@ -1176,3 +1178,121 @@ browser-smoke 26.
   Loss commentary now carries the real date: "The zero died in Denver,
   Jan 14." Walk pins the squares, their day numbers, and their win/loss
   classes live in the DOM.
+
+
+### V43 — true same-browser retention analytics (2026-07-24)
+
+Migration: `migrations/0008_retention_identity.sql`. Critical chain: `analytics.js`,
+`functions/api/identity.js`, `functions/api/event.js`, `functions/avocado.js`,
+`index.html`, and every dynamic/static page that loads analytics.js.
+
+- Eligible browsers receive a random 180-day first-party localStorage id.
+- Never use cookies, accounts, fingerprinting, raw/IP-derived ids, or third-party tags.
+- Identity is disabled for EEA/UK/Swiss traffic, unknown geolocation, DNT, and GPC.
+- The ingestion Worker must continue stripping visitor_id independently of the client.
+- `local_day` is the browser calendar date and is required for exact D1/D3/D7 metrics.
+- Retention cohorts begin at the first tracked `game_start`, not the first page view.
+- D1 means another `game_start` on the next local calendar day. Right-censor new
+  cohorts; never count a cohort as failed before it matures.
+- Cohort returns intentionally span builds. The Avocado date filter selects the
+  first-play cohort; the build filter must not erase returns after a deployment.
+- `return_profile` is now entry-time only. Do not re-add the post-Daily-finish row,
+  which changes yesterday into same-day history and corrupts that legacy proxy.
+- See `ANALYTICS-V43-RETENTION.md` for deployment, rollback, and exact metrics.
+
+---
+
+## V44 SESSION HANDOFF (2026-07-25): the retention merge + PLAYER TRAITS
+
+Read ANALYTICS-V44-RETENTION-AND-TRAITS.md for the full analytics and
+traits contract, PATCH-MANIFEST-V44.txt for the file inventory, and
+TRAITS-OWNER-DECISIONS.md for what only the owner decides. This section is
+orientation plus the build record.
+
+### What v44 is
+
+Two async branches merged, one new mode added:
+
+- **Base: the v43 patch.** All gameplay, UI, info-page, and event-vocabulary
+  work carries forward intact.
+- **Preserved: the deployed v40r2 retention layer.** The 400-day HttpOnly
+  cookie identity (`/api/identity`), the isolated retention stream
+  (`/api/retention`, tables `retention_events_v1` + `retention_coverage_v1`,
+  both ALREADY APPLIED in production), the standalone retention report, and
+  Avocado v42.2. The v43 localStorage retention experiment is retired
+  unshipped; its migration `0008_retention_identity.sql` is intentionally
+  absent and must never be applied.
+- **New: PLAYER TRAITS** at `/traits/`. Community voting on player-season
+  trait questions; standing revisable votes deduped by a purpose-scoped
+  hash of the retention id (session-hash fallback where the cookie is
+  absent); consensus settled on write against configurable thresholds;
+  homepage module and results-screen prompt as doorways; two Avocado cards.
+  Engine effects are deliberately deferred (owner decision, see the
+  decisions file).
+
+The one structural upgrade to the analytics core: `analytics.js` now
+exposes `t82AnalyticsSubscribe(fn)`, and `retention-client.js` uses it
+instead of monkey-patching `t82track` (the wrapper survives only as a
+fallback for a stale-cached analytics.js). Subscribers receive final
+enriched props inside try/catch; a broken subscriber cannot damage the
+ordinary stream.
+
+### Deploy facts an agent must not re-derive wrong
+
+- The ONLY migration v44 introduces is `migrations/0010_traits_v1.sql`
+  (additive, idempotent, seeds 5 draft traits + 27 questions + rules).
+  0008/0009 in this package are repository truth for already-applied
+  production state.
+- Cache keys: `analytics.js`, `retention-client.js`, `app.js` ride
+  `20260725-traits-v44`; unchanged files keep their v43 keys on purpose.
+- The three event names `traits_session`, `traits_question`, `traits_vote`
+  are on the `/api/event` allowlist and ride existing v40 columns; no
+  events-table migration exists or is needed. They still need adding to
+  the OUT-OF-REPO analytics-smoke allowlist, and browser-smoke needs a
+  /traits/ five-call path, before the next full lane run.
+
+### Validation on record for this build
+
+`node --check` clean on every shipped client and Worker file. Two
+independent harnesses, built separately during the session, both green on
+the final tree: a 4-suite set (102 checks: traits API end to end,
+full-page jsdom five-call walk, Avocado render with and without the
+traits schema, analytics-retention hook contract) and a 2-file set
+(80 checks: migration idempotence, endpoint behavior incl. both abuse
+fences, v40-first event ingestion for the traits names, Avocado cards
+behind DASH_KEY, page walk, hook contract). Out-of-repo lanes and a real
+iPhone Safari pass on the /traits/ no-scroll layout are still owed before
+promoting to main.
+
+### Build-integrity note for the record
+
+This build was assembled with TWO agent processes writing the same
+workspace concurrently. During the session, files changed that the
+packaging agent did not change: a stale identity comment in `app.js` and
+a stale 180-day line in `retention-dashboard.js` were corrected by the
+other process (both corrections verified accurate and then re-expressed
+by the packaging agent), the three v44 docs and an independent test
+harness appeared, and one superseded doc was removed. Every executable
+file in this package was byte-verified against the packaging agent's
+transcript-recorded edits, and both harnesses were re-run on the exact
+packaged tree. Nothing ships unreviewed. If future builds run parallel
+agents on one workspace, split lanes explicitly (code vs docs vs tests)
+so provenance never needs forensics again.
+
+
+### v44.1 (2026-07-26): final trait roster + anti-labels
+
+Owner decided the final eleven core traits; migration 0011 ships them,
+retires three 0010 drafts (successors: iso-defender, playmaker,
+team-defender), and re-homes their marquee questions (the 2008 Kobe
+question now lives at kobe-bryant-2008-iso-defender). does_not_qualify now
+renders as the ANTI-LABEL: the trait tag with a drawn cross-out, aria
+NOT <TAG>. Data only plus one page: no BUILD_V, token, or Worker change;
+the vote path already refused non-active questions and the pin path
+already degraded, so 0011 needed zero code.
+
+Both in-workspace harnesses were updated to the post-0011 truth (traits
+14/11 core/3 retired, 96 questions, retired-question behavior, anti-label
+stamp assertions) and are green: 50+36+13+16 and 40+42. Note to the
+parallel agent: your test-traits.js expectations and three question ids
+were updated for 0011; diff against your copy before extending it.

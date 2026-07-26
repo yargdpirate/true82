@@ -34,10 +34,13 @@
   <p>TRUE 82 is a free browser-based NBA draft game. Each round deals a random franchise-and-era ticket; you draft five players (two guards, two forwards, one center), and a BPM-based season engine projects your lineup&#x27;s 82-game record. The goal is a perfect 82-0 season.</p>
 
   <h2>Is TRUE 82 free?</h2>
-  <p>Yes. TRUE 82 is completely free to play in any modern browser, with no account, no download, no ads, and no cookies. There&#x27;s an optional donate button if you enjoy it, and that&#x27;s the extent of the commerce.</p>
+  <p>Yes. TRUE 82 is completely free to play in any modern browser, with no account, no download, no ads, and no sign-in of any kind. There&#x27;s an optional donate button if you enjoy it, and that&#x27;s the extent of the commerce.</p>
 
   <h2>Does TRUE 82 track me?</h2>
-  <p>TRUE 82 uses first-party, cookieless usage analytics to see where visits start, where games are abandoned, and whether features such as sharing work. The analytics system uses random visit and game identifiers that disappear on reload or tab close; it does not create an analytics cookie, account, fingerprint, IP hash, or durable browser identifier. The Daily keeps your official result and streak on your own device so that feature works, and the site reports only coarse counts from that local history.</p>
+  <p>TRUE 82 uses first-party analytics to see where visits start, where games are abandoned, whether sharing works, and whether players return on later days. It does not use an account, fingerprint, IP hash, advertising identifier, or third-party tracker, and nothing is sold or shared for targeted advertising. For retention measurement, TRUE 82 assigns one random browser identifier stored in a secure first-party cookie with a local-storage fallback for up to 400 days; it is disabled for EEA, UK, and Swiss traffic, for unknown locations, and after a TRUE 82-specific opt-out (run t82RetentionOptOut() in the browser console). Do Not Track and Global Privacy Control are recorded as diagnostics for this strictly first-party measurement. Clearing site data or using another browser or device starts a new anonymous identity. Player Traits votes are stored as anonymous tallies keyed by a one-way hash, never by the raw identifier. The Daily separately keeps your official result and streak on your device so that feature works.</p>
+
+  <h2>What is Player Traits?</h2>
+  <p>Player Traits is a fast community voting mode at <a href="/traits/?src=faq">true82.net/traits</a>. Each call puts one version of one player against one plain-English trait, like whether 2007-08 Kobe Bryant qualifies as a Wing Defender, and you answer yes, no, or not sure. Once enough calls land, the community&#x27;s ruling stands, and those rulings feed TRUE 82&#x27;s lineup-fit scoring. Rulings never change a player&#x27;s base statistical value; they shape how well a five fits together.</p>
 
   <h2>How do you play TRUE 82?</h2>
   <p>Draft a five-man roster with two guards, two forwards, and a center. Each of five rounds gives you a random NBA team from a random decade; pick a player who played for that team in that era. When the lineup is full, the engine simulates the season and hands you a projected record.</p>
@@ -77,6 +80,6 @@
   <p class="games-count mono">Contact: <a href="mailto:true82mailbox@gmail.com">true82mailbox@gmail.com</a></p>
   <p class="fineprint">TRUE 82 is an independent, non-commercial fan project, not affiliated with the NBA, any team, or Sports Reference LLC. Full legal disclaimer on the <a href="/?src=faq">game page</a>.</p>
 </footer>
-<script src="/analytics.js?v=20260724-reel2-v42" defer></script>
+<script src="/analytics.js?v=20260725-traits-v44" defer></script>
 </body>
 </html>

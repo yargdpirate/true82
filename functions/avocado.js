@@ -1,8 +1,8 @@
 // GET /avocado — private, no-store analytics viewer for TRUE 82.
 // Reads anonymous first-party event aggregates from D1. DASH_KEY remains the gate.
-// v39 deliberately has no user/account table: visit ids and run ids are random,
-// in-memory client values that disappear on reload. Cross-day behavior is shown only
-// through the coarse Daily local-history profile already needed by the game itself.
+// Ordinary event analytics remains session-scoped. The isolated retention stream
+// uses a random first-party browser id so Avocado can measure forward-only,
+// same-browser day-level cohorts without accounts, fingerprints, or third parties.
 
 const TRACKED_MODES = ["classic", "pro", "cap"];
 const ALL_MODES = ["classic", "pro", "cap", "kaman"];
@@ -29,31 +29,38 @@ export async function onRequest(context) {
   }
 
   const queryErrors = [];
+  let querySeq = 0;
   // Cloudflare D1 permits only a small number of simultaneous statements per
   // Worker invocation. Avocado has many independent cards, so cap the fan-out
   // rather than letting Promise.all open every query at once.
   const withDbSlot = queryLimiter(5);
-  const q = (sql, binds = []) => withDbSlot(async () => {
+  const q = (sql, binds = [], label = "") => {
+    const queryId = label || `q${String(++querySeq).padStart(2, "0")}`;
+    return withDbSlot(async () => {
     try {
       let stmt = env.DB.prepare(sql);
       if (binds.length) stmt = stmt.bind(...binds);
       const r = await stmt.all();
       return r.results || [];
     } catch (e) {
-      queryErrors.push(String(e && e.message || e).slice(0, 220));
+      queryErrors.push(queryFailure(queryId, e, sql));
       return [];
     }
-  });
-  const one = (sql, binds = []) => withDbSlot(async () => {
+    });
+  };
+  const one = (sql, binds = [], label = "") => {
+    const queryId = label || `q${String(++querySeq).padStart(2, "0")}`;
+    return withDbSlot(async () => {
     try {
       let stmt = env.DB.prepare(sql);
       if (binds.length) stmt = stmt.bind(...binds);
       return await stmt.first();
     } catch (e) {
-      queryErrors.push(String(e && e.message || e).slice(0, 220));
+      queryErrors.push(queryFailure(queryId, e, sql));
       return null;
     }
-  });
+    });
+  };
 
   const schema = await q(`PRAGMA table_info(events)`);
   const cols = new Set(schema.map((r) => r.name));
@@ -63,6 +70,12 @@ export async function onRequest(context) {
   const hasV40 = V40_REQUIRED.every((c) => cols.has(c));
   const recapSchema = await q(`PRAGMA table_info(recaps)`);
   const hasRecaps = recapSchema.length > 0;
+  const retentionSchema = await q(`PRAGMA table_info(retention_events_v1)`, [], "retention_schema");
+  const coverageSchema = await q(`PRAGMA table_info(retention_coverage_v1)`, [], "retention_coverage_schema");
+  const hasRetention = retentionSchema.length > 0;
+  const hasRetentionCoverage = coverageSchema.length > 0;
+  const traitsSchema = await q(`PRAGMA table_info(trait_votes_v1)`, [], "traits_schema");
+  const hasTraits = traitsSchema.length > 0;
 
   const scope = dateScope(url);
   const dateW = scope.all ? "1=1" : "ts>=? AND ts<?";
@@ -214,7 +227,10 @@ export async function onRequest(context) {
            MAX(CASE WHEN name='game_start' THEN 1 ELSE 0 END) started,
            MAX(CASE WHEN name='game_complete' THEN 1 ELSE 0 END) finished,
            MAX(CASE WHEN name='share_click' THEN 1 ELSE 0 END) intended,
-           MAX(CASE WHEN name='share' THEN 1 ELSE 0 END) shared
+           MAX(CASE
+             WHEN name='share_result' AND outcome='success' THEN 1
+             WHEN (build IS NULL OR build='') AND name='share' THEN 1
+             ELSE 0 END) shared
          FROM scoped GROUP BY sid
        )
        SELECT sessions.entry bucket, COUNT(*) visits,
@@ -288,7 +304,13 @@ export async function onRequest(context) {
            AND COALESCE(practice,CASE WHEN variant LIKE 'daily-practice:%' THEN 1 ELSE 0 END)=0
        ),
        intent AS (SELECT DISTINCT sid FROM scoped WHERE name='share_click' AND variant LIKE 'daily%'),
-       shared AS (SELECT DISTINCT sid FROM scoped WHERE name='share' AND variant LIKE 'daily%')
+       shared AS (
+         SELECT DISTINCT sid FROM scoped
+         WHERE variant LIKE 'daily%' AND (
+           (name='share_result' AND outcome='success') OR
+           ((build IS NULL OR build='') AND name='share')
+         )
+       )
        SELECT
          (SELECT COUNT(*) FROM scoped WHERE name='daily_gate_view') gate_events,
          (SELECT COUNT(*) FROM gate) gate_people,
@@ -308,7 +330,10 @@ export async function onRequest(context) {
          (SELECT COUNT(*) FROM scoped WHERE name='share_click' AND variant LIKE 'daily%') intent_events,
          (SELECT COUNT(*) FROM intent) intent_people,
          (SELECT COUNT(*) FROM intent i JOIN gate g USING(sid)) matched_intent_people,
-         (SELECT COUNT(*) FROM scoped WHERE name='share' AND variant LIKE 'daily%') share_events,
+         (SELECT COUNT(*) FROM scoped WHERE variant LIKE 'daily%' AND (
+           (name='share_result' AND outcome='success') OR
+           ((build IS NULL OR build='') AND name='share')
+         )) share_events,
          (SELECT COUNT(*) FROM shared) share_people,
          (SELECT COUNT(*) FROM shared s JOIN gate g USING(sid)) matched_share_people`, B),
     q(`WITH scoped AS (SELECT * FROM events WHERE ${W}), steps AS (
@@ -324,7 +349,8 @@ export async function onRequest(context) {
            WHEN name='results_view' AND variant LIKE 'daily-link:%' AND outcome='tie' THEN 'tied_sender'
            WHEN name='results_view' AND variant LIKE 'daily-link:%' AND outcome='lost' THEN 'lost_to_sender'
            WHEN name='share_click' AND variant LIKE 'daily-link:%' THEN 'reshare_intent'
-           WHEN name='share' AND variant LIKE 'daily-link:%' THEN 'reshared'
+           WHEN name='share_result' AND outcome='success' AND variant LIKE 'daily-link:%' THEN 'reshared'
+           WHEN (build IS NULL OR build='') AND name='share' AND variant LIKE 'daily-link:%' THEN 'reshared'
            ELSE NULL END step
        FROM scoped WHERE (name='referral_open' AND action='daily_link') OR variant LIKE 'daily-link:%'
        )
@@ -354,18 +380,35 @@ export async function onRequest(context) {
          COUNT(*) c,COUNT(DISTINCT run_id) runs,COUNT(DISTINCT sid) people
        FROM events WHERE ${W} AND name IN ('results_view','result_section_view','replay','percentile_result','percentile_error')
        GROUP BY name,action,outcome ORDER BY c DESC`, B),
-    q(`SELECT name,COALESCE(NULLIF(outcome,''),'unknown') outcome,COALESCE(NULLIF(action,''),'unknown') action,
-         COALESCE(NULLIF(surface,''),'unknown') surface,COALESCE(NULLIF(device,''),'unknown') device,
-         COALESCE(NULLIF(browser,''),'unknown') browser,COALESCE(NULLIF(mode,''),'unknown') mode,
-         COALESCE(wins,-1) wins,net,value percentile,
-         CASE WHEN variant LIKE 'daily-link:%' THEN 'daily-link'
-              WHEN variant LIKE 'daily-practice:%' THEN 'daily-practice'
-              WHEN variant LIKE 'daily%' THEN 'daily'
-              WHEN variant LIKE 'recap:%' THEN 'tribune-referral'
-              ELSE 'standalone' END path,
+    q(`WITH share_events AS (
+         SELECT CASE
+             WHEN name='share_click' THEN 'share_click'
+             WHEN name='share_result' AND outcome='success' THEN 'share_complete'
+             WHEN (build IS NULL OR build='') AND name='share' THEN 'share_complete'
+             WHEN name='share_result' THEN 'share_result'
+             ELSE name END event_name,
+           COALESCE(NULLIF(outcome,''),'unknown') outcome,
+           COALESCE(NULLIF(action,''),'unknown') action,
+           COALESCE(NULLIF(surface,''),'unknown') surface,
+           COALESCE(NULLIF(device,''),'unknown') device,
+           COALESCE(NULLIF(browser,''),'unknown') browser,
+           COALESCE(NULLIF(mode,''),'unknown') mode,
+           COALESCE(wins,-1) wins,net,value percentile,sid,
+           CASE WHEN variant LIKE 'daily-link:%' THEN 'daily-link'
+                WHEN variant LIKE 'daily-practice:%' THEN 'daily-practice'
+                WHEN variant LIKE 'daily%' THEN 'daily'
+                WHEN variant LIKE 'recap:%' THEN 'tribune-referral'
+                ELSE 'standalone' END path
+         FROM events WHERE ${W} AND (
+           name='share_click' OR name='share_result' OR
+           ((build IS NULL OR build='') AND name='share')
+         )
+       )
+       SELECT event_name name,outcome,action,surface,device,browser,mode,wins,net,percentile,path,
          COUNT(*) c,COUNT(DISTINCT sid) people
-       FROM events WHERE ${W} AND name IN ('share_click','share','share_result','share_cancel','share_error')
-       GROUP BY name,outcome,action,surface,device,browser,mode,wins,net,percentile,path ORDER BY c DESC`, B),
+       FROM share_events
+       GROUP BY event_name,outcome,action,surface,device,browser,mode,wins,net,percentile,path
+       ORDER BY c DESC`, B),
     q(`SELECT name,COALESCE(NULLIF(action,''),'unknown') action,COALESCE(NULLIF(outcome,''),'unknown') outcome,
          COALESCE(NULLIF(variant,''),'unknown') variant,COALESCE(NULLIF(segment,''),'unknown') segment,
          COUNT(*) c,ROUND(AVG(duration),0) avg_ms
@@ -376,13 +419,15 @@ export async function onRequest(context) {
          COUNT(*) c,COUNT(DISTINCT sid) people
        FROM events WHERE ${W} AND name='link_out'
        GROUP BY host,surface,action,detail ORDER BY c DESC LIMIT 30`, B),
-    q(`SELECT 'device' kind,COALESCE(NULLIF(device,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY device
-       UNION ALL SELECT 'browser',COALESCE(NULLIF(browser,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY browser
-       UNION ALL SELECT 'os',COALESCE(NULLIF(os,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY os
-       UNION ALL SELECT 'country',COALESCE(NULLIF(country,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY country
-       UNION ALL SELECT 'connection',COALESCE(NULLIF(connection,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY connection
-       UNION ALL SELECT 'nav_type',COALESCE(NULLIF(nav_type,''),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY nav_type
-       UNION ALL SELECT 'local_hour',COALESCE(CAST(local_hour AS TEXT),'unknown'),COUNT(*) FROM events WHERE ${W} AND name='session_start' GROUP BY local_hour`, B.concat(B, B, B, B, B, B)),
+    Promise.all([
+      q(`SELECT 'device' kind,COALESCE(NULLIF(device,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY device`, B, "environment_device"),
+      q(`SELECT 'browser' kind,COALESCE(NULLIF(browser,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY browser`, B, "environment_browser"),
+      q(`SELECT 'os' kind,COALESCE(NULLIF(os,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY os`, B, "environment_os"),
+      q(`SELECT 'country' kind,COALESCE(NULLIF(country,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY country`, B, "environment_country"),
+      q(`SELECT 'connection' kind,COALESCE(NULLIF(connection,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY connection`, B, "environment_connection"),
+      q(`SELECT 'nav_type' kind,COALESCE(NULLIF(nav_type,''),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY nav_type`, B, "environment_navigation"),
+      q(`SELECT 'local_hour' kind,COALESCE(CAST(local_hour AS TEXT),'unknown') v,COUNT(*) c FROM events WHERE ${W} AND name='session_start' GROUP BY local_hour`, B, "environment_local_hour")
+    ]).then((parts) => parts.flat()),
     one(`SELECT COUNT(*) c,
          ROUND(AVG(ttfb_ms),0) ttfb,ROUND(AVG(lcp_ms),0) lcp,ROUND(AVG(inp_ms),0) inp,
          ROUND(AVG(cls),3) cls,ROUND(AVG(load_ms),0) load_ms,ROUND(AVG(duration),0) dcl
@@ -457,7 +502,7 @@ export async function onRequest(context) {
          SUM(CASE WHEN name='share_click' THEN 1 ELSE 0 END) intents,
          SUM(CASE
            WHEN COALESCE(NULLIF(build,''),'')='' AND name='share' THEN 1
-           WHEN COALESCE(NULLIF(build,''),'')<>'' AND name='share_result' AND outcome='success' THEN 1
+           WHEN name='share_result' AND outcome='success' THEN 1
            ELSE 0 END) shares,
          SUM(CASE WHEN name IN ('client_error','data_error','share_error','percentile_error') THEN 1 ELSE 0 END) errors,
          MAX(ts) last_seen
@@ -509,7 +554,184 @@ export async function onRequest(context) {
        ORDER BY ts DESC LIMIT 10000`, B)
   ]) : Promise.resolve(Array(32).fill([]));
 
-  const [core, v2, v3] = await Promise.all([corePromise, v2Promise, v3Promise]);
+  const retentionStartDay = scope.all ? "0000-01-01" : new Date(scope.start).toISOString().slice(0, 10);
+  const retentionEndDay = scope.all ? "9999-12-31" : new Date(scope.end).toISOString().slice(0, 10);
+  const retentionPromise = hasRetention ? (async () => {
+    const maxDayRow = await one(`SELECT MAX(local_day) max_day, COUNT(*) events
+      FROM retention_events_v1 WHERE local_day>=? AND local_day<?`, [retentionStartDay, retentionEndDay], "retention_max_day") || {};
+    const dataDay = maxDayRow.max_day || new Date().toISOString().slice(0, 10);
+    return Promise.all([
+      Promise.resolve(maxDayRow),
+      one(`WITH firsts AS (
+          SELECT visitor_id, MIN(local_day) first_day
+          FROM retention_events_v1 WHERE event_name='game_start' GROUP BY visitor_id
+        ), scoped AS (
+          SELECT * FROM firsts WHERE first_day>=? AND first_day<?
+        ), flags AS (
+          SELECT s.visitor_id,s.first_day,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day=date(s.first_day,'+1 day')) d1_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_complete' AND e.local_day=date(s.first_day,'+1 day')) d1_finish,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day=date(s.first_day,'+3 day')) d3_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day=date(s.first_day,'+7 day')) d7_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day>s.first_day AND e.local_day<=date(s.first_day,'+7 day')) w1_start,
+            EXISTS(SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=s.visitor_id AND e.event_name='game_start' AND e.local_day>s.first_day AND e.local_day<=date(s.first_day,'+30 day')) m1_start
+          FROM scoped s
+        )
+        SELECT COUNT(*) new_players,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) d1_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN d1_start ELSE 0 END) d1_started,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN d1_finish ELSE 0 END) d1_finished,
+          SUM(CASE WHEN first_day<=date(?,'-3 day') THEN 1 ELSE 0 END) d3_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-3 day') THEN d3_start ELSE 0 END) d3_started,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN 1 ELSE 0 END) d7_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN d7_start ELSE 0 END) d7_started,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN w1_start ELSE 0 END) w1_started,
+          SUM(CASE WHEN first_day<=date(?,'-30 day') THEN 1 ELSE 0 END) m1_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-30 day') THEN m1_start ELSE 0 END) m1_started
+        FROM flags`, [retentionStartDay,retentionEndDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay,dataDay], "retention_summary"),
+      q(`WITH firsts AS (
+          SELECT visitor_id,MIN(local_day) first_day FROM retention_events_v1
+          WHERE event_name='game_start' GROUP BY visitor_id
+        )
+        SELECT f.first_day,COUNT(*) new_players,
+          SUM(CASE WHEN f.first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) d1_eligible,
+          SUM(CASE WHEN f.first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=f.visitor_id AND e.event_name='game_start' AND e.local_day=date(f.first_day,'+1 day')) THEN 1 ELSE 0 END) d1_started,
+          SUM(CASE WHEN f.first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=f.visitor_id AND e.event_name='game_complete' AND e.local_day=date(f.first_day,'+1 day')) THEN 1 ELSE 0 END) d1_finished,
+          SUM(CASE WHEN f.first_day<=date(?,'-7 day') THEN 1 ELSE 0 END) d7_eligible,
+          SUM(CASE WHEN f.first_day<=date(?,'-7 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=f.visitor_id AND e.event_name='game_start' AND e.local_day=date(f.first_day,'+7 day')) THEN 1 ELSE 0 END) d7_started
+        FROM firsts f WHERE f.first_day>=? AND f.first_day<?
+        GROUP BY f.first_day ORDER BY f.first_day DESC LIMIT 31`, [dataDay,dataDay,dataDay,dataDay,dataDay,retentionStartDay,retentionEndDay], "retention_cohorts"),
+      q(`WITH ranked AS (
+          SELECT visitor_id,local_day first_day,COALESCE(mode,'unknown') first_mode,
+            ROW_NUMBER() OVER (PARTITION BY visitor_id ORDER BY ts,id) rn
+          FROM retention_events_v1 WHERE event_name='game_start'
+        ), firsts AS (
+          SELECT visitor_id,first_day,first_mode FROM ranked
+          WHERE rn=1 AND first_day>=? AND first_day<?
+        )
+        SELECT first_mode,COUNT(*) new_players,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) eligible,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=firsts.visitor_id AND e.event_name='game_start' AND e.local_day=date(firsts.first_day,'+1 day')) THEN 1 ELSE 0 END) returned,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') THEN 1 ELSE 0 END) w1_eligible,
+          SUM(CASE WHEN first_day<=date(?,'-7 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=firsts.visitor_id AND e.event_name='game_start' AND e.local_day>firsts.first_day AND e.local_day<=date(firsts.first_day,'+7 day')) THEN 1 ELSE 0 END) w1_returned
+        FROM firsts GROUP BY first_mode ORDER BY new_players DESC`, [retentionStartDay,retentionEndDay,dataDay,dataDay,dataDay,dataDay], "retention_by_mode"),
+      q(`WITH ranked AS (
+          SELECT visitor_id,local_day first_day,COALESCE(NULLIF(entry,''),'unknown') first_entry,
+            ROW_NUMBER() OVER (PARTITION BY visitor_id ORDER BY ts,id) rn
+          FROM retention_events_v1 WHERE event_name='game_start'
+        ), firsts AS (
+          SELECT visitor_id,first_day,first_entry FROM ranked
+          WHERE rn=1 AND first_day>=? AND first_day<?
+        )
+        SELECT first_entry,COUNT(*) new_players,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') THEN 1 ELSE 0 END) eligible,
+          SUM(CASE WHEN first_day<=date(?,'-1 day') AND EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=firsts.visitor_id AND e.event_name='game_start' AND e.local_day=date(firsts.first_day,'+1 day')) THEN 1 ELSE 0 END) returned
+        FROM firsts GROUP BY first_entry ORDER BY new_players DESC LIMIT 12`, [retentionStartDay,retentionEndDay,dataDay,dataDay], "retention_by_entry"),
+      q(`WITH days AS (
+          SELECT visitor_id,COUNT(DISTINCT local_day) active_days
+          FROM retention_events_v1 WHERE event_name='game_start' GROUP BY visitor_id
+        ), scoped AS (
+          SELECT d.* FROM days d WHERE EXISTS(
+            SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=d.visitor_id AND e.event_name='game_start' AND e.local_day>=? AND e.local_day<?)
+        )
+        SELECT CASE WHEN active_days>=8 THEN '8+' ELSE CAST(active_days AS TEXT) END bucket,COUNT(*) players
+        FROM scoped GROUP BY CASE WHEN active_days>=8 THEN '8+' ELSE CAST(active_days AS TEXT) END
+        ORDER BY CASE bucket WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4 WHEN '5' THEN 5 WHEN '6' THEN 6 WHEN '7' THEN 7 ELSE 8 END`, [retentionStartDay,retentionEndDay], "retention_active_days"),
+      q(`WITH days AS (
+          SELECT DISTINCT visitor_id,local_day FROM retention_events_v1 WHERE event_name='game_start'
+        ), numbered AS (
+          SELECT visitor_id,local_day,julianday(local_day)-ROW_NUMBER() OVER (PARTITION BY visitor_id ORDER BY local_day) grp FROM days
+        ), runs AS (
+          SELECT visitor_id,COUNT(*) streak FROM numbered GROUP BY visitor_id,grp
+        ), best AS (
+          SELECT visitor_id,MAX(streak) best_streak FROM runs GROUP BY visitor_id
+        )
+        SELECT CASE WHEN best_streak=1 THEN '1 day' WHEN best_streak=2 THEN '2 days' WHEN best_streak=3 THEN '3 days'
+          WHEN best_streak BETWEEN 4 AND 6 THEN '4–6 days' ELSE '7+ days' END bucket,COUNT(*) players,MIN(best_streak) sort_key
+        FROM best WHERE EXISTS(
+          SELECT 1 FROM retention_events_v1 e WHERE e.visitor_id=best.visitor_id AND e.event_name='game_start' AND e.local_day>=? AND e.local_day<?)
+        GROUP BY bucket ORDER BY sort_key`, [retentionStartDay,retentionEndDay], "retention_streaks"),
+      q(`WITH firsts AS (
+          SELECT visitor_id,MIN(local_day) first_day FROM retention_events_v1 WHERE event_name='game_start' GROUP BY visitor_id
+        ), activity AS (
+          SELECT DISTINCT visitor_id,local_day FROM retention_events_v1
+          WHERE event_name='game_start' AND local_day>=? AND local_day<?
+        )
+        SELECT a.local_day,
+          SUM(CASE WHEN a.local_day=f.first_day THEN 1 ELSE 0 END) new_players,
+          SUM(CASE WHEN a.local_day>f.first_day THEN 1 ELSE 0 END) returning_players,
+          COUNT(*) active_players
+        FROM activity a JOIN firsts f USING(visitor_id)
+        GROUP BY a.local_day ORDER BY a.local_day DESC LIMIT 31`, [retentionStartDay,retentionEndDay], "retention_daily_mix")
+    ]);
+  })() : Promise.resolve([{},null,[],[],[],[],[],[]]);
+
+  const traitsPromise = Promise.all([
+    q(`SELECT COALESCE(NULLIF(action,''),'unknown') action,
+         COALESCE(NULLIF(source,''),'unknown') source,
+         COUNT(*) c, COUNT(DISTINCT sid) visits
+       FROM events WHERE ${W} AND name='traits_session'
+       GROUP BY action, source ORDER BY c DESC`, B, "traits_sessions"),
+    one(`SELECT COUNT(*) votes,
+         SUM(CASE WHEN outcome='counted' THEN 1 ELSE 0 END) counted,
+         SUM(CASE WHEN outcome='changed' THEN 1 ELSE 0 END) changed,
+         SUM(CASE WHEN outcome='error' THEN 1 ELSE 0 END) errors,
+         COUNT(DISTINCT sid) voters,
+         AVG(CASE WHEN value BETWEEN 0 AND 120000 THEN value END) avg_ms
+       FROM events WHERE ${W} AND name='traits_vote'`, B, "traits_vote_funnel"),
+    q(`SELECT ordinal, COUNT(*) views,
+         SUM(CASE WHEN action='view' THEN 1 ELSE 0 END) q_views,
+         SUM(CASE WHEN action='result_view' THEN 1 ELSE 0 END) results
+       FROM events WHERE ${W} AND name='traits_question' AND ordinal BETWEEN 1 AND 5
+       GROUP BY ordinal ORDER BY ordinal`, B, "traits_dropoff"),
+    hasTraits ? one(`SELECT COUNT(*) total,
+         SUM(CASE WHEN voter_class='visitor' THEN 1 ELSE 0 END) visitor_votes,
+         SUM(CASE WHEN voter_class='session' THEN 1 ELSE 0 END) session_votes,
+         SUM(changed) changes,
+         COUNT(DISTINCT voter_hash) voters
+       FROM trait_votes_v1`, [], "traits_vote_table") : Promise.resolve(null),
+    hasTraits ? q(`SELECT c.question_id, c.yes_share, c.eligible_votes, c.unsure_count, c.status,
+         q.player_name, q.season_label, t.display_name trait_name
+       FROM trait_consensus_v1 c
+       JOIN trait_questions_v1 q ON q.id=c.question_id
+       JOIN traits_v1 t ON t.id=q.trait_id
+       WHERE c.eligible_votes >= 5
+       ORDER BY ABS(COALESCE(c.yes_share,0.5)-0.5) ASC, c.eligible_votes DESC
+       LIMIT 8`, [], "traits_most_divided") : Promise.resolve([]),
+    hasTraits ? q(`SELECT status, COUNT(*) c FROM trait_consensus_v1
+       GROUP BY status ORDER BY c DESC`, [], "traits_rulings") : Promise.resolve([]),
+    hasTraits ? one(`SELECT COUNT(*) c FROM trait_questions_v1 WHERE status='active'`, [], "traits_pool") : Promise.resolve(null)
+  ]);
+
+  const coveragePromise = hasRetentionCoverage ? Promise.all([
+    one(`SELECT COUNT(*) checks,
+        SUM(CASE WHEN decision='enabled' THEN 1 ELSE 0 END) enabled,
+        SUM(CASE WHEN decision='disabled' THEN 1 ELSE 0 END) disabled,
+        SUM(CASE WHEN gpc=1 THEN 1 ELSE 0 END) gpc,
+        SUM(CASE WHEN dnt=1 THEN 1 ELSE 0 END) dnt,
+        SUM(CASE WHEN decision='enabled' AND (gpc=1 OR dnt=1) THEN 1 ELSE 0 END) measured_signals,
+        SUM(CASE WHEN storage_ok=0 THEN 1 ELSE 0 END) storage_blocked,
+        SUM(CASE WHEN device='mobile' THEN 1 ELSE 0 END) mobile
+      FROM retention_coverage_v1 WHERE ${dateW}`, dateB, "retention_coverage_summary"),
+    q(`SELECT reason,decision,COUNT(*) c FROM retention_coverage_v1 WHERE ${dateW}
+      GROUP BY reason,decision ORDER BY c DESC`, dateB, "retention_coverage_reasons"),
+    q(`SELECT COALESCE(identity_source,'none') identity_source,COUNT(*) c FROM retention_coverage_v1
+      WHERE ${dateW} AND decision='enabled' GROUP BY identity_source ORDER BY c DESC`, dateB, "retention_identity_sources"),
+    q(`SELECT COALESCE(browser,'Other') browser,COALESCE(device,'unknown') device,COUNT(*) checks,
+        SUM(CASE WHEN decision='enabled' THEN 1 ELSE 0 END) enabled,
+        SUM(CASE WHEN gpc=1 OR dnt=1 THEN 1 ELSE 0 END) signals
+      FROM retention_coverage_v1 WHERE ${dateW}
+      GROUP BY browser,device ORDER BY checks DESC LIMIT 14`, dateB, "retention_browser_coverage")
+  ]) : Promise.resolve([null,[],[],[]]);
+
+  const [core, v2, v3, retention, retentionCoverage, traitsData] = await Promise.all([corePromise, v2Promise, v3Promise, retentionPromise, coveragePromise, traitsPromise]);
+  const [traitsSessions = [], traitsVoteFunnel = null, traitsDropoff = [], traitsVoteTable = null, traitsMostDivided = [], traitsRulings = [], traitsPool = null] = traitsData;
   const [
     winCounts, hhHits, modeMix, funnelModes, roundFunnel, hcAction, hcSeg,
     sessionRows, corrRows, newspaperRowsLegacy, dailyByBaseRows,
@@ -524,6 +746,8 @@ export async function onRequest(context) {
     uiRows = [], errorRows = [], buildCompareRows = [], perfRawRows = [], searchDetailRows = [],
     abandonDetailRows = [], milestoneRows = [], runTimingRows = []
   ] = v3;
+  const [retentionMax = {}, retentionSummary = null, retentionCohorts = [], retentionByMode = [], retentionByEntry = [], retentionActivity = [], retentionStreaks = [], retentionDailyMix = []] = retention;
+  const [coverageSummary = null, coverageReasons = [], retentionIdentitySources = [], retentionBrowserCoverage = []] = retentionCoverage;
 
   const sessions = cnt(sessionsRow);
   const startsAll = cnt(startsRow);
@@ -578,7 +802,159 @@ export async function onRequest(context) {
   const segMax = Math.max(1, ...hcSeg.map((r) => +r.c || 0));
   const modeMax = Math.max(1, ...modeMix.map((r) => +r.c || 0));
 
+  // One canonical sharing definition everywhere: v39+ uses share_result=success;
+  // pre-v39 rows fall back to the legacy share event in the query above.
+  const canonicalShareRows = hasV3 ? shareRows.filter((r) => r.mode !== "kaman") : [];
+  const kamanShareRows = hasV3 ? shareRows.filter((r) => r.mode === "kaman") : [];
+  const shareKpis = hasV3 ? shareSummary(canonicalShareRows) : null;
+  const dailyRefMap = hasV3 ? Object.fromEntries(dailyReferralRows.map((r) => [r.step, r])) : {};
+  const dailyCurrentOpens = +(dailyRefMap.link_open_current && dailyRefMap.link_open_current.people) || 0;
+  const dailyLinkedStarts = +(dailyRefMap.game_started && dailyRefMap.game_started.people) || 0;
+  const dailyLinkedFinishes = +(dailyRefMap.game_finished && dailyRefMap.game_finished.people) || 0;
+  const dailyReshares = +(dailyRefMap.reshared && dailyRefMap.reshared.people) || 0;
+
   const cards = [];
+
+  // -------------------- owner decision board --------------------
+  if (hasV3) {
+    const dailyFunnel = dailyFunnelRows[0] || {};
+    const qualityWarnings = [];
+    if (trackedStarts && completesN > trackedStarts) qualityWarnings.push("Tracked finishes exceed starts in this scope; the date/build boundary may be splitting runs or duplicate completion events are landing.");
+    if (shareKpis.intents && shareKpis.completed > shareKpis.intents) qualityWarnings.push("Completed shares exceed share intents; old and new share definitions may be mixed in the selected build.");
+    if (sessions && startSids > sessions) qualityWarnings.push("Starting visits exceed session starts; session_start coverage is incomplete for this scope.");
+    if (dailyCurrentOpens && dailyLinkedStarts > dailyCurrentOpens) qualityWarnings.push("Friend-link starts exceed current-link opens; referral_open coverage is missing or the selected date boundary split the funnel.");
+    if (+dailyFunnel.unanchored_start_people > 0) qualityWarnings.push(`${+dailyFunnel.unanchored_start_people} Daily starting visits have no matching gate row.`);
+    const growthSteps = [
+      growthStep("Visit → game start", startSids, sessions, "Make the front door and mode choice clearer."),
+      growthStep("Start → finish", completesN, trackedStarts, "Reduce draft friction or shorten the path to a result."),
+      growthStep("Finish → share intent", shareKpis.intents, completesN, "Make the result feel more brag-worthy and the share CTA harder to miss."),
+      growthStep("Share intent → handoff", shareKpis.completed, shareKpis.intents, "Fix share-sheet/copy friction or improve the share payload preview."),
+      growthStep("Friend open → start", dailyLinkedStarts, dailyCurrentOpens, "Strengthen the challenge gate and sender-versus-recipient framing."),
+      growthStep("Friend start → finish", dailyLinkedFinishes, dailyLinkedStarts, "Make referred players reach the payoff faster."),
+      growthStep("Friend finish → reshare", dailyReshares, dailyLinkedFinishes, "Give recipients a stronger reason to pass the challenge onward.")
+    ].filter((r) => r.d >= 5).sort((a, b) => a.rate - b.rate);
+    const weakest = growthSteps[0];
+    cards.push(card("Growth scorecard · what matters", `
+      <div class="stat4">${stat(startRate + "%", "visits that start")}${stat(completeRate + "%", "starts that finish")}${stat(pct(shareKpis.intents, completesN) + "%", "finishes with share intent")}${stat(pct(shareKpis.completed, shareKpis.intents) + "%", "intents handed off")}</div>
+      <div class="stat4">${stat(pct(dailyLinkedStarts, dailyCurrentOpens) + "%", "friend opens that start")}${stat(pct(dailyLinkedFinishes, dailyLinkedStarts) + "%", "friend starts that finish")}${stat(pct(dailyReshares, dailyLinkedFinishes) + "%", "friend finishes reshared")}${stat(round2(dailyCurrentOpens ? dailyReshares / dailyCurrentOpens : 0), "reshares per friend open")}</div>
+      ${weakest ? `<div class="decision"><b>Fix first: ${esc(weakest.label)} (${weakest.rate}%).</b> ${esc(weakest.advice)}</div>` : `<p class="muted">More traffic is needed before the dashboard can identify a reliable weakest conversion step.</p>`}
+      ${qualityWarnings.length ? `<div class="quality bad"><b>Instrumentation checks:</b><br>${qualityWarnings.map(esc).join("<br>")}</div>` : `<div class="quality"><b>Instrumentation checks passed:</b> no impossible funnel relationships detected in this scope.</div>`}
+      <table><thead><tr><th>conversion step</th><th>made it</th><th>eligible</th><th>rate</th></tr></thead><tbody>
+        ${growthSteps.length ? growthSteps.map((r) => `<tr><td class="k">${esc(r.label)}</td><td>${r.n}</td><td>${r.d}</td><td class="${r===weakest?"warncell":""}">${r.rate}%</td></tr>`).join("") : emptyRow(4)}
+      </tbody></table>
+      <p class="muted">This is the executive view: acquisition, play completion, share motivation, handoff reliability, and the Daily friend-to-friend loop. Rates are shown only in the leak ranking once a step has at least five eligible visits/runs.</p>`, "wide priority"));
+  }
+
+  // -------------------- same-browser retention --------------------
+  if (hasRetention && retentionSummary) {
+    const rs = retentionSummary || {};
+    const identifiedPlayers = +rs.new_players || 0;
+    const repeatPlayers = retentionActivity.reduce((n, r) => n + (String(r.bucket) === "1" ? 0 : (+r.players || 0)), 0);
+    const coverageChecks = coverageSummary ? +coverageSummary.checks || 0 : 0;
+    const coverageEnabled = coverageSummary ? +coverageSummary.enabled || 0 : 0;
+    const d1Text = maturePct(rs.d1_started, rs.d1_eligible);
+    const d1FinishText = maturePct(rs.d1_finished, rs.d1_eligible);
+    const d7Text = maturePct(rs.d7_started, rs.d7_eligible);
+    const w1Text = maturePct(rs.w1_started, rs.d7_eligible);
+    cards.push(card("Retention · does the game create another day?", `
+      <div class="stat4">${stat(d1Text,"D1 played again")}${stat(d1FinishText,"D1 finished again")}${stat(d7Text,"exact D7")}${stat(w1Text,"returned within 7d")}</div>
+      <div class="stat4">${stat(identifiedPlayers,"new identified browsers")}${stat(repeatPlayers,"played on 2+ days")}${stat(maturePct(repeatPlayers,identifiedPlayers),"repeat-day share")}${stat(coverageChecks?maturePct(coverageEnabled,coverageChecks):"—","measurement coverage")}</div>
+      <div class="decision"><b>The survival number is D1 played again.</b> It counts browsers that started a game on the very next local calendar day. D1 finished again is the stricter product-quality version.</div>
+      <p class="muted">Forward-only, same-browser cohorts. Recent cohorts are excluded from denominators until they have had enough time to return. Retention deliberately spans build changes and therefore ignores the build chip above.</p>`, "wide priority"));
+
+    cards.push(card("Retention cohorts · first game day", `
+      <table><thead><tr><th>first day</th><th>new</th><th>D1 played</th><th>D1 finished</th><th>D7 played</th></tr></thead><tbody>
+        ${retentionCohorts.length ? retentionCohorts.map((r)=>`<tr><td class="k">${esc(r.first_day)}</td><td>${+r.new_players||0}</td><td>${+r.d1_eligible?`${pct(+r.d1_started||0,+r.d1_eligible||0)}% · ${+r.d1_started||0}/${+r.d1_eligible||0}`:'<span class="pending">not mature</span>'}</td><td>${+r.d1_eligible?`${pct(+r.d1_finished||0,+r.d1_eligible||0)}% · ${+r.d1_finished||0}/${+r.d1_eligible||0}`:'<span class="pending">not mature</span>'}</td><td>${+r.d7_eligible?`${pct(+r.d7_started||0,+r.d7_eligible||0)}% · ${+r.d7_started||0}/${+r.d7_eligible||0}`:'<span class="pending">not mature</span>'}</td></tr>`).join("") : emptyRow(5)}
+      </tbody></table>
+      <p class="muted">Do not judge a cohort that says “not mature.” At low traffic, use the multi-day total above and the within-7-day number before reacting to one noisy date.</p>`, "wide"));
+
+    cards.push(card("Retention · first experience", `
+      <div class="sub">by first mode</div>
+      <table><thead><tr><th>mode</th><th>new</th><th>D1</th><th>within 7d</th></tr></thead><tbody>
+        ${retentionByMode.length ? retentionByMode.map((r)=>`<tr><td class="k">${esc(MODE_LABEL[r.first_mode]||human(r.first_mode))}</td><td>${+r.new_players||0}</td><td>${maturePct(r.returned,r.eligible)}</td><td>${maturePct(r.w1_returned,r.w1_eligible)}</td></tr>`).join("") : emptyRow(4)}
+      </tbody></table>
+      <div class="sub">by first entry</div>
+      <table><thead><tr><th>entry</th><th>new</th><th>D1</th></tr></thead><tbody>
+        ${retentionByEntry.length ? retentionByEntry.map((r)=>`<tr><td class="k">${esc(human(r.first_entry))}</td><td>${+r.new_players||0}</td><td>${maturePct(r.returned,r.eligible)}</td></tr>`).join("") : emptyRow(3)}
+      </tbody></table>
+      <p class="muted">This tells you whether The Daily/challenge traffic creates a habit or merely a one-time click, and which first mode deserves the homepage emphasis.</p>`, "wide"));
+
+    const activityMax = Math.max(1,...retentionActivity.map((r)=>+r.players||0));
+    const streakMax = Math.max(1,...retentionStreaks.map((r)=>+r.players||0));
+    cards.push(card("Habit depth · active days and streaks", `
+      <div class="sub">distinct days with a game start</div>${retentionActivity.length?retentionActivity.map((r)=>bar(String(r.bucket)+" days",+r.players||0,activityMax)).join(""):muted("no repeat-day data yet")}
+      <div class="sub">best consecutive-day streak</div>${retentionStreaks.length?retentionStreaks.map((r)=>bar(r.bucket,+r.players||0,streakMax)).join(""):muted("no streak data yet")}
+      <div class="sub">daily active mix</div>
+      <table><thead><tr><th>day</th><th>new</th><th>returning</th><th>active</th></tr></thead><tbody>
+        ${retentionDailyMix.length?retentionDailyMix.slice(0,14).map((r)=>`<tr><td class="k">${esc(r.local_day)}</td><td>${+r.new_players||0}</td><td>${+r.returning_players||0}</td><td>${+r.active_players||0}</td></tr>`).join(""):emptyRow(4)}
+      </tbody></table>`, "wide"));
+  } else {
+    cards.push(card("Retention · deployment status", `<p class="warn"><b>Retention table not detected.</b> Run <code>migrations/0008_retention_events_v1.sql</code>, then deploy the retention client and endpoints. Existing gameplay tables are untouched.</p>`, "wide"));
+  }
+
+  if (hasRetentionCoverage && coverageSummary) {
+    const cs = coverageSummary || {};
+    const checks = +cs.checks || 0, enabled = +cs.enabled || 0;
+    const reasonMax = Math.max(1,...coverageReasons.map((r)=>+r.c||0));
+    const sourceMax = Math.max(1,...retentionIdentitySources.map((r)=>+r.c||0));
+    cards.push(card("Retention measurement coverage · pushed hard", `
+      <div class="stat4">${stat(checks,"identity checks")}${stat(maturePct(enabled,checks),"enabled")}${stat(+cs.measured_signals||0,"DNT/GPC visits still measured")}${stat(+cs.mobile||0,"mobile checks")}</div>
+      <div class="quality"><b>Aggressive boundary:</b> DNT and GPC are recorded but no longer suppress strictly first-party product analytics. Explicit TRUE 82 opt-out, EEA/UK/Swiss traffic, and unknown/Tor geolocation remain disabled.</div>
+      <div class="sub">policy outcomes</div>${coverageReasons.length?coverageReasons.map((r)=>bar(`${human(r.reason)} · ${r.decision}`,+r.c||0,reasonMax)).join(""):muted("no policy checks yet")}
+      <div class="sub">identity continuity source</div>${retentionIdentitySources.length?retentionIdentitySources.map((r)=>bar(human(r.identity_source),+r.c||0,sourceMax)).join(""):muted("no enabled identities yet")}
+      <div class="sub">browser/device coverage</div>
+      <table><thead><tr><th>browser</th><th>device</th><th>checks</th><th>enabled</th><th>DNT/GPC</th></tr></thead><tbody>
+        ${retentionBrowserCoverage.length?retentionBrowserCoverage.map((r)=>`<tr><td class="k">${esc(r.browser)}</td><td>${esc(r.device)}</td><td>${+r.checks||0}</td><td>${maturePct(r.enabled,r.checks)}</td><td>${+r.signals||0}</td></tr>`).join(""):emptyRow(5)}
+      </tbody></table>
+      <p class="muted">Cookie is the primary identity on Safari/Chrome iOS; local storage is the fallback/cache. “Local recovery” means a valid same-site id existed locally when the first-party cookie was absent. Storage-blocked checks: <b>${+cs.storage_blocked||0}</b>.</p>`, "wide"));
+  } else {
+    cards.push(card("Retention coverage diagnostics", `<p class="warn">Run <code>migrations/0009_retention_coverage_v1.sql</code> to see exclusions, DNT/GPC incidence, identity source, and Safari/Chrome iOS measurement coverage.</p>`, "wide"));
+  }
+
+  // -------------------- Player Traits · the judgment game --------------------
+  {
+    const bySess = {};
+    let sessSources = {};
+    for (const r of traitsSessions) {
+      bySess[r.action] = (bySess[r.action] || 0) + (+r.c || 0);
+      if (r.action === "start" || r.action === "again") {
+        sessSources[r.source] = (sessSources[r.source] || 0) + (+r.c || 0);
+      }
+    }
+    const starts = (bySess.start || 0) + (bySess.again || 0);
+    const completes = bySess.complete || 0;
+    const agains = bySess.again || 0;
+    const vf = traitsVoteFunnel || {};
+    const srcMax = Math.max(1, ...Object.values(sessSources).map((n) => +n || 0));
+    const srcRows = Object.keys(sessSources).sort((a, b) => sessSources[b] - sessSources[a]);
+    cards.push(card("Player Traits · the judgment game", `
+      <div class="stat4">${stat(starts, "sessions started")}${stat(completes, "sessions completed")}${stat(maturePct(completes, starts), "completion")}${stat(maturePct(agains, completes), "ran it back")}</div>
+      <div class="stat4">${stat(+vf.votes || 0, "calls made")}${stat(+vf.changed || 0, "calls changed")}${stat(+vf.errors || 0, "call errors")}${stat(vf.avg_ms ? Math.round(vf.avg_ms / 100) / 10 + "s" : "—", "avg time per call")}</div>
+      <div class="decision"><b>The survival number is “ran it back”.</b> The handoff's own bar: the share of completed five-call sessions that voluntarily start another set. Completion measures whether five is the right length; ran-it-back measures whether the mode is a game.</div>
+      <div class="sub">session entries</div>${srcRows.length ? srcRows.map((s) => bar(human(s), sessSources[s], srcMax)).join("") : muted("no sessions yet")}
+      <div class="sub">dropoff by question position</div>
+      <table><thead><tr><th>position</th><th>shown</th><th>ruled</th></tr></thead><tbody>
+        ${traitsDropoff.length ? traitsDropoff.map((r) => `<tr><td class="k">Q${+r.ordinal || 0}</td><td>${+r.q_views || 0}</td><td>${+r.results || 0}</td></tr>`).join("") : emptyRow(3)}
+      </tbody></table>
+      <p class="muted">Funnel rows come from the ordinary event stream and are forward-only from v44. Unit: sessions for the top row, calls for the second.</p>`, "wide priority"));
+
+    if (hasTraits) {
+      const vt = traitsVoteTable || {};
+      const votersN = +vt.voters || 0;
+      const rulingMax = Math.max(1, ...traitsRulings.map((r) => +r.c || 0));
+      cards.push(card("Player Traits · the ledger", `
+        <div class="stat4">${stat(+vt.total || 0, "standing votes")}${stat(votersN, "distinct voters")}${stat(votersN ? Math.round(10 * (+vt.total || 0) / votersN) / 10 : "—", "votes per voter")}${stat(+vt.changes || 0, "changed minds")}</div>
+        <div class="stat3">${stat(+vt.visitor_votes || 0, "durable-id voters")}${stat(+vt.session_votes || 0, "session-only voters")}${stat(traitsPool ? +traitsPool.c || 0 : "—", "active questions")}</div>
+        <div class="sub">rulings on the board</div>${traitsRulings.length ? traitsRulings.map((r) => bar(human(r.status), +r.c || 0, rulingMax)).join("") : muted("no rulings yet")}
+        <div class="sub">most divided calls</div>
+        <table><thead><tr><th>call</th><th>yes</th><th>votes</th><th>status</th></tr></thead><tbody>
+          ${traitsMostDivided.length ? traitsMostDivided.map((r) => `<tr><td class="k">${esc(r.season_label || "")} ${esc(r.player_name)} · ${esc(r.trait_name)}</td><td>${r.yes_share == null ? "—" : Math.round(100 * r.yes_share) + "%"}</td><td>${+r.eligible_votes || 0}</td><td>${esc(human(r.status))}</td></tr>`).join("") : emptyRow(4)}
+        </tbody></table>
+        <p class="muted">Vote-table numbers are all-time state, not date-scoped: a standing vote is the current call, changed minds count edits. Session-only voters had no durable id (consent region, opt-out, or cookie loss); split them out before trusting per-voter rates.</p>`, "wide"));
+    } else {
+      cards.push(card("Player Traits · deployment status", `<p class="warn">Run <code>migrations/0010_traits_v1.sql</code> to create the trait tables and seed the question pool. The funnel card above works either way; votes cannot land until the migration is applied.</p>`, "wide"));
+    }
+  }
 
   // -------------------- health and instrumentation --------------------
   if (hasV3) {
@@ -922,9 +1298,7 @@ export async function onRequest(context) {
     // Kaman is a hidden guaranteed-82–0 easter egg. Keep its raw events for
     // operational visibility, but never let them inflate the canonical share
     // conversion rate or the record/rank propensity tables.
-    const canonicalShareRows = shareRows.filter((r) => r.mode !== "kaman");
-    const kamanShareRows = shareRows.filter((r) => r.mode === "kaman");
-    const sh = shareSummary(canonicalShareRows);
+    const sh = shareKpis;
     const kamanSh = shareSummary(kamanShareRows);
     const shareByResult = shareResultBreakdown(canonicalShareRows,allCounts);
     const shareByPercentile = sharePercentileBreakdown(canonicalShareRows);
@@ -1042,7 +1416,7 @@ export async function onRequest(context) {
     cards.push(card("Traffic & tech", `<p class="muted">Average data load <b>${loadRow && loadRow.ms != null ? loadRow.ms+" ms" : "—"}</b> · load errors <b>${errors}</b>. Apply analytics v3 for entry, campaign, page, browser, OS, performance, outbound, and scrubbed error diagnostics.</p>`));
   }
 
-  cards.push(card("Heat Check", `
+  if (!hasV3) cards.push(card("Heat Check", `
     <div class="stat3">${stat(shown,"shown")}${stat(pullRate+"%","pull rate")}${stat(hitTotal,"hit 82–0")}</div>
     <p class="muted">pulled <b>${pulled}</b> · skipped <b>${skipped}</b></p>
     <div class="sub">segment landed · hits</div>${hcSeg.length ? hcSeg.map((r)=>bar(r.segment,+r.c||0,segMax,`${r.c}${(+r.h||0)?" · "+r.h:""}`)).join("") : muted("no spins yet")}`));
@@ -1055,15 +1429,23 @@ export async function onRequest(context) {
   if (!hasV2) migrationWarnings.push(`<b>Analytics v2 columns are missing.</b> Spend/bailout detail cannot be stored.`);
   if (!hasV3) migrationWarnings.push(`<b>Analytics v3 migration required.</b> Apply <code>migrations/0006_analytics_v3.sql</code>; the endpoint fails soft, but v39 cards cannot populate until the columns exist.`);
   const migrationWarning = migrationWarnings.length ? `<div class="migration">${migrationWarnings.join("<br>")}</div>` : "";
-  const queryWarning = queryErrors.length ? `<div class="migration bad"><b>Dashboard query warning:</b> ${esc(queryErrors[0])}${queryErrors.length>1?` <span class="muted">(${queryErrors.length} queries reported errors)</span>`:""}</div>` : "";
+  const debugOn = url.searchParams.get("debug") === "1";
+  if (queryErrors.length || debugOn) {
+    cards.push(card("Dashboard diagnostics", `
+      <div class="stat4">${stat(queryErrors.length,"failed queries")}${stat(querySeq,"queries attempted")}${stat(hasRetention?"yes":"no","retention schema")}${stat(hasRetentionCoverage?"yes":"no","coverage schema")}</div>
+      ${queryErrors.length ? `<table><thead><tr><th>query</th><th>error</th><th>statement</th></tr></thead><tbody>${queryErrors.map((e)=>`<tr><td class="k">${esc(e.id)}</td><td class="warncell">${esc(e.message)}</td><td title="${esc(e.statement)}">${esc(shortText(e.statement,90))}</td></tr>`).join("")}</tbody></table>` : `<p class="okcell">All dashboard queries completed successfully.</p>`}
+      <p class="muted">Append <code>&amp;debug=1</code> to keep this card visible after the error is gone. Query ids and SQL summaries identify the exact failing card without exposing data or changing the database.</p>`, "wide diagnostics"));
+  }
+  const firstQueryError = queryErrors[0];
+  const queryWarning = firstQueryError ? `<div class="migration bad"><b>Dashboard query warning [${esc(firstQueryError.id)}]:</b> ${esc(firstQueryError.message)}${queryErrors.length>1?` <span class="muted">(${queryErrors.length} queries reported errors)</span>`:""}</div>` : "";
 
   const header = `<div class="head"><div><h1>TRUE 82 <span class="dot">·</span> analytics</h1>
       <div class="muted">${sessions.toLocaleString()} visits · ${startsAll.toLocaleString()} games initiated · ${completesN.toLocaleString()} tracked games finished · ${esc(scope.label)}${requestedBuild?` · build ${esc(requestedBuild)}`:""}</div></div>
       <button class="refresh" onclick="location.reload()">refresh</button></div>
     ${filters(url,scope,buildRows,requestedBuild,hasV3)}${migrationWarning}${queryWarning}`;
 
-  const privacyNote = `<section class="privacy"><b>Privacy boundary:</b> no analytics cookies, local/session storage, IP hash, fingerprint, account id, or durable browser id. Visit/run ids exist in memory only. Daily return figures are coarse counts derived from the game’s existing local Daily record, not cross-device identity.</section>`;
-  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v39 · cookieless-analytics-v3 · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
+  const privacyNote = `<section class="privacy"><b>Privacy boundary:</b> ordinary product analytics remains anonymous and session-scoped. The separate retention stream uses one random first-party TRUE 82 browser id, stored in a secure first-party cookie with local-storage fallback for up to 400 days. No account, fingerprint, IP-derived id, ad network, sale/sharing, or cross-site enrichment. Consent regions, unknown/Tor geolocation, and explicit site opt-out are disabled; DNT/GPC are observed but do not suppress first-party product measurement.</section>`;
+  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v44 · first-party retention + player traits · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
   return html(page("TRUE 82 · analytics", header + privacyNote + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 
@@ -1082,10 +1464,19 @@ function queryLimiter(max) {
     }
   };
 }
+function queryFailure(id, error, sql) {
+  const message = String(error && error.message || error || "unknown D1 error").slice(0, 260);
+  const statement = String(sql || "").replace(/\s+/g, " ").trim().slice(0, 220);
+  return { id, message, statement };
+}
+function growthStep(label, n, d, advice) {
+  return { label, n: +n || 0, d: +d || 0, rate: pct(n, d), advice };
+}
 function cnt(row) { return row && row.c != null ? +row.c : 0; }
 function round1(n) { return Math.round((+n || 0) * 10) / 10; }
 function round2(n) { return Math.round((+n || 0) * 100) / 100; }
 function pct(n, d) { return d ? round1(100 * (+n || 0) / (+d || 1)) : 0; }
+function maturePct(n, d) { return +d > 0 ? `${pct(n,d)}%` : "—"; }
 function sum(a) { return a.reduce((s, x) => s + (+x || 0), 0); }
 function numSort(a, b) { return a - b; }
 function pick(rows, key, val) { const r = rows.find((x) => +x[key] === val); return r ? +r.c || 0 : 0; }
@@ -1221,17 +1612,17 @@ function summarizeDraft(rows) {
 }
 function shareSummary(rows) {
   const intents=rows.filter((r)=>r.name==="share_click").reduce((s,r)=>s+(+r.c||0),0);
-  const completed=rows.filter((r)=>r.name==="share").reduce((s,r)=>s+(+r.c||0),0);
+  const completed=rows.filter((r)=>r.name==="share_complete").reduce((s,r)=>s+(+r.c||0),0);
   // share_cancel/share_error are emitted alongside the canonical share_result
   // row. Count only share_result here so one failed handoff is never doubled.
   const canceled=rows.filter((r)=>r.name==="share_result"&&r.outcome==="cancel").reduce((s,r)=>s+(+r.c||0),0);
   const errors=rows.filter((r)=>r.name==="share_result"&&r.outcome==="error").reduce((s,r)=>s+(+r.c||0),0);
   const pathMap={};
-  rows.forEach((r)=>{ if (r.name!=="share_click"&&r.name!=="share") return; const key=`${r.surface} · ${r.path}`; const x=pathMap[key]||(pathMap[key]={label:human(r.surface)+" · "+human(r.path),intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
+  rows.forEach((r)=>{ if (r.name!=="share_click"&&r.name!=="share_complete") return; const key=`${r.surface} · ${r.path}`; const x=pathMap[key]||(pathMap[key]={label:human(r.surface)+" · "+human(r.path),intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
   const paths=Object.values(pathMap).sort((a,b)=>b.intents-a.intents);
-  const methodMap={}; rows.filter((r)=>r.name==="share").forEach((r)=>{ const x=methodMap[r.action]||(methodMap[r.action]={action:r.action,c:0}); x.c+=+r.c||0; });
+  const methodMap={}; rows.filter((r)=>r.name==="share_complete").forEach((r)=>{ const x=methodMap[r.action]||(methodMap[r.action]={action:r.action,c:0}); x.c+=+r.c||0; });
   const methods=Object.values(methodMap).sort((a,b)=>b.c-a.c);
-  const deviceMap={}; rows.forEach((r)=>{ if(r.name!=="share_click"&&r.name!=="share")return; const key=`${r.device} · ${r.browser}`; const x=deviceMap[key]||(deviceMap[key]={label:key,intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
+  const deviceMap={}; rows.forEach((r)=>{ if(r.name!=="share_click"&&r.name!=="share_complete")return; const key=`${r.device} · ${r.browser}`; const x=deviceMap[key]||(deviceMap[key]={label:key,intents:0,completed:0}); if(r.name==="share_click")x.intents+=+r.c||0; else x.completed+=+r.c||0; });
   const devices=Object.values(deviceMap).sort((a,b)=>b.intents-a.intents).slice(0,12);
   return {intents,completed,canceled,errors,paths,methods,devices,pathMax:Math.max(1,...paths.map((r)=>r.intents)),methodMax:Math.max(1,...methods.map((r)=>r.c)),deviceMax:Math.max(1,...devices.map((r)=>r.intents))};
 }
@@ -1248,7 +1639,7 @@ function shareResultBreakdown(rows,counts) {
   ];
   const map=Object.fromEntries(defs.map((d)=>[d.key,Object.assign({intents:0,completed:0},d)]));
   (rows||[]).forEach((r)=>{
-    if((r.name!=="share_click"&&r.name!=="share")||r.mode==="kaman")return;
+    if((r.name!=="share_click"&&r.name!=="share_complete")||r.mode==="kaman")return;
     const w=+r.wins;
     const key=Number.isFinite(w)&&w>=0?(w>=77?String(Math.min(82,Math.round(w))):"under77"):"unknown";
     const x=map[key]||map.unknown;
@@ -1264,7 +1655,7 @@ function sharePercentileBreakdown(rows) {
   ];
   const map=Object.fromEntries(defs.map((d)=>[d.key,Object.assign({intents:0,completed:0},d)]));
   (rows||[]).forEach((r)=>{
-    if(r.name!=="share_click"&&r.name!=="share")return;
+    if(r.name!=="share_click"&&r.name!=="share_complete")return;
     const v=+r.percentile;
     const key=!Number.isFinite(v)||r.percentile==null?"unknown":v<=1?"top1":v<=5?"top5":v<=10?"top10":v<=25?"top25":v<=50?"top50":"lower";
     const x=map[key];
@@ -1308,5 +1699,5 @@ function emptyRow(cols){return `<tr><td colspan="${cols}" class="muted">no data 
 function html(body){return new Response(body,{headers:{"content-type":"text/html;charset=utf-8","cache-control":"no-store","x-robots-tag":"noindex, nofollow","x-content-type-options":"nosniff","referrer-policy":"no-referrer"}});}
 function page(title,inner){return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title><style>
 :root{--ink:#101418;--tunnel:#1A2027;--tunnel2:#2b3540;--chalk:#E8E4D8;--dim:#9AA0A6;--maple:#B98A4F;--amber:#FFB52E;--whistle:#E2654E;--ok:#8FB99B}
-*{box-sizing:border-box}body{margin:0;background:var(--ink);color:var(--chalk);font:15px/1.5 Barlow,system-ui,sans-serif;-webkit-font-smoothing:antialiased}.wrap{max-width:1240px;margin:0 auto;padding:22px 16px 60px}.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 2px 14px}h1{font:700 26px/1 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:0 0 6px;text-transform:uppercase}.dot{color:var(--maple)}h2{font:700 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:0 0 12px}h3{font:700 15px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}.muted{color:var(--dim);font-size:13px;margin:10px 0 0}.muted b{color:var(--chalk)}code{font-family:'IBM Plex Mono',monospace;color:var(--maple)}a{color:#9bb7ff}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}@media(max-width:790px){.grid{grid-template-columns:1fr}.wide{grid-column:auto!important}}.card{min-width:0;background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:16px}.wide{grid-column:1/-1}.refresh{background:none;border:1px solid var(--tunnel2);color:var(--dim);font:600 12px 'IBM Plex Mono',monospace;padding:7px 12px;border-radius:8px;cursor:pointer}.refresh:active{border-color:var(--maple);color:var(--chalk)}table{width:100%;border-collapse:collapse;font-size:14px;display:block;overflow-x:auto}thead,tbody{display:table;width:100%;table-layout:auto}th{text-align:right;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.05em;color:var(--dim);text-transform:uppercase;padding:0 6px 8px;white-space:nowrap}th:first-child,td:first-child{text-align:left}td{text-align:right;padding:6px;border-top:1px solid var(--tunnel2);font-family:'IBM Plex Mono',monospace;white-space:nowrap}td.k{color:var(--chalk)}td.big{color:var(--amber);font-weight:600}.warncell{color:#f1b0a3}.okcell{color:var(--ok)}.stat3{display:flex;gap:10px;margin-bottom:8px}.s{flex:1;min-width:0;background:var(--ink);border:1px solid var(--tunnel2);border-radius:9px;padding:11px 8px;text-align:center}.sv{font:600 21px 'IBM Plex Mono',monospace;color:var(--chalk)}.sl{font-size:10.5px;color:var(--dim);margin-top:3px;letter-spacing:.02em}.sub{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin:14px 0 8px}.row{display:flex;align-items:center;gap:9px;margin:5px 0}.rl{flex:0 0 145px;font-size:12px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rt{flex:1;height:16px;background:var(--ink);border-radius:5px;overflow:hidden}.fill{display:block;height:100%;background:linear-gradient(90deg,var(--maple),var(--amber));border-radius:5px}.rv{flex:0 0 116px;font:600 11px 'IBM Plex Mono',monospace;color:var(--chalk);white-space:nowrap}.mode-block+.mode-block{border-top:1px solid var(--tunnel2);margin-top:15px;padding-top:2px}.mini-mode{margin:8px 0 14px}.mini-mode>b{display:block;font:600 12px 'IBM Plex Mono',monospace;color:var(--chalk);margin-bottom:5px}.bail-mode+.bail-mode{border-top:1px solid var(--tunnel2);margin-top:16px}.bail-grid,.tech-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.filters{background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:12px 14px;margin-bottom:14px}.filter-row,.custom{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.custom,.build-row{margin-top:9px}.filter-label{font:600 11px 'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--dim);margin-right:4px}.chip{display:inline-block;border:1px solid var(--tunnel2);background:var(--ink);color:var(--dim);text-decoration:none;border-radius:8px;padding:6px 10px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer}.chip.on,.chip:hover{border-color:var(--amber);color:var(--chalk)}.custom label{font:11px 'IBM Plex Mono',monospace;color:var(--dim)}.custom input{margin-left:5px;background:var(--ink);border:1px solid var(--tunnel2);color:var(--chalk);border-radius:6px;padding:5px}.scope-note{margin-top:8px}.migration{border:1px solid var(--whistle);background:rgba(226,101,78,.08);border-radius:10px;padding:10px 12px;margin:0 0 14px;color:var(--chalk);font-size:13px}.migration.bad{border-color:var(--amber)}.warn{color:#f1b0a3;font-size:13px}.privacy{background:#141a20;border-left:3px solid var(--ok);padding:10px 13px;margin:0 0 14px;border-radius:4px;color:var(--dim);font-size:12.5px}.privacy b{color:var(--chalk)}@media(max-width:940px){.bail-grid,.tech-grid{grid-template-columns:1fr 1fr}.stat3{flex-wrap:wrap}.s{min-width:30%}}@media(max-width:560px){.wrap{padding:14px 10px 50px}.head{align-items:flex-start}.bail-grid,.tech-grid{grid-template-columns:1fr}.rl{flex-basis:112px}.rv{flex-basis:100px}.sv{font-size:19px}.card{padding:14px 12px}}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:var(--chalk);font:15px/1.5 Barlow,system-ui,sans-serif;-webkit-font-smoothing:antialiased}.wrap{max-width:1240px;margin:0 auto;padding:22px 16px 60px}.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 2px 14px}h1{font:700 26px/1 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:0 0 6px;text-transform:uppercase}.dot{color:var(--maple)}h2{font:700 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:0 0 12px}h3{font:700 15px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}.muted{color:var(--dim);font-size:13px;margin:10px 0 0}.muted b{color:var(--chalk)}code{font-family:'IBM Plex Mono',monospace;color:var(--maple)}a{color:#9bb7ff}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}@media(max-width:790px){.grid{grid-template-columns:1fr}.wide{grid-column:auto!important}}.card{min-width:0;background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:16px}.card.priority{border-color:rgba(255,181,46,.7);box-shadow:0 0 0 1px rgba(255,181,46,.08) inset}.wide{grid-column:1/-1}.refresh{background:none;border:1px solid var(--tunnel2);color:var(--dim);font:600 12px 'IBM Plex Mono',monospace;padding:7px 12px;border-radius:8px;cursor:pointer}.refresh:active{border-color:var(--maple);color:var(--chalk)}table{width:100%;border-collapse:collapse;font-size:14px;display:block;overflow-x:auto}thead,tbody{display:table;width:100%;table-layout:auto}th{text-align:right;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.05em;color:var(--dim);text-transform:uppercase;padding:0 6px 8px;white-space:nowrap}th:first-child,td:first-child{text-align:left}td{text-align:right;padding:6px;border-top:1px solid var(--tunnel2);font-family:'IBM Plex Mono',monospace;white-space:nowrap}td.k{color:var(--chalk)}td.big{color:var(--amber);font-weight:600}.warncell{color:#f1b0a3}.okcell{color:var(--ok)}.stat3,.stat4{display:flex;gap:10px;margin-bottom:8px}.stat4 .s{min-width:0}.decision{margin:12px 0;background:rgba(255,181,46,.08);border-left:3px solid var(--amber);border-radius:5px;padding:10px 12px;color:var(--chalk)}.decision b{color:var(--amber)}.quality{margin:10px 0 12px;background:rgba(143,185,155,.07);border-left:3px solid var(--ok);border-radius:5px;padding:9px 12px;color:var(--dim);font-size:12.5px}.quality b{color:var(--ok)}.quality.bad{background:rgba(226,101,78,.08);border-color:var(--whistle);color:var(--chalk)}.quality.bad b{color:#f1b0a3}.s{flex:1;min-width:0;background:var(--ink);border:1px solid var(--tunnel2);border-radius:9px;padding:11px 8px;text-align:center}.sv{font:600 21px 'IBM Plex Mono',monospace;color:var(--chalk)}.sl{font-size:10.5px;color:var(--dim);margin-top:3px;letter-spacing:.02em}.sub{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin:14px 0 8px}.row{display:flex;align-items:center;gap:9px;margin:5px 0}.rl{flex:0 0 145px;font-size:12px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rt{flex:1;height:16px;background:var(--ink);border-radius:5px;overflow:hidden}.fill{display:block;height:100%;background:linear-gradient(90deg,var(--maple),var(--amber));border-radius:5px}.rv{flex:0 0 116px;font:600 11px 'IBM Plex Mono',monospace;color:var(--chalk);white-space:nowrap}.mode-block+.mode-block{border-top:1px solid var(--tunnel2);margin-top:15px;padding-top:2px}.mini-mode{margin:8px 0 14px}.mini-mode>b{display:block;font:600 12px 'IBM Plex Mono',monospace;color:var(--chalk);margin-bottom:5px}.bail-mode+.bail-mode{border-top:1px solid var(--tunnel2);margin-top:16px}.bail-grid,.tech-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.filters{background:var(--tunnel);border:1px solid var(--tunnel2);border-radius:12px;padding:12px 14px;margin-bottom:14px}.filter-row,.custom{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.custom,.build-row{margin-top:9px}.filter-label{font:600 11px 'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--dim);margin-right:4px}.chip{display:inline-block;border:1px solid var(--tunnel2);background:var(--ink);color:var(--dim);text-decoration:none;border-radius:8px;padding:6px 10px;font:600 12px 'IBM Plex Mono',monospace;cursor:pointer}.chip.on,.chip:hover{border-color:var(--amber);color:var(--chalk)}.custom label{font:11px 'IBM Plex Mono',monospace;color:var(--dim)}.custom input{margin-left:5px;background:var(--ink);border:1px solid var(--tunnel2);color:var(--chalk);border-radius:6px;padding:5px}.scope-note{margin-top:8px}.migration{border:1px solid var(--whistle);background:rgba(226,101,78,.08);border-radius:10px;padding:10px 12px;margin:0 0 14px;color:var(--chalk);font-size:13px}.migration.bad{border-color:var(--amber)}.warn{color:#f1b0a3;font-size:13px}.privacy{background:#141a20;border-left:3px solid var(--ok);padding:10px 13px;margin:0 0 14px;border-radius:4px;color:var(--dim);font-size:12.5px}.privacy b{color:var(--chalk)}@media(max-width:940px){.bail-grid,.tech-grid{grid-template-columns:1fr 1fr}.stat3,.stat4{flex-wrap:wrap}.s{min-width:30%}}@media(max-width:560px){.wrap{padding:14px 10px 50px}.head{align-items:flex-start}.bail-grid,.tech-grid{grid-template-columns:1fr}.stat4 .s{min-width:46%}.rl{flex-basis:112px}.rv{flex-basis:100px}.sv{font-size:19px}.card{padding:14px 12px}}
 </style></head><body><div class="wrap">${inner}</div></body></html>`;}

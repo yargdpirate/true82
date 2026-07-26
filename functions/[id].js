@@ -278,17 +278,17 @@ function renderEdition(row, origin, bbmap) {
 <article><p class="byline">By the TRUE 82 sports desk</p><p>${bbLinkifyArticle(esc(row.article), players, bbmap)}</p></article>
 <section class="roster"><h3>The five</h3><ul>${roster}</ul><p class="net">Projected net rating ${fmtSigned(row.net)}</p></section>
 <a class="cta" data-action="tribune_build_your_own" href="${esc(playUrl)}">BUILD YOUR OWN FIVE →</a><footer>TRUE82.NET · THE 82–0 CHASE</footer></main>
-<script src="/analytics.js?v=20260721-analytics-v39" defer></script>
+<script src="/analytics.js?v=20260724-retention-v43" defer></script>
 <script>(function(){try{var u=location.pathname+"?open=1";if(navigator.sendBeacon){navigator.sendBeacon(u,new Blob(["1"],{type:"text/plain"}));}else{fetch(u,{method:"POST",keepalive:true,credentials:"same-origin"}).catch(function(){});}}catch(e){}})();</script>
 </body></html>`;
 }
 
 function soldOutPage(id, head) {
-  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Edition unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>ARCHIVE DESK</div><h1>The True 82 Tribune</h1><div>FINAL</div></header><div class="rule"></div><h2>This edition missed the press.</h2><p>The link may have arrived before the paper finished publishing, or the edition is no longer available.</p><a class="cta" data-action="tribune_missing_cta" href="/?ref=${encodeURIComponent(id)}&amp;src=tribune_missing">BUILD YOUR OWN FIVE →</a></main><script src="/analytics.js?v=20260721-analytics-v39" defer></script></body></html>`;
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Edition unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>ARCHIVE DESK</div><h1>The True 82 Tribune</h1><div>FINAL</div></header><div class="rule"></div><h2>This edition missed the press.</h2><p>The link may have arrived before the paper finished publishing, or the edition is no longer available.</p><a class="cta" data-action="tribune_missing_cta" href="/?ref=${encodeURIComponent(id)}&amp;src=tribune_missing">BUILD YOUR OWN FIVE →</a></main><script src="/analytics.js?v=20260724-retention-v43" defer></script></body></html>`;
   return new Response(head ? null : body, { status: 404, headers: pageHeaders() });
 }
 function unavailablePage(head, status) {
-  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Pressroom unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>PRESSROOM</div><h1>The True 82 Tribune</h1><div>HOLD</div></header><div class="rule"></div><h2>The archive is temporarily off press.</h2><a class="cta" data-action="tribune_unavailable_cta" href="/?src=tribune_unavailable">PLAY TRUE 82 →</a></main><script src="/analytics.js?v=20260721-analytics-v39" defer></script></body></html>`;
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Pressroom unavailable · TRUE 82</title><style>${shareCss()}</style></head><body><main class="sheet missing"><header><div>PRESSROOM</div><h1>The True 82 Tribune</h1><div>HOLD</div></header><div class="rule"></div><h2>The archive is temporarily off press.</h2><a class="cta" data-action="tribune_unavailable_cta" href="/?src=tribune_unavailable">PLAY TRUE 82 →</a></main><script src="/analytics.js?v=20260724-retention-v43" defer></script></body></html>`;
   return new Response(head ? null : body, { status, headers: pageHeaders() });
 }
 

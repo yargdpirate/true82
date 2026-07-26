@@ -1,16 +1,20 @@
-// POST /api/event — privacy-maximal first-party event ingestion -> D1.
-// No cookies, durable client id, raw IP, full referrer path, or User-Agent is stored.
-// Bind D1 as DB. v3 fails soft to v2/legacy until migration 0006 is applied.
+// POST /api/event — first-party event ingestion -> D1.
+// No cookies, account id, fingerprint, raw IP, full referrer path, raw
+// User-Agent, or durable visitor id is stored in this stream. The retired v43
+// visitor_id/local_day branch is gone: durable retention identity lives only
+// in the isolated /api/retention stream (v40r2). Bind D1 as DB. Inserts fail
+// soft through v40/v3/v2/legacy schemas.
 
 const NAMES = new Set([
   "session_start", "session_heartbeat", "session_end", "first_interaction", "home_view", "mode_impression", "mode_select", "feature_select",
-  "return_profile", "referral_open", "data_ready", "data_error", "perf_summary", "client_error",
+  "return_profile", "identity_status", "referral_open", "data_ready", "data_error", "perf_summary", "client_error",
   "ui_click", "link_out", "daily_gate_view", "daily_gate_action", "daily_gate_start", "daily_gate_exit",
   "rules_open", "rules_close", "game_start", "round_advance", "deal_view", "search_use",
   "sort_change", "player_select", "pick_denied", "year_change", "draft_pick", "lineup_change",
   "reroll", "game_complete", "results_view", "result_section_view", "run_abandon", "replay", "share_click", "share",
   "share_result", "share_cancel", "share_error", "percentile_result", "percentile_error",
   "heatcheck_shown", "heatcheck_action", "heatcheck_declined", "heatcheck_result",
+  "traits_session", "traits_question", "traits_vote",
   "donate_click", "feedback_click", "recap_presented", "recap_shown", "recap_read", "recap_full_read",
   "recap_action", "recap_skip", "recap_unwrap", "recap_results", "recap_generation", "recap_publish"
 ]);
@@ -44,7 +48,6 @@ const V40_FIELDS = V3_FIELDS.concat([
   "t_usage", "t_spacing", "b_spacing", "t_backd", "t_wingd",
   "t_rim", "t_glass", "t_creator", "t_age"
 ]);
-
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method !== "POST") return new Response("method", { status: 405 });
