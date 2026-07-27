@@ -15,6 +15,10 @@ WHAT V44 IS:
   See ANALYTICS-V44-RETENTION-AND-TRAITS.md for the full contract.
 
 DEPLOY IN THIS ORDER:
+  v47 smoke: the homepage Player Bonuses card should glow amber and take
+     five YES/NO votes right there (dots advance, compact result after
+     each, VOTE ON 5 MORE at the end); the /bonuses/ page shows the three
+     controls in one group and CHANGE VOTE under every result.
   0. The pasteable .sql files are PURE SQL, zero comment lines: some copy
      paths smart-convert the double hyphen into a dash and error mid-paste,
      leaving a migration PARTIALLY applied. If any earlier paste errored,

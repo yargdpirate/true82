@@ -1780,23 +1780,63 @@ function ensureTraitsCss() {
   var st = document.createElement("style");
   st.id = TRAITS_CSS_ID;
   st.textContent =
-    ".traits-module{display:block;text-decoration:none;color:inherit;text-align:left;" +
-      "background:#161c23;border:1px solid #2a333d;border-radius:20px;padding:20px;margin:10px 0}" +
-    ".traits-module .tm-eyebrow{display:block;font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
+    ".traits-module{display:block;text-align:left;color:inherit;position:relative;" +
+      "background:linear-gradient(180deg,#1a2129,#141a21);border:2px solid #FFB52E;border-radius:20px;" +
+      "padding:18px 18px 16px;margin:12px 0;" +
+      "box-shadow:0 0 0 1px rgba(255,181,46,.25),0 0 26px rgba(255,181,46,.16),0 14px 34px -18px rgba(0,0,0,.7)}" +
+    ".traits-module .tm-top{display:flex;align-items:center;gap:9px}" +
+    ".traits-module .tm-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
       "letter-spacing:.2em;color:#FFB52E}" +
+    ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
+      "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
+    ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;" +
+      "letter-spacing:.22em;color:#8b98a5;margin-top:11px}" +
     ".traits-module .tm-q{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
-      "font-size:27px;line-height:1.06;margin-top:9px;text-transform:uppercase}" +
-    ".traits-module .tm-why{display:block;font-size:15px;color:#8b98a5;margin-top:9px}" +
-    ".traits-module .tm-cta{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;" +
-      "background:#FFB52E;color:#221a05;min-width:118px;height:52px;" +
-      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:.12em;" +
-      "border-radius:12px;padding:0 18px}" +
-    ".traits-prompt{background:#161c23;border:1px solid #2a333d;border-radius:14px;padding:14px}" +
+      "font-size:29px;line-height:1.05;margin-top:5px;text-transform:uppercase}" +
+    ".traits-module .tm-def{display:block;font-size:14.5px;color:#8b98a5;margin-top:6px;min-height:19px}" +
+    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}" +
+    ".traits-module .tm-vb{position:relative;height:60px;border:0;border-radius:14px;cursor:pointer;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:23px;letter-spacing:.1em;color:#1c1608;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 #8c2317,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb:active,.traits-module .tm-vb.pressed{transform:translateY(2px);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.no:active,.traits-module .tm-vb.no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2)," +
+      "0 1px 0 #8c2317,0 4px 8px -5px rgba(0,0,0,.6)}" +
+    ".traits-module.tm-locked .tm-vb{pointer-events:none;opacity:.55}" +
+    ".traits-module.tm-locked .tm-vb.pressed{opacity:1}" +
+    ".traits-module .tm-res{display:none;margin-top:12px;font-family:'Barlow Condensed',sans-serif;" +
+      "font-weight:700;font-size:19px;letter-spacing:.05em}" +
+    ".traits-module .tm-res b{color:#FFB52E}" +
+    ".traits-module .tm-res .neg{color:#E5533C}" +
+    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:13px}" +
+    ".traits-module .tm-dots{display:flex;gap:7px}" +
+    ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
+    ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
+    ".traits-module .tm-count{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;color:#8b98a5}" +
+    ".traits-module .tm-why{display:block;font-size:13.5px;color:#68737e;margin-top:11px}" +
+    ".traits-module .tm-open{position:absolute;top:16px;right:16px;font-family:'IBM Plex Mono',monospace;" +
+      "font-size:11px;letter-spacing:.12em;color:#8b98a5;text-decoration:none;padding:6px 0 6px 8px}" +
+    ".traits-module .tm-done{display:none;margin-top:13px}" +
+    ".traits-module .tm-done .td-h{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:23px;letter-spacing:.06em}" +
+    ".traits-module .tm-done .td-l{font-size:14px;color:#8b98a5;margin-top:3px}" +
+    ".traits-module .tm-again{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;" +
+      "height:48px;padding:0 18px;border:0;border-radius:12px;cursor:pointer;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;letter-spacing:.1em;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
+    "@media (prefers-reduced-motion:reduce){.traits-module .tm-vb{transition:none}}" +
+    ".traits-prompt{background:linear-gradient(180deg,#1a2129,#141a21);border:1.5px solid #FFB52E;border-radius:16px;" +
+      "padding:16px;box-shadow:0 0 0 1px rgba(255,181,46,.18),0 0 18px rgba(255,181,46,.1)}" +
     ".traits-prompt .tp-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;color:#FFB52E}" +
-    ".traits-prompt .tp-q{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;margin:6px 0 4px}" +
-    ".traits-prompt .tp-cta{display:inline-block;margin-top:8px;background:transparent;border:1px solid #FFB52E;" +
-      "color:#FFB52E;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;" +
-      "letter-spacing:.12em;border-radius:9px;padding:7px 13px;text-decoration:none}" +
+    ".traits-prompt .tp-q{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;margin:7px 0 5px;text-transform:uppercase}" +
+    ".traits-prompt .tp-cta{display:inline-flex;align-items:center;justify-content:center;margin-top:9px;" +
+      "min-width:96px;height:46px;padding:0 16px;border-radius:12px;text-decoration:none;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:.12em;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
     ".tchips{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}" +
     ".tchip{position:relative;display:inline-block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
       "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#FFB52E;" +
@@ -1808,27 +1848,158 @@ function ensureTraitsCss() {
 }
 function traitsModuleHtml() {
   ensureTraitsCss();
-  // Ships hidden; wireBonusesModule reveals it only with a curated featured
-  // question in hand, so the homepage never shows a stale or empty debate.
-  return '<a class="traits-module" id="traitsModule" href="/bonuses/?src=home_module" hidden>' +
-    '<span class="tm-eyebrow">PLAYER BONUSES \u00B7 NEW</span>' +
-    '<span class="tm-q" id="tmQ"></span>' +
-    '<span class="tm-why">Community votes set lineup-fit bonuses.</span>' +
-    '<span class="tm-cta">VOTE</span></a>';
+  // Ships hidden; wireBonusesModule reveals it only with a live session in
+  // hand, so the homepage never shows a stale or empty debate. The module IS
+  // a voting surface (owner redesign, 2026-07-27): five quick YES/NO calls
+  // run inline with progress dots; UNSURE and the full result hierarchy live
+  // on /bonuses/, one tap away via FULL PAGE or the question itself.
+  return '<section class="traits-module" id="traitsModule" hidden>' +
+    '<span class="tm-top"><span class="tm-eyebrow">PLAYER BONUSES</span>' +
+    '<span class="tm-new">NEW</span></span>' +
+    '<a class="tm-open" id="tmOpen" href="/bonuses/?src=home_module">FULL PAGE \u2192</a>' +
+    '<span class="tm-call" id="tmCall">TODAY\u2019S CALL</span>' +
+    '<a class="tm-q" id="tmQ" href="/bonuses/?src=home_module"></a>' +
+    '<span class="tm-def" id="tmDef"></span>' +
+    '<div class="tm-votes" id="tmVotes">' +
+      '<button class="tm-vb" type="button" id="tmYes">YES</button>' +
+      '<button class="tm-vb no" type="button" id="tmNo">NO</button>' +
+    "</div>" +
+    '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
+    '<div class="tm-done" id="tmDone"></div>' +
+    '<div class="tm-foot"><span class="tm-dots" id="tmDots"></span>' +
+    '<span class="tm-count" id="tmCount"></span></div>' +
+    '<span class="tm-why">Community votes set lineup-fit bonuses.</span></section>';
 }
-function wireBonusesModule() {
+
+// The inline home session: same worker, same voter, same analytics names as
+// the full page (source home_module throughout). Compact result beat per
+// vote, then the next question slides in; the fifth lands the completion
+// state with VOTE ON 5 MORE. Any fetch trouble mid-run degrades to the
+// FULL PAGE door instead of a dead card.
+var TM = { qs: [], i: 0, sid: null, busy: false };
+function tmHref(q) {
+  return q && q.slug ? "/bonuses/" + q.slug + "?src=home_module" : "/bonuses/?src=home_module";
+}
+function tmDots() {
+  var d = el("tmDots");
+  if (!d) return;
+  var out = "";
+  for (var k = 0; k < 5; k++) {
+    var on = k < TM.i || (k === TM.i && TM.qs[TM.i]);
+    out += '<span class="tm-dot' + (on ? " on" : "") + '"></span>';
+  }
+  d.innerHTML = out;
+  var c = el("tmCount");
+  if (c) c.textContent = TM.i >= 5 ? "" :
+    "Vote " + (TM.i + 1) + " of 5" + (TM.i === 0 ? " \u00B7 About 20 seconds" : "");
+}
+function tmShowQuestion() {
+  var q = TM.qs[TM.i];
+  var mod = el("traitsModule");
+  if (!q || !mod) return tmComplete();
+  el("tmCall").style.display = TM.i === 0 ? "" : "none";
+  el("tmQ").textContent = (q.public_question || "").toUpperCase();
+  el("tmQ").href = tmHref(q);
+  el("tmDef").textContent = q.what_counts || "";
+  el("tmRes").style.display = "none";
+  el("tmVotes").style.display = "";
+  mod.classList.remove("tm-locked");
+  var y = el("tmYes"), nn = el("tmNo");
+  y.classList.remove("pressed"); nn.classList.remove("pressed");
+  tmDots();
+  analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: "home_module", sid: TM.sid });
+}
+function tmVote(resp, btn) {
+  if (TM.busy) return;
+  var q = TM.qs[TM.i];
+  var mod = el("traitsModule");
+  if (!q || !mod) return;
+  TM.busy = true;
+  mod.classList.add("tm-locked");
+  btn.classList.add("pressed");
+  buzz(10);
+  var t0 = Date.now();
+  fetch("/api/traits", {
+    method: "POST", credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: "home_module", sid: TM.sid })
+  }).then(function (r) { return r.json(); }).then(function (x) {
+    TM.busy = false;
+    if (!x || !x.ok || !x.display) return tmDegrade(q);
+    analyticsTrack("traits_vote", { surface: "traits", action: resp, ordinal: TM.i + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - t0, source: "home_module", sid: TM.sid });
+    tmResult(q, resp, x.display);
+  }).catch(function () { TM.busy = false; tmDegrade(q); });
+}
+function tmResult(q, resp, d) {
+  var res = el("tmRes");
+  el("tmVotes").style.display = "none";
+  var line;
+  if (d.mode === "counts") line = "<b>" + d.yes + " YES \u00B7 " + d.no + " NO</b> so far";
+  else if ((d.yes_pct || 0) >= 50) line = "<b>" + d.yes_pct + "% SAY YES</b>";
+  else line = '<span class="neg">' + (100 - d.yes_pct) + "% SAY NO</span>";
+  var chip = d.status === "qualifies" ? " \u00B7 BONUS ACTIVE"
+    : d.status === "does_not_qualify" ? " \u00B7 NO BONUS"
+    : d.status === "disputed" ? " \u00B7 STILL DISPUTED" : "";
+  res.innerHTML = line + chip;
+  res.style.display = "block";
+  buzz(10);
+  analyticsTrack("traits_question", { surface: "traits", action: "result_view", ordinal: TM.i + 1, challenge: q.id, outcome: d.status, value: d.mode === "counts" ? 1 : 0, source: "home_module", sid: TM.sid });
+  TM.i++;
+  tmDots();
+  var wait = 1500;
+  try { if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) wait = 2100; } catch (e) {}
+  setTimeout(function () { if (el("traitsModule")) tmShowQuestion(); }, wait);
+}
+function tmComplete() {
+  var mod = el("traitsModule");
+  if (!mod) return;
+  el("tmCall").style.display = "none";
+  el("tmQ").textContent = "5 VOTES IN";
+  el("tmQ").removeAttribute("href");
+  el("tmDef").textContent = "";
+  el("tmVotes").style.display = "none";
+  el("tmRes").style.display = "none";
+  var done = el("tmDone");
+  done.style.display = "block";
+  done.innerHTML = '<span class="td-l">Your votes helped set player bonuses.</span><br>' +
+    '<button class="tm-again" type="button" id="tmAgain">VOTE ON 5 MORE</button>';
+  tmDots();
+  buzz([12, 70, 12]);
+  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: 5, source: "home_module", sid: TM.sid });
+  el("tmAgain").addEventListener("click", function () { wireBonusesModule(true); });
+}
+function tmDegrade(q) {
+  // The inline lane hit trouble; hand the run to the full page with the
+  // current question pinned so nothing is lost.
+  try { location.href = tmHref(q); } catch (e) {}
+}
+function wireBonusesModule(again) {
   var mod = el("traitsModule");
   if (!mod || !window.fetch) return;
+  TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
   fetch("/api/traits?op=featured", { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
+    .then(function (feat) {
+      var pin = feat && feat.ok && feat.question ? feat.question.id : "";
+      return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : ""), { credentials: "same-origin" })
+        .then(function (r) { return r.json(); });
+    })
     .then(function (x) {
-      if (!x || !x.ok || !x.question || !x.question.public_question || !el("traitsModule")) return;
-      var q = x.question;
-      el("tmQ").textContent = q.public_question.toUpperCase();
-      mod.href = q.slug ? "/bonuses/" + q.slug + "?src=home_module"
-                        : "/bonuses/?q=" + encodeURIComponent(q.id) + "&src=home_module";
+      if (!x || !x.ok || !x.questions || !x.questions.length || !el("traitsModule")) return;
+      TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
+      TM.i = 0;
+      if (!TM.qs.length) return;
+      var d = el("tmDone"); if (d) { d.style.display = "none"; d.innerHTML = ""; }
+      el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
+      el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
+      tmShowQuestion();
       mod.hidden = false;
-      analyticsTrack("mode_impression", { surface: "home", action: "traits", challenge: q.id });
+      if (!again) {
+        analyticsTrack("mode_impression", { surface: "home", action: "traits", challenge: TM.qs[0].id });
+        analyticsTrack("traits_session", { surface: "traits", action: "start", source: "home_module", sid: TM.sid });
+      } else {
+        analyticsTrack("traits_session", { surface: "traits", action: "again", source: "home_module", sid: TM.sid });
+      }
     })
     .catch(function () {});
 }
@@ -2048,9 +2219,13 @@ function renderIntro() {
       if (ok) T82ARENA.route(); else featureLoadFailed(btn, label);
     });
   });
-  var traitsMod = el("traitsModule");
-  if (traitsMod) traitsMod.addEventListener("click", function () {
-    analyticsTrack("feature_select", { surface: "home", action: "traits" });
+  // Only the door-out elements count as a feature select now that the module
+  // votes inline; YES/NO taps report through the vote vocabulary instead.
+  ["tmQ", "tmOpen"].forEach(function (id) {
+    var door = el(id);
+    if (door) door.addEventListener("click", function () {
+      analyticsTrack("feature_select", { surface: "home", action: "traits" });
+    });
   });
   wireBonusesModule();
   el("startLeague").addEventListener("click", function () {   // league office needs no site data
@@ -5307,7 +5482,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v46";
+var BUILD_V = "v47";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

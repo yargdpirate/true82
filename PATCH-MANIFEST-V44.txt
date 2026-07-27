@@ -1,3 +1,31 @@
+TRUE 82 v47 (current) - the homepage VOTES: visual redesign of every
+Player Bonuses surface (owner screenshots + mock, 2026-07-27)
+  CHANGED  app.js               homepage module rebuilt to the mock's language:
+                                glow-border card (2px amber + soft bloom), NEW
+                                pill, TODAY'S CALL eyebrow, the question, its
+                                WHAT COUNTS line, and INLINE YES/NO voting with
+                                the site's chunky gradient-and-shadow buttons;
+                                five votes run right on the homepage with
+                                progress dots and "Vote N of 5 - About 20
+                                seconds", a compact result beat per vote (pct
+                                or counts plus the bonus status), completion
+                                with VOTE ON 5 MORE, FULL PAGE door top-right,
+                                question itself links to /bonuses/; any fetch
+                                trouble mid-run hands off to the full page with
+                                nothing lost. Results prompt gets the glow-lite
+                                treatment and a solid VOTE button. BUILD_V v47
+  CHANGED  bonuses/index.html   the three vote controls now live in ONE padded
+                                group (no more orphaned third button), YES/NO
+                                get the site's chunky depth with pressed
+                                states, and every result state carries a
+                                CHANGE VOTE link that restores live controls
+                                with the standing answer pressed (the backend
+                                always supported changed votes; now the UI
+                                says so)
+  CHANGED  index.html           app token 20260727-homevote-v47, meta v47
+  NOTE     UNSURE stays on the full page by design; the module is the
+           quick-fire YES/NO lane
+
 TRUE 82 v46 (current) - PLAYER BONUSES + Presti uncap
   NEW      bonuses/index.html   the voting page, rebuilt to the final Player Bonuses
                                 spec: editorial question sentences, quiet 1 / 5 progress,

@@ -36,13 +36,17 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
 .wc-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:6px}
 .wc-body{font-size:14.5px;color:var(--chalk-dim);padding:2px 0 10px;display:none}
 .wc-open .wc-body{display:block}
-.controls{margin-top:10px}
-.yn{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.vbtn{position:relative;border:none;border-radius:22px;height:104px;font-family:var(--disp);font-weight:700;font-size:38px;letter-spacing:.05em;color:#131313;cursor:pointer;transition:transform .12s ease,filter .12s ease}
+.controls{margin-top:12px;background:#0e1319;border:1px solid #232d37;border-radius:24px;padding:12px}
+.yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vbtn{position:relative;border:none;border-radius:16px;height:100px;font-family:var(--disp);font-weight:700;font-size:38px;letter-spacing:.05em;color:#1c1608;cursor:pointer;transition:transform .12s ease,filter .12s ease}
 .vbtn:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
-.v-yes{background:var(--amber)}
-.v-no{background:var(--ember)}
-.v-unsure{margin-top:14px;width:100%;height:58px;background:#10151b;border:1px solid var(--line);border-radius:16px;color:#c6ced6;font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.1em;cursor:pointer;position:relative}
+.v-yes{background:linear-gradient(180deg,#FFC957,#F2A81F);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 #9a6a12,0 9px 16px -7px rgba(0,0,0,.6)}
+.v-no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 4px 0 #8c2317,0 9px 16px -7px rgba(0,0,0,.6)}
+.vbtn:active,.vbtn.pressed{transform:translateY(3px)}
+.v-yes:active,.v-yes.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}
+.v-no:active,.v-no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 1px 0 #8c2317,0 4px 8px -5px rgba(0,0,0,.6)}
+.v-unsure{margin-top:12px;width:100%;height:56px;background:#131a21;border:1px solid #303b47;border-radius:14px;color:#c6ced6;font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.1em;cursor:pointer;position:relative}
+@media (prefers-reduced-motion:reduce){.vbtn{transition:none}.vbtn:active,.vbtn.pressed{transform:none}}
 .v-unsure:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .pressed{filter:brightness(1.12);transform:scale(.985)}
 .locked .vbtn,.locked .v-unsure{pointer-events:none;opacity:.55}
@@ -88,6 +92,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
 .act-share:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .done-line{font-size:15px;color:var(--chalk-dim);margin:6px 0 16px}
 .t-link{display:block;text-align:center;margin-top:13px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;min-height:44px}
+.cv-link{display:inline-block;margin:2px 0 12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;padding:8px 0;text-decoration:underline;text-underline-offset:3px}
 .err-line{color:var(--ember);font-size:14.5px;margin:12px 0 10px}
 .foot{margin-top:26px}
 .flash{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--amber)}
@@ -308,6 +313,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     var elig = (d.yes || 0) + (d.no || 0);
     var barHtml = elig > 0
       ? '<div class="bar" aria-hidden="true"><span class="y" style="width:' + Math.round(100 * d.yes / elig) + '%"></span><span class="n" style="flex:1"></span></div>' : "";
+    var changeHtml = '<button class="cv-link" id="cvBtn">CHANGE VOTE</button>';
     var last = idx >= 4;
     var actions = last
       ? '<p class="done-head" style="margin-top:4px">5 VOTES IN</p>' +
@@ -324,6 +330,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
         '<div class="rv"><p class="r-you">' + esc(you) + "</p></div>" +
         '<div class="rv">' + statusChip(d.status) + "</div>" +
         (barHtml ? '<div class="rv">' + barHtml + "</div>" : "") +
+        '<div class="rv">' + changeHtml + "</div>" +
         '<div class="rv">' + actions + "</div>" +
         '<div class="rv"><p class="flash" id="flash" role="status"></p></div>' +
       "</div>";
@@ -377,6 +384,17 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     }
     var shareBtn = document.getElementById("shareBtn");
     if (shareBtn) shareBtn.addEventListener("click", function () { shareQuestion(q, resp, d); });
+    var cvBtn = document.getElementById("cvBtn");
+    if (cvBtn) cvBtn.addEventListener("click", function () {
+      // Standing votes are revisable: rebuild the live controls with the
+      // current answer pressed, and the next tap records outcome "changed".
+      track("traits_question", { surface: "traits", action: "change_open", ordinal: idx + 1, challenge: q.id, source: entrySource });
+      if (preVoted || doneIds.indexOf(q.id) >= 0) { /* stays counted toward the session */ }
+      q.my_response = null;
+      renderQuestion();
+      var prev = document.querySelector('[data-v="' + resp + '"]');
+      if (prev) prev.classList.add("pressed");
+    });
   }
 
   function shareQuestion(q, resp, d) {

@@ -1407,3 +1407,20 @@ the ranking law holds. A REALIZED 82-0 skips the Heat Check (nothing to
 equalize) and gates fireworks on the paper as usual. hhEligible lives in
 sim-core and already speaks cap mode. QA: ?clutch=1 still forces the
 spin on any Presti result.
+
+
+### v47 SHIPPED (2026-07-27): the homepage votes
+
+Owner reviewed live v46 against a design mock: the module read flat and
+buried, the third vote control looked orphaned, and nothing said votes
+were changeable. v47 rebuilds the module as an inline voting card (TM
+engine in app.js: featured-pinned session, YES/NO with buzz, compact
+result beat, auto-advance ~1.5s, dots, completion, degrade-to-full-page
+on any fetch trouble; analytics ride the same names with source
+home_module, and feature_select now fires only from the two door
+elements, never from votes). The mock's PLAYER TRAITS name and AFFECTS
+THE SIM badge were corrected to PLAYER BONUSES and the bound consequence
+line, since engine effects are not live yet. The page's three controls
+share one group container, and CHANGE VOTE (action change_open) restores
+live controls with the standing answer pressed. Walk mock now keys
+status by question id, not call order.
