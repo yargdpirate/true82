@@ -1787,9 +1787,12 @@ function ensureTraitsCss() {
     ".traits-module .tm-top{display:flex;align-items:center;gap:9px}" +
     ".traits-module .tm-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
       "letter-spacing:.2em;color:#FFB52E;text-decoration:none;display:inline-block}" +
-    ".traits-module .tm-head{display:block;text-align:center;font-family:'Barlow Condensed',sans-serif;" +
+    ".traits-module .tm-head:not([hidden]){display:block;text-align:center;font-family:'Barlow Condensed',sans-serif;" +
       "font-weight:700;font-size:22px;letter-spacing:.08em;color:#f2ede4;margin-bottom:9px}" +
+    ".traits-module .tm-foot{justify-content:center}" +
+    ".traits-module .tm-pips{align-items:center}" +
     ".traits-module .tm-pips span{width:10px;height:10px}" +
+    ".traits-module .tm-pips span.done{width:13px;height:13px}" +
     ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
       "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
     ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;" +
@@ -1822,7 +1825,7 @@ function ensureTraitsCss() {
     ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
     ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
     ".traits-module .tm-count{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;color:#8b98a5}" +
-    ".traits-module .tm-why{display:block;font-size:12px;color:#68737e;margin-top:8px}" +
+    ".traits-module .tm-why:not([hidden]){display:block;font-size:12px;color:#68737e;margin-top:8px}" +
     ".traits-module .tm-open{position:absolute;top:16px;right:16px;font-family:'IBM Plex Mono',monospace;" +
       "font-size:11px;letter-spacing:.12em;color:#8b98a5;text-decoration:none;padding:6px 0 6px 8px}" +
     ".traits-module .tm-done{display:none;margin-top:13px}" +
@@ -1872,7 +1875,7 @@ function traitsModuleHtml() {
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
     '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span></div>' +
-    '<span class="tm-why">Crowdsourcing your vote to rate player fit properly.</span></section>';
+    '<span class="tm-why" id="tmWhy" hidden>Crowdsourcing your vote to rate player fit properly.</span></section>';
 }
 
 // The inline home session: same worker, same voter, same analytics names as
@@ -2043,6 +2046,8 @@ function wireTraitsPrompt() {
   tmStart(false);
   var head = el("tmHead");
   if (head) head.hidden = false;
+  var why = el("tmWhy");
+  if (why) why.hidden = false;
   var title = el("tmTitle");
   if (title) title.href = "/bonuses/?src=results_prompt";
 }
