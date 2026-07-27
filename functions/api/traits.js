@@ -515,13 +515,13 @@ const ROSTER_WC = {
   "team-defender": "Rotations, communication, help on time. The defense works because of him.",
   "switchable-defender": "Takes the switch, guard through big, and holds up.",
   "rim-protector": "Shots die at the rim when he is standing there.",
-  "playmaker": "His touches leave the defense worse off for teammates.",
+  "playmaker": "Makes teammates way better.",
   "rim-pressurer": "Lives in the paint. Gets to the rim relentlessly.",
   "off-ball-scorer": "Dangerous without the ball: cuts, relocations, catch-and-shoot.",
   "tough-shot-maker": "Makes contested, late-clock, self-created shots at a high level.",
   "clutch": "You want the last shot in his hands. So does he.",
   "three-point-shooter": "Real three-point volume and accuracy defenses must respect.",
-  "super-three-point-shooter": "Defenses gameplan around his gravity: face-guards and changed coverages."
+  "super-three-point-shooter": "Makes defenses reorganize around stopping his shot."
 };
 function rosterQuestion(q) {
   const s = q.season, name = q.player_name;

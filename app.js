@@ -1786,7 +1786,13 @@ function ensureTraitsCss() {
       "box-shadow:0 0 0 1px rgba(255,181,46,.25),0 0 26px rgba(255,181,46,.16),0 14px 34px -18px rgba(0,0,0,.7)}" +
     ".traits-module .tm-top{display:flex;align-items:center;gap:9px}" +
     ".traits-module .tm-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
-      "letter-spacing:.2em;color:#FFB52E}" +
+      "letter-spacing:.2em;color:#FFB52E;text-decoration:none;display:inline-block}" +
+    ".traits-module .tm-head:not([hidden]){display:block;text-align:center;font-family:'Barlow Condensed',sans-serif;" +
+      "font-weight:700;font-size:22px;letter-spacing:.08em;color:#f2ede4;margin-bottom:9px}" +
+    ".traits-module .tm-foot{justify-content:center}" +
+    ".traits-module .tm-pips{align-items:center}" +
+    ".traits-module .tm-pips span{width:10px;height:10px}" +
+    ".traits-module .tm-pips span.done{width:13px;height:13px}" +
     ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
       "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
     ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;" +
@@ -1819,7 +1825,7 @@ function ensureTraitsCss() {
     ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
     ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
     ".traits-module .tm-count{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;color:#8b98a5}" +
-    ".traits-module .tm-why{display:block;font-size:12px;color:#68737e;margin-top:8px}" +
+    ".traits-module .tm-why:not([hidden]){display:block;font-size:12px;color:#68737e;margin-top:8px}" +
     ".traits-module .tm-open{position:absolute;top:16px;right:16px;font-family:'IBM Plex Mono',monospace;" +
       "font-size:11px;letter-spacing:.12em;color:#8b98a5;text-decoration:none;padding:6px 0 6px 8px}" +
     ".traits-module .tm-done{display:none;margin-top:13px}" +
@@ -1857,11 +1863,10 @@ function traitsModuleHtml() {
   // run inline with progress dots; UNSURE and the full result hierarchy live
   // on /bonuses/, one tap away via FULL PAGE or the question itself.
   return '<section class="traits-module" id="traitsModule" hidden>' +
-    '<span class="tm-top"><span class="tm-eyebrow">PLAYER BONUSES</span>' +
-    '<span class="tm-new">NEW</span></span>' +
-    '<a class="tm-open" id="tmOpen" href="/bonuses/?src=home_module">FULL PAGE \u2192</a>' +
-    '<span class="tm-call" id="tmCall">TODAY\u2019S CALL</span>' +
-    '<a class="tm-q" id="tmQ" href="/bonuses/?src=home_module"></a>' +
+    '<span class="tm-head" id="tmHead" hidden>VOTE: DID WE GET IT WRONG?</span>' +
+    '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module">VOTE ON PLAYER BONUSES \u00B7 HELP BALANCE THE GAME</a>' +
+    '<span class="tm-call" id="tmCall" hidden></span>' +
+    '<span class="tm-q" id="tmQ"></span>' +
     '<span class="tm-def" id="tmDef"></span>' +
     '<div class="tm-votes" id="tmVotes">' +
       '<button class="tm-vb" type="button" id="tmYes">YES</button>' +
@@ -1869,9 +1874,8 @@ function traitsModuleHtml() {
     "</div>" +
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
-    '<div class="tm-foot"><span class="tm-dots" id="tmDots"></span>' +
-    '<span class="tm-count" id="tmCount"></span></div>' +
-    '<span class="tm-why">Community votes set lineup-fit bonuses.</span></section>';
+    '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span></div>' +
+    '<span class="tm-why" id="tmWhy" hidden>Crowdsourcing your vote to rate player fit properly.</span></section>';
 }
 
 // The inline home session: same worker, same voter, same analytics names as
@@ -1889,20 +1893,15 @@ function tmDots() {
   var out = "";
   for (var k = 0; k < 5; k++) {
     var on = k < TM.i || (k === TM.i && TM.qs[TM.i]);
-    out += '<span class="tm-dot' + (on ? " on" : "") + '"></span>';
+    out += "<span" + (on ? ' class="done"' : "") + "></span>";
   }
   d.innerHTML = out;
-  var c = el("tmCount");
-  if (c) c.textContent = TM.i >= 5 ? "" :
-    "Vote " + (TM.i + 1) + " of 5" + (TM.i === 0 ? " \u00B7 About 20 seconds" : "");
 }
 function tmShowQuestion() {
   var q = TM.qs[TM.i];
   var mod = el("traitsModule");
   if (!q || !mod) return tmComplete();
-  el("tmCall").style.display = TM.i === 0 ? "" : "none";
   el("tmQ").textContent = (q.public_question || "").toUpperCase();
-  el("tmQ").href = tmHref(q);
   el("tmDef").textContent = q.what_counts || "";
   el("tmRes").style.display = "none";
   el("tmVotes").style.display = "";
@@ -1956,9 +1955,7 @@ function tmResult(q, resp, d) {
 function tmComplete() {
   var mod = el("traitsModule");
   if (!mod) return;
-  el("tmCall").style.display = "none";
   el("tmQ").textContent = "5 VOTES IN";
-  el("tmQ").removeAttribute("href");
   el("tmDef").textContent = "";
   el("tmVotes").style.display = "none";
   el("tmRes").style.display = "none";
@@ -2047,10 +2044,12 @@ function wireTraitsPrompt() {
       });
   };
   tmStart(false);
-  var call = el("tmCall");
-  if (call) call.textContent = "RATE YOUR FIVE";
-  var door = el("tmOpen");
-  if (door) door.href = "/bonuses/?src=results_prompt";
+  var head = el("tmHead");
+  if (head) head.hidden = false;
+  var why = el("tmWhy");
+  if (why) why.hidden = false;
+  var title = el("tmTitle");
+  if (title) title.href = "/bonuses/?src=results_prompt";
 }
 // Shadow-mode labels on the results roster: each pick card gets the community
 // tags its player-season has EARNED (gold) or been RULED OUT of (the crossed
@@ -2237,7 +2236,7 @@ function renderIntro() {
   });
   // Only the door-out elements count as a feature select now that the module
   // votes inline; YES/NO taps report through the vote vocabulary instead.
-  ["tmQ", "tmOpen"].forEach(function (id) {
+  ["tmTitle"].forEach(function (id) {
     var door = el(id);
     if (door) door.addEventListener("click", function () {
       analyticsTrack("feature_select", { surface: "home", action: "traits" });

@@ -1,3 +1,16 @@
+v47.3 module format rework (owner spec): linked title line VOTE ON
+PLAYER BONUSES / HELP BALANCE THE GAME (no FULL PAGE link, no pill, no
+TODAY'S CALL), question, definition, YES/NO, the draft-mode diamond pips
+with no text, footer 'Crowdsourcing your vote to rate player fit
+properly.'; results screen adds the centered heading VOTE: DID WE GET IT
+WRONG? above the same box. Migration 0015 copy pass: superlative and
+historical framings removed from curated sentences (elite-qualification
+framing instead), playmaker definition is now 'Makes teammates way
+better.', the super three-point trait asks 'Does X have gravity?' with
+'Makes defenses reorganize around stopping his shot.' everywhere
+(curated rows, roster templates, trait fallback); Klay gravity OG card
+regenerated to match. Paste 0010-0015.
+
 TRUE 82 v47 (current) - the homepage VOTES: visual redesign of every
 Player Bonuses surface (owner screenshots + mock, 2026-07-27)
   CHANGED  app.js               homepage module rebuilt to the mock's language:
