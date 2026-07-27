@@ -143,3 +143,23 @@ the image copy can never drift from the shipped data. To add a card for
 a newly promoted homepage question: render a 1200x630 PNG in the same
 style into /og/bonus-<slug>.png and add the slug to OG_CARDS in
 functions/bonuses/[slug].js. Slugs without a card keep the brand image.
+
+
+## v47 scale posture: demand-driven questions (2026-07-27)
+
+Votability is DEMAND-DRIVEN by construction: a question exists only when
+someone drafts the player and reaches results, so never-picked players
+(the majority of the pool) cost zero rows and zero vote dilution.
+Concentration follows the draft distribution: the deterministic
+two-traits-per-player hash means every drafter of the same player-season
+lands on the SAME two questions, so votes pool instead of scattering,
+and popular players reach the 25-vote quorum fastest. Below quorum the
+UI never bluffs (EARLY RESULT counts, BONUS PENDING). The curated pool
+alone feeds discovery surfaces, so a thin generated question is only
+ever seen by people who drafted that player. Graduation: paste
+migrations/SCOUT-GENERATED.sql in the D1 console to see which generated
+questions earned real traffic, then promote winners with one meta
+INSERT. If a hard popularity gate is ever wanted (votable only above N
+career drafts), the hook is a single check in op=roster, but it needs
+pick counts written to D1 first; not built, on purpose, until the
+demand-driven shape proves insufficient.

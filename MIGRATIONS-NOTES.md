@@ -10,7 +10,7 @@ clean file. Nothing doubles, nothing breaks.
 
 After pasting, verify state in one query: paste CHECK-STATE.sql. Expected
 after 0010 + 0011 + 0012 + 0013: traits 14 (11 core, 3 retired), questions
-96 (81 active), rules 6, editorial 21, meta 76.
+96 (81 active), rules 6, editorial 21, meta 76, homepage 29 after 0014.
 
 WHAT EACH FILE DOES
 
@@ -51,3 +51,21 @@ WHAT EACH FILE DOES
   publish a new question, INSERT one meta row; to pull one, set its
   active to 0. The editorial sentence is product copy: write it like a
   fan argument, never generate it from the trait name.
+
+SCOUT-GENERATED.sql (read-only, paste any time)
+  The graduation loop for roster-generated questions. Lists every active
+  question WITHOUT a meta row (the roster-lane long tail), sorted by vote
+  volume and closeness of the fight. When one earns real traffic, promote
+  it: write one INSERT into trait_question_meta_v1 with a slug and a real
+  editorial sentence, and it instantly joins sessions, the homepage pool
+  if flagged, sharing, and per-question OG treatment. Nothing else to do;
+  the votes it already collected come with it because the id never
+  changes.
+
+0014_homepage_rotation_v1
+  Twenty more marquee flags (pool now 29): the obvious fights already in
+  the curated set, none desk-ruled. Idempotent UPDATE; paste any time.
+  op=featured now serves the LIVEST fight: among flagged questions with
+  five or more eligible votes, the closest split wins, day-rotated across
+  the top eight; pure day rotation over the whole pool until real fights
+  exist.

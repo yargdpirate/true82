@@ -15,7 +15,9 @@ WHAT V44 IS:
   See ANALYTICS-V44-RETENTION-AND-TRAITS.md for the full contract.
 
 DEPLOY IN THIS ORDER:
-  v47 smoke: the homepage Player Bonuses card should glow amber and take
+  v47 smoke: finish any draft and the results screen should offer RATE
+     YOUR FIVE with questions about your actual picks (any player, not
+     just the famous ones); the homepage Player Bonuses card should glow amber and take
      five YES/NO votes right there (dots advance, compact result after
      each, VOTE ON 5 MORE at the end); the /bonuses/ page shows the three
      controls in one group and CHANGE VOTE under every result.
@@ -35,7 +37,7 @@ DEPLOY IN THIS ORDER:
      because your live copy may carry entries this workspace cannot see,
      and overwriting it could sever working function routes). Without it
      the direct question links never reach the slug function.
-     Then paste migrations/0013_bonuses_meta_v1.sql (the curated
+     Then paste migrations/0013_bonuses_meta_v1.sql AND 0014_homepage_rotation_v1.sql (the curated
      Player Bonuses pool; pure SQL, rerun-safe). Smoke after deploy:
      open /bonuses/2008-kobe-elite-wing-defender directly (question loads
      with vote controls, page title carries the question), vote, check the

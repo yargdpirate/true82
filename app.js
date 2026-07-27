@@ -1782,21 +1782,24 @@ function ensureTraitsCss() {
   st.textContent =
     ".traits-module{display:block;text-align:left;color:inherit;position:relative;" +
       "background:linear-gradient(180deg,#1a2129,#141a21);border:2px solid #FFB52E;border-radius:20px;" +
-      "padding:18px 18px 16px;margin:12px 0;" +
+      "padding:15px 15px 13px;margin:12px 0;" +
       "box-shadow:0 0 0 1px rgba(255,181,46,.25),0 0 26px rgba(255,181,46,.16),0 14px 34px -18px rgba(0,0,0,.7)}" +
     ".traits-module .tm-top{display:flex;align-items:center;gap:9px}" +
     ".traits-module .tm-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
       "letter-spacing:.2em;color:#FFB52E}" +
     ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
       "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
-    ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;" +
-      "letter-spacing:.22em;color:#8b98a5;margin-top:11px}" +
+    ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;" +
+      "letter-spacing:.22em;color:#8b98a5;margin-top:8px}" +
     ".traits-module .tm-q{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
-      "font-size:29px;line-height:1.05;margin-top:5px;text-transform:uppercase}" +
-    ".traits-module .tm-def{display:block;font-size:14.5px;color:#8b98a5;margin-top:6px;min-height:19px}" +
-    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}" +
-    ".traits-module .tm-vb{position:relative;height:60px;border:0;border-radius:14px;cursor:pointer;" +
-      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:23px;letter-spacing:.1em;color:#1c1608;" +
+      "font-size:25px;line-height:1.05;margin-top:4px;text-transform:uppercase;" +
+      "color:inherit;text-decoration:none}" +
+    ".traits-module .tm-q:active{color:#FFB52E}" +
+    ".traits-module .tm-def{display:block;font-size:13px;color:#8b98a5;margin-top:5px;" +
+      "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-vb{position:relative;height:52px;border:0;border-radius:13px;cursor:pointer;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.1em;color:#1c1608;" +
       "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12,0 7px 14px -6px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb.no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
@@ -1811,12 +1814,12 @@ function ensureTraitsCss() {
       "font-weight:700;font-size:19px;letter-spacing:.05em}" +
     ".traits-module .tm-res b{color:#FFB52E}" +
     ".traits-module .tm-res .neg{color:#E5533C}" +
-    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:13px}" +
+    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:10px}" +
     ".traits-module .tm-dots{display:flex;gap:7px}" +
     ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
     ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
     ".traits-module .tm-count{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;color:#8b98a5}" +
-    ".traits-module .tm-why{display:block;font-size:13.5px;color:#68737e;margin-top:11px}" +
+    ".traits-module .tm-why{display:block;font-size:12px;color:#68737e;margin-top:8px}" +
     ".traits-module .tm-open{position:absolute;top:16px;right:16px;font-family:'IBM Plex Mono',monospace;" +
       "font-size:11px;letter-spacing:.12em;color:#8b98a5;text-decoration:none;padding:6px 0 6px 8px}" +
     ".traits-module .tm-done{display:none;margin-top:13px}" +
@@ -1876,9 +1879,9 @@ function traitsModuleHtml() {
 // vote, then the next question slides in; the fifth lands the completion
 // state with VOTE ON 5 MORE. Any fetch trouble mid-run degrades to the
 // FULL PAGE door instead of a dead card.
-var TM = { qs: [], i: 0, sid: null, busy: false };
+var TM = { qs: [], i: 0, sid: null, busy: false, source: "home_module", loader: null, wired: false };
 function tmHref(q) {
-  return q && q.slug ? "/bonuses/" + q.slug + "?src=home_module" : "/bonuses/?src=home_module";
+  return q && q.slug ? "/bonuses/" + q.slug + "?src=" + TM.source : "/bonuses/?src=" + TM.source;
 }
 function tmDots() {
   var d = el("tmDots");
@@ -1907,7 +1910,7 @@ function tmShowQuestion() {
   var y = el("tmYes"), nn = el("tmNo");
   y.classList.remove("pressed"); nn.classList.remove("pressed");
   tmDots();
-  analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: "home_module", sid: TM.sid });
+  analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
 }
 function tmVote(resp, btn) {
   if (TM.busy) return;
@@ -1922,11 +1925,11 @@ function tmVote(resp, btn) {
   fetch("/api/traits", {
     method: "POST", credentials: "same-origin",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: "home_module", sid: TM.sid })
+    body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: TM.source, sid: TM.sid })
   }).then(function (r) { return r.json(); }).then(function (x) {
     TM.busy = false;
     if (!x || !x.ok || !x.display) return tmDegrade(q);
-    analyticsTrack("traits_vote", { surface: "traits", action: resp, ordinal: TM.i + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - t0, source: "home_module", sid: TM.sid });
+    analyticsTrack("traits_vote", { surface: "traits", action: resp, ordinal: TM.i + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - t0, source: TM.source, sid: TM.sid });
     tmResult(q, resp, x.display);
   }).catch(function () { TM.busy = false; tmDegrade(q); });
 }
@@ -1943,7 +1946,7 @@ function tmResult(q, resp, d) {
   res.innerHTML = line + chip;
   res.style.display = "block";
   buzz(10);
-  analyticsTrack("traits_question", { surface: "traits", action: "result_view", ordinal: TM.i + 1, challenge: q.id, outcome: d.status, value: d.mode === "counts" ? 1 : 0, source: "home_module", sid: TM.sid });
+  analyticsTrack("traits_question", { surface: "traits", action: "result_view", ordinal: TM.i + 1, challenge: q.id, outcome: d.status, value: d.mode === "counts" ? 1 : 0, source: TM.source, sid: TM.sid });
   TM.i++;
   tmDots();
   var wait = 1500;
@@ -1965,43 +1968,50 @@ function tmComplete() {
     '<button class="tm-again" type="button" id="tmAgain">VOTE ON 5 MORE</button>';
   tmDots();
   buzz([12, 70, 12]);
-  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: 5, source: "home_module", sid: TM.sid });
-  el("tmAgain").addEventListener("click", function () { wireBonusesModule(true); });
+  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: 5, source: TM.source, sid: TM.sid });
+  el("tmAgain").addEventListener("click", function () { tmStart(true); });
 }
 function tmDegrade(q) {
   // The inline lane hit trouble; hand the run to the full page with the
   // current question pinned so nothing is lost.
   try { location.href = tmHref(q); } catch (e) {}
 }
-function wireBonusesModule(again) {
+function tmStart(again) {
   var mod = el("traitsModule");
-  if (!mod || !window.fetch) return;
+  if (!mod || !window.fetch || !TM.loader) return;
   TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
-  fetch("/api/traits?op=featured", { credentials: "same-origin" })
+  TM.loader().then(function (x) {
+    if (!x || !x.ok || !x.questions || !x.questions.length || !el("traitsModule")) return;
+    TM.qs = x.questions.filter(function (q) { return q.public_question && !q.my_response; }).slice(0, 5);
+    if (!TM.qs.length) TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
+    TM.i = 0;
+    if (!TM.qs.length) return;
+    var d = el("tmDone"); if (d) { d.style.display = "none"; d.innerHTML = ""; }
+    if (!TM.wired) {
+      TM.wired = true;
+      el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
+      el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
+    }
+    tmShowQuestion();
+    mod.hidden = false;
+    analyticsTrack("traits_session", { surface: "traits", action: again ? "again" : "start", source: TM.source, sid: TM.sid });
+    if (!again) analyticsTrack("mode_impression", { surface: TM.source === "home_module" ? "home" : "results", action: "traits", challenge: TM.qs[0].id });
+  }).catch(function () {});
+}
+function tmSessionLoader() {
+  return fetch("/api/traits?op=featured", { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (feat) {
       var pin = feat && feat.ok && feat.question ? feat.question.id : "";
       return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : ""), { credentials: "same-origin" })
         .then(function (r) { return r.json(); });
-    })
-    .then(function (x) {
-      if (!x || !x.ok || !x.questions || !x.questions.length || !el("traitsModule")) return;
-      TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
-      TM.i = 0;
-      if (!TM.qs.length) return;
-      var d = el("tmDone"); if (d) { d.style.display = "none"; d.innerHTML = ""; }
-      el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
-      el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
-      tmShowQuestion();
-      mod.hidden = false;
-      if (!again) {
-        analyticsTrack("mode_impression", { surface: "home", action: "traits", challenge: TM.qs[0].id });
-        analyticsTrack("traits_session", { surface: "traits", action: "start", source: "home_module", sid: TM.sid });
-      } else {
-        analyticsTrack("traits_session", { surface: "traits", action: "again", source: "home_module", sid: TM.sid });
-      }
-    })
-    .catch(function () {});
+    });
+}
+function wireBonusesModule() {
+  TM.source = "home_module";
+  TM.loader = tmSessionLoader;
+  TM.wired = false;
+  tmStart(false);
 }
 // Fail-soft by construction: the section ships hidden and empty; only a clean
 // /api/traits answer ever reveals it. Any network or schema failure leaves the
@@ -2009,32 +2019,38 @@ function wireBonusesModule(again) {
 function wireTraitsPrompt() {
   var sec = el("traitsPromptSec");
   if (!sec || !window.fetch) return;
+  // RATE YOUR FIVE (owner ruling, 2026-07-27): the results screen votes
+  // inline on the players you just drafted. op=roster lazily makes any
+  // drafted player votable in the shared question-id space; if the roster
+  // lane comes back empty the card falls back to the curated session feed,
+  // so the surface never dies.
   var pairs = "";
   try {
     pairs = picksInSlotOrder().map(function (en) {
-      return encodeURIComponent(en.p.row[IDX.name]) + "~" + en.p.row[IDX.season];
+      return encodeURIComponent(en.p.row[IDX.name]) + "~" + en.p.row[IDX.season] +
+        (function (r) { var pv = IDX.pos !== undefined ? r[IDX.pos] : (IDX.position !== undefined ? r[IDX.position] : "");
+          return pv ? "~" + encodeURIComponent(String(pv).slice(0, 3)) : ""; })(en.p.row);
     }).join(",");
   } catch (e) {}
-  fetch("/api/traits?op=prompt" + (pairs ? "&players=" + pairs : ""), { credentials: "same-origin" })
-    .then(function (r) { return r.json(); })
-    .then(function (x) {
-      if (!x || !x.ok || !x.question || !x.question.public_question || !el("traitsPromptSec")) return;
-      ensureTraitsCss();
-      var q = x.question;
-      var href = q.slug ? "/bonuses/" + q.slug + "?src=results_prompt"
-                        : "/bonuses/?q=" + encodeURIComponent(q.id) + "&src=results_prompt";
-      sec.innerHTML =
-        '<div class="tp-eyebrow">PLAYER BONUS</div>' +
-        '<div class="tp-q">' + esc(q.public_question) + "</div>" +
-        '<a class="tp-cta" id="traitsPromptCta" href="' + href + '">VOTE</a>';
-      sec.hidden = false;
-      analyticsTrack("mode_impression", { surface: "results", action: "traits_prompt", challenge: q.id });
-      var cta = el("traitsPromptCta");
-      if (cta) cta.addEventListener("click", function () {
-        analyticsTrack("feature_select", { surface: "results", action: "traits_prompt", challenge: q.id });
+  ensureTraitsCss();
+  sec.innerHTML = traitsModuleHtml();
+  sec.hidden = false;
+  TM.source = "results_prompt";
+  TM.wired = false;
+  TM.loader = function () {
+    if (!pairs) return tmSessionLoader();
+    return fetch("/api/traits?op=roster&sid=" + TM.sid + "&players=" + pairs, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (x) {
+        if (x && x.ok && x.questions && x.questions.length) return x;
+        return tmSessionLoader();
       });
-    })
-    .catch(function () {});
+  };
+  tmStart(false);
+  var call = el("tmCall");
+  if (call) call.textContent = "RATE YOUR FIVE";
+  var door = el("tmOpen");
+  if (door) door.href = "/bonuses/?src=results_prompt";
 }
 // Shadow-mode labels on the results roster: each pick card gets the community
 // tags its player-season has EARNED (gold) or been RULED OUT of (the crossed

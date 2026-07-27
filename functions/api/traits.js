@@ -132,19 +132,84 @@ async function handleGet(context) {
     return json({ ok: true, labels, count: Object.keys(labels).length });
   }
 
+  if (op === "roster") {
+    // Make ANY drafted player votable (owner ruling, 2026-07-27): given the
+    // five drafted name~season pairs, lazily create question rows for a
+    // deterministic pair of core traits per player. Generated ids share the
+    // curated id space (slug(name)-season-trait), so INSERT OR IGNORE lands
+    // on the existing row when the desk already wrote one, votes pool into
+    // the same consensus, and the label chips learn from roster voting.
+    // Uncurated rows have no meta, so sessions, the homepage, and shares
+    // never surface them; they live only on the roster that drafted them.
+    // Sentences for uncurated rows are composed from per-trait templates at
+    // serve time; nothing template-made is ever stored as editorial copy.
+    const pairs = parsePlayerPairs(url.searchParams.get("players"));
+    if (!pairs.length) return json({ ok: false, reason: "bad_players" }, 200);
+    const voter = await voterKey(request, url.searchParams.get("sid"));
+    const out = [];
+    const now = Date.now();
+    for (const p of pairs.slice(0, 5)) {
+      if (!/^[a-z][a-z .'-]{1,38}$/.test(p.name)) continue;
+      const nslug = p.name.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const h = hashCode(nslug + p.season);
+      let tp = ROSTER_TRAITS;
+      if (p.pos && p.pos.indexOf("G") === 0) tp = tp.filter((x) => x !== "rim-protector");
+      else if (p.pos && p.pos.indexOf("C") >= 0 && p.pos.indexOf("G") < 0) tp = tp.filter((x) => x !== "super-three-point-shooter");
+      const t1 = tp[h % tp.length];
+      const t2 = tp[(Math.floor(h / 7) + 1 + (h % tp.length)) % tp.length];
+      for (const tr of (t1 === t2 ? [t1] : [t1, t2])) {
+        const qid = nslug + "-" + p.season + "-" + tr;
+        const label = (p.season - 1) + "-" + String(p.season).slice(2);
+        const title = p.name.replace(/(^|[ .'-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+        try {
+          await env.DB.prepare(`
+            INSERT OR IGNORE INTO trait_questions_v1
+              (id, trait_id, player_name, season, season_label, prompt_override, editorial_priority, status, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, NULL, 0, 'active', ?6, ?6)`)
+            .bind(qid, tr, title, p.season, label, now).run();
+        } catch {}
+        const q = await questionById(env.DB, qid);
+        if (q && q.status === "active") out.push(q);
+      }
+    }
+    if (!out.length) return json({ ok: false, reason: "no_questions" }, 200);
+    for (const q of out) {
+      if (!q.public_question) {
+        q.public_question = rosterQuestion(q);
+        q.what_counts = q.what_counts || ROSTER_WC[q.trait_id] || q.definition || null;
+        q.metadata_line = q.metadata_line || (q.player_name + " \u00b7 " + (q.season_label || q.season));
+      }
+    }
+    try {
+      const marks = out.map(() => "?").join(",");
+      const mine = await env.DB.prepare(
+        `SELECT question_id, response FROM trait_votes_v1 WHERE voter_hash = ?1 AND question_id IN (${marks})`
+      ).bind(voter.hash, ...out.map((q) => q.id)).all().then((r) => r.results || []);
+      const byId = {};
+      for (const m of mine) byId[m.question_id] = m.response;
+      for (const q of out) q.my_response = byId[q.id] || null;
+    } catch { for (const q of out) q.my_response = null; }
+    return json({ ok: true, questions: out, rules: publicRules(rules) });
+  }
+
   if (op === "featured") {
     // One curated homepage question: editorially flagged pool, rotated by day
     // so the module changes between visits without ever going random-obscure.
     const pool = await env.DB.prepare(`
-      SELECT q.id, m.slug, m.public_question
+      SELECT q.id, m.slug, m.public_question,
+             COALESCE(c.eligible_votes, 0) ev, COALESCE(c.yes_share, 0.5) ys
       FROM trait_question_meta_v1 m
       JOIN trait_questions_v1 q ON q.id = m.question_id
       JOIN traits_v1 t ON t.id = q.trait_id
+      LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
       WHERE m.homepage_eligible = 1 AND m.active = 1 AND q.status = 'active'
       ORDER BY q.editorial_priority DESC, m.slug
-      LIMIT 12`).all().then((r) => r.results || []).catch(() => []);
+      LIMIT 40`).all().then((r) => r.results || []).catch(() => []);
     if (!pool.length) return json({ ok: false, reason: "no_questions" }, 200);
-    const pick = pool[Math.floor(Date.now() / 86400000) % pool.length];
+    const day = Math.floor(Date.now() / 86400000);
+    const live = pool.filter((p) => Number(p.ev) >= 5)
+      .sort((a, b) => Math.abs(a.ys - 0.5) - Math.abs(b.ys - 0.5)).slice(0, 8);
+    const pick = live.length >= 3 ? live[day % live.length] : pool[day % pool.length];
     return json({ ok: true, question: { id: pick.id, slug: pick.slug, public_question: pick.public_question } });
   }
 
@@ -442,15 +507,58 @@ function publicRules(rules) {
   return { min_eligible_votes: rules.min_eligible_votes };
 }
 
+const ROSTER_TRAITS = ["clutch", "tough-shot-maker", "iso-defender", "playmaker",
+  "three-point-shooter", "team-defender", "off-ball-scorer", "rim-pressurer",
+  "switchable-defender", "rim-protector", "super-three-point-shooter"];
+const ROSTER_WC = {
+  "iso-defender": "Handles the other team's best scorer one-on-one, night after night.",
+  "team-defender": "Rotations, communication, help on time. The defense works because of him.",
+  "switchable-defender": "Takes the switch, guard through big, and holds up.",
+  "rim-protector": "Shots die at the rim when he is standing there.",
+  "playmaker": "His touches leave the defense worse off for teammates.",
+  "rim-pressurer": "Lives in the paint. Gets to the rim relentlessly.",
+  "off-ball-scorer": "Dangerous without the ball: cuts, relocations, catch-and-shoot.",
+  "tough-shot-maker": "Makes contested, late-clock, self-created shots at a high level.",
+  "clutch": "You want the last shot in his hands. So does he.",
+  "three-point-shooter": "Real three-point volume and accuracy defenses must respect.",
+  "super-three-point-shooter": "Defenses gameplan around his gravity: face-guards and changed coverages."
+};
+function rosterQuestion(q) {
+  const s = q.season, name = q.player_name;
+  switch (q.trait_id) {
+    case "clutch": return "Was " + s + " " + name + " clutch?";
+    case "tough-shot-maker": return "Was " + s + " " + name + " an elite tough shot maker?";
+    case "iso-defender": return "Was " + s + " " + name + " an elite iso defender?";
+    case "playmaker": return "Was " + s + " " + name + " an elite playmaker?";
+    case "three-point-shooter": return "Was " + s + " " + name + " a real three-point threat?";
+    case "team-defender": return "Was " + s + " " + name + " an elite team defender?";
+    case "off-ball-scorer": return "Was " + s + " " + name + " an elite off-ball scorer?";
+    case "rim-pressurer": return "Did " + s + " " + name + " bring elite rim pressure?";
+    case "switchable-defender": return "Could " + s + " " + name + " switch across positions and hold up?";
+    case "rim-protector": return "Was " + s + " " + name + " an elite rim protector?";
+    case "super-three-point-shooter": return "Did defenses gameplan around " + s + " " + name + "'s shooting?";
+  }
+  return "Was " + s + " " + name + " elite?";
+}
+function hashCode(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 function parsePlayerPairs(raw) {
   return String(raw || "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8)
     .map((s) => {
-      const cut = s.lastIndexOf("~");
-      if (cut < 1) return null;
-      const name = s.slice(0, cut).trim().toLowerCase();
-      const season = Number(s.slice(cut + 1));
+      const parts = s.split("~");
+      let pos = "";
+      if (parts.length >= 3 && /^[A-Za-z-]{1,3}$/.test(parts[parts.length - 1])) {
+        pos = parts.pop().toUpperCase();
+      }
+      if (parts.length < 2) return null;
+      const season = Number(parts.pop());
+      const name = parts.join("~").trim().toLowerCase();
       return name && name.length <= 60 && Number.isInteger(season) && season > 1940 && season < 2100
-        ? { name, season } : null;
+        ? { name, season, pos } : null;
     }).filter(Boolean);
 }
 

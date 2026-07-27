@@ -1424,3 +1424,19 @@ line, since engine effects are not live yet. The page's three controls
 share one group container, and CHANGE VOTE (action change_open) restores
 live controls with the standing answer pressed. Walk mock now keys
 status by question id, not call order.
+
+
+### v47.1 addendum: blue-link fix, compaction, RATE YOUR FIVE (same day)
+
+The tm-q anchor now inherits color (the v47 markup change to an inner
+anchor had leaked UA blue); module compacted ~50px. The TM engine is
+generalized (TM.source + TM.loader; tmStart/tmSessionLoader), the home
+module and the results RATE YOUR FIVE card share the same markup and
+ids (one mounts at a time in the SPA), and op=roster is the new worker
+lane: sanitized name~season pairs, lazy INSERT with updated_at, two
+hash-picked core traits per player, curated collisions serve the desk
+sentence via the ordinary meta join. Junk-name generation is bounded by
+the sanitizer and invisible outside the generating roster; note it in
+any future abuse review. Suite coverage: roster serving, id-space
+collision, lazy insert integrity, generated-vote settle, session leak
+guard.

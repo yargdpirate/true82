@@ -25,6 +25,27 @@ Player Bonuses surface (owner screenshots + mock, 2026-07-27)
   CHANGED  index.html           app token 20260727-homevote-v47, meta v47
   NOTE     UNSURE stays on the full page by design; the module is the
            quick-fire YES/NO lane
+  LIVE-FIX module question no longer renders as a blue underlined link
+           (anchor inherits color, no decoration); module compacted about
+           fifty vertical pixels for tall-phone screens (question 25px,
+           one-line definition with ellipsis, 52px buttons, tighter gaps)
+  LIVE-ADD migrations/0014_homepage_rotation_v1.sql: twenty more marquee
+           flags (homepage pool 9 -> 29, none desk-ruled); op=featured now
+           serves the LIVEST fight (closest split with 5+ eligible votes,
+           day-rotated across the top eight; calendar rotation until real
+           fights exist); op=roster filters trait pools by position before
+           the hash (guards never draw rim-protector, centers never draw
+           gameplan gravity; client sends the position tail, absent
+           position degrades to the full pool)
+  LIVE-ADD RATE YOUR FIVE: the results screen mounts the same inline voting
+           card fed by the NEW worker op=roster, which lazily creates
+           question rows for any drafted player (two deterministic core
+           traits per player, ids in the shared curated id space so votes
+           pool with desk questions and label chips learn from roster
+           voting; template sentences composed at serve time, never stored;
+           uncurated rows never surface in sessions, homepage, or shares).
+           Falls back to the curated session feed if the roster lane is
+           empty. Every player in the game is now votable.
 
 TRUE 82 v46 (current) - PLAYER BONUSES + Presti uncap
   NEW      bonuses/index.html   the voting page, rebuilt to the final Player Bonuses
