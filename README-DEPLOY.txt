@@ -37,7 +37,7 @@ DEPLOY IN THIS ORDER:
      because your live copy may carry entries this workspace cannot see,
      and overwriting it could sever working function routes). Without it
      the direct question links never reach the slug function.
-     Then paste migrations/0013_bonuses_meta_v1.sql AND 0014_homepage_rotation_v1.sql AND 0015_copy_pass_v1.sql (the curated
+     Then paste migrations/0013_bonuses_meta_v1.sql AND 0014_homepage_rotation_v1.sql AND 0015_copy_pass_v1.sql AND 0016_knucklehead_v1.sql AND 0017_formula_verbiage_v1.sql (the curated
      Player Bonuses pool; pure SQL, rerun-safe). Smoke after deploy:
      open /bonuses/2008-kobe-elite-wing-defender directly (question loads
      with vote controls, page title carries the question), vote, check the

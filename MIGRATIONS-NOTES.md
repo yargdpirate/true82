@@ -9,7 +9,7 @@ repair for ANY suspected partial application is simply: re-paste the whole
 clean file. Nothing doubles, nothing breaks.
 
 After pasting, verify state in one query: paste CHECK-STATE.sql. Expected
-after 0010 + 0011 + 0012 + 0013: traits 14 (11 core, 3 retired), questions
+after 0010 + 0011 + 0012 + 0013: traits 15 (12 core, 3 retired), questions
 96 (81 active), rules 6, editorial 21, meta 76, homepage 29 after 0014.
 
 WHAT EACH FILE DOES
@@ -69,3 +69,10 @@ SCOUT-GENERATED.sql (read-only, paste any time)
   five or more eligible votes, the closest split wins, day-rotated across
   the top eight; pure day rotation over the whole pool until real fights
   exist.
+
+0016_knucklehead_v1
+  Off-Court Knucklehead joins the core traits, POLLING ONLY: no curated
+  questions, no editorial rulings, no homepage presence. It is votable
+  through the roster lane (any drafted player can draw it) and labels
+  appear only when community consensus settles. A future build may add a
+  team chemistry penalty for rostering more than one.

@@ -1235,8 +1235,8 @@ function statLine(row) {
 }
 function chipsFor(row) {
   var out = [];
-  if (row[IDX.sp] >= 1.5) out.push('<span class="chip">3PT+</span>');
-  else if (row[IDX.sp] === 1) out.push('<span class="chip">3PT</span>');
+  if (row[IDX.sp] >= 1.5) out.push('<span class="tchip">GRAVITY</span>');
+  else if (row[IDX.sp] === 1) out.push('<span class="tchip">3PT</span>');
   return out.length ? '<span class="chips">' + out.join("") + "</span>" : "";
 }
 function bucketTag(row) { return rowBuckets(row).join("/"); }
