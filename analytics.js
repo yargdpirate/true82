@@ -1,14 +1,17 @@
-/* TRUE 82 — privacy-maximal first-party analytics client (v3).
-   Analytics itself uses no cookies, localStorage, sessionStorage, fingerprint,
-   advertising id, raw IP, or durable browser identifier. The only ids are
-   random in-memory visit/run ids that disappear on reload or tab close.
+/* TRUE 82 — first-party product analytics client (v44).
+   No cookies, account id, fingerprint, raw IP, advertising id, or third-party
+   tracker in THIS stream. Visit/run ids remain random and in memory. Durable
+   same-browser retention identity lives entirely in retention-client.js and
+   the /api/identity + /api/retention Workers (the deployed v40r2 layer); this
+   file deliberately carries no visitor id so the two streams cannot blur.
+   retention-client.js observes events through t82AnalyticsSubscribe below.
 
    The game separately keeps The Daily's official result/streak in localStorage
-   so that feature can work. v3 may report coarse COUNTS derived from that
-   already-existing game state (for example, "3 active Daily days") but never
-   sends the stored dates, lineup, nonce, or any durable id.
+   so that feature can work. Analytics may report coarse counts from that game
+   state, but never sends stored dates, lineups, or nonces.
 
-   v3 adds:
+   v44 includes everything v43 added minus its retired localStorage retention
+   experiment (superseded by the deployed v40r2 cookie-anchored layer):
    - build / landing / campaign attribution on every event;
    - active-time and page-performance summaries;
    - client-error telemetry with aggressively scrubbed messages;
@@ -20,7 +23,7 @@
   if (typeof window === "undefined") return;
 
   var ENDPOINT = "/api/event";
-  var ANALYTICS_BUILD = "v40";
+  var ANALYTICS_BUILD = "v44";
   var sid = uid("s");
   var startTs = Date.now();
   var visibleSince = document.visibilityState === "hidden" ? 0 : startTs;
@@ -40,6 +43,12 @@
   var firstInteractionSent = false;
   var lastSchema = "";
   var lastIngestError = "";
+
+  // The v43 localStorage retention identity was retired before it ever
+  // deployed. Durable identity is owned by retention-client.js + /api/identity
+  // (v40r2). This client stays session-scoped by design; subscribers are how
+  // the isolated retention stream copies its five canonical events.
+  var subscribers = [];
 
   // Session aggregates. These remain in memory and are written once on exit.
   var gamesPlayed = 0;
@@ -83,6 +92,16 @@
     try { return new Date().getHours(); } catch (e) { return null; }
   }
 
+  function localDay() {
+    try {
+      var d = new Date();
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, "0");
+      var day = String(d.getDate()).padStart(2, "0");
+      return y + "-" + m + "-" + day;
+    } catch (e) { return ""; }
+  }
+
   function pageKey() {
     var p = String(location.pathname || "/");
     if (p === "/" || p === "/index.html") return "game";
@@ -93,7 +112,8 @@
       "/faq": "faq", "/faq/": "faq",
       "/how-it-works": "how_it_works", "/how-it-works/": "how_it_works",
       "/can-you-go-82-0": "can_you_go_82_0", "/can-you-go-82-0/": "can_you_go_82_0",
-      "/what-is-bpm": "what_is_bpm", "/what-is-bpm/": "what_is_bpm"
+      "/what-is-bpm": "what_is_bpm", "/what-is-bpm/": "what_is_bpm",
+      "/traits": "traits", "/traits/": "traits"
     };
     // Unknown URLs are served by 404.html. Bucket them rather than storing an
     // arbitrary requested path, which could contain a token or other private text.
@@ -155,6 +175,7 @@
     p.nav_type = p.nav_type || landing.nav_type;
     p.language = p.language || safeToken((navigator.languages && navigator.languages[0]) || navigator.language || "", 16);
     p.local_hour = p.local_hour == null ? localHour() : p.local_hour;
+    p.local_day = p.local_day || localDay();
     p.connection = p.connection || connectionBucket();
     if (p.elapsed_ms === undefined || p.elapsed_ms === null) p.elapsed_ms = Math.max(0, Date.now() - startTs);
     return p;
@@ -180,7 +201,7 @@
     });
   }
 
-  function post(payload, beacon) {
+  function postNow(payload, beacon) {
     payload.sid = sid;
     payload.t = Date.now(); // client timestamp; Worker stamps authoritative ts
     try {
@@ -201,6 +222,12 @@
         lastIngestError = safeToken(err && (err.name || err.message || err), 120);
       });
     } catch (e) {}
+  }
+
+  function post(payload, beacon) {
+    // v44: no identity hold. This stream never waits on anything; the isolated
+    // retention client runs its own policy queue.
+    postNow(payload, beacon);
   }
 
   function postgameEvent(name) {
@@ -234,6 +261,7 @@
       };
       mergeRun(p);
       post(p, false);
+      notify(name, p);
       return;
     }
 
@@ -260,6 +288,7 @@
     }
 
     post(p, false);
+    notify(name, p);
 
     if (name === "game_complete" && activeRun) {
       resultRun = copy(activeRun);
@@ -568,6 +597,22 @@
     }, { once: true });
   }
 
+  // Explicit subscriber hook (v44). retention-client.js registers here instead
+  // of monkey-patching window.t82track, per the v40r2 forward-merge contract:
+  // "replace the fragile wrapping behavior with an explicit subscriber/hook
+  // mechanism." Subscribers receive the FINAL enriched props (run_id, mode,
+  // daily_num, official filled from run context) and can never break this
+  // stream: every callback is isolated in try/catch.
+  function notify(name, props) {
+    for (var i = 0; i < subscribers.length; i++) {
+      try { subscribers[i](name, props); } catch (e) {}
+    }
+  }
+  window.t82AnalyticsSubscribe = function (fn) {
+    if (typeof fn === "function" && subscribers.indexOf(fn) < 0) subscribers.push(fn);
+    return true;
+  };
+
   window.t82track = track;
   window.t82AnalyticsDebug = function () {
     return {
@@ -582,7 +627,14 @@
       resultRun: resultRun ? copy(resultRun) : null,
       perf: copy(perf),
       eventSchema: lastSchema,
-      ingestError: lastIngestError
+      ingestError: lastIngestError,
+      // Durable-identity state is owned by retention-client.js; surfaced here
+      // so one console call still answers "is retention measuring me?".
+      retention: (function () {
+        try { return typeof window.t82RetentionDebug === "function" ? window.t82RetentionDebug() : null; }
+        catch (e) { return null; }
+      })(),
+      localDay: localDay()
     };
   };
 

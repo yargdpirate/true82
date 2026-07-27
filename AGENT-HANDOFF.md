@@ -1,10 +1,10 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** this folder, packaged as `true82-full-state-v39-analytics.zip`.
+**Current source of truth:** this folder, packaged as `true82-v44-merged-traits.zip`.
 
-**Date:** 2026-07-21
-**Current build label:** `v39` / cache key `20260721-analytics-v39`
-**Most recent functional change:** privacy-maximal first-party analytics v3 and the expanded `/avocado` dashboard.
+**Date:** 2026-07-25
+**Current build label:** `v44` / cache key `20260725-traits-v44`
+**Most recent functional change:** the v43 x v40r2 retention merge and the PLAYER TRAITS community voting mode (see the V44 section at the end of this file).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
@@ -21,12 +21,13 @@ This archive is already flattened and deployable. Its contents belong directly a
 Critical browser load order in `index.html`:
 
 1. `analytics.js`
-2. `sim-core.js`
-3. `challenges.js`
-4. `daily-core.js`
-5. `app.js`
+2. `retention-client.js`
+3. `sim-core.js`
+4. `challenges.js`
+5. `daily-core.js`
+6. `app.js`
 
-The Daily depends on `challenges.js` loading before `daily-core.js`, and both loading before `app.js`.
+The Daily depends on `challenges.js` loading before `daily-core.js`, and both loading before `app.js`. The retention client must load right after `analytics.js` so its subscriber is attached before any gameplay script can emit.
 
 ---
 
@@ -962,7 +963,7 @@ Client/build: analytics.js and app.js identify as v39; index.html carries the
 v39 cache keys and build meta. Migration: migrations/0006_analytics_v3.sql.
 Deploy the migration once, then the entire site atomically.
 
-PRIVACY LAW OF THIS BUILD:
+HISTORICAL V39 PRIVACY LAW (SUPERSEDED BY THE EXPLICIT V43 OWNER DECISION BELOW):
 - Analytics may not create/read cookies, localStorage, sessionStorage,
   fingerprints, ad ids, account ids, raw IPs, IP hashes, or a durable browser
   id. Visit and run ids are random in-memory values only.
@@ -971,8 +972,9 @@ PRIVACY LAW OF THIS BUILD:
   nonces, query text, or a hidden stable identifier.
 - Referrers are origin-only. Unknown local paths bucket as 404_or_other. Full
   outbound URLs, full User-Agent strings, and raw client IPs do not enter D1.
-- Do not “improve retention” later by quietly persisting the analytics sid. An
-  exact cross-day cohort would be a different owner/privacy decision.
+- Do not persist the visit-level analytics sid. V43 implements the later owner
+  decision with a separate random retention id, regional gating, rotation, and
+  Worker-side enforcement; those safeguards must not be removed.
 
 EVENT CONTRACT:
 - functions/api/event.js owns the allowlist and sanitization. Every new client
@@ -1062,3 +1064,379 @@ now ../true82 or $T82_ROOT everywhere.
 DEPLOY ORDER: 0006 (if not yet), then 0007, then the whole site in one
 commit; footer reads v40; Live pulse should show v40 rows; the tax card
 warns until 0007 lands and fills from the first post-deploy finish.
+
+### V41 — the rules sheet, owner-rewritten and reordered
+Shared cache key 20260723-howto-v41 on styles.css + analytics.js + app.js;
+meta t82-build, ANALYTICS_BUILD, and BUILD_V all read v41. No migration, no
+schema change. Walk 249 x3, analytics-smoke 89, browser-smoke 26.
+
+- SECTION ORDER (owner-specified, walk-pinned so it cannot silently drift):
+  GAME BASICS -> HOW TO PLAY THIS MODE (X) -> [today's rule / twist box] ->
+  NEED A REFRESHER -> WHAT WINS GAMES -> footer.
+- RETIRED: RULES_STEPS ("THE GAME IN 20 SECONDS") and the standalone
+  CHANGE THE YEARS box, plus their CSS (.rs-steps, .rs-years). GAME BASICS
+  absorbs the first; each mode block now owns its own season/reroll
+  instructions. RULES_LAW folded into RULES_MODE.daily.
+- THE DAILY now has its own mode block and still renders the base mode's
+  rules underneath it ("PLUS CLASSIC MODE RULES").
+- WHAT WINS GAMES gained THE DIRTY WORK, which finally documents the v35
+  and v36 fences (glass, creator, mileage); rim protection folded into
+  DEFENSE. Before v41 those four taxes could fire with no rule anywhere in
+  the product explaining them. Walk-pinned.
+- NEED A REFRESHER links the BBRef year-by-year BPM top-10 leaderboard
+  (verified live 2026-07-23; that page also documents why the pool starts
+  in 1974, since BPM only exists from 1973-74 on) plus the BBRef home.
+  Campaign "howto" so this surface reports separately from "info".
+  Stathead stays PLAIN TEXT per the standing v34 law; walk pins both the
+  phrase and the absence of any stathead URL in the sheet.
+- FOOTER keeps /how-it-works/, adds STATS REFRESHER, and GOT IT becomes an
+  amber-filled primary; the close control goes gold. Footer wraps below
+  340px so an SE never clips the primary button.
+- COPY NUMBERS VERIFIED against live config before shipping: net 0 = 41-41,
+  82-0 needs +27 (exactly 27.01 at BASELINE 3.98 / NET_SD 12), zero
+  shooters = 6 (SPACING_TAX 2.0 x 3), usage budget = 110. All correct.
+- REGRESSION THE OWNER SHOULD RATIFY: the new Presti copy drops the old
+  line teaching the explicit gem odds ("about 1 in 7 is a $1M steal, about
+  half are rip-offs priced like stars"). The walk pin was rewritten to the
+  new wording rather than deleted. Restore in one line if wanted.
+- TEST HYGIENE: analytics-smoke's build/cache-key assertions no longer
+  contain version literals. They now assert meta == ANALYTICS_BUILD ==
+  BUILD_V and that styles/analytics/app share one key ending in that build.
+  Future bumps need no test edits. Do not reintroduce literals.
+
+### V42 — ANY GIVEN NIGHT: classic plays the season out (owner-directed)
+Shared key 20260724-season-v42 (styles+analytics+app AND sim-core);
+DATA_URL sc-v42; meta/ANALYTICS_BUILD/BUILD_V v42. Walk 274 x3 (now
+includes a FULL standalone-classic playthrough through the real UI),
+analytics-smoke 89, browser-smoke 26 in real Chromium through the reel.
+
+ARCHITECTURE (the replay law survives by construction):
+- Arming is an ACTION: op "ss" -> S.simSeason. The app arms ONLY
+  standalone classic (MODE classic, no G.social, no G.ch). Daily boards,
+  weekly twists, pro, and Presti stay analytic this build. Replays of
+  pre-v42 runs carry no "ss" and stay analytic forever.
+- simSeason(S, e) in sim-core rolls 82 games from the run's OWN rng
+  stream as the game's final draws: same seed, same five, same record,
+  live and in replay. finish() realizes when armed; res gains
+  wins/losses (realized), expWins (the analytic tally), season{games,
+  pGame, pRaw}.
+- Per-game p = clamp(phi(net/NET_SD), 1-PG_CAP, PG_CAP). PG_CAP = 0.97
+  in meta.scoring (PIPELINE MIRROR now TWENTY keys). Expected classic
+  82-0 lands ~6% (from ~35%); the cap makes the estimate tail-proof.
+  The mean is untouched wherever the cap does not bind (net < ~22.6).
+- Opponent cities are COSMETIC: app-side, FNV-hashed from seed+game
+  index, never the rng stream. Flavor edits can never break rngDraws.
+- The reel: seven real month acts (OCT 5 / NOV 15 / DEC 15 / JAN 15 /
+  FEB 11 / MAR 15 / APR 6 = 82), auto-advance ~1.25s, desk commentary
+  per act ("The zero died in Denver, game 47."), running record, one
+  SKIP, tap-anywhere skips too. bbref map preloads behind it. Tribune
+  pregen deliberately NOT enabled (demand-priced law stands; enabling
+  it is an owner cost decision, ~every classic finish would bill).
+- The rule is NAMED, not hidden: WHAT WINS GAMES gains ANY GIVEN NIGHT
+  on the standalone-classic sheet only (walk pins presence there and
+  absence on Presti's sheet).
+
+WHAT FLOWS REALIZED WINS: results record, comp ladder + climb, share
+record + emoji bands, recap/Tribune wins, editions, game_complete.wins,
+curves API (the bench also arms classic now, so the tether stays honest).
+WHAT STAYS ANALYTIC AND UNTOUCHED: net, score, every tax, percentile /
+Top X% (ranked by net since v33 — that decision carries this feature),
+leaderboards, Heat Check (cap-only, still keyed on the analytic tally,
+walk-pinned untouched).
+
+PRESTI PREP (next build, owner-specified):
+- Heat Check fires on a LITERAL realized 81-1 only. Draw ORDER LAW: the
+  82 season rolls come FIRST, then the two Heat Check draws — client
+  overlay and finish() must consume in that exact order or rngDraws
+  parity breaks. The clutch gate flips from e.winTally === 81 to
+  realized wins === 81; FORCE_CLUTCH (?clutch=1) should force through
+  the realized path.
+- Heat Check flavor upgrade available: the spin can be framed as
+  replaying the one loss (the city is known from the cosmetic schedule).
+- Expect tuning: Presti's 2% perfection collapses under sim+cap; owner
+  may want a separate PG_CAP for cap mode (config key, one line) or a
+  gentler cap. Realized 81s become far more common, so Heat Check
+  frequency rises sharply — the economy of the spin needs an owner look.
+- Daily adaptation later: seed the schedule from the BOARD, not the run,
+  so everyone faces the same 82 and identical fives tie exactly.
+- res.expWins is carried but surfaced nowhere; "expected 81, ran 79" is
+  a ready-made results line when wanted.
+
+### V42 amended (same build, pre-deploy): the calendar + the 10% retune
+Shared key 20260724-reel2-v42; DATA_URL sc-v42b; BUILD_V stays v42
+(nothing shipped yet, so this folds in). Walk 276 x3, smoke 89,
+browser-smoke 26.
+- PG_CAP retuned 0.97 -> 0.978 (owner: Classic is the easy mode).
+  Expected Classic 82-0 ~10.5% on the live curve, tail-proof; juggernaut
+  ceiling 16%. The named rule's copy now reads "about 98 times in 100."
+  PIPELINE MIRROR: the twentieth key's VALUE changed with it.
+- THE CALENDAR: each month act renders date-numbered squares that cascade
+  in (48ms apart), wins amber, losses ember with a pop; the header record
+  ticks square by square; the commentary line lands after the month
+  fills. The league schedule (dates) is deterministic and SHARED across
+  all runs — only outcomes differ — so it never touches the rng stream.
+  Loss commentary now carries the real date: "The zero died in Denver,
+  Jan 14." Walk pins the squares, their day numbers, and their win/loss
+  classes live in the DOM.
+
+
+### V43 — true same-browser retention analytics (2026-07-24)
+
+Migration: `migrations/0008_retention_identity.sql`. Critical chain: `analytics.js`,
+`functions/api/identity.js`, `functions/api/event.js`, `functions/avocado.js`,
+`index.html`, and every dynamic/static page that loads analytics.js.
+
+- Eligible browsers receive a random 180-day first-party localStorage id.
+- Never use cookies, accounts, fingerprinting, raw/IP-derived ids, or third-party tags.
+- Identity is disabled for EEA/UK/Swiss traffic, unknown geolocation, DNT, and GPC.
+- The ingestion Worker must continue stripping visitor_id independently of the client.
+- `local_day` is the browser calendar date and is required for exact D1/D3/D7 metrics.
+- Retention cohorts begin at the first tracked `game_start`, not the first page view.
+- D1 means another `game_start` on the next local calendar day. Right-censor new
+  cohorts; never count a cohort as failed before it matures.
+- Cohort returns intentionally span builds. The Avocado date filter selects the
+  first-play cohort; the build filter must not erase returns after a deployment.
+- `return_profile` is now entry-time only. Do not re-add the post-Daily-finish row,
+  which changes yesterday into same-day history and corrupts that legacy proxy.
+- See `ANALYTICS-V43-RETENTION.md` for deployment, rollback, and exact metrics.
+
+---
+
+## V44 SESSION HANDOFF (2026-07-25): the retention merge + PLAYER TRAITS
+
+Read ANALYTICS-V44-RETENTION-AND-TRAITS.md for the full analytics and
+traits contract, PATCH-MANIFEST-V44.txt for the file inventory, and
+TRAITS-OWNER-DECISIONS.md for what only the owner decides. This section is
+orientation plus the build record.
+
+### What v44 is
+
+Two async branches merged, one new mode added:
+
+- **Base: the v43 patch.** All gameplay, UI, info-page, and event-vocabulary
+  work carries forward intact.
+- **Preserved: the deployed v40r2 retention layer.** The 400-day HttpOnly
+  cookie identity (`/api/identity`), the isolated retention stream
+  (`/api/retention`, tables `retention_events_v1` + `retention_coverage_v1`,
+  both ALREADY APPLIED in production), the standalone retention report, and
+  Avocado v42.2. The v43 localStorage retention experiment is retired
+  unshipped; its migration `0008_retention_identity.sql` is intentionally
+  absent and must never be applied.
+- **New: PLAYER TRAITS** at `/traits/`. Community voting on player-season
+  trait questions; standing revisable votes deduped by a purpose-scoped
+  hash of the retention id (session-hash fallback where the cookie is
+  absent); consensus settled on write against configurable thresholds;
+  homepage module and results-screen prompt as doorways; two Avocado cards.
+  Engine effects are deliberately deferred (owner decision, see the
+  decisions file).
+
+The one structural upgrade to the analytics core: `analytics.js` now
+exposes `t82AnalyticsSubscribe(fn)`, and `retention-client.js` uses it
+instead of monkey-patching `t82track` (the wrapper survives only as a
+fallback for a stale-cached analytics.js). Subscribers receive final
+enriched props inside try/catch; a broken subscriber cannot damage the
+ordinary stream.
+
+### Deploy facts an agent must not re-derive wrong
+
+- The ONLY migration v44 introduces is `migrations/0010_traits_v1.sql`
+  (additive, idempotent, seeds 5 draft traits + 27 questions + rules).
+  0008/0009 in this package are repository truth for already-applied
+  production state.
+- Cache keys: `analytics.js`, `retention-client.js`, `app.js` ride
+  `20260725-traits-v44`; unchanged files keep their v43 keys on purpose.
+- The three event names `traits_session`, `traits_question`, `traits_vote`
+  are on the `/api/event` allowlist and ride existing v40 columns; no
+  events-table migration exists or is needed. They still need adding to
+  the OUT-OF-REPO analytics-smoke allowlist, and browser-smoke needs a
+  /traits/ five-call path, before the next full lane run.
+
+### Validation on record for this build
+
+`node --check` clean on every shipped client and Worker file. Two
+independent harnesses, built separately during the session, both green on
+the final tree: a 4-suite set (102 checks: traits API end to end,
+full-page jsdom five-call walk, Avocado render with and without the
+traits schema, analytics-retention hook contract) and a 2-file set
+(80 checks: migration idempotence, endpoint behavior incl. both abuse
+fences, v40-first event ingestion for the traits names, Avocado cards
+behind DASH_KEY, page walk, hook contract). Out-of-repo lanes and a real
+iPhone Safari pass on the /traits/ no-scroll layout are still owed before
+promoting to main.
+
+### Build-integrity note for the record
+
+This build was assembled with TWO agent processes writing the same
+workspace concurrently. During the session, files changed that the
+packaging agent did not change: a stale identity comment in `app.js` and
+a stale 180-day line in `retention-dashboard.js` were corrected by the
+other process (both corrections verified accurate and then re-expressed
+by the packaging agent), the three v44 docs and an independent test
+harness appeared, and one superseded doc was removed. Every executable
+file in this package was byte-verified against the packaging agent's
+transcript-recorded edits, and both harnesses were re-run on the exact
+packaged tree. Nothing ships unreviewed. If future builds run parallel
+agents on one workspace, split lanes explicitly (code vs docs vs tests)
+so provenance never needs forensics again.
+
+
+### v44.1 (2026-07-26): final trait roster + anti-labels
+
+Owner decided the final eleven core traits; migration 0011 ships them,
+retires three 0010 drafts (successors: iso-defender, playmaker,
+team-defender), and re-homes their marquee questions (the 2008 Kobe
+question now lives at kobe-bryant-2008-iso-defender). does_not_qualify now
+renders as the ANTI-LABEL: the trait tag with a drawn cross-out, aria
+NOT <TAG>. Data only plus one page: no BUILD_V, token, or Worker change;
+the vote path already refused non-active questions and the pin path
+already degraded, so 0011 needed zero code.
+
+Both in-workspace harnesses were updated to the post-0011 truth (traits
+14/11 core/3 retired, 96 questions, retired-question behavior, anti-label
+stamp assertions) and are green: 50+36+13+16 and 40+42. Note to the
+parallel agent: your test-traits.js expectations and three question ids
+were updated for 0011; diff against your copy before extending it.
+
+### v45 IN PROGRESS (2026-07-26): the v42 branch gap + labels on the roster
+
+CRITICAL FINDING for anyone touching this tree: the v43 patch branch was cut
+from MID-v42, before the final v42 amendments. Absent from this codebase and
+from the live site: the reel's W/L letter squares at 25px (squares here still
+print calendar dates), the SEE THE FULL RESULTS terminal button, the removal
+of tap-anywhere-to-skip (the phone-hazard path is still live here), the
+PG_CAP 0.99 retune (no PG_CAP constant exists in this app.js), the NET-keyed
+comps/climb (no compNetFor), the Dream Team/Redeem Team ladder top, the
+share percentile-on-comp-segment format, and the scapegoat loss commentary.
+ALSO: styles.css has never been in any patch zip since v40, so the live
+stylesheet predates the reel entirely (reel squares render unstyled), the
+v42 charity-button treatment, and the v41 sheet restyle. Canonical final
+code lives in the owner's true82-full-state-v42.zip; the finals will be
+grafted from it exactly, never reconstructed from prose. Do not attempt a
+reconstruction.
+
+Already built and validated for v45 (unpackaged until the graft): Daily
+rules sheet reorder (today's rule + Daily rules lead, GAME BASICS follows,
+on the Daily sheet only); /api/traits?op=labels (settled core-trait labels
++ anti-labels for up to eight player-seasons, exact lower(name)+season
+match, retired traits never label); wireTraitsLabels roster chips on the
+results player cards (gold earned tag, crossed anti-label with aria,
+maximum four per card, fail-soft absent). BUILD_V v45, app token
+20260726-labels-v45, meta v45. Suites: 56+36+13+16 and 42+42, all green.
+
+
+### v45 SHIPPED (2026-07-26): the v42 graft is done
+
+The owner uploaded canonical v42-final app.js + styles.css. All 22 amendment
+hunks were grafted with exact-text anchors and verified at marker parity
+against the canonical file (compNetFor, shareCompFor(net,...), reel-done,
+Dream/Redeem Team, post_daily_finish, comp-pct). styles.css ships WHOLE.
+The per-game cap is DATA: sd.meta.scoring.PG_CAP in site_data.json (hence
+DATA_URL sc-v42c); the deploy check is T82.t.SC.PG_CAP === 0.99. Manual
+tags shipped as trait_editorial_v1 (0012) with community supremacy in
+op=labels; roster chips render both sources identically. In-workspace
+suites 62+36+13+16 and 43+42, all green. The devtools zip's
+analytics-smoke and validate lanes need full-repo files the patch tree
+does not carry (0006, sim-core.js, site_data.json): run them on the repo
+checkout as `TRUE82_ROOT=<repo> node analytics-smoke.js` and
+`TRUE82_ROOT=<repo> node validate.js`; the v42 walk asserts the W/L
+squares and the cap binding directly.
+
+
+### v46 SHIPPED (2026-07-26): PLAYER BONUSES + Presti uncap
+
+The final Player Bonuses spec replaced the Player Traits front-end
+direction; end-user copy in that spec is binding and was implemented
+verbatim (PLAYER BONUSES, 1 / 5, UNSURE, WHAT COUNTS?, TRY AGAIN, the
+four status chips, 5 VOTES IN, VOTE ON 5 MORE, BACK TO TRUE 82, the
+share templates, no build numbers on the page). Internal names stay
+traits_* everywhere. The voting page moved to /bonuses/ with per-question
+routes at /bonuses/<slug> (Pages function swaps title/OG and injects a
+preload; failures serve the untouched shell). /traits/ is a redirect
+preserving q and src; pins by uncurated or retired ids degrade to a
+normal curated session. Serving is curated-only through 0013's meta
+table. Votes always store the canonical id even when cast by slug.
+
+For the parallel agent: both harness suites were updated for v46.
+test-traits.js runs migrations through 0013 and gained featured and
+my_response checks. test-integration.js now builds its db with the full
+0008-0013 chain and its jsdom walk drives /bonuses/ (selector [data-v],
+chips instead of stamps, the new completion copy). If your local copy
+predates this, take these versions.
+
+
+### v46.1 addendum: design pass + haptics (same day)
+
+The senior design pass landed on /bonuses/ (sequenced result reveal,
+skeleton, atmosphere, amber discipline, focus management, sentence-case
+question) with every animation behind prefers-reduced-motion and a
+matchMedia-absence guard, which is why the jsdom walks pass unchanged in
+timing. Haptics: buzz() in app.js now falls through to the iOS switch
+toggle; the Bonuses page adds real switch overlays inside its five
+primary buttons (tap forwarding via a stopPropagation click bridge, one
+fire per tap, parent pointer-events lock covers the overlay when
+controls lock). Walk assertions cover the skeleton, the overlays, and
+result focus. OG: nine PNGs in /og/ generated from the 0013
+share_preview values; regenerate with the same text if 0013 copy ever
+changes.
+
+
+### v46.2 addendum: live-test fixes (same day)
+
+Comp selection reverted from NET to realized wins (owner ruling after
+live play): the ladder literals were already ordinal one-win rungs, so
+compAbove and shareCompFor now walk wins directly and compNetFor is
+retired as dead code. Note for the validate.js lane: if it asserts the
+v42 NET-keyed comp selection, that check will flag; the wins-keyed
+behavior is the owner's current ruling and the ladder rungs themselves
+are unchanged. The Top X% span inherits .res-comp typography (mono
+0.86em rule removed), styles.css token is now v46. _routes.json is a
+manual repo edit: add "/bonuses/*" to include; the patch deliberately
+does not ship that file.
+
+
+### v46.3 addendum: Presti realization (same day)
+
+The realization guard now admits cap mode. The whole mechanism composes
+without further changes: simSeason rolls under the Presti PG_CAP=1
+override, e.winTally becomes the realized record before finishRunTail,
+so clutchPending (winTally === 81) fires the Heat Check on a literal
+realized 81 in any shape, hhWins(newNet) rewrites the record on a hot
+spin, a cross of 82 fires the goat fireworks from inside hotHand, and
+scheduleSharePct still sends raw e.net (pre-boost, pre-realization) so
+the ranking law holds. A REALIZED 82-0 skips the Heat Check (nothing to
+equalize) and gates fireworks on the paper as usual. hhEligible lives in
+sim-core and already speaks cap mode. QA: ?clutch=1 still forces the
+spin on any Presti result.
+
+
+### v47 SHIPPED (2026-07-27): the homepage votes
+
+Owner reviewed live v46 against a design mock: the module read flat and
+buried, the third vote control looked orphaned, and nothing said votes
+were changeable. v47 rebuilds the module as an inline voting card (TM
+engine in app.js: featured-pinned session, YES/NO with buzz, compact
+result beat, auto-advance ~1.5s, dots, completion, degrade-to-full-page
+on any fetch trouble; analytics ride the same names with source
+home_module, and feature_select now fires only from the two door
+elements, never from votes). The mock's PLAYER TRAITS name and AFFECTS
+THE SIM badge were corrected to PLAYER BONUSES and the bound consequence
+line, since engine effects are not live yet. The page's three controls
+share one group container, and CHANGE VOTE (action change_open) restores
+live controls with the standing answer pressed. Walk mock now keys
+status by question id, not call order.
+
+
+### v47.1 addendum: blue-link fix, compaction, RATE YOUR FIVE (same day)
+
+The tm-q anchor now inherits color (the v47 markup change to an inner
+anchor had leaked UA blue); module compacted ~50px. The TM engine is
+generalized (TM.source + TM.loader; tmStart/tmSessionLoader), the home
+module and the results RATE YOUR FIVE card share the same markup and
+ids (one mounts at a time in the SPA), and op=roster is the new worker
+lane: sanitized name~season pairs, lazy INSERT with updated_at, two
+hash-picked core traits per player, curated collisions serve the desk
+sentence via the ordinary meta join. Junk-name generation is bounded by
+the sanitizer and invisible outside the generating roster; note it in
+any future abuse review. Suite coverage: roster serving, id-space
+collision, lazy insert integrity, generated-vote settle, session leak
+guard.

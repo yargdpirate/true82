@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Player Bonuses · TRUE 82</title>
+<meta name="description" content="Vote on real basketball arguments. Community votes set lineup-fit bonuses.">
+<meta property="og:title" content="Player Bonuses · TRUE 82">
+<meta property="og:description" content="Vote on real basketball arguments. Community votes set lineup-fit bonuses.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://true82.net/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#101418">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script id="t82BonusPreload"></script>
+<style>
+:root{--ink:#101418;--panel:#151b21;--card:#131920;--line:#2a3540;--chalk:#f2ede4;--chalk-dim:#a8b0b8;--amber:#FFB52E;--ember:#E5533C;--mono:'IBM Plex Mono',monospace;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ink);color:var(--chalk);font-family:var(--body)}
+body{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:22px 0 30px;overflow-x:hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255,181,46,.05), transparent 55%),
+    repeating-linear-gradient(0deg, transparent 0 46px, rgba(242,237,228,.022) 46px 47px),
+    radial-gradient(140% 120% at 50% 110%, #0b0f13, var(--ink) 60%)}
+.wrap{width:100%;max-width:520px;padding:0 20px}
+.brand{font-family:var(--mono);font-size:13px;letter-spacing:.28em;color:var(--chalk-dim)}
+.brand a{color:inherit;text-decoration:none}
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--chalk-dim);margin:4px 0 18px}
+.card{background:linear-gradient(180deg,#161d26,#11161d);border:1px solid var(--line);border-top-color:rgba(242,237,228,.13);border-radius:23px;padding:26px 24px;position:relative;box-shadow:0 18px 44px -22px rgba(0,0,0,.65)}
+.toprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--chalk-dim);margin-bottom:14px}
+.q{font-family:var(--disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--chalk);margin-bottom:10px}
+.meta{font-size:14px;color:var(--chalk-dim);margin-bottom:8px}
+.wc-btn{background:none;border:none;font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;color:var(--chalk-dim);padding:8px 0;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.wc-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:6px}
+.wc-body{font-size:14.5px;color:var(--chalk-dim);padding:2px 0 10px;display:none}
+.wc-open .wc-body{display:block}
+.controls{margin-top:12px;background:#0e1319;border:1px solid #232d37;border-radius:24px;padding:12px}
+.yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vbtn{position:relative;border:none;border-radius:16px;height:100px;font-family:var(--disp);font-weight:700;font-size:38px;letter-spacing:.05em;color:#1c1608;cursor:pointer;transition:transform .12s ease,filter .12s ease}
+.vbtn:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
+.v-yes{background:linear-gradient(180deg,#FFC957,#F2A81F);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 #9a6a12,0 9px 16px -7px rgba(0,0,0,.6)}
+.v-no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 4px 0 #8c2317,0 9px 16px -7px rgba(0,0,0,.6)}
+.vbtn:active,.vbtn.pressed{transform:translateY(3px)}
+.v-yes:active,.v-yes.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}
+.v-no:active,.v-no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 1px 0 #8c2317,0 4px 8px -5px rgba(0,0,0,.6)}
+.v-unsure{margin-top:12px;width:100%;height:56px;background:#131a21;border:1px solid #303b47;border-radius:14px;color:#c6ced6;font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.1em;cursor:pointer;position:relative}
+@media (prefers-reduced-motion:reduce){.vbtn{transition:none}.vbtn:active,.vbtn.pressed{transform:none}}
+.v-unsure:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.pressed{filter:brightness(1.12);transform:scale(.985)}
+.locked .vbtn,.locked .v-unsure{pointer-events:none;opacity:.55}
+.locked .pressed{opacity:1}
+.result{opacity:0;transition:opacity .21s ease}
+.result.show{opacity:1}
+.result.seq .rv{opacity:0;transform:translateY(7px);animation:rvIn .34s ease-out forwards}
+.result.seq .rv:nth-child(1){animation-delay:.02s}
+.result.seq .rv:nth-child(2){animation-delay:.1s}
+.result.seq .rv:nth-child(3){animation-delay:.18s}
+.result.seq .rv:nth-child(4){animation-delay:.26s}
+.result.seq .rv:nth-child(5){animation-delay:.34s}
+.result.seq .rv:nth-child(6){animation-delay:.42s}
+@keyframes rvIn{to{opacity:1;transform:none}}
+.bar .y{transition:width .5s cubic-bezier(.2,.7,.2,1) .2s}
+.skel{border-radius:23px;border:1px solid var(--line);padding:26px 24px;background:linear-gradient(180deg,#161d26,#11161d)}
+.skel .sk{border-radius:9px;background:linear-gradient(100deg,#1a222c 30%,#212b36 45%,#1a222c 60%);background-size:220% 100%;animation:skSweep 1.15s linear infinite}
+@keyframes skSweep{to{background-position:-120% 0}}
+.done-head{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:.06em;color:var(--chalk)}
+.done-head::after{content:"";display:block;height:3px;width:0;background:var(--amber);border-radius:2px;margin-top:6px;animation:doneBar .5s ease-out .3s forwards}
+@keyframes doneBar{to{width:64px}}
+@media (prefers-reduced-motion:reduce){
+  .result{transition:none}.vbtn{transition:none}
+  .result.seq .rv{animation:none;opacity:1;transform:none}
+  .bar .y{transition:none}
+  .skel .sk{animation:none}
+  .done-head::after{animation:none;width:64px}
+}
+.r-eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.24em;color:var(--chalk-dim);margin-bottom:6px}
+.r-big{font-family:var(--disp);font-weight:700;font-size:clamp(52px,15vw,66px);line-height:1}
+.r-big.yes{color:var(--amber)}.r-big.no{color:var(--ember)}.r-big.early{color:var(--chalk);font-size:clamp(38px,11vw,50px)}
+.r-you{font-size:16px;color:var(--chalk);margin:10px 0 12px}
+.r-chip{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.2em;padding:7px 12px;border-radius:9px;margin-bottom:14px}
+.chip-active{border:1.5px solid var(--amber);color:var(--amber)}
+.chip-none{border:1.5px solid var(--ember);color:var(--ember)}
+.chip-disputed{border:1.5px solid var(--line);color:var(--chalk)}
+.chip-pending{border:1.5px solid var(--line);color:var(--chalk-dim)}
+.bar{height:9px;border-radius:5px;background:#0d1217;overflow:hidden;display:flex;margin-bottom:18px}
+.bar .y{background:var(--amber)}.bar .n{background:var(--ember)}
+.act-next{display:block;width:100%;height:56px;border:none;border-radius:15px;background:var(--amber);color:#131313;font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:.1em;cursor:pointer}
+.act-next:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
+.act-share{display:block;width:100%;height:48px;margin-top:11px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk-dim);font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:.1em;cursor:pointer}
+.act-share:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.done-line{font-size:15px;color:var(--chalk-dim);margin:6px 0 16px}
+.t-link{display:block;text-align:center;margin-top:13px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;min-height:44px}
+.cv-link{display:inline-block;margin:2px 0 12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;padding:8px 0;text-decoration:underline;text-underline-offset:3px}
+.err-line{color:var(--ember);font-size:14.5px;margin:12px 0 10px}
+.foot{margin-top:26px}
+.flash{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><a href="/?src=bonuses">TRUE 82</a></div>
+  <h1>PLAYER BONUSES</h1>
+  <div id="stage"></div>
+  <div class="foot brand"><a href="/?src=bonuses">TRUE 82 &rarr;</a></div>
+</div>
+<script src="/analytics.js?v=20260725-traits-v44"></script>
+<script src="/retention-client.js?v=20260725-traits-v44"></script>
+<script>
+(function () {
+  "use strict";
+  var stage = document.getElementById("stage");
+  var params = new URLSearchParams(location.search);
+  var entrySource = /^[a-z_]{1,24}$/.test(params.get("src") || "") ? params.get("src") : "direct";
+  if (entrySource === "s") entrySource = "share";
+  var sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
+  var pathSlug = (location.pathname.match(/^\/bonuses\/([a-z0-9][a-z0-9-]{2,78})\/?$/) || [])[1] || "";
+  var pinnedRef = pathSlug || (function (v) { return /^[a-z0-9][a-z0-9-]{2,78}$/.test(v || "") ? v : ""; })(params.get("q"));
+  var preload = window.__T82_BONUS__ || null;
+  var Q = [], idx = 0, doneIds = [], sessionOpen = false, completedOnce = false, lastAnswered = null;
+
+  // Haptics. Android: navigator.vibrate. iOS: the Taptic Engine's one web
+  // door is the checkbox switch control (Safari 17.4+). Real taps on a real
+  // switch still fire on every iOS; SYNTHETIC toggles were patched out in
+  // iOS 26.5, so hapticTick (used for async moments like the result landing)
+  // reaches 17.4-26.4 and quietly does nothing beyond. hapticOverlay lays an
+  // invisible switch over a button so the user's own tap fires the engine on
+  // all versions. No audio path anywhere: playback is never ducked.
+  var reduceMotion = false;
+  try { reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
+  function makeSwitch() {
+    var sw = document.createElement("input");
+    sw.type = "checkbox";
+    try { sw.setAttribute("switch", ""); } catch (e) {}
+    sw.setAttribute("aria-hidden", "true");
+    sw.tabIndex = -1;
+    return sw;
+  }
+  var tickSw = null;
+  function hapticTick(pattern) {
+    try { if (navigator.vibrate && navigator.vibrate(pattern || 10)) return; } catch (e) {}
+    try {
+      if (!tickSw) {
+        tickSw = makeSwitch();
+        tickSw.style.cssText = "position:fixed;left:-40px;top:-40px;width:1px;height:1px;opacity:0;pointer-events:none";
+        document.body.appendChild(tickSw);
+      }
+      var taps = Array.isArray(pattern) ? Math.min(3, Math.ceil(pattern.length / 2) + 1) : 1;
+      for (var i = 0; i < taps; i++) setTimeout(function () { tickSw.click(); }, i * 90);
+    } catch (e) {}
+  }
+  function hapticOverlay(btn) {
+    try {
+      if (!btn || btn.querySelector("input[type=checkbox]")) return;
+      var sw = makeSwitch();
+      sw.style.cssText = "position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;-webkit-appearance:none;appearance:none";
+      sw.addEventListener("change", function () { try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {} });
+      btn.appendChild(sw);
+      sw.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        btn.click();
+      });
+    } catch (e) {}
+  }
+
+  function track(name, props) {
+    try { if (window.t82track) window.t82track(name, Object.assign({ sid: sid }, props || {})); } catch (e) {}
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function api(path) {
+    return fetch(path, { credentials: "same-origin" }).then(function (r) { return r.json(); });
+  }
+
+  function statusChip(status) {
+    if (status === "qualifies") return '<span class="r-chip chip-active">BONUS ACTIVE</span>';
+    if (status === "does_not_qualify") return '<span class="r-chip chip-none">NO BONUS</span>';
+    if (status === "disputed") return '<span class="r-chip chip-disputed">STILL DISPUTED</span>';
+    return '<span class="r-chip chip-pending">BONUS PENDING</span>';
+  }
+
+  function skeletonHtml() {
+    return '<section class="skel" aria-hidden="true">' +
+      '<div class="sk" style="height:12px;width:44%"></div>' +
+      '<div class="sk" style="height:40px;width:92%;margin-top:16px"></div>' +
+      '<div class="sk" style="height:40px;width:70%;margin-top:8px"></div>' +
+      '<div class="sk" style="height:14px;width:52%;margin-top:14px"></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px">' +
+        '<div class="sk" style="height:104px"></div><div class="sk" style="height:104px"></div></div>' +
+      '<div class="sk" style="height:58px;margin-top:14px"></div></section>';
+  }
+  function startSession(ref, again) {
+    sessionOpen = false;
+    stage.innerHTML = skeletonHtml();
+    var qs = "/api/traits?op=session&sid=" + sid +
+      (ref ? "&q=" + encodeURIComponent(ref) : "") +
+      (doneIds.length ? "&exclude=" + doneIds.slice(-24).join(",") : "");
+    api(qs).then(function (x) {
+      if (!x || !x.ok || !x.questions || !x.questions.length) return feedError(x && x.reason);
+      Q = x.questions; idx = 0; sessionOpen = true;
+      track("traits_session", { surface: "traits", action: again ? "again" : "start", source: entrySource });
+      renderQuestion();
+    }).catch(function () { feedError("network"); });
+  }
+
+  function feedError(reason) {
+    sessionOpen = false;
+    stage.innerHTML =
+      '<section class="card"><div class="toprow"><span>PLAYER BONUS</span></div>' +
+      '<p class="q" style="font-size:30px">THE QUESTION FEED DID NOT ANSWER.</p>' +
+      '<button class="act-next" id="retryFeed">TRY AGAIN</button>' +
+      '<a class="act-share" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="/?src=bonuses">BACK TO TRUE 82</a></section>';
+    track("traits_session", { surface: "traits", action: "feed_error", source: entrySource, outcome: String(reason || "unknown").slice(0, 40) });
+    document.getElementById("retryFeed").addEventListener("click", function () { startSession(pinnedRef); });
+  }
+
+  function questionText(q) {
+    return q.public_question || ("Was " + (q.season || "") + " " + q.player_name + " an elite " + (q.trait_name || "").toLowerCase() + "?");
+  }
+
+  function renderQuestion() {
+    var q = Q[idx];
+    if (!q) return renderComplete();
+    var n = idx + 1;
+    var wc = q.what_counts || q.definition || "";
+    stage.innerHTML =
+      '<section class="card" id="qcard">' +
+        '<div class="toprow"><span>PLAYER BONUS</span><span>' + n + " / 5</span></div>" +
+        '<p class="q">' + esc(questionText(q)) + "</p>" +
+        (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
+        (wc ? '<button class="wc-btn" id="wcBtn" aria-expanded="false">WHAT COUNTS? <span aria-hidden="true">+</span></button>' +
+              '<div class="wc-body" id="wcBody">' + esc(wc) + "</div>" : "") +
+        '<div class="controls" id="controls">' +
+          '<div class="yn">' +
+            '<button class="vbtn v-yes" data-v="yes">YES</button>' +
+            '<button class="vbtn v-no" data-v="no">NO</button>' +
+          "</div>" +
+          '<button class="v-unsure" data-v="unsure">UNSURE</button>' +
+        "</div>" +
+        '<div id="resultZone" aria-live="polite"></div>' +
+      "</section>";
+    track("traits_question", { surface: "traits", action: "view", ordinal: n, challenge: q.id, source: entrySource });
+    var card = document.getElementById("qcard");
+    var wcBtn = document.getElementById("wcBtn");
+    if (wcBtn) wcBtn.addEventListener("click", function () {
+      var open = card.classList.toggle("wc-open");
+      wcBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    Array.prototype.forEach.call(card.querySelectorAll("[data-v]"), function (b) {
+      b.addEventListener("click", function () { castVote(q, b.getAttribute("data-v"), b); });
+      hapticOverlay(b);
+    });
+    if (q.my_response) {
+      api("/api/traits?op=result&q=" + encodeURIComponent(q.id) + "&sid=" + sid).then(function (x) {
+        if (x && x.ok && x.display) showResult(q, q.my_response, x.display, true);
+      }).catch(function () {});
+    }
+  }
+
+  function castVote(q, resp, btn, isRetry) {
+    var controls = document.getElementById("controls");
+    var card = document.getElementById("qcard");
+    if (!controls) return;
+    if (controls.classList.contains("locked") && !isRetry) return;
+    controls.classList.add("locked");
+    btn.classList.add("pressed");
+    var started = Date.now();
+    var slow = setTimeout(function () { btn.dataset.label = btn.textContent; btn.textContent = "\u2026"; }, 400);
+    var minH = controls.offsetHeight;
+    fetch("/api/traits", {
+      method: "POST", credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: entrySource, sid: sid })
+    }).then(function (r) { return r.json(); }).then(function (x) {
+      clearTimeout(slow);
+      if (btn.dataset.label) btn.textContent = btn.dataset.label;
+      if (!x || !x.ok || !x.display) return voteFailed(q, resp, btn, x && x.reason);
+      lastAnswered = q;
+      track("traits_vote", { surface: "traits", action: resp, ordinal: idx + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - started, source: entrySource });
+      showResult(q, resp, x.display, false, minH);
+    }).catch(function () {
+      clearTimeout(slow);
+      if (btn.dataset.label) btn.textContent = btn.dataset.label;
+      voteFailed(q, resp, btn, "network");
+    });
+  }
+
+  function voteFailed(q, resp, btn, reason) {
+    track("traits_question", { surface: "traits", action: "try_again", ordinal: idx + 1, challenge: q.id, outcome: String(reason || "unknown").slice(0, 40) });
+    var zone = document.getElementById("resultZone");
+    zone.innerHTML = '<p class="err-line">Vote didn\u2019t send.</p>' +
+      '<button class="act-next" id="tryBtn">TRY AGAIN</button>';
+    document.getElementById("tryBtn").addEventListener("click", function () {
+      zone.innerHTML = "";
+      castVote(q, resp, btn, true);
+    });
+  }
+
+  function showResult(q, resp, d, preVoted, minH) {
+    lastAnswered = q;
+    var controls = document.getElementById("controls");
+    var zone = document.getElementById("resultZone");
+    var early = d.mode === "counts";
+    var big, cls;
+    if (early) { big = d.yes + " YES \u00b7 " + d.no + " NO"; cls = "early"; }
+    else if ((d.yes_pct || 0) >= 50) { big = d.yes_pct + "% YES"; cls = "yes"; }
+    else { big = (100 - d.yes_pct) + "% NO"; cls = "no"; }
+    var you = "You voted " + resp.toUpperCase() + (d.agree_pct != null ? " \u00b7 " + d.agree_pct + "% agree" : "");
+    var elig = (d.yes || 0) + (d.no || 0);
+    var barHtml = elig > 0
+      ? '<div class="bar" aria-hidden="true"><span class="y" style="width:' + Math.round(100 * d.yes / elig) + '%"></span><span class="n" style="flex:1"></span></div>' : "";
+    var changeHtml = '<button class="cv-link" id="cvBtn">CHANGE VOTE</button>';
+    var last = idx >= 4;
+    var actions = last
+      ? '<p class="done-head" style="margin-top:4px">5 VOTES IN</p>' +
+        '<p class="done-line">Your votes helped set player bonuses.</p>' +
+        '<button class="act-next" id="moreBtn">VOTE ON 5 MORE</button>' +
+        '<a class="act-share" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="/?src=bonuses">BACK TO TRUE 82</a>' +
+        '<button class="t-link" id="shareBtn">SHARE LAST QUESTION</button>'
+      : '<button class="act-next" id="nextBtn">NEXT QUESTION</button>' +
+        '<button class="act-share" id="shareBtn">SHARE QUESTION</button>';
+    zone.innerHTML =
+      '<div class="result seq" tabindex="-1"' + (minH ? ' style="min-height:' + minH + 'px"' : "") + ">" +
+        '<div class="rv">' + (early ? '<p class="r-eyebrow">EARLY RESULT</p>' : "") +
+          '<p class="r-big ' + cls + '" id="rBig">' + big + "</p></div>" +
+        '<div class="rv"><p class="r-you">' + esc(you) + "</p></div>" +
+        '<div class="rv">' + statusChip(d.status) + "</div>" +
+        (barHtml ? '<div class="rv">' + barHtml + "</div>" : "") +
+        '<div class="rv">' + changeHtml + "</div>" +
+        '<div class="rv">' + actions + "</div>" +
+        '<div class="rv"><p class="flash" id="flash" role="status"></p></div>' +
+      "</div>";
+    if (controls) controls.remove();
+    var rEl = zone.querySelector(".result");
+    requestAnimationFrame(function () {
+      if (!rEl) return;
+      rEl.classList.add("show");
+      try { rEl.focus({ preventScroll: true }); } catch (e) { try { rEl.focus(); } catch (e2) {} }
+      var yFill = rEl.querySelector(".bar .y");
+      if (yFill) {
+        var w = yFill.style.width;
+        if (!reduceMotion) {
+          yFill.style.width = "0%";
+          requestAnimationFrame(function () { yFill.style.width = w; });
+        }
+      }
+    });
+    if (!early && !reduceMotion && window.matchMedia) {
+      (function () {
+        var bigEl = document.getElementById("rBig");
+        var target = parseInt(big, 10);
+        var tail = big.slice(String(target).length);
+        if (!bigEl || !isFinite(target)) return;
+        var t0 = null;
+        function step(ts) {
+          if (t0 === null) t0 = ts;
+          var k = Math.min(1, (ts - t0) / 500);
+          var eased = 1 - Math.pow(1 - k, 3);
+          bigEl.textContent = Math.round(target * eased) + tail;
+          if (k < 1) requestAnimationFrame(step); else bigEl.textContent = big;
+        }
+        requestAnimationFrame(step);
+      })();
+    }
+    hapticTick(last ? [12, 70, 12] : 10);
+    track("traits_question", { surface: "traits", action: "result_view", ordinal: idx + 1, challenge: q.id, outcome: d.status, value: early ? 1 : 0, source: entrySource });
+    if (!preVoted && q.id) { if (doneIds.indexOf(q.id) < 0) doneIds.push(q.id); }
+    var nextBtn = document.getElementById("nextBtn");
+    if (nextBtn) hapticOverlay(nextBtn);
+    if (nextBtn) nextBtn.addEventListener("click", function () {
+      track("traits_question", { surface: "traits", action: "next", ordinal: idx + 1, challenge: q.id, source: entrySource });
+      idx++; renderQuestion();
+    });
+    var moreBtn = document.getElementById("moreBtn");
+    if (moreBtn) hapticOverlay(moreBtn);
+    if (moreBtn) {
+      completedOnce = true; sessionOpen = false;
+      track("traits_session", { surface: "traits", action: "complete", value: doneIds.length, source: entrySource });
+      moreBtn.addEventListener("click", function () { startSession("", true); });
+    }
+    var shareBtn = document.getElementById("shareBtn");
+    if (shareBtn) shareBtn.addEventListener("click", function () { shareQuestion(q, resp, d); });
+    var cvBtn = document.getElementById("cvBtn");
+    if (cvBtn) cvBtn.addEventListener("click", function () {
+      // Standing votes are revisable: rebuild the live controls with the
+      // current answer pressed, and the next tap records outcome "changed".
+      track("traits_question", { surface: "traits", action: "change_open", ordinal: idx + 1, challenge: q.id, source: entrySource });
+      if (preVoted || doneIds.indexOf(q.id) >= 0) { /* stays counted toward the session */ }
+      q.my_response = null;
+      renderQuestion();
+      var prev = document.querySelector('[data-v="' + resp + '"]');
+      if (prev) prev.classList.add("pressed");
+    });
+  }
+
+  function shareQuestion(q, resp, d) {
+    var url = location.origin + "/bonuses/" + (q.slug || ("?q=" + encodeURIComponent(q.id))) + (q.slug ? "?src=s" : "&src=s");
+    var text;
+    var pq = questionText(q);
+    if (d.mode === "counts") text = "Early vote is " + d.yes + "\u2013" + d.no + ": " + pq;
+    else if (resp === "yes") text = "I voted yes: " + pq + " " + d.yes_pct + "% currently say yes.";
+    else if (resp === "no") text = "I voted no, and " + (100 - d.yes_pct) + "% agree: " + pq;
+    else text = d.yes_pct + "% say yes: " + pq;
+    if (navigator.share) {
+      navigator.share({ text: text, url: url }).then(function () {
+        track("traits_question", { surface: "traits", action: "share_open", challenge: q.id, source: entrySource });
+      }).catch(function () {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(text + "\n" + url).then(function () {
+        var f = document.getElementById("flash");
+        if (f) f.textContent = "LINK COPIED";
+        track("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: entrySource });
+      }).catch(function () {});
+    }
+  }
+
+  function renderComplete() { /* reached only if Q ran short */ startSession("", true); }
+
+  window.addEventListener("pagehide", function () {
+    if (sessionOpen && !completedOnce && doneIds.length < 5) {
+      track("traits_session", { surface: "traits", action: "exit", value: doneIds.length, ordinal: idx + 1, source: entrySource });
+    }
+  });
+
+  if (preload && preload.id) {
+    Q = [preload]; idx = 0; sessionOpen = true;
+    track("traits_session", { surface: "traits", action: "start", source: entrySource || "link" });
+    renderQuestion();
+    api("/api/traits?op=session&sid=" + sid + "&q=" + encodeURIComponent(preload.id)).then(function (x) {
+      if (x && x.ok && x.questions && x.questions.length) {
+        var mine = Q[0];
+        Q = x.questions;
+        if (Q[0] && Q[0].id !== mine.id) Q.unshift(mine);
+        Q = Q.slice(0, 5);
+      }
+    }).catch(function () {});
+  } else {
+    startSession(pinnedRef);
+  }
+})();
+</script>
+</body>
+</html>

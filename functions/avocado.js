@@ -74,6 +74,8 @@ export async function onRequest(context) {
   const coverageSchema = await q(`PRAGMA table_info(retention_coverage_v1)`, [], "retention_coverage_schema");
   const hasRetention = retentionSchema.length > 0;
   const hasRetentionCoverage = coverageSchema.length > 0;
+  const traitsSchema = await q(`PRAGMA table_info(trait_votes_v1)`, [], "traits_schema");
+  const hasTraits = traitsSchema.length > 0;
 
   const scope = dateScope(url);
   const dateW = scope.all ? "1=1" : "ts>=? AND ts<?";
@@ -670,6 +672,43 @@ export async function onRequest(context) {
     ]);
   })() : Promise.resolve([{},null,[],[],[],[],[],[]]);
 
+  const traitsPromise = Promise.all([
+    q(`SELECT COALESCE(NULLIF(action,''),'unknown') action,
+         COALESCE(NULLIF(source,''),'unknown') source,
+         COUNT(*) c, COUNT(DISTINCT sid) visits
+       FROM events WHERE ${W} AND name='traits_session'
+       GROUP BY action, source ORDER BY c DESC`, B, "traits_sessions"),
+    one(`SELECT COUNT(*) votes,
+         SUM(CASE WHEN outcome='counted' THEN 1 ELSE 0 END) counted,
+         SUM(CASE WHEN outcome='changed' THEN 1 ELSE 0 END) changed,
+         SUM(CASE WHEN outcome='error' THEN 1 ELSE 0 END) errors,
+         COUNT(DISTINCT sid) voters,
+         AVG(CASE WHEN value BETWEEN 0 AND 120000 THEN value END) avg_ms
+       FROM events WHERE ${W} AND name='traits_vote'`, B, "traits_vote_funnel"),
+    q(`SELECT ordinal, COUNT(*) views,
+         SUM(CASE WHEN action='view' THEN 1 ELSE 0 END) q_views,
+         SUM(CASE WHEN action='result_view' THEN 1 ELSE 0 END) results
+       FROM events WHERE ${W} AND name='traits_question' AND ordinal BETWEEN 1 AND 5
+       GROUP BY ordinal ORDER BY ordinal`, B, "traits_dropoff"),
+    hasTraits ? one(`SELECT COUNT(*) total,
+         SUM(CASE WHEN voter_class='visitor' THEN 1 ELSE 0 END) visitor_votes,
+         SUM(CASE WHEN voter_class='session' THEN 1 ELSE 0 END) session_votes,
+         SUM(changed) changes,
+         COUNT(DISTINCT voter_hash) voters
+       FROM trait_votes_v1`, [], "traits_vote_table") : Promise.resolve(null),
+    hasTraits ? q(`SELECT c.question_id, c.yes_share, c.eligible_votes, c.unsure_count, c.status,
+         q.player_name, q.season_label, t.display_name trait_name
+       FROM trait_consensus_v1 c
+       JOIN trait_questions_v1 q ON q.id=c.question_id
+       JOIN traits_v1 t ON t.id=q.trait_id
+       WHERE c.eligible_votes >= 5
+       ORDER BY ABS(COALESCE(c.yes_share,0.5)-0.5) ASC, c.eligible_votes DESC
+       LIMIT 8`, [], "traits_most_divided") : Promise.resolve([]),
+    hasTraits ? q(`SELECT status, COUNT(*) c FROM trait_consensus_v1
+       GROUP BY status ORDER BY c DESC`, [], "traits_rulings") : Promise.resolve([]),
+    hasTraits ? one(`SELECT COUNT(*) c FROM trait_questions_v1 WHERE status='active'`, [], "traits_pool") : Promise.resolve(null)
+  ]);
+
   const coveragePromise = hasRetentionCoverage ? Promise.all([
     one(`SELECT COUNT(*) checks,
         SUM(CASE WHEN decision='enabled' THEN 1 ELSE 0 END) enabled,
@@ -691,7 +730,8 @@ export async function onRequest(context) {
       GROUP BY browser,device ORDER BY checks DESC LIMIT 14`, dateB, "retention_browser_coverage")
   ]) : Promise.resolve([null,[],[],[]]);
 
-  const [core, v2, v3, retention, retentionCoverage] = await Promise.all([corePromise, v2Promise, v3Promise, retentionPromise, coveragePromise]);
+  const [core, v2, v3, retention, retentionCoverage, traitsData] = await Promise.all([corePromise, v2Promise, v3Promise, retentionPromise, coveragePromise, traitsPromise]);
+  const [traitsSessions = [], traitsVoteFunnel = null, traitsDropoff = [], traitsVoteTable = null, traitsMostDivided = [], traitsRulings = [], traitsPool = null] = traitsData;
   const [
     winCounts, hhHits, modeMix, funnelModes, roundFunnel, hcAction, hcSeg,
     sessionRows, corrRows, newspaperRowsLegacy, dailyByBaseRows,
@@ -869,6 +909,51 @@ export async function onRequest(context) {
       <p class="muted">Cookie is the primary identity on Safari/Chrome iOS; local storage is the fallback/cache. “Local recovery” means a valid same-site id existed locally when the first-party cookie was absent. Storage-blocked checks: <b>${+cs.storage_blocked||0}</b>.</p>`, "wide"));
   } else {
     cards.push(card("Retention coverage diagnostics", `<p class="warn">Run <code>migrations/0009_retention_coverage_v1.sql</code> to see exclusions, DNT/GPC incidence, identity source, and Safari/Chrome iOS measurement coverage.</p>`, "wide"));
+  }
+
+  // -------------------- Player Traits · the judgment game --------------------
+  {
+    const bySess = {};
+    let sessSources = {};
+    for (const r of traitsSessions) {
+      bySess[r.action] = (bySess[r.action] || 0) + (+r.c || 0);
+      if (r.action === "start" || r.action === "again") {
+        sessSources[r.source] = (sessSources[r.source] || 0) + (+r.c || 0);
+      }
+    }
+    const starts = (bySess.start || 0) + (bySess.again || 0);
+    const completes = bySess.complete || 0;
+    const agains = bySess.again || 0;
+    const vf = traitsVoteFunnel || {};
+    const srcMax = Math.max(1, ...Object.values(sessSources).map((n) => +n || 0));
+    const srcRows = Object.keys(sessSources).sort((a, b) => sessSources[b] - sessSources[a]);
+    cards.push(card("Player Traits · the judgment game", `
+      <div class="stat4">${stat(starts, "sessions started")}${stat(completes, "sessions completed")}${stat(maturePct(completes, starts), "completion")}${stat(maturePct(agains, completes), "ran it back")}</div>
+      <div class="stat4">${stat(+vf.votes || 0, "calls made")}${stat(+vf.changed || 0, "calls changed")}${stat(+vf.errors || 0, "call errors")}${stat(vf.avg_ms ? Math.round(vf.avg_ms / 100) / 10 + "s" : "—", "avg time per call")}</div>
+      <div class="decision"><b>The survival number is “ran it back”.</b> The handoff's own bar: the share of completed five-call sessions that voluntarily start another set. Completion measures whether five is the right length; ran-it-back measures whether the mode is a game.</div>
+      <div class="sub">session entries</div>${srcRows.length ? srcRows.map((s) => bar(human(s), sessSources[s], srcMax)).join("") : muted("no sessions yet")}
+      <div class="sub">dropoff by question position</div>
+      <table><thead><tr><th>position</th><th>shown</th><th>ruled</th></tr></thead><tbody>
+        ${traitsDropoff.length ? traitsDropoff.map((r) => `<tr><td class="k">Q${+r.ordinal || 0}</td><td>${+r.q_views || 0}</td><td>${+r.results || 0}</td></tr>`).join("") : emptyRow(3)}
+      </tbody></table>
+      <p class="muted">Funnel rows come from the ordinary event stream and are forward-only from v44. Unit: sessions for the top row, calls for the second.</p>`, "wide priority"));
+
+    if (hasTraits) {
+      const vt = traitsVoteTable || {};
+      const votersN = +vt.voters || 0;
+      const rulingMax = Math.max(1, ...traitsRulings.map((r) => +r.c || 0));
+      cards.push(card("Player Traits · the ledger", `
+        <div class="stat4">${stat(+vt.total || 0, "standing votes")}${stat(votersN, "distinct voters")}${stat(votersN ? Math.round(10 * (+vt.total || 0) / votersN) / 10 : "—", "votes per voter")}${stat(+vt.changes || 0, "changed minds")}</div>
+        <div class="stat3">${stat(+vt.visitor_votes || 0, "durable-id voters")}${stat(+vt.session_votes || 0, "session-only voters")}${stat(traitsPool ? +traitsPool.c || 0 : "—", "active questions")}</div>
+        <div class="sub">rulings on the board</div>${traitsRulings.length ? traitsRulings.map((r) => bar(human(r.status), +r.c || 0, rulingMax)).join("") : muted("no rulings yet")}
+        <div class="sub">most divided calls</div>
+        <table><thead><tr><th>call</th><th>yes</th><th>votes</th><th>status</th></tr></thead><tbody>
+          ${traitsMostDivided.length ? traitsMostDivided.map((r) => `<tr><td class="k">${esc(r.season_label || "")} ${esc(r.player_name)} · ${esc(r.trait_name)}</td><td>${r.yes_share == null ? "—" : Math.round(100 * r.yes_share) + "%"}</td><td>${+r.eligible_votes || 0}</td><td>${esc(human(r.status))}</td></tr>`).join("") : emptyRow(4)}
+        </tbody></table>
+        <p class="muted">Vote-table numbers are all-time state, not date-scoped: a standing vote is the current call, changed minds count edits. Session-only voters had no durable id (consent region, opt-out, or cookie loss); split them out before trusting per-voter rates.</p>`, "wide"));
+    } else {
+      cards.push(card("Player Traits · deployment status", `<p class="warn">Run <code>migrations/0010_traits_v1.sql</code> to create the trait tables and seed the question pool. The funnel card above works either way; votes cannot land until the migration is applied.</p>`, "wide"));
+    }
   }
 
   // -------------------- health and instrumentation --------------------
@@ -1360,7 +1445,7 @@ export async function onRequest(context) {
     ${filters(url,scope,buildRows,requestedBuild,hasV3)}${migrationWarning}${queryWarning}`;
 
   const privacyNote = `<section class="privacy"><b>Privacy boundary:</b> ordinary product analytics remains anonymous and session-scoped. The separate retention stream uses one random first-party TRUE 82 browser id, stored in a secure first-party cookie with local-storage fallback for up to 400 days. No account, fingerprint, IP-derived id, ad network, sale/sharing, or cross-site enrichment. Consent regions, unknown/Tor geolocation, and explicit site opt-out are disabled; DNT/GPC are observed but do not suppress first-party product measurement.</section>`;
-  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v42.2 · first-party retention · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
+  const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v44 · first-party retention + player traits · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
   return html(page("TRUE 82 · analytics", header + privacyNote + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 

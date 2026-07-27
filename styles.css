@@ -2426,9 +2426,7 @@ body.rules-open { overflow: hidden; }
 .rs-today-name { margin: 0 0 5px; font-family: var(--disp); font-weight: 700; font-size: 19px; line-height: 1.05; letter-spacing: 0.03em; color: var(--chalk); }
 .rs-today-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--chalk); }
 .rs-target { margin: 8px 0 0; font-size: 10.5px; letter-spacing: 0.06em; color: var(--amber); }
-.rs-steps { margin: 0; padding: 0 0 0 20px; }
-.rs-steps li { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
-.rs-steps li::marker { color: var(--amber); font-family: var(--mono); font-weight: 600; }
+/* v41: .rs-steps retired with RULES_STEPS; GAME BASICS uses .rs-list */
 .rs-list { margin: 0; padding: 0 0 0 18px; list-style: square; }
 .rs-list li { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
 .rs-list li::marker { color: var(--maple); }
@@ -2815,9 +2813,7 @@ body.gating .gate-back {
 }
 
 /* ---------- rules sheet: the years callout ---------- */
-.rs-years { border-left: 3px solid var(--amber); background: var(--ink); padding: 9px 12px 10px; margin: 14px 0 0; }
-.rs-years-label { margin: 0 0 5px; color: var(--amber); }
-.rs-years-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--chalk); }
+/* v41: .rs-years retired with the CHANGE THE YEARS box; .rs-ref took its frame */
 
 @media (prefers-reduced-motion: reduce) {
   .pool-cue { animation: none; }
@@ -3022,6 +3018,78 @@ body.gating .gate-back {
 /* V37 — the charity refusal. Centered block under the ball lever, clutch
    only, ghost-quiet so the hoop stays the protagonist; hidden the moment
    the pull commits. Compact enough for SE-height screens. */
-.hh-charity { display: block; margin: 14px auto 0; background: transparent; border: 1px solid rgba(255,181,46,0.35); color: var(--chalk-dim); font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.09em; padding: 9px 14px; border-radius: 6px; cursor: pointer; }
+/* v42: the charity refusal is a real choice, so it reads like one. Full
+   tap-target size, louder border, and on phones it goes full width so it
+   never hides below the lever. The lever stays the primary; this is the
+   loudest ghost we make. */
+.hh-charity { display: block; margin: 16px auto 0; background: transparent; border: 1px solid rgba(255,181,46,0.6); color: var(--chalk); font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.09em; padding: 12px 18px; min-height: 44px; border-radius: 7px; cursor: pointer; }
+@media (max-width: 430px) {
+  .hh-charity { width: 100%; font-size: 0.85rem; padding: 14px 12px; margin-top: 18px; }
+}
 .hh-charity.gone { display: none; }
 @media (hover: hover) { .hh-charity:hover { color: var(--amber); border-color: var(--amber); } }
+
+/* ============ V41 RULES SHEET ============
+   Owner-ordered sheet: GAME BASICS, the mode block, today's rule, NEED A
+   REFRESHER, WHAT WINS GAMES. The close control goes gold so the exit is
+   findable, GOT IT becomes the loudest thing in the footer, and the
+   refresher inherits the frame the retired CHANGE THE YEARS box used.
+   Footer holds three items and wraps only on sub-340px screens so an SE
+   never clips the primary button. */
+.rules-overlay .rs-close { color: var(--amber); border-color: var(--maple); }
+.rules-overlay .rs-close:active { color: var(--ink); background: var(--amber); border-color: var(--amber); }
+.rs-ref { border-left: 3px solid var(--amber); background: var(--ink); padding: 9px 12px 10px; margin: 14px 0 0; }
+.rs-ref-label { margin: 0 0 5px; color: var(--amber); }
+.rs-ref-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--chalk); }
+.rs-ref-body a { color: var(--amber); text-decoration: underline dotted; text-underline-offset: 2px; }
+.rs-foot { gap: 10px; }
+.rs-link { font-size: 10px; }
+.rules-overlay .rs-got {
+  flex: 1; min-width: 96px; background: var(--amber); color: var(--ink);
+  border: 1px solid var(--amber); font-size: 17px; letter-spacing: 0.09em;
+  padding: 11px 8px 12px; box-shadow: 0 2px 0 var(--maple);
+}
+.rules-overlay .rs-got:active { background: var(--maple); border-color: var(--maple); color: var(--chalk); box-shadow: none; }
+@media (max-width: 340px) {
+  .rs-foot { flex-wrap: wrap; }
+  .rules-overlay .rs-got { flex: 1 1 100%; }
+}
+
+/* ============ V42 THE SEASON REEL ============
+   Any Given Night, classic. Full-screen charcoal overlay, one card, month
+   acts stacking with a running record in the header. Tap anywhere or SKIP
+   to jump to the verdict. House materials; the reel is quiet drama, not a
+   slot machine. */
+.reel-overlay { position: fixed; inset: 0; z-index: 240; background: rgba(10,12,16,0.94); display: flex; align-items: center; justify-content: center; padding: 18px; }
+.reel-card { width: min(430px, 100%); max-height: 86vh; display: flex; flex-direction: column; background: var(--ink); border: 1px solid var(--maple-line); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,0.55); }
+.reel-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--tunnel-2); }
+.reel-eyebrow { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color: var(--maple); }
+.reel-run { margin-left: auto; font-size: 15px; font-weight: 700; color: var(--amber); letter-spacing: 0.06em; }
+.reel-skip { -webkit-appearance: none; appearance: none; background: transparent; border: 1px solid var(--maple-line); border-radius: 6px; color: var(--chalk-dim); font-size: 9.5px; letter-spacing: 0.1em; padding: 6px 9px; }
+.reel-skip:active { color: var(--amber); border-color: var(--maple); }
+.reel-acts { overflow-y: auto; padding: 6px 14px 14px; }
+.reel-act { padding: 10px 0 2px; border-bottom: 1px dotted var(--tunnel-2); animation: reelIn 0.45s ease-out; }
+.reel-mo-line { display: flex; align-items: baseline; gap: 10px; }
+.reel-mo { font-family: var(--disp); font-weight: 700; font-size: 18px; letter-spacing: 0.08em; color: var(--chalk); }
+.reel-mo-rec { font-size: 13px; color: var(--amber); }
+.reel-note { margin: 3px 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--chalk-dim); }
+.reel-final { padding: 14px 0 4px; text-align: center; animation: reelIn 0.45s ease-out; }
+.reel-final-rec { font-family: var(--disp); font-weight: 700; font-size: 44px; letter-spacing: 0.04em; color: var(--amber); line-height: 1; }
+.reel-final .reel-note { text-align: center; margin-top: 6px; }
+@keyframes reelIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+
+/* V42.1 — the calendar. Date-numbered squares cascade per month act, wins
+   in amber, losses in ember with a pop; the header record ticks square by
+   square. The commentary line lands after the month fills. */
+.reel-grid { display: flex; flex-wrap: wrap; gap: 4px; margin: 7px 0 2px; }
+.reel-day { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0; border: 1px solid var(--tunnel-2); color: var(--chalk-dim); animation: dayIn 0.22s ease-out; }
+.reel-day.w { background: var(--amber); border-color: var(--amber); color: var(--ink); font-weight: 700; }
+.reel-day.l { background: #7e2a24; border-color: #a33a32; color: var(--chalk); font-weight: 700; animation: dayLoss 0.3s ease-out; }
+.reel-note-pending { min-height: 18px; }
+@keyframes dayIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+@keyframes dayLoss { 0% { opacity: 0; transform: scale(0.5); } 60% { transform: scale(1.22); } 100% { opacity: 1; transform: none; } }
+
+/* V42 amendment 2 - the verdict button and the inline percentile */
+.reel-done { display: block; margin: 14px auto 2px; background: var(--amber); color: var(--ink); border: 1px solid var(--amber); border-radius: 8px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.09em; padding: 12px 22px; min-height: 44px; cursor: pointer; box-shadow: 0 2px 0 var(--maple); }
+.reel-done:active { background: var(--maple); border-color: var(--maple); color: var(--chalk); box-shadow: none; }
+.comp-pct { color: var(--amber); white-space: nowrap; }

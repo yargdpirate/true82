@@ -22,13 +22,29 @@ enjoy it, and that's the extent of the commerce.
 
 ## Does TRUE 82 track me?
 
-TRUE 82 uses first-party, cookieless usage analytics to see where visits start,
-where games are abandoned, and whether features such as sharing work. The
-analytics system uses random visit and game identifiers that disappear on
-reload or tab close; it does not create an analytics cookie, account,
-fingerprint, IP hash, or durable browser identifier. The Daily keeps your
-official result and streak on your own device so that feature works, and the
-site reports only coarse counts from that local history.
+TRUE 82 uses first-party analytics to see where visits start, where games are
+abandoned, whether sharing works, and whether players return on later days. It
+does not use an account, fingerprint, IP hash, advertising identifier, or
+third-party tracker, and nothing is sold or shared for targeted advertising.
+For retention measurement, TRUE 82 assigns one random browser identifier stored
+in a secure first-party cookie with a local-storage fallback for up to 400
+days; it is disabled for EEA, UK, and Swiss traffic, for unknown locations, and
+after a TRUE 82-specific opt-out (run t82RetentionOptOut() in the browser
+console). Do Not Track and Global Privacy Control are recorded as diagnostics
+for this strictly first-party measurement. Clearing site data or using another
+browser/device starts a new anonymous identity. Player Traits votes are stored
+as anonymous tallies keyed by a one-way hash, never by the raw identifier. The
+Daily separately keeps your official result and streak on your device so that
+feature works.
+
+## What is Player Traits?
+
+Player Traits is a fast community voting mode at true82.net/traits. Each call
+puts one version of one player against one plain-English trait, like whether
+2007-08 Kobe Bryant qualifies as a Wing Defender, and you answer yes, no, or
+not sure. Once enough calls land, the community's ruling stands, and those
+rulings feed TRUE 82's lineup-fit scoring. Rulings never change a player's base
+statistical value; they shape how well a five fits together.
 
 ## How do you play TRUE 82?
 

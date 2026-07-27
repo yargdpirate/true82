@@ -1,5 +1,11 @@
-/* TRUE 82 v40 aggressive first-party retention client.
-   Load after analytics.js and before app.js.
+/* TRUE 82 v40r2 aggressive first-party retention client (v44 integration).
+   Load after analytics.js and before any gameplay script.
+
+   v44: analytics.js now exposes t82AnalyticsSubscribe, so this client
+   registers a subscriber and receives every event with its FINAL enriched
+   props (run_id, mode, daily_num, official already resolved from run
+   context). The old t82track wrapper survives only as a fallback for a
+   stale-cached analytics.js without the hook; exactly one path ever runs.
 
    Uses a random TRUE 82-only browser id. The server-set first-party cookie is
    primary; localStorage is a same-site fallback/cache for browsers that do not
@@ -135,7 +141,7 @@
       event_name: eventName,
       sid: token(dbg.sid || "", 64),
       run_id: runId,
-      build: token(dbg.build || "v40", 32),
+      build: token(dbg.build || "v44", 32),
       mode: mode,
       entry: token(props.entry || ctx.entry || landingEntry(), 48),
       source: token(props.source || landingSource(), 80),
@@ -251,20 +257,31 @@
     }
   }
 
-  function wrapTrack() {
+  function observe(name, props) {
+    var p = props || {};
+    var retainedName = allowedName(name, p);
+    if (!retainedName) return;
+    if (retainedName === "share_success") {
+      var sig = token((p.run_id || "") + "|" + (p.action || p.source || "") + "|" + (p.surface || ""), 180);
+      var now = Date.now();
+      if (sig === lastShareSig && now - lastShareAt < 5000) return;
+      lastShareSig = sig;
+      lastShareAt = now;
+    }
+    enqueue(retainedName, p);
+  }
+
+  function attach() {
+    // Preferred: the explicit hook (analytics.js v44+). Fallback: wrap the
+    // tracker exactly as v40r2 shipped, for a stale-cached analytics.js.
+    if (typeof window.t82AnalyticsSubscribe === "function") {
+      window.t82AnalyticsSubscribe(observe);
+      return;
+    }
     if (!originalTrack) return;
     window.t82track = function (name, props) {
       var result = originalTrack.apply(this, arguments);
-      var retainedName = allowedName(name, props || {});
-      if (retainedName === "share_success") {
-        var p = props || {};
-        var sig = token((p.run_id || "") + "|" + (p.action || p.source || "") + "|" + (p.surface || ""), 180);
-        var now = Date.now();
-        if (sig === lastShareSig && now - lastShareAt < 5000) return result;
-        lastShareSig = sig;
-        lastShareAt = now;
-      }
-      if (retainedName) enqueue(retainedName, props || {});
+      observe(name, props || {});
       return result;
     };
   }
@@ -302,6 +319,6 @@
     return window.t82RetentionDebug();
   };
 
-  wrapTrack();
+  attach();
   initPolicy();
 })();

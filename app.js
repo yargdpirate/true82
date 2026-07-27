@@ -17,7 +17,7 @@
 
 var CFG = {
   SITE_NAME: "PERFECT FIVE",
-  DATA_URL: "site_data.json?v=sc-v36",
+  DATA_URL: "site_data.json?v=sc-v42c",
   GAMES_IN_SEASON: 82,
   POS_THRESHOLD: 20,
   KAMAN_LO: 2004,
@@ -345,10 +345,14 @@ function initData(data) {
   CAREER_BUCKETS = t.CAREER_BUCKETS; KAMAN_SEASONS = t.KAMAN_SEASONS;
 }
 
-// Anonymous analytics state. No analytics id is written to cookies, localStorage,
-// or sessionStorage. analytics.js owns one random in-memory visit id; each game gets
-// one random in-memory run id. The only persistent state read below is The Daily's
-// already-existing 14-day game record, and only coarse counts leave the browser.
+// Product analytics state. analytics.js owns one random in-memory visit id and
+// nothing durable: the v43 localStorage identity experiment was retired before
+// it ever deployed. The durable same-browser id lives with retention-client.js
+// and /api/identity (the v40r2 layer): a 400-day first-party HttpOnly cookie
+// with a localStorage fallback, disabled in consent regions and by the site
+// opt-out; DNT/GPC are recorded there as diagnostics only. Each game still
+// receives a random in-memory run id. The Daily's separate 14-day
+// game record remains feature state and only coarse counts leave the browser.
 var ANALYTICS_RETURN_SENT = false;
 var ANALYTICS_RULES_OPEN_TS = 0;
 var ANALYTICS_SEARCH_TIMER = 0;
@@ -492,6 +496,17 @@ function newGame(mode, seed, challenge, opts) {
     ANALYTICS_RESULT_OBSERVER = null;
   }
   if (mode) MODE = mode;
+  // Presti runs uncapped (owner ruling, 2026-07-26): cap mode is hard enough
+  // without the Any Given Night ceiling, so a true murderers' row may project
+  // and realize all 82. The constant lives in site data; override it per mode
+  // here so every sim-core read sees the right ceiling for the run. Classic
+  // keeps the shipped value untouched.
+  try {
+    if (window.T82 && T82.t && T82.t.SC && typeof T82.t.SC.PG_CAP === "number") {
+      if (window.__t82PgCapOrig == null) window.__t82PgCapOrig = T82.t.SC.PG_CAP;
+      T82.t.SC.PG_CAP = (MODE === "cap") ? 1 : window.__t82PgCapOrig;
+    }
+  } catch (e) {}
   G = T82.newState(MODE, seed, challenge || null);
   G.analyticsInitialCap = G.maxCap;
   if (opts && opts.social) G.social = opts.social;   // THE DAILY: {key,num,name,chId,target} rides the run
@@ -668,7 +683,29 @@ function doLineupSwap(i, j) {
 // Chrome/Android; iOS Safari ignores it (silent no-op). try/catch guards the few
 // webviews that throw on the call.
 function buzz(ms) {
-  try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {}
+  // Android: the real Vibration API. iOS Safari has no vibration API; the one
+  // web door to the Taptic Engine is toggling an <input type="checkbox"
+  // switch> (Safari 17.4+). Synthetic toggles were patched out in iOS 26.5,
+  // so this programmatic path reaches iOS 17.4-26.4 and is a harmless no-op
+  // beyond; tap-moment haptics on 26.5+ ride real switch overlays where they
+  // matter (the Bonuses page). Neither path touches the audio session, so
+  // music and podcasts are never ducked.
+  try {
+    if (navigator.vibrate && navigator.vibrate(ms || 15)) return;
+  } catch (e) {}
+  try {
+    if (!buzz._sw) {
+      var sw = document.createElement("input");
+      sw.type = "checkbox";
+      try { sw.setAttribute("switch", ""); } catch (e2) {}
+      sw.setAttribute("aria-hidden", "true");
+      sw.tabIndex = -1;
+      sw.style.cssText = "position:fixed;left:-40px;top:-40px;width:1px;height:1px;opacity:0;pointer-events:none";
+      document.body.appendChild(sw);
+      buzz._sw = sw;
+    }
+    buzz._sw.click();
+  } catch (e) {}
 }
 
 // Every true button except the deliberately flat Start over, compact Sort/info
@@ -1549,28 +1586,38 @@ function tickBank() {
    explainers live in daily-core MODE_TIP; the bullets here are the long form.
    If a mechanic or an engine constant (site_data meta.scoring) changes,
    update all three in the same commit. */
-var RULES_LAW = [
-  "One shared board per day. Everyone gets the same teams, the same players, the same prices.",
-  "Your first finished run is your official score. Replays are practice and can never overwrite it.",
-  "Finish, then share: your link drops friends onto this exact board to beat your number."
-];
-var RULES_STEPS = [
-  "Five rounds. Each one deals a random NBA franchise and decade. Draft one player who suited up for that team in that era.",
-  "Fill five slots: two guards, two forwards, one center. A player only fits slots he really played.",
-  "When your fifth pick lands, the season engine turns your five into an 82-game record using advanced impact stats (BPM). No dice: the same five always posts the same record.",
-  "The chase is 82-0. Nobody said it was likely."
+// v41 RULES SHEET COPY (owner-authored, owner-ordered). Section order is
+// GAME BASICS -> HOW TO PLAY THIS MODE -> [today's rule box] -> NEED A
+// REFRESHER -> WHAT WINS GAMES. RULES_STEPS and the standalone CHANGE THE
+// YEARS box retired here: GAME BASICS covers the first, and each mode block
+// now owns its own season/reroll instructions.
+// COPY LAW: zero em-dashes (walk-pinned). Money reads plain, "$1M".
+var RULES_BASICS = [
+  "Draft a team of 2 guards, 2 forwards, and a center from 1974\u20132026. Assemble an actual coherent team.",
+  "In each round, draft one player from a random NBA franchise + decade combo.",
+  "The system uses real advanced stats to calculate an actual win-loss record.",
+  "Try to go 82-0. Share to prove you know ball."
 ];
 var RULES_MODE = {
   classic: [
-    "Full stats on every card. The season menu (\u25BE) under each name lets you use any year of that player's career.",
-    "One team skip and one era skip for the whole draft. Spend them on dead boards; they do not carry over.",
-    "The sort chips (Min, A\u2013Z, Off, Def) and the search box are your scouting tools."
+    "Full player stats on every card. The season menu (\u25BE) under each name lets you pick any year of that player's career. The best overall season is selected by default, but worth changing to balance team offense/defense.",
+    "One team skip and one era skip for the whole draft if there are no high-quality fits.",
+    "Use the sort chips to order by A\u2013Z, Offensive BPM, Defensive BPM, or use the search box.",
+    "Players are default sorted by peak minutes per game in a season.",
+    "Shift player positions around at the bottom to fit in players."
   ],
   cap: [
-    "You have a $50M bank for all five picks. Every card shows its price.",
-    "Prices are randomized each round. True stars are priced honestly and fringe players run cheap; the mid-tier is the minefield, where about 1 in 7 is a $1M steal and about half are rip-offs priced like stars.",
-    "Skip team, skip era, or reroll the years for $1M each, as often as the money allows. Every empty roster spot needs $1M held in reserve.",
-    "Seasons are randomized too, and some boards are flat unwinnable. That is Presti."
+    "You have a salary cap. $50M to draft your five.",
+    "Player salaries vary greatly, with rip-offs, bargains, and bait choices included.",
+    "Pay $1M to reroll decade, team, or player seasons within that combo. Unlimited rerolls, but every empty roster spot needs $1M held in reserve.",
+    "Players are default sorted by salary; also sort by peak minutes played, A\u2013Z, or use the search box.",
+    "Occasional random perks when rerolling era/team/player: REFUND (green) gives your dollar back. FIRE SALE (red) drops the next roll's player salaries by $2M."
+  ],
+  daily: [
+    "One shared board per day. Everyone gets the same teams, the same players, the same prices.",
+    "Your first finished run is your official score. Replays are practice and can never overwrite it.",
+    "Today's rule appears below, and it beats the normal numbers wherever they disagree.",
+    "Finish, then share: your link drops friends onto this exact board to beat your number."
   ],
   pro: [
     "No stats. Every card is a name, a position, and a randomized season.",
@@ -1582,9 +1629,19 @@ var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
   ["ONE BALL", "Team usage above 110 gets taxed. Two high-usage alphas fit. Four is a turf war your net pays for."],
-  ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. Never stack two liabilities in one position group."],
+  ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. And someone up front, a forward or your center, has to protect the rim, or that is 2 more."],
+  ["THE DIRTY WORK", "Your five still have to rebound and somebody has to pass. A bottom-of-the-league board rate costs 2 to 3, no real playmaker costs 2, and more than one player past his 12th season costs 1."],
   ["THE MATH", "Net 0 is a 41-41 team, and one point of net is worth 2 to 3 wins in the middle. The 96 Bulls grade about +13. An 82-0 five needs about +27."]
 ];
+// Campaign "howto": this surface reports separately from the info pages.
+var BBREF_BPM_LEADERS = "https://www.basketball-reference.com/leaders/bpm_top_10.html";
+function rulesRefresherHtml() {
+  return '<p class="rs-ref-body">Our engine is based on BPM, so <a href="' +
+    bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">this page</a> is a good place to start. ' +
+    'Check out <a href="' + bbrefTag("https://www.basketball-reference.com/", "howto") +
+    '" target="_blank" rel="noopener">Basketball Reference</a> and Basketball Reference\u2019s Stathead for deeper dives. ' +
+    'No affiliation, I just use them all the time, including the stats behind this site.</p>';
+}
 function rulesSheetHtml() {
   var isDaily = !!(G && G.social);
   var ch = G && G.ch;
@@ -1594,11 +1651,23 @@ function rulesSheetHtml() {
   var h = '<div class="rs-head"><span class="rs-title">HOW TO PLAY</span>' +
     '<button class="rs-close" id="rulesClose" type="button" aria-label="Close the rules">\u2715</button></div>' +
     '<div class="rs-scroll">';
+
+  // Block builders; assembly order depends on the mode. On the Daily the
+  // daily-specific material (today's rule, then the Daily's own rules) leads
+  // and GAME BASICS follows: a Daily player opening the sheet wants today,
+  // not the tutorial (owner directive, v45).
+  var basicsBlock = '<p class="rs-eyebrow">GAME BASICS</p><ul class="rs-list">' +
+    RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+  var modeBlock = '<p class="rs-eyebrow">HOW TO PLAY THIS MODE (' + (isDaily ? "THE DAILY" : baseName) + ')</p><ul class="rs-list">' +
+    (RULES_MODE[isDaily ? "daily" : baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   if (isDaily) {
-    h += '<p class="rs-eyebrow">THE DAILY \u00B7 THE LAW</p><div class="rs-law">' +
-      RULES_LAW.map(function (t) { return "<p>" + t + "</p>"; }).join("") + '</div>';
+    modeBlock += '<p class="rs-eyebrow">PLUS ' + baseName + ' MODE RULES</p><ul class="rs-list">' +
+      (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+  }
+  var todayBlock = "";
+  if (isDaily) {
     var brief = G.social.gate || G.social.short || "";
-    h += '<div class="rs-today plq-frame plq-slim">' +
+    todayBlock = '<div class="rs-today plq-frame plq-slim">' +
       '<p class="rs-eyebrow rs-today-label">TODAY\u2019S RULE \u00B7 DAILY #' + G.social.num + '</p>' +
       '<p class="rs-today-name">' + esc(G.social.name) + '</p>' +
       (brief ? '<p class="rs-today-body">' + esc(brief) + '</p>' : '') +
@@ -1607,7 +1676,9 @@ function rulesSheetHtml() {
           (CFG.GAMES_IN_SEASON - G.social.target.w) + ', Net ' + T82DAILY.signedNet(G.social.target.n) + '.</p>'
         : '') +
       '</div>';
-  } else if (ch) {
+  }
+  h += isDaily ? (todayBlock + modeBlock + basicsBlock) : (basicsBlock + modeBlock);
+  if (!isDaily && ch) {
     var chBrief = (copy[ch.id] && copy[ch.id].g) || ch.blurb || "";
     h += '<div class="rs-today plq-frame plq-slim">' +
       '<p class="rs-eyebrow rs-today-label">' + (G.weekly ? "THIS WEEK\u2019S TWIST" : "THE TWIST") + '</p>' +
@@ -1615,22 +1686,21 @@ function rulesSheetHtml() {
       (chBrief ? '<p class="rs-today-body">' + esc(chBrief) + '</p>' : '') +
       '</div>';
   }
-  var yearsTip = baseKey === "cap"
-    ? "Seasons are locked to their price tag in Presti. To change the years, respin the whole board with SKIP YRS for \u2212$1M."
-    : baseKey === "pro"
-      ? "Every card has a year menu (\u25BE), and it works blind: seasons are randomized, and you can change any of them from memory before you draft."
-      : "Every card has a year menu (\u25BE). You are drafting a season, not a career: 1996 Jordan and 2003 Jordan are different weapons. Check it on every pick and take the peak year.";
-  h += '<p class="rs-eyebrow">' + baseName + ' MODE RULES</p><ul class="rs-list">' +
-    (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
-  h += '<div class="rs-years"><p class="rs-eyebrow rs-years-label">CHANGE THE YEARS</p>' +
-    '<p class="rs-years-body">' + yearsTip + '</p></div>';
-  h += '<p class="rs-eyebrow">THE GAME IN 20 SECONDS</p><ol class="rs-steps">' +
-    RULES_STEPS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>";
+
+  h += '<div class="rs-ref"><p class="rs-eyebrow rs-ref-label">NEED A REFRESHER?</p>' + rulesRefresherHtml() + '</div>';
+
+  var engineRules = RULES_ENGINE;
+  if (baseKey === "classic" && !isDaily && !ch) {
+    engineRules = RULES_ENGINE.concat([["ANY GIVEN NIGHT",
+      "The season is played out one game at a time. No five wins a given night more than 99 times in 100, so a perfect season has to survive all 82."]]);
+  }
   h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
-    RULES_ENGINE.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
-    ((isDaily || ch) ? '<p class="rs-note">Today’s rule wins any conflict with the normal numbers above.</p>' : "");
+    engineRules.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
+    ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
+
   h += '</div><div class="rs-foot">' +
     '<a class="rs-link mono" href="/how-it-works/" target="_blank" rel="noopener">Full engine math \u2192</a>' +
+    '<a class="rs-link mono" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
     '<button class="rs-got" id="rulesGotIt" type="button">GOT IT</button>' +
   '</div>';
   return h;
@@ -1697,6 +1767,321 @@ function resultsTopBarHtml() {
     '<a class="donate-btn" id="donateBtn" href="mailto:true82mailbox@gmail.com" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
   '</div>';
 }
+/* ---------- PLAYER BONUSES (v46; internal traits_* names unchanged) ---------- */
+// The voting mode lives at /bonuses/ (per-question slugs at /bonuses/<slug>);
+// app.js owns the two doorways: the homepage module (one curated rotating
+// question from op=featured) and the compact results-screen prompt, which
+// prefers a question about a player this user just drafted.
+// Styling is injected here, scoped under .traits-*, so the shared styles.css
+// stays untouched this build (fold into styles.css on its next owner pass).
+var TRAITS_CSS_ID = "traitsCss";
+function ensureTraitsCss() {
+  if (document.getElementById(TRAITS_CSS_ID)) return;
+  var st = document.createElement("style");
+  st.id = TRAITS_CSS_ID;
+  st.textContent =
+    ".traits-module{display:block;text-align:left;color:inherit;position:relative;" +
+      "background:linear-gradient(180deg,#1a2129,#141a21);border:2px solid #FFB52E;border-radius:20px;" +
+      "padding:15px 15px 13px;margin:12px 0;" +
+      "box-shadow:0 0 0 1px rgba(255,181,46,.25),0 0 26px rgba(255,181,46,.16),0 14px 34px -18px rgba(0,0,0,.7)}" +
+    ".traits-module .tm-top{display:flex;align-items:center;gap:9px}" +
+    ".traits-module .tm-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
+      "letter-spacing:.2em;color:#FFB52E}" +
+    ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
+      "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
+    ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;" +
+      "letter-spacing:.22em;color:#8b98a5;margin-top:8px}" +
+    ".traits-module .tm-q{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
+      "font-size:25px;line-height:1.05;margin-top:4px;text-transform:uppercase;" +
+      "color:inherit;text-decoration:none}" +
+    ".traits-module .tm-q:active{color:#FFB52E}" +
+    ".traits-module .tm-def{display:block;font-size:13px;color:#8b98a5;margin-top:5px;" +
+      "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-vb{position:relative;height:52px;border:0;border-radius:13px;cursor:pointer;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.1em;color:#1c1608;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 #8c2317,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb:active,.traits-module .tm-vb.pressed{transform:translateY(2px);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.no:active,.traits-module .tm-vb.no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2)," +
+      "0 1px 0 #8c2317,0 4px 8px -5px rgba(0,0,0,.6)}" +
+    ".traits-module.tm-locked .tm-vb{pointer-events:none;opacity:.55}" +
+    ".traits-module.tm-locked .tm-vb.pressed{opacity:1}" +
+    ".traits-module .tm-res{display:none;margin-top:12px;font-family:'Barlow Condensed',sans-serif;" +
+      "font-weight:700;font-size:19px;letter-spacing:.05em}" +
+    ".traits-module .tm-res b{color:#FFB52E}" +
+    ".traits-module .tm-res .neg{color:#E5533C}" +
+    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:10px}" +
+    ".traits-module .tm-dots{display:flex;gap:7px}" +
+    ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
+    ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
+    ".traits-module .tm-count{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;color:#8b98a5}" +
+    ".traits-module .tm-why{display:block;font-size:12px;color:#68737e;margin-top:8px}" +
+    ".traits-module .tm-open{position:absolute;top:16px;right:16px;font-family:'IBM Plex Mono',monospace;" +
+      "font-size:11px;letter-spacing:.12em;color:#8b98a5;text-decoration:none;padding:6px 0 6px 8px}" +
+    ".traits-module .tm-done{display:none;margin-top:13px}" +
+    ".traits-module .tm-done .td-h{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:23px;letter-spacing:.06em}" +
+    ".traits-module .tm-done .td-l{font-size:14px;color:#8b98a5;margin-top:3px}" +
+    ".traits-module .tm-again{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;" +
+      "height:48px;padding:0 18px;border:0;border-radius:12px;cursor:pointer;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;letter-spacing:.1em;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
+    "@media (prefers-reduced-motion:reduce){.traits-module .tm-vb{transition:none}}" +
+    ".traits-prompt{background:linear-gradient(180deg,#1a2129,#141a21);border:1.5px solid #FFB52E;border-radius:16px;" +
+      "padding:16px;box-shadow:0 0 0 1px rgba(255,181,46,.18),0 0 18px rgba(255,181,46,.1)}" +
+    ".traits-prompt .tp-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;color:#FFB52E}" +
+    ".traits-prompt .tp-q{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;margin:7px 0 5px;text-transform:uppercase}" +
+    ".traits-prompt .tp-cta{display:inline-flex;align-items:center;justify-content:center;margin-top:9px;" +
+      "min-width:96px;height:46px;padding:0 16px;border-radius:12px;text-decoration:none;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:.12em;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
+    ".tchips{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}" +
+    ".tchip{position:relative;display:inline-block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
+      "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#FFB52E;" +
+      "border:1.5px solid #FFB52E;border-radius:6px;padding:2px 7px 1px}" +
+    ".tchip.anti{color:#E5533C;border-color:#E5533C}" +
+    ".tchip.anti::after{content:'';position:absolute;left:5%;right:5%;top:50%;height:2px;margin-top:-1px;" +
+      "background:#E5533C;transform:rotate(-5deg);border-radius:1px}";
+  document.head.appendChild(st);
+}
+function traitsModuleHtml() {
+  ensureTraitsCss();
+  // Ships hidden; wireBonusesModule reveals it only with a live session in
+  // hand, so the homepage never shows a stale or empty debate. The module IS
+  // a voting surface (owner redesign, 2026-07-27): five quick YES/NO calls
+  // run inline with progress dots; UNSURE and the full result hierarchy live
+  // on /bonuses/, one tap away via FULL PAGE or the question itself.
+  return '<section class="traits-module" id="traitsModule" hidden>' +
+    '<span class="tm-top"><span class="tm-eyebrow">PLAYER BONUSES</span>' +
+    '<span class="tm-new">NEW</span></span>' +
+    '<a class="tm-open" id="tmOpen" href="/bonuses/?src=home_module">FULL PAGE \u2192</a>' +
+    '<span class="tm-call" id="tmCall">TODAY\u2019S CALL</span>' +
+    '<a class="tm-q" id="tmQ" href="/bonuses/?src=home_module"></a>' +
+    '<span class="tm-def" id="tmDef"></span>' +
+    '<div class="tm-votes" id="tmVotes">' +
+      '<button class="tm-vb" type="button" id="tmYes">YES</button>' +
+      '<button class="tm-vb no" type="button" id="tmNo">NO</button>' +
+    "</div>" +
+    '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
+    '<div class="tm-done" id="tmDone"></div>' +
+    '<div class="tm-foot"><span class="tm-dots" id="tmDots"></span>' +
+    '<span class="tm-count" id="tmCount"></span></div>' +
+    '<span class="tm-why">Community votes set lineup-fit bonuses.</span></section>';
+}
+
+// The inline home session: same worker, same voter, same analytics names as
+// the full page (source home_module throughout). Compact result beat per
+// vote, then the next question slides in; the fifth lands the completion
+// state with VOTE ON 5 MORE. Any fetch trouble mid-run degrades to the
+// FULL PAGE door instead of a dead card.
+var TM = { qs: [], i: 0, sid: null, busy: false, source: "home_module", loader: null, wired: false };
+function tmHref(q) {
+  return q && q.slug ? "/bonuses/" + q.slug + "?src=" + TM.source : "/bonuses/?src=" + TM.source;
+}
+function tmDots() {
+  var d = el("tmDots");
+  if (!d) return;
+  var out = "";
+  for (var k = 0; k < 5; k++) {
+    var on = k < TM.i || (k === TM.i && TM.qs[TM.i]);
+    out += '<span class="tm-dot' + (on ? " on" : "") + '"></span>';
+  }
+  d.innerHTML = out;
+  var c = el("tmCount");
+  if (c) c.textContent = TM.i >= 5 ? "" :
+    "Vote " + (TM.i + 1) + " of 5" + (TM.i === 0 ? " \u00B7 About 20 seconds" : "");
+}
+function tmShowQuestion() {
+  var q = TM.qs[TM.i];
+  var mod = el("traitsModule");
+  if (!q || !mod) return tmComplete();
+  el("tmCall").style.display = TM.i === 0 ? "" : "none";
+  el("tmQ").textContent = (q.public_question || "").toUpperCase();
+  el("tmQ").href = tmHref(q);
+  el("tmDef").textContent = q.what_counts || "";
+  el("tmRes").style.display = "none";
+  el("tmVotes").style.display = "";
+  mod.classList.remove("tm-locked");
+  var y = el("tmYes"), nn = el("tmNo");
+  y.classList.remove("pressed"); nn.classList.remove("pressed");
+  tmDots();
+  analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
+}
+function tmVote(resp, btn) {
+  if (TM.busy) return;
+  var q = TM.qs[TM.i];
+  var mod = el("traitsModule");
+  if (!q || !mod) return;
+  TM.busy = true;
+  mod.classList.add("tm-locked");
+  btn.classList.add("pressed");
+  buzz(10);
+  var t0 = Date.now();
+  fetch("/api/traits", {
+    method: "POST", credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: TM.source, sid: TM.sid })
+  }).then(function (r) { return r.json(); }).then(function (x) {
+    TM.busy = false;
+    if (!x || !x.ok || !x.display) return tmDegrade(q);
+    analyticsTrack("traits_vote", { surface: "traits", action: resp, ordinal: TM.i + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - t0, source: TM.source, sid: TM.sid });
+    tmResult(q, resp, x.display);
+  }).catch(function () { TM.busy = false; tmDegrade(q); });
+}
+function tmResult(q, resp, d) {
+  var res = el("tmRes");
+  el("tmVotes").style.display = "none";
+  var line;
+  if (d.mode === "counts") line = "<b>" + d.yes + " YES \u00B7 " + d.no + " NO</b> so far";
+  else if ((d.yes_pct || 0) >= 50) line = "<b>" + d.yes_pct + "% SAY YES</b>";
+  else line = '<span class="neg">' + (100 - d.yes_pct) + "% SAY NO</span>";
+  var chip = d.status === "qualifies" ? " \u00B7 BONUS ACTIVE"
+    : d.status === "does_not_qualify" ? " \u00B7 NO BONUS"
+    : d.status === "disputed" ? " \u00B7 STILL DISPUTED" : "";
+  res.innerHTML = line + chip;
+  res.style.display = "block";
+  buzz(10);
+  analyticsTrack("traits_question", { surface: "traits", action: "result_view", ordinal: TM.i + 1, challenge: q.id, outcome: d.status, value: d.mode === "counts" ? 1 : 0, source: TM.source, sid: TM.sid });
+  TM.i++;
+  tmDots();
+  var wait = 1500;
+  try { if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) wait = 2100; } catch (e) {}
+  setTimeout(function () { if (el("traitsModule")) tmShowQuestion(); }, wait);
+}
+function tmComplete() {
+  var mod = el("traitsModule");
+  if (!mod) return;
+  el("tmCall").style.display = "none";
+  el("tmQ").textContent = "5 VOTES IN";
+  el("tmQ").removeAttribute("href");
+  el("tmDef").textContent = "";
+  el("tmVotes").style.display = "none";
+  el("tmRes").style.display = "none";
+  var done = el("tmDone");
+  done.style.display = "block";
+  done.innerHTML = '<span class="td-l">Your votes helped set player bonuses.</span><br>' +
+    '<button class="tm-again" type="button" id="tmAgain">VOTE ON 5 MORE</button>';
+  tmDots();
+  buzz([12, 70, 12]);
+  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: 5, source: TM.source, sid: TM.sid });
+  el("tmAgain").addEventListener("click", function () { tmStart(true); });
+}
+function tmDegrade(q) {
+  // The inline lane hit trouble; hand the run to the full page with the
+  // current question pinned so nothing is lost.
+  try { location.href = tmHref(q); } catch (e) {}
+}
+function tmStart(again) {
+  var mod = el("traitsModule");
+  if (!mod || !window.fetch || !TM.loader) return;
+  TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
+  TM.loader().then(function (x) {
+    if (!x || !x.ok || !x.questions || !x.questions.length || !el("traitsModule")) return;
+    TM.qs = x.questions.filter(function (q) { return q.public_question && !q.my_response; }).slice(0, 5);
+    if (!TM.qs.length) TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
+    TM.i = 0;
+    if (!TM.qs.length) return;
+    var d = el("tmDone"); if (d) { d.style.display = "none"; d.innerHTML = ""; }
+    if (!TM.wired) {
+      TM.wired = true;
+      el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
+      el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
+    }
+    tmShowQuestion();
+    mod.hidden = false;
+    analyticsTrack("traits_session", { surface: "traits", action: again ? "again" : "start", source: TM.source, sid: TM.sid });
+    if (!again) analyticsTrack("mode_impression", { surface: TM.source === "home_module" ? "home" : "results", action: "traits", challenge: TM.qs[0].id });
+  }).catch(function () {});
+}
+function tmSessionLoader() {
+  return fetch("/api/traits?op=featured", { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (feat) {
+      var pin = feat && feat.ok && feat.question ? feat.question.id : "";
+      return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : ""), { credentials: "same-origin" })
+        .then(function (r) { return r.json(); });
+    });
+}
+function wireBonusesModule() {
+  TM.source = "home_module";
+  TM.loader = tmSessionLoader;
+  TM.wired = false;
+  tmStart(false);
+}
+// Fail-soft by construction: the section ships hidden and empty; only a clean
+// /api/traits answer ever reveals it. Any network or schema failure leaves the
+// results screen exactly as it was.
+function wireTraitsPrompt() {
+  var sec = el("traitsPromptSec");
+  if (!sec || !window.fetch) return;
+  // RATE YOUR FIVE (owner ruling, 2026-07-27): the results screen votes
+  // inline on the players you just drafted. op=roster lazily makes any
+  // drafted player votable in the shared question-id space; if the roster
+  // lane comes back empty the card falls back to the curated session feed,
+  // so the surface never dies.
+  var pairs = "";
+  try {
+    pairs = picksInSlotOrder().map(function (en) {
+      return encodeURIComponent(en.p.row[IDX.name]) + "~" + en.p.row[IDX.season] +
+        (function (r) { var pv = IDX.pos !== undefined ? r[IDX.pos] : (IDX.position !== undefined ? r[IDX.position] : "");
+          return pv ? "~" + encodeURIComponent(String(pv).slice(0, 3)) : ""; })(en.p.row);
+    }).join(",");
+  } catch (e) {}
+  ensureTraitsCss();
+  sec.innerHTML = traitsModuleHtml();
+  sec.hidden = false;
+  TM.source = "results_prompt";
+  TM.wired = false;
+  TM.loader = function () {
+    if (!pairs) return tmSessionLoader();
+    return fetch("/api/traits?op=roster&sid=" + TM.sid + "&players=" + pairs, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (x) {
+        if (x && x.ok && x.questions && x.questions.length) return x;
+        return tmSessionLoader();
+      });
+  };
+  tmStart(false);
+  var call = el("tmCall");
+  if (call) call.textContent = "RATE YOUR FIVE";
+  var door = el("tmOpen");
+  if (door) door.href = "/bonuses/?src=results_prompt";
+}
+// Shadow-mode labels on the results roster: each pick card gets the community
+// tags its player-season has EARNED (gold) or been RULED OUT of (the crossed
+// anti-label). Read-only, zero scoring effect, absent on any failure or when
+// no ruling exists for the exact player-season.
+function wireTraitsLabels(entries) {
+  if (!window.fetch || !entries || !entries.length) return;
+  var qs = entries.map(function (e) { return encodeURIComponent(e.name) + "~" + e.season; }).join(",");
+  fetch("/api/traits?op=labels&players=" + qs, { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (x) {
+      if (!x || !x.ok || !x.labels) return;
+      ensureTraitsCss();
+      entries.forEach(function (e) {
+        var hits = x.labels[String(e.name).toLowerCase() + "~" + e.season];
+        if (!hits || !hits.length) return;
+        var card = document.querySelector('.pick-card[data-pick="' + e.i + '"]');
+        if (!card || card.querySelector(".tchips")) return;
+        var wrap = document.createElement("div");
+        wrap.className = "tchips";
+        wrap.innerHTML = hits.slice(0, 4).map(function (hh) {
+          return '<span class="tchip' + (hh.anti ? " anti" : "") + '"' +
+            (hh.anti ? ' role="img" aria-label="NOT ' + esc(String(hh.t).toUpperCase()) + '"' : "") +
+            '>' + esc(hh.t) + "</span>";
+        }).join("");
+        card.appendChild(wrap);
+      });
+    })
+    .catch(function () {});
+}
+
 function wireDonate() {
   var b = el("donateBtn");
   if (b) b.addEventListener("click", function () {
@@ -1780,6 +2165,7 @@ function renderIntro() {
       thirdSlotHtml +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
+      traitsModuleHtml() +
       '<p class="eyebrow">Draft</p>' +
       "<p>Five rounds. Each one deals a random NBA franchise and decade; draft one player who suited up for that team in that era, any season of his career. Fill 2 guards, 2 forwards, and a center. In Classic you can skip the team once and the era once.</p>" +
       '<p class="eyebrow">Winning</p>' +
@@ -1849,6 +2235,15 @@ function renderIntro() {
       if (ok) T82ARENA.route(); else featureLoadFailed(btn, label);
     });
   });
+  // Only the door-out elements count as a feature select now that the module
+  // votes inline; YES/NO taps report through the vote vocabulary instead.
+  ["tmQ", "tmOpen"].forEach(function (id) {
+    var door = el(id);
+    if (door) door.addEventListener("click", function () {
+      analyticsTrack("feature_select", { surface: "home", action: "traits" });
+    });
+  });
+  wireBonusesModule();
   el("startLeague").addEventListener("click", function () {   // league office needs no site data
     analyticsTrack("feature_select", { surface: "home", action: "league" });
     var btn = el("startLeague"), label = btn.textContent;
@@ -2546,9 +2941,9 @@ function twoWayHtml(e) {
 // clones to the player. Feeds the climb tags and the results comp line;
 // the SHARE comp stays plain text by law.
 var HISTORY_COMPS = [
-  { label: "OG Death Lineup", wins: 81, bbT: "GSW/2016" },
-  { label: "5 Jokics", wins: 80, bbP: "jokicni01" },
-  { label: "5 LeBrons", wins: 79, bbP: "jamesle01" },
+  { label: "Dream Team", wins: 81 },
+  { label: "Redeem Team", wins: 80 },
+  { label: "OG Death Lineup", wins: 79, bbT: "GSW/2016" },
   { label: "Hamptons 5", wins: 78, bbT: "GSW/2017" },
   { label: "Shaqobe Core", wins: 77, bbT: "LAL/2000" },
   { label: "OG Celts Big 3", wins: 76, bbT: "BOS/1986" },
@@ -2574,7 +2969,7 @@ function compEntryHref(entry, camp) {
 }
 
 function climbHtml(e, winsOverride) {
-  // Same-win teams share one pin and one combined tag ("5 Jokics · Prime
+  // Same-win teams share one pin and one combined tag ("Redeem Team · Prime
   // Wilt Core 80") instead of stacking on top of each other.
   var legends = (function () {
     var out = [], byW = {};
@@ -2586,7 +2981,7 @@ function climbHtml(e, winsOverride) {
     return out;
   })();
   // v34: each label segment is its own outbound anchor (campaign "climb") —
-  // merged tags like "5 Jokics \u00B7 Prime Wilt Core" get two doors, not one.
+  // merged tags like "Redeem Team \u00B7 Prime Wilt Core" get two doors, not one.
   function tagLabelHtml(t) {
     return t.parts.map(function (L) {
       var h = compEntryHref(L, "climb");
@@ -2596,7 +2991,8 @@ function climbHtml(e, winsOverride) {
   var G82 = CFG.GAMES_IN_SEASON;
   var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
   var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
-  var youWins = (typeof winsOverride === "number") ? winsOverride : e.winTally;   // post-boost wins when the Hot Hand fired
+  var youWins = (typeof winsOverride === "number") ? winsOverride
+    : CFG.GAMES_IN_SEASON * T82.phi(null, e.net / T82.t.SC.NET_SD);   // v42: the pin rides NET (continuous quality wins); Hot Hand override still honored
   var below = youWins < FLOOR;
 
   // Layout in pixels so per-win spacing in the cluster stays fixed (~18px/win) no matter how
@@ -2631,7 +3027,7 @@ function climbHtml(e, winsOverride) {
     var isC = i === compIdx;
     var rec = L.wins + "\u2013" + (G82 - L.wins);
     return '<span class="climb-pin' + (isC ? " comp" : "") + '" style="top:' + y + '%" title="' + esc(L.label) + " " + rec + '"></span>' +
-      '<span class="climb-tag' + (isC ? " comp" : "") + '" style="top:' + y + '%">' + tagLabelHtml(L) + ' <b>' + L.wins + "</b></span>";
+      '<span class="climb-tag' + (isC ? " comp" : "") + '" style="top:' + y + '%">' + tagLabelHtml(L) + "</span>";
   }).join("");
 
   // Plain straight rail, summit to floor, amber fill from the dot down to the floor. The
@@ -3352,7 +3748,7 @@ function shareEmojiFor(wins, chBands, mode) {
 // so the first hit is the highest tier and same-win tiers resolve to the
 // first team listed (the V25 comp-line law).
 // COMP ARTICLE LAW (v33): "the" is prepended unless the label starts with a
-// digit ("5 Jokics" reads bare) or already carries its own article ("The
+// digit ("3-peat Bulls Core" reads bare) or already carries its own article ("The
 // Last Shot Jazz" — the old concat shipped "the The"). One helper, used by
 // the share comp AND the results climb line, so the surfaces can't drift.
 function compArticle(label) {
@@ -3361,10 +3757,15 @@ function compArticle(label) {
   if (/^the\b/i.test(label)) return label;
   return "the " + label;
 }
-function shareCompFor(wins) {
-  if (wins >= CFG.GAMES_IN_SEASON) return "Greatest of all GOATs";
+// Comps key on REALIZED WINS (owner ruling, 2026-07-26): the ladder is one
+// rung per win from 81 down, so every record maps to exactly one name and
+// 76 wins always sits just under the Shaqobe Core. The v42 NET-keyed
+// selection is retired: on the flat top of the phi curve it bunched most
+// good seasons among the first few names. The Tied tier stays retired;
+// GOAT alone stays keyed on the REALIZED perfect season.
+function shareCompFor(wins, undefeated) {
+  if (undefeated) return "Greatest of all GOATs";
   for (var i = 0; i < HISTORY_COMPS.length; i++) {
-    if (HISTORY_COMPS[i].wins === wins) return "Tied " + compArticle(HISTORY_COMPS[i].label);
     if (HISTORY_COMPS[i].wins < wins) return "Better than " + compArticle(HISTORY_COMPS[i].label);
   }
   return "";
@@ -3378,14 +3779,15 @@ function shareRecord(wins) {
   return wins + (undef ? "\u2013" : "-") + (CFG.GAMES_IN_SEASON - wins);
 }
 function shareLine2(wins, emoji) {
-  var comp = shareCompFor(wins);
-  return (emoji ? emoji + " " : "") + shareRecord(wins) + (comp ? " | " + comp : "");
+  var comp = shareCompFor(wins, wins >= CFG.GAMES_IN_SEASON);
+  var pctTail = (typeof G.sharePct === "number") ? " \u2022 Top " + G.sharePct + "%" : "";
+  var body = comp ? comp + pctTail : (pctTail ? pctTail.slice(3) : "");
+  return (emoji ? emoji + " " : "") + shareRecord(wins) + (body ? " | " + body : "");
 }
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
   var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE))];
-  if (typeof G.sharePct === "number") lines.push("Top " + G.sharePct + "%");
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     var flame = "";
@@ -4225,6 +4627,31 @@ function showResults() {
     return;
   }
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+  // v42 ANY GIVEN NIGHT: standalone Classic plays the season out game by
+  // game. Presti realizes too (owner ruling, 2026-07-26): cap mode runs the
+  // same 82-roll season, uncapped per the Presti PG_CAP override, so a true
+  // murderers' row can literally win all 82 and a realized 81-1 hands the
+  // Heat Check its intended stage. Hot Hand keys on e.winTally, which below
+  // becomes the REALIZED record before the finish path runs, so the spin
+  // fires on a literal 81 regardless of where the loss fell; the boost
+  // rewrites the record through hhWins(newNet) exactly as before, and the
+  // percentile still ships raw pre-boost e.net, which realization never
+  // touches. Daily boards, challenges, and pro stay analytic until their
+  // own adaptations. The arming op "ss" rides the action stream so replays
+  // realize identically.
+  if ((MODE === "classic" || MODE === "cap") && !G.social && !G.ch && window.T82 && T82.simSeason) {
+    T82.armSeasonSim(G);
+    var season = T82.simSeason(G, e);
+    e.expWins = e.winTally;
+    e.winTally = season.wins;
+    e.season = season;
+    loadBbrefMap();                              // preload the map during the reel
+    showSeasonReel(season, e, function () { finishRunTail(e); });
+    return;
+  }
+  finishRunTail(e);
+}
+function finishRunTail(e) {
   renderResults(e, false);
   if (window.t82track) {
     var gc = analyticsRunSnapshot();
@@ -4254,6 +4681,136 @@ function showResults() {
   scheduleSharePct(e);
   loadBbrefMap().then(function () { upgradeBbrefLinks(); });   // v30: swap search hrefs for verified player pages
   gameFinishedPings();
+}
+
+/* ---------- v42 THE SEASON REEL (Any Given Night, classic) ----------
+   82 realized games in seven month acts, auto-advancing with one line of
+   desk commentary per act. No per-month button (the lab finding: bounded
+   closure beats, delivered, not requested). One SKIP for repeat players;
+   tapping the card skips too. The reel is also the preload window: the
+   bbref map loads behind it. Cities are cosmetic, seed-hashed, never the
+   rng stream. Copy law: zero em-dashes. */
+var REEL_MONTHS = [["OCT", 5], ["NOV", 15], ["DEC", 15], ["JAN", 15], ["FEB", 11], ["MAR", 15], ["APR", 6]];
+var REEL_CITIES = ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cleveland", "Dallas", "Denver",
+  "Detroit", "Golden State", "Houston", "Indiana", "Los Angeles", "Memphis", "Miami", "Milwaukee",
+  "Minnesota", "New Orleans", "New York", "Oklahoma City", "Orlando", "Philadelphia", "Phoenix",
+  "Portland", "Sacramento", "San Antonio", "Toronto", "Utah", "Washington"];
+function reelDay(mi, gi) {
+  var count = REEL_MONTHS[mi][1];
+  var first = mi === 0 ? 21 : 1;
+  var last = mi === 0 ? 31 : (mi === 6 ? 12 : (mi === 4 ? 27 : 29));
+  if (count === 1) return first;
+  return Math.round(first + gi * (last - first) / (count - 1));
+}
+function reelDate(gameIdx) {
+  var g = gameIdx, mi = 0;
+  while (mi < REEL_MONTHS.length - 1 && g >= REEL_MONTHS[mi][1]) { g -= REEL_MONTHS[mi][1]; mi++; }
+  var mo = REEL_MONTHS[mi][0];
+  return mo.charAt(0) + mo.slice(1).toLowerCase() + " " + reelDay(mi, g);
+}
+function reelHash(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h;
+}
+function reelCity(gameIdx) {
+  return REEL_CITIES[reelHash(String(G.seed || "x") + "|" + gameIdx) % REEL_CITIES.length];
+}
+function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
+  var mo = REEL_MONTHS[mi][0];
+  if (runL === 0) {
+    return ["Perfect through " + mo + ". " + runW + " and 0. History is watching.",
+      "Not a blemish yet. " + runW + " straight.",
+      "Still zero in the loss column. The building holds its breath."][mi % 3];
+  }
+  if (firstLossIdx !== null && firstLossIdx >= monthStart && firstLossIdx < monthStart + mw + ml) {
+    return "The zero died in " + reelCity(firstLossIdx) + ", " + reelDate(firstLossIdx) + ".";
+  }
+  if (ml === 0) return "A spotless " + mw + " and 0 month steadies the run.";
+  if (ml >= 5) return mw + " and " + ml + ". The schedule bit back.";
+  if (ml >= 3) return mw + " and " + ml + ". Heavy legs, short rotations, long month.";
+  return mw + " and " + ml + ". The engine hums.";
+}
+function reelBlame(mi) {
+  var pk = G.picks[reelHash(String(G.seed || "x") + "b" + mi) % G.picks.length];
+  var nm = bbrefLastName(pk.row[IDX.name]) || pk.row[IDX.name];
+  var T = ["missed a buzzer beater", "no-showed", "had a flu game", "shot 4 for 19",
+    "left his legs at the hotel", "got cooked on every switch", "airballed the game winner",
+    "argued with the ref instead of getting back"];
+  return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
+}
+function showSeasonReel(season, e, done) {
+  var ov = document.createElement("div");
+  ov.className = "reel-overlay";
+  ov.innerHTML = '<div class="reel-card">' +
+    '<div class="reel-head"><span class="reel-eyebrow">THE SEASON \u00B7 GAME BY GAME</span>' +
+    '<span class="reel-run mono" id="reelRun">0\u20130</span>' +
+    '<button class="reel-skip mono" id="reelSkip" type="button">SKIP \u2192</button></div>' +
+    '<div class="reel-acts" id="reelActs"></div></div>';
+  document.body.appendChild(ov);
+  var acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
+  var finished = false, timers = [];
+  function finishReel() {
+    if (finished) return;
+    finished = true;
+    timers.forEach(clearTimeout);
+    ov.remove();
+    done();
+  }
+  ov.querySelector("#reelSkip").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
+  var firstLossIdx = null;
+  for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { firstLossIdx = g0; break; } }
+  // cumulative record per game, so the header ticks square by square
+  var cum = [], cw = 0;
+  for (var g1 = 0; g1 < season.games.length; g1++) { if (season.games[g1]) cw++; cum.push([cw, g1 + 1 - cw]); }
+  var t = 650, start = 0;
+  REEL_MONTHS.forEach(function (m, mi) {
+    var count = m[1], s0 = start;
+    var mw = 0;
+    for (var i2 = s0; i2 < s0 + count; i2++) if (season.games[i2]) mw++;
+    var ml = count - mw;
+    start += count;
+    var endRec = cum[s0 + count - 1];
+    timers.push(setTimeout(function () {
+      var row = document.createElement("div");
+      row.className = "reel-act";
+      row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + m[0] + '</span>' +
+        '<span class="reel-mo-rec mono">' + mw + '\u2013' + ml + '</span></div>' +
+        '<div class="reel-grid"></div>' +
+        '<p class="reel-note reel-note-pending"></p>';
+      row.__grid = row.querySelector(".reel-grid");
+      acts.appendChild(row);
+      acts.scrollTop = acts.scrollHeight;
+      for (var i = 0; i < count; i++) (function (i) {
+        timers.push(setTimeout(function () {
+          var sq = document.createElement("span");
+          var win = season.games[s0 + i];
+          sq.className = "reel-day " + (win ? "w" : "l");
+          sq.textContent = win ? "W" : "L";
+          row.__grid.appendChild(sq);
+          var c = cum[s0 + i];
+          runEl.textContent = c[0] + "\u2013" + c[1];
+        }, 140 + i * 48));
+      })(i);
+      timers.push(setTimeout(function () {
+        var note = row.querySelector(".reel-note");
+        note.textContent = reelLine(mi, mw, ml, endRec[0], endRec[1], firstLossIdx, s0) + (ml > 0 ? " " + reelBlame(mi) : "");
+        note.classList.remove("reel-note-pending");
+        acts.scrollTop = acts.scrollHeight;
+      }, 140 + count * 48 + 120));
+    }, t));
+    t += 320 + count * 48 + 640;
+  });
+  timers.push(setTimeout(function () {
+    var fin = document.createElement("div");
+    fin.className = "reel-final";
+    fin.innerHTML = '<span class="reel-final-rec">' + season.wins + '\u2013' + season.losses + '</span>' +
+      '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>' +
+      '<button class="reel-done" id="reelDone" type="button">SEE THE FULL RESULTS \u2192</button>';
+    acts.appendChild(fin);
+    fin.querySelector("#reelDone").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
+    acts.scrollTop = acts.scrollHeight;
+  }, t + 200));
 }
 
 /* ---------- SPORTSREF DEEP-LINK LAW (v30) ----------
@@ -4548,10 +5105,15 @@ function renderResults(e, keepScroll) {
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section" data-result-section="goat_climb"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
+    '<section class="section traits-prompt" data-result-section="traits_prompt" id="traitsPromptSec" hidden></section>' +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
     '<p class="run-status" id="runStatus"></p>';
 
   trackResultSections();
+  wireTraitsPrompt();
+  wireTraitsLabels(picksInSlotOrder().map(function (en) {
+    return { i: en.i, name: en.p.row[IDX.name], season: en.p.row[IDX.season] };
+  }));
 
   el("againBtn").addEventListener("click", function () {
     analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), { surface: "results", action: daily ? "daily_practice" : "same_mode" }));
@@ -4936,7 +5498,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v40";
+var BUILD_V = "v47";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -5001,6 +5563,12 @@ function scheduleSharePct(e) {
           return;
         }
         g.sharePct = d.pct;
+        if (g === G) {
+          var rc = document.querySelector(".res-comp");
+          if (rc && !rc.querySelector(".comp-pct")) {
+            rc.insertAdjacentHTML("beforeend", ' <span class="comp-pct">\u2022 Top ' + d.pct + "%</span>");
+          }
+        }
         analyticsTrack("percentile_result", Object.assign(analyticsRunSnapshot(), {
           value: d.pct, ordinal: d.n == null ? null : d.n,
           source: d.pool || (g.social ? "daily" : "mode")
