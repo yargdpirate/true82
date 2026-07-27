@@ -46,6 +46,20 @@ TRUE 82 v46 (current) - PLAYER BONUSES + Presti uncap
            iOS versions including 26.5+. Android keeps navigator.vibrate
            patterns. No audio-session path anywhere: music and podcasts are
            never ducked or paused.
+  LIVE-ADD Presti plays ANY GIVEN NIGHT: cap mode realizes the season game
+           by game with the full reel, uncapped (PG_CAP override), so 82-0
+           can literally happen and a realized 81-1 triggers the Heat Check
+           spin exactly as designed; percentile still ships raw pre-boost
+           net (realization never touches e.net). Dailies, challenges, and
+           pro remain analytic.
+  LIVE-FIX comp ladder keys on REALIZED WINS again (owner ruling): one rung
+           per win from 81 down, so every record maps to one name (76 wins
+           sits under the Shaqobe Core); the NET-keyed selection bunched
+           results among the top few names and is retired. Top X% on the
+           results comp line now inherits the comp typography (styles.css
+           touched for the first time in v46: token bumped to
+           20260726-bonuses-v46). DEPLOY NOTE: _routes.json needs
+           "/bonuses/*" in its include array (manual one-liner, see README).
   NEW      og/bonus-<slug>.png  nine hand-cut 1200x630 typography previews
            for the homepage-eligible questions; functions/bonuses/[slug].js
            swaps og:image for those slugs (brand image for all others);

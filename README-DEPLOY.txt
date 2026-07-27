@@ -26,14 +26,21 @@ DEPLOY IN THIS ORDER:
      (Cloudflare console paste, same as always). It is additive and safe to
      re-run; it creates five trait tables and seeds 5 draft traits, 27
      questions, and the threshold rules. It touches no existing table.
-     v46: ALSO paste migrations/0013_bonuses_meta_v1.sql (the curated
+     v46: FIRST open _routes.json at the repo root and add "/bonuses/*"
+     to the include array (one line; this patch does not ship the file
+     because your live copy may carry entries this workspace cannot see,
+     and overwriting it could sever working function routes). Without it
+     the direct question links never reach the slug function.
+     Then paste migrations/0013_bonuses_meta_v1.sql (the curated
      Player Bonuses pool; pure SQL, rerun-safe). Smoke after deploy:
      open /bonuses/2008-kobe-elite-wing-defender directly (question loads
      with vote controls, page title carries the question), vote, check the
      result state and SHARE QUESTION, then confirm the homepage module
      shows one big rotating question with a VOTE button and the results
      screen shows the compact PLAYER BONUS card. Presti uncap check: start
-     a cap-mode game and run T82.t.SC.PG_CAP in the console (expect 1),
+     a cap-mode game and run T82.t.SC.PG_CAP in the console (expect 1);
+     the Presti season now plays out on the reel like classic, and an 81-1
+     landing should hand you the Heat Check lever (?clutch=1 forces it),
      then a classic game (expect the shipped value, 0.99 with v42-final
      data). Legacy /traits/ links redirect with their q intact. Feel checks
      on a phone: tapping YES should tick in your hand on any iPhone (iOS

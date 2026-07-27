@@ -1378,3 +1378,32 @@ controls lock). Walk assertions cover the skeleton, the overlays, and
 result focus. OG: nine PNGs in /og/ generated from the 0013
 share_preview values; regenerate with the same text if 0013 copy ever
 changes.
+
+
+### v46.2 addendum: live-test fixes (same day)
+
+Comp selection reverted from NET to realized wins (owner ruling after
+live play): the ladder literals were already ordinal one-win rungs, so
+compAbove and shareCompFor now walk wins directly and compNetFor is
+retired as dead code. Note for the validate.js lane: if it asserts the
+v42 NET-keyed comp selection, that check will flag; the wins-keyed
+behavior is the owner's current ruling and the ladder rungs themselves
+are unchanged. The Top X% span inherits .res-comp typography (mono
+0.86em rule removed), styles.css token is now v46. _routes.json is a
+manual repo edit: add "/bonuses/*" to include; the patch deliberately
+does not ship that file.
+
+
+### v46.3 addendum: Presti realization (same day)
+
+The realization guard now admits cap mode. The whole mechanism composes
+without further changes: simSeason rolls under the Presti PG_CAP=1
+override, e.winTally becomes the realized record before finishRunTail,
+so clutchPending (winTally === 81) fires the Heat Check on a literal
+realized 81 in any shape, hhWins(newNet) rewrites the record on a hot
+spin, a cross of 82 fires the goat fireworks from inside hotHand, and
+scheduleSharePct still sends raw e.net (pre-boost, pre-realization) so
+the ranking law holds. A REALIZED 82-0 skips the Heat Check (nothing to
+equalize) and gates fireworks on the paper as usual. hhEligible lives in
+sim-core and already speaks cap mode. QA: ?clutch=1 still forces the
+spin on any Presti result.

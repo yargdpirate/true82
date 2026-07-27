@@ -3092,4 +3092,4 @@ body.gating .gate-back {
 /* V42 amendment 2 - the verdict button and the inline percentile */
 .reel-done { display: block; margin: 14px auto 2px; background: var(--amber); color: var(--ink); border: 1px solid var(--amber); border-radius: 8px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.09em; padding: 12px 22px; min-height: 44px; cursor: pointer; box-shadow: 0 2px 0 var(--maple); }
 .reel-done:active { background: var(--maple); border-color: var(--maple); color: var(--chalk); box-shadow: none; }
-.comp-pct { color: var(--amber); font-family: var(--mono); font-size: 0.86em; white-space: nowrap; }
+.comp-pct { color: var(--amber); white-space: nowrap; }

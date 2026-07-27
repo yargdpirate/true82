@@ -3566,26 +3566,16 @@ function compArticle(label) {
   if (/^the\b/i.test(label)) return label;
   return "the " + label;
 }
-// v42: comps key on NET, the skill measurement, so a +26 five that ran into
-// a bad Tuesday still ranks beside the teams it deserves. Rung nets are the
-// analytic inverse of their win totals (memoized binary search on the same
-// curve the engine uses), which keeps the ladder's spacing identical to the
-// old wins axis. The Tied tier retires with the integer axis; GOAT alone
-// stays keyed on the REALIZED perfect season.
-var COMP_NET_CACHE = {};
-function compNetFor(wins) {
-  if (COMP_NET_CACHE[wins] != null) return COMP_NET_CACHE[wins];
-  var lo = -60, hi = 80;
-  for (var i = 0; i < 60; i++) {
-    var mid = (lo + hi) / 2;
-    if (Math.ceil(CFG.GAMES_IN_SEASON * T82.phi(null, mid / T82.t.SC.NET_SD)) >= wins) hi = mid; else lo = mid;
-  }
-  return (COMP_NET_CACHE[wins] = hi);
-}
-function shareCompFor(net, undefeated) {
+// Comps key on REALIZED WINS (owner ruling, 2026-07-26): the ladder is one
+// rung per win from 81 down, so every record maps to exactly one name and
+// 76 wins always sits just under the Shaqobe Core. The v42 NET-keyed
+// selection is retired: on the flat top of the phi curve it bunched most
+// good seasons among the first few names. The Tied tier stays retired;
+// GOAT alone stays keyed on the REALIZED perfect season.
+function shareCompFor(wins, undefeated) {
   if (undefeated) return "Greatest of all GOATs";
   for (var i = 0; i < HISTORY_COMPS.length; i++) {
-    if (compNetFor(HISTORY_COMPS[i].wins) <= net + 1e-9) return "Better than " + compArticle(HISTORY_COMPS[i].label);
+    if (HISTORY_COMPS[i].wins < wins) return "Better than " + compArticle(HISTORY_COMPS[i].label);
   }
   return "";
 }
@@ -3597,8 +3587,8 @@ function shareRecord(wins) {
   var undef = wins >= CFG.GAMES_IN_SEASON;
   return wins + (undef ? "\u2013" : "-") + (CFG.GAMES_IN_SEASON - wins);
 }
-function shareLine2(wins, emoji, net) {
-  var comp = shareCompFor(net, wins >= CFG.GAMES_IN_SEASON);
+function shareLine2(wins, emoji) {
+  var comp = shareCompFor(wins, wins >= CFG.GAMES_IN_SEASON);
   var pctTail = (typeof G.sharePct === "number") ? " \u2022 Top " + G.sharePct + "%" : "";
   var body = comp ? comp + pctTail : (pctTail ? pctTail.slice(3) : "");
   return (emoji ? emoji + " " : "") + shareRecord(wins) + (body ? " | " + body : "");
@@ -3606,7 +3596,7 @@ function shareLine2(wins, emoji, net) {
 function shareText(e) {
   var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
   var wins = hot ? G.hotWins : e.winTally;
-  var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE), hot ? G.hotNewNet : e.net)];
+  var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE))];
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     var flame = "";
@@ -4447,10 +4437,18 @@ function showResults() {
   }
   var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
   // v42 ANY GIVEN NIGHT: standalone Classic plays the season out game by
-  // game. Daily boards, challenges, pro, and Presti stay analytic until
-  // their own adaptations (Presti next: Heat Check on a literal 81-1).
-  // The arming op "ss" rides the action stream so replays realize too.
-  if (MODE === "classic" && !G.social && !G.ch && window.T82 && T82.simSeason) {
+  // game. Presti realizes too (owner ruling, 2026-07-26): cap mode runs the
+  // same 82-roll season, uncapped per the Presti PG_CAP override, so a true
+  // murderers' row can literally win all 82 and a realized 81-1 hands the
+  // Heat Check its intended stage. Hot Hand keys on e.winTally, which below
+  // becomes the REALIZED record before the finish path runs, so the spin
+  // fires on a literal 81 regardless of where the loss fell; the boost
+  // rewrites the record through hhWins(newNet) exactly as before, and the
+  // percentile still ships raw pre-boost e.net, which realization never
+  // touches. Daily boards, challenges, and pro stay analytic until their
+  // own adaptations. The arming op "ss" rides the action stream so replays
+  // realize identically.
+  if ((MODE === "classic" || MODE === "cap") && !G.social && !G.ch && window.T82 && T82.simSeason) {
     T82.armSeasonSim(G);
     var season = T82.simSeason(G, e);
     e.expWins = e.winTally;
@@ -4883,7 +4881,7 @@ function renderResults(e, keepScroll) {
   var compLadder = HISTORY_COMPS.slice().sort(function (a, b) { return a.wins - b.wins; });
   var compAbove = null;
   for (var ci = 0; ci < compLadder.length; ci++) {
-    if (compNetFor(compLadder[ci].wins) > e.net + 1e-9) { compAbove = compLadder[ci]; break; }
+    if (compLadder[ci].wins > e.winTally) { compAbove = compLadder[ci]; break; }
   }
   function compLinkHtml(prefix, entry) {
     var h = compEntryHref(entry, "climb");
