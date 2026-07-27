@@ -502,9 +502,8 @@ function newGame(mode, seed, challenge, opts) {
   // here so every sim-core read sees the right ceiling for the run. Classic
   // keeps the shipped value untouched.
   try {
-    if (window.T82 && T82.t && T82.t.SC && typeof T82.t.SC.PG_CAP === "number") {
-      if (window.__t82PgCapOrig == null) window.__t82PgCapOrig = T82.t.SC.PG_CAP;
-      T82.t.SC.PG_CAP = (MODE === "cap") ? 1 : window.__t82PgCapOrig;
+    if (window.T82 && T82.t && T82.t.SC) {
+      T82.t.SC.PG_CAP = (MODE === "cap") ? 1 : 0.991;
     }
   } catch (e) {}
   G = T82.newState(MODE, seed, challenge || null);
@@ -2130,22 +2129,19 @@ function renderIntro() {
   if (dailyBoard && dailyOfficial) {
     thirdSlotHtml =
       '<div class="daily-tile plq-frame is-played" role="group" aria-label="The Daily, played">' +
-        dtTitle + dtDate +
-        '<span class="dt-board">' + esc(dailyBoard.name) + '</span>' +
+        dtTitle +
         '<span class="dt-result">\u2713 YOUR RUN ' + dailyOfficial.wins + '-' + (82 - dailyOfficial.wins) +
           ' \u00B7 Net ' + T82DAILY.signedNet(dailyOfficial.net) + '</span>' +
         '<span class="dt-actions">' +
           '<button class="dt-act dt-act-share" id="dailyChallengeBtn" data-share-label="CHALLENGE A FRIEND">CHALLENGE A FRIEND</button>' +
           '<button class="dt-act dt-act-ghost" id="dailyPracticeBtn">RUN IT BACK \u00B7 PRACTICE</button>' +
         '</span>' +
-        (dailyTomorrow ? '<span class="dt-tomorrow mono">TOMORROW #' + dailyTomorrow.num + ' \u00B7 ' + esc(dailyTomorrow.name.toUpperCase()) + '</span>' : '') +
       '</div>';
   } else if (dailyBoard) {
     thirdSlotHtml =
       '<button class="daily-tile plq-frame" id="startDaily">' +
-        dtTitle + dtDate +
+        dtTitle +
         '<span class="dt-board">' + esc(dailyBoard.name) + '</span>' +
-        '<span class="dt-sub">' + esc(dailyBoard.short || dailyBoard.blurb) + '</span>' +
       '</button>';
   } else {
     thirdSlotHtml = '<button class="btn btn-block more-modes" id="startPro">\uD83C\uDFC6 Pro \u00B7 pick the best seasons from memory</button>';
@@ -4720,22 +4716,44 @@ function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
   if (runL === 0) {
     return ["Perfect through " + mo + ". " + runW + " and 0. History is watching.",
       "Not a blemish yet. " + runW + " straight.",
-      "Still zero in the loss column. The building holds its breath."][mi % 3];
+      "Still zero in the loss column. The building holds its breath.",
+      runW + " and 0. Vegas quietly pulls the line.",
+      "Undefeated through " + mo + ". Opposing coaches are burning film at 3am.",
+      "Zero losses. The beat writers are drafting history columns.",
+      runW + " straight. Every arena is a road playoff game now."][mi % 7];
   }
   if (firstLossIdx !== null && firstLossIdx >= monthStart && firstLossIdx < monthStart + mw + ml) {
     return "The zero died in " + reelCity(firstLossIdx) + ", " + reelDate(firstLossIdx) + ".";
   }
-  if (ml === 0) return "A spotless " + mw + " and 0 month steadies the run.";
-  if (ml >= 5) return mw + " and " + ml + ". The schedule bit back.";
-  if (ml >= 3) return mw + " and " + ml + ". Heavy legs, short rotations, long month.";
-  return mw + " and " + ml + ". The engine hums.";
+  if (ml === 0) return ["A spotless " + mw + " and 0 month steadies the run.",
+    "Swept the month. " + mw + " and 0.",
+    mw + " and 0. The rotation is humming and everybody eats.",
+    "A perfect month. The film session is a highlight reel."][mi % 4];
+  if (ml >= 5) return [mw + " and " + ml + ". The schedule bit back.",
+    mw + " and " + ml + ". Somebody call a players-only meeting.",
+    mw + " and " + ml + ". The trainer's room is standing room only.",
+    mw + " and " + ml + ". Talk radio smells blood."][mi % 4];
+  if (ml >= 3) return [mw + " and " + ml + ". Heavy legs, short rotations, long month.",
+    mw + " and " + ml + ". Three time zones in nine nights will do that.",
+    mw + " and " + ml + ". The bench got exposed.",
+    mw + " and " + ml + ". Winnable ones got away late."][mi % 4];
+  return [mw + " and " + ml + ". The engine hums.",
+    mw + " and " + ml + ". Business handled, mostly.",
+    mw + " and " + ml + ". A professional month.",
+    mw + " and " + ml + ". Took care of the ones that mattered.",
+    mw + " and " + ml + ". One clunker, otherwise clean."][mi % 5];
 }
 function reelBlame(mi) {
   var pk = G.picks[reelHash(String(G.seed || "x") + "b" + mi) % G.picks.length];
   var nm = bbrefLastName(pk.row[IDX.name]) || pk.row[IDX.name];
   var T = ["missed a buzzer beater", "no-showed", "had a flu game", "shot 4 for 19",
     "left his legs at the hotel", "got cooked on every switch", "airballed the game winner",
-    "argued with the ref instead of getting back"];
+    "argued with the ref instead of getting back", "picked up two fouls in the first minute",
+    "dribbled it off his foot with the game on the line", "got baited into a fourth-quarter tech",
+    "bricked six free throws", "fell for every pump fake", "jogged back in transition all night",
+    "threw the inbound to the wrong jersey", "forced a heat check down two",
+    "lost his man on the last possession", "ate a poster and never recovered",
+    "played matador defense in crunch time", "goaltended the dagger"];
   return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
 }
 function showSeasonReel(season, e, done) {
