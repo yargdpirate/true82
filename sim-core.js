@@ -961,7 +961,7 @@ function initDataCore(data) {
       budget: 0, maxCap: 0,
       fireSale: false, fireSaleFlash: null, refundFlash: null,
       yearRerollN: 0, moveIdx: null, screen: "draft",
-      hhDeclined: false, actions: [], done: false
+      hhDeclined: false, simSeason: false, actions: [], done: false
     };
     S.mode = mode || "classic";
     var isCap = S.mode === "cap";
@@ -1121,6 +1121,35 @@ function initDataCore(data) {
 
   // Terminal resolution. Hot Hand (cap, exactly 81) draws hot player + segment
   // from the SAME stream — always the final draws of a game. Kaman: 82-0, law.
+  // v42 ANY GIVEN NIGHT (owner rule, classic only for now). The engine stays
+  // the pure evaluator; this layer ROLLS the 82 games from the run's OWN rng
+  // stream as the final draws of the game, so the replay law holds: same
+  // seed, same five, same record. Per-game win chance is the engine's p
+  // clamped to [1 - PG_CAP, PG_CAP]: no five wins a given night more than
+  // PG_CAP of the time, and none loses it more often either. Mean wins are
+  // preserved wherever the cap does not bind; perfection has to survive all
+  // 82 rolls. Opponents and cities are COSMETIC, app-side, seed-hashed, and
+  // never touch this stream, so flavor edits can never break replay counts.
+  function simSeason(S, e) {
+    var cap = C(S, "PG_CAP", 0.97);
+    var pRaw = phi(S, e.net / C(S, "NET_SD", SC.NET_SD));
+    var p = Math.min(cap, Math.max(1 - cap, pRaw));
+    var games = [], w = 0;
+    for (var g = 0; g < CFG.GAMES_IN_SEASON; g++) {
+      var win = rnd(S) < p;
+      if (win) w++;
+      games.push(win ? 1 : 0);
+    }
+    return { wins: w, losses: CFG.GAMES_IN_SEASON - w, pGame: p, pRaw: pRaw, games: games };
+  }
+  // Arming is an ACTION ("ss"), logged before the rolls, so a replayed run
+  // knows it was played out game by game and draws identically. Nothing
+  // arms Daily boards, challenges, pro, or cap in v42 — they stay analytic.
+  function armSeasonSim(S) {
+    S.simSeason = true;
+    if (S.actions) S.actions.push("ss");
+    return true;
+  }
   // Refusing the Heat Check. Logged as op "hx" so a declined 81 replays and
   // verifies exactly (finish still consumes the draws, applies nothing).
   function declineHeat(S) {
@@ -1146,6 +1175,14 @@ function initDataCore(data) {
       capLeft: S.mode === "cap" ? S.budget : null,
       rngDraws: S.rng ? S.rng.n : 0, coreVersion: T.VERSION, dataVersion: DATA_VERSION
     };
+    if (S.mode === "classic" && S.simSeason) {
+      var season = simSeason(S, e);
+      res.expWins = e.winTally;
+      res.wins = season.wins;
+      res.losses = season.losses;
+      res.season = season;
+      res.rngDraws = S.rng ? S.rng.n : 0;
+    }
     if (S.mode === "cap" && e.winTally === CFG.GAMES_IN_SEASON - 1) {
       var hotIdx = hhPickHot(S), segIdx = hhSpinSeg(S);
       var seg = HH_SEGMENTS[segIdx];
@@ -1200,6 +1237,7 @@ function initDataCore(data) {
       else if (op === "se")   { okOp = !!skipEra(S);  if (okOp) S.actions.pop(); }
       else if (op === "yr")   { okOp = !!yearReroll(S); if (okOp) S.actions.pop(); }
       else if (op === "hx")   { okOp = declineHeat(S); if (okOp) S.actions.pop(); }
+      else if (op === "ss")   { okOp = armSeasonSim(S); if (okOp) S.actions.pop(); }
       else if (op.slice(0, 3) === "mv:") {
         var mv = op.slice(3).split(","); okOp = moveSlot(S, parseInt(mv[0], 10), mv[1]); if (okOp) S.actions.pop();
       } else if (op.slice(0, 3) === "sw:") {
@@ -1248,6 +1286,7 @@ function initDataCore(data) {
       return T.t;
     },
     newState: newState, dealRound: dealRound, declineHeat: declineHeat,
+    simSeason: simSeason, armSeasonSim: armSeasonSim,
     skipTeam: skipTeam, skipEra: skipEra, yearReroll: yearReroll,
     applyPick: applyPick, moveSlot: moveSlot, swapSlots: swapSlots,
     finish: finish, replay: replay, verifyRun: verifyRun,
