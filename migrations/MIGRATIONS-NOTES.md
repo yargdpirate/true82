@@ -105,3 +105,7 @@ SCOUT-GENERATED.sql (read-only, paste any time)
 - Raises only those questions to editorial priority 96.
 - Does not touch votes, consensus, or editorial rulings.
 - Companion narrow API change alternates fresh (<5 votes) questions with the eight mature questions closest to 50/50; otherwise new zero-vote homepage options would never surface under the prior mature-only selection rule.
+
+## 0023_homepage_superstar_controversy_v2.sql
+
+Adds 25 additional high-priority superstar controversy/meme questions to the homepage pool. This is a data-only, idempotent promotion of existing active questions: it sets `homepage_eligible = 1`, refreshes homepage/share copy, and raises editorial priority to at least 97. It does not insert, delete, or modify user votes, consensus, editorial rulings, labels, or gameplay data. Run `VERIFY-0023-HOMEPAGE.sql` separately after applying; when the prior homepage total is 55, the expected total is 80.

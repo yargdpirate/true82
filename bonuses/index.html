@@ -175,6 +175,20 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
   function api(path) {
     return fetch(path, { credentials: "same-origin" }).then(function (r) { return r.json(); });
   }
+  // Match feed selection to the same browser identity used by first-party
+  // retention analytics. The identity client resolves within 2.5 seconds and
+  // sets the HttpOnly cookie recovered from its localStorage fallback.
+  function identityReady() {
+    return new Promise(function (resolve) {
+      var started = Date.now();
+      (function check() {
+        var d = null;
+        try { d = typeof window.t82RetentionDebug === "function" ? window.t82RetentionDebug() : null; } catch (e) {}
+        if (!d || d.state !== "pending" || Date.now() - started >= 2800) return resolve();
+        setTimeout(check, 50);
+      })();
+    });
+  }
 
   function statusChip(status) {
     if (status === "qualifies") return '<span class="r-chip chip-active">BONUS ACTIVE</span>';
@@ -199,7 +213,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     var qs = "/api/traits?op=session&sid=" + sid +
       (ref ? "&q=" + encodeURIComponent(ref) : "") +
       (doneIds.length ? "&exclude=" + doneIds.slice(-24).join(",") : "");
-    api(qs).then(function (x) {
+    identityReady().then(function () { return api(qs); }).then(function (x) {
       if (!x || !x.ok || !x.questions || !x.questions.length) return feedError(x && x.reason);
       Q = x.questions; idx = 0; sessionOpen = true;
       track("traits_session", { surface: "traits", action: again ? "again" : "start", source: entrySource });
@@ -229,7 +243,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     var wc = q.what_counts || q.definition || "";
     stage.innerHTML =
       '<section class="card" id="qcard">' +
-        '<div class="toprow"><span>PLAYER BONUS</span><span>' + n + " / 5</span></div>" +
+        '<div class="toprow"><span>PLAYER BONUS</span><span>' + n + " / " + Q.length + "</span></div>" +
         '<p class="q">' + esc(questionText(q)) + "</p>" +
         (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
         (wc ? '<button class="wc-btn" id="wcBtn" aria-expanded="false">WHAT COUNTS? <span aria-hidden="true">+</span></button>' +
@@ -314,9 +328,9 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     var barHtml = elig > 0
       ? '<div class="bar" aria-hidden="true"><span class="y" style="width:' + Math.round(100 * d.yes / elig) + '%"></span><span class="n" style="flex:1"></span></div>' : "";
     var changeHtml = '<button class="cv-link" id="cvBtn">CHANGE VOTE</button>';
-    var last = idx >= 4;
+    var last = idx >= Q.length - 1;
     var actions = last
-      ? '<p class="done-head" style="margin-top:4px">5 VOTES IN</p>' +
+      ? '<p class="done-head" style="margin-top:4px">' + Q.length + (Q.length === 1 ? ' VOTE IN' : ' VOTES IN') + '</p>' +
         '<p class="done-line">Your votes helped set player bonuses.</p>' +
         '<button class="act-next" id="moreBtn">VOTE ON 5 MORE</button>' +
         '<a class="act-share" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="/?src=bonuses">BACK TO TRUE 82</a>' +
@@ -430,7 +444,9 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     Q = [preload]; idx = 0; sessionOpen = true;
     track("traits_session", { surface: "traits", action: "start", source: entrySource || "link" });
     renderQuestion();
-    api("/api/traits?op=session&sid=" + sid + "&q=" + encodeURIComponent(preload.id)).then(function (x) {
+    identityReady().then(function () {
+      return api("/api/traits?op=session&sid=" + sid + "&q=" + encodeURIComponent(preload.id));
+    }).then(function (x) {
       if (x && x.ok && x.questions && x.questions.length) {
         var mine = Q[0];
         Q = x.questions;

@@ -1774,6 +1774,132 @@ function resultsTopBarHtml() {
 // Styling is injected here, scoped under .traits-*, so the shared styles.css
 // stays untouched this build (fold into styles.css on its next owner pass).
 var TRAITS_CSS_ID = "traitsCss";
+var TRAIT_CARD_ABBR = {
+  "Three-Point Shooter": "3PT",
+  "Super Three-Point Shooter": "GRAV",
+  "Iso Defender": "ISO-D",
+  "Team Defender": "TEAM-D",
+  "Rim Protector": "RIM-D",
+  "Playmaker": "PLAY",
+  "Clutch": "CLTCH",
+  "Rim Pressurer": "RIM+",
+  "Off-Ball Scorer": "OFF-B",
+  "Switchable Defender": "SWCH-D",
+  "Tough Shot Maker": "TSHOT",
+  "Off-Court Knucklehead": "OFC-R",
+  "Ball Stopper": "BSTOP",
+  "Foul Merchant": "FOUL$",
+  "Stat Padder": "STAT+",
+  "Championship #1": "CH#1",
+  "Ball Pounder": "BPOUND",
+  // Retired v1 names stay readable if an old settled label ever surfaces.
+  "Wing Defender": "WING-D",
+  "Primary Creator": "CREATE",
+  "Help Defender": "HELP-D"
+};
+var TRAIT_CARD_UI_SEEN_KEY = "t82_trait_card_ui_seen_v1";
+var traitExpandedChip = null;
+var traitDocDismissWired = false;
+function traitCardAbbr(full) {
+  return TRAIT_CARD_ABBR[String(full || "")] || String(full || "");
+}
+function traitCardUiSeen() {
+  try { return localStorage.getItem(TRAIT_CARD_UI_SEEN_KEY) === "1"; } catch (e) { return false; }
+}
+function markTraitCardUiSeen() {
+  try { localStorage.setItem(TRAIT_CARD_UI_SEEN_KEY, "1"); } catch (e) {}
+}
+function setTraitChipExpanded(btn, on) {
+  if (!btn) return;
+  var full = btn.getAttribute("data-full") || "";
+  var abbr = btn.getAttribute("data-abbr") || full;
+  btn.classList.toggle("expanded", !!on);
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  btn.textContent = on ? full : abbr;
+  if (on) traitExpandedChip = btn;
+  else if (traitExpandedChip === btn) traitExpandedChip = null;
+}
+function collapseTraitChip() {
+  if (traitExpandedChip) setTraitChipExpanded(traitExpandedChip, false);
+}
+function stopTraitCardCue(sec) {
+  if (!sec) return;
+  sec.classList.remove("trait-card-cue");
+  markTraitCardUiSeen();
+}
+function buildTraitLegend(sec) {
+  var panel = sec && sec.querySelector("#traitLegend");
+  if (!panel) return;
+  var seen = {}, rows = [];
+  var chips = sec.querySelectorAll(".tchips .tchip[data-full]");
+  for (var i = 0; i < chips.length; i++) {
+    var full = chips[i].getAttribute("data-full") || "";
+    if (!full || seen[full]) continue;
+    seen[full] = 1;
+    rows.push('<div class="trait-legend-row"><b>' + esc(traitCardAbbr(full)) + '</b><span>' + esc(full) + '</span></div>');
+  }
+  panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
+    '<div class="trait-legend-grid">' + rows.join("") + '</div>' +
+    '<div class="trait-legend-note">Community votes confirm or overturn these labels. Crossed out = ruled out.</div>';
+}
+function wireTraitCardUi() {
+  var sec = document.querySelector('[data-result-section="roster"]');
+  if (!sec || sec.getAttribute("data-trait-ui-wired") === "1") return;
+  if (!sec.querySelector(".tchips .tchip")) return;
+  sec.setAttribute("data-trait-ui-wired", "1");
+  var info = sec.querySelector("#traitInfoBtn");
+  var legend = sec.querySelector("#traitLegend");
+  if (info) info.hidden = false;
+  buildTraitLegend(sec);
+
+  sec.addEventListener("click", function (ev) {
+    var chip = ev.target.closest ? ev.target.closest(".tchips .tchip") : null;
+    if (chip && sec.contains(chip)) {
+      ev.preventDefault();
+      stopTraitCardCue(sec);
+      var opening = !chip.classList.contains("expanded");
+      if (traitExpandedChip && traitExpandedChip !== chip) collapseTraitChip();
+      setTraitChipExpanded(chip, opening);
+      return;
+    }
+    var ib = ev.target.closest ? ev.target.closest("#traitInfoBtn") : null;
+    if (ib && sec.contains(ib) && legend) {
+      ev.preventDefault();
+      stopTraitCardCue(sec);
+      collapseTraitChip();
+      var openingLegend = legend.hidden;
+      legend.hidden = !openingLegend;
+      ib.setAttribute("aria-expanded", openingLegend ? "true" : "false");
+      ib.setAttribute("aria-label", openingLegend ? "Close player label legend" : "Explain player labels");
+      ib.textContent = openingLegend ? "\u00d7" : "i";
+    }
+  });
+
+  if (!traitDocDismissWired) {
+    traitDocDismissWired = true;
+    document.addEventListener("click", function (ev) {
+      if (!traitExpandedChip) return;
+      if (ev.target === traitExpandedChip || (ev.target.closest && ev.target.closest(".tchips .tchip") === traitExpandedChip)) return;
+      collapseTraitChip();
+    });
+  }
+
+  if (!traitCardUiSeen()) {
+    var fireCue = function () {
+      if (traitCardUiSeen() || !document.body.contains(sec)) return;
+      sec.classList.add("trait-card-cue");
+      setTimeout(function () { sec.classList.remove("trait-card-cue"); }, 1500);
+    };
+    if (window.IntersectionObserver) {
+      var io = new IntersectionObserver(function (entries) {
+        if (entries[0] && entries[0].isIntersecting) { io.disconnect(); fireCue(); }
+      }, { threshold: 0.28 });
+      io.observe(sec);
+    } else {
+      setTimeout(fireCue, 350);
+    }
+  }
+}
 function ensureTraitsCss() {
   if (document.getElementById(TRAITS_CSS_ID)) return;
   var st = document.createElement("style");
@@ -1851,7 +1977,42 @@ function ensureTraitsCss() {
       "border:1.5px solid #FFB52E;border-radius:6px;padding:2px 7px 1px}" +
     ".tchip.anti{color:#E5533C;border-color:#E5533C}" +
     ".tchip.anti::after{content:'';position:absolute;left:5%;right:5%;top:50%;height:2px;margin-top:-1px;" +
-      "background:#E5533C;transform:rotate(-5deg);border-radius:1px}";
+      "background:#E5533C;transform:rotate(-5deg);border-radius:1px}" +
+    ".traits-roster-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}" +
+    ".traits-roster-head .eyebrow{margin:0}" +
+    ".trait-info-btn{appearance:none;-webkit-appearance:none;width:27px;height:27px;flex:0 0 27px;padding:0;" +
+      "display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #FFB52E;border-radius:50%;" +
+      "background:linear-gradient(180deg,#27313b,#171d24);color:#FFB52E;font-family:Georgia,serif;font-weight:700;" +
+      "font-size:16px;line-height:1;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #74500d,0 5px 10px -7px #000;" +
+      "touch-action:manipulation;-webkit-tap-highlight-color:transparent}" +
+    ".trait-info-btn[hidden]{display:none}" +
+    ".trait-info-btn:active,.trait-info-btn[aria-expanded=true]{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 #74500d}" +
+    ".tchips button.tchip{appearance:none;-webkit-appearance:none;min-height:25px;padding:3px 7px 2px;line-height:1.1;white-space:nowrap;cursor:pointer;" +
+      "background:linear-gradient(180deg,rgba(255,181,46,.10),rgba(255,181,46,.025));" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 0 rgba(116,80,13,.92),0 5px 10px -8px #000;" +
+      "touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .1s ease,background .1s ease,box-shadow .1s ease}" +
+    ".tchips button.tchip.anti{background:linear-gradient(180deg,rgba(229,83,60,.10),rgba(229,83,60,.025));" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 0 rgba(111,37,27,.95),0 5px 10px -8px #000}" +
+    ".tchips button.tchip:active,.tchips button.tchip.expanded{transform:translateY(2px);" +
+      "background:rgba(255,181,46,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 rgba(116,80,13,.92)}" +
+    ".tchips button.tchip.anti:active,.tchips button.tchip.anti.expanded{background:rgba(229,83,60,.14);box-shadow:none}" +
+    ".trait-legend{margin:0 0 8px;padding:10px 11px;border:1px solid #46515c;border-radius:9px;background:#11171d;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}" +
+    ".trait-legend-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;color:#FFB52E;margin-bottom:7px}" +
+    ".trait-legend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px}" +
+    ".trait-legend-row{display:flex;align-items:baseline;gap:7px;min-width:0;font-family:'Barlow Condensed',sans-serif;" +
+      "font-size:13px;line-height:1.15;color:#d9d5ce}" +
+    ".trait-legend-row b{flex:0 0 auto;color:#FFB52E;letter-spacing:.06em}" +
+    ".trait-legend-row span{min-width:0}" +
+    ".trait-legend-note{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;line-height:1.3;color:#7f8b96}" +
+    "@keyframes traitChipPop{0%,100%{transform:translateY(0)}35%{transform:translateY(-4px)}65%{transform:translateY(1px)}}" +
+    "@keyframes traitInfoPulse{0%,100%{transform:scale(1);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #74500d,0 0 0 0 rgba(255,181,46,0)}" +
+      "45%{transform:scale(1.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 0 #74500d,0 0 0 6px rgba(255,181,46,.18)}}" +
+    ".traits-roster.trait-card-cue .tchips button.tchip{animation:traitChipPop .58s ease both}" +
+    ".traits-roster.trait-card-cue .trait-info-btn{animation:traitInfoPulse 1.1s ease both}" +
+    "@media(max-width:390px){.trait-legend-grid{grid-template-columns:1fr}}" +
+    "@media(prefers-reduced-motion:reduce){.traits-roster.trait-card-cue .tchips button.tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
+      ".tchips button.tchip{transition:none}}";
   document.head.appendChild(st);
 }
 function traitsModuleHtml() {
@@ -1883,6 +2044,21 @@ function traitsModuleHtml() {
 // state with VOTE ON 5 MORE. Any fetch trouble mid-run degrades to the
 // FULL PAGE door instead of a dead card.
 var TM = { qs: [], i: 0, sid: null, busy: false, source: "home_module", loader: null, wired: false };
+// Question selection is keyed by the same first-party anonymous identity used
+// for retention analytics. Wait briefly for that cookie/localStorage recovery
+// handshake before requesting a feed; otherwise the first request can fall
+// back to a one-visit sid and forget the browser's prior answer depth.
+function traitsIdentityReady() {
+  return new Promise(function (resolve) {
+    var started = Date.now();
+    (function check() {
+      var d = null;
+      try { d = typeof window.t82RetentionDebug === "function" ? window.t82RetentionDebug() : null; } catch (e) {}
+      if (!d || d.state !== "pending" || Date.now() - started >= 2800) return resolve();
+      setTimeout(check, 50);
+    })();
+  });
+}
 function tmHref(q) {
   return q && q.slug ? "/bonuses/" + q.slug + "?src=" + TM.source : "/bonuses/?src=" + TM.source;
 }
@@ -1890,7 +2066,8 @@ function tmDots() {
   var d = el("tmDots");
   if (!d) return;
   var out = "";
-  for (var k = 0; k < 5; k++) {
+  var total = Math.max(1, TM.qs.length);
+  for (var k = 0; k < total; k++) {
     var on = k < TM.i || (k === TM.i && TM.qs[TM.i]);
     out += "<span" + (on ? ' class="done"' : "") + "></span>";
   }
@@ -1954,7 +2131,7 @@ function tmResult(q, resp, d) {
 function tmComplete() {
   var mod = el("traitsModule");
   if (!mod) return;
-  el("tmQ").textContent = "5 VOTES IN";
+  el("tmQ").textContent = TM.qs.length + (TM.qs.length === 1 ? " VOTE IN" : " VOTES IN");
   el("tmDef").textContent = "";
   el("tmVotes").style.display = "none";
   el("tmRes").style.display = "none";
@@ -1964,7 +2141,7 @@ function tmComplete() {
     '<button class="tm-again" type="button" id="tmAgain">VOTE ON 5 MORE</button>';
   tmDots();
   buzz([12, 70, 12]);
-  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: 5, source: TM.source, sid: TM.sid });
+  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: TM.qs.length, source: TM.source, sid: TM.sid });
   el("tmAgain").addEventListener("click", function () { tmStart(true); });
 }
 function tmDegrade(q) {
@@ -1976,10 +2153,12 @@ function tmStart(again) {
   var mod = el("traitsModule");
   if (!mod || !window.fetch || !TM.loader) return;
   TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
-  TM.loader().then(function (x) {
+  traitsIdentityReady().then(function () { return TM.loader(); }).then(function (x) {
     if (!x || !x.ok || !x.questions || !x.questions.length || !el("traitsModule")) return;
-    TM.qs = x.questions.filter(function (q) { return q.public_question && !q.my_response; }).slice(0, 5);
-    if (!TM.qs.length) TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
+    // The API already tiers never-answered, answered-once, and exhausted
+    // questions. Keep that order intact instead of independently hiding all
+    // standing votes, which would defeat the intentional second-answer round.
+    TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
     TM.i = 0;
     if (!TM.qs.length) return;
     var d = el("tmDone"); if (d) { d.style.display = "none"; d.innerHTML = ""; }
@@ -2038,8 +2217,19 @@ function wireTraitsPrompt() {
     return fetch("/api/traits?op=roster&sid=" + TM.sid + "&players=" + pairs, { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
       .then(function (x) {
-        if (x && x.ok && x.questions && x.questions.length) return x;
-        return tmSessionLoader();
+        var roster = x && x.ok && x.questions ? x.questions.slice(0, 5) : [];
+        if (roster.length >= 5) return { ok: true, questions: roster, rules: x.rules };
+        // Preserve drafted-player questions first, then fill any open slots
+        // from the broader under-two curated pool. This avoids forcing a third
+        // roster repeat while other eligible questions remain.
+        return tmSessionLoader().then(function (feed) {
+          var merged = roster.slice(), ids = {};
+          merged.forEach(function (q) { ids[q.id] = 1; });
+          if (feed && feed.ok && feed.questions) feed.questions.forEach(function (q) {
+            if (merged.length < 5 && q && !ids[q.id]) { ids[q.id] = 1; merged.push(q); }
+          });
+          return merged.length ? { ok: true, questions: merged, rules: (x && x.rules) || (feed && feed.rules) } : feed;
+        });
       });
   };
   tmStart(false);
@@ -2062,6 +2252,7 @@ function wireTraitsLabels(entries) {
     .then(function (x) {
       if (!x || !x.ok || !x.labels) return;
       ensureTraitsCss();
+      var added = 0;
       entries.forEach(function (e) {
         var hits = x.labels[String(e.name).toLowerCase() + "~" + e.season];
         if (!hits || !hits.length) return;
@@ -2070,12 +2261,18 @@ function wireTraitsLabels(entries) {
         var wrap = document.createElement("div");
         wrap.className = "tchips";
         wrap.innerHTML = hits.slice(0, 4).map(function (hh) {
-          return '<span class="tchip' + (hh.anti ? " anti" : "") + '"' +
-            (hh.anti ? ' role="img" aria-label="NOT ' + esc(String(hh.t).toUpperCase()) + '"' : "") +
-            '>' + esc(hh.t) + "</span>";
+          var full = String(hh.t || "");
+          var abbr = traitCardAbbr(full);
+          var aria = (hh.anti ? "Ruled out: " : "") + full + ". Tap for full label.";
+          return '<button type="button" class="tchip' + (hh.anti ? " anti" : "") + '"' +
+            ' data-full="' + esc(full) + '" data-abbr="' + esc(abbr) + '"' +
+            ' aria-label="' + esc(aria) + '" aria-pressed="false" title="' + esc(full) + '">' +
+            esc(abbr) + "</button>";
         }).join("");
         card.appendChild(wrap);
+        added += 1;
       });
+      if (added) wireTraitCardUi();
     })
     .catch(function () {});
 }
@@ -5118,7 +5315,10 @@ function renderResults(e, keepScroll) {
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section twoway-sec" data-result-section="two_way">' + twoWayHtml(e) + "</section>" +
-    '<section class="section" data-result-section="roster"><p class="eyebrow">Your five</p>' + picksHtml +
+    '<section class="section traits-roster" data-result-section="roster">' +
+      '<div class="traits-roster-head"><p class="eyebrow">Your five</p>' +
+        '<button class="trait-info-btn" id="traitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="traitLegend" aria-expanded="false" title="Player label legend" hidden>i</button></div>' +
+      '<div class="trait-legend" id="traitLegend" hidden></div>' + picksHtml +
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section" data-result-section="goat_climb"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +

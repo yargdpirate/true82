@@ -1,12 +1,42 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** this folder, packaged as `true82-v44-merged-traits.zip`.
+**Current source of truth:** this folder, packaged as `true82-v47.6-two-answer-ceiling.zip`.
 
-**Date:** 2026-07-25
-**Current build label:** `v44` / cache key `20260725-traits-v44`
-**Most recent functional change:** the v43 x v40r2 retention merge and the PLAYER TRAITS community voting mode (see the V44 section at the end of this file).
+**Date:** 2026-07-31
+**Packaging label:** `v47.6`; runtime build remains `v47`, with an `app.js` cache-key refresh only.
+**Most recent functional change:** anonymous per-question two-answer delivery ceiling in the trait feed.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 0. V47.5: results-roster player-label UI
+
+This is a code-only, single-executable-file change. No SQL or D1 action is required.
+
+Changed executable file:
+
+- `app.js` only
+
+Behavior, limited to the results page `Your five` roster section:
+
+- Settled player labels render as compact abbreviations.
+- Each label is a real button; tap toggles the full trait name in place.
+- One information button appears beside `Your five` only when labels exist.
+- The information button opens an inline legend for only the labels present on the five cards.
+- The first time the label area enters view, the labels pop and the information button pulses once.
+- That discovery cue stops permanently after the browser taps either a label or the information button (`t82_trait_card_ui_seen_v1`).
+- Crossed-out anti-labels retain the red strike-through.
+- `prefers-reduced-motion` disables the discovery animation.
+
+Intentionally unchanged:
+
+- `functions/api/traits.js` and every other Worker
+- D1 schema, questions, votes, consensus, and editorial rulings
+- simulation, player values, net rating, wins, taxes, and roster generation
+- draft-screen player rows and the existing engine-derived `3PT`/`GRAVITY` chips
+
+Review target: the diff around `TRAIT_CARD_ABBR`, `wireTraitCardUi()`, `wireTraitsLabels()`, and the results roster heading. There is no reason to revalidate unrelated game systems.
 
 ---
 
@@ -1492,3 +1522,12 @@ Expected CHECK-STATE after 0019: 20 traits / 17 core / 3 retired; 564 questions
 - One isolated executable change exists in `functions/api/traits.js`, only inside `op === "featured"`: query limit 40→80 and alternate fresh questions with the eight mature questions closest to 50/50.
 - Purpose: under the previous mature-only branch, newly eligible zero-vote questions could not appear once three questions had five votes.
 - No simulation, scoring, label, vote-write, consensus, or identity code changed.
+
+
+## v47.6 — two-answer question ceiling (2026-07-31)
+
+Narrow feed-selection change only. No migration. `trait_votes_v1.changed` already increments on every repeat submission, so it is reused as answer depth (`answer_count = changed + 1`). Algorithmic feeds now exhaust never-answered questions, then once-answered questions, before allowing any question answered twice or more. Direct question links remain explicit overrides. The homepage/results clients briefly wait for the existing retention identity handshake so selection uses the same anonymous browser identity recovered from the analytics localStorage fallback. Results-roster questions merge with curated feed questions when fewer than five roster questions remain under the ceiling. No simulation, scoring, label, consensus, or vote-tally semantics changed.
+
+### 2026-07-31: 0023 second homepage controversy pack
+
+Added `migrations/0023_homepage_superstar_controversy_v2.sql` plus its verifier. This is SQL-only and promotes 25 existing active questions to the homepage, with sharper public/share copy and priority >=97. No executable code changed; do not re-audit the trait API, vote guard, trait-card UI, or game engine for this addition.

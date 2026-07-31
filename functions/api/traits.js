@@ -1,4 +1,4 @@
-// /api/traits — PLAYER BONUSES community voting for TRUE 82 (v46).
+// /api/traits — PLAYER BONUSES community voting for TRUE 82 (v47.6).
 // (Internal names keep the traits_* vocabulary; the public product name,
 // routes, and all end-user copy say PLAYER BONUSES per the final spec.)
 //
@@ -87,7 +87,7 @@ async function handleGet(context) {
     try {
       const voter = await voterKey(request, url.searchParams.get("sid"));
       const row = await env.DB.prepare(
-        `SELECT response FROM trait_votes_v1 WHERE question_id = ?1 AND voter_hash = ?2`
+        `SELECT response, changed FROM trait_votes_v1 WHERE question_id = ?1 AND voter_hash = ?2`
       ).bind(question.id, voter.hash).all().then((r) => (r.results || [])[0]);
       mine = row ? row.response : null;
     } catch {}
@@ -183,13 +183,27 @@ async function handleGet(context) {
     try {
       const marks = out.map(() => "?").join(",");
       const mine = await env.DB.prepare(
-        `SELECT question_id, response FROM trait_votes_v1 WHERE voter_hash = ?1 AND question_id IN (${marks})`
+        `SELECT question_id, response, changed FROM trait_votes_v1 WHERE voter_hash = ?1 AND question_id IN (${marks})`
       ).bind(voter.hash, ...out.map((q) => q.id)).all().then((r) => r.results || []);
       const byId = {};
-      for (const m of mine) byId[m.question_id] = m.response;
-      for (const q of out) q.my_response = byId[q.id] || null;
-    } catch { for (const q of out) q.my_response = null; }
-    return json({ ok: true, questions: out, rules: publicRules(rules) });
+      for (const m of mine) byId[m.question_id] = {
+        response: m.response,
+        answer_count: Math.max(1, (Number(m.changed) || 0) + 1)
+      };
+      for (const q of out) {
+        const mineForQuestion = byId[q.id];
+        q.my_response = mineForQuestion ? mineForQuestion.response : null;
+        q.answer_count = mineForQuestion ? mineForQuestion.answer_count : 0;
+      }
+    } catch {
+      for (const q of out) { q.my_response = null; q.answer_count = 0; }
+    }
+    // Algorithmic roster delivery obeys the same two-answer ceiling as the
+    // curated feed. If every roster-specific option is exhausted, the client
+    // falls back to the broader curated pool rather than forcing a third ask.
+    const available = out.filter((q) => Number(q.answer_count || 0) < 2);
+    if (!available.length) return json({ ok: false, reason: "roster_exhausted" }, 200);
+    return json({ ok: true, questions: available, rules: publicRules(rules) });
   }
 
   if (op === "featured") {
@@ -270,72 +284,106 @@ async function handleGet(context) {
     });
   }
 
-  // op=session — five questions, pinned direct link first, then a ranked mix
-  // of editorial priority, under-voted bonus, and controversy bonus, skipping
-  // what this voter already answered until the pool runs thin.
+  // op=session — up to five questions. The same anonymous first-party
+  // identity used by retention analytics also keys trait_votes_v1. The
+  // existing `changed` counter means answer_count = changed + 1, so no schema
+  // change is needed for the two-answer ceiling:
+  //   pass 1: never answered; pass 2: answered exactly once;
+  //   pass 3: answered at least twice, but ONLY after passes 1-2 are empty.
+  // A direct per-question page may still show its explicitly requested item;
+  // this rule governs algorithmic feeds and homepage/results recommendations.
   const voter = await voterKey(request, url.searchParams.get("sid"));
   const pinnedId = cleanQid(url.searchParams.get("q"));
   const excluded = String(url.searchParams.get("exclude") || "")
-    .split(",").map(cleanQid).filter(Boolean).slice(0, 24);
+    .split(",").map(cleanQid).filter(Boolean).slice(0, 48);
 
   const picked = [];
   const seen = new Set(excluded);
 
   if (pinnedId && !seen.has(pinnedId)) {
     const pinned = await questionById(env.DB, pinnedId);
-    if (pinned && pinned.status === "active" && pinned.curated) { picked.push(pinned); seen.add(pinned.id); }
+    if (pinned && pinned.status === "active" && pinned.curated) {
+      const prior = await env.DB.prepare(
+        `SELECT changed FROM trait_votes_v1 WHERE question_id = ?1 AND voter_hash = ?2`
+      ).bind(pinned.id, voter.hash).all().then((r) => (r.results || [])[0]).catch(() => null);
+      pinned.answer_count = prior ? Math.max(1, (Number(prior.changed) || 0) + 1) : 0;
+      // A homepage pin is only a preference. Once answered twice it waits
+      // until the entire under-two pool is exhausted like every other item.
+      if (pinned.answer_count < 2) { picked.push(pinned); seen.add(pinned.id); }
+    }
   }
 
-  const rankSql = (skipAnswered) => `
-    SELECT q.id, q.trait_id, q.player_name, q.season, q.season_label,
-           q.prompt_override, q.status, t.display_name trait_name,
-           t.short_definition definition,
-           m.slug, m.public_question, m.what_counts, m.metadata_line, m.active meta_active,
-           COALESCE(c.eligible_votes, 0) eligible_votes,
-           COALESCE(c.yes_share, 0.5) yes_share,
-           ( q.editorial_priority
-             + MAX(0, 60 - COALESCE(c.eligible_votes, 0))
-             + CASE WHEN COALESCE(c.eligible_votes, 0) >= 5
-                    THEN CAST(40 * (0.5 - ABS(COALESCE(c.yes_share, 0.5) - 0.5)) * 2 AS INTEGER)
-                    ELSE 0 END
-             + (ABS(RANDOM()) % 25) ) score
-    FROM trait_questions_v1 q
-    JOIN traits_v1 t ON t.id = q.trait_id
-    JOIN trait_question_meta_v1 m ON m.question_id = q.id AND m.active = 1
-    LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
-    WHERE q.status = 'active'
-      ${skipAnswered ? "AND NOT EXISTS (SELECT 1 FROM trait_votes_v1 v WHERE v.question_id = q.id AND v.voter_hash = ?1)" : ""}
-    ORDER BY score DESC
-    LIMIT 24`;
+  const tierPredicate = (tier) => tier === 0
+    ? "mine.question_id IS NULL"
+    : tier === 1
+      ? "mine.question_id IS NOT NULL AND COALESCE(mine.changed, 0) = 0"
+      : "mine.question_id IS NOT NULL AND COALESCE(mine.changed, 0) >= 1";
 
-  const firstPass = await env.DB.prepare(rankSql(true)).bind(voter.hash).all()
-    .then((r) => r.results || []).catch(() => []);
-  for (const row of firstPass) {
-    if (picked.length >= SESSION_SIZE) break;
-    if (!seen.has(row.id)) { picked.push(row); seen.add(row.id); }
-  }
-
-  if (picked.length < SESSION_SIZE) {
-    // Pool ran thin for this voter: revoting is allowed, refill from everything.
-    const secondPass = await env.DB.prepare(rankSql(false)).all()
+  async function fillTier(tier) {
+    if (picked.length >= SESSION_SIZE) return;
+    const skip = Array.from(seen).slice(0, 64);
+    const skipSql = skip.length ? `AND q.id NOT IN (${skip.map(() => "?").join(",")})` : "";
+    const rows = await env.DB.prepare(`
+      SELECT q.id, q.trait_id, q.player_name, q.season, q.season_label,
+             q.prompt_override, q.status, t.display_name trait_name,
+             t.short_definition definition,
+             m.slug, m.public_question, m.what_counts, m.metadata_line, m.active meta_active,
+             COALESCE(c.eligible_votes, 0) eligible_votes,
+             COALESCE(c.yes_share, 0.5) yes_share,
+             CASE WHEN mine.question_id IS NULL THEN 0 ELSE COALESCE(mine.changed, 0) + 1 END answer_count,
+             ( q.editorial_priority
+               + MAX(0, 60 - COALESCE(c.eligible_votes, 0))
+               + CASE WHEN COALESCE(c.eligible_votes, 0) >= 5
+                      THEN CAST(40 * (0.5 - ABS(COALESCE(c.yes_share, 0.5) - 0.5)) * 2 AS INTEGER)
+                      ELSE 0 END
+               + (ABS(RANDOM()) % 25) ) score
+      FROM trait_questions_v1 q
+      JOIN traits_v1 t ON t.id = q.trait_id
+      JOIN trait_question_meta_v1 m ON m.question_id = q.id AND m.active = 1
+      LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
+      LEFT JOIN trait_votes_v1 mine ON mine.question_id = q.id AND mine.voter_hash = ?
+      WHERE q.status = 'active'
+        AND ${tierPredicate(tier)}
+        ${skipSql}
+      ORDER BY score DESC
+      LIMIT 64`).bind(voter.hash, ...skip).all()
       .then((r) => r.results || []).catch(() => []);
-    for (const row of secondPass) {
+    for (const row of rows) {
       if (picked.length >= SESSION_SIZE) break;
       if (!seen.has(row.id)) { picked.push(row); seen.add(row.id); }
     }
   }
 
+  await fillTier(0);
+  await fillTier(1);
+  // Do not mix third-time questions into a short final under-two session. A
+  // third round begins only when ZERO eligible questions remain below two.
+  if (!picked.length) await fillTier(2);
+
   if (!picked.length) return json({ ok: false, reason: "no_questions" }, 200);
-  const finalPicks = picked.slice(0, SESSION_SIZE).map(publicQuestion);
+  const finalPicks = picked.slice(0, SESSION_SIZE).map((row) => {
+    const q = publicQuestion(row);
+    q.answer_count = Math.max(0, Number(row.answer_count) || 0);
+    return q;
+  });
   try {
     const marks = finalPicks.map(() => "?").join(",");
     const mine = await env.DB.prepare(
-      `SELECT question_id, response FROM trait_votes_v1 WHERE voter_hash = ?1 AND question_id IN (${marks})`
+      `SELECT question_id, response, changed FROM trait_votes_v1 WHERE voter_hash = ?1 AND question_id IN (${marks})`
     ).bind(voter.hash, ...finalPicks.map((q) => q.id)).all().then((r) => r.results || []);
     const byId = {};
-    for (const m of mine) byId[m.question_id] = m.response;
-    for (const q of finalPicks) q.my_response = byId[q.id] || null;
-  } catch { for (const q of finalPicks) q.my_response = null; }
+    for (const m of mine) byId[m.question_id] = {
+      response: m.response,
+      answer_count: Math.max(1, (Number(m.changed) || 0) + 1)
+    };
+    for (const q of finalPicks) {
+      const mineForQuestion = byId[q.id];
+      q.my_response = mineForQuestion ? mineForQuestion.response : null;
+      q.answer_count = mineForQuestion ? mineForQuestion.answer_count : 0;
+    }
+  } catch {
+    for (const q of finalPicks) { q.my_response = null; q.answer_count = 0; }
+  }
   return json({
     ok: true,
     voter_class: voter.klass,
@@ -391,7 +439,7 @@ async function handleVote(context) {
   // One counted call per voter per question; a repeat is a CHANGED call, which
   // the product treats as a first-class action, not an error.
   const prior = await env.DB.prepare(
-    `SELECT response FROM trait_votes_v1 WHERE question_id = ?1 AND voter_hash = ?2`
+    `SELECT response, changed FROM trait_votes_v1 WHERE question_id = ?1 AND voter_hash = ?2`
   ).bind(canonicalId, voter.hash).all().then((r) => (r.results || [])[0]).catch(() => null);
 
   await env.DB.prepare(`
@@ -410,9 +458,10 @@ async function handleVote(context) {
   const consensus = await settleQuestion(env.DB, canonicalId, rules, now);
 
   const outcome = prior ? (prior.response === response ? "duplicate" : "changed") : "counted";
+  const answerCount = prior ? Math.max(2, (Number(prior.changed) || 0) + 2) : 1;
   return json({
     ok: true, outcome, voter_class: voter.klass, consensus,
-    vote: { response },
+    vote: { response, answer_count: answerCount },
     display: displayFor(consensus, response, rules)
   });
 }
