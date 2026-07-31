@@ -1,4 +1,4 @@
-TRUE82 DEPLOY CARD - POLL SHARING PACKAGE (v47.13, BUILD_V stays v47)
+TRUE82 DEPLOY CARD - POLL SHARING PACKAGE (v47.14, BUILD_V stays v47)
 =====================================================================
 
 WHAT SHIPS
@@ -7,7 +7,7 @@ WHAT SHIPS
                       REFRESHER is a real button
   styles.css          rules-foot button styling
   bonuses/index.html  toprow SHARE on every question card, pre-vote share
-                      text, prominent per-player STATS REFRESHER button on each card
+                      text, paired STATS REFRESHER + SHARE button row on each card; refresher resolves the actual bbref player page via /bbref-map.json
   index.html          app.js + styles.css cache keys -> 20260731-poll-share-r2-v47
   Everything else is byte-identical to the v47.11 base.
   functions/ (votes worker, database) UNTOUCHED.

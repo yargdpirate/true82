@@ -32,13 +32,11 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
 .toprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--chalk-dim);margin-bottom:14px}
 .q{font-family:var(--disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--chalk);margin-bottom:10px}
 .meta{font-size:14px;color:var(--chalk-dim);margin-bottom:8px}
-.tr-right{display:inline-flex;align-items:center;gap:12px}
-.tr-share{background:none;border:none;font-family:var(--mono);font-size:11px;line-height:1;letter-spacing:.18em;color:var(--chalk-dim);cursor:pointer;padding:0 0 0 4px;position:relative;display:inline-flex;align-items:center}
-.tr-share::after{content:"";position:absolute;left:-6px;right:-8px;top:-17px;bottom:-17px}
-.tr-share:active,.tr-share.flashed{color:var(--amber)}
-.tr-share:focus-visible{outline:2px solid var(--amber);outline-offset:4px;border-radius:4px}
-.q-ref{display:flex;align-items:center;justify-content:center;text-decoration:none}
-a.q-ref[hidden]{display:none}
+.qx{display:flex;gap:11px;margin-top:11px}
+.qx-btn{position:relative;flex:1;height:48px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk);font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.07em;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;line-height:1;padding:0 10px}
+.qx-btn:active,.qx-btn.flashed{color:var(--amber);border-color:var(--amber)}
+.qx-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+a.qx-btn[hidden]{display:none}
 .wc-btn{background:none;border:none;font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;color:var(--chalk-dim);padding:8px 0;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .wc-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:6px}
 .wc-body{font-size:14.5px;color:var(--chalk-dim);padding:2px 0 10px;display:none}
@@ -179,6 +177,39 @@ a.q-ref[hidden]{display:none}
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
+  var BB = null, BBP = null;
+  function bbMap() {
+    if (BBP) return BBP;
+    BBP = fetch("/bbref-map.json?v=1", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { BB = (d && d.p) ? d : null; return BB; })
+      .catch(function () { return null; });
+    return BBP;
+  }
+  function bbTag(u) { return u + (u.indexOf("?") === -1 ? "?" : "&") + "utm_source=true82.net&utm_campaign=bonuses"; }
+  function bbGuess(name) {
+    var ascii = (name.normalize ? name.normalize("NFD") : name).replace(/[\u0300-\u036f]/g, "");
+    ascii = ascii.replace(/\s+(Jr|Sr|II|III|IV|V)\.?$/i, "");
+    var parts = ascii.split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return null;
+    var first = parts[0].replace(/[^A-Za-z]/g, "").toLowerCase();
+    var last = parts[parts.length - 1].replace(/[^A-Za-z]/g, "").toLowerCase();
+    if (!first || !last) return null;
+    return last.slice(0, 5) + first.slice(0, 2);
+  }
+  function bbPlayerHref(name) {
+    var m = BB;
+    if (m) {
+      var slug = m.p[name];
+      if (slug) return bbTag("https://www.basketball-reference.com/players/" + slug.charAt(0) + "/" + slug + ".html");
+      if (m.a && m.a.indexOf(name) !== -1) return bbTag("https://www.basketball-reference.com/search/?search=" + encodeURIComponent(name));
+      var base = bbGuess(name);
+      if (base && m.b && m.b.indexOf(base) === -1) {
+        return bbTag("https://www.basketball-reference.com/players/" + base.charAt(0) + "/" + base + "01.html");
+      }
+    }
+    return bbTag("https://www.basketball-reference.com/search/?search=" + encodeURIComponent(name));
+  }
   function api(path) {
     return fetch(path, { credentials: "same-origin" }).then(function (r) { return r.json(); });
   }
@@ -250,8 +281,7 @@ a.q-ref[hidden]{display:none}
     var wc = q.what_counts || q.definition || "";
     stage.innerHTML =
       '<section class="card" id="qcard">' +
-        '<div class="toprow"><span>PLAYER BONUS</span><span class="tr-right"><span>' + n + " / " + Q.length + '</span>' +
-          '<button class="tr-share" id="qShare" type="button" aria-label="Share this question">SHARE</button></span></div>' +
+        '<div class="toprow"><span>PLAYER BONUS</span><span>' + n + " / " + Q.length + "</span></div>" +
         '<p class="q">' + esc(questionText(q)) + "</p>" +
         (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
         (wc ? '<button class="wc-btn" id="wcBtn" aria-expanded="false">WHAT COUNTS? <span aria-hidden="true">+</span></button>' +
@@ -263,7 +293,10 @@ a.q-ref[hidden]{display:none}
           "</div>" +
           '<button class="v-unsure" data-v="unsure">UNSURE</button>' +
         "</div>" +
-        '<a class="act-share q-ref" id="qRef" hidden target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
+        '<div class="qx" id="qx">' +
+          '<a class="qx-btn" id="qRef" hidden target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
+          '<button class="qx-btn" id="qShare" type="button">SHARE</button>' +
+        "</div>" +
         '<div id="resultZone" aria-live="polite"></div>' +
       "</section>";
     track("traits_question", { surface: "traits", action: "view", ordinal: n, challenge: q.id, source: entrySource });
@@ -275,12 +308,16 @@ a.q-ref[hidden]{display:none}
     });
     var qRef = document.getElementById("qRef");
     if (qRef && q.player_name) {
-      qRef.href = "https://www.basketball-reference.com/search/?search=" +
-        encodeURIComponent(q.player_name) + "&utm_source=true82.net&utm_campaign=bonuses";
+      qRef.href = bbPlayerHref(q.player_name);
       qRef.hidden = false;
+      bbMap().then(function () {
+        var a = document.getElementById("qRef");
+        if (a && Q[idx] === q) a.href = bbPlayerHref(q.player_name);
+      });
     }
     var qShare = document.getElementById("qShare");
     if (qShare) qShare.addEventListener("click", function () { shareQuestion(q, null, null, qShare); });
+    if (qShare) hapticOverlay(qShare);
     Array.prototype.forEach.call(card.querySelectorAll("[data-v]"), function (b) {
       b.addEventListener("click", function () { castVote(q, b.getAttribute("data-v"), b); });
       hapticOverlay(b);
@@ -350,8 +387,8 @@ a.q-ref[hidden]{display:none}
       ? '<p class="done-head" style="margin-top:4px">' + Q.length + (Q.length === 1 ? ' VOTE IN' : ' VOTES IN') + '</p>' +
         '<p class="done-line">Your votes helped set player bonuses.</p>' +
         '<button class="act-next" id="moreBtn">VOTE ON 5 MORE</button>' +
-        '<a class="act-share" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="/?src=bonuses">BACK TO TRUE 82</a>' +
-        '<button class="t-link" id="shareBtn">SHARE LAST QUESTION</button>'
+        '<button class="act-share" id="shareBtn">SHARE LAST QUESTION</button>' +
+        '<a class="act-share" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="/?src=bonuses">BACK TO TRUE 82</a>'
       : '<button class="act-next" id="nextBtn">NEXT QUESTION</button>' +
         '<button class="act-share" id="shareBtn">SHARE QUESTION</button>';
     zone.innerHTML =
@@ -366,8 +403,8 @@ a.q-ref[hidden]{display:none}
         '<div class="rv"><p class="flash" id="flash" role="status"></p></div>' +
       "</div>";
     if (controls) controls.remove();
-    var qr = document.getElementById("qRef");
-    if (qr) qr.remove();
+    var qx = document.getElementById("qx");
+    if (qx) qx.remove();
     var rEl = zone.querySelector(".result");
     requestAnimationFrame(function () {
       if (!rEl) return;
@@ -448,9 +485,10 @@ a.q-ref[hidden]{display:none}
         var f = document.getElementById("flash");
         if (f) f.textContent = "LINK COPIED";
         else if (btn) {
+          if (!btn.dataset.shareLabel) btn.dataset.shareLabel = btn.textContent;
           btn.textContent = "COPIED";
           btn.classList.add("flashed");
-          setTimeout(function () { btn.textContent = "SHARE"; btn.classList.remove("flashed"); }, 1400);
+          setTimeout(function () { btn.textContent = btn.dataset.shareLabel; btn.classList.remove("flashed"); }, 1400);
         }
         track("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: entrySource });
       }).catch(function () {});

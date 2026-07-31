@@ -1,7 +1,9 @@
-# RETURN HANDOFF - POLL DISTRIBUTION + NAVIGATION PACKAGE (v47.13)
+# RETURN HANDOFF - POLL DISTRIBUTION + NAVIGATION PACKAGE (v47.14)
 
 Base: the v47.11 chip packing package (cumulative ZIP: v47.9 through this).
-v47.13 folds in three owner revisions on the v47.12 draft of this package.
+v47.13 folded in three owner revisions; v47.14 reworks the /bonuses/ card
+actions after live screenshots: the toprow text share was invisible, the
+refresher anchor rendered half-baked, and refresher links hit search pages.
 BUILD_V stays "v47". Files changed: `app.js`, `styles.css`,
 `bonuses/index.html`, `index.html`. The votes worker
 (`functions/api/traits.js`), simulation, scoring, polling cadence, analytics
@@ -49,14 +51,27 @@ a compact `SHARE` control beside the `n / N` counter - same text-height +
 page's own `shareQuestion()`, extended with a nullable result so a pre-vote
 share reads "Vote on this one: ..." while every post-vote variant is
 byte-identical to before; the copy fallback beats COPIED on the control when
-the post-vote `#flash` line doesn't exist yet. The stats refresher (owner revision) is a
-prominent, normally-styled button ON the question card: a full-width
-`act-share` slab under the vote controls, `STATS REFRESHER \u2197`, linking to
-**that question's own player** on Basketball-Reference (the reliable
-`/search/?search=<player>` route, which lands on the player's page,
-campaign-tagged `bonuses`, new tab). It re-points every question, hides for
-editorial questions without a player, and leaves the card with the controls
-once the vote lands. No foot line.
+the post-vote `#flash` line doesn't exist yet.
+
+**The card actions (v47.14):** the toprow is back to the plain counter - the
+tiny text control there was invisible in practice. Under the vote controls
+sits one paired row of two prominent 48px outlined buttons in the page's own
+button language: `STATS REFRESHER \u2197` and `SHARE`. Self-contained `.qx-btn`
+styling (flex-centered, `position:relative` for the haptic overlay), so no
+stylesheet cascade can half-render it again. The row leaves the card with
+the controls once the vote lands; mid-session the existing post-vote SHARE
+QUESTION button carries sharing, and on the last card SHARE LAST QUESTION
+graduates from a buried footer t-link to a full `act-share` button directly
+under VOTE ON 5 MORE, above BACK TO TRUE 82.
+
+**Refresher lands on the actual player page (v47.14):** the page ports the
+app's proven `bbrefHref` method - fetch the verified `/bbref-map.json` once,
+then: verified slug -> direct `/players/<x>/<slug>.html`; known-ambiguous
+names -> search; otherwise the `<last5><first2>01` base guess unless
+blocklisted; search only as the true last resort. The href renders
+immediately with the safe fallback and upgrades in place the moment the map
+lands, per question. It hides for editorial questions without a player;
+every link stays campaign-tagged `bonuses` in a new tab.
 
 **How To area (`app.js` rules sheet + `styles.css`):** the footer's
 "Full engine math \u2192" link is gone - nothing in the sheet promises engine
@@ -83,8 +98,14 @@ card 527->527); native + copy share verified; **a YES tap still POSTs the
 identical `op=vote` body and renders the result; the post-vote SHARE
 QUESTION, CHANGE VOTE, and voted-text variants are regression-checked
 working**; `?q=<slug>` still pins the session feed and `src=s` entries log
-source "share"; the refresher is a 48px `act-share` slab linking the
-question's own player, present pre-vote and gone with the controls after.
+source "share"; the refresher waits for the map and verifiably lands on
+the direct player page (`/players/b/bryanko01.html`, not search); the paired
+row measures 48px, both buttons on one line; the last-card share is asserted
+as a full `act-share` button above BACK TO TRUE 82 and shares the final
+question's deep link. The harness also caught a real bug now fixed and
+guarded: the haptic overlay switch needs a positioned parent - without
+`position:relative` on `.qx-btn` the invisible switch covered the whole card
+and swallowed every tap.
 
 **One-click brigade lane, verified end to end:** the sharer's single tap
 emits `/bonuses/<slug>?src=s`. A recipient opening it hits
@@ -136,9 +157,13 @@ Full voting page:
       question.
 - [ ] Voting, the result beat, CHANGE VOTE, and the post-vote SHARE QUESTION
       all behave exactly as before.
-- [ ] STATS REFRESHER \u2197 sits as a full-width button under UNSURE, opens
-      THAT player's Basketball-Reference page in a new tab, and disappears
-      once you vote.
+- [ ] STATS REFRESHER \u2197 and SHARE sit as one row of two full buttons under
+      UNSURE; the refresher opens THAT player's actual Basketball-Reference
+      player page (not a search page); both disappear once you vote.
+- [ ] YES / NO / UNSURE all still tap cleanly (nothing invisible overlaps
+      the card).
+- [ ] On the fifth card, SHARE LAST QUESTION is a full button right under
+      VOTE ON 5 MORE and shares that question's link.
 - [ ] A shared /bonuses/<slug> link from an old recap or chat still lands
       pinned (existing routes preserved).
 
