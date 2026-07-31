@@ -718,7 +718,7 @@ var _buttonStyleObserver = null;
 // positive label rendered near-black on dark (.tchip.anti at (0,2,0) kept
 // its red, which is why only the positive labels were unreadable). Trait
 // chips own their full skin in ensureTraitsCss now.
-var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn)";
+var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-tool)";
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -740,6 +740,50 @@ function bindGlobalButtonStyle() {
     }
   });
   _buttonStyleObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+/* Desktop draft scrolling (v47.10): while a Classic/Presti draft is open the
+   page itself is locked (body.drafting overflow:hidden) and #pool is the only
+   scroller, so a wheel or trackpad gesture over the utility bar, mode panel,
+   pool head, or tray used to do nothing. One document-level wheel listener
+   forwards those gestures into the pool. Tightly fenced: drafting only,
+   classic/cap only, never over the pool itself (native handles it, so no
+   double-scroll), never over inputs/selects/dialogs or any other scrollable
+   region (the rules sheet has its own), never during the gate ceremony or the
+   scramble, never a ctrlKey pinch-zoom or a horizontal-dominant swipe, and it
+   only consumes when the pool can actually move that direction, so nothing is
+   ever trapped. Everything is checked at event time; the pool node is looked
+   up per event, so per-round re-renders need no rewiring. */
+function wireDraftWheel() {
+  document.addEventListener("wheel", function (ev) {
+    var body = document.body;
+    if (!body.classList.contains("drafting")) return;
+    if (MODE !== "classic" && MODE !== "cap") return;
+    if (body.classList.contains("rules-open") || body.classList.contains("gating")) return;
+    if (ev.ctrlKey) return;                                   // trackpad pinch-zoom rides wheel+ctrl
+    if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;    // horizontal swipe is not ours
+    var pool = el("pool");
+    if (!pool || pool.classList.contains("scrambling")) return;
+    if (pool.scrollHeight <= pool.clientHeight + 1) return;   // nothing to scroll
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    if (t.closest("#pool")) return;                           // native scroll already owns this
+    if (t.closest("input,textarea,select,[role=dialog]")) return;
+    for (var n = t; n && n !== body; n = n.parentElement) {   // any OTHER scrollable region wins
+      if (n !== pool && n.scrollHeight > n.clientHeight + 1) {
+        var oy = getComputedStyle(n).overflowY;
+        if (oy === "auto" || oy === "scroll") return;
+      }
+    }
+    var dy = ev.deltaY;
+    if (ev.deltaMode === 1) dy *= 32;                         // lines (Firefox)
+    else if (ev.deltaMode === 2) dy *= pool.clientHeight;     // pages
+    var atTop = pool.scrollTop <= 0;
+    var atBottom = pool.scrollTop + pool.clientHeight >= pool.scrollHeight - 1;
+    if ((dy < 0 && atTop) || (dy > 0 && atBottom)) return;    // can't consume; never trap
+    pool.scrollTop += dy;
+    ev.preventDefault();
+  }, { passive: false });
 }
 
 // One delegated press-haptic for every raised button, so we don't have to wire
@@ -1722,8 +1766,7 @@ function rulesSheetHtml() {
     ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
 
   h += '</div><div class="rs-foot">' +
-    '<a class="rs-link mono" href="/how-it-works/" target="_blank" rel="noopener">Full engine math \u2192</a>' +
-    '<a class="rs-link mono" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
+    '<a class="rs-got rs-ref-btn" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
     '<button class="rs-got" id="rulesGotIt" type="button">GOT IT</button>' +
   '</div>';
   return h;
@@ -1955,7 +1998,6 @@ function ensureTraitsCss() {
       "letter-spacing:.2em;color:#FFB52E;text-decoration:none;display:inline-block}" +
     ".traits-module .tm-head:not([hidden]){display:block;text-align:center;font-family:'Barlow Condensed',sans-serif;" +
       "font-weight:700;font-size:22px;letter-spacing:.08em;color:#f2ede4;margin-bottom:9px}" +
-    ".traits-module .tm-foot{justify-content:center}" +
     ".traits-module .tm-pips{align-items:center}" +
     ".traits-module .tm-pips span{width:10px;height:10px}" +
     ".traits-module .tm-pips span.done{width:13px;height:13px}" +
@@ -1986,7 +2028,17 @@ function ensureTraitsCss() {
       "font-weight:700;font-size:19px;letter-spacing:.05em}" +
     ".traits-module .tm-res b{color:#FFB52E}" +
     ".traits-module .tm-res .neg{color:#E5533C}" +
-    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:10px}" +
+    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:10px;justify-content:space-between}" +
+    ".traits-module .tm-tools{display:inline-flex;align-items:center;gap:14px;flex:none}" +
+    /* Text-height tools so the foot row stays exactly as tall as the pips;
+       the invisible ::after pad supplies the 44px touch target instead of
+       box growth. */
+    ".traits-module .tm-tool{appearance:none;-webkit-appearance:none;background:none;border:0;cursor:pointer;" +
+      "position:relative;font-family:'IBM Plex Mono',monospace;font-size:10.5px;line-height:1;letter-spacing:.14em;" +
+      "color:#8b98a5;text-decoration:none;padding:0 2px;display:inline-flex;align-items:center}" +
+    ".traits-module .tm-tool::after{content:'';position:absolute;left:-5px;right:-5px;top:-16px;bottom:-16px}" +
+    ".traits-module .tm-tool:active,.traits-module .tm-tool.flashed{color:#FFB52E}" +
+    ".traits-module .tm-tool:focus-visible{outline:2px solid #FFB52E;outline-offset:3px;border-radius:4px}" +
     ".traits-module .tm-dots{display:flex;gap:7px}" +
     ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
     ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
@@ -1997,7 +2049,7 @@ function ensureTraitsCss() {
     ".traits-module .tm-done{display:none;margin-top:13px}" +
     ".traits-module .tm-done .td-h{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:23px;letter-spacing:.06em}" +
     ".traits-module .tm-done .td-l{font-size:14px;color:#8b98a5;margin-top:3px}" +
-    ".traits-module .tm-again{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;" +
+    ".traits-module .tm-again{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;text-decoration:none;" +
       "height:48px;padding:0 18px;border:0;border-radius:12px;cursor:pointer;" +
       "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;letter-spacing:.1em;" +
@@ -2013,7 +2065,10 @@ function ensureTraitsCss() {
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:.12em;" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
     ".tchips{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}" +
-    ".tchips-inline{margin-top:0;display:inline-flex;vertical-align:middle}" +
+    /* display:contents dissolves the wrapper's box so each label chip packs
+       the .pr-sub flex line individually and only the true overflow wraps
+       (v47.11); the span stays in the DOM for the dedupe guard and cache. */
+    ".tchips-inline{display:contents}" +
     /* Trait chips wear the house slab (v47.9): ink text on a bright gold
        face, the site's own contrast law (dark text on amber, never
        amber-on-amber). Anti-labels are the red slab with the cross-out in
@@ -2082,7 +2137,8 @@ function traitsModuleHtml() {
     "</div>" +
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
-    '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span></div>' +
+    '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span>' +
+      '<span class="tm-tools"><button class="tm-tool" type="button" id="tmShare" hidden>SHARE</button></span></div>' +
     '<span class="tm-why" id="tmWhy" hidden>Crowdsourcing your vote to rate player fit properly.</span></section>';
 }
 
@@ -2130,10 +2186,35 @@ function tmShowQuestion() {
   el("tmRes").style.display = "none";
   el("tmVotes").style.display = "";
   mod.classList.remove("tm-locked");
+  var sh = el("tmShare"); if (sh) sh.hidden = false;
   var y = el("tmYes"), nn = el("tmNo");
   y.classList.remove("pressed"); nn.classList.remove("pressed");
   tmDots();
   analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
+}
+// Share the exact question on screen. Same canonical URL family the full
+// page shares (/bonuses/<slug> when curated, ?q=<id> otherwise; src=s so the
+// receiving session logs entry source "share"). Native share sheet when the
+// browser has one, copy-to-clipboard with a COPIED beat otherwise. Pure
+// navigation: no vote is written, the identity/vote path is untouched.
+function tmShareQuestion() {
+  var q = TM.qs[TM.i];
+  var sh = el("tmShare");
+  if (!q || !sh) return;
+  var url = location.origin + "/bonuses/" + (q.slug || ("?q=" + encodeURIComponent(q.id))) + (q.slug ? "?src=s" : "&src=s");
+  var text = "Vote on this one: " + (q.public_question || "");
+  if (navigator.share) {
+    navigator.share({ text: text, url: url }).then(function () {
+      analyticsTrack("traits_question", { surface: "traits", action: "share_open", challenge: q.id, source: TM.source, sid: TM.sid });
+    }).catch(function () {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text + "\n" + url).then(function () {
+      sh.textContent = "COPIED";
+      sh.classList.add("flashed");
+      setTimeout(function () { sh.textContent = "SHARE"; sh.classList.remove("flashed"); }, 1400);
+      analyticsTrack("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: TM.source, sid: TM.sid });
+    }).catch(function () {});
+  }
 }
 function tmVote(resp, btn) {
   if (TM.busy) return;
@@ -2183,14 +2264,14 @@ function tmComplete() {
   el("tmDef").textContent = "";
   el("tmVotes").style.display = "none";
   el("tmRes").style.display = "none";
+  var sh = el("tmShare"); if (sh) sh.hidden = true;
   var done = el("tmDone");
   done.style.display = "block";
   done.innerHTML = '<span class="td-l">Your votes helped set player bonuses.</span><br>' +
-    '<button class="tm-again" type="button" id="tmAgain">VOTE ON 5 MORE</button>';
+    '<a class="tm-again" id="tmAgain" href="/bonuses/?src=' + TM.source + '">VOTE ON 5 MORE</a>';
   tmDots();
   buzz([12, 70, 12]);
   analyticsTrack("traits_session", { surface: "traits", action: "complete", value: TM.qs.length, source: TM.source, sid: TM.sid });
-  el("tmAgain").addEventListener("click", function () { tmStart(true); });
 }
 function tmDegrade(q) {
   // The inline lane hit trouble; hand the run to the full page with the
@@ -2214,6 +2295,8 @@ function tmStart(again) {
       TM.wired = true;
       el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
       el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
+      var shBtn = el("tmShare");
+      if (shBtn) shBtn.addEventListener("click", tmShareQuestion);
     }
     tmShowQuestion();
     mod.hidden = false;
@@ -2259,6 +2342,7 @@ function wireTraitsPrompt() {
   sec.innerHTML = traitsModuleHtml();
   sec.hidden = false;
   TM.source = "results_prompt";
+  var tmT = el("tmTitle"); if (tmT) tmT.href = "/bonuses/?src=" + TM.source;
   TM.wired = false;
   TM.loader = function () {
     if (!pairs) return tmSessionLoader();
@@ -5984,6 +6068,7 @@ function boot() {
   bindGlobalButtonStyle();
   bindHaptics();
   bindVisibilityResync();
+  wireDraftWheel();
   ensureTraitsCss();      // v47.9: chips render on every surface; duel/league entry paths skip the homepage module that used to inject this
   wireTraitChipTaps();
   if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }

@@ -1,0 +1,29 @@
+TRUE82 DEPLOY CARD - DRAFT USABILITY PACKAGE (v47.10, BUILD_V stays v47)
+========================================================================
+
+WHAT SHIPS
+  app.js       wireDraftWheel(): drafting-only wheel forwarder into #pool
+  styles.css   coarse-pointer 16px search input (kills iPhone focus zoom)
+  index.html   BOTH cache keys -> 20260731-draft-usability-v47
+  Everything else is byte-identical to the v47.9 base.
+
+STEPS
+  1. Drag the package contents into the GitHub repo root (flat), commit,
+     let Cloudflare Pages deploy.
+  2. NO D1 MIGRATION. NO CONSOLE COMMAND.
+  3. Hard-reload once so BOTH new cache keys take (styles.css matters here).
+  4. Footer still reads "| v47".
+
+VERIFY (60 seconds)
+  - Desktop: open a Classic draft, wheel with the cursor over the mode
+    panel -> the player list scrolls; over the list itself -> scrolls once.
+  - Desktop: HOW TO PLAY open mid-draft -> the sheet scrolls, pool doesn't.
+  - iPhone: tap "search player name" in a draft -> no page zoom, typing
+    filters, keyboard dismisses clean.
+
+FULL DETAIL + SMOKE CHECKLIST
+  RETURN-HANDOFF-DRAFT-USABILITY.md (sections 4 and 6).
+
+ROLLBACK
+  Restore app.js / styles.css / index.html from the v47.9 package.
+  No data to unwind.

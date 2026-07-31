@@ -32,6 +32,13 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
 .toprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--chalk-dim);margin-bottom:14px}
 .q{font-family:var(--disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--chalk);margin-bottom:10px}
 .meta{font-size:14px;color:var(--chalk-dim);margin-bottom:8px}
+.tr-right{display:inline-flex;align-items:center;gap:12px}
+.tr-share{background:none;border:none;font-family:var(--mono);font-size:11px;line-height:1;letter-spacing:.18em;color:var(--chalk-dim);cursor:pointer;padding:0 0 0 4px;position:relative;display:inline-flex;align-items:center}
+.tr-share::after{content:"";position:absolute;left:-6px;right:-8px;top:-17px;bottom:-17px}
+.tr-share:active,.tr-share.flashed{color:var(--amber)}
+.tr-share:focus-visible{outline:2px solid var(--amber);outline-offset:4px;border-radius:4px}
+.q-ref{display:flex;align-items:center;justify-content:center;text-decoration:none}
+a.q-ref[hidden]{display:none}
 .wc-btn{background:none;border:none;font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;color:var(--chalk-dim);padding:8px 0;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .wc-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:6px}
 .wc-body{font-size:14.5px;color:var(--chalk-dim);padding:2px 0 10px;display:none}
@@ -243,7 +250,8 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     var wc = q.what_counts || q.definition || "";
     stage.innerHTML =
       '<section class="card" id="qcard">' +
-        '<div class="toprow"><span>PLAYER BONUS</span><span>' + n + " / " + Q.length + "</span></div>" +
+        '<div class="toprow"><span>PLAYER BONUS</span><span class="tr-right"><span>' + n + " / " + Q.length + '</span>' +
+          '<button class="tr-share" id="qShare" type="button" aria-label="Share this question">SHARE</button></span></div>' +
         '<p class="q">' + esc(questionText(q)) + "</p>" +
         (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
         (wc ? '<button class="wc-btn" id="wcBtn" aria-expanded="false">WHAT COUNTS? <span aria-hidden="true">+</span></button>' +
@@ -255,6 +263,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
           "</div>" +
           '<button class="v-unsure" data-v="unsure">UNSURE</button>' +
         "</div>" +
+        '<a class="act-share q-ref" id="qRef" hidden target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
         '<div id="resultZone" aria-live="polite"></div>' +
       "</section>";
     track("traits_question", { surface: "traits", action: "view", ordinal: n, challenge: q.id, source: entrySource });
@@ -264,6 +273,14 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
       var open = card.classList.toggle("wc-open");
       wcBtn.setAttribute("aria-expanded", open ? "true" : "false");
     });
+    var qRef = document.getElementById("qRef");
+    if (qRef && q.player_name) {
+      qRef.href = "https://www.basketball-reference.com/search/?search=" +
+        encodeURIComponent(q.player_name) + "&utm_source=true82.net&utm_campaign=bonuses";
+      qRef.hidden = false;
+    }
+    var qShare = document.getElementById("qShare");
+    if (qShare) qShare.addEventListener("click", function () { shareQuestion(q, null, null, qShare); });
     Array.prototype.forEach.call(card.querySelectorAll("[data-v]"), function (b) {
       b.addEventListener("click", function () { castVote(q, b.getAttribute("data-v"), b); });
       hapticOverlay(b);
@@ -349,6 +366,8 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
         '<div class="rv"><p class="flash" id="flash" role="status"></p></div>' +
       "</div>";
     if (controls) controls.remove();
+    var qr = document.getElementById("qRef");
+    if (qr) qr.remove();
     var rEl = zone.querySelector(".result");
     requestAnimationFrame(function () {
       if (!rEl) return;
@@ -411,11 +430,12 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
     });
   }
 
-  function shareQuestion(q, resp, d) {
+  function shareQuestion(q, resp, d, btn) {
     var url = location.origin + "/bonuses/" + (q.slug || ("?q=" + encodeURIComponent(q.id))) + (q.slug ? "?src=s" : "&src=s");
     var text;
     var pq = questionText(q);
-    if (d.mode === "counts") text = "Early vote is " + d.yes + "\u2013" + d.no + ": " + pq;
+    if (!d) text = "Vote on this one: " + pq;
+    else if (d.mode === "counts") text = "Early vote is " + d.yes + "\u2013" + d.no + ": " + pq;
     else if (resp === "yes") text = "I voted yes: " + pq + " " + d.yes_pct + "% currently say yes.";
     else if (resp === "no") text = "I voted no, and " + (100 - d.yes_pct) + "% agree: " + pq;
     else text = d.yes_pct + "% say yes: " + pq;
@@ -427,6 +447,11 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
       navigator.clipboard.writeText(text + "\n" + url).then(function () {
         var f = document.getElementById("flash");
         if (f) f.textContent = "LINK COPIED";
+        else if (btn) {
+          btn.textContent = "COPIED";
+          btn.classList.add("flashed");
+          setTimeout(function () { btn.textContent = "SHARE"; btn.classList.remove("flashed"); }, 1400);
+        }
         track("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: entrySource });
       }).catch(function () {});
     }

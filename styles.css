@@ -352,6 +352,13 @@ button.more-modes:disabled {
 }
 .pool-search::placeholder { color: var(--chalk-dim); }
 .pool-search:focus { outline: none; border-color: var(--maple); }
+/* iPhone Safari zooms the page on focusing any input whose font-size computes
+   under 16px. Touch devices get the search box at exactly 16px (vertical
+   padding trimmed so the tools row barely grows); desktop keeps 13px. User
+   zoom stays fully enabled — the viewport meta is untouched (v47.10). */
+@media (pointer: coarse) {
+  .pool-search { font-size: 16px; padding-top: 6px; padding-bottom: 6px; }
+}
 .sort-chips { display: flex; gap: 6px; flex-wrap: nowrap; flex: 0 0 auto; }
 .sort-chip {
   font-family: var(--mono);
@@ -3034,7 +3041,7 @@ body.gating .gate-back {
    REFRESHER, WHAT WINS GAMES. The close control goes gold so the exit is
    findable, GOT IT becomes the loudest thing in the footer, and the
    refresher inherits the frame the retired CHANGE THE YEARS box used.
-   Footer holds three items and wraps only on sub-340px screens so an SE
+   Footer holds two buttons and wraps only on sub-340px screens so an SE
    never clips the primary button. */
 .rules-overlay .rs-close { color: var(--amber); border-color: var(--maple); }
 .rules-overlay .rs-close:active { color: var(--ink); background: var(--amber); border-color: var(--amber); }
@@ -3050,9 +3057,20 @@ body.gating .gate-back {
   padding: 11px 8px 12px; box-shadow: 0 2px 0 var(--maple);
 }
 .rules-overlay .rs-got:active { background: var(--maple); border-color: var(--maple); color: var(--chalk); box-shadow: none; }
+/* v47.12: the refresher is a real button in the foot now - an anchor wearing
+   the rs-got slab as the secondary (dark) variant beside the amber GOT IT. */
+.rules-overlay a.rs-got { display: flex; align-items: center; justify-content: center; text-align: center; text-decoration: none; }
+.rules-overlay a.rs-ref-btn {
+  background: var(--tunnel); color: var(--amber); border-color: var(--maple-line); box-shadow: 0 2px 0 var(--tunnel-2);
+  flex: 0 1 auto; min-width: 0; white-space: nowrap; font-size: 14px; letter-spacing: 0.06em; padding: 12px 12px 13px;
+}
+.rules-overlay a.rs-ref-btn:active { background: var(--maple); border-color: var(--maple); color: var(--chalk); box-shadow: none; }
 @media (max-width: 340px) {
+  /* v47.12: the foot holds two buttons now (the engine-math link is gone), so
+     an SE fits them side by side; wrap stays on only as a safety valve. */
   .rs-foot { flex-wrap: wrap; }
-  .rules-overlay .rs-got { flex: 1 1 100%; }
+  .rules-overlay button.rs-got { flex: 1 1 auto; min-width: 0; }
+  .rules-overlay a.rs-ref-btn { flex: 0 1 auto; font-size: 12.5px; padding: 12px 9px 13px; }
 }
 
 /* ============ V42 THE SEASON REEL ============
