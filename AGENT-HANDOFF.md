@@ -1440,3 +1440,55 @@ the sanitizer and invisible outside the generating roster; note it in
 any future abuse review. Suite coverage: roster serving, id-space
 collision, lazy insert integrity, generated-vote settle, session leak
 guard.
+
+### v47.2 additive trait categories (2026-07-29)
+
+Migration `migrations/0018_trait_categories_v1.sql` adds five core
+voting/label categories without changing gameplay: Ball Stopper, Foul
+Merchant, Stat Padder, Championship #1, and Ball Pounder. It contributes
+124 curated active questions, 123 editorial `qualifies` seeds, and one
+marquee unruled question: 2016 Draymond Green as a Ball Pounder
+(`editorial_priority=150`, homepage eligible). Seed ranges are exactly the
+owner request: Carmelo 2006-2015 and Kobe 2006-2012 for Ball Stopper; Shai
+2023-2026 and Harden 2013-2020 for Foul Merchant; Westbrook 2017-2021 and
+Drummond 2013-2020 for Stat Padder; every Finals MVP from 1974 through
+2026 for Championship #1; Luka 2020-2026 and all 21 Chris Paul seasons
+(2006-2026) for Ball Pounder.
+
+This is a database-data expansion only: no worker, frontend, roster-generation,
+`app.js`, simulation, scoring-constant, player-value, win, net-rating, tax, or
+bonus code changes. Existing deterministic roster-generated question pairs
+therefore do not reshuffle. The Stat Padder definition saying to decrease
+engine value is the owner's poll proposition, not a live implementation
+instruction. Labels remain shadow mode: editorial rulings appear immediately,
+and settled community consensus supersedes them. Apply 0018 after 0017.
+Current CHECK-STATE expectation:
+20 traits / 17 core / 3 retired; 220 questions / 205 active; 144 editorial;
+200 meta; 30 homepage.
+
+### v47.3 additive editorial label expansion (2026-07-30)
+
+Migration `migrations/0019_editorial_label_expansion_v1.sql` is a pure-data
+expansion generated from the owner-approved 360-row JSONL editorial set. It
+adds 344 previously absent player-season/trait questions, 344 provisional
+editorial rulings, and 344 active public metadata rows. Sixteen requested
+combinations were already present through earlier migrations and are not
+overwritten, so the intended dataset resolves to exactly 360 combinations
+across 120 player-seasons: 290 positive labels and 70 anti-labels.
+
+No executable file changed. In particular, `app.js`, `functions/api/traits.js`,
+roster question hashing, homepage rotation, simulation, values, net rating,
+wins, taxes, and bonuses are untouched. The new metadata makes the questions
+eligible for ordinary five-question sessions, but every new row has
+`homepage_eligible=0`; the homepage pool remains 30. Editorial rulings appear
+immediately on exact player-season cards, and later decisive community
+consensus supersedes them under the existing rules. Apply 0019 after 0018.
+Expected CHECK-STATE after 0019: 20 traits / 17 core / 3 retired; 564 questions
+/ 549 active; 488 editorial; 544 meta; 30 homepage.
+
+
+## V47.4 additive homepage question expansion
+- New migration: `migrations/0020_homepage_superstar_controversy_v1.sql` marks 25 existing superstar questions homepage-eligible; no new schema or voting logic.
+- One isolated executable change exists in `functions/api/traits.js`, only inside `op === "featured"`: query limit 40→80 and alternate fresh questions with the eight mature questions closest to 50/50.
+- Purpose: under the previous mature-only branch, newly eligible zero-vote questions could not appear once three questions had five votes.
+- No simulation, scoring, label, vote-write, consensus, or identity code changed.

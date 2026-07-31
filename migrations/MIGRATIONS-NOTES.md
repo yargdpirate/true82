@@ -9,8 +9,8 @@ repair for ANY suspected partial application is simply: re-paste the whole
 clean file. Nothing doubles, nothing breaks.
 
 After pasting, verify state in one query: paste CHECK-STATE.sql. Expected
-after 0010 + 0011 + 0012 + 0013: traits 14 (11 core, 3 retired), questions
-96 (81 active), rules 6, editorial 21, meta 76, homepage 29 after 0014.
+after the current chain through 0018: traits 20 (17 core, 3 retired),
+questions 220 (205 active), rules 6, editorial 144, meta 200, homepage 30.
 
 WHAT EACH FILE DOES
 
@@ -69,3 +69,39 @@ SCOUT-GENERATED.sql (read-only, paste any time)
   five or more eligible votes, the closest split wins, day-rotated across
   the top eight; pure day rotation over the whole pool until real fights
   exist.
+
+0016_knucklehead_v1
+  Off-Court Knucklehead joins the core traits, POLLING ONLY: no curated
+  questions, no editorial rulings, no homepage presence. It is votable
+  through the roster lane (any drafted player can draw it) and labels
+  appear only when community consensus settles. A future build may add a
+  team chemistry penalty for rostering more than one.
+
+0018_trait_categories_v1
+  Additive shadow-mode expansion: Ball Stopper, Foul Merchant, Stat
+  Padder, Championship #1, and Ball Pounder become core voting/label
+  categories. It adds 124 curated active questions and 123 editorial
+  QUALIFIES seeds using the owner-specified season ranges. The extra
+  2016 Draymond Ball Pounder question is deliberately unruled, has the
+  highest editorial priority, and is homepage-eligible. Community
+  consensus still supersedes every editorial seed. Despite the Stat
+  Padder definition's game-engine wording, 0018 changes no simulation
+  table or scoring value; that wording is the poll proposition only.
+  Apply after 0017.
+
+0019_editorial_label_expansion_v1
+  Pure-data provisional label expansion. Source set: 360 player-season/trait
+  rulings across 120 player-seasons, exactly three each. Sixteen combinations
+  already exist through prior migrations and are preserved; 0019 inserts the
+  remaining 344 questions, editorial rulings, and active public metadata.
+  Aggregate source result: 290 qualifies and 70 does_not_qualify. New questions
+  join ordinary voting sessions but are not homepage eligible. The migration
+  uses a temporary staging table, drops it at the end, and is rerun-safe. No
+  code or gameplay behavior changes. Apply after 0018.
+
+
+## 0020 — Superstar homepage controversy pool
+- Marks 25 existing superstar player-season questions homepage-eligible and tightens their public copy.
+- Raises only those questions to editorial priority 96.
+- Does not touch votes, consensus, or editorial rulings.
+- Companion narrow API change alternates fresh (<5 votes) questions with the eight mature questions closest to 50/50; otherwise new zero-vote homepage options would never surface under the prior mature-only selection rule.

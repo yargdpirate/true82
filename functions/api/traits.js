@@ -204,12 +204,17 @@ async function handleGet(context) {
       LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
       WHERE m.homepage_eligible = 1 AND m.active = 1 AND q.status = 'active'
       ORDER BY q.editorial_priority DESC, m.slug
-      LIMIT 40`).all().then((r) => r.results || []).catch(() => []);
+      LIMIT 80`).all().then((r) => r.results || []).catch(() => []);
     if (!pool.length) return json({ ok: false, reason: "no_questions" }, 200);
     const day = Math.floor(Date.now() / 86400000);
+    const fresh = pool.filter((p) => Number(p.ev) < 5);
     const live = pool.filter((p) => Number(p.ev) >= 5)
       .sort((a, b) => Math.abs(a.ys - 0.5) - Math.abs(b.ys - 0.5)).slice(0, 8);
-    const pick = live.length >= 3 ? live[day % live.length] : pool[day % pool.length];
+    const pick = fresh.length && day % 2 === 0
+      ? fresh[Math.floor(day / 2) % fresh.length]
+      : live.length >= 3
+        ? live[Math.floor(day / 2) % live.length]
+        : pool[day % pool.length];
     return json({ ok: true, question: { id: pick.id, slug: pick.slug, public_question: pick.public_question } });
   }
 
@@ -507,7 +512,7 @@ function publicRules(rules) {
   return { min_eligible_votes: rules.min_eligible_votes };
 }
 
-const ROSTER_TRAITS = ["clutch", "tough-shot-maker", "iso-defender", "playmaker",
+const ROSTER_TRAITS = ["off-court-knucklehead", "clutch", "tough-shot-maker", "iso-defender", "playmaker",
   "three-point-shooter", "team-defender", "off-ball-scorer", "rim-pressurer",
   "switchable-defender", "rim-protector", "super-three-point-shooter"];
 const ROSTER_WC = {
@@ -516,16 +521,18 @@ const ROSTER_WC = {
   "switchable-defender": "Takes the switch, guard through big, and holds up.",
   "rim-protector": "Shots die at the rim when he is standing there.",
   "playmaker": "Makes teammates way better.",
-  "rim-pressurer": "Lives in the paint. Gets to the rim relentlessly.",
+  "rim-pressurer": "Attacks the rim, gets fouled, forces teams to pack the paint.",
   "off-ball-scorer": "Dangerous without the ball: cuts, relocations, catch-and-shoot.",
   "tough-shot-maker": "Makes contested, late-clock, self-created shots at a high level.",
   "clutch": "You want the last shot in his hands. So does he.",
   "three-point-shooter": "Real three-point volume and accuracy defenses must respect.",
-  "super-three-point-shooter": "Makes defenses reorganize around stopping his shot."
+  "super-three-point-shooter": "His shooting prowess breaks the normal defensive gameplan.",
+  "off-court-knucklehead": "Had severe off-court issues that could threaten the team's success."
 };
 function rosterQuestion(q) {
   const s = q.season, name = q.player_name;
   switch (q.trait_id) {
+    case "off-court-knucklehead": return "Was " + s + " " + name + " an off-court knucklehead?";
     case "clutch": return "Was " + s + " " + name + " clutch?";
     case "tough-shot-maker": return "Was " + s + " " + name + " an elite tough shot maker?";
     case "iso-defender": return "Was " + s + " " + name + " an elite iso defender?";
@@ -533,10 +540,10 @@ function rosterQuestion(q) {
     case "three-point-shooter": return "Was " + s + " " + name + " a real three-point threat?";
     case "team-defender": return "Was " + s + " " + name + " an elite team defender?";
     case "off-ball-scorer": return "Was " + s + " " + name + " an elite off-ball scorer?";
-    case "rim-pressurer": return "Did " + s + " " + name + " bring elite rim pressure?";
+    case "rim-pressurer": return "Did " + s + " " + name + " attack the rim?";
     case "switchable-defender": return "Could " + s + " " + name + " switch across positions and hold up?";
     case "rim-protector": return "Was " + s + " " + name + " an elite rim protector?";
-    case "super-three-point-shooter": return "Did defenses gameplan around " + s + " " + name + "'s shooting?";
+    case "super-three-point-shooter": return "Did " + s + " " + name + " have gravity?";
   }
   return "Was " + s + " " + name + " elite?";
 }

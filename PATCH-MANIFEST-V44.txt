@@ -1,3 +1,15 @@
+TRUE 82 v47.2 - additive shadow-mode trait categories
+  NEW      migrations/0018_trait_categories_v1.sql
+           Five core voting/label categories; 124 curated questions; 123
+           editorial QUALIFIES seeds; 2016 Draymond Ball Pounder remains
+           unruled, top-priority, and homepage-eligible.
+  DOCS     AGENT-HANDOFF.md, TRAITS-OWNER-DECISIONS.md,
+           migrations/MIGRATIONS-NOTES.md, README-DEPLOY.txt
+  SAFETY   Data/docs only: no worker, app.js, sim-core, site_data, scoring,
+           value, roster-generation, tax, net-rating, or win changes. Stat
+           Padder engine wording is poll copy only.
+  DB       Apply 0018 after 0017; pure SQL and rerun-safe.
+
 v47.3 module format rework (owner spec): linked title line VOTE ON
 PLAYER BONUSES / HELP BALANCE THE GAME (no FULL PAGE link, no pill, no
 TODAY'S CALL), question, definition, YES/NO, the draft-mode diamond pips
