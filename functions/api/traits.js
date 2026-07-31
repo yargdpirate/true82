@@ -12,7 +12,9 @@
 // GET  /api/traits?op=result&q=<question_id>
 //        Consensus snapshot for one question.
 // GET  /api/traits?op=labels&players=<name>~<season>,<name>~<season>...
-//        Settled labels for up to eight player-seasons: which core traits each
+//        Settled labels for up to 60 player-seasons per call (v47.9: the
+//        classic draft pool batches one request; other ops keep the 8 cap):
+//        which core traits each
 //        has EARNED (qualifies) or been ruled OUT of (does_not_qualify, the
 //        anti-label). Shadow-mode read for the results roster; retired traits
 //        never label. Exact match on lower(player_name) + season end year.
@@ -96,7 +98,11 @@ async function handleGet(context) {
   }
 
   if (op === "labels") {
-    const pairs = parsePlayerPairs(url.searchParams.get("players"));
+    // v47.9: cap raised to 60 for THIS op only, so the classic draft pool
+    // labels in one request. The query below reads the full settled label
+    // set per call regardless of pair count, so 60 pairs cost what 8 did.
+    // op=roster and friends keep the 8-pair cap (they create rows per pair).
+    const pairs = parsePlayerPairs(url.searchParams.get("players"), 60);
     if (!pairs.length) return json({ ok: false, reason: "bad_players" }, 200);
     const rows = await env.DB.prepare(`
       SELECT lower(q.player_name) pname, q.season season, t.display_name tname, c.status status
@@ -602,8 +608,8 @@ function hashCode(s) {
   return Math.abs(h);
 }
 
-function parsePlayerPairs(raw) {
-  return String(raw || "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8)
+function parsePlayerPairs(raw, cap) {
+  return String(raw || "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, cap || 8)
     .map((s) => {
       const parts = s.split("~");
       let pos = "";

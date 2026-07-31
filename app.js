@@ -711,15 +711,23 @@ function buzz(ms) {
 // controls, and newspaper-object wrapper receives the same extruded 3D treatment.
 // A tiny observer covers buttons created by later renders and lazy-loaded UIs.
 var _buttonStyleObserver = null;
+// v47.9: .tchip and .trait-info-btn are excluded. The observer was stamping
+// presti-spin onto the v47.5 label BUTTONS; button.presti-spin's
+// color:#2A1A05 (0,1,1) outranked .tchip's gold (0,1,0) while the injected
+// .tchips button.tchip rule kept the near-transparent dark face, so every
+// positive label rendered near-black on dark (.tchip.anti at (0,2,0) kept
+// its red, which is why only the positive labels were unreadable). Trait
+// chips own their full skin in ensureTraitsCss now.
+var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn)";
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
-    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close)")) return;
+    if (!node || !node.matches || !node.matches(BTN3D_EXCLUDE)) return;
     node.classList.add("presti-spin");
   }
   add(root);
   if (root.querySelectorAll) {
-    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close)");
+    var nodes = root.querySelectorAll(BTN3D_EXCLUDE);
     for (var i = 0; i < nodes.length; i++) nodes[i].classList.add("presti-spin");
   }
 }
@@ -1233,10 +1241,26 @@ function statLine(row) {
   return fmtStat(row[IDX.ppg], "p") + " " + fmtStat(row[IDX.rpg], "r") + " " + fmtStat(row[IDX.apg], "a") +
     " " + fmtStat(row[IDX.spg], "s") + " " + fmtStat(row[IDX.bpg], "b") + " \u00B7 usg " + fmt1(row[IDX.usage]);
 }
-function chipsFor(row) {
+/* Engine shooter designations (AUTHORITATIVE SOURCE: row[IDX.sp], the same
+   spacing column sim-core sums into e.sumSp for the spacing tax/bonus).
+   These chips are the engine's OWN live classification, not community votes
+   and not a legacy artifact: sp === 1 counts as one floor spacer, sp >= 1.5
+   is the elite gunner who counts one and a half (rules-sheet SHOOTING copy).
+   v47.9 unifies only the PRESENTATION with the community label chips: same
+   3D slab, tappable, expands to an engine-vocabulary full name, joins the
+   legend with an "engine" marker. The sp thresholds and data are untouched. */
+var TRAIT_ENG_FULL = { "3PT": "Floor Spacer", "GRAVITY": "Elite Gunner" };
+function engChipHtml(abbr, tab) {
+  var full = TRAIT_ENG_FULL[abbr] || abbr;
+  return '<button type="button" class="tchip eng" data-full="' + full + '" data-abbr="' + abbr + '"' +
+    (tab === -1 ? ' tabindex="-1"' : "") +
+    ' aria-pressed="false" aria-label="' + full + ", the engine\u2019s shooting designation. Tap for full label.\"" +
+    ' title="' + full + '">' + abbr + "</button>";
+}
+function chipsFor(row, tab) {
   var out = [];
-  if (row[IDX.sp] >= 1.5) out.push('<span class="tchip">GRAVITY</span>');
-  else if (row[IDX.sp] === 1) out.push('<span class="tchip">3PT</span>');
+  if (row[IDX.sp] >= 1.5) out.push(engChipHtml("GRAVITY", tab));
+  else if (row[IDX.sp] === 1) out.push(engChipHtml("3PT", tab));
   return out.length ? '<span class="chips">' + out.join("") + "</span>" : "";
 }
 function bucketTag(row) { return rowBuckets(row).join("/"); }
@@ -1827,62 +1851,79 @@ function stopTraitCardCue(sec) {
   sec.classList.remove("trait-card-cue");
   markTraitCardUiSeen();
 }
-function buildTraitLegend(sec) {
-  var panel = sec && sec.querySelector("#traitLegend");
-  if (!panel) return;
-  var seen = {}, rows = [];
-  var chips = sec.querySelectorAll(".tchips .tchip[data-full]");
+function buildTraitLegendInto(panel, scope) {
+  // One legend builder for every chip surface (results roster, classic draft
+  // pool). Community labels list first; engine shooter designations follow
+  // with an explicit "engine" marker so the two sources never blur.
+  if (!panel || !scope) return;
+  var seen = {}, rows = [], engRows = [], hasEng = false;
+  var chips = scope.querySelectorAll(".tchip[data-full]");
   for (var i = 0; i < chips.length; i++) {
     var full = chips[i].getAttribute("data-full") || "";
     if (!full || seen[full]) continue;
     seen[full] = 1;
-    rows.push('<div class="trait-legend-row"><b>' + esc(traitCardAbbr(full)) + '</b><span>' + esc(full) + '</span></div>');
+    var abbr = chips[i].getAttribute("data-abbr") || traitCardAbbr(full);
+    var isEng = chips[i].classList.contains("eng");
+    var line = '<div class="trait-legend-row"><b>' + esc(abbr) + '</b><span>' + esc(full) +
+      (isEng ? " \u00B7 engine" : "") + "</span></div>";
+    if (isEng) { engRows.push(line); hasEng = true; } else rows.push(line);
   }
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
-    '<div class="trait-legend-grid">' + rows.join("") + '</div>' +
-    '<div class="trait-legend-note">Community votes confirm or overturn these labels. Crossed out = ruled out.</div>';
+    '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
+    '<div class="trait-legend-note">Community votes confirm or overturn these labels. Crossed out = ruled out.' +
+    (hasEng ? " 3PT and GRAVITY are the engine\u2019s own shooting math, not votes." : "") + "</div>";
 }
-function wireTraitCardUi() {
-  var sec = document.querySelector('[data-result-section="roster"]');
-  if (!sec || sec.getAttribute("data-trait-ui-wired") === "1") return;
-  if (!sec.querySelector(".tchips .tchip")) return;
-  sec.setAttribute("data-trait-ui-wired", "1");
-  var info = sec.querySelector("#traitInfoBtn");
-  var legend = sec.querySelector("#traitLegend");
-  if (info) info.hidden = false;
-  buildTraitLegend(sec);
-
-  sec.addEventListener("click", function (ev) {
-    var chip = ev.target.closest ? ev.target.closest(".tchips .tchip") : null;
-    if (chip && sec.contains(chip)) {
+function buildTraitLegend(sec) { buildTraitLegendInto(sec && sec.querySelector("#traitLegend"), sec); }
+// One shared open/close for every label-legend (i) button.
+function traitInfoToggle(ib, legend) {
+  collapseTraitChip();
+  var opening = legend.hidden;
+  legend.hidden = !opening;
+  ib.setAttribute("aria-expanded", opening ? "true" : "false");
+  ib.setAttribute("aria-label", opening ? "Close player label legend" : "Explain player labels");
+  ib.textContent = opening ? "\u00d7" : "i";
+}
+// One document-level delegation for every trait chip everywhere (results
+// cards, classic draft pool, Kaman cards): tap expands in place, tap
+// elsewhere collapses. Draft-pool row selection guards itself against chip
+// taps in its own listener, so a chip tap never drafts the player.
+function wireTraitChipTaps() {
+  if (traitDocDismissWired) return;
+  traitDocDismissWired = true;
+  document.addEventListener("click", function (ev) {
+    var chip = ev.target.closest ? ev.target.closest(".tchip[data-full]") : null;
+    if (chip) {
       ev.preventDefault();
-      stopTraitCardCue(sec);
+      var sec = chip.closest ? chip.closest(".traits-roster") : null;
+      if (sec) stopTraitCardCue(sec); else markTraitCardUiSeen();
       var opening = !chip.classList.contains("expanded");
       if (traitExpandedChip && traitExpandedChip !== chip) collapseTraitChip();
       setTraitChipExpanded(chip, opening);
       return;
     }
+    if (traitExpandedChip) collapseTraitChip();
+  });
+}
+function wireTraitCardUi() {
+  var sec = document.querySelector('[data-result-section="roster"]');
+  if (!sec) return;
+  if (!sec.querySelector(".tchip[data-full]")) return;
+  var info = sec.querySelector("#traitInfoBtn");
+  var legend = sec.querySelector("#traitLegend");
+  if (info) info.hidden = false;
+  buildTraitLegend(sec);   // rebuilt on every call: labels land after the engine chips
+  if (sec.getAttribute("data-trait-ui-wired") === "1") return;
+  sec.setAttribute("data-trait-ui-wired", "1");
+  wireTraitChipTaps();
+
+  sec.addEventListener("click", function (ev) {
     var ib = ev.target.closest ? ev.target.closest("#traitInfoBtn") : null;
     if (ib && sec.contains(ib) && legend) {
       ev.preventDefault();
       stopTraitCardCue(sec);
-      collapseTraitChip();
-      var openingLegend = legend.hidden;
-      legend.hidden = !openingLegend;
-      ib.setAttribute("aria-expanded", openingLegend ? "true" : "false");
-      ib.setAttribute("aria-label", openingLegend ? "Close player label legend" : "Explain player labels");
-      ib.textContent = openingLegend ? "\u00d7" : "i";
+      traitInfoToggle(ib, legend);
     }
   });
-
-  if (!traitDocDismissWired) {
-    traitDocDismissWired = true;
-    document.addEventListener("click", function (ev) {
-      if (!traitExpandedChip) return;
-      if (ev.target === traitExpandedChip || (ev.target.closest && ev.target.closest(".tchips .tchip") === traitExpandedChip)) return;
-      collapseTraitChip();
-    });
-  }
 
   if (!traitCardUiSeen()) {
     var fireCue = function () {
@@ -1972,30 +2013,37 @@ function ensureTraitsCss() {
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:.12em;" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
     ".tchips{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}" +
-    ".tchip{position:relative;display:inline-block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
-      "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#FFB52E;" +
-      "border:1.5px solid #FFB52E;border-radius:6px;padding:2px 7px 1px}" +
-    ".tchip.anti{color:#E5533C;border-color:#E5533C}" +
-    ".tchip.anti::after{content:'';position:absolute;left:5%;right:5%;top:50%;height:2px;margin-top:-1px;" +
-      "background:#E5533C;transform:rotate(-5deg);border-radius:1px}" +
+    ".tchips-inline{margin-top:0;display:inline-flex;vertical-align:middle}" +
+    /* Trait chips wear the house slab (v47.9): ink text on a bright gold
+       face, the site's own contrast law (dark text on amber, never
+       amber-on-amber). Anti-labels are the red slab with the cross-out in
+       the same ink. Chips own the whole skin here and are excluded from the
+       global presti-spin decorator, so no outside button rule can repaint
+       them into the old dark-on-dark. */
+    ".tchip{position:relative;display:inline-flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
+      "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#1c1608;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);border:0;border-radius:7px;" +
+      "min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap;cursor:pointer;" +
+      "appearance:none;-webkit-appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 #9a6a12,0 5px 10px -8px #000;" +
+      "transition:transform .1s ease,box-shadow .1s ease}" +
+    ".tchip:active,.tchip.expanded{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 #9a6a12}" +
+    ".tchip.anti{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 0 #8c2317,0 5px 10px -8px #000}" +
+    ".tchip.anti:active,.tchip.anti.expanded{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 0 #8c2317}" +
+    ".tchip.anti::after{content:'';position:absolute;left:6%;right:6%;top:50%;height:2px;margin-top:-1px;" +
+      "background:#2b0d09;transform:rotate(-5deg);border-radius:1px;pointer-events:none}" +
+    ".tchip:focus-visible{outline:2px solid #E8E4D8;outline-offset:2px}" +
     ".traits-roster-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}" +
     ".traits-roster-head .eyebrow{margin:0}" +
     ".trait-info-btn{appearance:none;-webkit-appearance:none;width:27px;height:27px;flex:0 0 27px;padding:0;" +
-      "display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #FFB52E;border-radius:50%;" +
-      "background:linear-gradient(180deg,#27313b,#171d24);color:#FFB52E;font-family:Georgia,serif;font-weight:700;" +
-      "font-size:16px;line-height:1;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #74500d,0 5px 10px -7px #000;" +
+      "display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;font-family:Georgia,serif;font-weight:700;" +
+      "font-size:16px;line-height:1;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 #9a6a12,0 5px 10px -7px #000;" +
       "touch-action:manipulation;-webkit-tap-highlight-color:transparent}" +
     ".trait-info-btn[hidden]{display:none}" +
-    ".trait-info-btn:active,.trait-info-btn[aria-expanded=true]{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 #74500d}" +
-    ".tchips button.tchip{appearance:none;-webkit-appearance:none;min-height:25px;padding:3px 7px 2px;line-height:1.1;white-space:nowrap;cursor:pointer;" +
-      "background:linear-gradient(180deg,rgba(255,181,46,.10),rgba(255,181,46,.025));" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 0 rgba(116,80,13,.92),0 5px 10px -8px #000;" +
-      "touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .1s ease,background .1s ease,box-shadow .1s ease}" +
-    ".tchips button.tchip.anti{background:linear-gradient(180deg,rgba(229,83,60,.10),rgba(229,83,60,.025));" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 0 rgba(111,37,27,.95),0 5px 10px -8px #000}" +
-    ".tchips button.tchip:active,.tchips button.tchip.expanded{transform:translateY(2px);" +
-      "background:rgba(255,181,46,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 rgba(116,80,13,.92)}" +
-    ".tchips button.tchip.anti:active,.tchips button.tchip.anti.expanded{background:rgba(229,83,60,.14);box-shadow:none}" +
+    ".trait-info-btn:active,.trait-info-btn[aria-expanded=true]{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 #9a6a12}" +
+    ".pool-trait-info{margin-left:2px}" +
     ".trait-legend{margin:0 0 8px;padding:10px 11px;border:1px solid #46515c;border-radius:9px;background:#11171d;" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}" +
     ".trait-legend-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;color:#FFB52E;margin-bottom:7px}" +
@@ -2008,11 +2056,11 @@ function ensureTraitsCss() {
     "@keyframes traitChipPop{0%,100%{transform:translateY(0)}35%{transform:translateY(-4px)}65%{transform:translateY(1px)}}" +
     "@keyframes traitInfoPulse{0%,100%{transform:scale(1);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #74500d,0 0 0 0 rgba(255,181,46,0)}" +
       "45%{transform:scale(1.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 0 #74500d,0 0 0 6px rgba(255,181,46,.18)}}" +
-    ".traits-roster.trait-card-cue .tchips button.tchip{animation:traitChipPop .58s ease both}" +
+    ".traits-roster.trait-card-cue .tchip{animation:traitChipPop .58s ease both}" +
     ".traits-roster.trait-card-cue .trait-info-btn{animation:traitInfoPulse 1.1s ease both}" +
     "@media(max-width:390px){.trait-legend-grid{grid-template-columns:1fr}}" +
-    "@media(prefers-reduced-motion:reduce){.traits-roster.trait-card-cue .tchips button.tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
-      ".tchips button.tchip{transition:none}}";
+    "@media(prefers-reduced-motion:reduce){.traits-roster.trait-card-cue .tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
+      ".tchip{transition:none}}";
   document.head.appendChild(st);
 }
 function traitsModuleHtml() {
@@ -2240,10 +2288,52 @@ function wireTraitsPrompt() {
   var title = el("tmTitle");
   if (title) title.href = "/bonuses/?src=results_prompt";
 }
-// Shadow-mode labels on the results roster: each pick card gets the community
-// tags its player-season has EARNED (gold) or been RULED OUT of (the crossed
-// anti-label). Read-only, zero scoring effect, absent on any failure or when
-// no ruling exists for the exact player-season.
+// Shadow-mode labels on player cards: each card gets the community tags its
+// player-season has EARNED (gold slab) or been RULED OUT of (red slab with
+// the cross-out). Read-only, zero scoring effect, absent on any failure or
+// when no ruling exists for the exact player-season. v47.9 placement: chips
+// ride the SAME compact .pr-sub line as the engine 3PT/GRAVITY chip, beside
+// the year/team info, instead of a separate row at the card's foot.
+function traitLabelChipHtml(hh, tab) {
+  var full = String(hh.t || "");
+  var abbr = traitCardAbbr(full);
+  var aria = (hh.anti ? "Ruled out: " : "") + full + ". Tap for full label.";
+  return '<button type="button" class="tchip' + (hh.anti ? " anti" : "") + '"' +
+    (tab === -1 ? ' tabindex="-1"' : "") +
+    ' data-full="' + esc(full) + '" data-abbr="' + esc(abbr) + '"' +
+    ' aria-label="' + esc(aria) + '" aria-pressed="false" title="' + esc(full) + '">' +
+    esc(abbr) + "</button>";
+}
+// Presentation-only dedup: the engine's own shooter chip already sits on the
+// same line, so a POSITIVE community shooter label of the same rank would
+// just double it visually ("3PT 3PT"). Anti-labels always show; a community
+// ruling AGAINST an engine designation is the fight this mode exists for.
+// Data, votes, and the engine's sp column are untouched.
+function traitLabelsAfterEngineFilter(hits, engAbbr) {
+  if (!engAbbr) return hits;
+  return hits.filter(function (hh) {
+    if (hh.anti) return true;
+    var t = String(hh.t || "");
+    if (t === "Three-Point Shooter") return false;
+    if (t === "Super Three-Point Shooter" && engAbbr === "GRAVITY") return false;
+    return true;
+  });
+}
+// Inject up to four label chips (the standing cap, applied after the engine
+// dedup) into a card's first .pr-sub line. Works on results pick-cards and
+// classic draft-pool rows alike; returns whether anything was added.
+function applyLabelChips(container, hits, tab) {
+  if (!container || !hits || !hits.length || container.querySelector(".tchips")) return false;
+  var sub = container.querySelector(".pr-sub:not(.pr-stats)") || container;
+  var engBtn = sub.querySelector(".tchip.eng");
+  var use = traitLabelsAfterEngineFilter(hits, engBtn ? engBtn.getAttribute("data-abbr") : "").slice(0, 4);
+  if (!use.length) return false;
+  var wrap = document.createElement("span");
+  wrap.className = "tchips tchips-inline";
+  wrap.innerHTML = use.map(function (hh) { return traitLabelChipHtml(hh, tab); }).join("");
+  sub.appendChild(wrap);
+  return true;
+}
 function wireTraitsLabels(entries) {
   if (!window.fetch || !entries || !entries.length) return;
   var qs = entries.map(function (e) { return encodeURIComponent(e.name) + "~" + e.season; }).join(",");
@@ -2254,27 +2344,81 @@ function wireTraitsLabels(entries) {
       ensureTraitsCss();
       var added = 0;
       entries.forEach(function (e) {
-        var hits = x.labels[String(e.name).toLowerCase() + "~" + e.season];
+        var key = String(e.name).toLowerCase() + "~" + e.season;
+        var hits = x.labels[key];
+        TRAIT_LABEL_CACHE[key] = hits || [];   // warm the draft-pool cache too
         if (!hits || !hits.length) return;
         var card = document.querySelector('.pick-card[data-pick="' + e.i + '"]');
-        if (!card || card.querySelector(".tchips")) return;
-        var wrap = document.createElement("div");
-        wrap.className = "tchips";
-        wrap.innerHTML = hits.slice(0, 4).map(function (hh) {
-          var full = String(hh.t || "");
-          var abbr = traitCardAbbr(full);
-          var aria = (hh.anti ? "Ruled out: " : "") + full + ". Tap for full label.";
-          return '<button type="button" class="tchip' + (hh.anti ? " anti" : "") + '"' +
-            ' data-full="' + esc(full) + '" data-abbr="' + esc(abbr) + '"' +
-            ' aria-label="' + esc(aria) + '" aria-pressed="false" title="' + esc(full) + '">' +
-            esc(abbr) + "</button>";
-        }).join("");
-        card.appendChild(wrap);
-        added += 1;
+        if (applyLabelChips(card, hits, 0)) added += 1;
       });
       if (added) wireTraitCardUi();
     })
     .catch(function () {});
+}
+
+/* ---------- community labels on the classic draft pool (v47.9) ----------
+   Same chips, same placement, same tap-to-expand and legend as the results
+   cards, injected into each pool row's .pr-sub beside the year control and
+   the engine chip. Labels are per player-SEASON, so every pool re-render
+   (search, sort, year change, scramble settle) re-applies from a session
+   cache keyed lower(name)~season; only unseen pairs hit /api/traits, one
+   batched op=labels call per chunk of 60 (the worker reads the full settled
+   set per request regardless, so 60 pairs cost what 8 did). Pool chips are
+   tabindex=-1 on purpose: forty rows x four chips would bury keyboard
+   navigation, and the pool-head legend carries every full name instead.
+   Classic only (which includes Daily and weekly boards on a classic base);
+   drafting rules, selection logic, and values are untouched. */
+var TRAIT_LABEL_CACHE = {};     // key -> hits array ([] = fetched, none settled)
+var TRAIT_LABEL_FETCHING = {};  // key -> 1 while a batch containing it is in flight
+function poolLabelKey(name, season) { return String(name).toLowerCase() + "~" + season; }
+function applyPoolLabelPass(pool) {
+  var nodes = pool.querySelectorAll(".player-row[data-name]");
+  var missing = [];
+  for (var i = 0; i < nodes.length; i++) {
+    var node = nodes[i], name = node.getAttribute("data-name");
+    var row = resolveRow(name);
+    if (!row) continue;
+    var key = poolLabelKey(name, row[IDX.season]);
+    var hits = TRAIT_LABEL_CACHE[key];
+    if (hits === undefined) {
+      if (!TRAIT_LABEL_FETCHING[key]) missing.push({ key: key, name: name, season: row[IDX.season] });
+    } else if (hits.length) {
+      applyLabelChips(node, hits, -1);
+    }
+  }
+  return missing;
+}
+function refreshPoolTraitLegend() {
+  var pool = el("pool"), btn = el("poolTraitInfoBtn"), legend = el("poolTraitLegend");
+  if (!pool || !btn || !legend) return;
+  if (!pool.querySelector(".tchip[data-full]")) { btn.hidden = true; legend.hidden = true; return; }
+  btn.hidden = false;
+  buildTraitLegendInto(legend, pool);
+}
+function wireDraftPoolLabels() {
+  if (MODE !== "classic") return;
+  var pool = el("pool");
+  if (!pool) return;
+  ensureTraitsCss();
+  var missing = applyPoolLabelPass(pool);
+  refreshPoolTraitLegend();
+  if (!missing.length || !window.fetch) return;
+  for (var c = 0; c < missing.length; c += 60) {
+    (function (chunk) {
+      chunk.forEach(function (m) { TRAIT_LABEL_FETCHING[m.key] = 1; });
+      var qs = chunk.map(function (m) { return encodeURIComponent(m.name) + "~" + m.season; }).join(",");
+      fetch("/api/traits?op=labels&players=" + qs, { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (x) {
+          chunk.forEach(function (m) { delete TRAIT_LABEL_FETCHING[m.key]; });
+          if (!x || !x.ok || !x.labels) return;
+          chunk.forEach(function (m) { TRAIT_LABEL_CACHE[m.key] = x.labels[m.key] || []; });
+          var p2 = el("pool");
+          if (p2) { applyPoolLabelPass(p2); refreshPoolTraitLegend(); }
+        })
+        .catch(function () { chunk.forEach(function (m) { delete TRAIT_LABEL_FETCHING[m.key]; }); });
+    })(missing.slice(c, c + 60));
+  }
 }
 
 function wireDonate() {
@@ -2786,7 +2930,7 @@ function poolRowHtml(bestRow) {
   var sel = (G.selected === name) && open;
   var cls = "player-row" + (sel ? " sel" : "") + (open ? "" : " off");
   var tag = bucketTag(row) + (block ? " \u00B7 " + block.tag : "");
-  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row) : "");
+  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "");
   var sub2 = (MODE === "classic") ? '<span class="pr-sub pr-stats">' + statLine(row) + "</span>" : "";
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true" title="' + esc(block.why) + '"') + ">" +
@@ -2805,7 +2949,7 @@ function kamanRowHtml(row) {
     (open ? "" : ' aria-disabled="true"') + ">" +
     '<span class="pr-top"><span class="pr-name">Chris Kaman ' + shortSeason(season) + "</span>" +
     '<span class="pr-pos">C \u00B7 ' + esc(row[IDX.team]) + (open ? "" : " \u00B7 picked") + "</span></span>" +
-    '<span class="pr-sub">' + chipsFor(row) + "</span>" +
+    '<span class="pr-sub">' + chipsFor(row, -1) + "</span>" +
     '<span class="pr-sub pr-stats">' + statLine(row) + "</span></div>";
 }
 
@@ -2867,8 +3011,10 @@ function selectRow(node) {
 function refreshPool() {
   var pool = el("pool");
   if (!pool) return;
+  traitExpandedChip = null;   // the expanded chip's node just got rebuilt
   pool.innerHTML = poolInnerHtml(currentPoolRows());
   updateTray();
+  wireDraftPoolLabels();      // classic only inside; re-applies from cache
 }
 
 function renderDraft(anim) {
@@ -2937,7 +3083,11 @@ function renderDraft(anim) {
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
       '<input type="search" id="poolSearch" class="pool-search" placeholder="search player name..." autocomplete="off" spellcheck="false">' +
-      "</div>";
+      (MODE === "classic"
+        ? '<button class="trait-info-btn pool-trait-info" id="poolTraitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="poolTraitLegend" aria-expanded="false" title="Player label legend" hidden>i</button>'
+        : "") +
+      "</div>" +
+      (MODE === "classic" ? '<div class="trait-legend pool-trait-legend" id="poolTraitLegend" hidden></div>' : "");
   }
 
   // Compact draft chrome (2026-07-17): utility bar + mode panel replace the
@@ -3005,6 +3155,7 @@ function renderDraft(anim) {
   if (yearRerollable) el("rerollYears").addEventListener("click", doYearReroll);
   el("pool").addEventListener("click", function (ev) {
     if (ev.target.closest(".year-sel")) return;     // the dropdown handles its own taps
+    if (ev.target.closest(".tchip")) return;        // label chips expand via the document handler, never draft
     var btn = ev.target.closest(".player-row");
     if (!btn) return;
     if (btn.classList.contains("off")) {
@@ -3044,6 +3195,16 @@ function renderDraft(anim) {
     if (G.selected === name && !rowDraftable(resolveRow(name))) G.selected = null;  // chosen year fits no open slot
     refreshPool();
   });
+
+  var poolInfo = el("poolTraitInfoBtn"), poolLegend = el("poolTraitLegend");
+  if (poolInfo && poolLegend) {
+    wireTraitChipTaps();
+    poolInfo.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      traitInfoToggle(poolInfo, poolLegend);
+    });
+  }
+  wireDraftPoolLabels();
 
   if (MODE === "cap") {
     if (G.refundFlash) { flashRefund(); G.refundFlash = null; }
@@ -5328,6 +5489,7 @@ function renderResults(e, keepScroll) {
 
   trackResultSections();
   wireTraitsPrompt();
+  wireTraitCardUi();   // engine chips are in the initial markup; labels rebuild the legend when they land
   wireTraitsLabels(picksInSlotOrder().map(function (en) {
     return { i: en.i, name: en.p.row[IDX.name], season: en.p.row[IDX.season] };
   }));
@@ -5822,6 +5984,8 @@ function boot() {
   bindGlobalButtonStyle();
   bindHaptics();
   bindVisibilityResync();
+  ensureTraitsCss();      // v47.9: chips render on every surface; duel/league entry paths skip the homepage module that used to inject this
+  wireTraitChipTaps();
   if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }
   else if (LEAGUE_ID) {
     var lgi = LEAGUE_ID; LEAGUE_ID = null;
