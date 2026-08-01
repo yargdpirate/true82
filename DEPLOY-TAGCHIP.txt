@@ -1,0 +1,35 @@
+TRUE82 DEPLOY CARD - TAG CHIP + SHORTER DEFINITIONS (v47.20, BUILD_V v47)
+=========================================================================
+
+WHAT SHIPS (cumulative - everything through v47.20)
+  app.js                   widget: tag chip (player-card gold chip, flat)
+                           floated top right of the question
+  bonuses/index.html       same chip on the voting card
+  functions/api/traits.js  6 shortened definitions in the roster fallback map
+  migrations/0024_definition_shortening_v1.sql   NEW - the 7 shortened
+                           definitions for curated questions
+  index.html               app.js key -> 20260801-tagchip-v47
+  styles.css UNCHANGED. Engine UNTOUCHED.
+
+STEPS
+  1. Drag the package into the repo root (flat), commit, Pages deploys.
+  2. RUN MIGRATION 0024 in the D1 console: paste
+     migrations/0024_definition_shortening_v1.sql
+     (comment-free, idempotent, safe to re-paste).
+  3. Hard-reload once for the app.js key.
+  4. Footer still "| v47".
+
+ORDER NOTE
+  Code and migration are independent - either order is safe. Until 0024 is
+  run, curated questions simply keep the old longer definitions.
+
+VERIFY (60 seconds)
+  - Home widget + /bonuses/: a gold tag chip (CLTCH, ISO-D, GRAV...) sits at
+    the top right of the question, text wrapping around it, no 3D lift.
+  - Definitions on team-defender / iso-defender / tough-shot / off-ball /
+    rim / stat-padder / 3PT questions read as the new shorter lines.
+
+ROLLBACK
+  Restore app.js, bonuses/index.html, functions/api/traits.js, index.html
+  from v47.19. The definition change is data: re-run the reverse strings if
+  you want the old copy back (no schema change was made).

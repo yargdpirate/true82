@@ -1,4 +1,40 @@
-# RETURN HANDOFF - POLL FRONTEND RESTYLE (v47.19)
+# RETURN HANDOFF - POLL FRONTEND (v47.19, tag chip + definitions v47.20)
+
+## v47.20 - TAG CHIP + THE SEVEN SHORTER DEFINITIONS
+
+**Tag chip, both surfaces.** The question now carries the trait tag in the
+player-card chip language: gold gradient face, ink text, 7px radius, Barlow
+Condensed 700 / 12.5px / .09em uppercase, with the 3D lift swapped for a
+`#9a6a12` hairline border so it reads flat. It is FLOATED right at the top of
+the question, so the left-justified text wraps around it and can never be
+covered - I measured the pinned-absolute alternative and it buried up to 62px
+of the question on the widget, so float is the mechanism, not a preference.
+The abbreviation comes from the existing `TRAIT_CARD_ABBR` map off
+`trait_name` (already in the payload): CLTCH, ISO-D, GRAV, RIM-D, and so on.
+No migration, no worker change, no new field - and the chip is exactly the
+element a player portrait would later occupy. Cost at 390px: free on the
+voting card; on the widget the question gains a line on medium/long
+questions (module 287 -> 313px), which is the owner-accepted trade.
+
+**The seven definitions.** Shipped in two places, because the strings live in
+two: `migrations/0024_definition_shortening_v1.sql` for the curated questions
+(55 rows), and the worker's `ROSTER_WC` fallback map for roster-generated
+questions (6 entries; stat-padder is not a roster trait). The migration is
+comment-free per D1 paste law, matches on the exact old string so a bespoke
+line is never clobbered, and is idempotent - re-pasting is a no-op. Verified
+by replaying the entire real migration history into SQLite: 55 rows over the
+58-char cap before, 0 after, 0 after a second paste, with the new strings
+landing at the expected counts (13/13/8/8/7/6). All seven measure 44-58 chars
+and are em-dash clean. The rim-pressurer and stat-padder trait-level
+`short_definition` rows are updated to match in the same paste.
+
+Deploy: drag as usual, then paste 0024 in the D1 console. Either order is
+safe - until the migration runs, curated questions just keep the old copy.
+app.js key -> `?v=20260801-tagchip-v47`.
+
+---
+
+# ORIGINAL v47.19 HANDOFF
 
 Cumulative on v47.18. BUILD_V stays "v47". Files changed: `app.js` (widget),
 `bonuses/index.html` (voting page), `index.html` (app.js cache key ->

@@ -1,12 +1,42 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** this folder, packaged as `true82-v44-merged-traits.zip`.
+**Current source of truth:** this folder, packaged as `true82-v47.6-two-answer-ceiling.zip`.
 
-**Date:** 2026-07-25
-**Current build label:** `v44` / cache key `20260725-traits-v44`
-**Most recent functional change:** the v43 x v40r2 retention merge and the PLAYER TRAITS community voting mode (see the V44 section at the end of this file).
+**Date:** 2026-07-31
+**Packaging label:** `v47.6`; runtime build remains `v47`, with an `app.js` cache-key refresh only.
+**Most recent functional change:** anonymous per-question two-answer delivery ceiling in the trait feed.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 0. V47.5: results-roster player-label UI
+
+This is a code-only, single-executable-file change. No SQL or D1 action is required.
+
+Changed executable file:
+
+- `app.js` only
+
+Behavior, limited to the results page `Your five` roster section:
+
+- Settled player labels render as compact abbreviations.
+- Each label is a real button; tap toggles the full trait name in place.
+- One information button appears beside `Your five` only when labels exist.
+- The information button opens an inline legend for only the labels present on the five cards.
+- The first time the label area enters view, the labels pop and the information button pulses once.
+- That discovery cue stops permanently after the browser taps either a label or the information button (`t82_trait_card_ui_seen_v1`).
+- Crossed-out anti-labels retain the red strike-through.
+- `prefers-reduced-motion` disables the discovery animation.
+
+Intentionally unchanged:
+
+- `functions/api/traits.js` and every other Worker
+- D1 schema, questions, votes, consensus, and editorial rulings
+- simulation, player values, net rating, wins, taxes, and roster generation
+- draft-screen player rows and the existing engine-derived `3PT`/`GRAVITY` chips
+
+Review target: the diff around `TRAIT_CARD_ABBR`, `wireTraitCardUi()`, `wireTraitsLabels()`, and the results roster heading. There is no reason to revalidate unrelated game systems.
 
 ---
 
@@ -1440,3 +1470,64 @@ the sanitizer and invisible outside the generating roster; note it in
 any future abuse review. Suite coverage: roster serving, id-space
 collision, lazy insert integrity, generated-vote settle, session leak
 guard.
+
+### v47.2 additive trait categories (2026-07-29)
+
+Migration `migrations/0018_trait_categories_v1.sql` adds five core
+voting/label categories without changing gameplay: Ball Stopper, Foul
+Merchant, Stat Padder, Championship #1, and Ball Pounder. It contributes
+124 curated active questions, 123 editorial `qualifies` seeds, and one
+marquee unruled question: 2016 Draymond Green as a Ball Pounder
+(`editorial_priority=150`, homepage eligible). Seed ranges are exactly the
+owner request: Carmelo 2006-2015 and Kobe 2006-2012 for Ball Stopper; Shai
+2023-2026 and Harden 2013-2020 for Foul Merchant; Westbrook 2017-2021 and
+Drummond 2013-2020 for Stat Padder; every Finals MVP from 1974 through
+2026 for Championship #1; Luka 2020-2026 and all 21 Chris Paul seasons
+(2006-2026) for Ball Pounder.
+
+This is a database-data expansion only: no worker, frontend, roster-generation,
+`app.js`, simulation, scoring-constant, player-value, win, net-rating, tax, or
+bonus code changes. Existing deterministic roster-generated question pairs
+therefore do not reshuffle. The Stat Padder definition saying to decrease
+engine value is the owner's poll proposition, not a live implementation
+instruction. Labels remain shadow mode: editorial rulings appear immediately,
+and settled community consensus supersedes them. Apply 0018 after 0017.
+Current CHECK-STATE expectation:
+20 traits / 17 core / 3 retired; 220 questions / 205 active; 144 editorial;
+200 meta; 30 homepage.
+
+### v47.3 additive editorial label expansion (2026-07-30)
+
+Migration `migrations/0019_editorial_label_expansion_v1.sql` is a pure-data
+expansion generated from the owner-approved 360-row JSONL editorial set. It
+adds 344 previously absent player-season/trait questions, 344 provisional
+editorial rulings, and 344 active public metadata rows. Sixteen requested
+combinations were already present through earlier migrations and are not
+overwritten, so the intended dataset resolves to exactly 360 combinations
+across 120 player-seasons: 290 positive labels and 70 anti-labels.
+
+No executable file changed. In particular, `app.js`, `functions/api/traits.js`,
+roster question hashing, homepage rotation, simulation, values, net rating,
+wins, taxes, and bonuses are untouched. The new metadata makes the questions
+eligible for ordinary five-question sessions, but every new row has
+`homepage_eligible=0`; the homepage pool remains 30. Editorial rulings appear
+immediately on exact player-season cards, and later decisive community
+consensus supersedes them under the existing rules. Apply 0019 after 0018.
+Expected CHECK-STATE after 0019: 20 traits / 17 core / 3 retired; 564 questions
+/ 549 active; 488 editorial; 544 meta; 30 homepage.
+
+
+## V47.4 additive homepage question expansion
+- New migration: `migrations/0020_homepage_superstar_controversy_v1.sql` marks 25 existing superstar questions homepage-eligible; no new schema or voting logic.
+- One isolated executable change exists in `functions/api/traits.js`, only inside `op === "featured"`: query limit 40→80 and alternate fresh questions with the eight mature questions closest to 50/50.
+- Purpose: under the previous mature-only branch, newly eligible zero-vote questions could not appear once three questions had five votes.
+- No simulation, scoring, label, vote-write, consensus, or identity code changed.
+
+
+## v47.6 — two-answer question ceiling (2026-07-31)
+
+Narrow feed-selection change only. No migration. `trait_votes_v1.changed` already increments on every repeat submission, so it is reused as answer depth (`answer_count = changed + 1`). Algorithmic feeds now exhaust never-answered questions, then once-answered questions, before allowing any question answered twice or more. Direct question links remain explicit overrides. The homepage/results clients briefly wait for the existing retention identity handshake so selection uses the same anonymous browser identity recovered from the analytics localStorage fallback. Results-roster questions merge with curated feed questions when fewer than five roster questions remain under the ceiling. No simulation, scoring, label, consensus, or vote-tally semantics changed.
+
+### 2026-07-31: 0023 second homepage controversy pack
+
+Added `migrations/0023_homepage_superstar_controversy_v2.sql` plus its verifier. This is SQL-only and promotes 25 existing active questions to the homepage, with sharper public/share copy and priority >=97. No executable code changed; do not re-audit the trait API, vote guard, trait-card UI, or game engine for this addition.
