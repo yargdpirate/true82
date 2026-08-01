@@ -5312,11 +5312,13 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
   for (s2 = 0; s2 < HH_SEGMENTS.length; s2++) segHtml += '<div class="hh-seg lvl' + HH_SEGMENTS[s2].lvl + '"></div>';
 
   var ov = document.createElement("div");
-  ov.className = "hh-overlay in";
+  ov.className = "hh-overlay in hh-mid";
   ov.innerHTML =
     '<button class="hh-skip" id="hhmSkip">the loss lands \u2192</button>' +
     '<div class="hh-card"><div class="goat-fw" id="hhmFw" aria-hidden="true"></div>' +
-      '<div class="hh-eyebrow hh-clutch">Game ' + gameNo + '. You\u2019re ' + winsSoFar + '\u20130 and down entering the 4th quarter. Clutch heroics to stay perfect?</div>' +
+      '<div class="hh-eyebrow hh-clutch">' + (winsSoFar > 0
+        ? 'Game ' + gameNo + '. You\u2019re ' + winsSoFar + '\u20130 and down entering the 4th quarter. Clutch heroics to stay perfect?'
+        : 'Game 1. Down entering the 4th quarter of the opener. Clutch heroics to start perfect?') + '</div>' +
       ballLeverHtml("hhmLever", "hhmArm", "Pull the basketball through the hoop") +
       '<button class="hh-charity" id="hhmCharity">I DON\u2019T WANT YOUR CHARITY</button>' +
       '<div class="hh-stage">' +

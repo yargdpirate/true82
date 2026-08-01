@@ -1,5 +1,36 @@
 # RETURN HANDOFF - MID-SEASON HEAT CHECK (v47.15, gate fixed v47.17)
 
+## v47.18 HOTFIX - the softlock at the pause (stacking), and the coverage fix
+
+With the gate fixed, the ceremony fired - underneath the reel. `.reel-overlay`
+sits at z-index 240; `.hh-overlay` at 90, set for the post-season moment when
+the reel no longer exists. The two overlays had never coexisted before this
+feature, so at the pause the Heat Check rendered as a dim ghost behind the
+reel card, nothing was clickable, and SKIP was (correctly) inert while the
+offer was pending: a full softlock, read as a crash. The 0-0 opener also
+exposed an awkward copy read ("You're 0-0 ... stay perfect?").
+
+Fixes:
+- The mid overlay wears `.hh-overlay.hh-mid` with `z-index: 250` (the reel's
+  240 is the stylesheet's max, so 250 is clean). Post-season overlay
+  untouched at 90 - it still never meets the reel.
+- Game-1 copy variant: "Game 1. Down entering the 4th quarter of the opener.
+  Clutch heroics to start perfect?" - no 0-0 read. And to answer the live
+  question that run raised: the trigger only fires on a REALIZED loss, so
+  yes, game 1 was genuinely lost in that season (a few-percent event on a
+  modest-net ?midhot=1 roster).
+- The harness gap that let it escape: minimal CSS meant DOM order decided
+  stacking and synthetic `.click()` bypassed hit-testing. The suite now
+  loads the REAL styles.css, and the critical interactions use real
+  Playwright clicks. New S12 reproduces the exact live failure: game-1
+  trigger, asserts the ceremony stacks above the reel (250 > 240) and that a
+  hit-test at the lever lands inside the ceremony, verifies the opener copy,
+  confirms reel-SKIP is inert while the offer is pending, then saves the
+  opener and runs the table end to end through real clicks.
+
+Both `app.js` and `styles.css` changed; both cache keys move to
+`?v=20260801-midheat-stack-v47`.
+
 ## v47.17 HOTFIX - why it never fired live, and the fix
 
 The v47.15 trigger gate ANDed `hhEligible(e)` - an engine predicate whose

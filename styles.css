@@ -3078,6 +3078,11 @@ body.gating .gate-back {
    acts stacking with a running record in the header. Tap anywhere or SKIP
    to jump to the verdict. House materials; the reel is quiet drama, not a
    slot machine. */
+/* v47.18: the mid-season Heat Check fires WHILE the reel is up, so it must
+   stack above it (base .hh-overlay sits at 90 for the post-season moment,
+   which never coexists with the reel). Softlock fix: without this the
+   ceremony rendered under the reel and nothing was clickable. */
+.hh-overlay.hh-mid { z-index: 250; }
 .reel-overlay { position: fixed; inset: 0; z-index: 240; background: rgba(10,12,16,0.94); display: flex; align-items: center; justify-content: center; padding: 18px; }
 .reel-card { width: min(430px, 100%); max-height: 86vh; display: flex; flex-direction: column; background: var(--ink); border: 1px solid var(--maple-line); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,0.55); }
 .reel-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--tunnel-2); }
