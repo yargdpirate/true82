@@ -718,7 +718,7 @@ var _buttonStyleObserver = null;
 // positive label rendered near-black on dark (.tchip.anti at (0,2,0) kept
 // its red, which is why only the positive labels were unreadable). Trait
 // chips own their full skin in ensureTraitsCss now.
-var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-tool)";
+var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar)";
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -1998,9 +1998,9 @@ function ensureTraitsCss() {
       "letter-spacing:.2em;color:#FFB52E;text-decoration:none;display:inline-block}" +
     ".traits-module .tm-head:not([hidden]){display:block;text-align:center;font-family:'Barlow Condensed',sans-serif;" +
       "font-weight:700;font-size:22px;letter-spacing:.08em;color:#f2ede4;margin-bottom:9px}" +
-    ".traits-module .tm-pips{align-items:center}" +
-    ".traits-module .tm-pips span{width:10px;height:10px}" +
-    ".traits-module .tm-pips span.done{width:13px;height:13px}" +
+    ".traits-module .tm-pips{align-items:center;gap:9px}" +
+    ".traits-module .tm-pips span{width:13px;height:13px}" +
+    ".traits-module .tm-pips span.done{width:16px;height:16px}" +
     ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
       "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
     ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;" +
@@ -2032,17 +2032,15 @@ function ensureTraitsCss() {
       "font-weight:700;font-size:19px;letter-spacing:.05em}" +
     ".traits-module .tm-res b{color:#FFB52E}" +
     ".traits-module .tm-res .neg{color:#E5533C}" +
-    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:10px;justify-content:space-between}" +
-    ".traits-module .tm-tools{display:inline-flex;align-items:center;gap:14px;flex:none}" +
-    /* Text-height tools so the foot row stays exactly as tall as the pips;
-       the invisible ::after pad supplies the 44px touch target instead of
-       box growth. */
-    ".traits-module .tm-tool{appearance:none;-webkit-appearance:none;background:none;border:0;cursor:pointer;" +
-      "position:relative;font-family:'IBM Plex Mono',monospace;font-size:10.5px;line-height:1;letter-spacing:.14em;" +
-      "color:#8b98a5;text-decoration:none;padding:0 2px;display:inline-flex;align-items:center}" +
-    ".traits-module .tm-tool::after{content:'';position:absolute;left:-5px;right:-5px;top:-16px;bottom:-16px}" +
-    ".traits-module .tm-tool:active,.traits-module .tm-tool.flashed{color:#FFB52E}" +
-    ".traits-module .tm-tool:focus-visible{outline:2px solid #FFB52E;outline-offset:3px;border-radius:4px}" +
+    ".traits-module .tm-foot{display:flex;align-items:center;margin-top:12px;justify-content:center}" +
+    ".traits-module .tm-eyeb{color:#FFB52E;font-weight:700}" +
+    /* v47.19: the diamonds sit centered and larger; sharing moved to a thin,
+       quiet 2D bar below them (excluded from the 3D decorator on purpose). */
+    ".traits-module .tm-sharebar{display:block;width:100%;height:32px;margin-top:9px;appearance:none;-webkit-appearance:none;" +
+      "background:none;border:1px solid #2c343d;border-radius:9px;cursor:pointer;" +
+      "font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.13em;color:#8b98a5;line-height:1}" +
+    ".traits-module .tm-sharebar:active,.traits-module .tm-sharebar.flashed{color:#FFB52E;border-color:#FFB52E}" +
+    ".traits-module .tm-sharebar:focus-visible{outline:2px solid #FFB52E;outline-offset:2px}" +
     ".traits-module .tm-dots{display:flex;gap:7px}" +
     ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
     ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
@@ -2131,7 +2129,7 @@ function traitsModuleHtml() {
   // on /bonuses/, one tap away via FULL PAGE or the question itself.
   return '<section class="traits-module" id="traitsModule" hidden>' +
     '<span class="tm-head" id="tmHead" hidden>VOTE: DID WE GET IT WRONG?</span>' +
-    '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module">VOTE ON PLAYER BONUSES \u00B7 HELP BALANCE THE GAME</a>' +
+    '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module"><span class="tm-eyeb">HELP BALANCE THE GAME</span> \u00B7 VOTE ON PLAYER BONUSES</a>' +
     '<span class="tm-call" id="tmCall" hidden></span>' +
     '<span class="tm-q" id="tmQ"></span>' +
     '<span class="tm-def" id="tmDef"></span>' +
@@ -2142,9 +2140,9 @@ function traitsModuleHtml() {
     "</div>" +
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
-    '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span>' +
-      '<span class="tm-tools"><button class="tm-tool" type="button" id="tmShare" hidden>SHARE</button></span></div>' +
-    '<span class="tm-why" id="tmWhy" hidden>Crowdsourcing your vote to rate player fit properly.</span></section>';
+    '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span></div>' +
+    '<button class="tm-sharebar" type="button" id="tmShare" hidden>SHARE VOTE - PLEASE DON\u2019T VOTE BRIGADE</button>' +
+    "</section>";
 }
 
 // The inline home session: same worker, same voter, same analytics names as
@@ -2215,9 +2213,10 @@ function tmShareQuestion() {
     }).catch(function () {});
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(text + "\n" + url).then(function () {
+      if (!sh.dataset.label) sh.dataset.label = sh.textContent;
       sh.textContent = "COPIED";
       sh.classList.add("flashed");
-      setTimeout(function () { sh.textContent = "SHARE"; sh.classList.remove("flashed"); }, 1400);
+      setTimeout(function () { sh.textContent = sh.dataset.label; sh.classList.remove("flashed"); }, 1400);
       analyticsTrack("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: TM.source, sid: TM.sid });
     }).catch(function () {});
   }
@@ -2409,8 +2408,6 @@ function wireTraitsPrompt() {
   tmStart(false);
   var head = el("tmHead");
   if (head) head.hidden = false;
-  var why = el("tmWhy");
-  if (why) why.hidden = false;
   var title = el("tmTitle");
   if (title) title.href = "/bonuses/?src=results_prompt";
 }

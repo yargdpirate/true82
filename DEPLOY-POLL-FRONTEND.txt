@@ -1,0 +1,33 @@
+TRUE82 DEPLOY CARD - POLL FRONTEND RESTYLE (v47.19, BUILD_V stays v47)
+======================================================================
+
+WHAT SHIPS (cumulative - everything through v47.19)
+  app.js              widget: HELP BALANCE THE GAME · VOTE ON PLAYER
+                      BONUSES (bold lead), crowdsourcing line removed,
+                      centered enlarged diamonds, thin 2D share bar
+                      "SHARE VOTE - PLEASE DON'T VOTE BRIGADE"
+  bonuses/index.html  definition always visible (no WHAT COUNTS? toggle),
+                      stacked STATS REFRESHER over the brigade share button,
+                      big centered PLAY TRUE82, draft mark top right
+  index.html          app.js key -> 20260801-poll-frontend-v47
+  styles.css UNCHANGED this round. functions/ + engine UNTOUCHED.
+  NO copy/definition changes in the database - the 58-char audit list is in
+  the handoff, awaiting your rewrites (7 strings cover all 56 questions).
+
+STEPS
+  1. Drag into the repo root (flat), commit, Pages deploys.
+  2. NO D1 MIGRATION. NO CONSOLE COMMAND.
+  3. Hard-reload once for the app.js key.
+  4. Footer still "| v47".
+
+VERIFY (60 seconds)
+  - Widget: bold gold lead in the subtitle, big centered diamonds, thin
+    share bar under them.
+  - /bonuses/: definitions out in the open, refresher stacked over share,
+    PLAY TRUE82 button, mark top right.
+
+FULL DETAIL + THE DEFINITION AUDIT
+  RETURN-HANDOFF-POLL-FRONTEND.md
+
+ROLLBACK
+  Restore the three changed files from v47.18.

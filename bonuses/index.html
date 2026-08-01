@@ -24,7 +24,7 @@ body{min-height:100svh;display:flex;flex-direction:column;align-items:center;pad
     radial-gradient(120% 90% at 50% 0%, rgba(255,181,46,.05), transparent 55%),
     repeating-linear-gradient(0deg, transparent 0 46px, rgba(242,237,228,.022) 46px 47px),
     radial-gradient(140% 120% at 50% 110%, #0b0f13, var(--ink) 60%)}
-.wrap{width:100%;max-width:520px;padding:0 20px}
+.wrap{width:100%;max-width:520px;padding:0 20px;position:relative}
 .brand{font-family:var(--mono);font-size:13px;letter-spacing:.28em;color:var(--chalk-dim)}
 .brand a{color:inherit;text-decoration:none}
 h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--chalk-dim);margin:4px 0 18px}
@@ -32,15 +32,13 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
 .toprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--chalk-dim);margin-bottom:14px}
 .q{font-family:var(--disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--chalk);margin-bottom:10px}
 .meta{font-size:14px;color:var(--chalk-dim);margin-bottom:8px}
-.qx{display:flex;gap:11px;margin-top:11px}
-.qx-btn{position:relative;flex:1;height:48px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk);font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.07em;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;line-height:1;padding:0 10px}
+.qx{display:flex;flex-direction:column;gap:11px;margin-top:11px}
+.qx-btn.qx-share{font-size:13px;letter-spacing:.04em}
+.qx-btn{position:relative;flex:0 0 auto;width:100%;height:48px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk);font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.07em;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;line-height:1;padding:0 10px}
 .qx-btn:active,.qx-btn.flashed{color:var(--amber);border-color:var(--amber)}
 .qx-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 a.qx-btn[hidden]{display:none}
-.wc-btn{background:none;border:none;font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;color:var(--chalk-dim);padding:8px 0;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-.wc-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:6px}
-.wc-body{font-size:14.5px;color:var(--chalk-dim);padding:2px 0 10px;display:none}
-.wc-open .wc-body{display:block}
+.q-def{font-size:15.5px;line-height:1.45;color:var(--chalk-dim);margin:2px 0 12px}
 .controls{margin-top:12px;background:#0e1319;border:1px solid #232d37;border-radius:24px;padding:12px}
 .yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .vbtn{position:relative;border:none;border-radius:16px;height:100px;font-family:var(--disp);font-weight:700;font-size:38px;letter-spacing:.05em;color:#1c1608;cursor:pointer;transition:transform .12s ease,filter .12s ease}
@@ -92,6 +90,7 @@ a.qx-btn[hidden]{display:none}
 .bar{height:9px;border-radius:5px;background:#0d1217;overflow:hidden;display:flex;margin-bottom:18px}
 .bar .y{background:var(--amber)}.bar .n{background:var(--ember)}
 .act-next{display:block;width:100%;height:56px;border:none;border-radius:15px;background:var(--amber);color:#131313;font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:.1em;cursor:pointer}
+a.play-t82{display:flex;align-items:center;justify-content:center;text-decoration:none;max-width:430px;margin:0 auto}
 .act-next:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
 .act-share{display:block;width:100%;height:48px;margin-top:11px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk-dim);font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:.1em;cursor:pointer}
 .act-share:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
@@ -100,15 +99,17 @@ a.qx-btn[hidden]{display:none}
 .cv-link{display:inline-block;margin:2px 0 12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;padding:8px 0;text-decoration:underline;text-underline-offset:3px}
 .err-line{color:var(--ember);font-size:14.5px;margin:12px 0 10px}
 .foot{margin-top:26px}
+.page-mark{position:absolute;top:0;right:20px;width:26px;height:29px;opacity:.9}
 .flash{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--amber)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand"><a href="/?src=bonuses">TRUE 82</a></div>
+  <svg class="page-mark" viewBox="0 0 32 36" aria-hidden="true" focusable="false"><path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" fill="var(--amber)"/><rect x="5" y="15" width="22" height="3.4" rx="1.7" fill="#B98A4F"/><path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" stroke="#B98A4F" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <h1>PLAYER BONUSES</h1>
   <div id="stage"></div>
-  <div class="foot brand"><a href="/?src=bonuses">TRUE 82 &rarr;</a></div>
+  <div class="foot"><a class="act-next play-t82" href="/?src=bonuses">PLAY TRUE82</a></div>
 </div>
 <script src="/analytics.js?v=20260725-traits-v44"></script>
 <script src="/retention-client.js?v=20260725-traits-v44"></script>
@@ -303,8 +304,7 @@ a.qx-btn[hidden]{display:none}
         '<div class="toprow"><span>PLAYER BONUS</span><span>' + n + " / " + Q.length + "</span></div>" +
         '<p class="q">' + esc(questionText(q)) + "</p>" +
         (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
-        (wc ? '<button class="wc-btn" id="wcBtn" aria-expanded="false">WHAT COUNTS? <span aria-hidden="true">+</span></button>' +
-              '<div class="wc-body" id="wcBody">' + esc(wc) + "</div>" : "") +
+        (wc ? '<p class="q-def">' + esc(wc) + "</p>" : "") +
         '<div class="controls" id="controls">' +
           '<div class="yn">' +
             '<button class="vbtn v-yes" data-v="yes">YES</button>' +
@@ -314,17 +314,12 @@ a.qx-btn[hidden]{display:none}
         "</div>" +
         '<div class="qx" id="qx">' +
           '<a class="qx-btn" id="qRef" hidden target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
-          '<button class="qx-btn" id="qShare" type="button">SHARE</button>' +
+          '<button class="qx-btn qx-share" id="qShare" type="button">SHARE VOTE - PLEASE DON\u2019T VOTE BRIGADE</button>' +
         "</div>" +
         '<div id="resultZone" aria-live="polite"></div>' +
       "</section>";
     track("traits_question", { surface: "traits", action: "view", ordinal: n, challenge: q.id, source: entrySource });
     var card = document.getElementById("qcard");
-    var wcBtn = document.getElementById("wcBtn");
-    if (wcBtn) wcBtn.addEventListener("click", function () {
-      var open = card.classList.toggle("wc-open");
-      wcBtn.setAttribute("aria-expanded", open ? "true" : "false");
-    });
     var qRef = document.getElementById("qRef");
     if (qRef && q.player_name) {
       qRef.href = bbPlayerHref(q.player_name);
