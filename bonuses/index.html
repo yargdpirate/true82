@@ -124,6 +124,22 @@ a.qx-btn[hidden]{display:none}
   var pinnedRef = pathSlug || (function (v) { return /^[a-z0-9][a-z0-9-]{2,78}$/.test(v || "") ? v : ""; })(params.get("q"));
   var preload = window.__T82_BONUS__ || null;
   var Q = [], idx = 0, doneIds = [], sessionOpen = false, completedOnce = false, lastAnswered = null;
+  var SEEN_KEY = "t82TraitsSeen";
+  function seenList() {
+    try {
+      var a = JSON.parse(localStorage.getItem(SEEN_KEY) || "[]");
+      return Array.isArray(a) ? a.filter(function (x) { return typeof x === "string"; }) : [];
+    } catch (e) { return []; }
+  }
+  function seenAdd(id) {
+    if (!id) return;
+    try {
+      var a = seenList().filter(function (x) { return x !== id; });
+      a.push(id);
+      if (a.length > 400) a = a.slice(a.length - 400);
+      localStorage.setItem(SEEN_KEY, JSON.stringify(a));
+    } catch (e) {}
+  }
 
   // Haptics. Android: navigator.vibrate. iOS: the Taptic Engine's one web
   // door is the checkbox switch control (Safari 17.4+). Real taps on a real
@@ -248,9 +264,12 @@ a.qx-btn[hidden]{display:none}
   function startSession(ref, again) {
     sessionOpen = false;
     stage.innerHTML = skeletonHtml();
+    var seenEx = doneIds.concat(seenList()).filter(function (x, i, a) {
+      return x && x !== ref && a.indexOf(x) === i;
+    }).slice(-48);
     var qs = "/api/traits?op=session&sid=" + sid +
       (ref ? "&q=" + encodeURIComponent(ref) : "") +
-      (doneIds.length ? "&exclude=" + doneIds.slice(-24).join(",") : "");
+      (seenEx.length ? "&exclude=" + seenEx.map(encodeURIComponent).join(",") : "");
     identityReady().then(function () { return api(qs); }).then(function (x) {
       if (!x || !x.ok || !x.questions || !x.questions.length) return feedError(x && x.reason);
       Q = x.questions; idx = 0; sessionOpen = true;
@@ -439,6 +458,7 @@ a.qx-btn[hidden]{display:none}
     hapticTick(last ? [12, 70, 12] : 10);
     track("traits_question", { surface: "traits", action: "result_view", ordinal: idx + 1, challenge: q.id, outcome: d.status, value: early ? 1 : 0, source: entrySource });
     if (!preVoted && q.id) { if (doneIds.indexOf(q.id) < 0) doneIds.push(q.id); }
+    seenAdd(q.id);
     var nextBtn = document.getElementById("nextBtn");
     if (nextBtn) hapticOverlay(nextBtn);
     if (nextBtn) nextBtn.addEventListener("click", function () {

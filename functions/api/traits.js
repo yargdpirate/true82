@@ -329,30 +329,38 @@ async function handleGet(context) {
     if (picked.length >= SESSION_SIZE) return;
     const skip = Array.from(seen).slice(0, 64);
     const skipSql = skip.length ? `AND q.id NOT IN (${skip.map(() => "?").join(",")})` : "";
+    // v47.16 VARIETY WITH A QUALITY FLOOR: the old score carried a 0-24
+    // jitter that was too weak to reorder anything against a +60 starvation
+    // term, so every new voter saw the same five in the same order. Now the
+    // quality ranking runs pure (priority + starvation + contested, NO
+    // jitter), a pool of the top 18 is cut, and the session draws from that
+    // pool at random. Every session is a different hand dealt from the same
+    // strong deck; a question ranked 40th on quality can never sneak in.
     const rows = await env.DB.prepare(`
-      SELECT q.id, q.trait_id, q.player_name, q.season, q.season_label,
-             q.prompt_override, q.status, t.display_name trait_name,
-             t.short_definition definition,
-             m.slug, m.public_question, m.what_counts, m.metadata_line, m.active meta_active,
-             COALESCE(c.eligible_votes, 0) eligible_votes,
-             COALESCE(c.yes_share, 0.5) yes_share,
-             CASE WHEN mine.question_id IS NULL THEN 0 ELSE COALESCE(mine.changed, 0) + 1 END answer_count,
-             ( q.editorial_priority
-               + MAX(0, 60 - COALESCE(c.eligible_votes, 0))
-               + CASE WHEN COALESCE(c.eligible_votes, 0) >= 5
-                      THEN CAST(40 * (0.5 - ABS(COALESCE(c.yes_share, 0.5) - 0.5)) * 2 AS INTEGER)
-                      ELSE 0 END
-               + (ABS(RANDOM()) % 25) ) score
-      FROM trait_questions_v1 q
-      JOIN traits_v1 t ON t.id = q.trait_id
-      JOIN trait_question_meta_v1 m ON m.question_id = q.id AND m.active = 1
-      LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
-      LEFT JOIN trait_votes_v1 mine ON mine.question_id = q.id AND mine.voter_hash = ?
-      WHERE q.status = 'active'
-        AND ${tierPredicate(tier)}
-        ${skipSql}
-      ORDER BY score DESC
-      LIMIT 64`).bind(voter.hash, ...skip).all()
+      SELECT * FROM (
+        SELECT q.id, q.trait_id, q.player_name, q.season, q.season_label,
+               q.prompt_override, q.status, t.display_name trait_name,
+               t.short_definition definition,
+               m.slug, m.public_question, m.what_counts, m.metadata_line, m.active meta_active,
+               COALESCE(c.eligible_votes, 0) eligible_votes,
+               COALESCE(c.yes_share, 0.5) yes_share,
+               CASE WHEN mine.question_id IS NULL THEN 0 ELSE COALESCE(mine.changed, 0) + 1 END answer_count,
+               ( q.editorial_priority
+                 + MAX(0, 60 - COALESCE(c.eligible_votes, 0))
+                 + CASE WHEN COALESCE(c.eligible_votes, 0) >= 5
+                        THEN CAST(40 * (0.5 - ABS(COALESCE(c.yes_share, 0.5) - 0.5)) * 2 AS INTEGER)
+                        ELSE 0 END ) score
+        FROM trait_questions_v1 q
+        JOIN traits_v1 t ON t.id = q.trait_id
+        JOIN trait_question_meta_v1 m ON m.question_id = q.id AND m.active = 1
+        LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
+        LEFT JOIN trait_votes_v1 mine ON mine.question_id = q.id AND mine.voter_hash = ?
+        WHERE q.status = 'active'
+          AND ${tierPredicate(tier)}
+          ${skipSql}
+        ORDER BY score DESC
+        LIMIT 18
+      ) ORDER BY RANDOM()`).bind(voter.hash, ...skip).all()
       .then((r) => r.results || []).catch(() => []);
     for (const row of rows) {
       if (picked.length >= SESSION_SIZE) break;

@@ -2011,13 +2011,17 @@ function ensureTraitsCss() {
     ".traits-module .tm-q:active{color:#FFB52E}" +
     ".traits-module .tm-def{display:block;font-size:13px;color:#8b98a5;margin-top:5px;" +
       "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
-    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-top:11px}" +
     ".traits-module .tm-vb{position:relative;height:52px;border:0;border-radius:13px;cursor:pointer;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.1em;color:#1c1608;" +
       "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12,0 7px 14px -6px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb.no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 #8c2317,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.idk{color:#e8edf2;background:linear-gradient(180deg,#5a646f,#414a54);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 0 #262d34,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.idk:active,.traits-module .tm-vb.idk.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.12)," +
+      "0 1px 0 #262d34,0 4px 10px -6px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb:active,.traits-module .tm-vb.pressed{transform:translateY(2px);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb.no:active,.traits-module .tm-vb.no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2)," +
@@ -2134,6 +2138,7 @@ function traitsModuleHtml() {
     '<div class="tm-votes" id="tmVotes">' +
       '<button class="tm-vb" type="button" id="tmYes">YES</button>' +
       '<button class="tm-vb no" type="button" id="tmNo">NO</button>' +
+      '<button class="tm-vb idk" type="button" id="tmIdk">IDK</button>' +
     "</div>" +
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
@@ -2187,8 +2192,9 @@ function tmShowQuestion() {
   el("tmVotes").style.display = "";
   mod.classList.remove("tm-locked");
   var sh = el("tmShare"); if (sh) sh.hidden = false;
-  var y = el("tmYes"), nn = el("tmNo");
+  var y = el("tmYes"), nn = el("tmNo"), ik = el("tmIdk");
   y.classList.remove("pressed"); nn.classList.remove("pressed");
+  if (ik) ik.classList.remove("pressed");
   tmDots();
   analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
 }
@@ -2233,9 +2239,24 @@ function tmVote(resp, btn) {
   }).then(function (r) { return r.json(); }).then(function (x) {
     TM.busy = false;
     if (!x || !x.ok || !x.display) return tmDegrade(q);
+    tmSeenAdd(q.id);
     analyticsTrack("traits_vote", { surface: "traits", action: resp, ordinal: TM.i + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - t0, source: TM.source, sid: TM.sid });
     tmResult(q, resp, x.display);
   }).catch(function () { TM.busy = false; tmDegrade(q); });
+}
+// IDK = a pass. Nothing is written server-side (an unsure lean is the full
+// page's UNSURE vote; a pass is "stop asking me this one"): the id goes into
+// the local seen store and the session moves on after a short pressed beat.
+function tmPass(btn) {
+  if (TM.busy) return;
+  var q = TM.qs[TM.i];
+  if (!q) return;
+  btn.classList.add("pressed");
+  buzz(6);
+  tmSeenAdd(q.id);
+  analyticsTrack("traits_vote", { surface: "traits", action: "pass", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
+  TM.i++;
+  setTimeout(function () { if (el("traitsModule")) tmShowQuestion(); }, 260);
 }
 function tmResult(q, resp, d) {
   var res = el("tmRes");
@@ -2295,6 +2316,7 @@ function tmStart(again) {
       TM.wired = true;
       el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
       el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
+      el("tmIdk").addEventListener("click", function () { tmPass(el("tmIdk")); });
       var shBtn = el("tmShare");
       if (shBtn) shBtn.addEventListener("click", tmShareQuestion);
     }
@@ -2304,12 +2326,30 @@ function tmStart(again) {
     if (!again) analyticsTrack("mode_impression", { surface: TM.source === "home_module" ? "home" : "results", action: "traits", challenge: TM.qs[0].id });
   }).catch(function () {});
 }
+var TM_SEEN_KEY = "t82TraitsSeen";
+function tmSeenList() {
+  try {
+    var a = JSON.parse(localStorage.getItem(TM_SEEN_KEY) || "[]");
+    return Array.isArray(a) ? a.filter(function (x) { return typeof x === "string"; }) : [];
+  } catch (e) { return []; }
+}
+function tmSeenAdd(id) {
+  if (!id) return;
+  try {
+    var a = tmSeenList().filter(function (x) { return x !== id; });
+    a.push(id);
+    if (a.length > 400) a = a.slice(a.length - 400);
+    localStorage.setItem(TM_SEEN_KEY, JSON.stringify(a));
+  } catch (e) {}
+}
 function tmSessionLoader() {
   return fetch("/api/traits?op=featured", { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (feat) {
       var pin = feat && feat.ok && feat.question ? feat.question.id : "";
-      return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : ""), { credentials: "same-origin" })
+      var ex = tmSeenList().filter(function (x) { return x !== pin; }).slice(-48);
+      return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : "") +
+        (ex.length ? "&exclude=" + ex.map(encodeURIComponent).join(",") : ""), { credentials: "same-origin" })
         .then(function (r) { return r.json(); });
     });
 }
@@ -2350,6 +2390,8 @@ function wireTraitsPrompt() {
       .then(function (r) { return r.json(); })
       .then(function (x) {
         var roster = x && x.ok && x.questions ? x.questions.slice(0, 5) : [];
+        var sk = tmSeenList();
+        roster = roster.filter(function (q) { return q && sk.indexOf(q.id) === -1; });
         if (roster.length >= 5) return { ok: true, questions: roster, rules: x.rules };
         // Preserve drafted-player questions first, then fill any open slots
         // from the broader under-two curated pool. This avoids forcing a third
@@ -3619,6 +3661,16 @@ function setupGoatFireworks(autoArm) {
 // QA hook: add ?clutch=1 to the URL to force the 81-win Heat Check sequence on any
 // Presti result, so the clutch path can be tested without drafting an exact-81 team.
 var FORCE_CLUTCH = !!(typeof location !== "undefined" && location.search && /[?&]clutch=1(&|$)/.test(location.search));
+// QA hook: ?midhot=1 waives the +20 net gate so the mid-season Heat Check can
+// be tested on any standalone Presti draft that realizes at least one loss.
+var FORCE_MIDHOT = !!(typeof location !== "undefined" && location.search && /[?&]midhot=1(&|$)/.test(location.search));
+// v47.15 MID-SEASON HEAT CHECK: "Hot or better" is the HOT segment's index in the
+// engine's ladder (COLD 0, WARM 1, HOT 2, ON FIRE 3, SUPERNOVA 4). Resolved by
+// label so an engine reorder can never silently move the bar.
+var HH_MID_MIN_SEG = (function () {
+  for (var i = 0; i < HH_SEGMENTS.length; i++) if (/hot/i.test(String(HH_SEGMENTS[i].label))) return i;
+  return 2;
+})();
 
 function hotHand(e) {
   var clutch = FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1;   // exactly 81 wins
@@ -5083,13 +5135,28 @@ function showResults() {
     e.winTally = season.wins;
     e.season = season;
     loadBbrefMap();                              // preload the map during the reel
-    showSeasonReel(season, e, function () { finishRunTail(e); });
+    // v47.15 MID-SEASON HEAT CHECK (owner spec, 2026-07-31): a standalone Presti
+    // roster drafted above +20 net that realizes a loss gets ONE shot to save
+    // its perfect season the moment that first loss would land. The reel
+    // pauses before the L square, the Heat Check fires with the game number,
+    // and HOT or better re-rolls the saved game plus the whole remainder at
+    // the boosted per-game win rate (the engine's own formula: phi(net/SD)).
+    // Below HOT, the loss lands and the season plays out exactly as realized.
+    // Duels, dailies, and challenges never enter this branch; the +20 gate is
+    // strict; the raw pre-boost net still ships to percentile/leaderboards.
+    var midTrigger = null;
+    if (MODE === "cap" && !G.duel && season.losses > 0 && !G.hhMidUsed &&
+        hhEligible(e) && (FORCE_MIDHOT || e.net > 20)) {
+      midTrigger = { e: e };
+    }
+    showSeasonReel(season, e, function () { finishRunTail(e); }, midTrigger);
     return;
   }
   finishRunTail(e);
 }
 function finishRunTail(e) {
   renderResults(e, false);
+  if (G.hotMid) applyMidBoostToResults(e);
   if (window.t82track) {
     var gc = analyticsRunSnapshot();
     gc.wins = e.winTally;
@@ -5198,7 +5265,221 @@ function reelBlame(mi) {
     "played matador defense in crunch time", "goaltended the dagger"];
   return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
 }
-function showSeasonReel(season, e, done) {
+/* ---------- v47.15 MID-SEASON HEAT CHECK overlay ----------
+   Same ceremony grammar as the post-season Heat Check (lever pull, name
+   strip, heat wheel), retold at the moment the first loss would land. One
+   per season: the offer itself burns it (G.hhMidUsed), spun or refused.
+   HOT or better hands back a boost; anything cooler, or a refusal, hands
+   back null and the realized loss lands. All ids are hhm* so the two
+   overlays can never cross-wire. */
+function hotHandMid(e, gameNo, winsSoFar, onResolve) {
+  G.hhMidUsed = 1;
+  var hotIdx = hhPickHot(), segIdx = hhSpinSeg(), seg = HH_SEGMENTS[segIdx];
+  var hotV = valueOf(G.picks[hotIdx].row);
+  var qualifies = segIdx >= HH_MID_MIN_SEG;
+  var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
+  var names = G.picks.map(function (p) { return shareSurname(p.row[IDX.name]); });
+  var ITEM = 54, COPIES = 6, targetFlat = (COPIES - 2) * names.length + hotIdx;
+  var stripHtml = "", c, n2, s2;
+  for (c = 0; c < COPIES; c++) for (n2 = 0; n2 < names.length; n2++) stripHtml += '<div class="hh-name">' + esc(names[n2]) + "</div>";
+  var segHtml = "";
+  for (s2 = 0; s2 < HH_SEGMENTS.length; s2++) segHtml += '<div class="hh-seg lvl' + HH_SEGMENTS[s2].lvl + '"></div>';
+
+  var ov = document.createElement("div");
+  ov.className = "hh-overlay in";
+  ov.innerHTML =
+    '<button class="hh-skip" id="hhmSkip">the loss lands \u2192</button>' +
+    '<div class="hh-card"><div class="goat-fw" id="hhmFw" aria-hidden="true"></div>' +
+      '<div class="hh-eyebrow hh-clutch">Game ' + gameNo + '. You\u2019re ' + winsSoFar + '\u20130 and down entering the 4th quarter. Clutch heroics to stay perfect?</div>' +
+      ballLeverHtml("hhmLever", "hhmArm", "Pull the basketball through the hoop") +
+      '<button class="hh-charity" id="hhmCharity">I DON\u2019T WANT YOUR CHARITY</button>' +
+      '<div class="hh-stage">' +
+        '<div class="hh-step" id="hhmStep1">' +
+          '<div class="hh-window"><div class="hh-strip" id="hhmStrip">' + stripHtml + '</div><span class="hh-payline"></span></div></div>' +
+        '<div class="hh-step" id="hhmStep2">' +
+          '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhmHeatLabel">\u00B7</div></div>' +
+        '<div class="hh-verdict" id="hhmVerdict"></div>' +
+        '<div class="hh-actions" id="hhmActions">' +
+          '<button class="hh-btn presti-spin" id="hhmBack">BACK TO THE SEASON</button>' +
+        '</div>' +
+      '</div></div>';
+  document.body.appendChild(ov);
+  analyticsTrack("heatcheck_shown", Object.assign(analyticsRunSnapshot(), {
+    surface: "heat_check_mid", action: "offer", game_no: gameNo, wins: winsSoFar, net: e.net
+  }));
+
+  var resolved = false;
+  function resolve(boost) {
+    if (resolved) return;
+    resolved = true;
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    onResolve(boost);
+  }
+  function segs() { return ov.querySelectorAll(".hh-seg"); }
+
+  function midVerdict() {
+    analyticsTrack("heatcheck_result", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "spin_result", segment: seg.label, game_no: gameNo,
+      outcome: qualifies ? "saved" : "no_save", hit_82: 0,
+      net: qualifies ? newNet : e.net
+    }));
+    var v = ov.querySelector("#hhmVerdict");
+    if (qualifies) {
+      ov.classList.add("won");
+      v.innerHTML = '<div class="hh-stamp">' + esc(shareSurname(G.picks[hotIdx].row[IDX.name]).toUpperCase()) + " CATCHES FIRE</div>" +
+        '<div class="hh-netcap">' + esc(seg.label) + " \u00B7 VALUE \u00D7" + seg.m + " \u00B7 NET " + signed1(e.net) + " \u2192 " + signed1(newNet) + "</div>";
+      buzz(45);
+      var fw = ov.querySelector("#hhmFw"); if (fw && !reducedMotion()) fireGoats(fw);
+    } else {
+      ov.classList.add("missed");
+      v.innerHTML = '<div class="hh-stamp miss">NO SAVE</div>' +
+        '<div class="hh-netcap">' + esc(seg.label) + " \u00B7 THE LOSS LANDS</div>";
+      buzz(10);
+    }
+    v.classList.add("on");
+    ov.querySelector("#hhmActions").classList.add("on");
+    ov.querySelector("#hhmBack").addEventListener("click", function () {
+      resolve(qualifies ? { hotIdx: hotIdx, segIdx: segIdx, seg: seg, hotV: hotV, newNet: newNet } : null);
+    });
+  }
+
+  function heat() {
+    ov.querySelector("#hhmStep2").classList.add("on");
+    var cs = segs(), N = cs.length, label = ov.querySelector("#hhmHeatLabel"), order = [], i, l;
+    var laps = 4;
+    for (l = 0; l < laps; l++) for (i = 0; i < N; i++) order.push(i);
+    for (i = 0; i <= segIdx; i++) order.push(i);
+    var base = order.length;
+    var roll = Math.random(), burst = false;
+    if (roll < 0.65) { /* clean stop */ }
+    else if (roll < 0.85) {
+      if (segIdx < N - 1) { order.push(segIdx + 1); order.push(segIdx); }
+      else { order.push(segIdx - 1); order.push(segIdx); }
+    } else {
+      burst = true;
+      for (i = 1; i <= N; i++) order.push((segIdx + i) % N);
+    }
+    order[order.length - 1] = segIdx;
+    var gaps = [], t = 38, last = order.length - 1;
+    for (i = 0; i < order.length; i++) {
+      if (i < base) { gaps.push(t * 1.5); t *= 1.085; }
+      else if (burst) gaps.push((i === last - 1 ? 300 : 72 - (i - base) * 10) * 1.5);
+      else gaps.push((250 + (i % 2) * 70 + Math.random() * 110) * 1.5);
+    }
+    var acc = 0;
+    order.forEach(function (ci, j) {
+      setTimeout(function () {
+        if (!ov.parentNode) return;
+        for (var z = 0; z < N; z++) cs[z].classList.remove("lit");
+        cs[ci].classList.add("lit");
+        label.textContent = HH_SEGMENTS[ci].label;
+        label.className = "hh-heatlabel lvl" + HH_SEGMENTS[ci].lvl;
+        var fast = j < base || (burst && j < last - 1);
+        label.style.transform = "scale(" + (fast ? 1.18 : 1) + ")";
+        buzz(j < base ? 5 : (fast ? 6 : 11));
+        if (j === order.length - 1) {
+          for (var f = 0; f <= segIdx; f++) cs[f].classList.add("fill");
+          cs[segIdx].classList.add("result");
+          buzz(segIdx === 4 ? 40 : 18);
+          if (segIdx === 4) supernovaErupt(label);
+          else if (segIdx === 3) sprayFromEl(label, FIRE_EMOJI);
+          setTimeout(midVerdict, 560);
+        }
+      }, acc);
+      acc += gaps[j];
+    });
+  }
+
+  function reelSpin() {
+    ov.querySelector("#hhmStep1").classList.add("on");
+    var strip = ov.querySelector("#hhmStrip"), endY = -((targetFlat - 1) * ITEM);
+    function land() {
+      if (!ov.parentNode) return;
+      var rows = strip.querySelectorAll(".hh-name");
+      if (rows[targetFlat]) rows[targetFlat].classList.add("hot");
+      buzz(18);
+      setTimeout(heat, 470);
+    }
+    function glide(to, dur, ease) { strip.style.transition = "transform " + dur + "s " + ease; strip.style.transform = "translateY(" + to + "px)"; }
+    var variant = Math.floor(Math.random() * 3);
+    if (variant === 1) {
+      requestAnimationFrame(function () { glide(endY - ITEM, 2.3, "cubic-bezier(.1,.72,.18,1)"); });
+      setTimeout(function () { if (ov.parentNode) { glide(endY, 0.52, "cubic-bezier(.34,0,.3,1)"); buzz(8); } }, 2360);
+      setTimeout(land, 2900);
+    } else if (variant === 2) {
+      requestAnimationFrame(function () { glide(endY + ITEM, 2.2, "cubic-bezier(.08,.8,.1,1)"); });
+      setTimeout(function () { if (ov.parentNode) { glide(endY, 0.66, "cubic-bezier(.5,0,.5,1)"); buzz(9); } }, 2620);
+      setTimeout(land, 3300);
+    } else {
+      requestAnimationFrame(function () { glide(endY, 2.6, "cubic-bezier(.12,.66,.18,1)"); });
+      setTimeout(land, 2640);
+    }
+  }
+
+  var lever = ov.querySelector("#hhmLever"), arm = ov.querySelector("#hhmArm");
+  var pullState = wireBallPull(lever, arm, function () {
+    analyticsTrack("heatcheck_action", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "pull", pulled: 1, game_no: gameNo
+    }));
+    var chBtn = ov.querySelector("#hhmCharity"); if (chBtn) chBtn.classList.add("gone");
+    var skBtn = ov.querySelector("#hhmSkip"); if (skBtn) skBtn.classList.add("gone");
+    setTimeout(function () { ov.classList.add("lit"); reelSpin(); }, 640);
+  });
+  ov.querySelector("#hhmCharity").addEventListener("click", function () {
+    if (pullState.fired()) return;
+    analyticsTrack("heatcheck_declined", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "decline", game_no: gameNo
+    }));
+    if (window.T82 && T82.declineHeat) T82.declineHeat(G);
+    resolve(null);
+  });
+  ov.querySelector("#hhmSkip").addEventListener("click", function () {
+    if (pullState.fired()) return;
+    analyticsTrack("heatcheck_action", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "skip", pulled: 0, game_no: gameNo
+    }));
+    if (window.T82 && T82.declineHeat) T82.declineHeat(G);
+    resolve(null);
+  });
+}
+
+/* Fold a mid-season boost into the rendered results. The realized record,
+   climb wins and goat fireworks already came in through e.winTally, so this
+   patches only what the record alone cannot tell: the split net label, the
+   Scoring Card bonus row, the hot pick highlight, and the climb re-plot to
+   the realized wins (the same override the post-season verdict applies). */
+function applyMidBoostToResults(e) {
+  var hm = G.hotMid;
+  if (!hm) return;
+  var card = document.querySelector('.pick-card[data-pick="' + hm.hotIdx + '"]');
+  if (card) {
+    card.classList.add("hot-pick");
+    var pv = card.querySelector(".pr-v");
+    if (pv) pv.innerHTML = "<small>V</small>" + hm.hotV.toFixed(2) + ' <span class="hot-bonus">+ ' + (G.hotValue - hm.hotV).toFixed(2) + "</span>";
+  }
+  var lbl = document.querySelector(".big-label");
+  if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
+    '</span> <span class="net-bonus">+ ' + (hm.newNet - e.net).toFixed(1) + "</span>";
+  setEliteResultGlow(e.winTally);
+  var cl = document.querySelector(".climb");
+  if (cl) { cl.outerHTML = climbHtml(e, e.winTally); setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON); }
+  var ledgerEl = document.querySelector(".ledger");
+  var totalRow = ledgerEl && ledgerEl.querySelector(".ledger-row.total");
+  if (totalRow) {
+    var bonusRow = document.createElement("div");
+    bonusRow.className = "ledger-row";
+    bonusRow.innerHTML = '<span>Hot Hand bonus<span class="why">' + esc(hm.seg.label) + " \u2014 " +
+      esc(shareSurname(G.picks[hm.hotIdx].row[IDX.name])) + " caught fire in Game " + hm.gameNo + " (value \u00D7" + hm.seg.m + ").</span></span>" +
+      '<span class="ledger-amt hot">+' + fmt1(hm.newNet - e.net) + "</span>";
+    totalRow.parentNode.insertBefore(bonusRow, totalRow);
+    var amtEl = totalRow.querySelector(".ledger-amt");
+    if (amtEl) amtEl.textContent = signed1(hm.newNet);
+    var whyEl = totalRow.querySelector(".why");
+    if (whyEl) whyEl.textContent = "Score " + fmt1(e.score) + " + Hot Hand " + fmt1(hm.newNet - e.net) + " minus baseline " + fmt1(BASELINE) + ".";
+  }
+}
+
+function showSeasonReel(season, e, done, midTrigger) {
   var ov = document.createElement("div");
   ov.className = "reel-overlay";
   ov.innerHTML = '<div class="reel-card">' +
@@ -5209,58 +5490,115 @@ function showSeasonReel(season, e, done) {
   document.body.appendChild(ov);
   var acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
   var finished = false, timers = [];
+  // v47.15: the reel is now a cursor engine instead of a pre-scheduled cascade,
+  // so it can pause on the exact square where the Mid-Season Heat Check
+  // fires and resume onto a re-rolled remainder. Month W-L headers tick live
+  // square by square (they used to print the month's final line up front,
+  // which both spoiled the month and could not survive a re-roll).
+  var gi = 0, cw = 0, clx = 0;
+  var mi = -1, monthLeft = 0, monthW = 0, monthL = 0, monthStart = 0, row = null, recEl = null;
+  var triggerIdx = -1, overlayUp = false;
+  if (midTrigger) { for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { triggerIdx = g0; break; } } }
+  var midDone = (triggerIdx < 0);
+
+  function schedule(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function firstLossNow() { for (var i = 0; i < season.games.length; i++) { if (!season.games[i]) return i; } return null; }
+
   function finishReel() {
     if (finished) return;
+    if (overlayUp) return;                                    // the Heat Check owns the moment
+    if (!midDone && triggerIdx >= 0) { fastForwardToPause(); return; }   // SKIP cannot dodge the spin
     finished = true;
     timers.forEach(clearTimeout);
     ov.remove();
     done();
   }
   ov.querySelector("#reelSkip").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
-  var firstLossIdx = null;
-  for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { firstLossIdx = g0; break; } }
-  // cumulative record per game, so the header ticks square by square
-  var cum = [], cw = 0;
-  for (var g1 = 0; g1 < season.games.length; g1++) { if (season.games[g1]) cw++; cum.push([cw, g1 + 1 - cw]); }
-  var t = 650, start = 0;
-  REEL_MONTHS.forEach(function (m, mi) {
-    var count = m[1], s0 = start;
-    var mw = 0;
-    for (var i2 = s0; i2 < s0 + count; i2++) if (season.games[i2]) mw++;
-    var ml = count - mw;
-    start += count;
-    var endRec = cum[s0 + count - 1];
-    timers.push(setTimeout(function () {
-      var row = document.createElement("div");
-      row.className = "reel-act";
-      row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + m[0] + '</span>' +
-        '<span class="reel-mo-rec mono">' + mw + '\u2013' + ml + '</span></div>' +
-        '<div class="reel-grid"></div>' +
-        '<p class="reel-note reel-note-pending"></p>';
-      row.__grid = row.querySelector(".reel-grid");
-      acts.appendChild(row);
-      acts.scrollTop = acts.scrollHeight;
-      for (var i = 0; i < count; i++) (function (i) {
-        timers.push(setTimeout(function () {
-          var sq = document.createElement("span");
-          var win = season.games[s0 + i];
-          sq.className = "reel-day " + (win ? "w" : "l");
-          sq.textContent = win ? "W" : "L";
-          row.__grid.appendChild(sq);
-          var c = cum[s0 + i];
-          runEl.textContent = c[0] + "\u2013" + c[1];
-        }, 140 + i * 48));
-      })(i);
-      timers.push(setTimeout(function () {
-        var note = row.querySelector(".reel-note");
-        note.textContent = reelLine(mi, mw, ml, endRec[0], endRec[1], firstLossIdx, s0) + (ml > 0 ? " " + reelBlame(mi) : "");
-        note.classList.remove("reel-note-pending");
-        acts.scrollTop = acts.scrollHeight;
-      }, 140 + count * 48 + 120));
-    }, t));
-    t += 320 + count * 48 + 640;
-  });
-  timers.push(setTimeout(function () {
+
+  function openMonth() {
+    mi++;
+    monthStart = gi; monthW = 0; monthL = 0; monthLeft = REEL_MONTHS[mi][1];
+    row = document.createElement("div");
+    row.className = "reel-act";
+    row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + REEL_MONTHS[mi][0] + '</span>' +
+      '<span class="reel-mo-rec mono">0\u20130</span></div>' +
+      '<div class="reel-grid"></div>' +
+      '<p class="reel-note reel-note-pending"></p>';
+    row.__grid = row.querySelector(".reel-grid");
+    recEl = row.querySelector(".reel-mo-rec");
+    acts.appendChild(row);
+    acts.scrollTop = acts.scrollHeight;
+  }
+  function closeMonth() {
+    if (!row || row.__closed) return;
+    row.__closed = true;
+    var note = row.querySelector(".reel-note");
+    note.textContent = reelLine(mi, monthW, monthL, cw, clx, firstLossNow(), monthStart) + (monthL > 0 ? " " + reelBlame(mi) : "");
+    note.classList.remove("reel-note-pending");
+    acts.scrollTop = acts.scrollHeight;
+  }
+  function placeSquare() {
+    var win = season.games[gi];
+    var sq = document.createElement("span");
+    sq.className = "reel-day " + (win ? "w" : "l");
+    sq.textContent = win ? "W" : "L";
+    row.__grid.appendChild(sq);
+    if (win) { cw++; monthW++; } else { clx++; monthL++; }
+    runEl.textContent = cw + "\u2013" + clx;
+    recEl.textContent = monthW + "\u2013" + monthL;
+    gi++; monthLeft--;
+  }
+
+  function advance() {
+    if (finished) return;
+    if (gi >= season.games.length) { schedule(closeMonth, 120); schedule(finale, 640); return; }
+    var lead = (mi < 0) ? 650 : 960;
+    if (mi >= 0) schedule(closeMonth, 120);
+    schedule(function () { openMonth(); schedule(tick, 140); }, lead);
+  }
+  function tick() {
+    if (finished) return;
+    if (!midDone && gi === triggerIdx) { firePause(); return; }
+    placeSquare();
+    if (monthLeft === 0) advance();
+    else schedule(tick, 48);
+  }
+
+  function applyMidBoost(boost) {
+    var p2 = phi(boost.newNet / SC.NET_SD);
+    for (var i = gi; i < season.games.length; i++) season.games[i] = Math.random() < p2;
+    var w2 = 0;
+    for (var j = 0; j < season.games.length; j++) { if (season.games[j]) w2++; }
+    season.wins = w2; season.losses = season.games.length - w2;
+    var eRef = midTrigger.e;
+    eRef.winTally = season.wins; eRef.season = season;
+    G.hotMid = { hotIdx: boost.hotIdx, segIdx: boost.segIdx, seg: boost.seg, hotV: boost.hotV, newNet: boost.newNet, gameNo: gi + 1 };
+    G.hotIdx = boost.hotIdx;
+    G.hotLvl = boost.seg.lvl;
+    G.hotValue = boost.hotV * (1 + (boost.seg.m - 1) * HH_BONUS_SCALE);
+    G.hotBase = eRef.net; G.hotNewNet = boost.newNet; G.hotWins = season.wins;
+  }
+  function firePause() {
+    overlayUp = true;
+    hotHandMid(midTrigger.e, gi + 1, gi, function (boost) {
+      overlayUp = false; midDone = true;
+      if (boost) applyMidBoost(boost);
+      schedule(tick, 420);
+    });
+  }
+  function fastForwardToPause() {
+    timers.forEach(clearTimeout); timers = [];
+    while (gi < triggerIdx) {
+      if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
+      placeSquare();
+    }
+    if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
+    acts.scrollTop = acts.scrollHeight;
+    firePause();
+  }
+
+  function finale() {
+    if (finished) return;
     var fin = document.createElement("div");
     fin.className = "reel-final";
     fin.innerHTML = '<span class="reel-final-rec">' + season.wins + '\u2013' + season.losses + '</span>' +
@@ -5269,7 +5607,9 @@ function showSeasonReel(season, e, done) {
     acts.appendChild(fin);
     fin.querySelector("#reelDone").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
     acts.scrollTop = acts.scrollHeight;
-  }, t + 200));
+  }
+
+  advance();
 }
 
 /* ---------- SPORTSREF DEEP-LINK LAW (v30) ----------
@@ -5638,11 +5978,13 @@ function renderResults(e, keepScroll) {
   // when a real spin is pending (exactly 81 wins in Presti, or the QA flag) — its
   // old non-clutch "reveal my results" role is the paper's job now. For gated
   // papers the drafted-82-0 W/L burst waits for the paper to close.
-  var clutchPending = hhEligible(e) && (FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1);
+  var clutchPending = hhEligible(e) && !G.hhMidUsed && (FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1);
   if (clutchPending) {
     hotHand(e);                       // recap request fires from verdict() with post-boost totals
   } else if (MODE !== "kaman") {
-    prepareRecap(e, e.winTally, e.net, null);   // payload only; the model call fires on unwrap
+    prepareRecap(e, e.winTally,
+      G.hotMid ? G.hotNewNet : e.net,
+      G.hotMid ? { player: shareSurname(G.picks[G.hotMid.hotIdx].row[IDX.name]), tier: G.hotMid.seg.label } : null);   // payload only; the model call fires on unwrap
     G.recapAuto = 1;
     G.recapGateFw = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
     showNewspaper(true);
