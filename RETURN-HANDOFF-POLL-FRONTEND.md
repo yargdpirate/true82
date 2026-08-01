@@ -2,7 +2,7 @@
 
 Cumulative on v47.18. BUILD_V stays "v47". Files changed: `app.js` (widget),
 `bonuses/index.html` (voting page), `index.html` (app.js cache key ->
-`?v=20260801-poll-frontend-v47`). `styles.css`, `functions/`, and the engine
+`?v=20260801-poll-frontend-r3-v47`). `styles.css`, `functions/`, and the engine
 are untouched. Home and results widgets remain one shared module, so they
 stay mirrored by construction.
 
@@ -33,6 +33,15 @@ question, per house law.
 
 ## Widget (homepage + results, one module)
 
+- Share copy (r3): the widget bar now reads **Share Vote** (bold lead) then
+  "(please don't vote brigade)" at the SAME small 9.5px mono as before -
+  nothing on the widget grew. The COPIED beat stores and restores innerHTML
+  so the bold lead survives the flash instead of being flattened to text.
+- Vote row retuned (v47.19-r2): IDK is half its former equal-third (98px ->
+  49px at 390), and the freed width splits evenly between YES and NO (98px ->
+  123px each) - grid `5fr 5fr 2fr`. IDK's label steps to 16px/.06em so it
+  never clips in the narrower slab (verified clean at 390 and 340px). One
+  module, so home and results stay mirrored.
 - Subtitle reordered: **HELP BALANCE THE GAME** (bold amber lead) ·
   VOTE ON PLAYER BONUSES. Still the standing link to /bonuses/ with the
   per-surface src stamping intact.
@@ -50,8 +59,14 @@ question, per house law.
 
 - WHAT COUNTS? collapsible retired: the definition sits in the open under
   the metadata line at 15.5px (was 14.5 hidden).
-- Card actions stacked: STATS REFRESHER on top, the share button below it
-  with the same brigade copy (13px so it holds one line at 48px height).
+- Card actions stacked: STATS REFRESHER on top, the share button below it.
+  Sizing (r3): "STATS REFRESHER" and the "Share Vote" lead both render at
+  21px - matched to this page's UNSURE control - while "(please don't vote
+  brigade)" stays at its original small 13px. Both sizes are fixed by spec,
+  so narrow screens are bought with tracking and padding only; at <=374px
+  the parenthetical drops onto its own line (button 48px -> 58px) rather
+  than shrinking below spec. Swept 320-430px: computed sizes exactly 21/21/13
+  at every width with zero clipping on either button.
 - Page foot: the small "TRUE 82 ->" text link is now a prominent, centered,
   full-amber 56px button reading PLAY TRUE82.
 - The draft's star-and-basket mark (the exact `hoopMarkSvg` paths, inlined

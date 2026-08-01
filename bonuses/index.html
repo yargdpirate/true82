@@ -33,11 +33,30 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
 .q{font-family:var(--disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--chalk);margin-bottom:10px}
 .meta{font-size:14px;color:var(--chalk-dim);margin-bottom:8px}
 .qx{display:flex;flex-direction:column;gap:11px;margin-top:11px}
-.qx-btn.qx-share{font-size:13px;letter-spacing:.04em}
-.qx-btn{position:relative;flex:0 0 auto;width:100%;height:48px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk);font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.07em;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;line-height:1;padding:0 10px}
+/* v47.19-r3: the share button carries two sizes on one line - the lead
+   matches UNSURE (21px), the parenthetical stays at its original small
+   13px. BOTH sizes are fixed by spec, so narrow screens are bought with
+   tracking and, below 380, by dropping the small part onto its own line -
+   never by shrinking either size. */
+.qx-btn.qx-share{font-size:13px;letter-spacing:.02em;gap:5px;padding:0 6px}
+.qx-lead{font-size:21px;letter-spacing:.03em}
+.qx-sub{font-size:13px;letter-spacing:.01em}
+.qx-btn{position:relative;flex:0 0 auto;width:100%;height:48px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk);font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.07em;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;line-height:1;padding:0 10px}
 .qx-btn:active,.qx-btn.flashed{color:var(--amber);border-color:var(--amber)}
 .qx-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 a.qx-btn[hidden]{display:none}
+@media (max-width:380px){
+  .qx-btn{letter-spacing:.03em}
+  .qx-lead{letter-spacing:.01em}
+  .qx-sub{letter-spacing:0}
+  .qx-btn.qx-share{gap:4px;padding:0 4px}
+}
+/* Narrow phones: 21px + a 13px parenthetical cannot share a line, so the
+   small part drops under the lead rather than shrinking below spec. */
+@media (max-width:374px){
+  .qx-btn.qx-share{flex-direction:column;gap:1px;height:58px;line-height:1.05}
+  .qx-btn{letter-spacing:.01em;padding:0 3px}
+}
 .q-def{font-size:15.5px;line-height:1.45;color:var(--chalk-dim);margin:2px 0 12px}
 .controls{margin-top:12px;background:#0e1319;border:1px solid #232d37;border-radius:24px;padding:12px}
 .yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -314,7 +333,8 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
         "</div>" +
         '<div class="qx" id="qx">' +
           '<a class="qx-btn" id="qRef" hidden target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
-          '<button class="qx-btn qx-share" id="qShare" type="button">SHARE VOTE - PLEASE DON\u2019T VOTE BRIGADE</button>' +
+          '<button class="qx-btn qx-share" id="qShare" type="button">' +
+            '<span class="qx-lead">Share Vote</span><span class="qx-sub">(please don\u2019t vote brigade)</span></button>' +
         "</div>" +
         '<div id="resultZone" aria-live="polite"></div>' +
       "</section>";
@@ -500,10 +520,10 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
         var f = document.getElementById("flash");
         if (f) f.textContent = "LINK COPIED";
         else if (btn) {
-          if (!btn.dataset.shareLabel) btn.dataset.shareLabel = btn.textContent;
+          if (!btn.dataset.shareLabel) btn.dataset.shareLabel = btn.innerHTML;
           btn.textContent = "COPIED";
           btn.classList.add("flashed");
-          setTimeout(function () { btn.textContent = btn.dataset.shareLabel; btn.classList.remove("flashed"); }, 1400);
+          setTimeout(function () { btn.innerHTML = btn.dataset.shareLabel; btn.classList.remove("flashed"); }, 1400);
         }
         track("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: entrySource });
       }).catch(function () {});

@@ -2011,7 +2011,8 @@ function ensureTraitsCss() {
     ".traits-module .tm-q:active{color:#FFB52E}" +
     ".traits-module .tm-def{display:block;font-size:13px;color:#8b98a5;margin-top:5px;" +
       "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
-    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-votes{display:grid;grid-template-columns:5fr 5fr 2fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-vb.idk{font-size:16px;letter-spacing:.06em}" +
     ".traits-module .tm-vb{position:relative;height:52px;border:0;border-radius:13px;cursor:pointer;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.1em;color:#1c1608;" +
       "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
@@ -2038,7 +2039,8 @@ function ensureTraitsCss() {
        quiet 2D bar below them (excluded from the 3D decorator on purpose). */
     ".traits-module .tm-sharebar{display:block;width:100%;height:32px;margin-top:9px;appearance:none;-webkit-appearance:none;" +
       "background:none;border:1px solid #2c343d;border-radius:9px;cursor:pointer;" +
-      "font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.13em;color:#8b98a5;line-height:1}" +
+      "font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.07em;color:#8b98a5;line-height:1}" +
+    ".traits-module .tm-shlead{font-weight:700;color:#c9d2da}" +
     ".traits-module .tm-sharebar:active,.traits-module .tm-sharebar.flashed{color:#FFB52E;border-color:#FFB52E}" +
     ".traits-module .tm-sharebar:focus-visible{outline:2px solid #FFB52E;outline-offset:2px}" +
     ".traits-module .tm-dots{display:flex;gap:7px}" +
@@ -2141,7 +2143,8 @@ function traitsModuleHtml() {
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
     '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span></div>' +
-    '<button class="tm-sharebar" type="button" id="tmShare" hidden>SHARE VOTE - PLEASE DON\u2019T VOTE BRIGADE</button>' +
+    '<button class="tm-sharebar" type="button" id="tmShare" hidden>' +
+      '<strong class="tm-shlead">Share Vote</strong> (please don\u2019t vote brigade)</button>' +
     "</section>";
 }
 
@@ -2213,10 +2216,10 @@ function tmShareQuestion() {
     }).catch(function () {});
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(text + "\n" + url).then(function () {
-      if (!sh.dataset.label) sh.dataset.label = sh.textContent;
+      if (!sh.dataset.labelHtml) sh.dataset.labelHtml = sh.innerHTML;
       sh.textContent = "COPIED";
       sh.classList.add("flashed");
-      setTimeout(function () { sh.textContent = sh.dataset.label; sh.classList.remove("flashed"); }, 1400);
+      setTimeout(function () { sh.innerHTML = sh.dataset.labelHtml; sh.classList.remove("flashed"); }, 1400);
       analyticsTrack("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: TM.source, sid: TM.sid });
     }).catch(function () {});
   }

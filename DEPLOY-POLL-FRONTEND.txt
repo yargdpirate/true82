@@ -9,7 +9,7 @@ WHAT SHIPS (cumulative - everything through v47.19)
   bonuses/index.html  definition always visible (no WHAT COUNTS? toggle),
                       stacked STATS REFRESHER over the brigade share button,
                       big centered PLAY TRUE82, draft mark top right
-  index.html          app.js key -> 20260801-poll-frontend-v47
+  index.html          app.js key -> 20260801-poll-frontend-r3-v47
   styles.css UNCHANGED this round. functions/ + engine UNTOUCHED.
   NO copy/definition changes in the database - the 58-char audit list is in
   the handoff, awaiting your rewrites (7 strings cover all 56 questions).
