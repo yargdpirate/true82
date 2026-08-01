@@ -1,4 +1,37 @@
-# RETURN HANDOFF - MID-SEASON HEAT CHECK (v47.15)
+# RETURN HANDOFF - MID-SEASON HEAT CHECK (v47.15, gate fixed v47.17)
+
+## v47.17 HOTFIX - why it never fired live, and the fix
+
+The v47.15 trigger gate ANDed `hhEligible(e)` - an engine predicate whose
+source ships outside this package and whose only other use guards the
+exactly-81-wins post-season ceremony. It takes the RESULT, and on ordinary
+losing Presti runs it evaluates false, so the mid-season trigger never armed
+in production. It was a speculative safety addition, not owner spec, and the
+harness never executed the gate (it forced the trigger directly; the gate had
+only a static string check). Both are corrected:
+
+- The gate is now the named `hhMidGate(e, season)` with transparent checks
+  only: Presti (`MODE === "cap"`), standalone (`!G.duel`; social/challenge
+  runs never reach the realized branch), a full five-man roster, the engine
+  Hot Hand surface present, `season.losses > 0`, `!G.hhMidUsed`, and
+  `FORCE_MIDHOT || e.net > 20`. `hhEligible` remains exactly where it
+  belongs: the post-season 81-0 ceremony, untouched.
+- With `?midhot=1` on, every gate component logs to the console
+  (`[t82] mid heat gate ARMED/blocked {...}`), so a live "why didn't it
+  fire" answers itself.
+- The harness now extracts and truth-tables the REAL gate: 11 cases
+  covering the happy path, classic/duel blocks, no-loss (even forced),
+  the one-per-season law, the strict bar at exactly 20 vs 20.1, the
+  midhot waiver, partial roster, and missing engine surface.
+
+Live verification in 15 seconds: hard-reload, confirm
+`typeof hotHandMid` is "function" in the console (proves the new app.js is
+being served), then draft any losing Presti team at `/?midhot=1` and watch
+the gate log arm and the reel freeze before the first L.
+
+---
+
+# ORIGINAL HANDOFF (v47.15)
 
 Cumulative on the v47.14 poll-sharing package. BUILD_V stays "v47". Files
 changed vs v47.14: `app.js` (all the new logic) and `index.html` (cache key

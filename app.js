@@ -5144,11 +5144,7 @@ function showResults() {
     // Below HOT, the loss lands and the season plays out exactly as realized.
     // Duels, dailies, and challenges never enter this branch; the +20 gate is
     // strict; the raw pre-boost net still ships to percentile/leaderboards.
-    var midTrigger = null;
-    if (MODE === "cap" && !G.duel && season.losses > 0 && !G.hhMidUsed &&
-        hhEligible(e) && (FORCE_MIDHOT || e.net > 20)) {
-      midTrigger = { e: e };
-    }
+    var midTrigger = hhMidGate(e, season) ? { e: e } : null;
     showSeasonReel(season, e, function () { finishRunTail(e); }, midTrigger);
     return;
   }
@@ -5265,6 +5261,36 @@ function reelBlame(mi) {
     "played matador defense in crunch time", "goaltended the dagger"];
   return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
 }
+/* v47.17 GATE FIX: arm the mid-season trigger from transparent checks only.
+   The v47.15 gate ANDed the engine's hhEligible(G, e), whose semantics are
+   tuned to the exactly-81 post-season moment; on normal losing Presti runs
+   it is false, which is why the feature never fired live. What the mid
+   ceremony actually needs: Presti standalone (cap, not duel - social and
+   challenge runs never reach the realized branch at all), a full five-man
+   roster for the name strip, the engine's Hot Hand surface present, at
+   least one realized loss to save, the one-per-season law, and the strict
+   +20 bar (?midhot=1 waives ONLY that bar). With ?midhot=1 on, every gate
+   component logs to the console so a live "why didn't it fire" is
+   self-answering. */
+function hhMidGate(e, season) {
+  var parts = {
+    presti: MODE === "cap",
+    standalone: !G.duel,
+    roster5: !!(G.picks && G.picks.length >= 5),
+    engine: !!(window.T82 && T82.hhPickHot && T82.hhSpinSeg && HH_SEGMENTS && HH_SEGMENTS.length),
+    hasLoss: !!(season && season.losses > 0),
+    unused: !G.hhMidUsed,
+    netBar: FORCE_MIDHOT || (e && e.net > 20)
+  };
+  var go = parts.presti && parts.standalone && parts.roster5 && parts.engine &&
+           parts.hasLoss && parts.unused && parts.netBar;
+  if (FORCE_MIDHOT && typeof console !== "undefined" && console.info) {
+    console.info("[t82] mid heat gate", go ? "ARMED" : "blocked", parts,
+      e ? "net " + e.net : "", season ? season.wins + "-" + season.losses : "");
+  }
+  return go;
+}
+
 /* ---------- v47.15 MID-SEASON HEAT CHECK overlay ----------
    Same ceremony grammar as the post-season Heat Check (lever pull, name
    strip, heat wheel), retold at the moment the first loss would land. One

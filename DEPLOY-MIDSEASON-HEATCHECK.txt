@@ -1,4 +1,4 @@
-TRUE82 DEPLOY CARD - MID-SEASON HEAT CHECK (v47.15, BUILD_V stays v47)
+TRUE82 DEPLOY CARD - MID-SEASON HEAT CHECK (v47.17 GATE FIX, BUILD_V stays v47)
 =====================================================================
 
 WHAT SHIPS (cumulative snapshot - contains everything through v47.15)
@@ -7,7 +7,7 @@ WHAT SHIPS (cumulative snapshot - contains everything through v47.15)
                take its first loss gets ONE shot to catch fire and re-sim the
                rest of the season. Post-season 81-0 Heat Check now fires only
                for runs that never took the mid-sim spin.
-  index.html   app.js cache key -> 20260731-midseason-heat-v47
+  index.html   app.js cache key -> 20260801-midheat-gate-v47
   Changed vs v47.14: app.js + index.html only. styles.css and bonuses/ are
   byte-identical to v47.14 (the overlay reuses existing hh-* CSS).
   functions/ (votes worker, database) UNTOUCHED. Engine UNTOUCHED.
