@@ -2035,6 +2035,14 @@ function ensureTraitsCss() {
     ".traits-module .tm-res .neg{color:#E5533C}" +
     ".traits-module .tm-foot{display:flex;align-items:center;margin-top:12px;justify-content:center}" +
     ".traits-module .tm-eyeb{color:#FFB52E;font-weight:700}" +
+    /* v47.20 tag slot: the player-card chip exactly (gold face, ink text,
+       7px radius, Barlow Condensed 700) with the 3D lift swapped for a gold
+       hairline. Floated so the question wraps around it and can never be
+       covered. The element a player portrait would later occupy. */
+    ".traits-module .tm-tag{float:right;margin:1px 0 4px 10px;display:inline-flex;align-items:center;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.09em;" +
+      "text-transform:uppercase;color:#1c1608;background:linear-gradient(180deg,#FFC957,#F2A81F);" +
+      "border:1px solid #9a6a12;border-radius:7px;min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap}" +
     /* v47.19: the diamonds sit centered and larger; sharing moved to a thin,
        quiet 2D bar below them (excluded from the 3D decorator on purpose). */
     ".traits-module .tm-sharebar{display:block;width:100%;height:32px;margin-top:9px;appearance:none;-webkit-appearance:none;" +
@@ -2187,7 +2195,9 @@ function tmShowQuestion() {
   var q = TM.qs[TM.i];
   var mod = el("traitsModule");
   if (!q || !mod) return tmComplete();
-  el("tmQ").textContent = (q.public_question || "").toUpperCase();
+  var tagAbbr = traitCardAbbr(q.trait_name || "");
+  el("tmQ").innerHTML = (tagAbbr ? '<span class="tm-tag">' + esc(tagAbbr) + "</span>" : "") +
+    esc((q.public_question || "").toUpperCase());
   el("tmDef").textContent = q.what_counts || "";
   el("tmRes").style.display = "none";
   el("tmVotes").style.display = "";

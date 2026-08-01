@@ -579,16 +579,16 @@ const ROSTER_TRAITS = ["off-court-knucklehead", "clutch", "tough-shot-maker", "i
   "three-point-shooter", "team-defender", "off-ball-scorer", "rim-pressurer",
   "switchable-defender", "rim-protector", "super-three-point-shooter"];
 const ROSTER_WC = {
-  "iso-defender": "Handles the other team's best scorer one-on-one, night after night.",
-  "team-defender": "Rotations, communication, help on time. The defense works because of him.",
+  "iso-defender": "Handles the other team's best scorer one-on-one.",
+  "team-defender": "Elite at rotations, communication, help, hands in the lane",
   "switchable-defender": "Takes the switch, guard through big, and holds up.",
   "rim-protector": "Shots die at the rim when he is standing there.",
   "playmaker": "Makes teammates way better.",
-  "rim-pressurer": "Attacks the rim, gets fouled, forces teams to pack the paint.",
-  "off-ball-scorer": "Dangerous without the ball: cuts, relocations, catch-and-shoot.",
-  "tough-shot-maker": "Makes contested, late-clock, self-created shots at a high level.",
+  "rim-pressurer": "Attacks the rim, gets fouled, forces packing of the paint.",
+  "off-ball-scorer": "A danger with no ball: cuts, relocations, catch-and-shoot.",
+  "tough-shot-maker": "Makes contested, late-clock, self-created shots.",
   "clutch": "You want the last shot in his hands. So does he.",
-  "three-point-shooter": "Real three-point volume and accuracy defenses must respect.",
+  "three-point-shooter": "Real 3PT volume and accuracy defenses must respect.",
   "super-three-point-shooter": "His shooting prowess breaks the normal defensive gameplan.",
   "off-court-knucklehead": "Had severe off-court issues that could threaten the team's success."
 };
