@@ -1,0 +1,22 @@
+TRUE82 0020 — 25 SUPERSTAR HOMEPAGE QUESTIONS
+
+Why there is one tiny code change:
+The old homepage endpoint ignored every question with fewer than 5 votes once at least 3 mature questions existed. A SQL-only migration would therefore add 25 rows that might never appear. The isolated change in functions/api/traits.js alternates fresh questions with the eight mature questions nearest 50/50.
+
+DEPLOYMENT
+1. Upload this repository build to GitHub as usual. This deploys the small featured-question API change.
+2. In Cloudflare D1 Console, run migrations/0020_homepage_superstar_controversy_v1.sql.
+3. Run migrations/VERIFY-0020-HOMEPAGE.sql separately.
+
+EXPECTED VERIFY RESULT
+selected_rows      25
+selected_homepage  25
+total_homepage     55
+
+SAFETY
+- No votes are deleted, inserted, or modified.
+- No consensus rows are modified.
+- No editorial rulings are modified.
+- No simulation or scoring logic changes.
+- Migration is idempotent.
+- Executable code change is confined to the op=featured block in functions/api/traits.js.

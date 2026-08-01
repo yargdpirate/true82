@@ -711,15 +711,23 @@ function buzz(ms) {
 // controls, and newspaper-object wrapper receives the same extruded 3D treatment.
 // A tiny observer covers buttons created by later renders and lazy-loaded UIs.
 var _buttonStyleObserver = null;
+// v47.9: .tchip and .trait-info-btn are excluded. The observer was stamping
+// presti-spin onto the v47.5 label BUTTONS; button.presti-spin's
+// color:#2A1A05 (0,1,1) outranked .tchip's gold (0,1,0) while the injected
+// .tchips button.tchip rule kept the near-transparent dark face, so every
+// positive label rendered near-black on dark (.tchip.anti at (0,2,0) kept
+// its red, which is why only the positive labels were unreadable). Trait
+// chips own their full skin in ensureTraitsCss now.
+var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar)";
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
-    if (!node || !node.matches || !node.matches("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close)")) return;
+    if (!node || !node.matches || !node.matches(BTN3D_EXCLUDE)) return;
     node.classList.add("presti-spin");
   }
   add(root);
   if (root.querySelectorAll) {
-    var nodes = root.querySelectorAll("button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close)");
+    var nodes = root.querySelectorAll(BTN3D_EXCLUDE);
     for (var i = 0; i < nodes.length; i++) nodes[i].classList.add("presti-spin");
   }
 }
@@ -732,6 +740,50 @@ function bindGlobalButtonStyle() {
     }
   });
   _buttonStyleObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+/* Desktop draft scrolling (v47.10): while a Classic/Presti draft is open the
+   page itself is locked (body.drafting overflow:hidden) and #pool is the only
+   scroller, so a wheel or trackpad gesture over the utility bar, mode panel,
+   pool head, or tray used to do nothing. One document-level wheel listener
+   forwards those gestures into the pool. Tightly fenced: drafting only,
+   classic/cap only, never over the pool itself (native handles it, so no
+   double-scroll), never over inputs/selects/dialogs or any other scrollable
+   region (the rules sheet has its own), never during the gate ceremony or the
+   scramble, never a ctrlKey pinch-zoom or a horizontal-dominant swipe, and it
+   only consumes when the pool can actually move that direction, so nothing is
+   ever trapped. Everything is checked at event time; the pool node is looked
+   up per event, so per-round re-renders need no rewiring. */
+function wireDraftWheel() {
+  document.addEventListener("wheel", function (ev) {
+    var body = document.body;
+    if (!body.classList.contains("drafting")) return;
+    if (MODE !== "classic" && MODE !== "cap") return;
+    if (body.classList.contains("rules-open") || body.classList.contains("gating")) return;
+    if (ev.ctrlKey) return;                                   // trackpad pinch-zoom rides wheel+ctrl
+    if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;    // horizontal swipe is not ours
+    var pool = el("pool");
+    if (!pool || pool.classList.contains("scrambling")) return;
+    if (pool.scrollHeight <= pool.clientHeight + 1) return;   // nothing to scroll
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    if (t.closest("#pool")) return;                           // native scroll already owns this
+    if (t.closest("input,textarea,select,[role=dialog]")) return;
+    for (var n = t; n && n !== body; n = n.parentElement) {   // any OTHER scrollable region wins
+      if (n !== pool && n.scrollHeight > n.clientHeight + 1) {
+        var oy = getComputedStyle(n).overflowY;
+        if (oy === "auto" || oy === "scroll") return;
+      }
+    }
+    var dy = ev.deltaY;
+    if (ev.deltaMode === 1) dy *= 32;                         // lines (Firefox)
+    else if (ev.deltaMode === 2) dy *= pool.clientHeight;     // pages
+    var atTop = pool.scrollTop <= 0;
+    var atBottom = pool.scrollTop + pool.clientHeight >= pool.scrollHeight - 1;
+    if ((dy < 0 && atTop) || (dy > 0 && atBottom)) return;    // can't consume; never trap
+    pool.scrollTop += dy;
+    ev.preventDefault();
+  }, { passive: false });
 }
 
 // One delegated press-haptic for every raised button, so we don't have to wire
@@ -1233,10 +1285,26 @@ function statLine(row) {
   return fmtStat(row[IDX.ppg], "p") + " " + fmtStat(row[IDX.rpg], "r") + " " + fmtStat(row[IDX.apg], "a") +
     " " + fmtStat(row[IDX.spg], "s") + " " + fmtStat(row[IDX.bpg], "b") + " \u00B7 usg " + fmt1(row[IDX.usage]);
 }
-function chipsFor(row) {
+/* Engine shooter designations (AUTHORITATIVE SOURCE: row[IDX.sp], the same
+   spacing column sim-core sums into e.sumSp for the spacing tax/bonus).
+   These chips are the engine's OWN live classification, not community votes
+   and not a legacy artifact: sp === 1 counts as one floor spacer, sp >= 1.5
+   is the elite gunner who counts one and a half (rules-sheet SHOOTING copy).
+   v47.9 unifies only the PRESENTATION with the community label chips: same
+   3D slab, tappable, expands to an engine-vocabulary full name, joins the
+   legend with an "engine" marker. The sp thresholds and data are untouched. */
+var TRAIT_ENG_FULL = { "3PT": "Floor Spacer", "GRAVITY": "Elite Gunner" };
+function engChipHtml(abbr, tab) {
+  var full = TRAIT_ENG_FULL[abbr] || abbr;
+  return '<button type="button" class="tchip eng" data-full="' + full + '" data-abbr="' + abbr + '"' +
+    (tab === -1 ? ' tabindex="-1"' : "") +
+    ' aria-pressed="false" aria-label="' + full + ", the engine\u2019s shooting designation. Tap for full label.\"" +
+    ' title="' + full + '">' + abbr + "</button>";
+}
+function chipsFor(row, tab) {
   var out = [];
-  if (row[IDX.sp] >= 1.5) out.push('<span class="tchip">GRAVITY</span>');
-  else if (row[IDX.sp] === 1) out.push('<span class="tchip">3PT</span>');
+  if (row[IDX.sp] >= 1.5) out.push(engChipHtml("GRAVITY", tab));
+  else if (row[IDX.sp] === 1) out.push(engChipHtml("3PT", tab));
   return out.length ? '<span class="chips">' + out.join("") + "</span>" : "";
 }
 function bucketTag(row) { return rowBuckets(row).join("/"); }
@@ -1698,8 +1766,7 @@ function rulesSheetHtml() {
     ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
 
   h += '</div><div class="rs-foot">' +
-    '<a class="rs-link mono" href="/how-it-works/" target="_blank" rel="noopener">Full engine math \u2192</a>' +
-    '<a class="rs-link mono" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
+    '<a class="rs-got rs-ref-btn" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
     '<button class="rs-got" id="rulesGotIt" type="button">GOT IT</button>' +
   '</div>';
   return h;
@@ -1774,6 +1841,149 @@ function resultsTopBarHtml() {
 // Styling is injected here, scoped under .traits-*, so the shared styles.css
 // stays untouched this build (fold into styles.css on its next owner pass).
 var TRAITS_CSS_ID = "traitsCss";
+var TRAIT_CARD_ABBR = {
+  "Three-Point Shooter": "3PT",
+  "Super Three-Point Shooter": "GRAV",
+  "Iso Defender": "ISO-D",
+  "Team Defender": "TEAM-D",
+  "Rim Protector": "RIM-D",
+  "Playmaker": "PLAY",
+  "Clutch": "CLTCH",
+  "Rim Pressurer": "RIM+",
+  "Off-Ball Scorer": "OFF-B",
+  "Switchable Defender": "SWCH-D",
+  "Tough Shot Maker": "TSHOT",
+  "Off-Court Knucklehead": "OFC-R",
+  "Ball Stopper": "BSTOP",
+  "Foul Merchant": "FOUL$",
+  "Stat Padder": "STAT+",
+  "Championship #1": "CH#1",
+  "Ball Pounder": "BPOUND",
+  // Retired v1 names stay readable if an old settled label ever surfaces.
+  "Wing Defender": "WING-D",
+  "Primary Creator": "CREATE",
+  "Help Defender": "HELP-D"
+};
+var TRAIT_CARD_UI_SEEN_KEY = "t82_trait_card_ui_seen_v1";
+var traitExpandedChip = null;
+var traitDocDismissWired = false;
+function traitCardAbbr(full) {
+  return TRAIT_CARD_ABBR[String(full || "")] || String(full || "");
+}
+function traitCardUiSeen() {
+  try { return localStorage.getItem(TRAIT_CARD_UI_SEEN_KEY) === "1"; } catch (e) { return false; }
+}
+function markTraitCardUiSeen() {
+  try { localStorage.setItem(TRAIT_CARD_UI_SEEN_KEY, "1"); } catch (e) {}
+}
+function setTraitChipExpanded(btn, on) {
+  if (!btn) return;
+  var full = btn.getAttribute("data-full") || "";
+  var abbr = btn.getAttribute("data-abbr") || full;
+  btn.classList.toggle("expanded", !!on);
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  btn.textContent = on ? full : abbr;
+  if (on) traitExpandedChip = btn;
+  else if (traitExpandedChip === btn) traitExpandedChip = null;
+}
+function collapseTraitChip() {
+  if (traitExpandedChip) setTraitChipExpanded(traitExpandedChip, false);
+}
+function stopTraitCardCue(sec) {
+  if (!sec) return;
+  sec.classList.remove("trait-card-cue");
+  markTraitCardUiSeen();
+}
+function buildTraitLegendInto(panel, scope) {
+  // One legend builder for every chip surface (results roster, classic draft
+  // pool). Community labels list first; engine shooter designations follow
+  // with an explicit "engine" marker so the two sources never blur.
+  if (!panel || !scope) return;
+  var seen = {}, rows = [], engRows = [], hasEng = false;
+  var chips = scope.querySelectorAll(".tchip[data-full]");
+  for (var i = 0; i < chips.length; i++) {
+    var full = chips[i].getAttribute("data-full") || "";
+    if (!full || seen[full]) continue;
+    seen[full] = 1;
+    var abbr = chips[i].getAttribute("data-abbr") || traitCardAbbr(full);
+    var isEng = chips[i].classList.contains("eng");
+    var line = '<div class="trait-legend-row"><b>' + esc(abbr) + '</b><span>' + esc(full) +
+      (isEng ? " \u00B7 engine" : "") + "</span></div>";
+    if (isEng) { engRows.push(line); hasEng = true; } else rows.push(line);
+  }
+  panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
+    '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
+    '<div class="trait-legend-note">Community votes confirm or overturn these labels. Crossed out = ruled out.' +
+    (hasEng ? " 3PT and GRAVITY are the engine\u2019s own shooting math, not votes." : "") + "</div>";
+}
+function buildTraitLegend(sec) { buildTraitLegendInto(sec && sec.querySelector("#traitLegend"), sec); }
+// One shared open/close for every label-legend (i) button.
+function traitInfoToggle(ib, legend) {
+  collapseTraitChip();
+  var opening = legend.hidden;
+  legend.hidden = !opening;
+  ib.setAttribute("aria-expanded", opening ? "true" : "false");
+  ib.setAttribute("aria-label", opening ? "Close player label legend" : "Explain player labels");
+  ib.textContent = opening ? "\u00d7" : "i";
+}
+// One document-level delegation for every trait chip everywhere (results
+// cards, classic draft pool, Kaman cards): tap expands in place, tap
+// elsewhere collapses. Draft-pool row selection guards itself against chip
+// taps in its own listener, so a chip tap never drafts the player.
+function wireTraitChipTaps() {
+  if (traitDocDismissWired) return;
+  traitDocDismissWired = true;
+  document.addEventListener("click", function (ev) {
+    var chip = ev.target.closest ? ev.target.closest(".tchip[data-full]") : null;
+    if (chip) {
+      ev.preventDefault();
+      var sec = chip.closest ? chip.closest(".traits-roster") : null;
+      if (sec) stopTraitCardCue(sec); else markTraitCardUiSeen();
+      var opening = !chip.classList.contains("expanded");
+      if (traitExpandedChip && traitExpandedChip !== chip) collapseTraitChip();
+      setTraitChipExpanded(chip, opening);
+      return;
+    }
+    if (traitExpandedChip) collapseTraitChip();
+  });
+}
+function wireTraitCardUi() {
+  var sec = document.querySelector('[data-result-section="roster"]');
+  if (!sec) return;
+  if (!sec.querySelector(".tchip[data-full]")) return;
+  var info = sec.querySelector("#traitInfoBtn");
+  var legend = sec.querySelector("#traitLegend");
+  if (info) info.hidden = false;
+  buildTraitLegend(sec);   // rebuilt on every call: labels land after the engine chips
+  if (sec.getAttribute("data-trait-ui-wired") === "1") return;
+  sec.setAttribute("data-trait-ui-wired", "1");
+  wireTraitChipTaps();
+
+  sec.addEventListener("click", function (ev) {
+    var ib = ev.target.closest ? ev.target.closest("#traitInfoBtn") : null;
+    if (ib && sec.contains(ib) && legend) {
+      ev.preventDefault();
+      stopTraitCardCue(sec);
+      traitInfoToggle(ib, legend);
+    }
+  });
+
+  if (!traitCardUiSeen()) {
+    var fireCue = function () {
+      if (traitCardUiSeen() || !document.body.contains(sec)) return;
+      sec.classList.add("trait-card-cue");
+      setTimeout(function () { sec.classList.remove("trait-card-cue"); }, 1500);
+    };
+    if (window.IntersectionObserver) {
+      var io = new IntersectionObserver(function (entries) {
+        if (entries[0] && entries[0].isIntersecting) { io.disconnect(); fireCue(); }
+      }, { threshold: 0.28 });
+      io.observe(sec);
+    } else {
+      setTimeout(fireCue, 350);
+    }
+  }
+}
 function ensureTraitsCss() {
   if (document.getElementById(TRAITS_CSS_ID)) return;
   var st = document.createElement("style");
@@ -1788,10 +1998,9 @@ function ensureTraitsCss() {
       "letter-spacing:.2em;color:#FFB52E;text-decoration:none;display:inline-block}" +
     ".traits-module .tm-head:not([hidden]){display:block;text-align:center;font-family:'Barlow Condensed',sans-serif;" +
       "font-weight:700;font-size:22px;letter-spacing:.08em;color:#f2ede4;margin-bottom:9px}" +
-    ".traits-module .tm-foot{justify-content:center}" +
-    ".traits-module .tm-pips{align-items:center}" +
-    ".traits-module .tm-pips span{width:10px;height:10px}" +
-    ".traits-module .tm-pips span.done{width:13px;height:13px}" +
+    ".traits-module .tm-pips{align-items:center;gap:9px}" +
+    ".traits-module .tm-pips span{width:13px;height:13px}" +
+    ".traits-module .tm-pips span.done{width:16px;height:16px}" +
     ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
       "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
     ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;" +
@@ -1802,13 +2011,18 @@ function ensureTraitsCss() {
     ".traits-module .tm-q:active{color:#FFB52E}" +
     ".traits-module .tm-def{display:block;font-size:13px;color:#8b98a5;margin-top:5px;" +
       "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
-    ".traits-module .tm-votes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-votes{display:grid;grid-template-columns:5fr 5fr 2fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-vb.idk{font-size:16px;letter-spacing:.06em}" +
     ".traits-module .tm-vb{position:relative;height:52px;border:0;border-radius:13px;cursor:pointer;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.1em;color:#1c1608;" +
       "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12,0 7px 14px -6px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb.no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 #8c2317,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.idk{color:#e8edf2;background:linear-gradient(180deg,#5a646f,#414a54);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 0 #262d34,0 7px 14px -6px rgba(0,0,0,.6)}" +
+    ".traits-module .tm-vb.idk:active,.traits-module .tm-vb.idk.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.12)," +
+      "0 1px 0 #262d34,0 4px 10px -6px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb:active,.traits-module .tm-vb.pressed{transform:translateY(2px);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb.no:active,.traits-module .tm-vb.no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2)," +
@@ -1819,7 +2033,16 @@ function ensureTraitsCss() {
       "font-weight:700;font-size:19px;letter-spacing:.05em}" +
     ".traits-module .tm-res b{color:#FFB52E}" +
     ".traits-module .tm-res .neg{color:#E5533C}" +
-    ".traits-module .tm-foot{display:flex;align-items:center;gap:11px;margin-top:10px}" +
+    ".traits-module .tm-foot{display:flex;align-items:center;margin-top:12px;justify-content:center}" +
+    ".traits-module .tm-eyeb{color:#FFB52E;font-weight:700}" +
+    /* v47.19: the diamonds sit centered and larger; sharing moved to a thin,
+       quiet 2D bar below them (excluded from the 3D decorator on purpose). */
+    ".traits-module .tm-sharebar{display:block;width:100%;height:32px;margin-top:9px;appearance:none;-webkit-appearance:none;" +
+      "background:none;border:1px solid #2c343d;border-radius:9px;cursor:pointer;" +
+      "font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.07em;color:#8b98a5;line-height:1}" +
+    ".traits-module .tm-shlead{font-weight:700;color:#c9d2da}" +
+    ".traits-module .tm-sharebar:active,.traits-module .tm-sharebar.flashed{color:#FFB52E;border-color:#FFB52E}" +
+    ".traits-module .tm-sharebar:focus-visible{outline:2px solid #FFB52E;outline-offset:2px}" +
     ".traits-module .tm-dots{display:flex;gap:7px}" +
     ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
     ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
@@ -1830,7 +2053,7 @@ function ensureTraitsCss() {
     ".traits-module .tm-done{display:none;margin-top:13px}" +
     ".traits-module .tm-done .td-h{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:23px;letter-spacing:.06em}" +
     ".traits-module .tm-done .td-l{font-size:14px;color:#8b98a5;margin-top:3px}" +
-    ".traits-module .tm-again{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;" +
+    ".traits-module .tm-again{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;text-decoration:none;" +
       "height:48px;padding:0 18px;border:0;border-radius:12px;cursor:pointer;" +
       "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;letter-spacing:.1em;" +
@@ -1846,12 +2069,57 @@ function ensureTraitsCss() {
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:.12em;" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
     ".tchips{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}" +
-    ".tchip{position:relative;display:inline-block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
-      "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#FFB52E;" +
-      "border:1.5px solid #FFB52E;border-radius:6px;padding:2px 7px 1px}" +
-    ".tchip.anti{color:#E5533C;border-color:#E5533C}" +
-    ".tchip.anti::after{content:'';position:absolute;left:5%;right:5%;top:50%;height:2px;margin-top:-1px;" +
-      "background:#E5533C;transform:rotate(-5deg);border-radius:1px}";
+    /* display:contents dissolves the wrapper's box so each label chip packs
+       the .pr-sub flex line individually and only the true overflow wraps
+       (v47.11); the span stays in the DOM for the dedupe guard and cache. */
+    ".tchips-inline{display:contents}" +
+    /* Trait chips wear the house slab (v47.9): ink text on a bright gold
+       face, the site's own contrast law (dark text on amber, never
+       amber-on-amber). Anti-labels are the red slab with the cross-out in
+       the same ink. Chips own the whole skin here and are excluded from the
+       global presti-spin decorator, so no outside button rule can repaint
+       them into the old dark-on-dark. */
+    ".tchip{position:relative;display:inline-flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
+      "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#1c1608;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);border:0;border-radius:7px;" +
+      "min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap;cursor:pointer;" +
+      "appearance:none;-webkit-appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 #9a6a12,0 5px 10px -8px #000;" +
+      "transition:transform .1s ease,box-shadow .1s ease}" +
+    ".tchip:active,.tchip.expanded{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 #9a6a12}" +
+    ".tchip.anti{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 0 #8c2317,0 5px 10px -8px #000}" +
+    ".tchip.anti:active,.tchip.anti.expanded{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 0 #8c2317}" +
+    ".tchip.anti::after{content:'';position:absolute;left:6%;right:6%;top:50%;height:2px;margin-top:-1px;" +
+      "background:#2b0d09;transform:rotate(-5deg);border-radius:1px;pointer-events:none}" +
+    ".tchip:focus-visible{outline:2px solid #E8E4D8;outline-offset:2px}" +
+    ".traits-roster-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}" +
+    ".traits-roster-head .eyebrow{margin:0}" +
+    ".trait-info-btn{appearance:none;-webkit-appearance:none;width:27px;height:27px;flex:0 0 27px;padding:0;" +
+      "display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;" +
+      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;font-family:Georgia,serif;font-weight:700;" +
+      "font-size:16px;line-height:1;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 #9a6a12,0 5px 10px -7px #000;" +
+      "touch-action:manipulation;-webkit-tap-highlight-color:transparent}" +
+    ".trait-info-btn[hidden]{display:none}" +
+    ".trait-info-btn:active,.trait-info-btn[aria-expanded=true]{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 #9a6a12}" +
+    ".pool-trait-info{margin-left:2px}" +
+    ".trait-legend{margin:0 0 8px;padding:10px 11px;border:1px solid #46515c;border-radius:9px;background:#11171d;" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}" +
+    ".trait-legend-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;color:#FFB52E;margin-bottom:7px}" +
+    ".trait-legend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px}" +
+    ".trait-legend-row{display:flex;align-items:baseline;gap:7px;min-width:0;font-family:'Barlow Condensed',sans-serif;" +
+      "font-size:13px;line-height:1.15;color:#d9d5ce}" +
+    ".trait-legend-row b{flex:0 0 auto;color:#FFB52E;letter-spacing:.06em}" +
+    ".trait-legend-row span{min-width:0}" +
+    ".trait-legend-note{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;line-height:1.3;color:#7f8b96}" +
+    "@keyframes traitChipPop{0%,100%{transform:translateY(0)}35%{transform:translateY(-4px)}65%{transform:translateY(1px)}}" +
+    "@keyframes traitInfoPulse{0%,100%{transform:scale(1);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #74500d,0 0 0 0 rgba(255,181,46,0)}" +
+      "45%{transform:scale(1.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 0 #74500d,0 0 0 6px rgba(255,181,46,.18)}}" +
+    ".traits-roster.trait-card-cue .tchip{animation:traitChipPop .58s ease both}" +
+    ".traits-roster.trait-card-cue .trait-info-btn{animation:traitInfoPulse 1.1s ease both}" +
+    "@media(max-width:390px){.trait-legend-grid{grid-template-columns:1fr}}" +
+    "@media(prefers-reduced-motion:reduce){.traits-roster.trait-card-cue .tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
+      ".tchip{transition:none}}";
   document.head.appendChild(st);
 }
 function traitsModuleHtml() {
@@ -1863,18 +2131,21 @@ function traitsModuleHtml() {
   // on /bonuses/, one tap away via FULL PAGE or the question itself.
   return '<section class="traits-module" id="traitsModule" hidden>' +
     '<span class="tm-head" id="tmHead" hidden>VOTE: DID WE GET IT WRONG?</span>' +
-    '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module">VOTE ON PLAYER BONUSES \u00B7 HELP BALANCE THE GAME</a>' +
+    '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module"><span class="tm-eyeb">HELP BALANCE THE GAME</span> \u00B7 VOTE ON PLAYER BONUSES</a>' +
     '<span class="tm-call" id="tmCall" hidden></span>' +
     '<span class="tm-q" id="tmQ"></span>' +
     '<span class="tm-def" id="tmDef"></span>' +
     '<div class="tm-votes" id="tmVotes">' +
       '<button class="tm-vb" type="button" id="tmYes">YES</button>' +
       '<button class="tm-vb no" type="button" id="tmNo">NO</button>' +
+      '<button class="tm-vb idk" type="button" id="tmIdk">IDK</button>' +
     "</div>" +
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
     '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span></div>' +
-    '<span class="tm-why" id="tmWhy" hidden>Crowdsourcing your vote to rate player fit properly.</span></section>';
+    '<button class="tm-sharebar" type="button" id="tmShare" hidden>' +
+      '<strong class="tm-shlead">Share Vote</strong> (please don\u2019t vote brigade)</button>' +
+    "</section>";
 }
 
 // The inline home session: same worker, same voter, same analytics names as
@@ -1883,6 +2154,21 @@ function traitsModuleHtml() {
 // state with VOTE ON 5 MORE. Any fetch trouble mid-run degrades to the
 // FULL PAGE door instead of a dead card.
 var TM = { qs: [], i: 0, sid: null, busy: false, source: "home_module", loader: null, wired: false };
+// Question selection is keyed by the same first-party anonymous identity used
+// for retention analytics. Wait briefly for that cookie/localStorage recovery
+// handshake before requesting a feed; otherwise the first request can fall
+// back to a one-visit sid and forget the browser's prior answer depth.
+function traitsIdentityReady() {
+  return new Promise(function (resolve) {
+    var started = Date.now();
+    (function check() {
+      var d = null;
+      try { d = typeof window.t82RetentionDebug === "function" ? window.t82RetentionDebug() : null; } catch (e) {}
+      if (!d || d.state !== "pending" || Date.now() - started >= 2800) return resolve();
+      setTimeout(check, 50);
+    })();
+  });
+}
 function tmHref(q) {
   return q && q.slug ? "/bonuses/" + q.slug + "?src=" + TM.source : "/bonuses/?src=" + TM.source;
 }
@@ -1890,7 +2176,8 @@ function tmDots() {
   var d = el("tmDots");
   if (!d) return;
   var out = "";
-  for (var k = 0; k < 5; k++) {
+  var total = Math.max(1, TM.qs.length);
+  for (var k = 0; k < total; k++) {
     var on = k < TM.i || (k === TM.i && TM.qs[TM.i]);
     out += "<span" + (on ? ' class="done"' : "") + "></span>";
   }
@@ -1905,10 +2192,37 @@ function tmShowQuestion() {
   el("tmRes").style.display = "none";
   el("tmVotes").style.display = "";
   mod.classList.remove("tm-locked");
-  var y = el("tmYes"), nn = el("tmNo");
+  var sh = el("tmShare"); if (sh) sh.hidden = false;
+  var y = el("tmYes"), nn = el("tmNo"), ik = el("tmIdk");
   y.classList.remove("pressed"); nn.classList.remove("pressed");
+  if (ik) ik.classList.remove("pressed");
   tmDots();
   analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
+}
+// Share the exact question on screen. Same canonical URL family the full
+// page shares (/bonuses/<slug> when curated, ?q=<id> otherwise; src=s so the
+// receiving session logs entry source "share"). Native share sheet when the
+// browser has one, copy-to-clipboard with a COPIED beat otherwise. Pure
+// navigation: no vote is written, the identity/vote path is untouched.
+function tmShareQuestion() {
+  var q = TM.qs[TM.i];
+  var sh = el("tmShare");
+  if (!q || !sh) return;
+  var url = location.origin + "/bonuses/" + (q.slug || ("?q=" + encodeURIComponent(q.id))) + (q.slug ? "?src=s" : "&src=s");
+  var text = "Vote on this one: " + (q.public_question || "");
+  if (navigator.share) {
+    navigator.share({ text: text, url: url }).then(function () {
+      analyticsTrack("traits_question", { surface: "traits", action: "share_open", challenge: q.id, source: TM.source, sid: TM.sid });
+    }).catch(function () {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text + "\n" + url).then(function () {
+      if (!sh.dataset.labelHtml) sh.dataset.labelHtml = sh.innerHTML;
+      sh.textContent = "COPIED";
+      sh.classList.add("flashed");
+      setTimeout(function () { sh.innerHTML = sh.dataset.labelHtml; sh.classList.remove("flashed"); }, 1400);
+      analyticsTrack("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: TM.source, sid: TM.sid });
+    }).catch(function () {});
+  }
 }
 function tmVote(resp, btn) {
   if (TM.busy) return;
@@ -1927,9 +2241,24 @@ function tmVote(resp, btn) {
   }).then(function (r) { return r.json(); }).then(function (x) {
     TM.busy = false;
     if (!x || !x.ok || !x.display) return tmDegrade(q);
+    tmSeenAdd(q.id);
     analyticsTrack("traits_vote", { surface: "traits", action: resp, ordinal: TM.i + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - t0, source: TM.source, sid: TM.sid });
     tmResult(q, resp, x.display);
   }).catch(function () { TM.busy = false; tmDegrade(q); });
+}
+// IDK = a pass. Nothing is written server-side (an unsure lean is the full
+// page's UNSURE vote; a pass is "stop asking me this one"): the id goes into
+// the local seen store and the session moves on after a short pressed beat.
+function tmPass(btn) {
+  if (TM.busy) return;
+  var q = TM.qs[TM.i];
+  if (!q) return;
+  btn.classList.add("pressed");
+  buzz(6);
+  tmSeenAdd(q.id);
+  analyticsTrack("traits_vote", { surface: "traits", action: "pass", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
+  TM.i++;
+  setTimeout(function () { if (el("traitsModule")) tmShowQuestion(); }, 260);
 }
 function tmResult(q, resp, d) {
   var res = el("tmRes");
@@ -1954,18 +2283,18 @@ function tmResult(q, resp, d) {
 function tmComplete() {
   var mod = el("traitsModule");
   if (!mod) return;
-  el("tmQ").textContent = "5 VOTES IN";
+  el("tmQ").textContent = TM.qs.length + (TM.qs.length === 1 ? " VOTE IN" : " VOTES IN");
   el("tmDef").textContent = "";
   el("tmVotes").style.display = "none";
   el("tmRes").style.display = "none";
+  var sh = el("tmShare"); if (sh) sh.hidden = true;
   var done = el("tmDone");
   done.style.display = "block";
   done.innerHTML = '<span class="td-l">Your votes helped set player bonuses.</span><br>' +
-    '<button class="tm-again" type="button" id="tmAgain">VOTE ON 5 MORE</button>';
+    '<a class="tm-again" id="tmAgain" href="/bonuses/?src=' + TM.source + '">VOTE ON 5 MORE</a>';
   tmDots();
   buzz([12, 70, 12]);
-  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: 5, source: TM.source, sid: TM.sid });
-  el("tmAgain").addEventListener("click", function () { tmStart(true); });
+  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: TM.qs.length, source: TM.source, sid: TM.sid });
 }
 function tmDegrade(q) {
   // The inline lane hit trouble; hand the run to the full page with the
@@ -1976,10 +2305,12 @@ function tmStart(again) {
   var mod = el("traitsModule");
   if (!mod || !window.fetch || !TM.loader) return;
   TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
-  TM.loader().then(function (x) {
+  traitsIdentityReady().then(function () { return TM.loader(); }).then(function (x) {
     if (!x || !x.ok || !x.questions || !x.questions.length || !el("traitsModule")) return;
-    TM.qs = x.questions.filter(function (q) { return q.public_question && !q.my_response; }).slice(0, 5);
-    if (!TM.qs.length) TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
+    // The API already tiers never-answered, answered-once, and exhausted
+    // questions. Keep that order intact instead of independently hiding all
+    // standing votes, which would defeat the intentional second-answer round.
+    TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
     TM.i = 0;
     if (!TM.qs.length) return;
     var d = el("tmDone"); if (d) { d.style.display = "none"; d.innerHTML = ""; }
@@ -1987,6 +2318,9 @@ function tmStart(again) {
       TM.wired = true;
       el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
       el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
+      el("tmIdk").addEventListener("click", function () { tmPass(el("tmIdk")); });
+      var shBtn = el("tmShare");
+      if (shBtn) shBtn.addEventListener("click", tmShareQuestion);
     }
     tmShowQuestion();
     mod.hidden = false;
@@ -1994,12 +2328,30 @@ function tmStart(again) {
     if (!again) analyticsTrack("mode_impression", { surface: TM.source === "home_module" ? "home" : "results", action: "traits", challenge: TM.qs[0].id });
   }).catch(function () {});
 }
+var TM_SEEN_KEY = "t82TraitsSeen";
+function tmSeenList() {
+  try {
+    var a = JSON.parse(localStorage.getItem(TM_SEEN_KEY) || "[]");
+    return Array.isArray(a) ? a.filter(function (x) { return typeof x === "string"; }) : [];
+  } catch (e) { return []; }
+}
+function tmSeenAdd(id) {
+  if (!id) return;
+  try {
+    var a = tmSeenList().filter(function (x) { return x !== id; });
+    a.push(id);
+    if (a.length > 400) a = a.slice(a.length - 400);
+    localStorage.setItem(TM_SEEN_KEY, JSON.stringify(a));
+  } catch (e) {}
+}
 function tmSessionLoader() {
   return fetch("/api/traits?op=featured", { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (feat) {
       var pin = feat && feat.ok && feat.question ? feat.question.id : "";
-      return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : ""), { credentials: "same-origin" })
+      var ex = tmSeenList().filter(function (x) { return x !== pin; }).slice(-48);
+      return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : "") +
+        (ex.length ? "&exclude=" + ex.map(encodeURIComponent).join(",") : ""), { credentials: "same-origin" })
         .then(function (r) { return r.json(); });
     });
 }
@@ -2032,28 +2384,82 @@ function wireTraitsPrompt() {
   sec.innerHTML = traitsModuleHtml();
   sec.hidden = false;
   TM.source = "results_prompt";
+  var tmT = el("tmTitle"); if (tmT) tmT.href = "/bonuses/?src=" + TM.source;
   TM.wired = false;
   TM.loader = function () {
     if (!pairs) return tmSessionLoader();
     return fetch("/api/traits?op=roster&sid=" + TM.sid + "&players=" + pairs, { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
       .then(function (x) {
-        if (x && x.ok && x.questions && x.questions.length) return x;
-        return tmSessionLoader();
+        var roster = x && x.ok && x.questions ? x.questions.slice(0, 5) : [];
+        var sk = tmSeenList();
+        roster = roster.filter(function (q) { return q && sk.indexOf(q.id) === -1; });
+        if (roster.length >= 5) return { ok: true, questions: roster, rules: x.rules };
+        // Preserve drafted-player questions first, then fill any open slots
+        // from the broader under-two curated pool. This avoids forcing a third
+        // roster repeat while other eligible questions remain.
+        return tmSessionLoader().then(function (feed) {
+          var merged = roster.slice(), ids = {};
+          merged.forEach(function (q) { ids[q.id] = 1; });
+          if (feed && feed.ok && feed.questions) feed.questions.forEach(function (q) {
+            if (merged.length < 5 && q && !ids[q.id]) { ids[q.id] = 1; merged.push(q); }
+          });
+          return merged.length ? { ok: true, questions: merged, rules: (x && x.rules) || (feed && feed.rules) } : feed;
+        });
       });
   };
   tmStart(false);
   var head = el("tmHead");
   if (head) head.hidden = false;
-  var why = el("tmWhy");
-  if (why) why.hidden = false;
   var title = el("tmTitle");
   if (title) title.href = "/bonuses/?src=results_prompt";
 }
-// Shadow-mode labels on the results roster: each pick card gets the community
-// tags its player-season has EARNED (gold) or been RULED OUT of (the crossed
-// anti-label). Read-only, zero scoring effect, absent on any failure or when
-// no ruling exists for the exact player-season.
+// Shadow-mode labels on player cards: each card gets the community tags its
+// player-season has EARNED (gold slab) or been RULED OUT of (red slab with
+// the cross-out). Read-only, zero scoring effect, absent on any failure or
+// when no ruling exists for the exact player-season. v47.9 placement: chips
+// ride the SAME compact .pr-sub line as the engine 3PT/GRAVITY chip, beside
+// the year/team info, instead of a separate row at the card's foot.
+function traitLabelChipHtml(hh, tab) {
+  var full = String(hh.t || "");
+  var abbr = traitCardAbbr(full);
+  var aria = (hh.anti ? "Ruled out: " : "") + full + ". Tap for full label.";
+  return '<button type="button" class="tchip' + (hh.anti ? " anti" : "") + '"' +
+    (tab === -1 ? ' tabindex="-1"' : "") +
+    ' data-full="' + esc(full) + '" data-abbr="' + esc(abbr) + '"' +
+    ' aria-label="' + esc(aria) + '" aria-pressed="false" title="' + esc(full) + '">' +
+    esc(abbr) + "</button>";
+}
+// Presentation-only dedup: the engine's own shooter chip already sits on the
+// same line, so a POSITIVE community shooter label of the same rank would
+// just double it visually ("3PT 3PT"). Anti-labels always show; a community
+// ruling AGAINST an engine designation is the fight this mode exists for.
+// Data, votes, and the engine's sp column are untouched.
+function traitLabelsAfterEngineFilter(hits, engAbbr) {
+  if (!engAbbr) return hits;
+  return hits.filter(function (hh) {
+    if (hh.anti) return true;
+    var t = String(hh.t || "");
+    if (t === "Three-Point Shooter") return false;
+    if (t === "Super Three-Point Shooter" && engAbbr === "GRAVITY") return false;
+    return true;
+  });
+}
+// Inject up to four label chips (the standing cap, applied after the engine
+// dedup) into a card's first .pr-sub line. Works on results pick-cards and
+// classic draft-pool rows alike; returns whether anything was added.
+function applyLabelChips(container, hits, tab) {
+  if (!container || !hits || !hits.length || container.querySelector(".tchips")) return false;
+  var sub = container.querySelector(".pr-sub:not(.pr-stats)") || container;
+  var engBtn = sub.querySelector(".tchip.eng");
+  var use = traitLabelsAfterEngineFilter(hits, engBtn ? engBtn.getAttribute("data-abbr") : "").slice(0, 4);
+  if (!use.length) return false;
+  var wrap = document.createElement("span");
+  wrap.className = "tchips tchips-inline";
+  wrap.innerHTML = use.map(function (hh) { return traitLabelChipHtml(hh, tab); }).join("");
+  sub.appendChild(wrap);
+  return true;
+}
 function wireTraitsLabels(entries) {
   if (!window.fetch || !entries || !entries.length) return;
   var qs = entries.map(function (e) { return encodeURIComponent(e.name) + "~" + e.season; }).join(",");
@@ -2062,22 +2468,83 @@ function wireTraitsLabels(entries) {
     .then(function (x) {
       if (!x || !x.ok || !x.labels) return;
       ensureTraitsCss();
+      var added = 0;
       entries.forEach(function (e) {
-        var hits = x.labels[String(e.name).toLowerCase() + "~" + e.season];
+        var key = String(e.name).toLowerCase() + "~" + e.season;
+        var hits = x.labels[key];
+        TRAIT_LABEL_CACHE[key] = hits || [];   // warm the draft-pool cache too
         if (!hits || !hits.length) return;
         var card = document.querySelector('.pick-card[data-pick="' + e.i + '"]');
-        if (!card || card.querySelector(".tchips")) return;
-        var wrap = document.createElement("div");
-        wrap.className = "tchips";
-        wrap.innerHTML = hits.slice(0, 4).map(function (hh) {
-          return '<span class="tchip' + (hh.anti ? " anti" : "") + '"' +
-            (hh.anti ? ' role="img" aria-label="NOT ' + esc(String(hh.t).toUpperCase()) + '"' : "") +
-            '>' + esc(hh.t) + "</span>";
-        }).join("");
-        card.appendChild(wrap);
+        if (applyLabelChips(card, hits, 0)) added += 1;
       });
+      if (added) wireTraitCardUi();
     })
     .catch(function () {});
+}
+
+/* ---------- community labels on the classic draft pool (v47.9) ----------
+   Same chips, same placement, same tap-to-expand and legend as the results
+   cards, injected into each pool row's .pr-sub beside the year control and
+   the engine chip. Labels are per player-SEASON, so every pool re-render
+   (search, sort, year change, scramble settle) re-applies from a session
+   cache keyed lower(name)~season; only unseen pairs hit /api/traits, one
+   batched op=labels call per chunk of 60 (the worker reads the full settled
+   set per request regardless, so 60 pairs cost what 8 did). Pool chips are
+   tabindex=-1 on purpose: forty rows x four chips would bury keyboard
+   navigation, and the pool-head legend carries every full name instead.
+   Classic only (which includes Daily and weekly boards on a classic base);
+   drafting rules, selection logic, and values are untouched. */
+var TRAIT_LABEL_CACHE = {};     // key -> hits array ([] = fetched, none settled)
+var TRAIT_LABEL_FETCHING = {};  // key -> 1 while a batch containing it is in flight
+function poolLabelKey(name, season) { return String(name).toLowerCase() + "~" + season; }
+function applyPoolLabelPass(pool) {
+  var nodes = pool.querySelectorAll(".player-row[data-name]");
+  var missing = [];
+  for (var i = 0; i < nodes.length; i++) {
+    var node = nodes[i], name = node.getAttribute("data-name");
+    var row = resolveRow(name);
+    if (!row) continue;
+    var key = poolLabelKey(name, row[IDX.season]);
+    var hits = TRAIT_LABEL_CACHE[key];
+    if (hits === undefined) {
+      if (!TRAIT_LABEL_FETCHING[key]) missing.push({ key: key, name: name, season: row[IDX.season] });
+    } else if (hits.length) {
+      applyLabelChips(node, hits, -1);
+    }
+  }
+  return missing;
+}
+function refreshPoolTraitLegend() {
+  var pool = el("pool"), btn = el("poolTraitInfoBtn"), legend = el("poolTraitLegend");
+  if (!pool || !btn || !legend) return;
+  if (!pool.querySelector(".tchip[data-full]")) { btn.hidden = true; legend.hidden = true; return; }
+  btn.hidden = false;
+  buildTraitLegendInto(legend, pool);
+}
+function wireDraftPoolLabels() {
+  if (MODE !== "classic") return;
+  var pool = el("pool");
+  if (!pool) return;
+  ensureTraitsCss();
+  var missing = applyPoolLabelPass(pool);
+  refreshPoolTraitLegend();
+  if (!missing.length || !window.fetch) return;
+  for (var c = 0; c < missing.length; c += 60) {
+    (function (chunk) {
+      chunk.forEach(function (m) { TRAIT_LABEL_FETCHING[m.key] = 1; });
+      var qs = chunk.map(function (m) { return encodeURIComponent(m.name) + "~" + m.season; }).join(",");
+      fetch("/api/traits?op=labels&players=" + qs, { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (x) {
+          chunk.forEach(function (m) { delete TRAIT_LABEL_FETCHING[m.key]; });
+          if (!x || !x.ok || !x.labels) return;
+          chunk.forEach(function (m) { TRAIT_LABEL_CACHE[m.key] = x.labels[m.key] || []; });
+          var p2 = el("pool");
+          if (p2) { applyPoolLabelPass(p2); refreshPoolTraitLegend(); }
+        })
+        .catch(function () { chunk.forEach(function (m) { delete TRAIT_LABEL_FETCHING[m.key]; }); });
+    })(missing.slice(c, c + 60));
+  }
 }
 
 function wireDonate() {
@@ -2589,7 +3056,7 @@ function poolRowHtml(bestRow) {
   var sel = (G.selected === name) && open;
   var cls = "player-row" + (sel ? " sel" : "") + (open ? "" : " off");
   var tag = bucketTag(row) + (block ? " \u00B7 " + block.tag : "");
-  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row) : "");
+  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "");
   var sub2 = (MODE === "classic") ? '<span class="pr-sub pr-stats">' + statLine(row) + "</span>" : "";
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true" title="' + esc(block.why) + '"') + ">" +
@@ -2608,7 +3075,7 @@ function kamanRowHtml(row) {
     (open ? "" : ' aria-disabled="true"') + ">" +
     '<span class="pr-top"><span class="pr-name">Chris Kaman ' + shortSeason(season) + "</span>" +
     '<span class="pr-pos">C \u00B7 ' + esc(row[IDX.team]) + (open ? "" : " \u00B7 picked") + "</span></span>" +
-    '<span class="pr-sub">' + chipsFor(row) + "</span>" +
+    '<span class="pr-sub">' + chipsFor(row, -1) + "</span>" +
     '<span class="pr-sub pr-stats">' + statLine(row) + "</span></div>";
 }
 
@@ -2670,8 +3137,10 @@ function selectRow(node) {
 function refreshPool() {
   var pool = el("pool");
   if (!pool) return;
+  traitExpandedChip = null;   // the expanded chip's node just got rebuilt
   pool.innerHTML = poolInnerHtml(currentPoolRows());
   updateTray();
+  wireDraftPoolLabels();      // classic only inside; re-applies from cache
 }
 
 function renderDraft(anim) {
@@ -2740,7 +3209,11 @@ function renderDraft(anim) {
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
       '<input type="search" id="poolSearch" class="pool-search" placeholder="search player name..." autocomplete="off" spellcheck="false">' +
-      "</div>";
+      (MODE === "classic"
+        ? '<button class="trait-info-btn pool-trait-info" id="poolTraitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="poolTraitLegend" aria-expanded="false" title="Player label legend" hidden>i</button>'
+        : "") +
+      "</div>" +
+      (MODE === "classic" ? '<div class="trait-legend pool-trait-legend" id="poolTraitLegend" hidden></div>' : "");
   }
 
   // Compact draft chrome (2026-07-17): utility bar + mode panel replace the
@@ -2808,6 +3281,7 @@ function renderDraft(anim) {
   if (yearRerollable) el("rerollYears").addEventListener("click", doYearReroll);
   el("pool").addEventListener("click", function (ev) {
     if (ev.target.closest(".year-sel")) return;     // the dropdown handles its own taps
+    if (ev.target.closest(".tchip")) return;        // label chips expand via the document handler, never draft
     var btn = ev.target.closest(".player-row");
     if (!btn) return;
     if (btn.classList.contains("off")) {
@@ -2847,6 +3321,16 @@ function renderDraft(anim) {
     if (G.selected === name && !rowDraftable(resolveRow(name))) G.selected = null;  // chosen year fits no open slot
     refreshPool();
   });
+
+  var poolInfo = el("poolTraitInfoBtn"), poolLegend = el("poolTraitLegend");
+  if (poolInfo && poolLegend) {
+    wireTraitChipTaps();
+    poolInfo.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      traitInfoToggle(poolInfo, poolLegend);
+    });
+  }
+  wireDraftPoolLabels();
 
   if (MODE === "cap") {
     if (G.refundFlash) { flashRefund(); G.refundFlash = null; }
@@ -3177,6 +3661,16 @@ function setupGoatFireworks(autoArm) {
 // QA hook: add ?clutch=1 to the URL to force the 81-win Heat Check sequence on any
 // Presti result, so the clutch path can be tested without drafting an exact-81 team.
 var FORCE_CLUTCH = !!(typeof location !== "undefined" && location.search && /[?&]clutch=1(&|$)/.test(location.search));
+// QA hook: ?midhot=1 waives the +20 net gate so the mid-season Heat Check can
+// be tested on any standalone Presti draft that realizes at least one loss.
+var FORCE_MIDHOT = !!(typeof location !== "undefined" && location.search && /[?&]midhot=1(&|$)/.test(location.search));
+// v47.15 MID-SEASON HEAT CHECK: "Hot or better" is the HOT segment's index in the
+// engine's ladder (COLD 0, WARM 1, HOT 2, ON FIRE 3, SUPERNOVA 4). Resolved by
+// label so an engine reorder can never silently move the bar.
+var HH_MID_MIN_SEG = (function () {
+  for (var i = 0; i < HH_SEGMENTS.length; i++) if (/hot/i.test(String(HH_SEGMENTS[i].label))) return i;
+  return 2;
+})();
 
 function hotHand(e) {
   var clutch = FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1;   // exactly 81 wins
@@ -4641,13 +5135,24 @@ function showResults() {
     e.winTally = season.wins;
     e.season = season;
     loadBbrefMap();                              // preload the map during the reel
-    showSeasonReel(season, e, function () { finishRunTail(e); });
+    // v47.15 MID-SEASON HEAT CHECK (owner spec, 2026-07-31): a standalone Presti
+    // roster drafted above +20 net that realizes a loss gets ONE shot to save
+    // its perfect season the moment that first loss would land. The reel
+    // pauses before the L square, the Heat Check fires with the game number,
+    // and HOT or better re-rolls the saved game plus the whole remainder at
+    // the boosted per-game win rate (the engine's own formula: phi(net/SD)).
+    // Below HOT, the loss lands and the season plays out exactly as realized.
+    // Duels, dailies, and challenges never enter this branch; the +20 gate is
+    // strict; the raw pre-boost net still ships to percentile/leaderboards.
+    var midTrigger = hhMidGate(e, season) ? { e: e } : null;
+    showSeasonReel(season, e, function () { finishRunTail(e); }, midTrigger);
     return;
   }
   finishRunTail(e);
 }
 function finishRunTail(e) {
   renderResults(e, false);
+  if (G.hotMid) applyMidBoostToResults(e);
   if (window.t82track) {
     var gc = analyticsRunSnapshot();
     gc.wins = e.winTally;
@@ -4756,7 +5261,253 @@ function reelBlame(mi) {
     "played matador defense in crunch time", "goaltended the dagger"];
   return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
 }
-function showSeasonReel(season, e, done) {
+/* v47.17 GATE FIX: arm the mid-season trigger from transparent checks only.
+   The v47.15 gate ANDed the engine's hhEligible(G, e), whose semantics are
+   tuned to the exactly-81 post-season moment; on normal losing Presti runs
+   it is false, which is why the feature never fired live. What the mid
+   ceremony actually needs: Presti standalone (cap, not duel - social and
+   challenge runs never reach the realized branch at all), a full five-man
+   roster for the name strip, the engine's Hot Hand surface present, at
+   least one realized loss to save, the one-per-season law, and the strict
+   +20 bar (?midhot=1 waives ONLY that bar). With ?midhot=1 on, every gate
+   component logs to the console so a live "why didn't it fire" is
+   self-answering. */
+function hhMidGate(e, season) {
+  var parts = {
+    presti: MODE === "cap",
+    standalone: !G.duel,
+    roster5: !!(G.picks && G.picks.length >= 5),
+    engine: !!(window.T82 && T82.hhPickHot && T82.hhSpinSeg && HH_SEGMENTS && HH_SEGMENTS.length),
+    hasLoss: !!(season && season.losses > 0),
+    unused: !G.hhMidUsed,
+    netBar: FORCE_MIDHOT || (e && e.net > 20)
+  };
+  var go = parts.presti && parts.standalone && parts.roster5 && parts.engine &&
+           parts.hasLoss && parts.unused && parts.netBar;
+  if (FORCE_MIDHOT && typeof console !== "undefined" && console.info) {
+    console.info("[t82] mid heat gate", go ? "ARMED" : "blocked", parts,
+      e ? "net " + e.net : "", season ? season.wins + "-" + season.losses : "");
+  }
+  return go;
+}
+
+/* ---------- v47.15 MID-SEASON HEAT CHECK overlay ----------
+   Same ceremony grammar as the post-season Heat Check (lever pull, name
+   strip, heat wheel), retold at the moment the first loss would land. One
+   per season: the offer itself burns it (G.hhMidUsed), spun or refused.
+   HOT or better hands back a boost; anything cooler, or a refusal, hands
+   back null and the realized loss lands. All ids are hhm* so the two
+   overlays can never cross-wire. */
+function hotHandMid(e, gameNo, winsSoFar, onResolve) {
+  G.hhMidUsed = 1;
+  var hotIdx = hhPickHot(), segIdx = hhSpinSeg(), seg = HH_SEGMENTS[segIdx];
+  var hotV = valueOf(G.picks[hotIdx].row);
+  var qualifies = segIdx >= HH_MID_MIN_SEG;
+  var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
+  var names = G.picks.map(function (p) { return shareSurname(p.row[IDX.name]); });
+  var ITEM = 54, COPIES = 6, targetFlat = (COPIES - 2) * names.length + hotIdx;
+  var stripHtml = "", c, n2, s2;
+  for (c = 0; c < COPIES; c++) for (n2 = 0; n2 < names.length; n2++) stripHtml += '<div class="hh-name">' + esc(names[n2]) + "</div>";
+  var segHtml = "";
+  for (s2 = 0; s2 < HH_SEGMENTS.length; s2++) segHtml += '<div class="hh-seg lvl' + HH_SEGMENTS[s2].lvl + '"></div>';
+
+  var ov = document.createElement("div");
+  ov.className = "hh-overlay in hh-mid";
+  ov.innerHTML =
+    '<button class="hh-skip" id="hhmSkip">the loss lands \u2192</button>' +
+    '<div class="hh-card"><div class="goat-fw" id="hhmFw" aria-hidden="true"></div>' +
+      '<div class="hh-eyebrow hh-clutch">' + (winsSoFar > 0
+        ? 'Game ' + gameNo + '. You\u2019re ' + winsSoFar + '\u20130 and down entering the 4th quarter. Clutch heroics to stay perfect?'
+        : 'Game 1. Down entering the 4th quarter of the opener. Clutch heroics to start perfect?') + '</div>' +
+      ballLeverHtml("hhmLever", "hhmArm", "Pull the basketball through the hoop") +
+      '<button class="hh-charity" id="hhmCharity">I DON\u2019T WANT YOUR CHARITY</button>' +
+      '<div class="hh-stage">' +
+        '<div class="hh-step" id="hhmStep1">' +
+          '<div class="hh-window"><div class="hh-strip" id="hhmStrip">' + stripHtml + '</div><span class="hh-payline"></span></div></div>' +
+        '<div class="hh-step" id="hhmStep2">' +
+          '<div class="hh-heat">' + segHtml + '</div><div class="hh-heatlabel" id="hhmHeatLabel">\u00B7</div></div>' +
+        '<div class="hh-verdict" id="hhmVerdict"></div>' +
+        '<div class="hh-actions" id="hhmActions">' +
+          '<button class="hh-btn presti-spin" id="hhmBack">BACK TO THE SEASON</button>' +
+        '</div>' +
+      '</div></div>';
+  document.body.appendChild(ov);
+  analyticsTrack("heatcheck_shown", Object.assign(analyticsRunSnapshot(), {
+    surface: "heat_check_mid", action: "offer", game_no: gameNo, wins: winsSoFar, net: e.net
+  }));
+
+  var resolved = false;
+  function resolve(boost) {
+    if (resolved) return;
+    resolved = true;
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    onResolve(boost);
+  }
+  function segs() { return ov.querySelectorAll(".hh-seg"); }
+
+  function midVerdict() {
+    analyticsTrack("heatcheck_result", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "spin_result", segment: seg.label, game_no: gameNo,
+      outcome: qualifies ? "saved" : "no_save", hit_82: 0,
+      net: qualifies ? newNet : e.net
+    }));
+    var v = ov.querySelector("#hhmVerdict");
+    if (qualifies) {
+      ov.classList.add("won");
+      v.innerHTML = '<div class="hh-stamp">' + esc(shareSurname(G.picks[hotIdx].row[IDX.name]).toUpperCase()) + " CATCHES FIRE</div>" +
+        '<div class="hh-netcap">' + esc(seg.label) + " \u00B7 VALUE \u00D7" + seg.m + " \u00B7 NET " + signed1(e.net) + " \u2192 " + signed1(newNet) + "</div>";
+      buzz(45);
+      var fw = ov.querySelector("#hhmFw"); if (fw && !reducedMotion()) fireGoats(fw);
+    } else {
+      ov.classList.add("missed");
+      v.innerHTML = '<div class="hh-stamp miss">NO SAVE</div>' +
+        '<div class="hh-netcap">' + esc(seg.label) + " \u00B7 THE LOSS LANDS</div>";
+      buzz(10);
+    }
+    v.classList.add("on");
+    ov.querySelector("#hhmActions").classList.add("on");
+    ov.querySelector("#hhmBack").addEventListener("click", function () {
+      resolve(qualifies ? { hotIdx: hotIdx, segIdx: segIdx, seg: seg, hotV: hotV, newNet: newNet } : null);
+    });
+  }
+
+  function heat() {
+    ov.querySelector("#hhmStep2").classList.add("on");
+    var cs = segs(), N = cs.length, label = ov.querySelector("#hhmHeatLabel"), order = [], i, l;
+    var laps = 4;
+    for (l = 0; l < laps; l++) for (i = 0; i < N; i++) order.push(i);
+    for (i = 0; i <= segIdx; i++) order.push(i);
+    var base = order.length;
+    var roll = Math.random(), burst = false;
+    if (roll < 0.65) { /* clean stop */ }
+    else if (roll < 0.85) {
+      if (segIdx < N - 1) { order.push(segIdx + 1); order.push(segIdx); }
+      else { order.push(segIdx - 1); order.push(segIdx); }
+    } else {
+      burst = true;
+      for (i = 1; i <= N; i++) order.push((segIdx + i) % N);
+    }
+    order[order.length - 1] = segIdx;
+    var gaps = [], t = 38, last = order.length - 1;
+    for (i = 0; i < order.length; i++) {
+      if (i < base) { gaps.push(t * 1.5); t *= 1.085; }
+      else if (burst) gaps.push((i === last - 1 ? 300 : 72 - (i - base) * 10) * 1.5);
+      else gaps.push((250 + (i % 2) * 70 + Math.random() * 110) * 1.5);
+    }
+    var acc = 0;
+    order.forEach(function (ci, j) {
+      setTimeout(function () {
+        if (!ov.parentNode) return;
+        for (var z = 0; z < N; z++) cs[z].classList.remove("lit");
+        cs[ci].classList.add("lit");
+        label.textContent = HH_SEGMENTS[ci].label;
+        label.className = "hh-heatlabel lvl" + HH_SEGMENTS[ci].lvl;
+        var fast = j < base || (burst && j < last - 1);
+        label.style.transform = "scale(" + (fast ? 1.18 : 1) + ")";
+        buzz(j < base ? 5 : (fast ? 6 : 11));
+        if (j === order.length - 1) {
+          for (var f = 0; f <= segIdx; f++) cs[f].classList.add("fill");
+          cs[segIdx].classList.add("result");
+          buzz(segIdx === 4 ? 40 : 18);
+          if (segIdx === 4) supernovaErupt(label);
+          else if (segIdx === 3) sprayFromEl(label, FIRE_EMOJI);
+          setTimeout(midVerdict, 560);
+        }
+      }, acc);
+      acc += gaps[j];
+    });
+  }
+
+  function reelSpin() {
+    ov.querySelector("#hhmStep1").classList.add("on");
+    var strip = ov.querySelector("#hhmStrip"), endY = -((targetFlat - 1) * ITEM);
+    function land() {
+      if (!ov.parentNode) return;
+      var rows = strip.querySelectorAll(".hh-name");
+      if (rows[targetFlat]) rows[targetFlat].classList.add("hot");
+      buzz(18);
+      setTimeout(heat, 470);
+    }
+    function glide(to, dur, ease) { strip.style.transition = "transform " + dur + "s " + ease; strip.style.transform = "translateY(" + to + "px)"; }
+    var variant = Math.floor(Math.random() * 3);
+    if (variant === 1) {
+      requestAnimationFrame(function () { glide(endY - ITEM, 2.3, "cubic-bezier(.1,.72,.18,1)"); });
+      setTimeout(function () { if (ov.parentNode) { glide(endY, 0.52, "cubic-bezier(.34,0,.3,1)"); buzz(8); } }, 2360);
+      setTimeout(land, 2900);
+    } else if (variant === 2) {
+      requestAnimationFrame(function () { glide(endY + ITEM, 2.2, "cubic-bezier(.08,.8,.1,1)"); });
+      setTimeout(function () { if (ov.parentNode) { glide(endY, 0.66, "cubic-bezier(.5,0,.5,1)"); buzz(9); } }, 2620);
+      setTimeout(land, 3300);
+    } else {
+      requestAnimationFrame(function () { glide(endY, 2.6, "cubic-bezier(.12,.66,.18,1)"); });
+      setTimeout(land, 2640);
+    }
+  }
+
+  var lever = ov.querySelector("#hhmLever"), arm = ov.querySelector("#hhmArm");
+  var pullState = wireBallPull(lever, arm, function () {
+    analyticsTrack("heatcheck_action", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "pull", pulled: 1, game_no: gameNo
+    }));
+    var chBtn = ov.querySelector("#hhmCharity"); if (chBtn) chBtn.classList.add("gone");
+    var skBtn = ov.querySelector("#hhmSkip"); if (skBtn) skBtn.classList.add("gone");
+    setTimeout(function () { ov.classList.add("lit"); reelSpin(); }, 640);
+  });
+  ov.querySelector("#hhmCharity").addEventListener("click", function () {
+    if (pullState.fired()) return;
+    analyticsTrack("heatcheck_declined", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "decline", game_no: gameNo
+    }));
+    if (window.T82 && T82.declineHeat) T82.declineHeat(G);
+    resolve(null);
+  });
+  ov.querySelector("#hhmSkip").addEventListener("click", function () {
+    if (pullState.fired()) return;
+    analyticsTrack("heatcheck_action", Object.assign(analyticsRunSnapshot(), {
+      surface: "heat_check_mid", action: "skip", pulled: 0, game_no: gameNo
+    }));
+    if (window.T82 && T82.declineHeat) T82.declineHeat(G);
+    resolve(null);
+  });
+}
+
+/* Fold a mid-season boost into the rendered results. The realized record,
+   climb wins and goat fireworks already came in through e.winTally, so this
+   patches only what the record alone cannot tell: the split net label, the
+   Scoring Card bonus row, the hot pick highlight, and the climb re-plot to
+   the realized wins (the same override the post-season verdict applies). */
+function applyMidBoostToResults(e) {
+  var hm = G.hotMid;
+  if (!hm) return;
+  var card = document.querySelector('.pick-card[data-pick="' + hm.hotIdx + '"]');
+  if (card) {
+    card.classList.add("hot-pick");
+    var pv = card.querySelector(".pr-v");
+    if (pv) pv.innerHTML = "<small>V</small>" + hm.hotV.toFixed(2) + ' <span class="hot-bonus">+ ' + (G.hotValue - hm.hotV).toFixed(2) + "</span>";
+  }
+  var lbl = document.querySelector(".big-label");
+  if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
+    '</span> <span class="net-bonus">+ ' + (hm.newNet - e.net).toFixed(1) + "</span>";
+  setEliteResultGlow(e.winTally);
+  var cl = document.querySelector(".climb");
+  if (cl) { cl.outerHTML = climbHtml(e, e.winTally); setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON); }
+  var ledgerEl = document.querySelector(".ledger");
+  var totalRow = ledgerEl && ledgerEl.querySelector(".ledger-row.total");
+  if (totalRow) {
+    var bonusRow = document.createElement("div");
+    bonusRow.className = "ledger-row";
+    bonusRow.innerHTML = '<span>Hot Hand bonus<span class="why">' + esc(hm.seg.label) + " \u2014 " +
+      esc(shareSurname(G.picks[hm.hotIdx].row[IDX.name])) + " caught fire in Game " + hm.gameNo + " (value \u00D7" + hm.seg.m + ").</span></span>" +
+      '<span class="ledger-amt hot">+' + fmt1(hm.newNet - e.net) + "</span>";
+    totalRow.parentNode.insertBefore(bonusRow, totalRow);
+    var amtEl = totalRow.querySelector(".ledger-amt");
+    if (amtEl) amtEl.textContent = signed1(hm.newNet);
+    var whyEl = totalRow.querySelector(".why");
+    if (whyEl) whyEl.textContent = "Score " + fmt1(e.score) + " + Hot Hand " + fmt1(hm.newNet - e.net) + " minus baseline " + fmt1(BASELINE) + ".";
+  }
+}
+
+function showSeasonReel(season, e, done, midTrigger) {
   var ov = document.createElement("div");
   ov.className = "reel-overlay";
   ov.innerHTML = '<div class="reel-card">' +
@@ -4767,58 +5518,115 @@ function showSeasonReel(season, e, done) {
   document.body.appendChild(ov);
   var acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
   var finished = false, timers = [];
+  // v47.15: the reel is now a cursor engine instead of a pre-scheduled cascade,
+  // so it can pause on the exact square where the Mid-Season Heat Check
+  // fires and resume onto a re-rolled remainder. Month W-L headers tick live
+  // square by square (they used to print the month's final line up front,
+  // which both spoiled the month and could not survive a re-roll).
+  var gi = 0, cw = 0, clx = 0;
+  var mi = -1, monthLeft = 0, monthW = 0, monthL = 0, monthStart = 0, row = null, recEl = null;
+  var triggerIdx = -1, overlayUp = false;
+  if (midTrigger) { for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { triggerIdx = g0; break; } } }
+  var midDone = (triggerIdx < 0);
+
+  function schedule(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function firstLossNow() { for (var i = 0; i < season.games.length; i++) { if (!season.games[i]) return i; } return null; }
+
   function finishReel() {
     if (finished) return;
+    if (overlayUp) return;                                    // the Heat Check owns the moment
+    if (!midDone && triggerIdx >= 0) { fastForwardToPause(); return; }   // SKIP cannot dodge the spin
     finished = true;
     timers.forEach(clearTimeout);
     ov.remove();
     done();
   }
   ov.querySelector("#reelSkip").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
-  var firstLossIdx = null;
-  for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { firstLossIdx = g0; break; } }
-  // cumulative record per game, so the header ticks square by square
-  var cum = [], cw = 0;
-  for (var g1 = 0; g1 < season.games.length; g1++) { if (season.games[g1]) cw++; cum.push([cw, g1 + 1 - cw]); }
-  var t = 650, start = 0;
-  REEL_MONTHS.forEach(function (m, mi) {
-    var count = m[1], s0 = start;
-    var mw = 0;
-    for (var i2 = s0; i2 < s0 + count; i2++) if (season.games[i2]) mw++;
-    var ml = count - mw;
-    start += count;
-    var endRec = cum[s0 + count - 1];
-    timers.push(setTimeout(function () {
-      var row = document.createElement("div");
-      row.className = "reel-act";
-      row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + m[0] + '</span>' +
-        '<span class="reel-mo-rec mono">' + mw + '\u2013' + ml + '</span></div>' +
-        '<div class="reel-grid"></div>' +
-        '<p class="reel-note reel-note-pending"></p>';
-      row.__grid = row.querySelector(".reel-grid");
-      acts.appendChild(row);
-      acts.scrollTop = acts.scrollHeight;
-      for (var i = 0; i < count; i++) (function (i) {
-        timers.push(setTimeout(function () {
-          var sq = document.createElement("span");
-          var win = season.games[s0 + i];
-          sq.className = "reel-day " + (win ? "w" : "l");
-          sq.textContent = win ? "W" : "L";
-          row.__grid.appendChild(sq);
-          var c = cum[s0 + i];
-          runEl.textContent = c[0] + "\u2013" + c[1];
-        }, 140 + i * 48));
-      })(i);
-      timers.push(setTimeout(function () {
-        var note = row.querySelector(".reel-note");
-        note.textContent = reelLine(mi, mw, ml, endRec[0], endRec[1], firstLossIdx, s0) + (ml > 0 ? " " + reelBlame(mi) : "");
-        note.classList.remove("reel-note-pending");
-        acts.scrollTop = acts.scrollHeight;
-      }, 140 + count * 48 + 120));
-    }, t));
-    t += 320 + count * 48 + 640;
-  });
-  timers.push(setTimeout(function () {
+
+  function openMonth() {
+    mi++;
+    monthStart = gi; monthW = 0; monthL = 0; monthLeft = REEL_MONTHS[mi][1];
+    row = document.createElement("div");
+    row.className = "reel-act";
+    row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + REEL_MONTHS[mi][0] + '</span>' +
+      '<span class="reel-mo-rec mono">0\u20130</span></div>' +
+      '<div class="reel-grid"></div>' +
+      '<p class="reel-note reel-note-pending"></p>';
+    row.__grid = row.querySelector(".reel-grid");
+    recEl = row.querySelector(".reel-mo-rec");
+    acts.appendChild(row);
+    acts.scrollTop = acts.scrollHeight;
+  }
+  function closeMonth() {
+    if (!row || row.__closed) return;
+    row.__closed = true;
+    var note = row.querySelector(".reel-note");
+    note.textContent = reelLine(mi, monthW, monthL, cw, clx, firstLossNow(), monthStart) + (monthL > 0 ? " " + reelBlame(mi) : "");
+    note.classList.remove("reel-note-pending");
+    acts.scrollTop = acts.scrollHeight;
+  }
+  function placeSquare() {
+    var win = season.games[gi];
+    var sq = document.createElement("span");
+    sq.className = "reel-day " + (win ? "w" : "l");
+    sq.textContent = win ? "W" : "L";
+    row.__grid.appendChild(sq);
+    if (win) { cw++; monthW++; } else { clx++; monthL++; }
+    runEl.textContent = cw + "\u2013" + clx;
+    recEl.textContent = monthW + "\u2013" + monthL;
+    gi++; monthLeft--;
+  }
+
+  function advance() {
+    if (finished) return;
+    if (gi >= season.games.length) { schedule(closeMonth, 120); schedule(finale, 640); return; }
+    var lead = (mi < 0) ? 650 : 960;
+    if (mi >= 0) schedule(closeMonth, 120);
+    schedule(function () { openMonth(); schedule(tick, 140); }, lead);
+  }
+  function tick() {
+    if (finished) return;
+    if (!midDone && gi === triggerIdx) { firePause(); return; }
+    placeSquare();
+    if (monthLeft === 0) advance();
+    else schedule(tick, 48);
+  }
+
+  function applyMidBoost(boost) {
+    var p2 = phi(boost.newNet / SC.NET_SD);
+    for (var i = gi; i < season.games.length; i++) season.games[i] = Math.random() < p2;
+    var w2 = 0;
+    for (var j = 0; j < season.games.length; j++) { if (season.games[j]) w2++; }
+    season.wins = w2; season.losses = season.games.length - w2;
+    var eRef = midTrigger.e;
+    eRef.winTally = season.wins; eRef.season = season;
+    G.hotMid = { hotIdx: boost.hotIdx, segIdx: boost.segIdx, seg: boost.seg, hotV: boost.hotV, newNet: boost.newNet, gameNo: gi + 1 };
+    G.hotIdx = boost.hotIdx;
+    G.hotLvl = boost.seg.lvl;
+    G.hotValue = boost.hotV * (1 + (boost.seg.m - 1) * HH_BONUS_SCALE);
+    G.hotBase = eRef.net; G.hotNewNet = boost.newNet; G.hotWins = season.wins;
+  }
+  function firePause() {
+    overlayUp = true;
+    hotHandMid(midTrigger.e, gi + 1, gi, function (boost) {
+      overlayUp = false; midDone = true;
+      if (boost) applyMidBoost(boost);
+      schedule(tick, 420);
+    });
+  }
+  function fastForwardToPause() {
+    timers.forEach(clearTimeout); timers = [];
+    while (gi < triggerIdx) {
+      if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
+      placeSquare();
+    }
+    if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
+    acts.scrollTop = acts.scrollHeight;
+    firePause();
+  }
+
+  function finale() {
+    if (finished) return;
     var fin = document.createElement("div");
     fin.className = "reel-final";
     fin.innerHTML = '<span class="reel-final-rec">' + season.wins + '\u2013' + season.losses + '</span>' +
@@ -4827,7 +5635,9 @@ function showSeasonReel(season, e, done) {
     acts.appendChild(fin);
     fin.querySelector("#reelDone").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
     acts.scrollTop = acts.scrollHeight;
-  }, t + 200));
+  }
+
+  advance();
 }
 
 /* ---------- SPORTSREF DEEP-LINK LAW (v30) ----------
@@ -5118,7 +5928,10 @@ function renderResults(e, keepScroll) {
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section twoway-sec" data-result-section="two_way">' + twoWayHtml(e) + "</section>" +
-    '<section class="section" data-result-section="roster"><p class="eyebrow">Your five</p>' + picksHtml +
+    '<section class="section traits-roster" data-result-section="roster">' +
+      '<div class="traits-roster-head"><p class="eyebrow">Your five</p>' +
+        '<button class="trait-info-btn" id="traitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="traitLegend" aria-expanded="false" title="Player label legend" hidden>i</button></div>' +
+      '<div class="trait-legend" id="traitLegend" hidden></div>' + picksHtml +
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section" data-result-section="goat_climb"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
@@ -5128,6 +5941,7 @@ function renderResults(e, keepScroll) {
 
   trackResultSections();
   wireTraitsPrompt();
+  wireTraitCardUi();   // engine chips are in the initial markup; labels rebuild the legend when they land
   wireTraitsLabels(picksInSlotOrder().map(function (en) {
     return { i: en.i, name: en.p.row[IDX.name], season: en.p.row[IDX.season] };
   }));
@@ -5192,11 +6006,13 @@ function renderResults(e, keepScroll) {
   // when a real spin is pending (exactly 81 wins in Presti, or the QA flag) — its
   // old non-clutch "reveal my results" role is the paper's job now. For gated
   // papers the drafted-82-0 W/L burst waits for the paper to close.
-  var clutchPending = hhEligible(e) && (FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1);
+  var clutchPending = hhEligible(e) && !G.hhMidUsed && (FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1);
   if (clutchPending) {
     hotHand(e);                       // recap request fires from verdict() with post-boost totals
   } else if (MODE !== "kaman") {
-    prepareRecap(e, e.winTally, e.net, null);   // payload only; the model call fires on unwrap
+    prepareRecap(e, e.winTally,
+      G.hotMid ? G.hotNewNet : e.net,
+      G.hotMid ? { player: shareSurname(G.picks[G.hotMid.hotIdx].row[IDX.name]), tier: G.hotMid.seg.label } : null);   // payload only; the model call fires on unwrap
     G.recapAuto = 1;
     G.recapGateFw = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
     showNewspaper(true);
@@ -5622,6 +6438,9 @@ function boot() {
   bindGlobalButtonStyle();
   bindHaptics();
   bindVisibilityResync();
+  wireDraftWheel();
+  ensureTraitsCss();      // v47.9: chips render on every surface; duel/league entry paths skip the homepage module that used to inject this
+  wireTraitChipTaps();
   if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }
   else if (LEAGUE_ID) {
     var lgi = LEAGUE_ID; LEAGUE_ID = null;

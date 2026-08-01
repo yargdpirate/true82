@@ -1,0 +1,26 @@
+TRUE82 V47.5 - RESULTS PLAYER-LABEL UI
+
+DEPLOYMENT
+1. Upload the contents of this package to the GitHub repository root.
+2. Let Cloudflare Pages deploy the commit.
+3. Do not run any D1 migration for this feature.
+
+EXECUTABLE SCOPE
+- app.js only
+- No API, database, voting, consensus, scoring, simulation, value, or roster-generation change.
+
+PHONE SMOKE TEST
+1. Finish a run containing at least one player-season with settled labels.
+2. Scroll to the results-page YOUR FIVE section.
+3. On a browser that has not used the feature, the label buttons should pop once and the information button should pulse once when the section enters view.
+4. Tap CH#1 or another abbreviation: it should expand in place to the full trait name. Tap it again or tap elsewhere to collapse it.
+5. Tap the information button beside YOUR FIVE: a compact legend should open. The button becomes an X; tap it again to close.
+6. Confirm red anti-labels remain crossed out before and after expansion.
+7. Finish another run after interacting: the one-time cue should not repeat, but buttons and the legend still work.
+
+RESET THE DISCOVERY CUE FOR TESTING
+Run this in the browser console, reload, and finish/open a results page again:
+localStorage.removeItem("t82_trait_card_ui_seen_v1")
+
+EXPECTED ABBREVIATIONS
+3PT, GRAV, ISO-D, TEAM-D, RIM-D, PLAY, CLTCH, RIM+, OFF-B, SWCH-D, TSHOT, OFC-R, BSTOP, FOUL$, STAT+, CH#1, BPOUND.

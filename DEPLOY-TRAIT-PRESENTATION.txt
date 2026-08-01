@@ -1,0 +1,41 @@
+TRUE82 v47.9 - TRAIT PRESENTATION (READABLE CHIPS + COMPACT PLACEMENT + DRAFT LABELS)
+
+DEPLOYMENT
+1. Upload the contents of this package to the GitHub repository root.
+2. Let Cloudflare Pages deploy the commit.
+3. NO D1 migration and NO console command. Nothing to paste.
+
+EXECUTABLE SCOPE
+- app.js (presentation only)
+- functions/api/traits.js (op=labels batch cap 8 -> 60 for that op only; no query change)
+- index.html (app.js cache key only: 20260731-trait-chips-v47)
+- No voting, consensus, scoring, simulation, value, analytics, retention, or roster-generation change.
+
+WHAT CHANGED, IN ONE BREATH
+The dark-on-dark labels are fixed at the root (the global 3D-button decorator
+was repainting label buttons near-black; chips are now excluded and wear the
+house slab: ink on gold, anti-labels ink on red with the cross-out). Labels
+moved onto the same compact year/team line as the engine 3PT/GRAVITY chip.
+Those engine chips are the engine's live spacing classification (row sp), NOT
+votes; they now share the same tappable treatment, expand to FLOOR SPACER /
+ELITE GUNNER, and sit in the legend marked "engine". Classic draft rows show
+the same community labels with the same interaction, one batched label call
+per round, chip taps never draft.
+
+PHONE SMOKE TEST
+1. Finish a Classic run with a labeled player; in YOUR FIVE the labels are
+   bright gold slabs with dark text, anti-labels bright red with the strike.
+2. Labels sit beside the year/team info, no extra row; cards not taller.
+3. Tap GRAVITY -> ELITE GUNNER; tap 3PT -> FLOOR SPACER; tap elsewhere collapses.
+4. The (i) legend lists community labels first, engine rows marked "engine".
+5. Draft a Classic round: labeled players wear chips beside the year dropdown;
+   tapping a chip expands it and does NOT select the player; changing the
+   season updates that row's labels; the pool-head (i) opens the pool legend.
+6. Scoring Card, wins, and net identical for an identical draft.
+
+RESET THE DISCOVERY CUE FOR TESTING
+localStorage.removeItem("t82_trait_card_ui_seen_v1")
+
+FULL DETAIL
+See RETURN-HANDOFF-TRAIT-PRESENTATION.md (audit of the 3PT/GRAVITY source,
+the exact dark-on-dark root cause, and the complete change map).

@@ -1,0 +1,27 @@
+TRUE82 — 0019 EDITORIAL LABEL EXPANSION
+
+WHAT THIS PACKAGE DOES
+- Adds five categories from 0018 if not already deployed.
+- Adds the Pro-generated provisional dataset through 0019.
+- Final covered dataset: 120 player-seasons, 3 labels each, 360 combinations.
+- 290 positive labels and 70 crossed-out anti-labels.
+- Questions enter ordinary voting sessions; homepage rotation stays unchanged.
+- No application, Worker, frontend, simulation, scoring, or roster logic changed.
+
+BROWSER-ONLY DEPLOY
+1. Unzip this package.
+2. Drag the package contents into the GitHub repository root as usual.
+3. In Cloudflare D1 Console, run migrations/0018_trait_categories_v1.sql if it
+   has not already been applied.
+4. Then run migrations/0019_editorial_label_expansion_v1.sql.
+5. Run migrations/CHECK-STATE.sql.
+
+EXPECTED CHECK-STATE AFTER 0019
+traits=20 | core=17 | retired=3 | questions=564 | active_questions=549
+rules=6 | editorial=488 | meta=544 | homepage=30
+
+SMOKE CHECK
+Draft or load one of the covered player-seasons. Its provisional labels should
+appear immediately. Open /bonuses/ and confirm newly added questions can appear
+in a five-question session. Community consensus still supersedes editorial
+rulings under the existing thresholds.

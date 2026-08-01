@@ -163,3 +163,13 @@ INSERT. If a hard popularity gate is ever wanted (votable only above N
 career drafts), the hook is a single check in op=roster, but it needs
 pick counts written to D1 first; not built, on purpose, until the
 demand-driven shape proves insufficient.
+
+## 6. Five additional shadow-mode categories (2026-07-29)
+
+Added by 0018: Ball Stopper, Foul Merchant, Stat Padder, Championship #1,
+and Ball Pounder. The named season ranges are editorial QUALIFIES seeds;
+community consensus retains supremacy. The 2016 Draymond Ball Pounder
+question is a high-priority, homepage-eligible fight with no desk verdict.
+All five remain polling and player-label data only. No engine effect is live,
+including for Stat Padder; its engine language states the proposition voters
+are evaluating, not behavior implemented by this build.

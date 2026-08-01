@@ -1,0 +1,33 @@
+TRUE82 v47.6 — TWO-ANSWER QUESTION CEILING
+
+DEPLOYMENT
+- Upload this package to the GitHub repository root.
+- No D1 migration or console command is required.
+
+BEHAVIOR
+- Algorithmic question feeds use the existing anonymous first-party retention identity.
+- The existing trait_votes_v1.changed counter provides answer depth without a schema change:
+  first answer = changed 0; second answer = changed 1; third or later = changed 2+.
+- Selection order is: never answered, then answered once. Questions answered twice or more
+  are not eligible until there are zero remaining active curated questions below two answers.
+- Direct links can still open their requested question; the ceiling governs recommendations/feed delivery.
+- Results-roster questions obey the ceiling and fill unused slots from the curated feed.
+- If only 1-4 under-two questions remain, the final session is shorter rather than mixing in third repeats.
+
+FILES CHANGED
+- functions/api/traits.js
+- app.js
+- bonuses/index.html
+- index.html (app.js cache-bust only)
+- AGENT-HANDOFF.md (documentation only)
+
+UNCHANGED
+- D1 schema and all data
+- Existing votes and consensus
+- Simulation/scoring/player values
+- Homepage controversy selection itself
+- Trait card abbreviation/info UI
+
+IDENTITY LIMITS
+- Clearing site data or using another browser/device starts a new anonymous identity.
+- Where persistent retention identity is disabled, the existing session identity remains the fallback.

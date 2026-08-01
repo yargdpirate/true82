@@ -26,8 +26,8 @@ DEPLOY IN THIS ORDER:
      leaving a migration PARTIALLY applied. If any earlier paste errored,
      just re-paste the clean file: every statement is idempotent and
      self-heals. Verify with one paste of migrations/CHECK-STATE.sql
-     (expect traits 14, core 11, retired 3, questions 96, rules 6,
-     editorial 21). Commentary lives in migrations/MIGRATIONS-NOTES.md.
+     (expect traits 20, core 17, retired 3, questions 564, active
+     questions 549, rules 6, editorial 488, meta 544, homepage 30). Commentary lives in migrations/MIGRATIONS-NOTES.md.
   1. Apply migrations/0010_traits_v1.sql ONCE to the production D1 DB
      (Cloudflare console paste, same as always). It is additive and safe to
      re-run; it creates five trait tables and seeds 5 draft traits, 27
@@ -37,8 +37,10 @@ DEPLOY IN THIS ORDER:
      because your live copy may carry entries this workspace cannot see,
      and overwriting it could sever working function routes). Without it
      the direct question links never reach the slug function.
-     Then paste migrations/0013_bonuses_meta_v1.sql AND 0014_homepage_rotation_v1.sql AND 0015_copy_pass_v1.sql AND 0016_knucklehead_v1.sql AND 0017_formula_verbiage_v1.sql (the curated
-     Player Bonuses pool; pure SQL, rerun-safe). Smoke after deploy:
+     Then paste migrations/0013_bonuses_meta_v1.sql AND 0014_homepage_rotation_v1.sql AND 0015_copy_pass_v1.sql AND 0016_knucklehead_v1.sql AND 0017_formula_verbiage_v1.sql AND
+     0018_trait_categories_v1.sql AND 0019_editorial_label_expansion_v1.sql
+     (the curated Player Bonuses pool and broad provisional label expansion;
+     pure SQL, rerun-safe). Smoke after deploy:
      open /bonuses/2008-kobe-elite-wing-defender directly (question loads
      with vote controls, page title carries the question), vote, check the
      result state and SHARE QUESTION, then confirm the homepage module
@@ -55,6 +57,21 @@ DEPLOY IN THIS ORDER:
      the background must keep playing untouched through all of it. A
      shared marquee link (the nine homepage questions) should unfurl
      with its own typography card, not the generic brand image.
+
+     v47.3: 0019 is another data-only migration. It adds 344 new curated
+     questions, editorial rulings, and active session metadata. Sixteen of
+     the Pro dataset's 360 requested combinations already exist through
+     earlier migrations and are deliberately preserved, yielding exactly
+     360 covered combinations across 120 player-seasons. The set includes
+     290 positive labels and 70 anti-labels. All new questions may enter
+     ordinary five-question sessions; none is homepage-eligible. No Worker,
+     frontend, simulation, roster-generation, scoring, or label-rendering
+     code changed. Applying 0019 makes the provisional labels visible
+     immediately through the existing editorial fallback.
+     v47.2: 0018 is data-only for gameplay purposes. It adds five voting
+     categories, their curated questions/editorial seeds, and one unruled
+     homepage Draymond question. No application or worker code changes; do
+     not add any matching roster-generation, scoring, or simulation hook.
      v45: apply 0010, 0011, AND 0012_trait_editorial_v1.sql (desk seed
      rulings so roster labels exist on day one; community supersedes at
      volume). All three are rerun-safe. v45 also SHIPS styles.css for the

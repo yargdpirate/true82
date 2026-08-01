@@ -1,0 +1,15 @@
+TRUE82 0023 - SECOND SUPERSTAR HOMEPAGE CONTROVERSY PACK
+
+1. In Cloudflare D1 Console, run:
+   migrations/0023_homepage_superstar_controversy_v2.sql
+
+2. Separately run:
+   migrations/VERIFY-0023-HOMEPAGE.sql
+
+Expected when 0020 is already deployed:
+  selected_rows      25
+  selected_homepage  25
+  minimum_priority   97
+  total_homepage     80
+
+No application-code deployment is required for this migration. Existing user votes, consensus, editorial rulings, labels, analytics identity, and game logic are untouched.
