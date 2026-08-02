@@ -1,0 +1,45 @@
+TRUE82 DEPLOY CARD - POLL DENSITY PASS (v47.21, BUILD_V stays v47)
+==================================================================
+
+WHAT SHIPS (cumulative - everything through v47.21)
+  app.js              widget: one lead row (HELP BALANCE THE GAME + the tag
+                      chip opposite it), the second subtitle clause retired,
+                      the chip no longer floats inside the question, IDK is
+                      two thirds as wide with a dashed 2D face; mid-season
+                      Heat Check loses its "the loss lands" button and
+                      recentres; .hh-skip and .tm-flat excluded from the 3D
+                      decorator
+  bonuses/index.html  tag chip moves into the PLAYER BONUSES title row, the
+                      "PLAYER BONUS n / N" line is gone, PLAY THE GAME joins
+                      the Stats Refresher / Share Vote stack and the big
+                      page-foot button is retired
+  index.html          app.js key -> 20260802-density-v47
+  styles.css UNCHANGED. functions/ + migrations/ + engine UNTOUCHED.
+
+STEPS
+  1. Drag into the repo root (flat), commit, Pages deploys.
+  2. NO D1 MIGRATION. NO CONSOLE COMMAND.
+  3. Hard-reload once for the app.js key.
+  4. Footer still "| v47".
+
+VERIFY (90 seconds)
+  - Home + results widget: ONE line reading HELP BALANCE THE GAME with the
+    gold tag chip opposite it on the same row. Question sits at full width.
+    IDK is a narrow dashed outline, no fill, no lift when pressed.
+  - /bonuses/: the chip rides the title beside PLAYER BONUSES, clear of the
+    hoop mark, and changes with each question. No "1 / 5" line. Three
+    stacked buttons under the vote controls: Stats Refresher, Share Vote,
+    PLAY THE GAME (amber, flat). Nothing below the card.
+  - Presti with ?midhot=1: the Heat Check card is centred with no button
+    floating at the left. I DON'T WANT YOUR CHARITY still refuses the spin.
+  - Finish an 81-0 run: the post-season "skip" reads as quiet grey text in
+    the TOP RIGHT, not an amber slab in the middle.
+
+MEASURED (real Chromium, real Barlow Condensed / IBM Plex Mono)
+  Widget module height   320: -44px   360/374: -34px   390-430: -8px
+  /bonuses/ page bottom  -77 to -123px depending on width
+  IDK width              exactly 2/3 from 360 up; floors on min-content at 320
+
+ROLLBACK
+  Restore app.js, bonuses/index.html, index.html from the v47.20 package.
+  No data changed, so nothing to undo in D1.
