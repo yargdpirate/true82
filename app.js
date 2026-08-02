@@ -718,7 +718,13 @@ var _buttonStyleObserver = null;
 // positive label rendered near-black on dark (.tchip.anti at (0,2,0) kept
 // its red, which is why only the positive labels were unreadable). Trait
 // chips own their full skin in ensureTraitsCss now.
-var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar)";
+// v47.21: .tm-flat is the general opt-out marker (the widget's IDK pass wears
+// it). .hh-skip joins it as a BUG FIX, not a restyle: button.presti-spin is
+// (0,1,1) and .hh-skip is (0,1,0), so the decorator was overriding the skip
+// control's position:absolute, background:none and color - which is why it
+// rendered as a stray amber slab floating mid-overlay on the left instead of
+// the quiet top-right text link it was written as.
+var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)";
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -2011,18 +2017,25 @@ function ensureTraitsCss() {
     ".traits-module .tm-q:active{color:#FFB52E}" +
     ".traits-module .tm-def{display:block;font-size:13px;color:#8b98a5;margin-top:5px;" +
       "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
-    ".traits-module .tm-votes{display:grid;grid-template-columns:5fr 5fr 2fr;gap:11px;margin-top:11px}" +
-    ".traits-module .tm-vb.idk{font-size:16px;letter-spacing:.06em}" +
+    /* v47.21: IDK narrows to exactly two thirds of its v47.19 width. Solve
+       y/(2x+y) = (2/3)(2/12) = 1/9 and you get x = 4y, so 4:4:1 is the ratio -
+       the width IDK gives up is split evenly back into YES/NO. Below ~350 the
+       grid item's min-content width floors it a hair wider, which is the
+       graceful end of the shrink rather than a clipped label. */
+    ".traits-module .tm-votes{display:grid;grid-template-columns:4fr 4fr 1fr;gap:11px;margin-top:11px}" +
+    ".traits-module .tm-vb.idk{font-size:14px;letter-spacing:.02em;padding:0 2px}" +
     ".traits-module .tm-vb{position:relative;height:52px;border:0;border-radius:13px;cursor:pointer;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.1em;color:#1c1608;" +
       "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12,0 7px 14px -6px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb.no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 #8c2317,0 7px 14px -6px rgba(0,0,0,.6)}" +
-    ".traits-module .tm-vb.idk{color:#e8edf2;background:linear-gradient(180deg,#5a646f,#414a54);" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 0 #262d34,0 7px 14px -6px rgba(0,0,0,.6)}" +
-    ".traits-module .tm-vb.idk:active,.traits-module .tm-vb.idk.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.12)," +
-      "0 1px 0 #262d34,0 4px 10px -6px rgba(0,0,0,.6)}" +
+    /* v47.21: the pass reads as a dashed outline, not a slab. Flat by two
+       mechanisms so neither can regress it alone - .tm-flat keeps the global
+       3D decorator off it, and these rules kill the lift and the fill. */
+    ".traits-module .tm-vb.idk{color:#9fabb7;background:none;border:1.5px dashed #4d5a67;box-shadow:none}" +
+    ".traits-module .tm-vb.idk:active,.traits-module .tm-vb.idk.pressed{transform:none;box-shadow:none;" +
+      "color:#FFB52E;border-color:#FFB52E}" +
     ".traits-module .tm-vb:active,.traits-module .tm-vb.pressed{transform:translateY(2px);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}" +
     ".traits-module .tm-vb.no:active,.traits-module .tm-vb.no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2)," +
@@ -2037,9 +2050,18 @@ function ensureTraitsCss() {
     ".traits-module .tm-eyeb{color:#FFB52E;font-weight:700}" +
     /* v47.20 tag slot: the player-card chip exactly (gold face, ink text,
        7px radius, Barlow Condensed 700) with the 3D lift swapped for a gold
-       hairline. Floated so the question wraps around it and can never be
-       covered. The element a player portrait would later occupy. */
-    ".traits-module .tm-tag{float:right;margin:1px 0 4px 10px;display:inline-flex;align-items:center;" +
+       hairline. The element a player portrait would later occupy.
+       v47.21: it no longer floats inside the question - it rides the lead
+       row opposite HELP BALANCE THE GAME, which hands the question back the
+       line the float was costing it. */
+    ".traits-module .tm-lead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:24px}" +
+    /* The lead only fits on one line beside the chip if the eyebrow gives
+       up tracking on narrow phones. Measured: one line down to 360; at 320
+       it wraps to two, which is still no taller than the two-clause
+       subtitle it replaced. */
+    "@media(max-width:389px){.traits-module .tm-eyebrow{font-size:12px;letter-spacing:.10em}}" +
+    ".traits-module .tm-tag[hidden]{display:none}" +
+    ".traits-module .tm-tag{flex:0 0 auto;display:inline-flex;align-items:center;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.09em;" +
       "text-transform:uppercase;color:#1c1608;background:linear-gradient(180deg,#FFC957,#F2A81F);" +
       "border:1px solid #9a6a12;border-radius:7px;min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap}" +
@@ -2139,14 +2161,17 @@ function traitsModuleHtml() {
   // on /bonuses/, one tap away via FULL PAGE or the question itself.
   return '<section class="traits-module" id="traitsModule" hidden>' +
     '<span class="tm-head" id="tmHead" hidden>VOTE: DID WE GET IT WRONG?</span>' +
-    '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module"><span class="tm-eyeb">HELP BALANCE THE GAME</span> \u00B7 VOTE ON PLAYER BONUSES</a>' +
+    '<div class="tm-lead">' +
+      '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module"><span class="tm-eyeb">HELP BALANCE THE GAME</span></a>' +
+      '<span class="tm-tag" id="tmTag" hidden></span>' +
+    "</div>" +
     '<span class="tm-call" id="tmCall" hidden></span>' +
     '<span class="tm-q" id="tmQ"></span>' +
     '<span class="tm-def" id="tmDef"></span>' +
     '<div class="tm-votes" id="tmVotes">' +
       '<button class="tm-vb" type="button" id="tmYes">YES</button>' +
       '<button class="tm-vb no" type="button" id="tmNo">NO</button>' +
-      '<button class="tm-vb idk" type="button" id="tmIdk">IDK</button>' +
+      '<button class="tm-vb idk tm-flat" type="button" id="tmIdk">IDK</button>' +
     "</div>" +
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
@@ -2195,9 +2220,12 @@ function tmShowQuestion() {
   var q = TM.qs[TM.i];
   var mod = el("traitsModule");
   if (!q || !mod) return tmComplete();
+  // v47.21: the tag rides the lead row, so the question is plain text again
+  // (no innerHTML ordering dance) and gets its full width back.
   var tagAbbr = traitCardAbbr(q.trait_name || "");
-  el("tmQ").innerHTML = (tagAbbr ? '<span class="tm-tag">' + esc(tagAbbr) + "</span>" : "") +
-    esc((q.public_question || "").toUpperCase());
+  var tagEl = el("tmTag");
+  if (tagEl) { tagEl.textContent = tagAbbr || ""; tagEl.hidden = !tagAbbr; }
+  el("tmQ").textContent = (q.public_question || "").toUpperCase();
   el("tmDef").textContent = q.what_counts || "";
   el("tmRes").style.display = "none";
   el("tmVotes").style.display = "";
@@ -2295,6 +2323,7 @@ function tmComplete() {
   if (!mod) return;
   el("tmQ").textContent = TM.qs.length + (TM.qs.length === 1 ? " VOTE IN" : " VOTES IN");
   el("tmDef").textContent = "";
+  var doneTag = el("tmTag"); if (doneTag) { doneTag.textContent = ""; doneTag.hidden = true; }
   el("tmVotes").style.display = "none";
   el("tmRes").style.display = "none";
   var sh = el("tmShare"); if (sh) sh.hidden = true;
@@ -5323,8 +5352,12 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
 
   var ov = document.createElement("div");
   ov.className = "hh-overlay in hh-mid";
+  // v47.21: no skip control here. It was a SECOND decline door onto the same
+  // handler as I DON'T WANT YOUR CHARITY (declineHeat + resolve(null)), and as
+  // a relative-positioned flex child it shouldered the ceremony off centre.
+  // The charity button is the one refusal; the card is now the only child, so
+  // the overlay's align/justify centre it for real.
   ov.innerHTML =
-    '<button class="hh-skip" id="hhmSkip">the loss lands \u2192</button>' +
     '<div class="hh-card"><div class="goat-fw" id="hhmFw" aria-hidden="true"></div>' +
       '<div class="hh-eyebrow hh-clutch">' + (winsSoFar > 0
         ? 'Game ' + gameNo + '. You\u2019re ' + winsSoFar + '\u20130 and down entering the 4th quarter. Clutch heroics to stay perfect?'
@@ -5460,21 +5493,12 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
       surface: "heat_check_mid", action: "pull", pulled: 1, game_no: gameNo
     }));
     var chBtn = ov.querySelector("#hhmCharity"); if (chBtn) chBtn.classList.add("gone");
-    var skBtn = ov.querySelector("#hhmSkip"); if (skBtn) skBtn.classList.add("gone");
     setTimeout(function () { ov.classList.add("lit"); reelSpin(); }, 640);
   });
   ov.querySelector("#hhmCharity").addEventListener("click", function () {
     if (pullState.fired()) return;
     analyticsTrack("heatcheck_declined", Object.assign(analyticsRunSnapshot(), {
       surface: "heat_check_mid", action: "decline", game_no: gameNo
-    }));
-    if (window.T82 && T82.declineHeat) T82.declineHeat(G);
-    resolve(null);
-  });
-  ov.querySelector("#hhmSkip").addEventListener("click", function () {
-    if (pullState.fired()) return;
-    analyticsTrack("heatcheck_action", Object.assign(analyticsRunSnapshot(), {
-      surface: "heat_check_mid", action: "skip", pulled: 0, game_no: gameNo
     }));
     if (window.T82 && T82.declineHeat) T82.declineHeat(G);
     resolve(null);

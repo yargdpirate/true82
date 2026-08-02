@@ -27,10 +27,15 @@ body{min-height:100svh;display:flex;flex-direction:column;align-items:center;pad
 .wrap{width:100%;max-width:520px;padding:0 20px;position:relative}
 .brand{font-family:var(--mono);font-size:13px;letter-spacing:.28em;color:var(--chalk-dim)}
 .brand a{color:inherit;text-decoration:none}
-h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--chalk-dim);margin:4px 0 18px}
+/* v47.21: the title row carries the trait chip - it sits right of the
+   wordmark and clear of the absolutely positioned hoop mark, which is
+   what the retired PLAYER BONUS n / N counter line used to cost a row
+   of its own to say. */
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--chalk-dim);margin:4px 0 18px;display:flex;align-items:center;gap:11px;padding-right:36px;min-height:26px}
 .card{background:linear-gradient(180deg,#161d26,#11161d);border:1px solid var(--line);border-top-color:rgba(242,237,228,.13);border-radius:23px;padding:26px 24px;position:relative;box-shadow:0 18px 44px -22px rgba(0,0,0,.65)}
 .toprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--chalk-dim);margin-bottom:14px}
-.q-tag{float:right;margin:2px 0 6px 12px;display:inline-flex;align-items:center;font-family:var(--disp);
+.q-tag[hidden]{display:none}
+.q-tag{flex:0 0 auto;display:inline-flex;align-items:center;font-family:var(--disp);
   font-weight:700;font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#1c1608;
   background:linear-gradient(180deg,#FFC957,#F2A81F);border:1px solid #9a6a12;border-radius:7px;
   min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap}
@@ -47,6 +52,10 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter
 .qx-sub{font-size:13px;letter-spacing:.01em}
 .qx-btn{position:relative;flex:0 0 auto;width:100%;height:48px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk);font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.07em;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;line-height:1;padding:0 10px}
 .qx-btn:active,.qx-btn.flashed{color:var(--amber);border-color:var(--amber)}
+/* v47.21: the game door joins the stack instead of sitting alone under
+   the card. Same 2D outline geometry as its siblings, amber face kept. */
+.qx-btn.qx-play{background:var(--amber);border-color:#9a6a12;color:#131313;font-weight:700;letter-spacing:.1em}
+.qx-btn.qx-play:active,.qx-btn.qx-play.flashed{color:#131313;border-color:#9a6a12;filter:brightness(1.1)}
 .qx-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 a.qx-btn[hidden]{display:none}
 @media (max-width:380px){
@@ -113,7 +122,6 @@ a.qx-btn[hidden]{display:none}
 .bar{height:9px;border-radius:5px;background:#0d1217;overflow:hidden;display:flex;margin-bottom:18px}
 .bar .y{background:var(--amber)}.bar .n{background:var(--ember)}
 .act-next{display:block;width:100%;height:56px;border:none;border-radius:15px;background:var(--amber);color:#131313;font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:.1em;cursor:pointer}
-a.play-t82{display:flex;align-items:center;justify-content:center;text-decoration:none;max-width:430px;margin:0 auto}
 .act-next:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
 .act-share{display:block;width:100%;height:48px;margin-top:11px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk-dim);font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:.1em;cursor:pointer}
 .act-share:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
@@ -121,7 +129,6 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
 .t-link{display:block;text-align:center;margin-top:13px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;min-height:44px}
 .cv-link{display:inline-block;margin:2px 0 12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;padding:8px 0;text-decoration:underline;text-underline-offset:3px}
 .err-line{color:var(--ember);font-size:14.5px;margin:12px 0 10px}
-.foot{margin-top:26px}
 .page-mark{position:absolute;top:0;right:20px;width:26px;height:29px;opacity:.9}
 .flash{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--amber)}
 </style>
@@ -130,9 +137,8 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
 <div class="wrap">
   <div class="brand"><a href="/?src=bonuses">TRUE 82</a></div>
   <svg class="page-mark" viewBox="0 0 32 36" aria-hidden="true" focusable="false"><path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" fill="var(--amber)"/><rect x="5" y="15" width="22" height="3.4" rx="1.7" fill="#B98A4F"/><path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" stroke="#B98A4F" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
-  <h1>PLAYER BONUSES</h1>
+  <h1>PLAYER BONUSES<span class="q-tag" id="titleTag" hidden></span></h1>
   <div id="stage"></div>
-  <div class="foot"><a class="act-next play-t82" href="/?src=bonuses">PLAY TRUE82</a></div>
 </div>
 <script src="/analytics.js?v=20260725-traits-v44"></script>
 <script src="/retention-client.js?v=20260725-traits-v44"></script>
@@ -156,9 +162,15 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
     "Ball Pounder": "BPOUND", "Wing Defender": "WING-D", "Primary Creator": "CREATE",
     "Help Defender": "HELP-D"
   };
-  function tagChip(q) {
+  // v47.21: the chip lives in the page title, so it is set per question
+  // rather than built into the question markup, and cleared whenever the
+  // card is not showing a question.
+  function setTitleTag(q) {
+    var t = document.getElementById("titleTag");
+    if (!t) return;
     var a = TAG_ABBR[String((q && q.trait_name) || "")] || "";
-    return a ? '<span class="q-tag">' + esc(a) + "</span>" : "";
+    t.textContent = a;
+    t.hidden = !a;
   }
   var Q = [], idx = 0, doneIds = [], sessionOpen = false, completedOnce = false, lastAnswered = null;
   var SEEN_KEY = "t82TraitsSeen";
@@ -290,8 +302,7 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
 
   function skeletonHtml() {
     return '<section class="skel" aria-hidden="true">' +
-      '<div class="sk" style="height:12px;width:44%"></div>' +
-      '<div class="sk" style="height:40px;width:92%;margin-top:16px"></div>' +
+      '<div class="sk" style="height:40px;width:92%"></div>' +
       '<div class="sk" style="height:40px;width:70%;margin-top:8px"></div>' +
       '<div class="sk" style="height:14px;width:52%;margin-top:14px"></div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px">' +
@@ -300,6 +311,7 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
   }
   function startSession(ref, again) {
     sessionOpen = false;
+    setTitleTag(null);
     stage.innerHTML = skeletonHtml();
     var seenEx = doneIds.concat(seenList()).filter(function (x, i, a) {
       return x && x !== ref && a.indexOf(x) === i;
@@ -317,6 +329,7 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
 
   function feedError(reason) {
     sessionOpen = false;
+    setTitleTag(null);
     stage.innerHTML =
       '<section class="card"><div class="toprow"><span>PLAYER BONUS</span></div>' +
       '<p class="q" style="font-size:30px">THE QUESTION FEED DID NOT ANSWER.</p>' +
@@ -337,8 +350,7 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
     var wc = q.what_counts || q.definition || "";
     stage.innerHTML =
       '<section class="card" id="qcard">' +
-        '<div class="toprow"><span>PLAYER BONUS</span><span>' + n + " / " + Q.length + "</span></div>" +
-        '<p class="q">' + tagChip(q) + esc(questionText(q)) + "</p>" +
+        '<p class="q">' + esc(questionText(q)) + "</p>" +
         (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
         (wc ? '<p class="q-def">' + esc(wc) + "</p>" : "") +
         '<div class="controls" id="controls">' +
@@ -349,12 +361,14 @@ a.play-t82{display:flex;align-items:center;justify-content:center;text-decoratio
           '<button class="v-unsure" data-v="unsure">UNSURE</button>' +
         "</div>" +
         '<div class="qx" id="qx">' +
-          '<a class="qx-btn" id="qRef" hidden target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
+          '<a class="qx-btn" id="qRef" hidden target="_blank" rel="noopener">Stats Refresher \u2197</a>' +
           '<button class="qx-btn qx-share" id="qShare" type="button">' +
             '<span class="qx-lead">Share Vote</span><span class="qx-sub">(please don\u2019t vote brigade)</span></button>' +
+          '<a class="qx-btn qx-play" href="/?src=bonuses">PLAY THE GAME</a>' +
         "</div>" +
         '<div id="resultZone" aria-live="polite"></div>' +
       "</section>";
+    setTitleTag(q);
     track("traits_question", { surface: "traits", action: "view", ordinal: n, challenge: q.id, source: entrySource });
     var card = document.getElementById("qcard");
     var qRef = document.getElementById("qRef");
