@@ -1215,10 +1215,13 @@ function applyMetricYears(force) {
 function currentPoolRows() {
   if (MODE === "kaman") { return KAMAN_SEASONS.slice(); }
   var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
+  if (pool) dyFixDefaults(pool);   // v48: both render paths pass here; retired defaults get bumped to the best legal year
   var rows = [];
   if (pool) pool.forEach(function (row, name) {
     if (G.drafted.has(name)) return;
-    if (!T82.poolYearsEligible(G, name).length) return;   // hide players with no eligible (>785-min) season this team/era — don't shade, omit
+    var yrs = T82.poolYearsEligible(G, name);
+    if (!yrs.length) return;   // hide players with no eligible (>785-min) season this team/era — don't shade, omit
+    if (dyRun() && !yrs.some(function (r) { return !dyRowRetired(r); })) return;   // v48: whole career banked in this cell — omit, same doctrine
     rows.push(row);
   });
   var q = (G.query || "").trim().toLowerCase();
@@ -1447,6 +1450,11 @@ function modePanelHtml() {
       targetHtml = '<div class="mp-target mono">BEAT ' + G.social.target.w + '-' +
         (CFG.GAMES_IN_SEASON - G.social.target.w) + ' \u00B7 NET ' + T82DAILY.signedNet(G.social.target.n) + '</div>';
     }
+  } else if (G.ch && G.ch.id === "dynasty") {
+    idHtml = '<span class="mp-id">\uD83D\uDC51 DYNASTY</span>' +
+      '<span class="mp-name">' + esc(G.ch.name || "") + '</span>';
+    sub.push("CLASSIC RULES");
+    if (G.ch.blurb) sub.push(esc(G.ch.blurb));
   } else if (G.ch) {
     idHtml = '<span class="mp-id">' + (G.weekly ? "WEEKLY" : "CHALLENGE") + '</span>' +
       '<span class="mp-name">' + esc(G.ch.name || "") + '</span>';
@@ -2664,6 +2672,13 @@ function renderIntro() {
         '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
         '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
       thirdSlotHtml +
+      (function () {
+        var r = dyLoad();
+        var label = r && r.active && r.history.length
+          ? "\uD83D\uDC51 Dynasty \u00B7 Season " + r.dyn + " waits"
+          : "\uD83D\uDC51 Dynasty \u00B7 how long can you keep it alive?";
+        return '<button class="btn btn-block more-modes" id="startDynasty">' + label + '</button>';
+      })() +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
@@ -2682,7 +2697,8 @@ function renderIntro() {
     var specs = [
       ["startClassic", "classic"], ["startCap", "cap"], ["startPro", "pro"],
       ["startDaily", "daily"], ["dailyChallengeBtn", "daily_share"], ["dailyPracticeBtn", "daily_practice"],
-      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"]
+      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"],
+      ["startDynasty", "dynasty"]
     ];
     var seen = {};
     function mark(node, key) {
@@ -2718,6 +2734,10 @@ function renderIntro() {
   var proBtn = el("startPro");   // absent when THE DAILY holds the third slot
   if (proBtn) proBtn.addEventListener("click", function () { start("pro"); });
   el("startCap").addEventListener("click", function () { start("cap"); });
+  el("startDynasty").addEventListener("click", function () {
+    analyticsTrack("mode_select", { mode: "dynasty", surface: "home", action: "dynasty" });
+    renderDynastyGate();   // the gate needs no player data; the launch inside it queues on DATA_READY
+  });
   el("startDuel").addEventListener("click", function () {
     analyticsTrack("feature_select", { surface: "home", action: "duel" });
     var btn = el("startDuel"), label = btn.textContent;
@@ -3076,8 +3096,9 @@ function yearControlHtml(name, row) {
   var cur = row[IDX.season];
   var opts = arr.map(function (r) {
     var s = r[IDX.season];
-    return '<option value="' + s + '"' + (s === cur ? " selected" : "") + ">" +
-      shortSeason(s) + " " + esc(r[IDX.team]) + "</option>";
+    var dead = dySeasonRetired(name, s);   // v48: a banked season hangs in the rafters, visible and unpickable
+    return '<option value="' + s + '"' + (s === cur ? " selected" : "") + (dead ? " disabled" : "") + ">" +
+      shortSeason(s) + " " + esc(r[IDX.team]) + (dead ? " \u00B7 RETIRED" : "") + "</option>";
   }).join("");
   return '<span class="year-wrap"><span class="year-face">' + curTxt +
     ' <b class="yf-caret">\u25BE</b></span>' +
@@ -3353,6 +3374,7 @@ function renderDraft(anim) {
     var name = s.getAttribute("data-name");
     var season = parseInt(s.value, 10);
     if (isNaN(season)) return;
+    if (dySeasonRetired(name, season)) { refreshPool(); return; }   // v48: disabled options should never fire; belt anyway
     G.yearByName[name] = season;
     analyticsTrack("year_change", Object.assign(analyticsRunSnapshot(), {
       player: name, season: season, action: "season_menu"
@@ -3745,7 +3767,7 @@ function hotHand(e) {
         '<div class="hh-verdict" id="hhVerdict"></div>' +
         '<div class="hh-actions" id="hhActions">' +
           '<button class="hh-btn presti-spin" id="hhSee">SEE YOUR TEAM</button>' +
-          '<button class="hh-btn presti-spin" id="hhAgain">RUN IT BACK</button>' +
+          (dyRun() ? '' : '<button class="hh-btn presti-spin" id="hhAgain">RUN IT BACK</button>') +
           '<a class="hh-btn hh-bref" id="hhBref" data-bb="' + esc(G.picks[hotIdx].row[IDX.name]) + '" data-bb-gl="' + G.picks[hotIdx].row[IDX.season] + '" data-camp="hothand" href="' + bbrefSearch(G.picks[hotIdx].row[IDX.name], "hothand") + '" target="_blank" rel="noopener">HIS REAL HEATERS \u2197</a>' +
         '</div>' +
       '</div>'
@@ -4781,6 +4803,7 @@ function showNewspaper(gate) {
   var skip = document.createElement("button"); skip.type = "button"; skip.className = "presti-spin np-underbtn"; skip.textContent = "SKIP TO RESULTS";
   var again = document.createElement("button"); again.type = "button"; again.className = "presti-spin np-underbtn"; again.textContent = "RUN IT BACK";
   under.appendChild(skip); under.appendChild(again);
+  if (dyRun()) again.style.display = "none";   // v48: a dynasty season is settled; a rerun here would be a plain classic run in disguise
 
   // Three physical sheets remain on one stage. The wrapped cover carries a clear
   // ink-black READ STORY action. On activation, the tie releases, the cover lifts,
@@ -5144,6 +5167,314 @@ function setEliteResultGlow(wins) {
   if (share) share.classList.toggle("elite-result", wins === 81 || wins === 82);
 }
 
+/* ---------- v48 THE DYNASTY (alpha) ----------
+   "How long can I keep the greatest franchise in history alive?"
+   Classic drafting and the realized 82, wrapped in permanent scarcity:
+   every player season on a BANKED roster retires for the rest of the run.
+   Seasons retire, never players: bank 2016 Curry and 2021 Curry still
+   plays. The pool only shrinks and the win target only climbs, so the
+   problem drifts from "strongest possible five" toward "the weakest five
+   that still survives."
+
+   ARCHITECTURE (the engine stays a black box):
+   - The scarcity rule IS a challenge. dyChallenge() builds a challenge
+     object whose filter() rejects retired rows; it rides the same
+     newGame(mode, seed, ch) door the weekly twists use, so the engine
+     enforces legality exactly as it does for every other challenge, and
+     pickBlock/denyRow explain a barred card for free. MODE stays
+     "classic": the engine never learns the word dynasty.
+   - The season REALIZES. v42 reserved this exact door ("daily boards,
+     challenges, and pro stay analytic until their own adaptations");
+     seasonArmEligible() is that adaptation, admitting only ch.id
+     "dynasty" among challenge runs.
+   - The verdict settles at COMPUTE time (dySettle inside showResults,
+     the moment realized wins exist), not at presentation time. Reloading
+     during the reel or the ceremony cannot un-live a season: the reel is
+     replay, the localStorage write already happened. A mid-DRAFT reload
+     costs nothing but the redraft, because nothing commits until a
+     season completes.
+   - State is one versioned localStorage object (t82Dynasty). No D1, no
+     worker, no accounts coupling in the alpha; percentile fetch is
+     skipped (the open classic pool is the wrong yardstick for a
+     shrinking-pool run, and it keeps alpha runs out of that pool).
+   QA: ?dynasty=1 opens the gate, ?dynasty=reset wipes the run,
+   ?dythr=NN overrides every threshold (app-side only). */
+var DY_KEY = "t82Dynasty";
+var DY_THRESH = [76, 76, 77, 77, 78, 78, 79, 80];   // dynasty 9+ holds the last rung
+var DY_QA = (function () {
+  var q = {};
+  try {
+    var p = new URLSearchParams(location.search);
+    if (p.get("dynasty") === "reset") q.reset = 1;
+    if (p.get("dynasty") === "1") q.open = 1;
+    var t = parseInt(p.get("dythr") || "", 10);
+    if (t >= 1 && t <= 82) q.thr = t;
+  } catch (e) {}
+  return q;
+})();
+var DY_ACTIVE = null;   // the run object for the season in flight; only meaningful while G.ch.id is "dynasty"
+function dyThreshold(d) {
+  if (DY_QA.thr) return DY_QA.thr;
+  return d <= DY_THRESH.length ? DY_THRESH[d - 1] : DY_THRESH[DY_THRESH.length - 1];
+}
+function dyLoad() {
+  try {
+    var r = JSON.parse(localStorage.getItem(DY_KEY) || "null");
+    if (r && r.v === 1 && Array.isArray(r.retired) && Array.isArray(r.history)) return r;
+  } catch (e) {}
+  return null;
+}
+function dySave(r) { try { r.updatedAt = Date.now(); localStorage.setItem(DY_KEY, JSON.stringify(r)); } catch (e) {} }
+function dyWipe() { DY_ACTIVE = null; try { localStorage.removeItem(DY_KEY); } catch (e) {} }
+function dyFresh() { return { v: 1, active: 1, dyn: 1, retired: [], history: [], fell: null, startedAt: Date.now(), updatedAt: Date.now() }; }
+function dyRowKey(row) { return row[IDX.name] + "|" + row[IDX.season]; }
+function dyRun() { return G && G.ch && G.ch.id === "dynasty" && DY_ACTIVE ? DY_ACTIVE : null; }
+function dyRowRetired(row) { var r = dyRun(); return !!(r && row && r.retired.indexOf(dyRowKey(row)) !== -1); }
+function dySeasonRetired(name, season) { var r = dyRun(); return !!(r && r.retired.indexOf(name + "|" + season) !== -1); }
+function dyAllTime(r) {
+  var w = 0, l = 0;
+  r.history.forEach(function (h) { w += h.w; l += h.l; });
+  if (r.fell) { w += r.fell.w; l += r.fell.l; }
+  return { w: w, l: l };
+}
+function dyChallenge(run) {
+  var thr = dyThreshold(run.dyn);
+  var n = run.retired.length;
+  return {
+    id: "dynasty",
+    name: "SEASON " + run.dyn + " \u00B7 TARGET " + thr,
+    blurb: "Win " + thr + " of 82 to bank the season. " + (n
+      ? n + " player season" + (n === 1 ? " already hangs" : "s already hang") + " in the rafters."
+      : "Every player season you bank retires for the rest of the run."),
+    filter: function (row) { return run.retired.indexOf(row[IDX.name] + "|" + row[IDX.season]) === -1; }
+  };
+}
+function dyStartSeason() {
+  var run = dyLoad();
+  if (!run || !run.active) { run = dyFresh(); dySave(run); }
+  DY_ACTIVE = run;
+  analyticsTrack("dynasty_state", {
+    surface: "dynasty", action: run.history.length ? "continue" : "start",
+    value: run.dyn, ordinal: run.retired.length
+  });
+  var ch = dyChallenge(run);
+  newGame("classic", null, ch, { surface: "dynasty", variant: "dynasty:" + run.dyn });
+  if (G && !G.ch) { G.ch = ch; renderDraft(false); }   // belt only: newGame's third arg is the weekly door and lands on G.ch
+}
+/* Default seasons can point at retired rows (the engine's best-year default
+   and the OBPM/DBPM repick know nothing about the rafters). This runs at the
+   single choke point both render paths share and nudges any retired default
+   to the player's best LEGAL season, using the same metric the sort is
+   using. Pure G.yearByName writes: the exact mechanism the year dropdown
+   itself uses, replay-safe by construction. */
+function dyFixDefaults(pool) {
+  var run = dyRun();
+  if (!run) return;
+  var metric = G.sortMode === "obpm" ? IDX.obpm : G.sortMode === "dbpm" ? IDX.dbpm : null;
+  pool.forEach(function (row, name) {
+    if (G.drafted.has(name)) return;
+    var cur = T82.resolveRow(G, name);
+    if (!cur || !dyRowRetired(cur)) return;
+    var arr = T82.poolYearsEligible(G, name) || [];
+    var legal = [];
+    for (var i = 0; i < arr.length; i++) if (!dyRowRetired(arr[i])) legal.push(arr[i]);
+    if (!legal.length) return;   // whole career retired in this cell; currentPoolRows omits him
+    var pick = legal[0];
+    if (metric) for (var j = 1; j < legal.length; j++) if (legal[j][metric] > pick[metric]) pick = legal[j];
+    G.yearByName[name] = pick[IDX.season];
+  });
+}
+/* The verdict locks the moment realized wins exist. Idempotent: the armed
+   path settles inside showResults and the analytic fallback settles at
+   finishRunTail; whichever runs first wins and the other is a no-op. */
+function dySettle(e) {
+  var run = dyRun();
+  if (!run || G.dySettled) return;
+  G.dySettled = 1;
+  var thr = dyThreshold(run.dyn);
+  var w = e.winTally, l = CFG.GAMES_IN_SEASON - w;
+  var five = G.picks.map(function (p) {
+    return { k: dyRowKey(p.row), n: p.row[IDX.name], s: p.row[IDX.season], slot: p.slot };
+  });
+  var snap = { d: run.dyn, w: w, l: l, thr: thr, net: Math.round(e.net * 10) / 10, five: five };
+  if (w >= thr) {
+    run.history.push(snap);
+    five.forEach(function (f) { if (run.retired.indexOf(f.k) === -1) run.retired.push(f.k); });
+    run.dyn += 1;
+    G.dyVerdict = { banked: 1, snap: snap };
+    analyticsTrack("dynasty_state", { surface: "dynasty", action: "banked", value: snap.d, wins: w, target_wins: thr, ordinal: run.retired.length });
+  } else {
+    run.active = 0;
+    run.fell = snap;
+    G.dyVerdict = { banked: 0, snap: snap };
+    analyticsTrack("dynasty_state", { surface: "dynasty", action: "fell", value: snap.d, wins: w, target_wins: thr, ordinal: run.retired.length });
+  }
+  dySave(run);
+}
+function dyFiveHtml(five) {
+  return five.map(function (f) {
+    return '<span class="dyv-name">' + esc(f.n) + ' <b>' + shortSeason(f.s) + '</b></span>';
+  }).join("");
+}
+function dyVerdictHtml(v) {
+  var s = v.snap, run = DY_ACTIVE || dyLoad() || dyFresh();
+  var att = dyAllTime(run);
+  if (v.banked) {
+    return '<section class="section dy-verdict dy-banked" data-result-section="dynasty_verdict">' +
+      '<p class="dyv-eyebrow">\uD83D\uDC51 THE DYNASTY</p>' +
+      '<p class="dyv-stamp">SEASON ' + s.d + ' BANKED</p>' +
+      '<p class="dyv-line">' + s.w + ' and ' + s.l + '. Needed ' + s.thr + '.</p>' +
+      '<p class="dyv-eyebrow dyv-raft">RETIRED TO THE RAFTERS</p>' +
+      '<div class="dyv-five">' + dyFiveHtml(s.five) + '</div>' +
+      '<p class="dyv-sub">' + run.retired.length + ' player season' + (run.retired.length === 1 ? "" : "s") + ' retired \u00B7 all time ' + att.w + ' and ' + att.l + '</p>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="dyContinueBtn">DRAFT SEASON ' + run.dyn + ' \u00B7 TARGET ' + dyThreshold(run.dyn) + '</button>' +
+      '</section>';
+  }
+  var lived = run.history.length;
+  var hall = run.history.map(function (h) {
+    return '<div class="dyv-hall-row"><span class="dyv-hall-head">SEASON ' + h.d + ' \u00B7 ' + h.w + ' and ' + h.l + '</span>' +
+      '<span class="dyv-hall-five">' + h.five.map(function (f) { return esc(f.n) + " " + shortSeason(f.s); }).join(" \u00B7 ") + '</span></div>';
+  }).join("");
+  return '<section class="section dy-verdict dy-fell" data-result-section="dynasty_verdict">' +
+    '<p class="dyv-eyebrow">\uD83D\uDC51 THE DYNASTY</p>' +
+    '<p class="dyv-stamp dyv-dead">THE DYNASTY FALLS</p>' +
+    '<p class="dyv-line">Season ' + s.d + ' needed ' + s.thr + '. You won ' + s.w + '.</p>' +
+    '<p class="dyv-sub">' + (lived
+      ? 'It lived ' + lived + ' season' + (lived === 1 ? "" : "s") + ' \u00B7 all time ' + att.w + ' and ' + att.l
+      : 'It never banked a season') + '</p>' +
+    (hall ? '<p class="dyv-eyebrow dyv-raft">THE BANKED SEASONS</p><div class="dyv-hall">' + hall + '</div>' : '') +
+    '<button class="btn btn-primary btn-block presti-spin" id="dyNewBtn">START A NEW DYNASTY</button>' +
+    '<button class="dyv-share" id="dyShareBtn" type="button">SHARE THE OBITUARY</button>' +
+    '</section>';
+}
+function dyShareObit() {
+  var run = DY_ACTIVE || dyLoad();
+  if (!run || !run.fell) return;
+  var att = dyAllTime(run), lived = run.history.length;
+  var txt = "TRUE 82 \u00B7 THE DYNASTY\n" +
+    "It fell in Season " + run.fell.d + ": needed " + run.fell.thr + ", won " + run.fell.w + ".\n" +
+    (lived ? "It lived " + lived + " season" + (lived === 1 ? "" : "s") + ". All time " + att.w + " and " + att.l + ".\n" : "") +
+    "https://true82.net/";
+  var btn = el("dyShareBtn");
+  analyticsTrack("share_open", { surface: "dynasty", action: "obituary", value: lived });
+  if (navigator.share) { navigator.share({ text: txt }).catch(function () {}); return; }
+  try {
+    navigator.clipboard.writeText(txt).then(function () {
+      if (btn) { var t = btn.textContent; btn.textContent = "COPIED"; setTimeout(function () { btn.textContent = t; }, 1400); }
+    });
+  } catch (e) {}
+}
+function dyInjectVerdict() {
+  var v = G.dyVerdict;
+  if (!v) return;
+  ensureDynastyCss();
+  var root = app();
+  if (!root) return;
+  var board = root.querySelector(".board");
+  if (board) board.insertAdjacentHTML("beforebegin", dyVerdictHtml(v));
+  else root.insertAdjacentHTML("afterbegin", dyVerdictHtml(v));
+  // A dynasty season is settled; it never reruns. The replay action would
+  // quietly start a plain Classic run, so it goes away entirely here.
+  var again = el("againBtn");
+  if (again) { var box = again.closest(".actions"); if (box) box.hidden = true; else again.hidden = true; }
+  var c = el("dyContinueBtn");
+  if (c) c.addEventListener("click", function () { dyStartSeason(); });
+  var nb = el("dyNewBtn");
+  if (nb) nb.addEventListener("click", function () { dyWipe(); dyStartSeason(); });
+  var sb = el("dyShareBtn");
+  if (sb) sb.addEventListener("click", function () { dyShareObit(); });
+}
+function dyLaunch() {
+  if (DATA_READY) { dyStartSeason(); return; }
+  PENDING_FN = dyStartSeason;   // same queue contract as the daily and weekly launches
+  var b = el("dyGoBtn");
+  if (b) { b.disabled = true; b.textContent = "Loading players\u2026"; }
+}
+function renderDynastyGate() {
+  ensureDynastyCss();
+  document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
+  var run = dyLoad();
+  var inner;
+  if (run && run.active && run.history.length) {
+    var att = dyAllTime(run);
+    inner = '<p class="eyebrow">\uD83D\uDC51 DYNASTY \u00B7 IN PROGRESS</p>' +
+      '<h1 class="intro-title">Season ' + run.dyn + ' waits</h1>' +
+      '<p class="intro-lead">The run is ' + run.history.length + ' season' + (run.history.length === 1 ? "" : "s") + ' deep. All time ' + att.w + ' and ' + att.l + '. ' +
+      run.retired.length + ' player season' + (run.retired.length === 1 ? " hangs" : "s hang") + ' in the rafters, and the target is ' + dyThreshold(run.dyn) + ' wins.</p>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="dyGoBtn">DRAFT SEASON ' + run.dyn + '</button>' +
+      '<button class="dy-abandon" id="dyAbandonBtn" type="button">END THE DYNASTY</button>';
+  } else if (run && !run.active && run.fell) {
+    var att2 = dyAllTime(run), lived = run.history.length;
+    inner = '<p class="eyebrow">\uD83D\uDC51 DYNASTY \u00B7 THE OBITUARY</p>' +
+      '<h1 class="intro-title">It fell in Season ' + run.fell.d + '</h1>' +
+      '<p class="intro-lead">Needed ' + run.fell.thr + ', won ' + run.fell.w + '. ' +
+      (lived ? 'It lived ' + lived + ' season' + (lived === 1 ? "" : "s") + ', all time ' + att2.w + ' and ' + att2.l + '.' : 'It never banked a season.') + '</p>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="dyGoBtn">START A NEW DYNASTY</button>';
+  } else {
+    inner = '<p class="eyebrow">\uD83D\uDC51 DYNASTY \u00B7 ALPHA</p>' +
+      '<h1 class="intro-title">How long can you keep it alive?</h1>' +
+      '<p class="intro-lead">Classic rules, season after season. Bank a season by hitting the win target and every player season on that roster retires forever. The pool only shrinks. The target climbs from 76 toward 80.</p>' +
+      '<p class="intro-lead dy-fine">Seasons retire, players do not: bank 2016 Curry and 2021 Curry still plays. The run ends the first time you miss the target.</p>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="dyGoBtn">BEGIN THE DYNASTY</button>';
+  }
+  app().innerHTML = '<section class="ticket intro dy-gate">' + inner +
+    '<button class="startover-btn dy-back" id="dyBackBtn" type="button">\u2039 Back</button></section>';
+  analyticsTrack("mode_impression", { surface: "dynasty_gate", action: run && run.active && run.history.length ? "resume" : (run && run.fell ? "obituary" : "fresh") });
+  el("dyGoBtn").addEventListener("click", function () {
+    var r = dyLoad();
+    if (r && !r.active) dyWipe();   // the obituary's button starts clean
+    dyLaunch();
+  });
+  el("dyBackBtn").addEventListener("click", function () { renderIntro(); });
+  var ab = el("dyAbandonBtn");
+  if (ab) ab.addEventListener("click", function () {
+    if (!ab.dataset.arm) {
+      ab.dataset.arm = "1";
+      ab.textContent = "TAP AGAIN TO END IT";
+      setTimeout(function () { if (ab.isConnected) { delete ab.dataset.arm; ab.textContent = "END THE DYNASTY"; } }, 4000);
+      return;
+    }
+    var r = dyLoad();
+    analyticsTrack("dynasty_state", { surface: "dynasty", action: "abandon", value: r ? r.dyn : 0, ordinal: r ? r.retired.length : 0 });
+    dyWipe();
+    renderDynastyGate();
+  });
+}
+function ensureDynastyCss() {
+  if (document.getElementById("t82DynastyCss")) return;
+  var st = document.createElement("style");
+  st.id = "t82DynastyCss";
+  st.textContent =
+    ".dy-gate .intro-lead.dy-fine{font-size:14px;color:#8b98a5}" +
+    ".dy-gate .btn{margin-top:12px}" +
+    ".dy-abandon{display:block;margin:14px auto 0;background:none;border:1px dashed #4d5a67;border-radius:9px;" +
+      "color:#9fabb7;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 16px;cursor:pointer}" +
+    ".dy-back{margin-top:16px}" +
+    ".dy-verdict{position:relative;text-align:center;border:2px solid #FFB52E;border-radius:18px;padding:18px 16px 16px;" +
+      "background:linear-gradient(180deg,#1a2129,#141a21);" +
+      "box-shadow:0 0 0 1px rgba(255,181,46,.25),0 0 26px rgba(255,181,46,.16)}" +
+    ".dy-verdict.dy-fell{border-color:#E5533C;box-shadow:0 0 0 1px rgba(229,83,60,.25),0 0 26px rgba(229,83,60,.14)}" +
+    ".dyv-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.22em;color:#8b98a5}" +
+    ".dyv-stamp{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;" +
+      "letter-spacing:.04em;color:#FFB52E;margin-top:6px;text-transform:uppercase}" +
+    ".dyv-stamp.dyv-dead{color:#E5533C}" +
+    ".dyv-line{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;color:#f2ede4;margin-top:5px}" +
+    ".dyv-raft{margin-top:12px}" +
+    ".dyv-five{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 12px;margin-top:7px}" +
+    ".dyv-name{font-size:14px;color:#c9d2da}" +
+    ".dyv-name b{color:#FFB52E;font-weight:600}" +
+    ".dyv-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#8b98a5;margin-top:10px}" +
+    ".dy-verdict .btn{margin-top:13px}" +
+    ".dyv-share{display:block;width:100%;margin-top:10px;background:none;border:1px solid #2c343d;border-radius:11px;" +
+      "height:44px;color:#c9d2da;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:17px;letter-spacing:.08em;cursor:pointer}" +
+    ".dyv-hall{margin-top:7px;display:flex;flex-direction:column;gap:8px}" +
+    ".dyv-hall-row{display:flex;flex-direction:column;gap:2px}" +
+    ".dyv-hall-head{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:#FFB52E}" +
+    ".dyv-hall-five{font-size:13px;color:#a8b0b8}";
+  document.head.appendChild(st);
+}
+
 function showResults() {
   G.screen = "results";
   if (MODE === "kaman") {
@@ -5167,12 +5498,13 @@ function showResults() {
   // touches. Daily boards, challenges, and pro stay analytic until their
   // own adaptations. The arming op "ss" rides the action stream so replays
   // realize identically.
-  if ((MODE === "classic" || MODE === "cap") && !G.social && !G.ch && window.T82 && T82.simSeason) {
+  if (seasonArmEligible()) {
     T82.armSeasonSim(G);
     var season = T82.simSeason(G, e);
     e.expWins = e.winTally;
     e.winTally = season.wins;
     e.season = season;
+    dySettle(e);   // v48: the dynasty verdict locks the moment realized wins exist; the reel is presentation
     loadBbrefMap();                              // preload the map during the reel
     // v47.15 MID-SEASON HEAT CHECK (owner spec, 2026-07-31): a standalone Presti
     // roster drafted above +20 net that realizes a loss gets ONE shot to save
@@ -5189,9 +5521,19 @@ function showResults() {
   }
   finishRunTail(e);
 }
+// v48: the dynasty is the first challenge-shaped run that realizes its
+// season. v42 reserved exactly this door ("challenges stay analytic until
+// their own adaptations"); every other challenge and the daily boards stay
+// analytic through the !G.ch arm below.
+function seasonArmEligible() {
+  return (MODE === "classic" || MODE === "cap") && !G.social &&
+    (!G.ch || G.ch.id === "dynasty") && !!(window.T82 && T82.simSeason);
+}
 function finishRunTail(e) {
+  dySettle(e);   // analytic fallback path (sim-core without simSeason); idempotent with the armed settle
   renderResults(e, false);
   if (G.hotMid) applyMidBoostToResults(e);
+  dyInjectVerdict();
   if (window.t82track) {
     var gc = analyticsRunSnapshot();
     gc.wins = e.winTally;
@@ -6365,7 +6707,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v47";
+var BUILD_V = "v48";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -6416,6 +6758,7 @@ function pingGames(method) {
 // Fail-soft everywhere: no reply or thin sample just means no line 3.
 function scheduleSharePct(e) {
   if (MODE === "kaman") return;
+  if (dyRun()) return;   // v48: a shrinking-pool run against the open classic pool is the wrong yardstick, and alpha runs stay out of that pool
   var net = Math.round(e.net * 100) / 100;        // raw engine net: never the Hot Hand numbers
   var g = G;                                      // the run this fetch belongs to
   var qs = g.social
@@ -6481,6 +6824,8 @@ function boot() {
     app().innerHTML = '<section class="ticket league"><p class="duel-wait">Opening the league office\u2026</p></section>';
     ensureLeagueUI().then(function (ok) { if (ok) T82LGUI.route(lgi); else showError("Couldn\u2019t load the league screen. Reload and try again."); });
   }
+  else if (DY_QA.reset) { dyWipe(); renderDynastyGate(); }   // v48 QA: ?dynasty=reset wipes and lands on a fresh gate
+  else if (DY_QA.open) renderDynastyGate();                  // v48 QA: ?dynasty=1 deep-opens the gate
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();

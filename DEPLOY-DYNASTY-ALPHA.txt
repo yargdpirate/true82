@@ -1,0 +1,53 @@
+TRUE82 DEPLOY CARD - THE DYNASTY, ALPHA (v48.0, BUILD_V -> v48)
+================================================================
+
+WHAT SHIPS (cumulative - everything through v47.21 plus the mode)
+  app.js         THE DYNASTY: gate screen, dynasty challenge + engine-side
+                 pool filter, retired-season dropdown treatment, default
+                 fixer, settle-at-compute, verdict + obituary panels,
+                 localStorage run state, QA params. BUILD_V -> v48.
+  index.html     app.js key -> 20260802-dynasty-v48
+  styles.css, sim-core, challenges, daily-core, functions/, migrations/
+  ALL UNTOUCHED. The engine never learns the word dynasty.
+
+STEPS (LIVE PREVIEW lane, owner self-play)
+  1. Drag the package into the preview branch root, commit.
+  2. NO D1 MIGRATION. NO CONSOLE COMMAND. NO WORKER CHANGE.
+  3. Hard-reload once for the app.js key.
+  4. Footer reads "| v48".
+
+PLAY IT (5 minutes)
+  - Home: a new door under Presti reads "Dynasty \u00B7 how long can you
+    keep it alive?" It opens the gate; BEGIN THE DYNASTY drafts Season 1
+    under Classic rules with the strip reading SEASON 1 \u00B7 TARGET 76.
+  - Bank a season (76+ realized wins): the results page leads with
+    SEASON 1 BANKED, the five names in the rafters, and DRAFT SEASON 2.
+  - In Season 2's draft, any banked player-season shows RETIRED and
+    disabled in its year dropdown; a player whose banked year was his
+    default opens on his best legal year instead. Tapping a banked row
+    any other way shakes with "SEASON 2 \u00B7 TARGET 76 says no."
+  - Miss the target: THE DYNASTY FALLS, the obituary with every banked
+    roster, all-time record, SHARE THE OBITUARY, START A NEW DYNASTY.
+  - Leave mid-run: the home door reads "Season N waits" and the gate
+    resumes. END THE DYNASTY needs two taps.
+
+QA PARAMS (app-side only)
+  ?dynasty=1        open the gate on load
+  ?dynasty=reset    wipe the run, land on a fresh gate
+  ?dythr=40         override every threshold (fast loop testing; try 40
+                    to bank easily, 82 to see the fall)
+
+THRESHOLDS (one const, DY_THRESH in app.js)
+  Season 1-8: 76 76 77 77 78 78 79 80, then 80 forever.
+  Balance the mode by editing this array only.
+
+WHAT A DYNASTY RUN DOES NOT TOUCH
+  - Percentile: the fetch is skipped (open-classic pool is the wrong
+    yardstick for a shrinking pool; alpha runs stay out of it).
+  - Leaderboards/accounts/replay verify: nothing submits.
+  - The Daily, weeklies, duels, Presti: untouched; their arming and
+    analytics paths are unchanged (harness truth table proves it).
+
+ROLLBACK
+  Restore app.js + index.html from the v47.21 package. Player-side state
+  is one localStorage key (t82Dynasty); it is inert without the code.
