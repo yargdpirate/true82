@@ -2679,7 +2679,7 @@ function renderIntro() {
           : "\uD83D\uDC51 Dynasty \u00B7 how long can you keep it alive?";
         return '<button class="btn btn-block more-modes" id="startDynasty">' + label + '</button>';
       })() +
-      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redraft \u00B7 outdraft two GMs, Class of 2016</button>' +
+      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redraft \u00B7 nine classes, two rival GMs, one board</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
@@ -5673,18 +5673,113 @@ function ensureDynastyCss() {
    as Dynasty's mid-draft reload. QA: ?redraft=1 deep-opens the gate. */
 var SD_CFG = { rosterSize: 5, caps: { G: 2, F: 2, C: 1 } };
 var SD_CLASSES = {
+  /* Entries may carry alternate spellings after a pipe: "Luka Doncic|Luka Dončić".
+     The pool builder accepts ANY variant and displays the data's own name, so a
+     diacritic or a Jr. suffix mismatch degrades to nothing instead of a hole. */
   "2016": {
     label: "CLASS OF 2016",
-    blurb: "The class of Simmons, Ingram, and the late-round heist.",
+    blurb: "Simmons, Ingram, and the late-round heist.",
     names: [
       "Ben Simmons", "Brandon Ingram", "Jaylen Brown", "Pascal Siakam",
       "Domantas Sabonis", "Jamal Murray", "Dejounte Murray", "Malcolm Brogdon",
       "Fred VanVleet", "Buddy Hield", "Caris LeVert", "Jakob Poeltl",
       "Ivica Zubac", "Alex Caruso", "Dorian Finney-Smith", "Malik Beasley",
-      "Gary Payton II", "Derrick Jones Jr.", "Marquese Chriss", "Taurean Prince"
+      "Gary Payton II", "Derrick Jones Jr.|Derrick Jones", "Marquese Chriss", "Taurean Prince"
+    ]
+  },
+  "2017": {
+    label: "CLASS OF 2017",
+    blurb: "Two-way wings as far as the board sees.",
+    names: [
+      "Jayson Tatum", "Donovan Mitchell", "De'Aaron Fox", "Bam Adebayo",
+      "Jarrett Allen", "Lauri Markkanen", "OG Anunoby", "John Collins",
+      "Kyle Kuzma", "Derrick White", "Lonzo Ball", "Josh Hart",
+      "Dillon Brooks", "Malik Monk", "Luke Kennard", "Jonathan Isaac",
+      "Zach Collins", "Thomas Bryant", "Monte Morris"
+    ]
+  },
+  "2018": {
+    label: "CLASS OF 2018",
+    blurb: "Three franchise guards and one ball. Good luck.",
+    names: [
+      "Luka Doncic|Luka Don\u010di\u0107", "Shai Gilgeous-Alexander", "Trae Young",
+      "Jaren Jackson Jr.|Jaren Jackson", "Jalen Brunson", "Mikal Bridges",
+      "Deandre Ayton", "Wendell Carter Jr.|Wendell Carter", "Marvin Bagley III|Marvin Bagley",
+      "Michael Porter Jr.|Michael Porter", "Miles Bridges", "Kevin Huerter",
+      "De'Anthony Melton", "Robert Williams", "Mitchell Robinson", "Collin Sexton",
+      "Anfernee Simons", "Bruce Brown", "Gary Trent Jr.|Gary Trent",
+      "Grayson Allen", "Donte DiVincenzo"
+    ]
+  },
+  "2019": {
+    label: "CLASS OF 2019",
+    blurb: "Stars with asterisks, benches full of famous role players.",
+    names: [
+      "Ja Morant", "Zion Williamson", "Darius Garland", "Tyler Herro",
+      "RJ Barrett", "De'Andre Hunter", "Cam Johnson|Cameron Johnson", "Brandon Clarke",
+      "Grant Williams", "PJ Washington|P.J. Washington", "Keldon Johnson", "Nic Claxton|Nicolas Claxton",
+      "Daniel Gafford", "Coby White", "Jordan Poole", "Naz Reid",
+      "Terance Mann", "Matisse Thybulle", "Rui Hachimura", "Jaxson Hayes",
+      "Nickeil Alexander-Walker"
+    ]
+  },
+  "2020": {
+    label: "CLASS OF 2020",
+    blurb: "Guards everywhere. Centers, four. Count them.",
+    names: [
+      "Anthony Edwards", "Tyrese Haliburton", "LaMelo Ball", "Desmond Bane",
+      "Tyrese Maxey", "Immanuel Quickley", "Onyeka Okongwu", "Isaiah Stewart",
+      "Precious Achiuwa", "Payton Pritchard", "Saddiq Bey", "Devin Vassell",
+      "Aaron Nesmith", "Jaden McDaniels", "Cole Anthony", "Isaac Okoro",
+      "Obi Toppin", "Deni Avdija", "James Wiseman", "Naji Marshall"
+    ]
+  },
+  "2021": {
+    label: "CLASS OF 2021",
+    blurb: "The playmaking bigs. And Reaves went undrafted.",
+    names: [
+      "Cade Cunningham", "Evan Mobley", "Scottie Barnes", "Franz Wagner",
+      "Josh Giddey", "Alperen Sengun|Alperen \u015eeng\u00fcn", "Jalen Green", "Jonathan Kuminga",
+      "Trey Murphy III|Trey Murphy", "Herbert Jones|Herb Jones", "Ayo Dosunmu", "Jalen Suggs",
+      "Moses Moody", "Jalen Johnson", "Cam Thomas", "Bones Hyland|Nah'Shon Hyland",
+      "Isaiah Jackson", "Quentin Grimes", "Austin Reaves", "Day'Ron Sharpe",
+      "Davion Mitchell"
+    ]
+  },
+  "1996": {
+    label: "CLASS OF 1996",
+    blurb: "Kobe, Iverson, Nash, and the best undrafted player ever.",
+    names: [
+      "Kobe Bryant", "Allen Iverson", "Ray Allen", "Steve Nash",
+      "Marcus Camby", "Stephon Marbury", "Antoine Walker", "Peja Stojakovic|Peja Stojakovi\u0107",
+      "Jermaine O'Neal", "Zydrunas Ilgauskas|\u017dydr\u016bnas Ilgauskas", "Ben Wallace", "Derek Fisher",
+      "Shareef Abdur-Rahim", "Kerry Kittles", "Erick Dampier", "Malik Rose"
+    ]
+  },
+  "2003": {
+    label: "CLASS OF 2003",
+    blurb: "Four Hall of Famers at the top. Chris Kaman in the middle.",
+    names: [
+      "LeBron James", "Dwyane Wade", "Carmelo Anthony", "Chris Bosh",
+      "David West", "Josh Howard", "Boris Diaw", "Kyle Korver",
+      "Mo Williams|Maurice Williams", "Kirk Hinrich", "Chris Kaman", "Nick Collison",
+      "Kendrick Perkins", "Zaza Pachulia", "Leandro Barbosa", "Udonis Haslem",
+      "Matt Bonner", "Steve Blake", "T.J. Ford|TJ Ford"
+    ]
+  },
+  "2009": {
+    label: "CLASS OF 2009",
+    blurb: "Curry and Harden at the top. One real center if you squint.",
+    names: [
+      "Stephen Curry", "James Harden", "Blake Griffin", "DeMar DeRozan",
+      "Jrue Holiday", "Ty Lawson", "Jeff Teague", "Darren Collison",
+      "Brandon Jennings", "Tyreke Evans", "Ricky Rubio", "Taj Gibson",
+      "DeMarre Carroll", "Danny Green", "Patrick Beverley", "Wesley Matthews",
+      "Patty Mills|Patrick Mills", "DeJuan Blair", "Jordan Hill", "Jodie Meeks"
     ]
   }
 };
+var SD_CLASS_ORDER = ["2016", "2017", "2018", "2019", "2020", "2021", "1996", "2003", "2009"];
 var SD_CLASS_ID = "2016";
 /* The two rival GMs. needW weights how hard roster need pulls against raw
    value; scW rewards grabbing a scarce position before it dries up; jitter
@@ -5695,51 +5790,63 @@ var SD_GMS = [
   { name: "MERCER", ai: 1, tag: "best player alive, every pick", needW: 0.2, scW: 0.25, jitter: 0.6 },
   { name: "QUINCY", ai: 1, tag: "drafts the team, not the name", needW: 1.5, scW: 0.9, jitter: 0.25 }
 ];
-var SD_QA = (function () {
-  try { return { open: new URLSearchParams(location.search).get("redraft") === "1" ? 1 : 0 }; }
-  catch (e) { return {}; }
-})();
-var SD_POOL = null;    // built once per page load from live data
+function sdParseQa(search) {
+  try {
+    var v = new URLSearchParams(search).get("redraft");
+    if (!v) return {};
+    return { open: 1, cls: /^\d{4}$/.test(v) ? v : null };   // ?redraft=1 opens; ?redraft=2018 opens ON that class
+  } catch (e) { return {}; }
+}
+var SD_QA = sdParseQa(location.search);
+var SD_POOLS = {};     // classId -> built pool, so switching classes never serves a stale board
 var SD = null;         // the draft in flight; in-memory only
 var SD_TIMER = 0;      // pending AI beat, so back-out can cancel it
 
 function sdBuildPool() {
-  if (SD_POOL) return SD_POOL;
-  var wanted = SD_CLASSES[SD_CLASS_ID].names;
-  var byName = new Map();
+  var id = SD_CLASS_ID;
+  if (SD_POOLS[id]) return SD_POOLS[id];
+  var entries = SD_CLASSES[id].names;
+  var variantOf = {}, i, j;
+  for (i = 0; i < entries.length; i++) {
+    var vs = entries[i].split("|");
+    for (j = 0; j < vs.length; j++) variantOf[vs[j]] = i;
+  }
+  var recs = {};   // entry index -> rec, displayed under the DATA's own spelling
   POOL_YEARS.forEach(function (cell) {
     cell.forEach(function (rows, name) {
-      if (wanted.indexOf(name) === -1) return;
-      var rec = byName.get(name);
-      if (!rec) { rec = { name: name, seasons: [], seen: {} }; byName.set(name, rec); }
-      for (var i = 0; i < rows.length; i++) {
-        var r = rows[i];
+      var ei = variantOf[name];
+      if (ei === undefined) return;
+      var rec = recs[ei];
+      if (!rec) { rec = { name: name, seasons: [], seen: {} }; recs[ei] = rec; }
+      for (var k = 0; k < rows.length; k++) {
+        var r = rows[k];
         if (r[IDX.mp] < 785) continue;   // the same eligibility floor as everywhere else
-        var k = r[IDX.season] + "|" + r[IDX.team];
-        if (rec.seen[k]) continue;
-        rec.seen[k] = 1;
+        var key = r[IDX.season] + "|" + r[IDX.team];
+        if (rec.seen[key]) continue;
+        rec.seen[key] = 1;
         rec.seasons.push(r);
       }
     });
   });
-  var list = [], missing = [];
-  wanted.forEach(function (n) {
-    var rec = byName.get(n);
-    if (!rec || !rec.seasons.length) { missing.push(n); return; }
-    rec.seasons.sort(function (a, b) { return (a[IDX.season] - b[IDX.season]) || cmpName(a, b); });
-    var best = rec.seasons[0], bset = {};
-    rec.seasons.forEach(function (r) {
+  var list = [], missing = [], byName = new Map();
+  for (i = 0; i < entries.length; i++) {
+    var rec2 = recs[i];
+    if (!rec2 || !rec2.seasons.length) { missing.push(entries[i].split("|")[0]); continue; }
+    rec2.seasons.sort(function (a, b) { return (a[IDX.season] - b[IDX.season]) || cmpName(a, b); });
+    var best = rec2.seasons[0], bset = {};
+    rec2.seasons.forEach(function (r) {
       if (valueOf(r) > valueOf(best)) best = r;
       rowBuckets(r).forEach(function (b) { bset[b] = 1; });
     });
-    rec.best = best;
-    rec.buckets = Object.keys(bset);
-    delete rec.seen;
-    list.push(rec);
-  });
-  if (missing.length) try { console.info("[redraft] names not in live data, dropped:", missing.join(", ")); } catch (e) {}
-  SD_POOL = { list: list, byName: byName, missing: missing };
-  return SD_POOL;
+    rec2.best = best;
+    rec2.buckets = Object.keys(bset);
+    delete rec2.seen;
+    list.push(rec2);
+    byName.set(rec2.name, rec2);
+  }
+  if (missing.length) try { console.info("[redraft] " + SD_CLASSES[id].label + " names not in live data, dropped:", missing.join(", ")); } catch (e) {}
+  SD_POOLS[id] = { list: list, byName: byName, missing: missing };
+  return SD_POOLS[id];
 }
 function sdShuffle(a) {
   a = a.slice();
@@ -5753,7 +5860,7 @@ function sdFresh() {
     for (k = 0; k < seats.length; k++) seq.push(seats[r % 2 ? seats.length - 1 - k : k]);
   }
   return {
-    seats: seats, seq: seq, at: 0,
+    cls: SD_CLASS_ID, seats: seats, seq: seq, at: 0,
     rosters: [[], [], []],          // per GM: [{row, slot}]
     taken: {},                      // name -> gm index
     yearByName: {},                 // the human's season choices
@@ -5803,6 +5910,21 @@ function sdBestRowFor(name, b) {
    is the honest capacity). Hall's condition over the 7 non-empty subsets of
    {G,F,C} is exact for this shape: feasible iff for every subset S,
    need(S) <= players who qualify somewhere in S. */
+function sdHall(need, supplies) {
+  // Hall's condition over the three bucket types. need = open-slot counts;
+  // supplies = one bucket-array per available player. Returns the offending
+  // subset when infeasible, null when a full legal assignment still exists.
+  var subsets = [["G"], ["F"], ["C"], ["G", "F"], ["G", "C"], ["F", "C"], ["G", "F", "C"]];
+  for (var s = 0; s < subsets.length; s++) {
+    var S = subsets[s], nd = 0, sp = 0;
+    S.forEach(function (bk) { nd += need[bk]; });
+    supplies.forEach(function (bs) {
+      for (var i = 0; i < S.length; i++) if (bs.indexOf(S[i]) !== -1) { sp++; return; }
+    });
+    if (nd > sp) return S;
+  }
+  return null;
+}
 function sdFeasibleAfter(name, gi, b) {
   var need = { G: 0, F: 0, C: 0 };
   for (var t = 0; t < 3; t++) {
@@ -5810,17 +5932,17 @@ function sdFeasibleAfter(name, gi, b) {
       need[bk] += sdOpenCount(t, bk) - (t === gi && bk === b ? 1 : 0);
     });
   }
-  var supply = sdAvailable().filter(function (p) { return p.name !== name; });
-  var subsets = [["G"], ["F"], ["C"], ["G", "F"], ["G", "C"], ["F", "C"], ["G", "F", "C"]];
-  for (var s = 0; s < subsets.length; s++) {
-    var S = subsets[s], nd = 0, sp = 0;
-    S.forEach(function (bk) { nd += need[bk]; });
-    supply.forEach(function (p) {
-      for (var i = 0; i < S.length; i++) if (p.buckets.indexOf(S[i]) !== -1) { sp++; return; }
-    });
-    if (nd > sp) return S;   // the offending subset, for the deny copy
-  }
-  return null;
+  var supplies = [];
+  sdAvailable().forEach(function (p) { if (p.name !== name) supplies.push(p.buckets); });
+  return sdHall(need, supplies);
+}
+/* Can this class field three complete legal teams at all? Run before any
+   draft starts, so a center-starved class refuses at the gate with a reason
+   instead of finishing a three-man draft. */
+function sdClassViable(pool) {
+  var need = {};
+  Object.keys(SD_CFG.caps).forEach(function (b) { need[b] = SD_CFG.caps[b] * 3; });
+  return sdHall(need, pool.list.map(function (p) { return p.buckets; }));
 }
 function sdStrandWhy(S) {
   var names = { G: "guard", F: "forward", C: "center" };
@@ -5942,12 +6064,12 @@ function sdFinish() {
     if (T82.simSeason) {
       try { if (T82.armSeasonSim) T82.armSeasonSim(g); var season = T82.simSeason(g, e); wins = season.wins; realized = 1; } catch (err) {}
     }
-    return { gi: gi, name: SD_GMS[gi].name, roster: roster, net: Math.round(e.net * 10) / 10, wins: wins, losses: CFG.GAMES_IN_SEASON - wins, realized: realized };
+    return { gi: gi, name: SD_GMS[gi].name, roster: roster, e: e, net: Math.round(e.net * 10) / 10, wins: wins, losses: CFG.GAMES_IN_SEASON - wins, realized: realized };
   });
   teams.sort(function (a, b) { return (b.wins - a.wins) || (b.net - a.net) || (a.gi - b.gi); });
   SD.verdict = teams;
   analyticsTrack("showdown_state", {
-    surface: "redraft", action: "complete", mode: "showdown",
+    surface: "redraft", action: "complete", mode: "showdown", season: +SD.cls,
     outcome: teams[0].gi === 0 ? "win" : "loss", wins: teams[0].wins,
     value: teams.map(function (t) { return t.name + ":" + t.wins; }).join(" "),
     ordinal: teams.map(function (t) { return t.gi; }).indexOf(0) + 1
@@ -5959,7 +6081,7 @@ function sdShare() {
   if (!v) return;
   var lines = v.map(function (t, i) { return (i + 1) + ". " + (t.gi === 0 ? "ME" : t.name) + " " + t.wins + " and " + t.losses; });
   var mine = v.map(function (t) { return t.gi; }).indexOf(0);
-  var txt = "TRUE 82 \u00B7 THE REDRAFT \u00B7 " + SD_CLASSES[SD_CLASS_ID].label + "\n" +
+  var txt = "TRUE 82 \u00B7 THE REDRAFT \u00B7 " + SD_CLASSES[SD.cls].label + "\n" +
     lines.join("\n") + "\n" +
     (mine === 0 ? "I won the board." : "I want that draft back.") + "\n" +
     "https://true82.net/";
@@ -5973,6 +6095,22 @@ function sdShare() {
   } catch (e) {}
 }
 /* ---------- rendering ---------- */
+/* The engine's own receipts, per team, so a podium argument can be settled
+   by reading instead of trusting. Shooters is e.sumSp, the exact number the
+   spacing tax is computed from; the taxes shown are the ones that separate
+   drafted teams (spacing and the defense trio). Degrades to nothing on a
+   cached pre-ledger core rather than printing undefined. */
+function sdReceiptsHtml(e) {
+  if (!e || e.sumSp === undefined) return "";
+  var req = (typeof SC !== "undefined" && SC && SC.SPACERS_REQ) || 3;
+  var bits = ["shooters " + fmt1(e.sumSp) + " of " + req];
+  if (e.spacingBonus > 0) bits.push("spacing +" + fmt1(e.spacingBonus));
+  else if (e.spacingTax > 0) bits.push("spacing -" + fmt1(e.spacingTax));
+  var dTax = (e.backDefTax || 0) + (e.wingDefTax || 0) + (e.rimDefTax || 0);
+  if (dTax > 0) bits.push("defense -" + fmt1(dTax));
+  if (e.usageTax > 0) bits.push("usage -" + fmt1(e.usageTax));
+  return '<span class="sd-receipts mono">' + bits.join(" \u00B7 ") + '</span>';
+}
 function sdRosterCardHtml(gi) {
   var gm = SD_GMS[gi];
   var mine = !gm.ai;
@@ -6022,7 +6160,7 @@ function sdBoardRowHtml(p) {
     (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
     '<span class="pr-top"><span class="pr-name">' + esc(p.name) + '</span>' +
     '<span class="pr-pos">' + bucketTag(row) + (block ? " \u00B7 " + block.tag : "") + '</span></span>' +
-    '<span class="pr-sub">' + yrs + '</span>' +
+    '<span class="pr-sub">' + yrs + chipsFor(row, -1) + '</span>' +
     '<span class="pr-sub pr-stats">' + statLine(row) + '</span></div>';
 }
 function sdYearControlHtml(p, row) {
@@ -6068,7 +6206,7 @@ function renderShowdownDraft() {
   var boardHtml = avail.map(sdBoardRowHtml).join("") + takenList.map(sdBoardRowHtml).join("");
   app().innerHTML =
     '<section class="ticket sd-head"><div class="sd-headrow">' +
-      '<span class="sd-title">\uD83D\uDD01 THE REDRAFT</span><span class="sd-class mono">' + SD_CLASSES[SD_CLASS_ID].label + '</span></div>' +
+      '<span class="sd-title">\uD83D\uDD01 THE REDRAFT</span><span class="sd-class mono">' + SD_CLASSES[SD.cls].label + '</span></div>' +
       sdOrderStripHtml() +
     '</section>' +
     '<div class="sd-teams">' + [0, 1, 2].map(function (k) { return sdRosterCardHtml(SD.seats[k]); }).join("") + '</div>' +
@@ -6125,11 +6263,12 @@ function renderShowdownResults() {
     }).join("");
     return '<div class="sd-podium-row' + (t.gi === 0 ? " sd-mine" : "") + '">' +
       '<span class="sd-podium-head mono">' + (i + 1) + '. ' + (t.gi === 0 ? "YOU" : t.name) + ' \u00B7 ' + t.wins + ' and ' + t.losses + ' \u00B7 net ' + (t.net > 0 ? "+" : "") + t.net + '</span>' +
+      sdReceiptsHtml(t.e) +
       '<span class="sd-podium-five">' + five + '</span></div>';
   }).join("");
   app().innerHTML =
     '<section class="section dy-verdict ' + (mine === 0 ? "dy-banked" : "dy-fell") + ' sd-verdict" data-result-section="showdown_verdict">' +
-      '<p class="dyv-eyebrow">\uD83D\uDD01 THE REDRAFT \u00B7 ' + SD_CLASSES[SD_CLASS_ID].label + '</p>' +
+      '<p class="dyv-eyebrow">\uD83D\uDD01 THE REDRAFT \u00B7 ' + SD_CLASSES[SD.cls].label + '</p>' +
       '<p class="dyv-stamp' + (mine === 0 ? "" : " dyv-dead") + '">' + stamp + '</p>' +
       '<p class="dyv-line">' + (v[0].realized ? "Three seasons, played out." : "Three seasons, projected.") + '</p>' +
       '<div class="sd-podium">' + podium + '</div>' +
@@ -6144,23 +6283,48 @@ function renderShowdownResults() {
   el("sdShareBtn").addEventListener("click", sdShare);
   el("sdHomeBtn").addEventListener("click", function () { SD = null; renderIntro(); });
 }
-function renderShowdownGate() {
+function renderShowdownGate(silent) {
   ensureShowdownCss();
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
   var cls = SD_CLASSES[SD_CLASS_ID];
   var ready = DATA_READY ? sdBuildPool() : null;
   var thin = ready && ready.list.length < SD_CFG.rosterSize * 3;
+  var stuck = ready && !thin ? sdClassViable(ready) : null;
+  var chips = SD_CLASS_ORDER.map(function (id) {
+    return '<button class="sd-chip' + (id === SD_CLASS_ID ? " on" : "") + '" data-cls="' + id + '" type="button">\u2019' + id.slice(2) + '</button>';
+  }).join("");
+  var posNames = { G: "guards", F: "forwards", C: "centers" };
+  var tail;
+  if (thin) {
+    tail = '<p class="intro-lead dy-fine">This class came up short against live data (' + ready.list.length + ' resolved). Check the console for the missing names, then fix or trim the roster in SD_CLASSES.</p>';
+  } else if (stuck) {
+    tail = '<p class="intro-lead dy-fine">This class cannot field three legal teams: the data is short on ' +
+      stuck.map(function (b) { return posNames[b]; }).join(" and ") + '. Check the console, then fix the roster in SD_CLASSES.</p>';
+  } else {
+    tail = (ready
+      ? '<p class="sd-resolved mono">' + ready.list.length + ' players on the board' + (ready.missing.length ? ' \u00B7 ' + ready.missing.length + ' name' + (ready.missing.length > 1 ? "s" : "") + ' missing from the data (console)' : '') + '</p>'
+      : '') +
+      '<button class="btn btn-primary btn-block presti-spin" id="sdGoBtn">DRAFT THE CLASS</button>';
+  }
   var inner = '<p class="eyebrow">\uD83D\uDD01 THE REDRAFT \u00B7 ALPHA</p>' +
     '<h1 class="intro-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + '. Three GMs. One board.</h1>' +
-    '<p class="intro-lead">A snake draft against two rival GMs over one shared pool. Five players each, any season of their careers, every pick exclusive. When somebody takes your guy, he is gone.</p>' +
-    '<p class="intro-lead dy-fine">MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine plays all three seasons and settles it.</p>' +
-    (thin
-      ? '<p class="intro-lead dy-fine">The class pool came up short against live data (' + ready.list.length + ' resolved). Check the console for the missing names.</p>'
-      : '<button class="btn btn-primary btn-block presti-spin" id="sdGoBtn">DRAFT THE CLASS</button>');
+    '<div class="sd-chips" id="sdChips">' + chips + '</div>' +
+    '<p class="intro-lead"><b>' + esc(cls.blurb) + '</b></p>' +
+    '<p class="intro-lead dy-fine">A snake draft against two rival GMs over one shared pool. Five each, any season of their careers, every pick exclusive. MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine plays all three seasons and settles it.</p>' +
+    tail;
   app().innerHTML = '<section class="ticket intro dy-gate">' + inner +
     '<button class="startover-btn dy-back" id="sdBackBtn2" type="button">\u2039 Back</button></section>';
-  analyticsTrack("mode_impression", { surface: "redraft_gate", action: thin ? "thin_pool" : "fresh", mode: "showdown" });
+  if (!silent) analyticsTrack("mode_impression", { surface: "redraft_gate", action: thin ? "thin_pool" : (stuck ? "unfieldable" : "fresh"), mode: "showdown", season: +SD_CLASS_ID });
+  el("sdChips").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".sd-chip");
+    if (!b) return;
+    var id = b.getAttribute("data-cls");
+    if (!SD_CLASSES[id] || id === SD_CLASS_ID) return;
+    SD_CLASS_ID = id;
+    analyticsTrack("showdown_state", { surface: "redraft_gate", action: "class_select", mode: "showdown", season: +id });
+    renderShowdownGate(true);
+  });
   var go = el("sdGoBtn");
   if (go) go.addEventListener("click", function () {
     if (DATA_READY) { sdStart(); return; }
@@ -6171,10 +6335,10 @@ function renderShowdownGate() {
 }
 function sdStart() {
   var pool = sdBuildPool();
-  if (pool.list.length < SD_CFG.rosterSize * 3) { renderShowdownGate(); return; }
+  if (pool.list.length < SD_CFG.rosterSize * 3 || sdClassViable(pool)) { renderShowdownGate(); return; }
   SD = sdFresh();
   analyticsTrack("showdown_state", {
-    surface: "redraft", action: "start", mode: "showdown",
+    surface: "redraft", action: "start", mode: "showdown", season: +SD.cls,
     source: SD.seats.map(function (gi) { return SD_GMS[gi].name; }).join(">"), amount: pool.list.length
   });
   sdAdvance();
@@ -6187,6 +6351,11 @@ function ensureShowdownCss() {
   st.textContent =
     ".sd-head{padding:12px 14px}" +
     ".sd-headrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}" +
+    ".sd-chips{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 4px}" +
+    ".sd-chip{font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.06em;padding:7px 11px;min-height:36px;" +
+      "border:1px solid #2a323b;border-radius:9px;background:#141a21;color:#8b98a5;cursor:pointer}" +
+    ".sd-chip.on{border-color:#FFB52E;color:#FFB52E;box-shadow:0 0 0 1px rgba(255,181,46,.25)}" +
+    ".sd-resolved{display:block;font-size:11px;letter-spacing:.08em;color:#5d6a77;margin:2px 0 10px}" +
     ".sd-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.05em;color:#FFB52E}" +
     ".sd-class{font-size:11px;letter-spacing:.14em;color:#8b98a5}" +
     ".sd-strip{display:flex;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}" +
@@ -6216,6 +6385,7 @@ function ensureShowdownCss() {
     ".sd-podium-row{border:1px solid #2a323b;border-radius:12px;padding:9px 12px;background:#12181f}" +
     ".sd-podium-row.sd-mine{border-color:#FFB52E}" +
     ".sd-podium-head{display:block;font-size:12px;letter-spacing:.08em;color:#FFB52E}" +
+    ".sd-receipts{display:block;margin-top:3px;font-size:10.5px;letter-spacing:.05em;color:#8b98a5}" +
     ".sd-podium-five{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px}" +
     ".sd-verdict .dyv-share{margin-top:10px}";
   document.head.appendChild(st);
@@ -7572,7 +7742,10 @@ function boot() {
   }
   else if (DY_QA.reset) { dyWipe(); renderDynastyGate(); }   // v48 QA: ?dynasty=reset wipes and lands on a fresh gate
   else if (DY_QA.open) renderDynastyGate();                  // v48 QA: ?dynasty=1 deep-opens the gate
-  else if (SD_QA.open) renderShowdownGate();                 // v49 QA: ?redraft=1 deep-opens the gate
+  else if (SD_QA.open) {                                     // v49 QA: ?redraft=1 deep-opens; ?redraft=2018 opens ON that class
+    if (SD_QA.cls && SD_CLASSES[SD_QA.cls]) SD_CLASS_ID = SD_QA.cls;
+    renderShowdownGate();
+  }
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();

@@ -1,7 +1,28 @@
-# RETURN HANDOFF - THE REDRAFT (v49, alpha)
+# RETURN HANDOFF - THE REDRAFT (v49.2, alpha)
+
+v49.2 adds eight classes for sim-core playtesting (see THE NINE CLASSES
+below), a class picker on the gate, ?redraft=YEAR deep links, per-class pool
+caching (fixing a latent bug: the v49.0 cache was a single global and would
+have served class A's board under class B's banner), spelling-variant
+resolution ("Luka Doncic|Luka Dončić" style entries accept either and display
+the data's own name), and a start-time viability check: a class the data
+cannot field three legal teams from refuses at the gate naming the short
+position instead of finishing a three-man draft. Key `20260803-redraft3-v49`.
+
+v49.1 amends v49 with two transparency changes after the first live game
+(QUINCY 77-5): the podium now prints each team's engine receipts (shooters
+vs the requirement, spacing tax or bonus, any defense and usage bills,
+straight from the same `e` object Classic's ledger reads), and the draft
+board shows the engine's own shooter designations (the 3PT / GRAVITY chips,
+`row[IDX.sp]`, the exact column the spacing tax sums). The brief said no
+visible player labels; I read that as the community trait chips, and I am
+deliberately including the ENGINE designations because drafting blind to
+spacing is what makes a shooting-poor juggernaut feel unjust. One-line strip
+in `sdBoardRowHtml` if you meant those too. Key moves to
+`20260803-redraft2-v49`; BUILD_V stays v49.
 
 Base: the v48.1 dynasty-v2 tree, cumulative. `BUILD_V` goes to `v49`;
-`app.js` key `20260803-redraft-v49`; meta `t82-build` `v49`. Files changed:
+`app.js` key `20260803-redraft3-v49`; meta `t82-build` `v49`. Files changed:
 `app.js`, `index.html`. No styles.css, no worker, no migration, no D1 paste.
 The engine trio stays untouched and outside the package, as always.
 
@@ -118,6 +139,28 @@ question to decide before building, not a technical one.
 
 Recommendation in one line: A is a different game; B is one session on this
 chassis and worth doing only once a bench has a reason to exist.
+
+## The nine classes and why these
+
+2017 through 2021 are the subsequent years you asked for. I stopped at 2021
+because the mode drafts "best actual season" and 2022 onward have two-to-four
+year peaks and thin viable depth; the classes fall under a defensible
+fifteen fast. Three older ringers are included ON PURPOSE, each stressing a
+different subsystem you are hunting: 1996 (Kobe, Iverson, Nash, Camby, Big
+Z, Ben Wallace) stresses era adjustment plus defense-first bigs, more
+OBPM/DBPM imbalance material; 2003 (four Hall of Famers then a cliff, plus
+Kaman) stresses star density and whether the draft stays interesting when
+picks 5 through 15 are flat; 2009 (Curry, Harden, Blake, and nearly no
+centers) stresses the usage budget, shooting economics, and genuine
+positional famine - if the data says it cannot field three teams, the gate
+now says so, and that itself is a data lesson. Each class is one config
+block; deleting one you do not want is deleting one block. Blurbs are on
+the chips' gate, tunable copy.
+
+The 2016 first-deploy warning now applies per class: open each with
+?redraft=YEAR once with the console up and fix any dropped spellings. The
+variant syntax halves that surface (diacritics and Jr./III suffixes are
+pre-aliased on the risky names), but I still cannot see your live data.
 
 ## Validation
 

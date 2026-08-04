@@ -1,5 +1,5 @@
-DEPLOY - THE REDRAFT (v49, alpha)
-=================================
+DEPLOY - THE REDRAFT (v49.2, alpha)
+===================================
 
 FILES TO UPLOAD (2):
   app.js
@@ -13,7 +13,7 @@ uploading these two files ships both if you have not deployed v48.1 yet.
 
 CACHE KEYS AFTER THIS DEPLOY:
   index.html  meta t82-build   v49   (was v48)
-  index.html  app.js?v=        20260803-redraft-v49   (was 20260803-dynasty2-v48)
+  index.html  app.js?v=        20260803-redraft3-v49   (was 20260803-redraft2-v49)
   app.js      BUILD_V          v49   (was v48)
   styles.css?v=                unchanged
 
@@ -21,11 +21,14 @@ SMOKE TEST AFTER DEPLOY (5 minutes)
 -----------------------------------
 1.  Load /, footer ends in v49.
 2.  Home: THE REDRAFT door sits under Dynasty.
-3.  FIRST THING, once, with the console open: open /?redraft=1 and look for
-    a "[redraft] names not in live data, dropped:" line. Every name it
-    prints is a spelling to fix in SD_CLASSES in app.js (one array). The
-    mode plays fine without them as long as 15+ resolve; the gate refuses
-    and says so below that.
+3.  FIRST THING, once, with the console open: visit /?redraft=2016 then tap
+    through all nine class chips and watch for "[redraft] ... names not in
+    live data, dropped:" lines. Each is a spelling to fix in SD_CLASSES
+    (one array per class; entries accept "Name|Alternate Spelling"). A
+    class plays fine with drops as long as 15+ resolve AND it can field
+    three legal teams; otherwise the gate refuses and says which position
+    the data is short on. 2009 is the one to watch: it is center-starved by
+    design and doubles as a test of your position labels.
 4.  DRAFT THE CLASS. Confirm: order strip shows your seat, rival picks land
     as visible beats about a second apart, their players grey out with
     TAKEN tags, the year dropdown works on your turn, and slot buttons in
@@ -34,6 +37,10 @@ SMOKE TEST AFTER DEPLOY (5 minutes)
     outlined. RUN IT BACK reshuffles seats and starts clean.
 6.  Try to grab a player a rival just took: the card should shake with a
     deny, not select.
+7.  v49.1: the podium shows a receipts line per team (shooters X of 3,
+    spacing, defense, usage) and board cards carry the engine's 3PT/GRAVITY
+    chips. If a shooting-poor team posts a huge number, the receipts say
+    exactly what it paid for the privilege.
 
 WHAT TO WATCH WHILE PLAYING
 ---------------------------
