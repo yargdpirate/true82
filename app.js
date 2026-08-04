@@ -525,6 +525,7 @@ function newGame(mode, seed, challenge, opts) {
 function nextRound(animate) {
   var r = T82.dealRound(G);
   if (r === "done") { showResults(); return; }
+  dyDealGuard();   // v48.1: dynasty only, and it must sit between the deal and the render
   var snap = analyticsRunSnapshot();
   analyticsTrack("round_advance", snap);
   renderDraft(animate ? r : false);
@@ -1215,13 +1216,12 @@ function applyMetricYears(force) {
 function currentPoolRows() {
   if (MODE === "kaman") { return KAMAN_SEASONS.slice(); }
   var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
-  if (pool) dyFixDefaults(pool);   // v48: both render paths pass here; retired defaults get bumped to the best legal year
   var rows = [];
   if (pool) pool.forEach(function (row, name) {
     if (G.drafted.has(name)) return;
+    if (dyNameRetired(name)) return;   // v48.1: in the rafters, so gone from every cell for the rest of the run
     var yrs = T82.poolYearsEligible(G, name);
     if (!yrs.length) return;   // hide players with no eligible (>785-min) season this team/era — don't shade, omit
-    if (dyRun() && !yrs.some(function (r) { return !dyRowRetired(r); })) return;   // v48: whole career banked in this cell — omit, same doctrine
     rows.push(row);
   });
   var q = (G.query || "").trim().toLowerCase();
@@ -2679,6 +2679,7 @@ function renderIntro() {
           : "\uD83D\uDC51 Dynasty \u00B7 how long can you keep it alive?";
         return '<button class="btn btn-block more-modes" id="startDynasty">' + label + '</button>';
       })() +
+      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redraft \u00B7 outdraft two GMs, Class of 2016</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
@@ -2698,7 +2699,7 @@ function renderIntro() {
       ["startClassic", "classic"], ["startCap", "cap"], ["startPro", "pro"],
       ["startDaily", "daily"], ["dailyChallengeBtn", "daily_share"], ["dailyPracticeBtn", "daily_practice"],
       ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"],
-      ["startDynasty", "dynasty"]
+      ["startDynasty", "dynasty"], ["startRedraft", "showdown"]
     ];
     var seen = {};
     function mark(node, key) {
@@ -2737,6 +2738,10 @@ function renderIntro() {
   el("startDynasty").addEventListener("click", function () {
     analyticsTrack("mode_select", { mode: "dynasty", surface: "home", action: "dynasty" });
     renderDynastyGate();   // the gate needs no player data; the launch inside it queues on DATA_READY
+  });
+  el("startRedraft").addEventListener("click", function () {
+    analyticsTrack("mode_select", { mode: "showdown", surface: "home", action: "redraft" });
+    renderShowdownGate();   // same shape as the dynasty gate: no player data needed to pitch
   });
   el("startDuel").addEventListener("click", function () {
     analyticsTrack("feature_select", { surface: "home", action: "duel" });
@@ -3094,11 +3099,13 @@ function yearControlHtml(name, row) {
     return '<span class="year-face year-fixed">' + curTxt + "</span>";
   }
   var cur = row[IDX.season];
+  // v48.1: every season of a surviving player is legal again. Retirement is
+  // player-level now, so a retired man is not in this list at all: he is not
+  // on the board. The v48 per-option RETIRED tag is gone with the rule.
   var opts = arr.map(function (r) {
     var s = r[IDX.season];
-    var dead = dySeasonRetired(name, s);   // v48: a banked season hangs in the rafters, visible and unpickable
-    return '<option value="' + s + '"' + (s === cur ? " selected" : "") + (dead ? " disabled" : "") + ">" +
-      shortSeason(s) + " " + esc(r[IDX.team]) + (dead ? " \u00B7 RETIRED" : "") + "</option>";
+    return '<option value="' + s + '"' + (s === cur ? " selected" : "") + ">" +
+      shortSeason(s) + " " + esc(r[IDX.team]) + "</option>";
   }).join("");
   return '<span class="year-wrap"><span class="year-face">' + curTxt +
     ' <b class="yf-caret">\u25BE</b></span>' +
@@ -3198,7 +3205,7 @@ function refreshPool() {
   var pool = el("pool");
   if (!pool) return;
   traitExpandedChip = null;   // the expanded chip's node just got rebuilt
-  pool.innerHTML = poolInnerHtml(currentPoolRows());
+  pool.innerHTML = poolBodyHtml(currentPoolRows());
   updateTray();
   wireDraftPoolLabels();      // classic only inside; re-applies from cache
 }
@@ -3219,7 +3226,7 @@ function renderDraft(anim) {
   var yearRerollable = MODE === "cap" && canReroll;
   var spinCls = " presti-spin";   // casino skin on the skip buttons, all modes
 
-  var poolHtml = poolInnerHtml(rows);
+  var poolHtml = poolBodyHtml(rows);
 
   var crest = MODE === "kaman" ? null : crestFor(G.cur.fr, G.cur.dec);
   var artHtml = crest
@@ -3374,7 +3381,6 @@ function renderDraft(anim) {
     var name = s.getAttribute("data-name");
     var season = parseInt(s.value, 10);
     if (isNaN(season)) return;
-    if (dySeasonRetired(name, season)) { refreshPool(); return; }   // v48: disabled options should never fire; belt anyway
     G.yearByName[name] = season;
     analyticsTrack("year_change", Object.assign(analyticsRunSnapshot(), {
       player: name, season: season, action: "season_menu"
@@ -5167,14 +5173,32 @@ function setEliteResultGlow(wins) {
   if (share) share.classList.toggle("elite-result", wins === 81 || wins === 82);
 }
 
-/* ---------- v48 THE DYNASTY (alpha) ----------
+/* ---------- v48.1 THE DYNASTY v2 (alpha) ----------
    "How long can I keep the greatest franchise in history alive?"
    Classic drafting and the realized 82, wrapped in permanent scarcity:
-   every player season on a BANKED roster retires for the rest of the run.
-   Seasons retire, never players: bank 2016 Curry and 2021 Curry still
-   plays. The pool only shrinks and the win target only climbs, so the
+   every player on a BANKED roster retires for the rest of the run. The
+   whole player, every season, every team. The pool only shrinks, so the
    problem drifts from "strongest possible five" toward "the weakest five
    that still survives."
+
+   WHY v2 EXISTS. v48.0 retired player SEASONS. The owner self-played it and
+   returned a clean negative: losing 2016 Curry while 2015 and 2017 Curry sit
+   right there is not scarcity, it is a keystroke, and the draft stayed "who
+   was good, which years was he great, take those." Three changes answer it,
+   and nothing else was added on purpose:
+     1. the retirement key is the NAME (dyRowKey), which is the rule change;
+     2. dead cells cannot end a run: doubled skips plus dyDealGuard, because
+        player-level scarcity spends a man out of EVERY cell at once and the
+        owner's second complaint was thin cells ending runs on their own;
+     3. DY_THRESH drops a rung and climbs slower, since the shrinking pool is
+        now supposed to be the difficulty by itself.
+   THE QUESTION THE ALPHA ASKS, and the only one: at round six, with the
+   obvious names gone and the full forward class of a decade in front of you,
+   is remembering who was quietly great fun or is it homework? ?dyburn=N
+   exists so that question can be asked in one draft instead of five seasons.
+   Rotating per-round constraints are the known fix if the EARLY rounds turn
+   out to be the boring part. They are deliberately not here: that is a
+   different problem and this build should not answer two questions at once.
 
    ARCHITECTURE (the engine stays a black box):
    - The scarcity rule IS a challenge. dyChallenge() builds a challenge
@@ -5200,7 +5224,20 @@ function setEliteResultGlow(wins) {
    QA: ?dynasty=1 opens the gate, ?dynasty=reset wipes the run,
    ?dythr=NN overrides every threshold (app-side only). */
 var DY_KEY = "t82Dynasty";
-var DY_THRESH = [76, 76, 77, 77, 78, 78, 79, 80];   // dynasty 9+ holds the last rung
+var DY_VER = 2;   // v1 retired "Name|Season"; v2 retires "Name". dyLoad migrates v1 forward.
+/* THE BALANCE LEVER. Player-level scarcity removes five whole careers per
+   banked season instead of five single years, so the ladder that made sense
+   for v48's season-level rule is now punishing on top of a pool that already
+   shrinks hard. Lowered a rung across the board and the climb slowed from
+   four steps to three: the difficulty is supposed to come from the empty
+   pool, not from the number moving away from you at the same time. Nine and
+   beyond hold the last rung. Balance the mode by editing this one array;
+   ?dythr=NN flattens the whole ladder for a fast read. */
+var DY_THRESH = [74, 74, 75, 75, 76, 76, 77, 77];
+var DY_SKIPS = 2;         // per season, vs Classic's 1. See dyDealGuard for why.
+var DY_CELL_FLOOR = 5;    // fewer legal cards than this and the deal is re-rolled on the house
+var DY_REDEAL_MAX = 6;
+var DY_BURN = [];         // ?dyburn=N: players pre-retired for QA, in memory only
 var DY_QA = (function () {
   var q = {};
   try {
@@ -5209,6 +5246,8 @@ var DY_QA = (function () {
     if (p.get("dynasty") === "1") q.open = 1;
     var t = parseInt(p.get("dythr") || "", 10);
     if (t >= 1 && t <= 82) q.thr = t;
+    var b = parseInt(p.get("dyburn") || "", 10);
+    if (b >= 1 && b <= 400) q.burn = b;
   } catch (e) {}
   return q;
 })();
@@ -5217,20 +5256,46 @@ function dyThreshold(d) {
   if (DY_QA.thr) return DY_QA.thr;
   return d <= DY_THRESH.length ? DY_THRESH[d - 1] : DY_THRESH[DY_THRESH.length - 1];
 }
+/* A v1 run in flight is migrated, not thrown away: "Name|Season" collapses to
+   "Name", deduped. The owner's own alpha run survives the rule change, and it
+   survives it in the strict direction (every banked season of a player becomes
+   that whole player), which is exactly what v2 means. */
+function dyMigrate(r) {
+  if (r.v === DY_VER) return r;
+  if (r.v !== 1) return null;
+  var seen = {}, out = [];
+  r.retired.forEach(function (k) {
+    var n = String(k).split("|")[0];
+    if (n && !seen[n]) { seen[n] = 1; out.push(n); }
+  });
+  r.retired = out;
+  r.v = DY_VER;
+  r.migratedFrom = 1;
+  return r;
+}
 function dyLoad() {
   try {
     var r = JSON.parse(localStorage.getItem(DY_KEY) || "null");
-    if (r && r.v === 1 && Array.isArray(r.retired) && Array.isArray(r.history)) return r;
+    if (r && (r.v === 1 || r.v === DY_VER) && Array.isArray(r.retired) && Array.isArray(r.history)) return dyMigrate(r);
   } catch (e) {}
   return null;
 }
 function dySave(r) { try { r.updatedAt = Date.now(); localStorage.setItem(DY_KEY, JSON.stringify(r)); } catch (e) {} }
 function dyWipe() { DY_ACTIVE = null; try { localStorage.removeItem(DY_KEY); } catch (e) {} }
-function dyFresh() { return { v: 1, active: 1, dyn: 1, retired: [], history: [], fell: null, startedAt: Date.now(), updatedAt: Date.now() }; }
-function dyRowKey(row) { return row[IDX.name] + "|" + row[IDX.season]; }
+function dyFresh() { return { v: DY_VER, active: 1, dyn: 1, retired: [], history: [], fell: null, startedAt: Date.now(), updatedAt: Date.now() }; }
+/* v48.1 THE WHOLE CHANGE: the retirement key is the NAME. v48 keyed
+   "Name|Season", so banking 2016 Curry left 2015 Curry on the board and the
+   draft stayed "who was good, which years was he great, take those" (owner
+   verdict after self-play). Player-level scarcity is the version of the rule
+   that actually bites. Everything below is consequence. */
+function dyRowKey(row) { return row[IDX.name]; }
 function dyRun() { return G && G.ch && G.ch.id === "dynasty" && DY_ACTIVE ? DY_ACTIVE : null; }
-function dyRowRetired(row) { var r = dyRun(); return !!(r && row && r.retired.indexOf(dyRowKey(row)) !== -1); }
-function dySeasonRetired(name, season) { var r = dyRun(); return !!(r && r.retired.indexOf(name + "|" + season) !== -1); }
+function dyNameRetired(name) {
+  if (DY_BURN.length && DY_BURN.indexOf(name) !== -1) return true;   // QA only, never persisted
+  var r = dyRun();
+  return !!(r && r.retired.indexOf(name) !== -1);
+}
+function dyRafters(r) { return (r ? r.retired.length : 0) + DY_BURN.length; }
 function dyAllTime(r) {
   var w = 0, l = 0;
   r.history.forEach(function (h) { w += h.w; l += h.l; });
@@ -5239,50 +5304,104 @@ function dyAllTime(r) {
 }
 function dyChallenge(run) {
   var thr = dyThreshold(run.dyn);
-  var n = run.retired.length;
+  var n = dyRafters(run);
+  var burned = DY_BURN;   // captured so the filter stays self-contained, exactly as run is
   return {
     id: "dynasty",
     name: "SEASON " + run.dyn + " \u00B7 TARGET " + thr,
     blurb: "Win " + thr + " of 82 to bank the season. " + (n
-      ? n + " player season" + (n === 1 ? " already hangs" : "s already hang") + " in the rafters."
-      : "Every player season you bank retires for the rest of the run."),
-    filter: function (row) { return run.retired.indexOf(row[IDX.name] + "|" + row[IDX.season]) === -1; }
+      ? n + (n === 1 ? " player hangs" : " players hang") + " in the rafters."
+      : "Every player you bank retires for the rest of the run."),
+    filter: function (row) {
+      var nm = row[IDX.name];
+      return run.retired.indexOf(nm) === -1 && burned.indexOf(nm) === -1;
+    }
   };
 }
 function dyStartSeason() {
   var run = dyLoad();
   if (!run || !run.active) { run = dyFresh(); dySave(run); }
   DY_ACTIVE = run;
+  if (DY_QA.burn) dyQaBurn(DY_QA.burn);
   analyticsTrack("dynasty_state", {
     surface: "dynasty", action: run.history.length ? "continue" : "start",
-    value: run.dyn, ordinal: run.retired.length
+    value: run.dyn, ordinal: dyRafters(run)
   });
   var ch = dyChallenge(run);
   newGame("classic", null, ch, { surface: "dynasty", variant: "dynasty:" + run.dyn });
   if (G && !G.ch) { G.ch = ch; renderDraft(false); }   // belt only: newGame's third arg is the weekly door and lands on G.ch
 }
-/* Default seasons can point at retired rows (the engine's best-year default
-   and the OBPM/DBPM repick know nothing about the rafters). This runs at the
-   single choke point both render paths share and nudges any retired default
-   to the player's best LEGAL season, using the same metric the sort is
-   using. Pure G.yearByName writes: the exact mechanism the year dropdown
-   itself uses, replay-safe by construction. */
-function dyFixDefaults(pool) {
-  var run = dyRun();
-  if (!run) return;
-  var metric = G.sortMode === "obpm" ? IDX.obpm : G.sortMode === "dbpm" ? IDX.dbpm : null;
-  pool.forEach(function (row, name) {
-    if (G.drafted.has(name)) return;
-    var cur = T82.resolveRow(G, name);
-    if (!cur || !dyRowRetired(cur)) return;
-    var arr = T82.poolYearsEligible(G, name) || [];
-    var legal = [];
-    for (var i = 0; i < arr.length; i++) if (!dyRowRetired(arr[i])) legal.push(arr[i]);
-    if (!legal.length) return;   // whole career retired in this cell; currentPoolRows omits him
-    var pick = legal[0];
-    if (metric) for (var j = 1; j < legal.length; j++) if (legal[j][metric] > pick[metric]) pick = legal[j];
-    G.yearByName[name] = pick[IDX.season];
+/* Dynasty hands out DOUBLE Classic's skips. This is the player-facing half of
+   the dead-cell answer: the owner's second complaint about Classic is that a
+   franchise-and-decade cell holding one or two viable players can end a run
+   for reasons that have nothing to do with how you played, and player-level
+   scarcity makes that worse because burning LeBron burns him out of every
+   cell he appears in, not just one. Two team skips and two era skips is
+   generous without turning the draft into fishing. Pure state, written after
+   newGame: if a future sim-core stops reading these counters the mode simply
+   falls back to Classic's 1 and 1. */
+function dyGrantSkips() {
+  if (!dyRun() || !G || G.dySkipsGranted) return;
+  G.dySkipsGranted = 1;   // once per season: the counters decrement across the five rounds like Classic's
+  if (typeof G.teamSkips === "number") G.teamSkips = DY_SKIPS;
+  if (typeof G.eraSkips === "number") G.eraSkips = DY_SKIPS;
+}
+/* The automatic half of the dead-cell answer. Skips are the player's lever;
+   this is the floor underneath it, so a cell that cannot field a board never
+   reaches the screen in the first place and never has to be paid for.
+
+   It re-rolls through the ENGINE'S OWN skip, borrowing a counter and putting
+   it back, rather than reaching into the deal: the re-roll consumes rng and
+   rides the action stream exactly as a hand-tapped skip does, so the seed
+   spine and the replay path stay intact by construction. Legality is counted
+   with the real pickBlock, not a lookalike, so the floor means "cards you can
+   actually draft right now for the slots you still have open" and not "rows
+   in the cell". Bounded, and it accepts a thin board over an endless hunt:
+   the guarantee it owes is that the board is never empty. */
+function dyLegalCount() {
+  var rows = currentPoolRows(), n = 0;
+  for (var i = 0; i < rows.length; i++) if (!pickBlock(resolveRow(rows[i][IDX.name]))) n++;
+  return n;
+}
+function dyFreeSkip(kind) {
+  var counter = kind === "team" ? "teamSkips" : "eraSkips";
+  var targets = kind === "team" ? teamSkipTargets() : eraSkipTargets();
+  if (!targets || !targets.length) return false;
+  var saved = G[counter], savedBudget = G.budget;
+  if (typeof saved === "number") G[counter] = Math.max(saved, 1);
+  var f = kind === "team" ? T82.skipTeam(G) : T82.skipEra(G);
+  if (typeof saved === "number") G[counter] = saved;         // the house pays for this one
+  if (G.budget !== savedBudget) G.budget = savedBudget;      // classic has no bank; belt for any cap-based future
+  return !!f;
+}
+function dyDealGuard() {
+  if (!dyRun()) return;
+  dyGrantSkips();
+  G.query = "";   // renderDraft clears it too, but the count must see the whole cell, not last round's filter
+  var tries = 0, moved = 0;
+  while (dyLegalCount() < DY_CELL_FLOOR && tries < DY_REDEAL_MAX) {
+    tries++;
+    if (!dyFreeSkip("team") && !dyFreeSkip("era")) break;
+    moved++;
+  }
+  if (moved) analyticsTrack("dynasty_state", {
+    surface: "dynasty", action: "redeal", value: moved,
+    ordinal: G.round || 0, amount: dyLegalCount()
   });
+}
+/* ?dyburn=N pre-retires the N most valuable players in memory (never saved).
+   The alpha's whole question is whether the draft is interesting at round six
+   with the obvious names gone, and without this you have to win five seasons
+   to see round six once. Sorted by the engine's own valueOf so the burn takes
+   the same players real play would. */
+function dyQaBurn(n) {
+  DY_BURN = [];
+  try {
+    var all = [];
+    BEST_BY_NAME.forEach(function (row, name) { all.push([name, valueOf(row)]); });
+    all.sort(function (a, b) { return b[1] - a[1]; });
+    for (var i = 0; i < Math.min(n, all.length); i++) DY_BURN.push(all[i][0]);
+  } catch (e) { DY_BURN = []; }
 }
 /* The verdict locks the moment realized wins exist. Idempotent: the armed
    path settles inside showResults and the analytic fallback settles at
@@ -5302,18 +5421,21 @@ function dySettle(e) {
     five.forEach(function (f) { if (run.retired.indexOf(f.k) === -1) run.retired.push(f.k); });
     run.dyn += 1;
     G.dyVerdict = { banked: 1, snap: snap };
-    analyticsTrack("dynasty_state", { surface: "dynasty", action: "banked", value: snap.d, wins: w, target_wins: thr, ordinal: run.retired.length });
+    analyticsTrack("dynasty_state", { surface: "dynasty", action: "banked", value: snap.d, wins: w, target_wins: thr, ordinal: dyRafters(run) });
   } else {
     run.active = 0;
     run.fell = snap;
     G.dyVerdict = { banked: 0, snap: snap };
-    analyticsTrack("dynasty_state", { surface: "dynasty", action: "fell", value: snap.d, wins: w, target_wins: thr, ordinal: run.retired.length });
+    analyticsTrack("dynasty_state", { surface: "dynasty", action: "fell", value: snap.d, wins: w, target_wins: thr, ordinal: dyRafters(run) });
   }
   dySave(run);
 }
+/* v48.1: the whole player retires, so the NAME is the headline and the season
+   he was used in drops to an annotation. v48 bolded the year, which is exactly
+   the wrong emphasis now. */
 function dyFiveHtml(five) {
   return five.map(function (f) {
-    return '<span class="dyv-name">' + esc(f.n) + ' <b>' + shortSeason(f.s) + '</b></span>';
+    return '<span class="dyv-name"><b>' + esc(f.n) + '</b> <i class="dyv-yr">' + shortSeason(f.s) + '</i></span>';
   }).join("");
 }
 function dyVerdictHtml(v) {
@@ -5326,7 +5448,7 @@ function dyVerdictHtml(v) {
       '<p class="dyv-line">' + s.w + ' and ' + s.l + '. Needed ' + s.thr + '.</p>' +
       '<p class="dyv-eyebrow dyv-raft">RETIRED TO THE RAFTERS</p>' +
       '<div class="dyv-five">' + dyFiveHtml(s.five) + '</div>' +
-      '<p class="dyv-sub">' + run.retired.length + ' player season' + (run.retired.length === 1 ? "" : "s") + ' retired \u00B7 all time ' + att.w + ' and ' + att.l + '</p>' +
+      '<p class="dyv-sub">' + dyRafters(run) + ' player' + (dyRafters(run) === 1 ? "" : "s") + ' retired \u00B7 all time ' + att.w + ' and ' + att.l + '</p>' +
       '<button class="btn btn-primary btn-block presti-spin" id="dyContinueBtn">DRAFT SEASON ' + run.dyn + ' \u00B7 TARGET ' + dyThreshold(run.dyn) + '</button>' +
       '</section>';
   }
@@ -5390,6 +5512,30 @@ function dyLaunch() {
   var b = el("dyGoBtn");
   if (b) { b.disabled = true; b.textContent = "Loading players\u2026"; }
 }
+/* v48 could show scarcity inside the year dropdown, because only single
+   seasons retired and the player stayed on the board wearing a RETIRED tag.
+   v48.1 removes him from the board entirely, so the rule becomes invisible at
+   exactly the moment it starts to matter. These two surfaces are the
+   replacement: the full roll on the gate, and a name-aware answer in the
+   draft when you go looking for someone you already spent. */
+function dyRaftersRollHtml(run) {
+  var names = (run ? run.retired : []).concat(DY_BURN);
+  if (!names.length) return "";
+  return '<div class="dy-roll"><p class="dyv-eyebrow">IN THE RAFTERS \u00B7 ' + names.length + '</p><p class="dy-roll-names">' +
+    names.map(function (n) { return esc(n); }).join(" \u00B7 ") + '</p></div>';
+}
+function dyGoneNoteHtml() {
+  var run = dyRun();
+  if (!run) return "";
+  var q = (G.query || "").trim().toLowerCase();
+  if (!q) return "";
+  var hits = run.retired.concat(DY_BURN).filter(function (n) { return n.toLowerCase().indexOf(q) !== -1; });
+  if (!hits.length) return "";
+  return '<div class="dy-gone"><span class="dy-gone-tag">IN THE RAFTERS</span>' +
+    hits.slice(0, 8).map(function (n) { return '<span class="dy-gone-name">' + esc(n) + "</span>"; }).join("") +
+    (hits.length > 8 ? '<span class="dy-gone-name">and ' + (hits.length - 8) + " more</span>" : "") + "</div>";
+}
+function poolBodyHtml(rows) { return poolInnerHtml(rows) + dyGoneNoteHtml(); }
 function renderDynastyGate() {
   ensureDynastyCss();
   document.body.classList.remove("drafting");
@@ -5397,11 +5543,12 @@ function renderDynastyGate() {
   var run = dyLoad();
   var inner;
   if (run && run.active && run.history.length) {
-    var att = dyAllTime(run);
+    var att = dyAllTime(run), nRaft = dyRafters(run);
     inner = '<p class="eyebrow">\uD83D\uDC51 DYNASTY \u00B7 IN PROGRESS</p>' +
       '<h1 class="intro-title">Season ' + run.dyn + ' waits</h1>' +
       '<p class="intro-lead">The run is ' + run.history.length + ' season' + (run.history.length === 1 ? "" : "s") + ' deep. All time ' + att.w + ' and ' + att.l + '. ' +
-      run.retired.length + ' player season' + (run.retired.length === 1 ? " hangs" : "s hang") + ' in the rafters, and the target is ' + dyThreshold(run.dyn) + ' wins.</p>' +
+      nRaft + (nRaft === 1 ? ' player hangs' : ' players hang') + ' in the rafters, and the target is ' + dyThreshold(run.dyn) + ' wins.</p>' +
+      dyRaftersRollHtml(run) +
       '<button class="btn btn-primary btn-block presti-spin" id="dyGoBtn">DRAFT SEASON ' + run.dyn + '</button>' +
       '<button class="dy-abandon" id="dyAbandonBtn" type="button">END THE DYNASTY</button>';
   } else if (run && !run.active && run.fell) {
@@ -5414,8 +5561,8 @@ function renderDynastyGate() {
   } else {
     inner = '<p class="eyebrow">\uD83D\uDC51 DYNASTY \u00B7 ALPHA</p>' +
       '<h1 class="intro-title">How long can you keep it alive?</h1>' +
-      '<p class="intro-lead">Classic rules, season after season. Bank a season by hitting the win target and every player season on that roster retires forever. The pool only shrinks. The target climbs from 76 toward 80.</p>' +
-      '<p class="intro-lead dy-fine">Seasons retire, players do not: bank 2016 Curry and 2021 Curry still plays. The run ends the first time you miss the target.</p>' +
+      '<p class="intro-lead">Classic rules, season after season. Bank a season by hitting the win target and all five players retire for the rest of the run. Not the season you used. The player. The pool only shrinks.</p>' +
+      '<p class="intro-lead dy-fine">Bank LeBron and LeBron is gone, every year, every team. You get two team skips and two era skips a season. The run ends the first time you miss the target.</p>' +
       '<button class="btn btn-primary btn-block presti-spin" id="dyGoBtn">BEGIN THE DYNASTY</button>';
   }
   app().innerHTML = '<section class="ticket intro dy-gate">' + inner +
@@ -5471,7 +5618,606 @@ function ensureDynastyCss() {
     ".dyv-hall{margin-top:7px;display:flex;flex-direction:column;gap:8px}" +
     ".dyv-hall-row{display:flex;flex-direction:column;gap:2px}" +
     ".dyv-hall-head{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:#FFB52E}" +
-    ".dyv-hall-five{font-size:13px;color:#a8b0b8}";
+    ".dyv-hall-five{font-size:13px;color:#a8b0b8}" +
+    // v48.1
+    ".dyv-yr{font-style:normal;color:#8b98a5}" +
+    ".dy-roll{margin:14px 0 4px;text-align:left;border-top:1px solid #2a323b;padding-top:12px}" +
+    ".dy-roll-names{margin-top:5px;font-size:13px;line-height:1.5;color:#a8b0b8;max-height:132px;overflow-y:auto;" +
+      "border-bottom:1px solid #2a323b;padding-bottom:6px}" +
+    ".dy-gone{margin:10px 4px 0;padding:9px 11px;border:1px dashed #4d5a67;border-radius:10px;" +
+      "display:flex;flex-wrap:wrap;align-items:center;gap:8px}" +
+    ".dy-gone-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;color:#FFB52E}" +
+    ".dy-gone-name{font-size:13px;color:#8b98a5;text-decoration:line-through}";
+  document.head.appendChild(st);
+}
+
+
+/* ---------- v49 THE REDRAFT (alpha) ----------
+   "Class of 2016. Three GMs. One board."
+   The Redraftables experience, playable: a snake draft against two computer
+   GMs over one small, shared, exhaustible pool (the viable 2016 entering
+   class), five players a team, exclusive picks, then the real engine settles
+   the argument with three 82-game seasons and a podium.
+
+   ARCHITECTURE (the engine stays a black box, again):
+   - The draft is ENTIRELY app-side. It never touches newGame, dealRound,
+     applyPick, or the cell machinery: the pool is not a franchise+decade
+     cell and no amount of challenge-filter cleverness makes it one (the
+     Dynasty open-pool wall, same shape). Three roster arrays, a snake
+     sequence, and a legality check built from the same primitives Classic
+     trusts: rowBuckets, BUCKET_CAP via SD_CFG, valueOf.
+   - The ENGINE is used exactly twice per team, at the end: T82.engine on a
+     throwaway classic newState G for the analytic verdict, then armSeasonSim
+     + simSeason on that same throwaway G so each team's 82 realizes from its
+     OWN fresh rng stream. No shared seeds, no replay path, no leaderboard
+     submission, so the seed spine has nothing to protect here; the classic
+     PG_CAP override is re-asserted first in case the previous run was
+     Presti (which sets it to 1).
+   - The pool is a UNION over POOL_YEARS: every eligible (785+ min) season a
+     class member has anywhere in the dataset, deduped by season+team, best
+     season by valueOf as the default, buckets = the union across those
+     seasons. Names live in ONE config array (SD_CLASSES) so the next class
+     is a copy-paste; names that fail to resolve against live data are
+     dropped and console-logged, and the gate refuses to start below 15.
+   - NOBODY CAN BE STRANDED. The one genuinely new algorithm: before any
+     pick (human or AI) is allowed, a Hall's-condition check over the three
+     bucket types proves every team can still legally finish against the
+     remaining supply. A pick that would strand ANY team renders barred with
+     deny copy naming the position. Stealing the last center is legal right
+     up until it makes the board unfinishable; that is the tension the mode
+     exists for, minus the bug.
+   - SD_CFG carries rosterSize and the caps so an 8-man variant is a config
+     question, not a rewrite. The sim still only fields five; see the
+     handoff for what an 8-man lineup would actually cost.
+   State is in-memory only. A mid-draft reload costs the draft, same price
+   as Dynasty's mid-draft reload. QA: ?redraft=1 deep-opens the gate. */
+var SD_CFG = { rosterSize: 5, caps: { G: 2, F: 2, C: 1 } };
+var SD_CLASSES = {
+  "2016": {
+    label: "CLASS OF 2016",
+    blurb: "The class of Simmons, Ingram, and the late-round heist.",
+    names: [
+      "Ben Simmons", "Brandon Ingram", "Jaylen Brown", "Pascal Siakam",
+      "Domantas Sabonis", "Jamal Murray", "Dejounte Murray", "Malcolm Brogdon",
+      "Fred VanVleet", "Buddy Hield", "Caris LeVert", "Jakob Poeltl",
+      "Ivica Zubac", "Alex Caruso", "Dorian Finney-Smith", "Malik Beasley",
+      "Gary Payton II", "Derrick Jones Jr.", "Marquese Chriss", "Taurean Prince"
+    ]
+  }
+};
+var SD_CLASS_ID = "2016";
+/* The two rival GMs. needW weights how hard roster need pulls against raw
+   value; scW rewards grabbing a scarce position before it dries up; jitter
+   is the tie-band within which the pick randomizes so games differ. These
+   three numbers are the whole personality system, on purpose. */
+var SD_GMS = [
+  { name: "YOU", ai: 0 },
+  { name: "MERCER", ai: 1, tag: "best player alive, every pick", needW: 0.2, scW: 0.25, jitter: 0.6 },
+  { name: "QUINCY", ai: 1, tag: "drafts the team, not the name", needW: 1.5, scW: 0.9, jitter: 0.25 }
+];
+var SD_QA = (function () {
+  try { return { open: new URLSearchParams(location.search).get("redraft") === "1" ? 1 : 0 }; }
+  catch (e) { return {}; }
+})();
+var SD_POOL = null;    // built once per page load from live data
+var SD = null;         // the draft in flight; in-memory only
+var SD_TIMER = 0;      // pending AI beat, so back-out can cancel it
+
+function sdBuildPool() {
+  if (SD_POOL) return SD_POOL;
+  var wanted = SD_CLASSES[SD_CLASS_ID].names;
+  var byName = new Map();
+  POOL_YEARS.forEach(function (cell) {
+    cell.forEach(function (rows, name) {
+      if (wanted.indexOf(name) === -1) return;
+      var rec = byName.get(name);
+      if (!rec) { rec = { name: name, seasons: [], seen: {} }; byName.set(name, rec); }
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (r[IDX.mp] < 785) continue;   // the same eligibility floor as everywhere else
+        var k = r[IDX.season] + "|" + r[IDX.team];
+        if (rec.seen[k]) continue;
+        rec.seen[k] = 1;
+        rec.seasons.push(r);
+      }
+    });
+  });
+  var list = [], missing = [];
+  wanted.forEach(function (n) {
+    var rec = byName.get(n);
+    if (!rec || !rec.seasons.length) { missing.push(n); return; }
+    rec.seasons.sort(function (a, b) { return (a[IDX.season] - b[IDX.season]) || cmpName(a, b); });
+    var best = rec.seasons[0], bset = {};
+    rec.seasons.forEach(function (r) {
+      if (valueOf(r) > valueOf(best)) best = r;
+      rowBuckets(r).forEach(function (b) { bset[b] = 1; });
+    });
+    rec.best = best;
+    rec.buckets = Object.keys(bset);
+    delete rec.seen;
+    list.push(rec);
+  });
+  if (missing.length) try { console.info("[redraft] names not in live data, dropped:", missing.join(", ")); } catch (e) {}
+  SD_POOL = { list: list, byName: byName, missing: missing };
+  return SD_POOL;
+}
+function sdShuffle(a) {
+  a = a.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+function sdFresh() {
+  var seats = sdShuffle([0, 1, 2]);   // seats[k] = which GM drafts k-th in round 1
+  var seq = [], r, k;
+  for (r = 0; r < SD_CFG.rosterSize; r++) {
+    for (k = 0; k < seats.length; k++) seq.push(seats[r % 2 ? seats.length - 1 - k : k]);
+  }
+  return {
+    seats: seats, seq: seq, at: 0,
+    rosters: [[], [], []],          // per GM: [{row, slot}]
+    taken: {},                      // name -> gm index
+    yearByName: {},                 // the human's season choices
+    selected: null, log: [], done: 0, verdict: null
+  };
+}
+function sdRosterOpen(gi) {
+  var used = { G: 0, F: 0, C: 0 };
+  SD.rosters[gi].forEach(function (p) { used[p.slot]++; });
+  var open = [];
+  Object.keys(SD_CFG.caps).forEach(function (b) { if (used[b] < SD_CFG.caps[b]) open.push(b); });
+  return open;
+}
+function sdOpenCount(gi, b) {
+  var used = 0;
+  SD.rosters[gi].forEach(function (p) { if (p.slot === b) used++; });
+  return SD_CFG.caps[b] - used;
+}
+function sdAvailable() {
+  return sdBuildPool().list.filter(function (p) { return SD.taken[p.name] == null; });
+}
+function sdChosenRow(name) {
+  var rec = sdBuildPool().byName.get(name);
+  if (!rec) return null;
+  var want = SD.yearByName[name];
+  if (want != null) for (var i = 0; i < rec.seasons.length; i++) {
+    if (rec.seasons[i][IDX.season] === want) return rec.seasons[i];
+  }
+  return rec.best;
+}
+/* Best season of a player that qualifies at bucket b: the row an AI drafts
+   with, and the row the strand-guard credits him for. */
+function sdBestRowFor(name, b) {
+  var rec = sdBuildPool().byName.get(name);
+  if (!rec) return null;
+  var best = null;
+  rec.seasons.forEach(function (r) {
+    if (rowBuckets(r).indexOf(b) === -1) return;
+    if (!best || valueOf(r) > valueOf(best)) best = r;
+  });
+  return best;
+}
+/* THE STRAND GUARD. Hypothetically give `name` to team gi at bucket b, then
+   ask: can every team still finish? Needs are counted per bucket across all
+   three teams; supply is every remaining player, credited at the UNION of
+   buckets his eligible seasons reach (any season can be chosen, so the union
+   is the honest capacity). Hall's condition over the 7 non-empty subsets of
+   {G,F,C} is exact for this shape: feasible iff for every subset S,
+   need(S) <= players who qualify somewhere in S. */
+function sdFeasibleAfter(name, gi, b) {
+  var need = { G: 0, F: 0, C: 0 };
+  for (var t = 0; t < 3; t++) {
+    Object.keys(SD_CFG.caps).forEach(function (bk) {
+      need[bk] += sdOpenCount(t, bk) - (t === gi && bk === b ? 1 : 0);
+    });
+  }
+  var supply = sdAvailable().filter(function (p) { return p.name !== name; });
+  var subsets = [["G"], ["F"], ["C"], ["G", "F"], ["G", "C"], ["F", "C"], ["G", "F", "C"]];
+  for (var s = 0; s < subsets.length; s++) {
+    var S = subsets[s], nd = 0, sp = 0;
+    S.forEach(function (bk) { nd += need[bk]; });
+    supply.forEach(function (p) {
+      for (var i = 0; i < S.length; i++) if (p.buckets.indexOf(S[i]) !== -1) { sp++; return; }
+    });
+    if (nd > sp) return S;   // the offending subset, for the deny copy
+  }
+  return null;
+}
+function sdStrandWhy(S) {
+  var names = { G: "guard", F: "forward", C: "center" };
+  return "That strands the board at " + S.map(function (b) { return names[b]; }).join(" and ") + ". Somebody could not finish.";
+}
+/* Card-level legality for the CURRENT drafter: null = pickable somewhere. */
+function sdPickBlock(name, gi) {
+  if (SD.taken[name] != null) return { tag: "taken", why: "Already drafted." };
+  var open = sdRosterOpen(gi), okBucket = null, strand = null;
+  for (var i = 0; i < open.length; i++) {
+    var b = open[i];
+    if (!sdBestRowFor(name, b)) continue;         // no season qualifies here
+    var S = sdFeasibleAfter(name, gi, b);
+    if (!S) { okBucket = b; break; }
+    strand = S;
+  }
+  if (okBucket) return null;
+  if (strand) return { tag: "strand", why: sdStrandWhy(strand) };
+  return { tag: "full", why: "No open slot fits him." };
+}
+function sdApplyPick(gi, name, row, bucket) {
+  SD.rosters[gi].push({ row: row, slot: bucket });
+  SD.taken[name] = gi;
+  SD.log.push({ gi: gi, name: name, s: row[IDX.season], slot: bucket, at: SD.at });
+}
+/* The rival GM. Score every legal (player, bucket) pair:
+   value of his best qualifying season, plus how much this GM's roster needs
+   the bucket, plus how scarce the bucket's remaining supply is against the
+   whole board's remaining need. Randomize inside the persona's tie band. */
+function sdAiChoose(gi) {
+  // Robust to a persona-less seat (the human), so this doubles as an
+  // autopick: missing weights read as zero and the tie band collapses.
+  var gm = SD_GMS[gi] || {}, open = sdRosterOpen(gi), avail = sdAvailable();
+  var needW = gm.needW || 0, scW = gm.scW || 0, jit = gm.jitter || 0;
+  var need = { G: 0, F: 0, C: 0 }, t, cands = [];
+  for (t = 0; t < 3; t++) Object.keys(need).forEach(function (b) { need[b] += sdOpenCount(t, b); });
+  var supply = { G: 0, F: 0, C: 0 };
+  avail.forEach(function (p) { p.buckets.forEach(function (b) { supply[b]++; }); });
+  avail.forEach(function (p) {
+    open.forEach(function (b) {
+      var row = sdBestRowFor(p.name, b);
+      if (!row) return;
+      if (sdFeasibleAfter(p.name, gi, b)) return;   // the guard binds the AI exactly as it binds you
+      var v = valueOf(row);
+      var needScore = sdOpenCount(gi, b) / SD_CFG.caps[b];                     // 1 when the slot is wide open
+      var scScore = need[b] > 0 ? Math.max(0, 1 - (supply[b] - need[b]) / 6) : 0;  // rises as slack drains
+      cands.push({ name: p.name, row: row, b: b, score: v + needW * needScore + scW * scScore });
+    });
+  });
+  if (!cands.length) return null;   // unreachable while the guard holds; belt for a corrupt state
+  cands.sort(function (a, b) { return b.score - a.score; });
+  var band = cands.filter(function (c) { return cands[0].score - c.score <= jit; });
+  return band[Math.floor(Math.random() * band.length)] || cands[0];
+}
+function sdCurrentGm() { return SD.done ? -1 : SD.seq[SD.at]; }
+function sdAdvance() {
+  if (SD.at >= SD.seq.length) { sdFinish(); return; }
+  var gi = SD.seq[SD.at];
+  if (!SD_GMS[gi].ai) { SD.selected = null; renderShowdownDraft(); return; }
+  renderShowdownDraft();   // show the board waiting on the rival
+  SD_TIMER = setTimeout(function () {
+    SD_TIMER = 0;
+    if (!SD || SD.done) return;
+    var c = sdAiChoose(gi);
+    if (!c) { SD.at = SD.seq.length; sdFinish(); return; }
+    var stolen = SD.watch === c.name;
+    sdApplyPick(gi, c.name, c.row, c.b);
+    analyticsTrack("showdown_state", {
+      surface: "redraft", action: stolen ? "steal" : "ai_pick", mode: "showdown",
+      player: c.name, season: c.row[IDX.season], slot: c.b, ordinal: SD.at + 1, source: SD_GMS[gi].name
+    });
+    SD.at++;
+    SD.flash = { gi: gi, name: c.name, s: c.row[IDX.season], stolen: stolen };
+    sdAdvance();
+  }, 850);
+}
+function sdHumanPick(bucket) {
+  var gi = sdCurrentGm();
+  if (gi === -1 || SD_GMS[gi].ai || !SD.selected) return;
+  var row = sdChosenRow(SD.selected);
+  if (!row) return;
+  if (rowBuckets(row).indexOf(bucket) === -1) { denyTraySd("His " + shortSeason(row[IDX.season]) + " season does not qualify at " + bucket + "."); return; }
+  if (sdOpenCount(gi, bucket) <= 0) { denyTraySd("That slot is full."); return; }
+  var S = sdFeasibleAfter(SD.selected, gi, bucket);
+  if (S) { denyTraySd(sdStrandWhy(S)); return; }
+  sdApplyPick(gi, SD.selected, row, bucket);
+  analyticsTrack("showdown_state", {
+    surface: "redraft", action: "pick", mode: "showdown",
+    player: SD.selected, season: row[IDX.season], slot: bucket, ordinal: SD.at + 1
+  });
+  // watch = the last player you seriously considered. If you took him, the
+  // threat is over; if you took someone ELSE, he stays watched, and a rival
+  // grabbing him before your next turn is the steal the mode is built around.
+  if (SD.watch === SD.selected) SD.watch = null;
+  SD.selected = null; SD.flash = null;
+  SD.at++;
+  sdAdvance();
+}
+function denyTraySd(msg) {
+  var inner = el("sdTray");
+  if (!inner) return;
+  var note = inner.querySelector(".tray-deny");
+  if (!note) { note = document.createElement("div"); note.className = "tray-deny"; inner.appendChild(note); }
+  note.textContent = msg;
+  denyRow(inner, null);
+  clearTimeout(denyTraySd._t);
+  denyTraySd._t = setTimeout(function () { if (note.parentNode) note.parentNode.removeChild(note); }, 1800);
+}
+/* ---------- the verdict: three throwaway classic runs ---------- */
+function sdFinish() {
+  SD.done = 1;
+  try { if (window.T82 && T82.t && T82.t.SC) T82.t.SC.PG_CAP = 0.991; } catch (e) {}   // classic ceiling, in case Presti ran last
+  var teams = SD.rosters.map(function (roster, gi) {
+    var rows = roster.map(function (p) { return p.row; });
+    var slots = roster.map(function (p) { return p.slot; });
+    var g = T82.newState("classic", (Date.now() + gi * 7919) % 2147483647, null);
+    var e = T82.engine(g, rows, slots);
+    var wins = e.winTally, realized = 0;
+    if (T82.simSeason) {
+      try { if (T82.armSeasonSim) T82.armSeasonSim(g); var season = T82.simSeason(g, e); wins = season.wins; realized = 1; } catch (err) {}
+    }
+    return { gi: gi, name: SD_GMS[gi].name, roster: roster, net: Math.round(e.net * 10) / 10, wins: wins, losses: CFG.GAMES_IN_SEASON - wins, realized: realized };
+  });
+  teams.sort(function (a, b) { return (b.wins - a.wins) || (b.net - a.net) || (a.gi - b.gi); });
+  SD.verdict = teams;
+  analyticsTrack("showdown_state", {
+    surface: "redraft", action: "complete", mode: "showdown",
+    outcome: teams[0].gi === 0 ? "win" : "loss", wins: teams[0].wins,
+    value: teams.map(function (t) { return t.name + ":" + t.wins; }).join(" "),
+    ordinal: teams.map(function (t) { return t.gi; }).indexOf(0) + 1
+  });
+  renderShowdownResults();
+}
+function sdShare() {
+  var v = SD && SD.verdict;
+  if (!v) return;
+  var lines = v.map(function (t, i) { return (i + 1) + ". " + (t.gi === 0 ? "ME" : t.name) + " " + t.wins + " and " + t.losses; });
+  var mine = v.map(function (t) { return t.gi; }).indexOf(0);
+  var txt = "TRUE 82 \u00B7 THE REDRAFT \u00B7 " + SD_CLASSES[SD_CLASS_ID].label + "\n" +
+    lines.join("\n") + "\n" +
+    (mine === 0 ? "I won the board." : "I want that draft back.") + "\n" +
+    "https://true82.net/";
+  analyticsTrack("share_open", { surface: "redraft", action: "podium", value: v[0].wins });
+  var btn = el("sdShareBtn");
+  if (navigator.share) { navigator.share({ text: txt }).catch(function () {}); return; }
+  try {
+    navigator.clipboard.writeText(txt).then(function () {
+      if (btn) { var t = btn.textContent; btn.textContent = "COPIED"; setTimeout(function () { btn.textContent = t; }, 1400); }
+    });
+  } catch (e) {}
+}
+/* ---------- rendering ---------- */
+function sdRosterCardHtml(gi) {
+  var gm = SD_GMS[gi];
+  var mine = !gm.ai;
+  var slots = [];
+  Object.keys(SD_CFG.caps).forEach(function (b) {
+    for (var i = 0; i < SD_CFG.caps[b]; i++) slots.push(b);
+  });
+  var byBucket = { G: [], F: [], C: [] };
+  SD.rosters[gi].forEach(function (p) { byBucket[p.slot].push(p); });
+  var fill = { G: 0, F: 0, C: 0 };
+  var rows = slots.map(function (b) {
+    var p = byBucket[b][fill[b]++];
+    return '<span class="sd-slot' + (p ? " filled" : "") + '"><b>' + b + '</b> ' +
+      (p ? esc(p.row[IDX.name]) + ' <i>' + shortSeason(p.row[IDX.season]) + '</i>' : "\u00B7\u00B7\u00B7") + '</span>';
+  }).join("");
+  var onClock = sdCurrentGm() === gi && !SD.done;
+  return '<div class="sd-team' + (mine ? " sd-mine" : "") + (onClock ? " sd-clock" : "") + '">' +
+    '<span class="sd-gm">' + gm.name + (onClock ? ' <i class="sd-otc">ON THE CLOCK</i>' : "") + '</span>' +
+    '<span class="sd-slots">' + rows + '</span></div>';
+}
+function sdOrderStripHtml() {
+  var total = SD.seq.length;
+  var pos = Math.min(SD.at + 1, total);
+  var round = Math.floor(Math.min(SD.at, total - 1) / 3) + 1;
+  var names = SD.seats.map(function (gi) { return SD_GMS[gi].name; }).join(" \u2192 ");
+  return '<div class="sd-strip"><span class="sd-pick mono">PICK ' + pos + ' OF ' + total + ' \u00B7 ROUND ' + round + (round % 2 === 0 ? " \u21A9" : "") + '</span>' +
+    '<span class="sd-order mono">' + names + ' \u00B7 snake</span></div>';
+}
+function sdBoardRowHtml(p) {
+  var gi = sdCurrentGm();
+  var takenBy = SD.taken[p.name];
+  if (takenBy != null) {
+    var pk = null;
+    for (var i = 0; i < SD.log.length; i++) if (SD.log[i].name === p.name) pk = SD.log[i];
+    return '<div class="player-row off sd-taken"><span class="pr-top"><span class="pr-name">' + esc(p.name) + '</span>' +
+      '<span class="pr-pos">TAKEN \u00B7 ' + SD_GMS[takenBy].name + '</span></span>' +
+      '<span class="pr-sub">' + (pk ? shortSeason(pk.s) + " at " + pk.slot : "") + '</span></div>';
+  }
+  var row = sdChosenRow(p.name);
+  var humanTurn = gi !== -1 && !SD_GMS[gi].ai;
+  var block = humanTurn ? sdPickBlock(p.name, gi) : null;
+  var open = humanTurn && !block;
+  var sel = SD.selected === p.name && open;
+  var cls = "player-row" + (sel ? " sel" : "") + (open ? "" : " off");
+  var yrs = sdYearControlHtml(p, row);
+  return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(p.name) + '" aria-pressed="' + sel + '"' +
+    (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
+    '<span class="pr-top"><span class="pr-name">' + esc(p.name) + '</span>' +
+    '<span class="pr-pos">' + bucketTag(row) + (block ? " \u00B7 " + block.tag : "") + '</span></span>' +
+    '<span class="pr-sub">' + yrs + '</span>' +
+    '<span class="pr-sub pr-stats">' + statLine(row) + '</span></div>';
+}
+function sdYearControlHtml(p, row) {
+  var curTxt = shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]);
+  if (p.seasons.length <= 1) return '<span class="year-face year-fixed">' + curTxt + '</span>';
+  var cur = row[IDX.season];
+  var opts = p.seasons.map(function (r) {
+    var s = r[IDX.season];
+    return '<option value="' + s + '"' + (s === cur ? " selected" : "") + '>' + shortSeason(s) + " " + esc(r[IDX.team]) + '</option>';
+  }).join("");
+  return '<span class="year-wrap"><span class="year-face">' + curTxt + ' <b class="yf-caret">\u25BE</b></span>' +
+    '<select class="year-sel" data-name="' + esc(p.name) + '" aria-label="Season for ' + esc(p.name) + '">' + opts + '</select></span>';
+}
+function sdTrayHtml() {
+  var gi = sdCurrentGm();
+  if (gi === -1) return "";
+  if (SD_GMS[gi].ai) {
+    var f = SD.flash;
+    return '<div class="sd-wait">' + SD_GMS[gi].name + ' is on the clock\u2026' +
+      (f ? ' <span class="sd-last">' + SD_GMS[f.gi].name + ' took ' + esc(f.name) + ' ' + shortSeason(f.s) + (f.stolen ? ' \u00B7 YOUR GUY' : '') + '</span>' : "") + '</div>';
+  }
+  if (!SD.selected) {
+    var f2 = SD.flash;
+    return '<div class="sd-hint">Pick a player.' +
+      (f2 ? ' <span class="sd-last">' + SD_GMS[f2.gi].name + ' took ' + esc(f2.name) + ' ' + shortSeason(f2.s) + (f2.stolen ? ' \u00B7 YOUR GUY' : '') + '</span>' : "") + '</div>';
+  }
+  var row = sdChosenRow(SD.selected);
+  var btns = Object.keys(SD_CFG.caps).map(function (b) {
+    var ok = rowBuckets(row).indexOf(b) !== -1 && sdOpenCount(gi, b) > 0 && !sdFeasibleAfter(SD.selected, gi, b);
+    return '<button class="btn sd-slotbtn presti-spin" data-slot="' + b + '"' + (ok ? "" : " disabled") + '>' + b + '</button>';
+  }).join("");
+  return '<div class="sd-confirm"><span class="sd-cname">' + esc(SD.selected) + ' <i>' + shortSeason(row[IDX.season]) + '</i></span>' +
+    '<span class="sd-slotrow">' + btns + '</span></div>';
+}
+function renderShowdownDraft() {
+  ensureShowdownCss();
+  document.body.classList.add("drafting");
+  document.body.classList.remove("gating");
+  var pool = sdBuildPool();
+  var avail = pool.list.filter(function (p) { return SD.taken[p.name] == null; });
+  avail.sort(function (a, b) { return valueOf(sdChosenRow(b.name)) - valueOf(sdChosenRow(a.name)) || cmpName(a.best, b.best); });
+  var takenList = SD.log.map(function (l) { return pool.byName.get(l.name); });
+  var boardHtml = avail.map(sdBoardRowHtml).join("") + takenList.map(sdBoardRowHtml).join("");
+  app().innerHTML =
+    '<section class="ticket sd-head"><div class="sd-headrow">' +
+      '<span class="sd-title">\uD83D\uDD01 THE REDRAFT</span><span class="sd-class mono">' + SD_CLASSES[SD_CLASS_ID].label + '</span></div>' +
+      sdOrderStripHtml() +
+    '</section>' +
+    '<div class="sd-teams">' + [0, 1, 2].map(function (k) { return sdRosterCardHtml(SD.seats[k]); }).join("") + '</div>' +
+    '<div class="pool sd-pool" id="sdPool">' + boardHtml + '</div>' +
+    '<div class="tray"><div class="tray-inner" id="sdTray">' + sdTrayHtml() + '</div></div>' +
+    '<button class="startover-btn sd-back" id="sdBackBtn" type="button">\u2039 Abandon draft</button>';
+  var poolEl = el("sdPool");
+  poolEl.addEventListener("click", function (ev) {
+    if (ev.target.closest(".year-sel")) return;
+    var btn = ev.target.closest(".player-row");
+    if (!btn) return;
+    var name = btn.getAttribute("data-name");
+    if (btn.classList.contains("off")) {
+      analyticsTrack("showdown_state", { surface: "redraft", action: "pick_denied", mode: "showdown", player: name || "", source: btn.getAttribute("title") || "taken" });
+      denyRow(btn, btn.getAttribute("title") || "");
+      return;
+    }
+    SD.selected = name;
+    SD.watch = name;   // if a rival takes this before you do, that is a steal
+    renderShowdownDraft();
+  });
+  poolEl.addEventListener("change", function (ev) {
+    var s = ev.target;
+    if (!s.classList || !s.classList.contains("year-sel")) return;
+    var season = parseInt(s.value, 10);
+    if (isNaN(season)) return;
+    SD.yearByName[s.getAttribute("data-name")] = season;
+    analyticsTrack("year_change", { surface: "redraft", player: s.getAttribute("data-name"), season: season, action: "season_menu" });
+    renderShowdownDraft();
+  });
+  var tray = el("sdTray");
+  tray.addEventListener("click", function (ev) {
+    var b = ev.target.closest(".sd-slotbtn");
+    if (!b) return;
+    if (b.disabled) return;
+    sdHumanPick(b.getAttribute("data-slot"));
+  });
+  el("sdBackBtn").addEventListener("click", function () {
+    if (SD_TIMER) { clearTimeout(SD_TIMER); SD_TIMER = 0; }
+    SD = null;
+    document.body.classList.remove("drafting");
+    renderIntro();
+  });
+}
+function renderShowdownResults() {
+  ensureShowdownCss();
+  document.body.classList.remove("drafting");
+  var v = SD.verdict;
+  var mine = v.map(function (t) { return t.gi; }).indexOf(0);
+  var stamp = mine === 0 ? "YOU WIN THE REDRAFT" : v[0].name + " WINS THE REDRAFT";
+  var podium = v.map(function (t, i) {
+    var five = t.roster.map(function (p) {
+      return '<span class="dyv-name"><b>' + esc(p.row[IDX.name]) + '</b> <i class="dyv-yr">' + shortSeason(p.row[IDX.season]) + ' ' + p.slot + '</i></span>';
+    }).join("");
+    return '<div class="sd-podium-row' + (t.gi === 0 ? " sd-mine" : "") + '">' +
+      '<span class="sd-podium-head mono">' + (i + 1) + '. ' + (t.gi === 0 ? "YOU" : t.name) + ' \u00B7 ' + t.wins + ' and ' + t.losses + ' \u00B7 net ' + (t.net > 0 ? "+" : "") + t.net + '</span>' +
+      '<span class="sd-podium-five">' + five + '</span></div>';
+  }).join("");
+  app().innerHTML =
+    '<section class="section dy-verdict ' + (mine === 0 ? "dy-banked" : "dy-fell") + ' sd-verdict" data-result-section="showdown_verdict">' +
+      '<p class="dyv-eyebrow">\uD83D\uDD01 THE REDRAFT \u00B7 ' + SD_CLASSES[SD_CLASS_ID].label + '</p>' +
+      '<p class="dyv-stamp' + (mine === 0 ? "" : " dyv-dead") + '">' + stamp + '</p>' +
+      '<p class="dyv-line">' + (v[0].realized ? "Three seasons, played out." : "Three seasons, projected.") + '</p>' +
+      '<div class="sd-podium">' + podium + '</div>' +
+      '<button class="btn btn-primary btn-block presti-spin" id="sdAgainBtn">RUN IT BACK \u00B7 NEW SEATS</button>' +
+      '<button class="dyv-share" id="sdShareBtn" type="button">SHARE THE PODIUM</button>' +
+      '<button class="startover-btn sd-back" id="sdHomeBtn" type="button">\u2039 Back</button>' +
+    '</section>';
+  el("sdAgainBtn").addEventListener("click", function () {
+    analyticsTrack("showdown_state", { surface: "redraft", action: "rematch", mode: "showdown" });
+    sdStart();
+  });
+  el("sdShareBtn").addEventListener("click", sdShare);
+  el("sdHomeBtn").addEventListener("click", function () { SD = null; renderIntro(); });
+}
+function renderShowdownGate() {
+  ensureShowdownCss();
+  document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
+  var cls = SD_CLASSES[SD_CLASS_ID];
+  var ready = DATA_READY ? sdBuildPool() : null;
+  var thin = ready && ready.list.length < SD_CFG.rosterSize * 3;
+  var inner = '<p class="eyebrow">\uD83D\uDD01 THE REDRAFT \u00B7 ALPHA</p>' +
+    '<h1 class="intro-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + '. Three GMs. One board.</h1>' +
+    '<p class="intro-lead">A snake draft against two rival GMs over one shared pool. Five players each, any season of their careers, every pick exclusive. When somebody takes your guy, he is gone.</p>' +
+    '<p class="intro-lead dy-fine">MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine plays all three seasons and settles it.</p>' +
+    (thin
+      ? '<p class="intro-lead dy-fine">The class pool came up short against live data (' + ready.list.length + ' resolved). Check the console for the missing names.</p>'
+      : '<button class="btn btn-primary btn-block presti-spin" id="sdGoBtn">DRAFT THE CLASS</button>');
+  app().innerHTML = '<section class="ticket intro dy-gate">' + inner +
+    '<button class="startover-btn dy-back" id="sdBackBtn2" type="button">\u2039 Back</button></section>';
+  analyticsTrack("mode_impression", { surface: "redraft_gate", action: thin ? "thin_pool" : "fresh", mode: "showdown" });
+  var go = el("sdGoBtn");
+  if (go) go.addEventListener("click", function () {
+    if (DATA_READY) { sdStart(); return; }
+    PENDING_FN = sdStart;   // same queue contract as the daily, weekly, and dynasty launches
+    go.disabled = true; go.textContent = "Loading players\u2026";
+  });
+  el("sdBackBtn2").addEventListener("click", function () { renderIntro(); });
+}
+function sdStart() {
+  var pool = sdBuildPool();
+  if (pool.list.length < SD_CFG.rosterSize * 3) { renderShowdownGate(); return; }
+  SD = sdFresh();
+  analyticsTrack("showdown_state", {
+    surface: "redraft", action: "start", mode: "showdown",
+    source: SD.seats.map(function (gi) { return SD_GMS[gi].name; }).join(">"), amount: pool.list.length
+  });
+  sdAdvance();
+}
+function ensureShowdownCss() {
+  if (document.getElementById("t82ShowdownCss")) return;
+  ensureDynastyCss();   // the verdict shell reuses the dynasty panel skin
+  var st = document.createElement("style");
+  st.id = "t82ShowdownCss";
+  st.textContent =
+    ".sd-head{padding:12px 14px}" +
+    ".sd-headrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}" +
+    ".sd-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.05em;color:#FFB52E}" +
+    ".sd-class{font-size:11px;letter-spacing:.14em;color:#8b98a5}" +
+    ".sd-strip{display:flex;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}" +
+    ".sd-pick{font-size:11px;letter-spacing:.1em;color:#c9d2da}" +
+    ".sd-order{font-size:11px;letter-spacing:.06em;color:#8b98a5}" +
+    ".sd-teams{display:flex;flex-direction:column;gap:7px;margin:10px 0}" +
+    ".sd-team{border:1px solid #2a323b;border-radius:12px;padding:8px 11px;background:#141a21}" +
+    ".sd-team.sd-mine{border-color:#4d5a67}" +
+    ".sd-team.sd-clock{border-color:#FFB52E;box-shadow:0 0 0 1px rgba(255,181,46,.25)}" +
+    ".sd-gm{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#FFB52E;display:block}" +
+    ".sd-otc{font-style:normal;color:#c9d2da;letter-spacing:.1em;font-size:10px}" +
+    ".sd-slots{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px}" +
+    ".sd-slot{font-size:12.5px;color:#5d6a77}" +
+    ".sd-slot b{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8b98a5}" +
+    ".sd-slot.filled{color:#c9d2da}" +
+    ".sd-slot i{font-style:normal;color:#8b98a5}" +
+    ".sd-taken .pr-name{text-decoration:line-through;color:#7d8894}" +
+    ".sd-wait,.sd-hint{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#c9d2da;padding:6px 2px}" +
+    ".sd-last{display:block;margin-top:4px;color:#FFB52E;font-size:11px}" +
+    ".sd-confirm{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px}" +
+    ".sd-cname{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:18px;color:#f2f5f7}" +
+    ".sd-cname i{font-style:normal;color:#8b98a5;font-size:14px}" +
+    ".sd-slotrow{display:flex;gap:8px}" +
+    ".sd-slotbtn{min-width:52px;height:44px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px}" +
+    ".sd-back{margin:14px auto 0;display:block}" +
+    ".sd-podium{margin-top:10px;display:flex;flex-direction:column;gap:12px;text-align:left}" +
+    ".sd-podium-row{border:1px solid #2a323b;border-radius:12px;padding:9px 12px;background:#12181f}" +
+    ".sd-podium-row.sd-mine{border-color:#FFB52E}" +
+    ".sd-podium-head{display:block;font-size:12px;letter-spacing:.08em;color:#FFB52E}" +
+    ".sd-podium-five{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px}" +
+    ".sd-verdict .dyv-share{margin-top:10px}";
   document.head.appendChild(st);
 }
 
@@ -6707,7 +7453,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v48";
+var BUILD_V = "v49";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -6826,6 +7572,7 @@ function boot() {
   }
   else if (DY_QA.reset) { dyWipe(); renderDynastyGate(); }   // v48 QA: ?dynasty=reset wipes and lands on a fresh gate
   else if (DY_QA.open) renderDynastyGate();                  // v48 QA: ?dynasty=1 deep-opens the gate
+  else if (SD_QA.open) renderShowdownGate();                 // v49 QA: ?redraft=1 deep-opens the gate
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();

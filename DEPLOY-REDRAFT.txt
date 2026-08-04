@@ -1,0 +1,51 @@
+DEPLOY - THE REDRAFT (v49, alpha)
+=================================
+
+FILES TO UPLOAD (2):
+  app.js
+  index.html
+
+NOT CHANGED: styles.css, analytics.js, retention-client.js, functions/*,
+migrations/*, og/*, every static page. No D1 paste. No worker deploy.
+sim-core.js / challenges.js / daily-core.js untouched and not in the
+package, as always. This build is cumulative on v48.1 (Dynasty v2), so
+uploading these two files ships both if you have not deployed v48.1 yet.
+
+CACHE KEYS AFTER THIS DEPLOY:
+  index.html  meta t82-build   v49   (was v48)
+  index.html  app.js?v=        20260803-redraft-v49   (was 20260803-dynasty2-v48)
+  app.js      BUILD_V          v49   (was v48)
+  styles.css?v=                unchanged
+
+SMOKE TEST AFTER DEPLOY (5 minutes)
+-----------------------------------
+1.  Load /, footer ends in v49.
+2.  Home: THE REDRAFT door sits under Dynasty.
+3.  FIRST THING, once, with the console open: open /?redraft=1 and look for
+    a "[redraft] names not in live data, dropped:" line. Every name it
+    prints is a spelling to fix in SD_CLASSES in app.js (one array). The
+    mode plays fine without them as long as 15+ resolve; the gate refuses
+    and says so below that.
+4.  DRAFT THE CLASS. Confirm: order strip shows your seat, rival picks land
+    as visible beats about a second apart, their players grey out with
+    TAKEN tags, the year dropdown works on your turn, and slot buttons in
+    the tray disable with a reason when a pick is illegal.
+5.  Finish the draft: podium with three records, winner stamped, your row
+    outlined. RUN IT BACK reshuffles seats and starts clean.
+6.  Try to grab a player a rival just took: the card should shake with a
+    deny, not select.
+
+WHAT TO WATCH WHILE PLAYING
+---------------------------
+  - Do the rivals read as GMs? MERCER should feel like a talent absolutist,
+    QUINCY should visibly reach for fit. The knobs are three numbers per GM
+    in SD_GMS (needW, scW, jitter).
+  - Does the steal moment land? /avocado: showdown_state action=steal.
+  - Pool size feel: 20 names for 15 picks means five leftovers. If final
+    picks feel too easy, trim toward 18; too punishing, grow toward 22.
+    One array.
+
+ROLLBACK
+--------
+  Re-upload the v48.1 app.js and index.html. The Redraft keeps nothing in
+  storage, so there is nothing to migrate or corrupt in either direction.
