@@ -5685,7 +5685,10 @@ var SD_CLASSES = {
       "Fred VanVleet", "Buddy Hield", "Caris LeVert", "Jakob Poeltl",
       "Ivica Zubac", "Alex Caruso", "Dorian Finney-Smith", "Malik Beasley",
       "Gary Payton II", "Derrick Jones Jr.|Derrick Jones", "Marquese Chriss", "Taurean Prince"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Ben Simmons": 1, "Brandon Ingram": 2, "Jaylen Brown": 3, "Buddy Hield": 6, "Jamal Murray": 7, "Marquese Chriss": 8, "Jakob Poeltl": 9, "Domantas Sabonis": 11, "Taurean Prince": 12, "Malik Beasley": 19, "Caris LeVert": 20, "Pascal Siakam": 27, "Dejounte Murray": 29, "Ivica Zubac": 32, "Malcolm Brogdon": 36 }
   },
   "2017": {
     label: "CLASS OF 2017",
@@ -5696,7 +5699,10 @@ var SD_CLASSES = {
       "Kyle Kuzma", "Derrick White", "Lonzo Ball", "Josh Hart",
       "Dillon Brooks", "Malik Monk", "Luke Kennard", "Jonathan Isaac",
       "Zach Collins", "Thomas Bryant", "Monte Morris"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Lonzo Ball": 2, "Jayson Tatum": 3, "De'Aaron Fox": 5, "Jonathan Isaac": 6, "Lauri Markkanen": 7, "Zach Collins": 10, "Malik Monk": 11, "Luke Kennard": 12, "Donovan Mitchell": 13, "Bam Adebayo": 14, "John Collins": 19, "Jarrett Allen": 22, "OG Anunoby": 23, "Kyle Kuzma": 27, "Derrick White": 29, "Josh Hart": 30, "Thomas Bryant": 42, "Dillon Brooks": 45, "Monte Morris": 51 }
   },
   "2018": {
     label: "CLASS OF 2018",
@@ -5709,7 +5715,10 @@ var SD_CLASSES = {
       "De'Anthony Melton", "Robert Williams", "Mitchell Robinson", "Collin Sexton",
       "Anfernee Simons", "Bruce Brown", "Gary Trent Jr.|Gary Trent",
       "Grayson Allen", "Donte DiVincenzo"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Deandre Ayton": 1, "Marvin Bagley III": 2, "Luka Doncic": 3, "Jaren Jackson Jr.": 4, "Trae Young": 5, "Wendell Carter Jr.": 7, "Collin Sexton": 8, "Mikal Bridges": 10, "Shai Gilgeous-Alexander": 11, "Miles Bridges": 12, "Michael Porter Jr.": 14, "Donte DiVincenzo": 17, "Kevin Huerter": 19, "Grayson Allen": 21, "Anfernee Simons": 24, "Robert Williams": 27, "Jalen Brunson": 33, "Mitchell Robinson": 36, "Gary Trent Jr.": 37, "Bruce Brown": 42, "De'Anthony Melton": 46 }
   },
   "2019": {
     label: "CLASS OF 2019",
@@ -5721,7 +5730,10 @@ var SD_CLASSES = {
       "Daniel Gafford", "Coby White", "Jordan Poole", "Naz Reid",
       "Terance Mann", "Matisse Thybulle", "Rui Hachimura", "Jaxson Hayes",
       "Nickeil Alexander-Walker"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Zion Williamson": 1, "Ja Morant": 2, "RJ Barrett": 3, "De'Andre Hunter": 4, "Darius Garland": 5, "Coby White": 7, "Jaxson Hayes": 8, "Rui Hachimura": 9, "Cam Johnson": 11, "PJ Washington": 12, "Tyler Herro": 13, "Nickeil Alexander-Walker": 17, "Matisse Thybulle": 20, "Brandon Clarke": 21, "Grant Williams": 22, "Jordan Poole": 28, "Keldon Johnson": 29, "Nic Claxton": 31, "Daniel Gafford": 38, "Terance Mann": 48 }
   },
   "2020": {
     label: "CLASS OF 2020",
@@ -5732,7 +5744,10 @@ var SD_CLASSES = {
       "Precious Achiuwa", "Payton Pritchard", "Saddiq Bey", "Devin Vassell",
       "Aaron Nesmith", "Jaden McDaniels", "Cole Anthony", "Isaac Okoro",
       "Obi Toppin", "Deni Avdija", "James Wiseman", "Naji Marshall"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Anthony Edwards": 1, "James Wiseman": 2, "LaMelo Ball": 3, "Isaac Okoro": 5, "Onyeka Okongwu": 6, "Obi Toppin": 8, "Deni Avdija": 9, "Devin Vassell": 11, "Tyrese Haliburton": 12, "Aaron Nesmith": 14, "Cole Anthony": 15, "Isaiah Stewart": 16, "Saddiq Bey": 19, "Precious Achiuwa": 20, "Tyrese Maxey": 21, "Immanuel Quickley": 25, "Payton Pritchard": 26, "Jaden McDaniels": 28, "Desmond Bane": 30 }
   },
   "2021": {
     label: "CLASS OF 2021",
@@ -5744,7 +5759,10 @@ var SD_CLASSES = {
       "Moses Moody", "Jalen Johnson", "Cam Thomas", "Bones Hyland|Nah'Shon Hyland",
       "Isaiah Jackson", "Quentin Grimes", "Austin Reaves", "Day'Ron Sharpe",
       "Davion Mitchell"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Cade Cunningham": 1, "Jalen Green": 2, "Evan Mobley": 3, "Scottie Barnes": 4, "Jalen Suggs": 5, "Josh Giddey": 6, "Jonathan Kuminga": 7, "Franz Wagner": 8, "Davion Mitchell": 9, "Moses Moody": 14, "Alperen Sengun": 16, "Trey Murphy III": 17, "Jalen Johnson": 20, "Isaiah Jackson": 22, "Quentin Grimes": 25, "Bones Hyland": 26, "Cam Thomas": 27, "Day'Ron Sharpe": 29, "Herbert Jones": 35, "Ayo Dosunmu": 38 }
   },
   "1996": {
     label: "CLASS OF 1996",
@@ -5754,7 +5772,10 @@ var SD_CLASSES = {
       "Marcus Camby", "Stephon Marbury", "Antoine Walker", "Peja Stojakovic|Peja Stojakovi\u0107",
       "Jermaine O'Neal", "Zydrunas Ilgauskas|\u017dydr\u016bnas Ilgauskas", "Ben Wallace", "Derek Fisher",
       "Shareef Abdur-Rahim", "Kerry Kittles", "Erick Dampier", "Malik Rose"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Allen Iverson": 1, "Marcus Camby": 2, "Shareef Abdur-Rahim": 3, "Stephon Marbury": 4, "Ray Allen": 5, "Antoine Walker": 6, "Kerry Kittles": 8, "Erick Dampier": 10, "Kobe Bryant": 13, "Peja Stojakovic": 14, "Steve Nash": 15, "Jermaine O'Neal": 17, "Zydrunas Ilgauskas": 20, "Derek Fisher": 24, "Malik Rose": 44 }
   },
   "2003": {
     label: "CLASS OF 2003",
@@ -5765,7 +5786,10 @@ var SD_CLASSES = {
       "Mo Williams|Maurice Williams", "Kirk Hinrich", "Chris Kaman", "Nick Collison",
       "Kendrick Perkins", "Zaza Pachulia", "Leandro Barbosa", "Udonis Haslem",
       "Matt Bonner", "Steve Blake", "T.J. Ford|TJ Ford"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "LeBron James": 1, "Carmelo Anthony": 3, "Chris Bosh": 4, "Dwyane Wade": 5, "Chris Kaman": 6, "Kirk Hinrich": 7, "T.J. Ford": 8, "Nick Collison": 12, "David West": 18, "Boris Diaw": 21, "Kendrick Perkins": 27, "Leandro Barbosa": 28, "Josh Howard": 29, "Steve Blake": 38, "Zaza Pachulia": 42, "Matt Bonner": 45, "Mo Williams": 47, "Kyle Korver": 51 }
   },
   "2009": {
     label: "CLASS OF 2009",
@@ -5776,7 +5800,10 @@ var SD_CLASSES = {
       "Brandon Jennings", "Tyreke Evans", "Ricky Rubio", "Taj Gibson",
       "DeMarre Carroll", "Danny Green", "Patrick Beverley", "Wesley Matthews",
       "Patty Mills|Patrick Mills", "DeJuan Blair", "Jordan Hill", "Jodie Meeks"
-    ]
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Blake Griffin": 1, "James Harden": 3, "Tyreke Evans": 4, "Ricky Rubio": 5, "Stephen Curry": 7, "Jordan Hill": 8, "DeMar DeRozan": 9, "Brandon Jennings": 10, "Jrue Holiday": 17, "Ty Lawson": 18, "Jeff Teague": 19, "Darren Collison": 21, "Taj Gibson": 26, "DeMarre Carroll": 27, "DeJuan Blair": 37, "Jodie Meeks": 41, "Patrick Beverley": 42, "Danny Green": 46, "Patty Mills": 55 }
   }
 };
 var SD_CLASS_ORDER = ["2016", "2017", "2018", "2019", "2020", "2021", "1996", "2003", "2009"];
@@ -5840,6 +5867,10 @@ function sdBuildPool() {
     });
     rec2.best = best;
     rec2.buckets = Object.keys(bset);
+    var pm = 0;
+    rec2.seasons.forEach(function (r) { if ((r[IDX.mp] || 0) > pm) pm = r[IDX.mp] || 0; });
+    rec2.peakMp = pm;
+    rec2.pick = (SD_CLASSES[id].picks && SD_CLASSES[id].picks[entries[i].split("|")[0]]) || null;
     delete rec2.seen;
     list.push(rec2);
     byName.set(rec2.name, rec2);
@@ -5864,6 +5895,7 @@ function sdFresh() {
     rosters: [[], [], []],          // per GM: [{row, slot}]
     taken: {},                      // name -> gm index
     yearByName: {},                 // the human's season choices
+    randByName: {},                 // the human's random default season per player, stable per draft
     selected: null, log: [], done: 0, verdict: null
   };
 }
@@ -5882,6 +5914,38 @@ function sdOpenCount(gi, b) {
 function sdAvailable() {
   return sdBuildPool().list.filter(function (p) { return SD.taken[p.name] == null; });
 }
+/* Board order is basketball, not the answer key: real draft position first,
+   undrafted after them by their biggest season of minutes, names as the tie
+   break. Ordering by valueOf leaked the engine's own board to the human
+   (owner ruling 2026-08-05). The rival GMs never read this order. */
+function sdBoardOrder(list) {
+  return list.slice().sort(function (a, b) {
+    var ap = a.pick != null, bp = b.pick != null;
+    if (ap && bp && a.pick !== b.pick) return a.pick - b.pick;
+    if (ap !== bp) return ap ? -1 : 1;
+    if (!ap && !bp && a.peakMp !== b.peakMp) return (b.peakMp || 0) - (a.peakMp || 0);
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+  });
+}
+/* The human's DEFAULT season is a random eligible year, stable for the whole
+   draft, not the engine's favorite year. Knowing which season was the peak is
+   the skill this mode tests; best-by-value as the default was an answer key
+   (owner ruling 2026-08-05). Explicit dropdown choices still win, and the
+   rival GMs still pick their own best rows through sdBestRowFor. */
+function sdDefaultRow(rec) {
+  if (!SD || !SD.randByName) return rec.best;
+  var key = SD.randByName[rec.name];
+  if (key == null) {
+    var r0 = rec.seasons[Math.floor(Math.random() * rec.seasons.length)];
+    key = r0[IDX.season] + "|" + r0[IDX.team];
+    SD.randByName[rec.name] = key;
+  }
+  for (var i = 0; i < rec.seasons.length; i++) {
+    var r = rec.seasons[i];
+    if (r[IDX.season] + "|" + r[IDX.team] === key) return r;
+  }
+  return rec.best;   // belt: a stored key that stopped resolving against the pool
+}
 function sdChosenRow(name) {
   var rec = sdBuildPool().byName.get(name);
   if (!rec) return null;
@@ -5889,7 +5953,7 @@ function sdChosenRow(name) {
   if (want != null) for (var i = 0; i < rec.seasons.length; i++) {
     if (rec.seasons[i][IDX.season] === want) return rec.seasons[i];
   }
-  return rec.best;
+  return sdDefaultRow(rec);
 }
 /* Best season of a player that qualifies at bucket b: the row an AI drafts
    with, and the row the strand-guard credits him for. */
@@ -6060,10 +6124,7 @@ function sdFinish() {
     var slots = roster.map(function (p) { return p.slot; });
     var g = T82.newState("classic", (Date.now() + gi * 7919) % 2147483647, null);
     var e = T82.engine(g, rows, slots);
-    var wins = e.winTally, realized = 0;
-    if (T82.simSeason) {
-      try { if (T82.armSeasonSim) T82.armSeasonSim(g); var season = T82.simSeason(g, e); wins = season.wins; realized = 1; } catch (err) {}
-    }
+    var wins = e.winTally, realized = 0;   // records project straight from net; no per-game realization in this mode (owner ruling 2026-08-05, the luck spread was reading as verdict)
     return { gi: gi, name: SD_GMS[gi].name, roster: roster, e: e, net: Math.round(e.net * 10) / 10, wins: wins, losses: CFG.GAMES_IN_SEASON - wins, realized: realized };
   });
   teams.sort(function (a, b) { return (b.wins - a.wins) || (b.net - a.net) || (a.gi - b.gi); });
@@ -6160,8 +6221,7 @@ function sdBoardRowHtml(p) {
     (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
     '<span class="pr-top"><span class="pr-name">' + esc(p.name) + '</span>' +
     '<span class="pr-pos">' + bucketTag(row) + (block ? " \u00B7 " + block.tag : "") + '</span></span>' +
-    '<span class="pr-sub">' + yrs + chipsFor(row, -1) + '</span>' +
-    '<span class="pr-sub pr-stats">' + statLine(row) + '</span></div>';
+    '<span class="pr-sub">' + yrs + '</span></div>';
 }
 function sdYearControlHtml(p, row) {
   var curTxt = shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]);
@@ -6200,8 +6260,7 @@ function renderShowdownDraft() {
   document.body.classList.add("drafting");
   document.body.classList.remove("gating");
   var pool = sdBuildPool();
-  var avail = pool.list.filter(function (p) { return SD.taken[p.name] == null; });
-  avail.sort(function (a, b) { return valueOf(sdChosenRow(b.name)) - valueOf(sdChosenRow(a.name)) || cmpName(a.best, b.best); });
+  var avail = sdBoardOrder(pool.list.filter(function (p) { return SD.taken[p.name] == null; }));
   var takenList = SD.log.map(function (l) { return pool.byName.get(l.name); });
   var boardHtml = avail.map(sdBoardRowHtml).join("") + takenList.map(sdBoardRowHtml).join("");
   app().innerHTML =
@@ -6311,7 +6370,7 @@ function renderShowdownGate(silent) {
     '<h1 class="intro-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + '. Three GMs. One board.</h1>' +
     '<div class="sd-chips" id="sdChips">' + chips + '</div>' +
     '<p class="intro-lead"><b>' + esc(cls.blurb) + '</b></p>' +
-    '<p class="intro-lead dy-fine">A snake draft against two rival GMs over one shared pool. Five each, any season of their careers, every pick exclusive. MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine plays all three seasons and settles it.</p>' +
+    '<p class="intro-lead dy-fine">A snake draft against two rival GMs over one shared pool. Five each, any season of their careers, every pick exclusive. MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine scores all three seasons and settles it.</p>' +
     tail;
   app().innerHTML = '<section class="ticket intro dy-gate">' + inner +
     '<button class="startover-btn dy-back" id="sdBackBtn2" type="button">\u2039 Back</button></section>';

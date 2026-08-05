@@ -1,0 +1,32 @@
+REDRAFT v49.3 (knowledge pass) - deploy notes
+=============================================
+Files changed: app.js, index.html. Nothing else.
+No D1 paste. No migrations. No styles.css change. sim-core.js untouched.
+Cache key: app.js?v=20260805-redraft4-v49 (BUILD_V stays v49).
+
+What changed (all THE REDRAFT only; Classic, Dynasty, dailies untouched):
+1. Records project straight from the engine's analytic winTally. The
+   per-game realization (simSeason) call is deleted from sdFinish, so a
+   podium never wears realization luck again. The results line now reads
+   "Three seasons, projected." via the existing copy branch.
+2. Board order is real draft position: each class config carries a
+   picks map (name -> pick number). Undrafted names simply are not in
+   the map and sort after the drafted, by their biggest season of
+   minutes. The valueOf board sort is gone. The rival GMs never read
+   board order, so AI behavior is unchanged.
+3. The human's default season for every player is a RANDOM eligible
+   year, stable for the whole draft (SD.randByName). The dropdown
+   still lists every season and an explicit choice still wins. The AI
+   still drafts its own best rows through sdBestRowFor.
+4. Board cards show name, position eligibility, and the season control
+   only. Engine badges (chipsFor) and the stat line are gone from the
+   redraft board. Podium receipts remain (post-draft, team level).
+5. Gate copy: "Then the engine scores all three seasons and settles it."
+
+QA:
+- ?redraft=1 opens the gate; ?redraft=2003 opens on that class.
+- First deploy: tap through all nine class chips with the console open
+  (picks maps are new config; a typo'd name shows up as an undrafted
+  sort, not an error).
+- Draft the 2016 class: board should read Simmons, Ingram, Brown,
+  Hield, Murray... with VanVleet/Caruso/DFS/GP2/Jones after pick 36.
