@@ -101,6 +101,11 @@ async function handleGet(context) {
     // v49.5: each hit now carries its question id (q.id) so a label chip on a
     // results card can post a vote without a second lookup. Additive field;
     // older clients ignore it.
+    // v49.7: `qids` maps trait display name -> question id for every ACTIVE
+    // question on each pair, settled or not. The engine's own 3PT and GRAVITY
+    // chips have no consensus row of their own, so this is how a card learns
+    // which question a vote on them belongs to. Read-only and caught: if the
+    // query fails the chips simply stay unvotable.
     // v47.9: cap raised to 60 for THIS op only, so the classic draft pool
     // labels in one request. The query below reads the full settled label
     // set per call regardless of pair count, so 60 pairs cost what 8 did.
@@ -125,7 +130,13 @@ async function handleGet(context) {
       JOIN traits_v1 t ON t.id = q.trait_id
       WHERE t.status = 'core' AND q.status = 'active'`)
       .all().then((r) => r.results || []).catch(() => []);
-    const labels = {};
+    const qRows = await env.DB.prepare(`
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, q.id qid
+      FROM trait_questions_v1 q
+      JOIN traits_v1 t ON t.id = q.trait_id
+      WHERE t.status = 'core' AND q.status = 'active'`)
+      .all().then((r) => r.results || []).catch(() => []);
+    const labels = {}, qids = {};
     for (const p of pairs) {
       const seen = new Set();
       const hits = rows
@@ -137,8 +148,13 @@ async function handleGet(context) {
         }
       }
       if (hits.length) labels[p.name + "~" + p.season] = hits;
+      const qm = {};
+      for (const r of qRows) {
+        if (r.pname === p.name && Number(r.season) === p.season) qm[r.tname] = r.qid;
+      }
+      if (Object.keys(qm).length) qids[p.name + "~" + p.season] = qm;
     }
-    return json({ ok: true, labels, count: Object.keys(labels).length });
+    return json({ ok: true, labels, qids, count: Object.keys(labels).length });
   }
 
   if (op === "roster") {

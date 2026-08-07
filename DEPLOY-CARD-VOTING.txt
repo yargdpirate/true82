@@ -3,7 +3,7 @@ CARD VOTING v49.5 - deploy notes
 Files changed: app.js, index.html, functions/api/traits.js, functions/api/event.js.
 styles.css UNTOUCHED (the strip CSS rides the injected traits sheet).
 No D1 paste. No migrations. No schema change. sim-core.js untouched.
-Cache key: app.js?v=20260807-cardvote2-v49. BUILD_V stays v49.
+Cache key: app.js?v=20260807-cardvote3-v49. BUILD_V stays v49.
 Package also contains v49.3 redraft + v49.4 season reel.
 
 WHAT IT DOES
@@ -22,9 +22,15 @@ WORKER CHANGE (functions/api/traits.js, additive only)
 RULINGS BAKED IN
 - Results roster only. Draft-pool and Caveman chips keep the old
   in-place expansion, untouched.
-- Engine chips (3PT, GRAVITY) are NOT votable: they are the engine's own
-  shooting math and the shipped legend says so. They keep expanding in
-  place.
+- Engine chips (3PT, GRAVITY) ARE votable as of v49.7 (owner ruling).
+  They carry no consensus row of their own, so op=labels now returns a
+  `qids` map of every ACTIVE question per player-season and the client
+  stamps the engine chip with the community question that asks the same
+  thing: 3PT -> Three-Point Shooter, GRAVITY -> Super Three-Point Shooter.
+  The strip keeps the ENGINE's wording (3PT opens as FLOOR SPACER) while
+  the vote pools with /bonuses/. Where no such question exists yet for
+  that player-season the chip simply stays expand-only, so coverage grows
+  as op=roster creates rows. The legend note was rewritten to match.
 - The chip stays an abbreviation when its strip is open, so the chip row
   never reflows. The strip carries the full label.
 - ONE LINE IS A HARD CONSTRAINT. Arms are a fixed track, the label is the
@@ -60,3 +66,13 @@ challenge, and a per-page sid.
   package or error events are silently dropped by ingestion).
 Funnel reads: view -> vote conversion per question; decide time =
 vote.ts - view.ts joined on sid + challenge; hesitation = dismiss value.
+
+v49.7 ARROW PROMINENCE
+The strip is now a recessed field and the arms are raised keys on it:
+gradient face, lit top edge, hard bottom lip, and a real 2px drop on
+press. Glyphs went 15->18px and brightened. Voting fills the arm solid
+(amber for agree, ember for disagree) instead of tinting it. Arms are
+44x44 at 375+ and 40 wide at 320-374. One cue per DEVICE the first time
+any strip opens: the arms bounce once so a new player learns they are
+buttons, keyed on t82_trait_vote_cue_v1 and never repeated. Hover states
+are desktop only; prefers-reduced-motion kills the cue.

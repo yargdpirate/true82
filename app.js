@@ -1899,6 +1899,16 @@ var traitDocDismissWired = false;
    Engine chips (3PT, GRAVITY) are deliberately NOT votable: they are the
    engine's own shooting math, and the shipped legend says so. They keep the
    in-place expansion they have always had. */
+// v49.7: the engine's shooting designations ARE votable now (owner ruling,
+// 2026-08-07). They carry no consensus row of their own, so each maps to the
+// community question that asks the same thing, and the vote pools with
+// /bonuses/. The strip keeps the engine's own wording, which is what the chip
+// promised: 3PT opens as FLOOR SPACER.
+var TRAIT_ENG_QUESTION = {
+  "3PT": "Three-Point Shooter",
+  "GRAVITY": "Super Three-Point Shooter"
+};
+var TRAIT_VOTE_CUE_KEY = "t82_trait_vote_cue_v1";
 var TRAIT_STRIP_LABEL = {
   "Super Three-Point Shooter": "SUPER SHOOTER",
   "Off-Court Knucklehead": "KNUCKLEHEAD",
@@ -2084,7 +2094,7 @@ function buildTraitLegendInto(panel, scope) {
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
     '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
     '<div class="trait-legend-note">Community votes confirm or overturn these labels. Crossed out = ruled out.' +
-    (hasEng ? " 3PT and GRAVITY are the engine\u2019s own shooting math, not votes." : "") + "</div>";
+    (hasEng ? " 3PT and GRAVITY start as the engine\u2019s own shooting math. Tap one to back it or fight it." : "") + "</div>";
 }
 function buildTraitLegend(sec) { buildTraitLegendInto(sec && sec.querySelector("#traitLegend"), sec); }
 // One shared open/close for every label-legend (i) button.
@@ -2129,6 +2139,14 @@ function wireTraitChipTaps() {
           traitExpandedChip = chip;
           var st0 = openTraitStrip(chip);
           st0.setAttribute("data-t0", String(Date.now()));
+          // One cue, once per device: the arms bounce so the first player to
+          // open a strip learns they are buttons. Never repeats.
+          try {
+            if (localStorage.getItem(TRAIT_VOTE_CUE_KEY) !== "1") {
+              localStorage.setItem(TRAIT_VOTE_CUE_KEY, "1");
+              st0.classList.add("cue");
+            }
+          } catch (e) {}
           analyticsTrack("traits_question", { surface: "card", action: "view",
             challenge: chip.getAttribute("data-qid"), source: "card", sid: traitCardSid() });
         }
@@ -2339,25 +2357,40 @@ function ensureTraitsCss() {
     "@media(max-width:390px){.trait-legend-grid{grid-template-columns:1fr}}" +
     /* v49.5 the vote strip: one line, always. The arms are a fixed track and
        the label is the only elastic one, so nothing here can wrap. */
-    ".tvote{display:flex;align-items:center;gap:4px;margin:7px 0 1px;width:100%;padding:0 4px;" +
-      "background:rgba(255,255,255,.04);border:1px solid #2f3a45;border-radius:10px;animation:tvIn .16s ease-out}" +
-    ".tv-arm{flex:0 0 auto;width:42px;height:44px;display:inline-flex;align-items:center;justify-content:center;" +
-      "padding:0;background:transparent;border:0;border-radius:8px;cursor:pointer;" +
+    /* v49.7 the arms read as buttons because they are RAISED on a RECESSED
+       field: the strip sinks, the arms sit proud of it with a lit top edge
+       and a hard bottom lip, and pressing drops them onto the floor. That
+       contrast is the affordance, so no color shouting is needed. */
+    ".tvote{display:flex;align-items:center;gap:6px;margin:7px 0 1px;width:100%;padding:4px;" +
+      "background:rgba(0,0,0,.26);border:1px solid #2a343d;border-radius:12px;" +
+      "box-shadow:inset 0 2px 5px rgba(0,0,0,.45);animation:tvIn .16s ease-out}" +
+    ".tv-arm{flex:0 0 auto;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;" +
+      "padding:0;border:1px solid #5a6a7a;border-radius:10px;cursor:pointer;" +
+      "background:linear-gradient(180deg,#2f3b47,#222c35);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #10161c;" +
+      "transition:border-color .12s ease,background .12s ease;" +
       "-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent}" +
-    ".tv-arm svg{width:15px;height:13px;fill:#9fb0c0;pointer-events:none;transition:fill .12s ease}" +
-    ".tv-arm:active svg{fill:#E8E4D8}" +
-    ".tv-arm:active{transform:translateY(1px)}" +
-    ".tv-yes.lit{border-color:#F2A81F;background:rgba(242,168,31,.14)}" +
-    ".tv-yes.lit svg{fill:#FFC957}" +
-    ".tv-no.lit{border-color:#D9422D;background:rgba(217,66,45,.16)}" +
-    ".tv-no.lit svg{fill:#F06A54}" +
+    ".tv-arm svg{width:18px;height:16px;fill:#dfe9f2;pointer-events:none;transition:fill .12s ease}" +
+    ".tv-arm:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 #10161c}" +
+    ".tv-yes:hover{border-color:#F2A81F}.tv-yes:hover svg{fill:#FFC957}" +
+    ".tv-no:hover{border-color:#D9422D}.tv-no:hover svg{fill:#F06A54}" +
+    ".tv-yes.lit{border-color:#FFC957;background:linear-gradient(180deg,#FFC957,#F2A81F);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 0 #9a6a12}" +
+    ".tv-yes.lit svg{fill:#1c1608}" +
+    ".tv-no.lit{border-color:#F06A54;background:linear-gradient(180deg,#F06A54,#D9422D);" +
+      "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 2px 0 #8c2317}" +
+    ".tv-no.lit svg{fill:#2b0d09}" +
+    ".tvote.cue .tv-arm{animation:tvCue 1.5s ease-out 1}" +
+    ".tvote.cue .tv-no{animation-delay:.12s}" +
+    "@keyframes tvCue{0%,58%,100%{transform:none;border-color:#5a6a7a}" +
+      "68%{transform:translateY(-3px);border-color:#8fa2b3}82%{transform:translateY(0);border-color:#8fa2b3}}" +
     ".tv-txt{flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" +
       "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.06em;" +
       "line-height:1.1;color:#f2ede4;text-transform:uppercase}" +
     ".tvote.voted .tv-txt{color:#FFC957}" +
     "@keyframes tvIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}" +
-    "@media(max-width:374px){.tv-arm{width:38px}.tv-txt{font-size:13px;letter-spacing:.03em}}" +
-    "@media(prefers-reduced-motion:reduce){.tvote{animation:none}" +
+    "@media(max-width:374px){.tv-arm{width:40px}.tv-txt{font-size:13px;letter-spacing:.03em}}" +
+    "@media(prefers-reduced-motion:reduce){.tvote{animation:none}.tvote.cue .tv-arm{animation:none}" +
       ".traits-roster.trait-card-cue .tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
       ".tchip{transition:none}}";
   document.head.appendChild(st);
@@ -2698,6 +2731,20 @@ function traitLabelsAfterEngineFilter(hits, engAbbr) {
 // Inject up to four label chips (the standing cap, applied after the engine
 // dedup) into a card's first .pr-sub line. Works on results pick-cards and
 // classic draft-pool rows alike; returns whether anything was added.
+// The engine chip is drawn at render time, long before the labels call
+// answers, so its question id is stamped on afterwards. Runs whether or not
+// the player-season has any community labels of its own.
+function stampEngineChipQid(container, qm) {
+  if (!container || !qm) return false;
+  var eng = container.querySelector(".tchip.eng");
+  if (!eng || eng.getAttribute("data-qid")) return false;
+  var qid = qm[TRAIT_ENG_QUESTION[eng.getAttribute("data-abbr") || ""] || ""];
+  if (!qid) return false;
+  eng.setAttribute("data-qid", qid);
+  eng.setAttribute("aria-label", (eng.getAttribute("data-full") || "") +
+    ", the engine\u2019s shooting designation. Tap to agree or disagree.");
+  return true;
+}
 function applyLabelChips(container, hits, tab) {
   if (!container || !hits || !hits.length || container.querySelector(".tchips")) return false;
   var sub = container.querySelector(".pr-sub:not(.pr-stats)") || container;
@@ -2723,8 +2770,10 @@ function wireTraitsLabels(entries) {
         var key = String(e.name).toLowerCase() + "~" + e.season;
         var hits = x.labels[key];
         TRAIT_LABEL_CACHE[key] = hits || [];   // warm the draft-pool cache too
-        if (!hits || !hits.length) return;
         var card = document.querySelector('.pick-card[data-pick="' + e.i + '"]');
+        if (!card) return;
+        if (stampEngineChipQid(card, x.qids && x.qids[key])) added += 1;
+        if (!hits || !hits.length) return;
         if (applyLabelChips(card, hits, 0)) added += 1;
       });
       if (added) wireTraitCardUi();
