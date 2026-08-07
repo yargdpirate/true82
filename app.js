@@ -1908,6 +1908,10 @@ var TRAIT_ENG_QUESTION = {
   "3PT": "Three-Point Shooter",
   "GRAVITY": "Super Three-Point Shooter"
 };
+var TRAIT_ENG_SLUG = {
+  "3PT": "three-point-shooter",
+  "GRAVITY": "super-three-point-shooter"
+};
 var TRAIT_VOTE_CUE_KEY = "t82_trait_vote_cue_v1";
 var TRAIT_STRIP_LABEL = {
   "Super Three-Point Shooter": "SUPER SHOOTER",
@@ -2261,7 +2265,12 @@ function ensureTraitsCss() {
        v47.21: it no longer floats inside the question - it rides the lead
        row opposite HELP BALANCE THE GAME, which hands the question back the
        line the float was costing it. */
-    ".traits-module .tm-lead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:24px}" +
+    ".traits-module .tm-lead{display:flex;align-items:center;justify-content:flex-start;gap:0;min-height:24px}" +
+    /* v49.8: the tag centers in the space LEFT OVER after the title instead of
+       hugging the border (owner, 2026-08-07). Auto margins split the free
+       space evenly; the gap stays as a minimum so a long title can still push
+       the tag right without ever touching it. */
+    ".traits-module .tm-lead .tm-tag{margin-left:auto;margin-right:auto}" +
     /* The lead only fits on one line beside the chip if the eyebrow gives
        up tracking on narrow phones. Measured: one line down to 360; at 320
        it wraps to two, which is still no taller than the two-clause
@@ -2757,6 +2766,28 @@ function applyLabelChips(container, hits, tab) {
   sub.appendChild(wrap);
   return true;
 }
+// Fail-soft by construction: if this never answers, the engine chips simply
+// keep the expand-only behavior they had before v49.7. Nothing else waits on
+// it, and no vote is ever offered against a question that does not exist.
+function ensureEngineQuestions(need) {
+  var qs = need.map(function (n) { return encodeURIComponent(n.name) + "~" + n.season; }).join(",");
+  var ts = need.map(function (n) { return n.slug; }).join(",");
+  fetch("/api/traits?op=engq&players=" + qs + "&traits=" + ts, { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (x) {
+      if (!x || !x.ok || !x.ids) return;
+      var added = 0;
+      need.forEach(function (n) {
+        var qid = x.ids[n.key];
+        if (!qid) return;
+        var m = {};
+        m[TRAIT_ENG_QUESTION[n.card.querySelector(".tchip.eng").getAttribute("data-abbr") || ""] || ""] = qid;
+        if (stampEngineChipQid(n.card, m)) added += 1;
+      });
+      if (added) wireTraitCardUi();
+    })
+    .catch(function () {});
+}
 function wireTraitsLabels(entries) {
   if (!window.fetch || !entries || !entries.length) return;
   var qs = entries.map(function (e) { return encodeURIComponent(e.name) + "~" + e.season; }).join(",");
@@ -2766,6 +2797,7 @@ function wireTraitsLabels(entries) {
       if (!x || !x.ok || !x.labels) return;
       ensureTraitsCss();
       var added = 0;
+      var need = [];
       entries.forEach(function (e) {
         var key = String(e.name).toLowerCase() + "~" + e.season;
         var hits = x.labels[key];
@@ -2773,10 +2805,21 @@ function wireTraitsLabels(entries) {
         var card = document.querySelector('.pick-card[data-pick="' + e.i + '"]');
         if (!card) return;
         if (stampEngineChipQid(card, x.qids && x.qids[key])) added += 1;
+        else {
+          // No question exists yet for this player's shooting designation, so
+          // the arrows would be missing on him and present on the next card
+          // for no reason a player could see. Ask the worker to mint it.
+          var eng = card.querySelector(".tchip.eng");
+          if (eng && !eng.getAttribute("data-qid")) {
+            var slug = TRAIT_ENG_SLUG[eng.getAttribute("data-abbr") || ""];
+            if (slug) need.push({ key: key, name: e.name, season: e.season, slug: slug, card: card });
+          }
+        }
         if (!hits || !hits.length) return;
         if (applyLabelChips(card, hits, 0)) added += 1;
       });
       if (added) wireTraitCardUi();
+      if (need.length) ensureEngineQuestions(need);
     })
     .catch(function () {});
 }
