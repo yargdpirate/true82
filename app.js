@@ -6491,6 +6491,7 @@ function showResults() {
     // Duels, dailies, and challenges never enter this branch; the +20 gate is
     // strict; the raw pre-boost net still ships to percentile/leaderboards.
     var midTrigger = hhMidGate(e, season) ? { e: e } : null;
+    scheduleSharePct(e);   // v49.4: start the percentile fetch now so the reel finale can wear the Top X% line
     showSeasonReel(season, e, function () { finishRunTail(e); }, midTrigger);
     return;
   }
@@ -6540,17 +6541,21 @@ function finishRunTail(e) {
 }
 
 /* ---------- v42 THE SEASON REEL (Any Given Night, classic) ----------
-   82 realized games in seven month acts, auto-advancing with one line of
-   desk commentary per act. No per-month button (the lab finding: bounded
-   closure beats, delivered, not requested). One SKIP for repeat players;
-   tapping the card skips too. The reel is also the preload window: the
-   bbref map loads behind it. Cities are cosmetic, seed-hashed, never the
-   rng stream. Copy law: zero em-dashes. */
+   v49.4 SCOREBOARD CUT (owner rulings, 2026-08-06): 82 realized games in
+   seven month acts under a retro scoreboard (game, record, LIVE PACE), a
+   prominent calendar explainer, and an event flash line. Wins sweep on a
+   month tempo (compressed middle, slow April); losses land on their own
+   beat with the story AT the square: the season's first loss gets the
+   zero-died line, each month's first loss gets a blame line, win streaks
+   flag at ten and every five after, skids flag at three. Month desk
+   lines still close each act. The finale reuses the results comps plus
+   the Top X% percentile; the fetch starts before the reel so the number
+   is usually home by then. Cities are cut (owner, 2026-08-06); dates are
+   the season calendar; blame is seed-hashed cosmetic flavor, never the
+   rng stream. The reel is still the bbref-map preload window and still
+   pauses square-exact for the Mid-Season Heat Check. One prominent SKIP.
+   Copy law: zero em-dashes. */
 var REEL_MONTHS = [["OCT", 5], ["NOV", 15], ["DEC", 15], ["JAN", 15], ["FEB", 11], ["MAR", 15], ["APR", 6]];
-var REEL_CITIES = ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cleveland", "Dallas", "Denver",
-  "Detroit", "Golden State", "Houston", "Indiana", "Los Angeles", "Memphis", "Miami", "Milwaukee",
-  "Minnesota", "New Orleans", "New York", "Oklahoma City", "Orlando", "Philadelphia", "Phoenix",
-  "Portland", "Sacramento", "San Antonio", "Toronto", "Utah", "Washington"];
 function reelDay(mi, gi) {
   var count = REEL_MONTHS[mi][1];
   var first = mi === 0 ? 21 : 1;
@@ -6569,10 +6574,7 @@ function reelHash(str) {
   for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
   return h;
 }
-function reelCity(gameIdx) {
-  return REEL_CITIES[reelHash(String(G.seed || "x") + "|" + gameIdx) % REEL_CITIES.length];
-}
-function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
+function reelLine(mi, mw, ml, runW, runL) {
   var mo = REEL_MONTHS[mi][0];
   if (runL === 0) {
     return ["Perfect through " + mo + ". " + runW + " and 0. History is watching.",
@@ -6582,9 +6584,6 @@ function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
       "Undefeated through " + mo + ". Opposing coaches are burning film at 3am.",
       "Zero losses. The beat writers are drafting history columns.",
       runW + " straight. Every arena is a road playoff game now."][mi % 7];
-  }
-  if (firstLossIdx !== null && firstLossIdx >= monthStart && firstLossIdx < monthStart + mw + ml) {
-    return "The zero died in " + reelCity(firstLossIdx) + ", " + reelDate(firstLossIdx) + ".";
   }
   if (ml === 0) return ["A spotless " + mw + " and 0 month steadies the run.",
     "Swept the month. " + mw + " and 0.",
@@ -6604,8 +6603,8 @@ function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
     mw + " and " + ml + ". Took care of the ones that mattered.",
     mw + " and " + ml + ". One clunker, otherwise clean."][mi % 5];
 }
-function reelBlame(mi) {
-  var pk = G.picks[reelHash(String(G.seed || "x") + "b" + mi) % G.picks.length];
+function reelBlame(gi) {
+  var pk = G.picks[reelHash(String(G.seed || "x") + "b" + gi) % G.picks.length];
   var nm = bbrefLastName(pk.row[IDX.name]) || pk.row[IDX.name];
   var T = ["missed a buzzer beater", "no-showed", "had a flu game", "shot 4 for 19",
     "left his legs at the hotel", "got cooked on every switch", "airballed the game winner",
@@ -6615,7 +6614,7 @@ function reelBlame(mi) {
     "threw the inbound to the wrong jersey", "forced a heat check down two",
     "lost his man on the last possession", "ate a poster and never recovered",
     "played matador defense in crunch time", "goaltended the dagger"];
-  return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
+  return nm + " " + T[reelHash(String(G.seed || "x") + "t" + gi) % T.length] + ".";
 }
 /* v47.17 GATE FIX: arm the mid-season trigger from transparent checks only.
    The v47.15 gate ANDed the engine's hhEligible(G, e), whose semantics are
@@ -6862,26 +6861,43 @@ function showSeasonReel(season, e, done, midTrigger) {
   var ov = document.createElement("div");
   ov.className = "reel-overlay";
   ov.innerHTML = '<div class="reel-card">' +
-    '<div class="reel-head"><span class="reel-eyebrow">THE SEASON \u00B7 GAME BY GAME</span>' +
-    '<span class="reel-run mono" id="reelRun">0\u20130</span>' +
-    '<button class="reel-skip mono" id="reelSkip" type="button">SKIP \u2192</button></div>' +
-    '<div class="reel-acts" id="reelActs"></div></div>';
+    '<div class="reel-head"><span class="reel-eyebrow">THE SEASON \u00B7 GAME BY GAME</span></div>' +
+    '<div class="reel-board" id="reelBoard">' +
+      '<div class="reel-cell"><span class="reel-cap">GAME</span><span class="reel-num mono" id="reelGame">0</span></div>' +
+      '<div class="reel-cell reel-cell-mid"><span class="reel-cap">RECORD</span><span class="reel-num mono" id="reelRun">0\u20130</span></div>' +
+      '<div class="reel-cell"><span class="reel-cap">PACE</span><span class="reel-num mono" id="reelPace">\u00B7</span></div>' +
+    '</div>' +
+    '<p class="reel-explain">Your 82 game season, October through April. One square is one game.</p>' +
+    '<div class="reel-flash mono" id="reelFlash" aria-live="polite"></div>' +
+    '<div class="reel-acts" id="reelActs"></div>' +
+    '<button class="reel-skip" id="reelSkip" type="button">SKIP TO RESULTS \u2192</button></div>';
   document.body.appendChild(ov);
   var acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
-  var finished = false, timers = [];
-  // v47.15: the reel is now a cursor engine instead of a pre-scheduled cascade,
-  // so it can pause on the exact square where the Mid-Season Heat Check
-  // fires and resume onto a re-rolled remainder. Month W-L headers tick live
-  // square by square (they used to print the month's final line up front,
-  // which both spoiled the month and could not survive a re-roll).
-  var gi = 0, cw = 0, clx = 0;
-  var mi = -1, monthLeft = 0, monthW = 0, monthL = 0, monthStart = 0, row = null, recEl = null;
+  var gameEl = ov.querySelector("#reelGame"), paceEl = ov.querySelector("#reelPace");
+  var boardEl = ov.querySelector("#reelBoard"), flashEl = ov.querySelector("#reelFlash");
+  var finished = false, timers = [], flashT = 0;
+  // v47.15 cursor engine, v49.4 scoreboard cut: one square per tick always,
+  // so the Mid-Season Heat Check pause check stays square-exact under any
+  // tempo. Losses get a hang BEFORE they land and a beat after the notable
+  // ones; the scoreboard, pace, and event flash update inside placeSquare.
+  var gi = 0, cw = 0, clx = 0, wStreak = 0, lStreak = 0, lossArmed = false;
+  var mi = -1, monthLeft = 0, monthW = 0, monthL = 0, row = null, recEl = null;
   var triggerIdx = -1, overlayUp = false;
   if (midTrigger) { for (var g0 = 0; g0 < season.games.length; g0++) { if (!season.games[g0]) { triggerIdx = g0; break; } } }
   var midDone = (triggerIdx < 0);
 
+  // Tempo is the arc: a watchable open, a compressed middle, a slow April.
+  var MONTH_GAP = [52, 44, 22, 22, 22, 22, 115];
+  var MONTH_LEAD = [650, 900, 420, 420, 420, 420, 780];
+
   function schedule(fn, ms) { timers.push(setTimeout(fn, ms)); }
-  function firstLossNow() { for (var i = 0; i < season.games.length; i++) { if (!season.games[i]) return i; } return null; }
+  function bump(n) { n.classList.remove("tick"); void n.offsetWidth; n.classList.add("tick"); }
+  function flash(txt, hold) {
+    flashEl.textContent = txt;
+    flashEl.classList.add("on");
+    clearTimeout(flashT);
+    flashT = setTimeout(function () { flashEl.classList.remove("on"); }, hold || 2600);
+  }
 
   function finishReel() {
     if (finished) return;
@@ -6889,6 +6905,7 @@ function showSeasonReel(season, e, done, midTrigger) {
     if (!midDone && triggerIdx >= 0) { fastForwardToPause(); return; }   // SKIP cannot dodge the spin
     finished = true;
     timers.forEach(clearTimeout);
+    clearTimeout(flashT);
     ov.remove();
     done();
   }
@@ -6896,7 +6913,7 @@ function showSeasonReel(season, e, done, midTrigger) {
 
   function openMonth() {
     mi++;
-    monthStart = gi; monthW = 0; monthL = 0; monthLeft = REEL_MONTHS[mi][1];
+    monthW = 0; monthL = 0; monthLeft = REEL_MONTHS[mi][1];
     row = document.createElement("div");
     row.className = "reel-act";
     row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + REEL_MONTHS[mi][0] + '</span>' +
@@ -6912,35 +6929,56 @@ function showSeasonReel(season, e, done, midTrigger) {
     if (!row || row.__closed) return;
     row.__closed = true;
     var note = row.querySelector(".reel-note");
-    note.textContent = reelLine(mi, monthW, monthL, cw, clx, firstLossNow(), monthStart) + (monthL > 0 ? " " + reelBlame(mi) : "");
+    note.textContent = reelLine(mi, monthW, monthL, cw, clx);
     note.classList.remove("reel-note-pending");
     acts.scrollTop = acts.scrollHeight;
   }
-  function placeSquare() {
+  // quiet=true is the fast-forward path: squares and totals land, no ceremony.
+  function placeSquare(quiet) {
     var win = season.games[gi];
+    var seasonFirstL = !win && clx === 0;
+    var monthFirstL = !win && monthL === 0;
     var sq = document.createElement("span");
     sq.className = "reel-day " + (win ? "w" : "l");
     sq.textContent = win ? "W" : "L";
+    if (!win && (seasonFirstL || monthFirstL) && !quiet) sq.classList.add("big");
     row.__grid.appendChild(sq);
-    if (win) { cw++; monthW++; } else { clx++; monthL++; }
-    runEl.textContent = cw + "\u2013" + clx;
-    recEl.textContent = monthW + "\u2013" + monthL;
+    if (win) { cw++; monthW++; wStreak++; lStreak = 0; } else { clx++; monthL++; lStreak++; wStreak = 0; }
     gi++; monthLeft--;
+    runEl.textContent = cw + "\u2013" + clx;
+    gameEl.textContent = String(gi);
+    paceEl.textContent = String(Math.max(0, Math.min(CFG.GAMES_IN_SEASON, Math.round(cw * CFG.GAMES_IN_SEASON / gi))));
+    recEl.textContent = monthW + "\u2013" + monthL;
+    boardEl.classList.toggle("perfect", clx === 0);
+    if (!quiet) {
+      bump(runEl); bump(paceEl);
+      if (!win && seasonFirstL) { flash("The zero died. " + reelDate(gi - 1) + "."); buzz(16); }
+      else if (!win && monthFirstL) { flash(reelBlame(gi - 1)); buzz(12); }
+      else if (win && wStreak >= 10 && wStreak % 5 === 0) { flash(wStreak + " STRAIGHT WINS"); buzz(8); }
+      else if (!win && lStreak === 3) { flash("Three straight losses."); buzz(10); }
+    }
+    return !win && (seasonFirstL || monthFirstL);
   }
 
   function advance() {
     if (finished) return;
     if (gi >= season.games.length) { schedule(closeMonth, 120); schedule(finale, 640); return; }
-    var lead = (mi < 0) ? 650 : 960;
     if (mi >= 0) schedule(closeMonth, 120);
-    schedule(function () { openMonth(); schedule(tick, 140); }, lead);
+    schedule(function () { openMonth(); schedule(tick, 140); }, MONTH_LEAD[mi + 1]);
   }
   function tick() {
     if (finished) return;
     if (!midDone && gi === triggerIdx) { firePause(); return; }
-    placeSquare();
+    var willLose = !season.games[gi];
+    if (willLose && !lossArmed) {
+      lossArmed = true;                                        // the hang before a loss lands
+      schedule(tick, (clx === 0 || monthL === 0) ? 460 : 150);
+      return;
+    }
+    lossArmed = false;
+    var big = placeSquare(false);
     if (monthLeft === 0) advance();
-    else schedule(tick, 48);
+    else schedule(tick, big ? 520 : MONTH_GAP[mi]);
   }
 
   function applyMidBoost(boost) {
@@ -6969,7 +7007,7 @@ function showSeasonReel(season, e, done, midTrigger) {
     timers.forEach(clearTimeout); timers = [];
     while (gi < triggerIdx) {
       if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
-      placeSquare();
+      placeSquare(true);
     }
     if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
     acts.scrollTop = acts.scrollHeight;
@@ -6978,10 +7016,17 @@ function showSeasonReel(season, e, done, midTrigger) {
 
   function finale() {
     if (finished) return;
+    var undef = season.losses === 0;
+    var comp = shareCompFor(season.wins, undef);
+    var pct = (typeof G.sharePct === "number") ? G.sharePct : null;
+    var line = undef ? "Eighty two and zero. Say it out loud."
+      : comp ? comp + (pct !== null ? " \u2022 Top " + pct + "%" : "") + "."
+      : pct !== null ? "Top " + pct + "% of all lineups."
+      : "The verdict is in.";
     var fin = document.createElement("div");
     fin.className = "reel-final";
-    fin.innerHTML = '<span class="reel-final-rec">' + season.wins + '\u2013' + season.losses + '</span>' +
-      '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>' +
+    fin.innerHTML = '<span class="reel-final-rec">' + season.wins + "\u2013" + season.losses + '</span>' +
+      '<p class="reel-note">' + esc(line) + '</p>' +
       '<button class="reel-done" id="reelDone" type="button">SEE THE FULL RESULTS \u2192</button>';
     acts.appendChild(fin);
     fin.querySelector("#reelDone").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
@@ -7734,6 +7779,8 @@ function pingGames(method) {
 function scheduleSharePct(e) {
   if (MODE === "kaman") return;
   if (dyRun()) return;   // v48: a shrinking-pool run against the open classic pool is the wrong yardstick, and alpha runs stay out of that pool
+  if (G && G.sharePctScheduled) return;   // v49.4: the reel finale schedules this early; finishRunTail's call is the belt for analytic paths
+  if (G) G.sharePctScheduled = 1;
   var net = Math.round(e.net * 100) / 100;        // raw engine net: never the Hot Hand numbers
   var g = G;                                      // the run this fetch belongs to
   var qs = g.social

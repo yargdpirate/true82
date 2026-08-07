@@ -3084,35 +3084,60 @@ body.gating .gate-back {
    ceremony rendered under the reel and nothing was clickable. */
 .hh-overlay.hh-mid { z-index: 250; }
 .reel-overlay { position: fixed; inset: 0; z-index: 240; background: rgba(10,12,16,0.94); display: flex; align-items: center; justify-content: center; padding: 18px; }
-.reel-card { width: min(430px, 100%); max-height: 86vh; display: flex; flex-direction: column; background: var(--ink); border: 1px solid var(--maple-line); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,0.55); }
-.reel-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--tunnel-2); }
+.reel-card { width: min(430px, 100%); max-height: 88vh; display: flex; flex-direction: column; background: var(--ink); border: 1px solid var(--maple-line); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,0.55); }
+.reel-head { flex: none; display: flex; justify-content: center; padding: 11px 14px 8px; }
 .reel-eyebrow { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color: var(--maple); }
-.reel-run { margin-left: auto; font-size: 15px; font-weight: 700; color: var(--amber); letter-spacing: 0.06em; }
-.reel-skip { -webkit-appearance: none; appearance: none; background: transparent; border: 1px solid var(--maple-line); border-radius: 6px; color: var(--chalk-dim); font-size: 9.5px; letter-spacing: 0.1em; padding: 6px 9px; }
-.reel-skip:active { color: var(--amber); border-color: var(--maple); }
-.reel-acts { overflow-y: auto; padding: 6px 14px 14px; }
+
+/* v49.4 THE SCOREBOARD: a retro arena panel. Amber bulb digits on a recessed
+   black face, thin cell rules, a faint scanline wash over the glass. Digits
+   pulse one frame per game (.tick); a live perfect season sets the whole
+   panel glowing (.perfect). */
+.reel-board { flex: none; display: flex; margin: 0 14px; border: 2px solid var(--maple-line); border-radius: 8px; background: #0b0e12; box-shadow: inset 0 2px 10px rgba(0,0,0,0.75), 0 1px 0 rgba(255,255,255,0.05); position: relative; overflow: hidden; }
+.reel-board::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px); }
+.reel-cell { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 7px; }
+.reel-cell + .reel-cell { border-left: 1px solid var(--tunnel-2); }
+.reel-cell-mid { flex: 1.35; }
+.reel-cap { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.18em; color: var(--chalk-dim); }
+.reel-num { font-size: 24px; font-weight: 700; letter-spacing: 0.05em; color: var(--amber); line-height: 1; text-shadow: 0 0 6px rgba(255,181,46,0.55), 0 0 14px rgba(255,181,46,0.25); }
+.reel-num.tick { animation: reelTick 0.18s ease-out; }
+@keyframes reelTick { 0% { transform: scale(1.16); filter: brightness(1.6); } 100% { transform: none; filter: none; } }
+.reel-board.perfect { border-color: var(--amber); box-shadow: inset 0 2px 10px rgba(0,0,0,0.75), 0 0 12px rgba(255,181,46,0.3); }
+
+/* v49.4 the calendar explainer (prominent by ruling: "my mom asked what the
+   months were") and the event flash line under the board */
+.reel-explain { flex: none; margin: 7px 16px 0; font-size: 13px; line-height: 1.4; color: var(--chalk); text-align: center; }
+.reel-flash { flex: none; min-height: 17px; margin: 5px 16px 1px; font-size: 11px; letter-spacing: 0.08em; text-align: center; color: var(--amber); opacity: 0; transition: opacity 0.18s ease; }
+.reel-flash.on { opacity: 1; }
+
+.reel-acts { flex: 1 1 auto; overflow-y: auto; padding: 2px 14px 8px; }
 .reel-act { padding: 10px 0 2px; border-bottom: 1px dotted var(--tunnel-2); animation: reelIn 0.45s ease-out; }
 .reel-mo-line { display: flex; align-items: baseline; gap: 10px; }
 .reel-mo { font-family: var(--disp); font-weight: 700; font-size: 18px; letter-spacing: 0.08em; color: var(--chalk); }
 .reel-mo-rec { font-size: 13px; color: var(--amber); }
-.reel-note { margin: 3px 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--chalk-dim); }
+.reel-note { margin: 3px 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--chalk-dim); font-style: italic; }
 .reel-final { padding: 14px 0 4px; text-align: center; animation: reelIn 0.45s ease-out; }
 .reel-final-rec { font-family: var(--disp); font-weight: 700; font-size: 44px; letter-spacing: 0.04em; color: var(--amber); line-height: 1; }
-.reel-final .reel-note { text-align: center; margin-top: 6px; }
+.reel-final .reel-note { text-align: center; margin-top: 6px; font-style: normal; }
 @keyframes reelIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 
-/* V42.1 — the calendar. Date-numbered squares cascade per month act, wins
-   in amber, losses in ember with a pop; the header record ticks square by
-   square. The commentary line lands after the month fills. */
+/* the calendar squares: wins in amber, losses in ember; a notable loss (the
+   season's first, a month's first) lands bigger with a glow */
 .reel-grid { display: flex; flex-wrap: wrap; gap: 4px; margin: 7px 0 2px; }
 .reel-day { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0; border: 1px solid var(--tunnel-2); color: var(--chalk-dim); animation: dayIn 0.22s ease-out; }
 .reel-day.w { background: var(--amber); border-color: var(--amber); color: var(--ink); font-weight: 700; }
 .reel-day.l { background: #7e2a24; border-color: #a33a32; color: var(--chalk); font-weight: 700; animation: dayLoss 0.3s ease-out; }
+.reel-day.l.big { animation: dayBig 0.42s ease-out; box-shadow: 0 0 8px rgba(163,58,50,0.6); }
 .reel-note-pending { min-height: 18px; }
 @keyframes dayIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
 @keyframes dayLoss { 0% { opacity: 0; transform: scale(0.5); } 60% { transform: scale(1.22); } 100% { opacity: 1; transform: none; } }
+@keyframes dayBig { 0% { opacity: 0; transform: scale(0.4); } 55% { transform: scale(1.45); } 100% { opacity: 1; transform: none; } }
+
+/* v49.4 prominent skip (owner ruling: low friction into the next game) */
+.reel-skip { flex: none; -webkit-appearance: none; appearance: none; display: block; margin: 6px 14px 14px; background: transparent; border: 1px solid var(--maple); border-radius: 8px; color: var(--amber); font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; padding: 12px; min-height: 44px; cursor: pointer; }
+.reel-skip:active { background: var(--maple); color: var(--chalk); }
 
 /* V42 amendment 2 - the verdict button and the inline percentile */
 .reel-done { display: block; margin: 14px auto 2px; background: var(--amber); color: var(--ink); border: 1px solid var(--amber); border-radius: 8px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.09em; padding: 12px 22px; min-height: 44px; cursor: pointer; box-shadow: 0 2px 0 var(--maple); }
 .reel-done:active { background: var(--maple); border-color: var(--maple); color: var(--chalk); box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .reel-num.tick, .reel-day, .reel-day.l.big, .reel-act, .reel-final { animation: none; } .reel-flash { transition: none; } }
 .comp-pct { color: var(--amber); white-space: nowrap; }
