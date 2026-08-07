@@ -14,7 +14,7 @@ const NAMES = new Set([
   "reroll", "game_complete", "results_view", "result_section_view", "run_abandon", "replay", "share_click", "share",
   "share_result", "share_cancel", "share_error", "percentile_result", "percentile_error",
   "heatcheck_shown", "heatcheck_action", "heatcheck_declined", "heatcheck_result",
-  "traits_session", "traits_question", "traits_vote",
+  "traits_session", "traits_question", "traits_vote", "traits_vote_error",
   "donate_click", "feedback_click", "recap_presented", "recap_shown", "recap_read", "recap_full_read",
   "recap_action", "recap_skip", "recap_unwrap", "recap_results", "recap_generation", "recap_publish"
 ]);

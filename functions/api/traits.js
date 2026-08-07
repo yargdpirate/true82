@@ -38,7 +38,7 @@ const RID_COOKIE = "t82_rid";
 const ID_RE = /^v1-[A-Za-z0-9-]{16,60}$/;
 const QID_RE = /^[a-z0-9][a-z0-9-]{2,78}$/;
 const RESPONSES = new Set(["yes", "no", "unsure"]);
-const SOURCES = new Set(["home_module", "results_prompt", "direct", "link", "session", "share"]);
+const SOURCES = new Set(["home_module", "results_prompt", "direct", "link", "session", "share", "card"]);
 const SESSION_SIZE = 5;
 
 const DEFAULT_RULES = {
@@ -98,6 +98,9 @@ async function handleGet(context) {
   }
 
   if (op === "labels") {
+    // v49.5: each hit now carries its question id (q.id) so a label chip on a
+    // results card can post a vote without a second lookup. Additive field;
+    // older clients ignore it.
     // v47.9: cap raised to 60 for THIS op only, so the classic draft pool
     // labels in one request. The query below reads the full settled label
     // set per call regardless of pair count, so 60 pairs cost what 8 did.
@@ -105,7 +108,7 @@ async function handleGet(context) {
     const pairs = parsePlayerPairs(url.searchParams.get("players"), 60);
     if (!pairs.length) return json({ ok: false, reason: "bad_players" }, 200);
     const rows = await env.DB.prepare(`
-      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, c.status status
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, c.status status, q.id qid
       FROM trait_consensus_v1 c
       JOIN trait_questions_v1 q ON q.id = c.question_id
       JOIN traits_v1 t ON t.id = q.trait_id
@@ -116,7 +119,7 @@ async function handleGet(context) {
     // a settled COMMUNITY ruling on the same question always supersedes.
     // Table absent (0012 unapplied) degrades to community-only.
     const edRows = await env.DB.prepare(`
-      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, e.verdict verdict
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, e.verdict verdict, q.id qid
       FROM trait_editorial_v1 e
       JOIN trait_questions_v1 q ON q.id = e.question_id
       JOIN traits_v1 t ON t.id = q.trait_id
@@ -127,10 +130,10 @@ async function handleGet(context) {
       const seen = new Set();
       const hits = rows
         .filter((r) => r.pname === p.name && Number(r.season) === p.season)
-        .map((r) => { seen.add(r.tname); return { t: r.tname, anti: r.status === "does_not_qualify" }; });
+        .map((r) => { seen.add(r.tname); return { t: r.tname, anti: r.status === "does_not_qualify", id: r.qid }; });
       for (const r of edRows) {
         if (r.pname === p.name && Number(r.season) === p.season && !seen.has(r.tname)) {
-          hits.push({ t: r.tname, anti: r.verdict === "does_not_qualify", e: 1 });
+          hits.push({ t: r.tname, anti: r.verdict === "does_not_qualify", e: 1, id: r.qid });
         }
       }
       if (hits.length) labels[p.name + "~" + p.season] = hits;

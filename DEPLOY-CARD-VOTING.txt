@@ -1,0 +1,62 @@
+CARD VOTING v49.5 - deploy notes
+================================
+Files changed: app.js, index.html, functions/api/traits.js, functions/api/event.js.
+styles.css UNTOUCHED (the strip CSS rides the injected traits sheet).
+No D1 paste. No migrations. No schema change. sim-core.js untouched.
+Cache key: app.js?v=20260807-cardvote2-v49. BUILD_V stays v49.
+Package also contains v49.3 redraft + v49.4 season reel.
+
+WHAT IT DOES
+Tap a community label chip on a results player card and a one-line strip
+opens under the chip row: agree arm, the label, disagree arm. The vote
+posts to the same /api/traits op=vote the poll page uses, the strip
+reports the tally in place, and the question retires from the widget and
+/bonuses/ so nobody gets asked twice.
+
+WORKER CHANGE (functions/api/traits.js, additive only)
+- op=labels now returns each hit's question id (q.id). Two SELECTs gained
+  one column each; the hit objects gained `id`. Older clients ignore it.
+- SOURCES gained "card" so votes attribute correctly instead of
+  degrading to "direct". Everything else in the worker is untouched.
+
+RULINGS BAKED IN
+- Results roster only. Draft-pool and Caveman chips keep the old
+  in-place expansion, untouched.
+- Engine chips (3PT, GRAVITY) are NOT votable: they are the engine's own
+  shooting math and the shipped legend says so. They keep expanding in
+  place.
+- The chip stays an abbreviation when its strip is open, so the chip row
+  never reflows. The strip carries the full label.
+- ONE LINE IS A HARD CONSTRAINT. Arms are a fixed track, the label is the
+  only elastic one, and TRAIT_STRIP_LABEL shortens the five labels that
+  cannot fit beside two arms in a 320px card. Harness h9 measures all 20
+  labels at 320/360/375/390/430 and fails on a second line or an ellipsis.
+- Votes queue 1300ms apart because the worker's cadence fence is 1200ms,
+  and a rate_limited reply retries once. A brigade never sees an error.
+- Network failure fails quiet ("VOTE COUNTED"): the tap still reads real.
+
+QA on deploy
+- Finish a classic run, scroll to the roster, tap a gold or red chip:
+  strip opens on one line, arrows are thumb-sized, label is centered.
+- Vote: arrow lights instantly, text becomes "78% SAY YES" or "3 YES . 1 NO".
+- Tap chips on several cards quickly: every vote lands, none error.
+- Open /bonuses/ afterwards: the question you just voted should not reappear.
+- Narrow to an SE (375) and an SE 1st gen (320) in device emulation and
+  confirm no wrap on the longest labels (Curry's SUPER SHOOTER).
+
+ANALYTICS (v49.6 pass - what lands in /avocado)
+Every event carries surface "card", source "card", the question id in
+challenge, and a per-page sid.
+- traits_question action "view": a strip opened. One per open, including
+  reopens.
+- traits_question action "dismiss": a strip closed UNVOTED; value = dwell
+  ms. A strip closed with a vote in flight never dismisses.
+- traits_vote action yes/no: a counted vote; outcome = consensus status,
+  value = API latency ms, ordinal = how many card votes this page view
+  (brigade depth: max ordinal per sid is how deep they went).
+- traits_vote_error: a vote the player believes landed but did not;
+  outcome = rate_limited / bad_reply / network, same ordinal. The name is
+  whitelisted in functions/api/event.js (that file MUST deploy with this
+  package or error events are silently dropped by ingestion).
+Funnel reads: view -> vote conversion per question; decide time =
+vote.ts - view.ts joined on sid + challenge; hesitation = dismiss value.

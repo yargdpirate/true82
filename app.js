@@ -1881,6 +1881,155 @@ var TRAIT_CARD_ABBR = {
 var TRAIT_CARD_UI_SEEN_KEY = "t82_trait_card_ui_seen_v1";
 var traitExpandedChip = null;
 var traitDocDismissWired = false;
+
+/* ---------- v49.5 THE VOTE STRIP (results roster only) ----------
+   Tapping a community label chip opens one line under the chip row: an
+   agree arm, the label, a disagree arm. Voting from the card is the whole
+   point of the surface, so it posts to the same /api/traits op=vote the
+   full page uses (source "card"), retires the question in the shared seen
+   store, and reports back in place.
+
+   ONE LINE IS A HARD CONSTRAINT (owner, 2026-08-06): SE-class widths are
+   the majority of visits, so the strip must never wrap at 320. The arms are
+   fixed-width, the text is the only flexible track, and TRAIT_STRIP_LABEL
+   shortens the handful of labels that cannot fit next to two 42px arms in
+   an SE card. Harness h9 measures every label at 320/360/375/390/430 and
+   fails on a second line or an ellipsis.
+
+   Engine chips (3PT, GRAVITY) are deliberately NOT votable: they are the
+   engine's own shooting math, and the shipped legend says so. They keep the
+   in-place expansion they have always had. */
+var TRAIT_STRIP_LABEL = {
+  "Super Three-Point Shooter": "SUPER SHOOTER",
+  "Off-Court Knucklehead": "KNUCKLEHEAD",
+  "Switchable Defender": "SWITCHABLE D",
+  "Three-Point Shooter": "3PT SHOOTER",
+  "Championship #1": "CHAMPIONSHIP 1"
+};
+var TRAIT_VOTE_MIN_GAP = 1300;   // the worker's cadence fence is 1200ms; queue just inside it
+var traitCardVoteN = 0;          // votes cast from cards this page view; ordinal = brigade depth
+// The card can vote before any poll session has started, so it mints the same
+// shape of session id TM does and hands it back to TM if TM has none yet.
+function traitCardSid() {
+  if (!TM.sid) TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
+  return TM.sid;
+}
+var traitVoteQ = [], traitVoteBusy = false, traitVoteLast = 0;
+function traitStripLabel(full) {
+  return TRAIT_STRIP_LABEL[String(full || "")] || String(full || "").toUpperCase();
+}
+function traitArmSvg(down) {
+  return '<svg viewBox="0 0 14 12" aria-hidden="true" focusable="false">' +
+    (down ? '<path d="M7 12 0.5 2h13z"/>' : '<path d="M7 0 13.5 10h-13z"/>') + "</svg>";
+}
+function traitVoteStrip(chip) {
+  var full = chip.getAttribute("data-full") || "";
+  var qid = chip.getAttribute("data-qid") || "";
+  var d = document.createElement("div");
+  d.className = "tvote";
+  d.setAttribute("data-qid", qid);
+  d.setAttribute("role", "group");
+  d.setAttribute("aria-label", "Vote on " + full);
+  d.innerHTML =
+    '<button type="button" class="tv-arm tv-yes tm-flat" data-vote="yes" aria-label="Agree, ' +
+      esc(full) + ' fits">' + traitArmSvg(false) + "</button>" +
+    '<span class="tv-txt">' + esc(traitStripLabel(full)) + "</span>" +
+    '<button type="button" class="tv-arm tv-no tm-flat" data-vote="no" aria-label="Disagree, ' +
+      esc(full) + ' does not fit">' + traitArmSvg(true) + "</button>";
+  return d;
+}
+function closeTraitStrip() {
+  var open = document.querySelector(".tvote");
+  if (!open || !open.parentNode) return;
+  // A strip that closes unvoted is the funnel's drop-off; value carries the
+  // dwell so /avocado can see hesitation. A pending strip is a vote in
+  // flight, not a dismissal.
+  if (open.getAttribute("data-qid") && !open.classList.contains("voted") && !open.classList.contains("pending")) {
+    var t0 = Number(open.getAttribute("data-t0")) || 0;
+    analyticsTrack("traits_question", { surface: "card", action: "dismiss",
+      challenge: open.getAttribute("data-qid"), value: t0 ? Date.now() - t0 : 0,
+      source: "card", sid: traitCardSid() });
+  }
+  open.parentNode.removeChild(open);
+}
+// A chip is votable only where voting belongs (the results roster) and only
+// when the labels payload gave it a question to vote on.
+function traitChipVotable(chip) {
+  if (!chip || !chip.getAttribute("data-qid")) return false;
+  return !!(chip.closest && chip.closest('[data-result-section="roster"]'));
+}
+function openTraitStrip(chip) {
+  closeTraitStrip();
+  var sub = chip.closest ? chip.closest(".pr-sub") : null;
+  var strip = traitVoteStrip(chip);
+  if (sub && sub.parentNode) sub.parentNode.insertBefore(strip, sub.nextSibling);
+  else chip.parentNode.appendChild(strip);
+  return strip;
+}
+function traitVoteDone(strip, txt, resp) {
+  if (!strip || !strip.parentNode) return;
+  var t = strip.querySelector(".tv-txt");
+  if (t) t.textContent = txt;
+  strip.classList.remove("pending");
+  strip.classList.add("voted");
+  var arm = strip.querySelector(resp === "yes" ? ".tv-yes" : ".tv-no");
+  if (arm) arm.classList.add("lit");
+}
+function traitVoteLine(d) {
+  // Short by law: this line replaces the label inside the same one-line strip.
+  if (!d) return "VOTE COUNTED";
+  if (d.mode === "counts") return (d.yes || 0) + " YES \u00B7 " + (d.no || 0) + " NO";
+  if (typeof d.yes_pct === "number") return d.yes_pct + "% SAY YES";
+  return "VOTE COUNTED";
+}
+function traitVotePump() {
+  if (traitVoteBusy || !traitVoteQ.length) return;
+  var wait = TRAIT_VOTE_MIN_GAP - (Date.now() - traitVoteLast);
+  if (wait > 0) { setTimeout(traitVotePump, wait); return; }
+  var job = traitVoteQ.shift();
+  traitVoteBusy = true;
+  traitVoteLast = Date.now();
+  var t0 = Date.now();
+  fetch("/api/traits", {
+    method: "POST", credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "vote", question_id: job.qid, response: job.resp, source: "card", sid: traitCardSid() })
+  }).then(function (r) { return r.json(); }).then(function (x) {
+    traitVoteBusy = false;
+    if (x && x.ok) {
+      tmSeenAdd(job.qid);
+      analyticsTrack("traits_vote", { surface: "card", action: job.resp, ordinal: job.ord, challenge: job.qid,
+        outcome: x.outcome, value: Date.now() - t0, source: "card", sid: traitCardSid() });
+      traitVoteDone(job.strip, traitVoteLine(x.display), job.resp);
+    } else if (x && x.reason === "rate_limited" && !job.retried) {
+      job.retried = 1;                       // enthusiasm outrunning the fence, not an error
+      traitVoteQ.unshift(job);
+    } else {
+      // The tap still reads real to the player; the miss is only for /avocado.
+      analyticsTrack("traits_vote_error", { surface: "card", action: job.resp, ordinal: job.ord, challenge: job.qid,
+        outcome: (x && x.reason) || "bad_reply", value: Date.now() - t0, source: "card", sid: traitCardSid() });
+      traitVoteDone(job.strip, "VOTE COUNTED", job.resp);   // fail quiet: the tap still felt real
+    }
+    traitVotePump();
+  }).catch(function () {
+    traitVoteBusy = false;
+    analyticsTrack("traits_vote_error", { surface: "card", action: job.resp, ordinal: job.ord, challenge: job.qid,
+      outcome: "network", value: Date.now() - t0, source: "card", sid: traitCardSid() });
+    traitVoteDone(job.strip, "VOTE COUNTED", job.resp);
+    traitVotePump();
+  });
+}
+function traitCardVote(strip, resp) {
+  var qid = strip.getAttribute("data-qid");
+  if (!qid || strip.classList.contains("voted") || strip.classList.contains("pending")) return;
+  strip.classList.add("pending");
+  buzz(10);
+  var arm = strip.querySelector(resp === "yes" ? ".tv-yes" : ".tv-no");
+  if (arm) arm.classList.add("lit");          // latch now, reconcile on reply
+  traitCardVoteN += 1;                        // ordinal across the whole page view = brigade depth
+  traitVoteQ.push({ qid: qid, resp: resp, strip: strip, ord: traitCardVoteN });
+  traitVotePump();
+}
 function traitCardAbbr(full) {
   return TRAIT_CARD_ABBR[String(full || "")] || String(full || "");
 }
@@ -1901,7 +2050,14 @@ function setTraitChipExpanded(btn, on) {
   else if (traitExpandedChip === btn) traitExpandedChip = null;
 }
 function collapseTraitChip() {
-  if (traitExpandedChip) setTraitChipExpanded(traitExpandedChip, false);
+  if (traitExpandedChip) {
+    var c = traitExpandedChip;
+    c.classList.remove("expanded");
+    c.setAttribute("aria-pressed", "false");
+    c.textContent = c.getAttribute("data-abbr") || c.getAttribute("data-full") || c.textContent;
+    traitExpandedChip = null;
+  }
+  closeTraitStrip();
 }
 function stopTraitCardCue(sec) {
   if (!sec) return;
@@ -1948,6 +2104,14 @@ function wireTraitChipTaps() {
   if (traitDocDismissWired) return;
   traitDocDismissWired = true;
   document.addEventListener("click", function (ev) {
+    var arm = ev.target.closest ? ev.target.closest(".tv-arm[data-vote]") : null;
+    if (arm) {
+      ev.preventDefault();
+      var st = arm.closest(".tvote");
+      if (st) traitCardVote(st, arm.getAttribute("data-vote"));
+      return;
+    }
+    if (ev.target.closest && ev.target.closest(".tvote")) return;   // taps inside an open strip never dismiss it
     var chip = ev.target.closest ? ev.target.closest(".tchip[data-full]") : null;
     if (chip) {
       ev.preventDefault();
@@ -1955,10 +2119,27 @@ function wireTraitChipTaps() {
       if (sec) stopTraitCardCue(sec); else markTraitCardUiSeen();
       var opening = !chip.classList.contains("expanded");
       if (traitExpandedChip && traitExpandedChip !== chip) collapseTraitChip();
+      closeTraitStrip();
+      if (traitChipVotable(chip)) {
+        // The strip carries the full label, so the chip stays an abbreviation
+        // and just wears the pressed state: the row never reflows.
+        chip.classList.toggle("expanded", opening);
+        chip.setAttribute("aria-pressed", opening ? "true" : "false");
+        if (opening) {
+          traitExpandedChip = chip;
+          var st0 = openTraitStrip(chip);
+          st0.setAttribute("data-t0", String(Date.now()));
+          analyticsTrack("traits_question", { surface: "card", action: "view",
+            challenge: chip.getAttribute("data-qid"), source: "card", sid: traitCardSid() });
+        }
+        else if (traitExpandedChip === chip) traitExpandedChip = null;
+        return;
+      }
       setTraitChipExpanded(chip, opening);
       return;
     }
     if (traitExpandedChip) collapseTraitChip();
+    closeTraitStrip();
   });
 }
 function wireTraitCardUi() {
@@ -2156,7 +2337,28 @@ function ensureTraitsCss() {
     ".traits-roster.trait-card-cue .tchip{animation:traitChipPop .58s ease both}" +
     ".traits-roster.trait-card-cue .trait-info-btn{animation:traitInfoPulse 1.1s ease both}" +
     "@media(max-width:390px){.trait-legend-grid{grid-template-columns:1fr}}" +
-    "@media(prefers-reduced-motion:reduce){.traits-roster.trait-card-cue .tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
+    /* v49.5 the vote strip: one line, always. The arms are a fixed track and
+       the label is the only elastic one, so nothing here can wrap. */
+    ".tvote{display:flex;align-items:center;gap:4px;margin:7px 0 1px;width:100%;padding:0 4px;" +
+      "background:rgba(255,255,255,.04);border:1px solid #2f3a45;border-radius:10px;animation:tvIn .16s ease-out}" +
+    ".tv-arm{flex:0 0 auto;width:42px;height:44px;display:inline-flex;align-items:center;justify-content:center;" +
+      "padding:0;background:transparent;border:0;border-radius:8px;cursor:pointer;" +
+      "-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent}" +
+    ".tv-arm svg{width:15px;height:13px;fill:#9fb0c0;pointer-events:none;transition:fill .12s ease}" +
+    ".tv-arm:active svg{fill:#E8E4D8}" +
+    ".tv-arm:active{transform:translateY(1px)}" +
+    ".tv-yes.lit{border-color:#F2A81F;background:rgba(242,168,31,.14)}" +
+    ".tv-yes.lit svg{fill:#FFC957}" +
+    ".tv-no.lit{border-color:#D9422D;background:rgba(217,66,45,.16)}" +
+    ".tv-no.lit svg{fill:#F06A54}" +
+    ".tv-txt{flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" +
+      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.06em;" +
+      "line-height:1.1;color:#f2ede4;text-transform:uppercase}" +
+    ".tvote.voted .tv-txt{color:#FFC957}" +
+    "@keyframes tvIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}" +
+    "@media(max-width:374px){.tv-arm{width:38px}.tv-txt{font-size:13px;letter-spacing:.03em}}" +
+    "@media(prefers-reduced-motion:reduce){.tvote{animation:none}" +
+      ".traits-roster.trait-card-cue .tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
       ".tchip{transition:none}}";
   document.head.appendChild(st);
 }
@@ -2474,6 +2676,7 @@ function traitLabelChipHtml(hh, tab) {
   return '<button type="button" class="tchip' + (hh.anti ? " anti" : "") + '"' +
     (tab === -1 ? ' tabindex="-1"' : "") +
     ' data-full="' + esc(full) + '" data-abbr="' + esc(abbr) + '"' +
+    (hh.id ? ' data-qid="' + esc(hh.id) + '"' : "") +
     ' aria-label="' + esc(aria) + '" aria-pressed="false" title="' + esc(full) + '">' +
     esc(abbr) + "</button>";
 }
