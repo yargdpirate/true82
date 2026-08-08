@@ -1981,13 +1981,23 @@ function openTraitStrip(chip) {
   return strip;
 }
 function traitVoteDone(strip, txt, resp) {
-  if (!strip || !strip.parentNode) return;
-  var t = strip.querySelector(".tv-txt");
-  if (t) t.textContent = txt;
-  strip.classList.remove("pending");
-  strip.classList.add("voted");
-  var arm = strip.querySelector(resp === "yes" ? ".tv-yes" : ".tv-no");
-  if (arm) arm.classList.add("lit");
+  // The reply often lands in under 150ms; swapping the label that fast cuts
+  // the pop off mid-beat and reads as the strip "vanishing". Hold the swap
+  // until the celebration has had ~half a second from the tap.
+  var tap = Number(strip.getAttribute("data-tap")) || 0;
+  var wait = Math.max(0, 520 - (Date.now() - tap));
+  setTimeout(function () {
+    if (!strip || !strip.parentNode) return;
+    var t = strip.querySelector(".tv-txt");
+    if (t) {
+      t.textContent = txt;
+      t.classList.remove("pulse"); void t.offsetWidth; t.classList.add("pulse");
+    }
+    strip.classList.remove("pending");
+    strip.classList.add("voted");
+    var arm = strip.querySelector(resp === "yes" ? ".tv-yes" : ".tv-no");
+    if (arm) arm.classList.add("lit");
+  }, wait);
 }
 function traitVoteLine(d) {
   // Short by law: this line replaces the label inside the same one-line strip.
@@ -2038,8 +2048,19 @@ function traitCardVote(strip, resp) {
   if (!qid || strip.classList.contains("voted") || strip.classList.contains("pending")) return;
   strip.classList.add("pending");
   buzz(10);
+  strip.setAttribute("data-tap", String(Date.now()));
   var arm = strip.querySelector(resp === "yes" ? ".tv-yes" : ".tv-no");
-  if (arm) arm.classList.add("lit");          // latch now, reconcile on reply
+  if (arm) {
+    arm.classList.add("lit");                 // latch now, reconcile on reply
+    // The hit: the arm pops, a ring bursts off it, a +1 floats away. The
+    // tally swap is held until the pop has read (see traitVoteDone).
+    arm.classList.remove("pop"); void arm.offsetWidth; arm.classList.add("pop");
+    var fl = document.createElement("span");
+    fl.className = "tv-float";
+    fl.textContent = resp === "yes" ? "+1" : "\u22121";
+    arm.appendChild(fl);
+    setTimeout(function () { if (fl.parentNode) fl.parentNode.removeChild(fl); }, 900);
+  }
   traitCardVoteN += 1;                        // ordinal across the whole page view = brigade depth
   traitVoteQ.push({ qid: qid, resp: resp, strip: strip, ord: traitCardVoteN });
   traitVotePump();
@@ -2389,6 +2410,22 @@ function ensureTraitsCss() {
     ".tv-no.lit{border-color:#F06A54;background:linear-gradient(180deg,#F06A54,#D9422D);" +
       "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 2px 0 #8c2317}" +
     ".tv-no.lit svg{fill:#2b0d09}" +
+    /* v49.9 the hit: pop, ring, floater, then the tally punches in */
+    ".tv-arm{position:relative}" +
+    ".tv-arm.pop{animation:tvPop .42s cubic-bezier(.2,1.6,.4,1)}" +
+    "@keyframes tvPop{0%{transform:scale(1)}45%{transform:scale(1.28)}100%{transform:none}}" +
+    ".tv-arm.pop::after{content:'';position:absolute;inset:-3px;border-radius:12px;border:2px solid #FFC957;" +
+      "opacity:0;pointer-events:none;animation:tvRing .55s ease-out forwards}" +
+    ".tv-no.pop::after{border-color:#F06A54}" +
+    "@keyframes tvRing{0%{opacity:.85;transform:scale(.72)}100%{opacity:0;transform:scale(1.75)}}" +
+    ".tv-float{position:absolute;left:50%;top:-4px;transform:translateX(-50%);pointer-events:none;" +
+      "font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#FFC957;" +
+      "text-shadow:0 0 8px rgba(255,201,87,.6);animation:tvFloat .8s ease-out forwards}" +
+    ".tv-no .tv-float{color:#F06A54;text-shadow:0 0 8px rgba(240,106,84,.55)}" +
+    "@keyframes tvFloat{0%{opacity:0;transform:translate(-50%,4px) scale(.8)}22%{opacity:1}" +
+      "100%{opacity:0;transform:translate(-50%,-22px) scale(1.12)}}" +
+    ".tv-txt.pulse{animation:tvTxtIn .38s cubic-bezier(.2,1.4,.4,1)}" +
+    "@keyframes tvTxtIn{0%{opacity:0;transform:scale(.72)}100%{opacity:1;transform:none}}" +
     ".tvote.cue .tv-arm{animation:tvCue 1.5s ease-out 1}" +
     ".tvote.cue .tv-no{animation-delay:.12s}" +
     "@keyframes tvCue{0%,58%,100%{transform:none;border-color:#5a6a7a}" +
@@ -2399,7 +2436,7 @@ function ensureTraitsCss() {
     ".tvote.voted .tv-txt{color:#FFC957}" +
     "@keyframes tvIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}" +
     "@media(max-width:374px){.tv-arm{width:40px}.tv-txt{font-size:13px;letter-spacing:.03em}}" +
-    "@media(prefers-reduced-motion:reduce){.tvote{animation:none}.tvote.cue .tv-arm{animation:none}" +
+    "@media(prefers-reduced-motion:reduce){.tvote{animation:none}.tvote.cue .tv-arm{animation:none}.tv-arm.pop,.tv-arm.pop::after,.tv-float,.tv-txt.pulse{animation:none}" +
       ".traits-roster.trait-card-cue .tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
       ".tchip{transition:none}}";
   document.head.appendChild(st);
@@ -2974,7 +3011,7 @@ function renderIntro() {
           : "\uD83D\uDC51 Dynasty \u00B7 how long can you keep it alive?";
         return '<button class="btn btn-block more-modes" id="startDynasty">' + label + '</button>';
       })() +
-      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redraft \u00B7 nine classes, two rival GMs, one board</button>' +
+      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redrafted \u00B7 nine classes, two rival GMs, one board</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
@@ -3035,6 +3072,7 @@ function renderIntro() {
     renderDynastyGate();   // the gate needs no player data; the launch inside it queues on DATA_READY
   });
   el("startRedraft").addEventListener("click", function () {
+    SD_DIFF = null;                 // the intro asks on every entry (owner spec)
     analyticsTrack("mode_select", { mode: "showdown", surface: "home", action: "redraft" });
     renderShowdownGate();   // same shape as the dynasty gate: no player data needed to pitch
   });
@@ -5983,7 +6021,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Ben Simmons": 1, "Brandon Ingram": 2, "Jaylen Brown": 3, "Buddy Hield": 6, "Jamal Murray": 7, "Marquese Chriss": 8, "Jakob Poeltl": 9, "Domantas Sabonis": 11, "Taurean Prince": 12, "Malik Beasley": 19, "Caris LeVert": 20, "Pascal Siakam": 27, "Dejounte Murray": 29, "Ivica Zubac": 32, "Malcolm Brogdon": 36 }
+    picks: { "Ben Simmons": 1, "Brandon Ingram": 2, "Jaylen Brown": 3, "Buddy Hield": 6, "Jamal Murray": 7, "Marquese Chriss": 8, "Jakob Poeltl": 9, "Domantas Sabonis": 11, "Taurean Prince": 12, "Malik Beasley": 19, "Caris LeVert": 20, "Pascal Siakam": 27, "Dejounte Murray": 29, "Ivica Zubac": 32, "Malcolm Brogdon": 36 , "Dragan Bender": 4, "Kris Dunn": 5, "Thon Maker": 10, "Denzel Valentine": 14, "Juancho Hernangomez": 15, "Guerschon Yabusele": 16, "DeAndre' Bembry": 21, "Timothe Luwawu-Cabarrot": 24, "Furkan Korkmaz": 26, "Skal Labissiere": 28, "Damian Jones": 30, "Cheick Diallo": 33, "Tyler Ulis": 34, "Patrick McCaw": 38, "Isaiah Whitehead": 42, "Jake Layman": 47, "Georges Niang": 50, "Abdel Nader": 58 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Dragan Bender", "Kris Dunn", "Thon Maker", "Denzel Valentine", "Juancho Hernangomez|Juancho Hernangómez", "Guerschon Yabusele", "DeAndre' Bembry", "Timothe Luwawu-Cabarrot|Timothé Luwawu-Cabarrot", "Furkan Korkmaz", "Skal Labissiere|Skal Labissière", "Damian Jones", "Cheick Diallo", "Tyler Ulis", "Patrick McCaw", "Isaiah Whitehead", "Jake Layman", "Georges Niang", "Abdel Nader", "Yogi Ferrell", "Danuel House Jr.|Danuel House", "David Nwaba"]
   },
   "2017": {
     label: "CLASS OF 2017",
@@ -5997,7 +6039,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Lonzo Ball": 2, "Jayson Tatum": 3, "De'Aaron Fox": 5, "Jonathan Isaac": 6, "Lauri Markkanen": 7, "Zach Collins": 10, "Malik Monk": 11, "Luke Kennard": 12, "Donovan Mitchell": 13, "Bam Adebayo": 14, "John Collins": 19, "Jarrett Allen": 22, "OG Anunoby": 23, "Kyle Kuzma": 27, "Derrick White": 29, "Josh Hart": 30, "Thomas Bryant": 42, "Dillon Brooks": 45, "Monte Morris": 51 }
+    picks: { "Lonzo Ball": 2, "Jayson Tatum": 3, "De'Aaron Fox": 5, "Jonathan Isaac": 6, "Lauri Markkanen": 7, "Zach Collins": 10, "Malik Monk": 11, "Luke Kennard": 12, "Donovan Mitchell": 13, "Bam Adebayo": 14, "John Collins": 19, "Jarrett Allen": 22, "OG Anunoby": 23, "Kyle Kuzma": 27, "Derrick White": 29, "Josh Hart": 30, "Thomas Bryant": 42, "Dillon Brooks": 45, "Monte Morris": 51 , "Markelle Fultz": 1, "Josh Jackson": 4, "Frank Ntilikina": 8, "Dennis Smith Jr.": 9, "Justin Jackson": 15, "Harry Giles": 20, "Terrance Ferguson": 21, "Frank Jackson": 31, "Semi Ojeleye": 37, "Jordan Bell": 38, "Sterling Brown": 46, "Sindarius Thornwell": 48 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Markelle Fultz", "Josh Jackson", "Frank Ntilikina", "Dennis Smith Jr.", "Justin Jackson", "Harry Giles|Harry Giles III", "Terrance Ferguson", "Frank Jackson", "Semi Ojeleye", "Jordan Bell", "Sterling Brown", "Sindarius Thornwell", "Milos Teodosic|Miloš Teodosić"]
   },
   "2018": {
     label: "CLASS OF 2018",
@@ -6013,7 +6059,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Deandre Ayton": 1, "Marvin Bagley III": 2, "Luka Doncic": 3, "Jaren Jackson Jr.": 4, "Trae Young": 5, "Wendell Carter Jr.": 7, "Collin Sexton": 8, "Mikal Bridges": 10, "Shai Gilgeous-Alexander": 11, "Miles Bridges": 12, "Michael Porter Jr.": 14, "Donte DiVincenzo": 17, "Kevin Huerter": 19, "Grayson Allen": 21, "Anfernee Simons": 24, "Robert Williams": 27, "Jalen Brunson": 33, "Mitchell Robinson": 36, "Gary Trent Jr.": 37, "Bruce Brown": 42, "De'Anthony Melton": 46 }
+    picks: { "Deandre Ayton": 1, "Marvin Bagley III": 2, "Luka Doncic": 3, "Jaren Jackson Jr.": 4, "Trae Young": 5, "Wendell Carter Jr.": 7, "Collin Sexton": 8, "Mikal Bridges": 10, "Shai Gilgeous-Alexander": 11, "Miles Bridges": 12, "Michael Porter Jr.": 14, "Donte DiVincenzo": 17, "Kevin Huerter": 19, "Grayson Allen": 21, "Anfernee Simons": 24, "Robert Williams": 27, "Jalen Brunson": 33, "Mitchell Robinson": 36, "Gary Trent Jr.": 37, "Bruce Brown": 42, "De'Anthony Melton": 46 , "Mo Bamba": 6, "Kevin Knox": 9, "Troy Brown Jr.": 15, "Lonnie Walker IV": 18, "Josh Okogie": 20, "Chandler Hutchison": 22, "Landry Shamet": 26, "Omari Spellman": 30, "Jevon Carter": 32, "Devonte' Graham": 34, "Rodions Kurucs": 40, "Hamidou Diallo": 45, "Svi Mykhailiuk": 47, "Keita Bates-Diop": 48, "Shake Milton": 54 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Mo Bamba|Mohamed Bamba", "Kevin Knox|Kevin Knox II", "Troy Brown Jr.", "Lonnie Walker IV|Lonnie Walker", "Josh Okogie", "Chandler Hutchison", "Landry Shamet", "Omari Spellman", "Jevon Carter", "Devonte' Graham", "Rodions Kurucs", "Hamidou Diallo", "Svi Mykhailiuk", "Keita Bates-Diop", "Shake Milton", "Duncan Robinson", "Kenrich Williams", "Yuta Watanabe", "Allonzo Trier"]
   },
   "2019": {
     label: "CLASS OF 2019",
@@ -6028,7 +6078,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Zion Williamson": 1, "Ja Morant": 2, "RJ Barrett": 3, "De'Andre Hunter": 4, "Darius Garland": 5, "Coby White": 7, "Jaxson Hayes": 8, "Rui Hachimura": 9, "Cam Johnson": 11, "PJ Washington": 12, "Tyler Herro": 13, "Nickeil Alexander-Walker": 17, "Matisse Thybulle": 20, "Brandon Clarke": 21, "Grant Williams": 22, "Jordan Poole": 28, "Keldon Johnson": 29, "Nic Claxton": 31, "Daniel Gafford": 38, "Terance Mann": 48 }
+    picks: { "Zion Williamson": 1, "Ja Morant": 2, "RJ Barrett": 3, "De'Andre Hunter": 4, "Darius Garland": 5, "Coby White": 7, "Jaxson Hayes": 8, "Rui Hachimura": 9, "Cam Johnson": 11, "PJ Washington": 12, "Tyler Herro": 13, "Nickeil Alexander-Walker": 17, "Matisse Thybulle": 20, "Brandon Clarke": 21, "Grant Williams": 22, "Jordan Poole": 28, "Keldon Johnson": 29, "Nic Claxton": 31, "Daniel Gafford": 38, "Terance Mann": 48 , "Cam Reddish": 10, "Romeo Langford": 14, "Sekou Doumbouya": 15, "Chuma Okeke": 16, "Goga Bitadze": 18, "Darius Bazley": 23, "Ty Jerome": 24, "Kevin Porter Jr.": 30, "Cody Martin": 36, "Eric Paschall": 41, "Jaylen Nowell": 43, "Bol Bol": 44, "Talen Horton-Tucker": 46 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Cam Reddish", "Romeo Langford", "Sekou Doumbouya", "Chuma Okeke", "Goga Bitadze", "Darius Bazley", "Ty Jerome", "Kevin Porter Jr.", "Cody Martin", "Eric Paschall", "Jaylen Nowell", "Bol Bol", "Talen Horton-Tucker", "Caleb Martin", "Terence Davis"]
   },
   "2020": {
     label: "CLASS OF 2020",
@@ -6042,7 +6096,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Anthony Edwards": 1, "James Wiseman": 2, "LaMelo Ball": 3, "Isaac Okoro": 5, "Onyeka Okongwu": 6, "Obi Toppin": 8, "Deni Avdija": 9, "Devin Vassell": 11, "Tyrese Haliburton": 12, "Aaron Nesmith": 14, "Cole Anthony": 15, "Isaiah Stewart": 16, "Saddiq Bey": 19, "Precious Achiuwa": 20, "Tyrese Maxey": 21, "Immanuel Quickley": 25, "Payton Pritchard": 26, "Jaden McDaniels": 28, "Desmond Bane": 30 }
+    picks: { "Anthony Edwards": 1, "James Wiseman": 2, "LaMelo Ball": 3, "Isaac Okoro": 5, "Onyeka Okongwu": 6, "Obi Toppin": 8, "Deni Avdija": 9, "Devin Vassell": 11, "Tyrese Haliburton": 12, "Aaron Nesmith": 14, "Cole Anthony": 15, "Isaiah Stewart": 16, "Saddiq Bey": 19, "Precious Achiuwa": 20, "Tyrese Maxey": 21, "Immanuel Quickley": 25, "Payton Pritchard": 26, "Jaden McDaniels": 28, "Desmond Bane": 30 , "Patrick Williams": 4, "Killian Hayes": 7, "Kira Lewis Jr.": 13, "Aleksej Pokusevski": 17, "Josh Green": 18, "Zeke Nnaji": 22, "Malachi Flynn": 29, "Theo Maledon": 34, "Xavier Tillman": 35, "Nick Richards": 42, "Jordan Nwora": 45, "Isaiah Joe": 49, "Paul Reed": 58 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Patrick Williams", "Killian Hayes", "Kira Lewis Jr.|Kira Lewis", "Aleksej Pokusevski", "Josh Green", "Zeke Nnaji", "Malachi Flynn", "Theo Maledon|Théo Maledon", "Xavier Tillman|Xavier Tillman Sr.", "Nick Richards", "Jordan Nwora", "Isaiah Joe", "Paul Reed"]
   },
   "2021": {
     label: "CLASS OF 2021",
@@ -6057,7 +6115,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Cade Cunningham": 1, "Jalen Green": 2, "Evan Mobley": 3, "Scottie Barnes": 4, "Jalen Suggs": 5, "Josh Giddey": 6, "Jonathan Kuminga": 7, "Franz Wagner": 8, "Davion Mitchell": 9, "Moses Moody": 14, "Alperen Sengun": 16, "Trey Murphy III": 17, "Jalen Johnson": 20, "Isaiah Jackson": 22, "Quentin Grimes": 25, "Bones Hyland": 26, "Cam Thomas": 27, "Day'Ron Sharpe": 29, "Herbert Jones": 35, "Ayo Dosunmu": 38 }
+    picks: { "Cade Cunningham": 1, "Jalen Green": 2, "Evan Mobley": 3, "Scottie Barnes": 4, "Jalen Suggs": 5, "Josh Giddey": 6, "Jonathan Kuminga": 7, "Franz Wagner": 8, "Davion Mitchell": 9, "Moses Moody": 14, "Alperen Sengun": 16, "Trey Murphy III": 17, "Jalen Johnson": 20, "Isaiah Jackson": 22, "Quentin Grimes": 25, "Bones Hyland": 26, "Cam Thomas": 27, "Day'Ron Sharpe": 29, "Herbert Jones": 35, "Ayo Dosunmu": 38 , "Ziaire Williams": 10, "James Bouknight": 11, "Chris Duarte": 13, "Corey Kispert": 15, "Tre Mann": 18, "Keon Johnson": 21, "Josh Christopher": 24, "JT Thor": 37, "Neemias Queta": 39, "Aaron Wiggins": 55 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Ziaire Williams", "James Bouknight", "Chris Duarte", "Corey Kispert", "Tre Mann", "Keon Johnson", "Josh Christopher", "JT Thor", "Neemias Queta", "Aaron Wiggins", "Jose Alvarado|José Alvarado", "Sam Hauser"]
   },
   "1996": {
     label: "CLASS OF 1996",
@@ -6070,7 +6132,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Allen Iverson": 1, "Marcus Camby": 2, "Shareef Abdur-Rahim": 3, "Stephon Marbury": 4, "Ray Allen": 5, "Antoine Walker": 6, "Kerry Kittles": 8, "Erick Dampier": 10, "Kobe Bryant": 13, "Peja Stojakovic": 14, "Steve Nash": 15, "Jermaine O'Neal": 17, "Zydrunas Ilgauskas": 20, "Derek Fisher": 24, "Malik Rose": 44 }
+    picks: { "Allen Iverson": 1, "Marcus Camby": 2, "Shareef Abdur-Rahim": 3, "Stephon Marbury": 4, "Ray Allen": 5, "Antoine Walker": 6, "Kerry Kittles": 8, "Erick Dampier": 10, "Kobe Bryant": 13, "Peja Stojakovic": 14, "Steve Nash": 15, "Jermaine O'Neal": 17, "Zydrunas Ilgauskas": 20, "Derek Fisher": 24, "Malik Rose": 44 , "Lorenzen Wright": 7, "Samaki Walker": 9, "Vitaly Potapenko": 12, "Tony Delk": 16, "Walter McCarty": 19, "Jerome Williams": 26, "Travis Knight": 29, "Othella Harrington": 30, "Jeff McInnis": 37, "Shandon Anderson": 54 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Lorenzen Wright", "Samaki Walker", "Vitaly Potapenko", "Tony Delk", "Walter McCarty", "Jerome Williams", "Travis Knight", "Othella Harrington", "Jeff McInnis", "Shandon Anderson", "Moochie Norris", "Chucky Atkins"]
   },
   "2003": {
     label: "CLASS OF 2003",
@@ -6084,7 +6150,11 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "LeBron James": 1, "Carmelo Anthony": 3, "Chris Bosh": 4, "Dwyane Wade": 5, "Chris Kaman": 6, "Kirk Hinrich": 7, "T.J. Ford": 8, "Nick Collison": 12, "David West": 18, "Boris Diaw": 21, "Kendrick Perkins": 27, "Leandro Barbosa": 28, "Josh Howard": 29, "Steve Blake": 38, "Zaza Pachulia": 42, "Matt Bonner": 45, "Mo Williams": 47, "Kyle Korver": 51 }
+    picks: { "LeBron James": 1, "Carmelo Anthony": 3, "Chris Bosh": 4, "Dwyane Wade": 5, "Chris Kaman": 6, "Kirk Hinrich": 7, "T.J. Ford": 8, "Nick Collison": 12, "David West": 18, "Boris Diaw": 21, "Kendrick Perkins": 27, "Leandro Barbosa": 28, "Josh Howard": 29, "Steve Blake": 38, "Zaza Pachulia": 42, "Matt Bonner": 45, "Mo Williams": 47, "Kyle Korver": 51 , "Darko Milicic": 2, "Mike Sweetney": 9, "Jarvis Hayes": 10, "Mickael Pietrus": 11, "Marcus Banks": 13, "Luke Ridnour": 14, "Sasha Pavlovic": 19, "Dahntay Jones": 20, "Travis Outlaw": 23, "Brian Cook": 24, "Carlos Delfino": 25, "Jason Kapono": 31, "Luke Walton": 32, "Willie Green": 41, "Keith Bogans": 43 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Darko Milicic|Darko Miličić", "Mike Sweetney", "Jarvis Hayes", "Mickael Pietrus|Mickaël Piétrus", "Marcus Banks", "Luke Ridnour", "Sasha Pavlovic", "Dahntay Jones", "Travis Outlaw", "Brian Cook", "Carlos Delfino", "Jason Kapono", "Luke Walton", "Willie Green", "Keith Bogans", "Marquis Daniels"]
   },
   "2009": {
     label: "CLASS OF 2009",
@@ -6098,10 +6168,20 @@ var SD_CLASSES = {
     ],
     /* Real draft position, undrafted names simply absent. Board order only;
        the engine never reads this. */
-    picks: { "Blake Griffin": 1, "James Harden": 3, "Tyreke Evans": 4, "Ricky Rubio": 5, "Stephen Curry": 7, "Jordan Hill": 8, "DeMar DeRozan": 9, "Brandon Jennings": 10, "Jrue Holiday": 17, "Ty Lawson": 18, "Jeff Teague": 19, "Darren Collison": 21, "Taj Gibson": 26, "DeMarre Carroll": 27, "DeJuan Blair": 37, "Jodie Meeks": 41, "Patrick Beverley": 42, "Danny Green": 46, "Patty Mills": 55 }
+    picks: { "Blake Griffin": 1, "James Harden": 3, "Tyreke Evans": 4, "Ricky Rubio": 5, "Stephen Curry": 7, "Jordan Hill": 8, "DeMar DeRozan": 9, "Brandon Jennings": 10, "Jrue Holiday": 17, "Ty Lawson": 18, "Jeff Teague": 19, "Darren Collison": 21, "Taj Gibson": 26, "DeMarre Carroll": 27, "DeJuan Blair": 37, "Jodie Meeks": 41, "Patrick Beverley": 42, "Danny Green": 46, "Patty Mills": 55 , "Hasheem Thabeet": 2, "Jonny Flynn": 6, "Terrence Williams": 11, "Gerald Henderson": 12, "Tyler Hansbrough": 13, "Earl Clark": 14, "Austin Daye": 15, "James Johnson": 16, "Omri Casspi": 23, "Byron Mullens": 24, "Rodrigue Beaubois": 25, "Wayne Ellington": 28, "Toney Douglas": 29, "Sam Young": 36, "Jonas Jerebko": 39, "Marcus Thornton": 43, "Chase Budinger": 44, "A.J. Price": 52 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Hasheem Thabeet", "Jonny Flynn", "Terrence Williams", "Gerald Henderson", "Tyler Hansbrough", "Earl Clark", "Austin Daye", "James Johnson", "Omri Casspi", "Byron Mullens|B.J. Mullens", "Rodrigue Beaubois", "Wayne Ellington", "Toney Douglas", "Sam Young", "Jonas Jerebko", "Marcus Thornton", "Chase Budinger", "A.J. Price", "Garrett Temple"]
   }
 };
 var SD_CLASS_ORDER = ["2016", "2017", "2018", "2019", "2020", "2021", "1996", "2003", "2009"];
+/* v49.10 DIFFICULTY (owner spec, 2026-08-07). PICKUP: the curated short
+   board, peak seasons pre-set as the default. PRO: the whole class (deep
+   lists join the board), seasons randomized. The intro asks on every entry;
+   the draft snapshots its difficulty at sdFresh like it does the class, so
+   a mid-flight switch never mutates a live draft. */
+var SD_DIFF = null;
 var SD_CLASS_ID = "2016";
 /* The two rival GMs. needW weights how hard roster need pulls against raw
    value; scW rewards grabbing a scarce position before it dries up; jitter
@@ -6126,8 +6206,12 @@ var SD_TIMER = 0;      // pending AI beat, so back-out can cancel it
 
 function sdBuildPool() {
   var id = SD_CLASS_ID;
-  if (SD_POOLS[id]) return SD_POOLS[id];
-  var entries = SD_CLASSES[id].names;
+  var diff = (SD && SD.diff) || SD_DIFF || "pro";
+  var key = id + "|" + diff;
+  if (SD_POOLS[key]) return SD_POOLS[key];
+  var entries = diff === "pro" && SD_CLASSES[id].deep
+    ? SD_CLASSES[id].names.concat(SD_CLASSES[id].deep)
+    : SD_CLASSES[id].names;
   var variantOf = {}, i, j;
   for (i = 0; i < entries.length; i++) {
     var vs = entries[i].split("|");
@@ -6158,7 +6242,7 @@ function sdBuildPool() {
     var best = rec2.seasons[0], bset = {};
     rec2.seasons.forEach(function (r) {
       if (valueOf(r) > valueOf(best)) best = r;
-      rowBuckets(r).forEach(function (b) { bset[b] = 1; });
+      sdRowBuckets(r).forEach(function (b) { bset[b] = 1; });
     });
     rec2.best = best;
     rec2.buckets = Object.keys(bset);
@@ -6171,8 +6255,8 @@ function sdBuildPool() {
     byName.set(rec2.name, rec2);
   }
   if (missing.length) try { console.info("[redraft] " + SD_CLASSES[id].label + " names not in live data, dropped:", missing.join(", ")); } catch (e) {}
-  SD_POOLS[id] = { list: list, byName: byName, missing: missing };
-  return SD_POOLS[id];
+  SD_POOLS[key] = { list: list, byName: byName, missing: missing };
+  return SD_POOLS[key];
 }
 function sdShuffle(a) {
   a = a.slice();
@@ -6188,6 +6272,7 @@ function sdFresh() {
   return {
     cls: SD_CLASS_ID, seats: seats, seq: seq, at: 0,
     rosters: [[], [], []],          // per GM: [{row, slot}]
+    diff: SD_DIFF || "pro",         // difficulty snapshot, like cls: a live draft never changes rules
     taken: {},                      // name -> gm index
     yearByName: {},                 // the human's season choices
     randByName: {},                 // the human's random default season per player, stable per draft
@@ -6209,6 +6294,21 @@ function sdOpenCount(gi, b) {
 function sdAvailable() {
   return sdBuildPool().list.filter(function (p) { return SD.taken[p.name] == null; });
 }
+/* THE REDRAFTED slots by PRIMARY position of the selected season only
+   (owner ruling, 2026-08-07): a 23-24 SG-SF is a guard here, full stop.
+   Parsed from the row's own position text (bbref lists primary first);
+   anything unparseable falls back to the engine's full bucket read, so a
+   data oddity widens eligibility instead of stranding a player. This is
+   also the app-side half of the slot-laundering fix from the 77-5 case. */
+function sdRowBuckets(row) {
+  var pv = String((IDX.pos !== undefined ? row[IDX.pos] : (IDX.position !== undefined ? row[IDX.position] : "")) || "");
+  var t = pv.split("-")[0].trim().toUpperCase();
+  if (t === "PG" || t === "SG" || t.charAt(0) === "G") return ["G"];
+  if (t === "SF" || t === "PF" || t.charAt(0) === "F") return ["F"];
+  if (t.charAt(0) === "C") return ["C"];
+  return rowBuckets(row);
+}
+function sdPosTag(row) { return sdRowBuckets(row).join("/"); }
 /* Board order is basketball, not the answer key: real draft position first,
    undrafted after them by their biggest season of minutes, names as the tie
    break. Ordering by valueOf leaked the engine's own board to the human
@@ -6248,7 +6348,7 @@ function sdChosenRow(name) {
   if (want != null) for (var i = 0; i < rec.seasons.length; i++) {
     if (rec.seasons[i][IDX.season] === want) return rec.seasons[i];
   }
-  return sdDefaultRow(rec);
+  return (SD && SD.diff === "pickup") ? rec.best : sdDefaultRow(rec);
 }
 /* Best season of a player that qualifies at bucket b: the row an AI drafts
    with, and the row the strand-guard credits him for. */
@@ -6257,7 +6357,7 @@ function sdBestRowFor(name, b) {
   if (!rec) return null;
   var best = null;
   rec.seasons.forEach(function (r) {
-    if (rowBuckets(r).indexOf(b) === -1) return;
+    if (sdRowBuckets(r).indexOf(b) === -1) return;
     if (!best || valueOf(r) > valueOf(best)) best = r;
   });
   return best;
@@ -6383,7 +6483,7 @@ function sdHumanPick(bucket) {
   if (gi === -1 || SD_GMS[gi].ai || !SD.selected) return;
   var row = sdChosenRow(SD.selected);
   if (!row) return;
-  if (rowBuckets(row).indexOf(bucket) === -1) { denyTraySd("His " + shortSeason(row[IDX.season]) + " season does not qualify at " + bucket + "."); return; }
+  if (sdRowBuckets(row).indexOf(bucket) === -1) { denyTraySd("His " + shortSeason(row[IDX.season]) + " season does not qualify at " + bucket + "."); return; }
   if (sdOpenCount(gi, bucket) <= 0) { denyTraySd("That slot is full."); return; }
   var S = sdFeasibleAfter(SD.selected, gi, bucket);
   if (S) { denyTraySd(sdStrandWhy(S)); return; }
@@ -6437,7 +6537,7 @@ function sdShare() {
   if (!v) return;
   var lines = v.map(function (t, i) { return (i + 1) + ". " + (t.gi === 0 ? "ME" : t.name) + " " + t.wins + " and " + t.losses; });
   var mine = v.map(function (t) { return t.gi; }).indexOf(0);
-  var txt = "TRUE 82 \u00B7 THE REDRAFT \u00B7 " + SD_CLASSES[SD.cls].label + "\n" +
+  var txt = "TRUE 82 \u00B7 THE REDRAFTED \u00B7 " + SD_CLASSES[SD.cls].label + "\n" +
     lines.join("\n") + "\n" +
     (mine === 0 ? "I won the board." : "I want that draft back.") + "\n" +
     "https://true82.net/";
@@ -6515,7 +6615,7 @@ function sdBoardRowHtml(p) {
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(p.name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
     '<span class="pr-top"><span class="pr-name">' + esc(p.name) + '</span>' +
-    '<span class="pr-pos">' + bucketTag(row) + (block ? " \u00B7 " + block.tag : "") + '</span></span>' +
+    '<span class="pr-pos">' + sdPosTag(row) + (block ? " \u00B7 " + block.tag : "") + '</span></span>' +
     '<span class="pr-sub">' + yrs + '</span></div>';
 }
 function sdYearControlHtml(p, row) {
@@ -6544,7 +6644,7 @@ function sdTrayHtml() {
   }
   var row = sdChosenRow(SD.selected);
   var btns = Object.keys(SD_CFG.caps).map(function (b) {
-    var ok = rowBuckets(row).indexOf(b) !== -1 && sdOpenCount(gi, b) > 0 && !sdFeasibleAfter(SD.selected, gi, b);
+    var ok = sdRowBuckets(row).indexOf(b) !== -1 && sdOpenCount(gi, b) > 0 && !sdFeasibleAfter(SD.selected, gi, b);
     return '<button class="btn sd-slotbtn presti-spin" data-slot="' + b + '"' + (ok ? "" : " disabled") + '>' + b + '</button>';
   }).join("");
   return '<div class="sd-confirm"><span class="sd-cname">' + esc(SD.selected) + ' <i>' + shortSeason(row[IDX.season]) + '</i></span>' +
@@ -6560,7 +6660,7 @@ function renderShowdownDraft() {
   var boardHtml = avail.map(sdBoardRowHtml).join("") + takenList.map(sdBoardRowHtml).join("");
   app().innerHTML =
     '<section class="ticket sd-head"><div class="sd-headrow">' +
-      '<span class="sd-title">\uD83D\uDD01 THE REDRAFT</span><span class="sd-class mono">' + SD_CLASSES[SD.cls].label + '</span></div>' +
+      '<span class="sd-title">\uD83D\uDD01 THE REDRAFTED</span><span class="sd-class mono">' + SD_CLASSES[SD.cls].label + " \u00B7 " + (SD.diff === "pickup" ? "PICKUP" : "PRO") + '</span></div>' +
       sdOrderStripHtml() +
     '</section>' +
     '<div class="sd-teams">' + [0, 1, 2].map(function (k) { return sdRosterCardHtml(SD.seats[k]); }).join("") + '</div>' +
@@ -6589,7 +6689,9 @@ function renderShowdownDraft() {
     if (isNaN(season)) return;
     SD.yearByName[s.getAttribute("data-name")] = season;
     analyticsTrack("year_change", { surface: "redraft", player: s.getAttribute("data-name"), season: season, action: "season_menu" });
+    var keep = window.scrollY;                 // the board must not snap to the top on a season change (owner, 2026-08-07)
     renderShowdownDraft();
+    window.scrollTo(0, keep);
   });
   var tray = el("sdTray");
   tray.addEventListener("click", function (ev) {
@@ -6610,7 +6712,7 @@ function renderShowdownResults() {
   document.body.classList.remove("drafting");
   var v = SD.verdict;
   var mine = v.map(function (t) { return t.gi; }).indexOf(0);
-  var stamp = mine === 0 ? "YOU WIN THE REDRAFT" : v[0].name + " WINS THE REDRAFT";
+  var stamp = mine === 0 ? "YOU WIN THE REDRAFTED" : v[0].name + " WINS THE REDRAFTED";
   var podium = v.map(function (t, i) {
     var five = t.roster.map(function (p) {
       return '<span class="dyv-name"><b>' + esc(p.row[IDX.name]) + '</b> <i class="dyv-yr">' + shortSeason(p.row[IDX.season]) + ' ' + p.slot + '</i></span>';
@@ -6622,7 +6724,7 @@ function renderShowdownResults() {
   }).join("");
   app().innerHTML =
     '<section class="section dy-verdict ' + (mine === 0 ? "dy-banked" : "dy-fell") + ' sd-verdict" data-result-section="showdown_verdict">' +
-      '<p class="dyv-eyebrow">\uD83D\uDD01 THE REDRAFT \u00B7 ' + SD_CLASSES[SD.cls].label + '</p>' +
+      '<p class="dyv-eyebrow">\uD83D\uDD01 THE REDRAFTED \u00B7 ' + SD_CLASSES[SD.cls].label + '</p>' +
       '<p class="dyv-stamp' + (mine === 0 ? "" : " dyv-dead") + '">' + stamp + '</p>' +
       '<p class="dyv-line">' + (v[0].realized ? "Three seasons, played out." : "Three seasons, projected.") + '</p>' +
       '<div class="sd-podium">' + podium + '</div>' +
@@ -6637,7 +6739,49 @@ function renderShowdownResults() {
   el("sdShareBtn").addEventListener("click", sdShare);
   el("sdHomeBtn").addEventListener("click", function () { SD = null; renderIntro(); });
 }
+/* ---------- v49.10 THE DIFFICULTY SCREEN ----------
+   Two courts, one choice. PICKUP is the blacktop at golden hour: asphalt,
+   chalk lines, a chain-link wash, everyone already in their prime. PRO is
+   the arena tunnel on draft night: scanlines, a spotlight cone, the whole
+   class waiting including the names only the sickos know. The cards ARE
+   the theme; no explainer paragraph needed. */
+function renderShowdownDifficulty() {
+  ensureShowdownCss();
+  document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
+  app().innerHTML =
+    '<section class="card sdd-wrap">' +
+      '<p class="eyebrow">\uD83D\uDD01 THE REDRAFTED</p>' +
+      '<h2 class="sdd-title">DIFFICULTY?</h2>' +
+      '<button type="button" class="sdd-card sdd-pickup" data-diff="pickup">' +
+        '<span class="sdd-net" aria-hidden="true"></span>' +
+        '<span class="sdd-name">PICKUP</span>' +
+        '<span class="sdd-sub">Peak seasons of the best players.</span>' +
+        '<span class="sdd-fine">Roll up. Everyone arrives in their prime. The short board.</span>' +
+        '<span class="sdd-chips"><span class="sdd-chip">THE HEADLINERS</span><span class="sdd-chip">PEAKS PRE-SET</span></span>' +
+      '</button>' +
+      '<button type="button" class="sdd-card sdd-pro" data-diff="pro">' +
+        '<span class="sdd-name">PRO</span>' +
+        '<span class="sdd-sub">Pick the season. Draft the whole class.</span>' +
+        '<span class="sdd-fine">Second rounders. Undrafteds. Seasons come randomized. Prove you know.</span>' +
+        '<span class="sdd-chips"><span class="sdd-chip">FULL CLASS</span><span class="sdd-chip">SEASONS RANDOMIZED</span></span>' +
+      '</button>' +
+      '<p class="sdd-foot">You can change this any time from the class gate.</p>' +
+      '<p class="center" style="margin-top:12px"><button class="btn" id="sdDiffBack" type="button">\u2039 BACK</button></p>' +
+    '</section>';
+  app().querySelectorAll(".sdd-card").forEach(function (b) {
+    b.addEventListener("click", function () {
+      SD_DIFF = b.getAttribute("data-diff");
+      analyticsTrack("showdown_state", { surface: "redraft_gate", action: "difficulty_select", mode: "showdown", outcome: SD_DIFF });
+      buzz(10);
+      renderShowdownGate();
+    });
+  });
+  el("sdDiffBack").addEventListener("click", function () { renderIntro(); });
+}
+
 function renderShowdownGate(silent) {
+  if (SD_DIFF == null) { renderShowdownDifficulty(); return; }
   ensureShowdownCss();
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
@@ -6661,8 +6805,9 @@ function renderShowdownGate(silent) {
       : '') +
       '<button class="btn btn-primary btn-block presti-spin" id="sdGoBtn">DRAFT THE CLASS</button>';
   }
-  var inner = '<p class="eyebrow">\uD83D\uDD01 THE REDRAFT \u00B7 ALPHA</p>' +
+  var inner = '<p class="eyebrow">\uD83D\uDD01 THE REDRAFTED \u00B7 ALPHA</p>' +
     '<h1 class="intro-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + '. Three GMs. One board.</h1>' +
+    '<button type="button" class="sdd-pill" id="sdDiffPill">' + (SD_DIFF === "pickup" ? "PICKUP" : "PRO") + ' \u00B7 CHANGE</button>' +
     '<div class="sd-chips" id="sdChips">' + chips + '</div>' +
     '<p class="intro-lead"><b>' + esc(cls.blurb) + '</b></p>' +
     '<p class="intro-lead dy-fine">A snake draft against two rival GMs over one shared pool. Five each, any season of their careers, every pick exclusive. MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine scores all three seasons and settles it.</p>' +
@@ -6670,6 +6815,8 @@ function renderShowdownGate(silent) {
   app().innerHTML = '<section class="ticket intro dy-gate">' + inner +
     '<button class="startover-btn dy-back" id="sdBackBtn2" type="button">\u2039 Back</button></section>';
   if (!silent) analyticsTrack("mode_impression", { surface: "redraft_gate", action: thin ? "thin_pool" : (stuck ? "unfieldable" : "fresh"), mode: "showdown", season: +SD_CLASS_ID });
+  var pill = el("sdDiffPill");
+  if (pill) pill.addEventListener("click", function () { SD_DIFF = null; renderShowdownGate(); });
   el("sdChips").addEventListener("click", function (ev) {
     var b = ev.target.closest(".sd-chip");
     if (!b) return;
@@ -6703,6 +6850,50 @@ function ensureShowdownCss() {
   var st = document.createElement("style");
   st.id = "t82ShowdownCss";
   st.textContent =
+    /* v49.10 THE DIFFICULTY SCREEN: two courts. PICKUP is blacktop at golden
+       hour (asphalt wash, chalk arc, chain-link lattice along the top edge).
+       PRO is the tunnel on draft night (scanlines, a spotlight cone, bulb
+       glow). The cards carry the theme so the copy can stay short. */
+    ".sdd-wrap{max-width:460px;margin:0 auto}" +
+    ".sdd-title{font-family:var(--disp);font-weight:800;font-size:34px;letter-spacing:.06em;margin:2px 0 12px;color:var(--chalk);text-align:left}" +
+    ".sdd-card{position:relative;display:block;width:100%;text-align:left;border-radius:14px;overflow:hidden;" +
+      "padding:17px 16px 15px;margin-top:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;" +
+      "-webkit-appearance:none;appearance:none;border:1px solid var(--tunnel-2);animation:sddIn .45s ease-out both}" +
+    ".sdd-card+.sdd-card{animation-delay:.09s}" +
+    ".sdd-card:active{transform:scale(.985)}" +
+    "@keyframes sddIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}" +
+    ".sdd-name{display:block;font-family:var(--disp);font-weight:800;font-size:29px;letter-spacing:.05em;line-height:1;margin-bottom:6px}" +
+    ".sdd-sub{display:block;font-size:14.5px;line-height:1.35;color:var(--chalk);font-weight:600}" +
+    ".sdd-fine{display:block;font-size:12.5px;line-height:1.4;color:var(--chalk-dim);margin-top:4px}" +
+    ".sdd-chips{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}" +
+    ".sdd-chip{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;padding:4px 8px;border-radius:99px;" +
+      "border:1px solid rgba(255,255,255,.22);color:var(--chalk);background:rgba(0,0,0,.25);white-space:nowrap}" +
+    /* PICKUP: asphalt, sunset rim light, chalk free-throw arc, chain lattice */
+    ".sdd-pickup{background:radial-gradient(120% 90% at 18% -12%,rgba(255,181,46,.22),transparent 55%)," +
+      "repeating-radial-gradient(circle at 30% 40%,rgba(255,255,255,.016) 0 1px,transparent 1px 3px)," +
+      "linear-gradient(180deg,#24272c,#181b1f)}" +
+    ".sdd-pickup::before{content:'';position:absolute;right:-58px;bottom:-84px;width:190px;height:190px;border-radius:50%;" +
+      "border:2px solid rgba(240,236,224,.28);pointer-events:none}" +
+    ".sdd-pickup::after{content:'';position:absolute;right:0;bottom:0;left:0;height:2px;background:rgba(240,236,224,.2)}" +
+    ".sdd-net{position:absolute;inset:0 0 auto 0;height:20px;pointer-events:none;opacity:.5;" +
+      "background:repeating-linear-gradient(55deg,rgba(255,255,255,.10) 0 1.5px,transparent 1.5px 9px)," +
+      "repeating-linear-gradient(-55deg,rgba(255,255,255,.10) 0 1.5px,transparent 1.5px 9px)}" +
+    ".sdd-pickup .sdd-name{color:#f0ece0;transform:rotate(-1.3deg);transform-origin:left bottom;" +
+      "text-shadow:0 1px 0 rgba(0,0,0,.5),0 0 14px rgba(240,236,224,.14)}" +
+    /* PRO: tunnel black, scanlines, spotlight cone, bulb-glow wordmark */
+    ".sdd-pro{background:radial-gradient(85% 130% at 50% -25%,rgba(255,181,46,.17),transparent 62%)," +
+      "linear-gradient(180deg,#0c0f13,#12161c);border-color:var(--maple-line)}" +
+    ".sdd-pro::after{content:'';position:absolute;inset:0;pointer-events:none;" +
+      "background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px)}" +
+    ".sdd-pro .sdd-name{color:var(--amber);text-shadow:0 0 7px rgba(255,181,46,.6),0 0 18px rgba(255,181,46,.28)}" +
+    ".sdd-pro .sdd-chip{border-color:rgba(255,181,46,.4);color:var(--amber)}" +
+    ".sdd-foot{margin:12px 2px 0;font-size:11.5px;color:var(--chalk-dim);text-align:center}" +
+    ".sdd-pill{display:inline-flex;align-items:center;margin:10px 0 0;padding:6px 12px;border-radius:99px;" +
+      "border:1px solid var(--maple);background:transparent;color:var(--amber);font-family:var(--mono);" +
+      "font-size:10px;letter-spacing:.12em;cursor:pointer;-webkit-appearance:none;appearance:none}" +
+    ".sdd-pill:active{background:var(--maple);color:var(--chalk)}" +
+    "@media(max-width:359px){.sdd-title{font-size:30px}.sdd-name{font-size:26px}}" +
+    "@media(prefers-reduced-motion:reduce){.sdd-card{animation:none}}" +
     ".sd-head{padding:12px 14px}" +
     ".sd-headrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}" +
     ".sd-chips{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 4px}" +
