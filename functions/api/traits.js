@@ -39,6 +39,7 @@ const ID_RE = /^v1-[A-Za-z0-9-]{16,60}$/;
 const QID_RE = /^[a-z0-9][a-z0-9-]{2,78}$/;
 const RESPONSES = new Set(["yes", "no", "unsure"]);
 const SOURCES = new Set(["home_module", "results_prompt", "direct", "link", "session", "share", "card"]);
+const ENGQ_TRAITS = new Set(["three-point-shooter", "super-three-point-shooter"]);
 const SESSION_SIZE = 5;
 
 const DEFAULT_RULES = {
@@ -157,6 +158,49 @@ async function handleGet(context) {
     return json({ ok: true, labels, qids, count: Object.keys(labels).length });
   }
 
+  if (op === "engq") {
+    // v49.8: the engine designates 3PT and GRAVITY from its own spacing math,
+    // so those chips often have no question to vote on. op=roster only creates
+    // two traits per player, chosen by hash, which is why the arrows appeared
+    // on some players and not others. This creates the shooter question on
+    // demand using the SAME id formula op=roster uses, so votes pool into the
+    // same consensus /bonuses/ reads. INSERT OR IGNORE: repeat calls are free
+    // and an existing curated row always wins. The trait is restricted to the
+    // engine's own two designations, so this op cannot mint arbitrary rows.
+    const pairs = parsePlayerPairs(url.searchParams.get("players"), 5);
+    const traits = String(url.searchParams.get("traits") || "").split(",").map((x) => x.trim());
+    if (!pairs.length) return json({ ok: false, reason: "bad_players" }, 200);
+    const now = Date.now();
+    const want = [];
+    for (let i = 0; i < pairs.length; i++) {
+      const p = pairs[i], tr = traits[i];
+      if (!ENGQ_TRAITS.has(tr)) continue;
+      if (!/^[a-z][a-z .'-]{1,38}$/.test(p.name)) continue;
+      const nslug = p.name.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const qid = nslug + "-" + p.season + "-" + tr;
+      const label = (p.season - 1) + "-" + String(p.season).slice(2);
+      const title = p.name.replace(/(^|[ .'-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+      try {
+        await env.DB.prepare(`
+          INSERT OR IGNORE INTO trait_questions_v1
+            (id, trait_id, player_name, season, season_label, prompt_override, editorial_priority, status, created_at, updated_at)
+          VALUES (?1, ?2, ?3, ?4, ?5, NULL, 0, 'active', ?6, ?6)`)
+          .bind(qid, tr, title, p.season, label, now).run();
+      } catch {}
+      want.push({ key: p.name + "~" + p.season, qid });
+    }
+    if (!want.length) return json({ ok: true, ids: {} });
+    // One confirming read: a row that exists but is retired must not be voted.
+    const marks = want.map(() => "?").join(",");
+    const live = await env.DB.prepare(
+      `SELECT id FROM trait_questions_v1 WHERE status = 'active' AND id IN (${marks})`
+    ).bind(...want.map((w) => w.qid)).all().then((r) => new Set((r.results || []).map((x) => x.id))).catch(() => null);
+    if (!live) return json({ ok: false, reason: "engq_query" }, 200);
+    const ids = {};
+    for (const w of want) if (live.has(w.qid)) ids[w.key] = w.qid;
+    return json({ ok: true, ids });
+  }
+
   if (op === "roster") {
     // Make ANY drafted player votable (owner ruling, 2026-07-27): given the
     // five drafted name~season pairs, lazily create question rows for a
@@ -243,7 +287,7 @@ async function handleGet(context) {
       LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
       WHERE m.homepage_eligible = 1 AND m.active = 1 AND q.status = 'active'
       ORDER BY q.editorial_priority DESC, m.slug
-      LIMIT 80`).all().then((r) => r.results || []).catch(() => []);
+      LIMIT 200`).all().then((r) => r.results || []).catch(() => []);
     if (!pool.length) return json({ ok: false, reason: "no_questions" }, 200);
     const day = Math.floor(Date.now() / 86400000);
     const fresh = pool.filter((p) => Number(p.ev) < 5);
