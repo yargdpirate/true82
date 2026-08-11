@@ -44,6 +44,7 @@ var SEASON_SPAN = null;
 var TEAM2FR = {}, BEST_BY_NAME = new Map(), FRANCHISES = [];
 var CAREER_BUCKETS = new Map();   // name -> {G,F,C}: every position the player EVER qualified at, career-wide
 var G = null;
+var G_DIFF_NEXT = "pickup";   // staged by newGame before G exists, stamped right after
 
 /* ---------- Tribune recap diagnostics ----------
    Always installed at app load so the console works before, during, and after
@@ -496,6 +497,11 @@ function newGame(mode, seed, challenge, opts) {
     ANALYTICS_RESULT_OBSERVER = null;
   }
   if (mode) MODE = mode;
+  // v49.12: a run carries its difficulty like the redraft carries its class.
+  // Freeform classic only: dailies, duels, and challenge links play the house
+  // rules (peak defaults) no matter what the player chose for freeform.
+  var clFree = MODE === "classic" && !challenge && !(opts && (opts.social || opts.variant));
+  G_DIFF_NEXT = clFree ? (CL_DIFF || "pickup") : "pickup";
   // Presti runs uncapped (owner ruling, 2026-07-26): cap mode is hard enough
   // without the Any Given Night ceiling, so a true murderers' row may project
   // and realize all 82. The constant lives in site data; override it per mode
@@ -507,6 +513,7 @@ function newGame(mode, seed, challenge, opts) {
     }
   } catch (e) {}
   G = T82.newState(MODE, seed, challenge || null);
+  G.diffMode = G_DIFF_NEXT;   // the run's own copy: a later home-screen change never touches a live run
   G.analyticsInitialCap = G.maxCap;
   if (opts && opts.social) G.social = opts.social;   // THE DAILY: {key,num,name,chId,target} rides the run
   if (opts && opts.practice != null) G.analyticsPractice = opts.practice ? 1 : 0;
@@ -1196,7 +1203,10 @@ function applyMetricYears(force) {
   // restores the engine-value defaults. Non-force runs (each new deal) only
   // fill players without a hand-picked year, so mid-mode tweaks survive.
   // Pure client-side year choice: picks record their season, replay-safe.
-  if (MODE !== "classic" || !G || !G.cur) return;
+  // Blind boards never get here: the force path deletes every year override,
+  // which would re-roll the randomized seasons on every sort tap (an unstable
+  // board AND a free reroll). The BPM sorts do not exist there anyway.
+  if (MODE !== "classic" || boardBlind() || !G || !G.cur) return;
   var metric = G.sortMode === "obpm" ? IDX.obpm : G.sortMode === "dbpm" ? IDX.dbpm : null;
   if (!metric && !force) return;
   var pool = POOLS.get(key(G.cur.fr, G.cur.dec));
@@ -1468,8 +1478,8 @@ function modePanelHtml() {
     idHtml = '<span class="mp-id">PRO MODE</span>';
     sub.push("NO STATS \u00B7 TAP \u25BE TO CHANGE SEASON");
   } else {
-    idHtml = '<span class="mp-id">CLASSIC MODE</span>';
-    sub.push("TAP THE YEAR \u25BE TO USE ANY SEASON");
+    idHtml = '<span class="mp-id">' + (boardBlind() ? "CLASSIC \u00B7 PRO" : "CLASSIC MODE") + "</span>";
+    sub.push(boardBlind() ? "NO STATS \u00B7 TAP \u25BE TO CHANGE SEASON" : "TAP THE YEAR \u25BE TO USE ANY SEASON");
   }
   // v29 (owner-directed, mockup-sourced; supersedes the V20 plaque doctrine):
   // the bank is a flat charcoal SCOREBOARD in the same panel slot — thin
@@ -1681,9 +1691,9 @@ var RULES_BASICS = [
 ];
 var RULES_MODE = {
   classic: [
-    "Full player stats on every card. The season menu (\u25BE) under each name lets you pick any year of that player's career. The best overall season is selected by default, but worth changing to balance team offense/defense.",
+    "Pickup difficulty: full stats and labels on every card, each player's best season pre-set. Pro difficulty: no stats, no labels, and every default season randomized. Either way the season menu (\u25BE) under each name lets you pick any year of that player's career, and it is worth changing years to balance team offense/defense.",
     "One team skip and one era skip for the whole draft if there are no high-quality fits.",
-    "Use the sort chips to order by A\u2013Z, Offensive BPM, Defensive BPM, or use the search box.",
+    "Use the sort chips to order by minutes or A\u2013Z, or use the search box. Pickup difficulty adds Offensive BPM and Defensive BPM sorts.",
     "Players are default sorted by peak minutes per game in a season.",
     "Shift player positions around at the bottom to fit in players."
   ],
@@ -2877,6 +2887,7 @@ var TRAIT_LABEL_CACHE = {};     // key -> hits array ([] = fetched, none settled
 var TRAIT_LABEL_FETCHING = {};  // key -> 1 while a batch containing it is in flight
 function poolLabelKey(name, season) { return String(name).toLowerCase() + "~" + season; }
 function applyPoolLabelPass(pool) {
+  if (boardBlind()) return [];   // blind boards: no chips to add, and no reason to fetch them
   var nodes = pool.querySelectorAll(".player-row[data-name]");
   var missing = [];
   for (var i = 0; i < nodes.length; i++) {
@@ -2999,6 +3010,8 @@ function renderIntro() {
       '<p class="intro-lead">An \u201C82\u20130\u201D-style game, but driven by advanced metrics instead of just adding up counting stats. Pick a team that would actually win IRL. Try to go undefeated.</p>' +
       '<button class="daily-strip" id="dailyStrip" hidden></button>' +
       '<button class="btn btn-primary btn-block presti-spin" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
+      (diffRemembered("classic") ? '<p class="sdd-pillrow"><button type="button" class="sdd-pill tm-flat" id="clDiffPill">\u2713 ' +
+        (diffRemembered("classic") === "pickup" ? "PICKUP" : "PRO") + ' \u00B7 CHANGE</button></p>' : "") +
       '<button class="btn btn-primary btn-block presti-spin" id="startCap">\uD83D\uDC10 Presti Mode \u00B7 Salary Cap &amp; Random</button>' +
       '<button class="btn btn-primary btn-block presti-spin weekly-tile" id="startWeekly" hidden>' +
         '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
@@ -3051,12 +3064,26 @@ function renderIntro() {
     } else specs.forEach(function (s) { mark(el(s[0]), s[1]); });
   })();
   function start(mode) {
-    analyticsTrack("mode_select", { mode: mode, surface: "home", action: mode });
-    if (DATA_READY) { newGame(mode); return; }
+    if (mode === "classic") {
+      // The difficulty screen needs no player data, so it can show while the
+      // download is still in flight; the pick resumes the normal start path.
+      var d = diffRemembered("classic");
+      if (d != null) CL_DIFF = d;
+      else if (CL_DIFF == null) {
+        analyticsTrack("mode_select", { mode: mode, surface: "home", action: mode });
+        renderClassicDifficulty(function () { startClassicNow(); });
+        return;
+      }
+    }
+    startClassicNow();
+    function startClassicNow() {
+      analyticsTrack("mode_select", { mode: mode, surface: "home", action: mode });
+      if (DATA_READY) { newGame(mode); return; }
     PENDING_MODE = mode;   // data still downloading — remember the choice and launch the moment it lands
     ["startClassic", "startPro", "startCap", "startDaily"].forEach(function (id) { var b = el(id); if (b) b.disabled = true; });
-    var pressed = el(mode === "classic" ? "startClassic" : mode === "pro" ? "startPro" : "startCap");
-    if (pressed) pressed.textContent = "Loading players\u2026";
+      var pressed = el(mode === "classic" ? "startClassic" : mode === "pro" ? "startPro" : "startCap");
+      if (pressed) pressed.textContent = "Loading players\u2026";
+    }
   }
   function queue(fn, btn) {
     if (DATA_READY) { fn(); return; }
@@ -3064,6 +3091,11 @@ function renderIntro() {
     if (btn) btn.disabled = true;
   }
   el("startClassic").addEventListener("click", function () { start("classic"); });
+  var clPill = el("clDiffPill");
+  if (clPill) clPill.addEventListener("click", function () {
+    CL_DIFF = null;
+    renderClassicDifficulty(function () { start("classic"); });
+  });
   var proBtn = el("startPro");   // absent when THE DAILY holds the third slot
   if (proBtn) proBtn.addEventListener("click", function () { start("pro"); });
   el("startCap").addEventListener("click", function () { start("cap"); });
@@ -3445,19 +3477,42 @@ function yearControlHtml(name, row) {
     '<select class="year-sel" data-name="' + esc(name) + '" aria-label="Season for ' + esc(name) + '">' + opts + "</select></span>";
 }
 
+/* v49.13 BLIND BOARDS. The standalone Pro mode has always dealt without
+   numbers; Classic's PRO difficulty now does the same, so one predicate owns
+   the rule and both surfaces can never drift apart. Blind means the whole
+   information surface, not just the stat line: the numbers, the community
+   labels, the BPM sorts, and the label legend all go. Results still reveal
+   everything, because the grade at the end is the point. */
+function boardBlind() {
+  return MODE === "pro" || (MODE === "classic" && !!(G && G.diffMode === "pro"));
+}
+
 /* one draft-pool row (a div[role=button] so it can legally contain the <select>) */
 function poolRowHtml(bestRow) {
   if (MODE === "kaman") return kamanRowHtml(bestRow);
   if (MODE === "cap") return capRowHtml(bestRow);
   var name = bestRow[IDX.name];
+  // v49.12 CLASSIC-PRO: the default season comes randomized. Seeded lazily at
+  // first render through the same override channel the dropdown writes
+  // (G.yearByName -> T82.resolveRow), so one hook covers every deal, reroll,
+  // and skip path, the choice is stable for the whole run, sim-core is
+  // untouched, and the seed spine never hears about it (Math.random is legal
+  // here: defaults are a suggestion, not a draw).
+  if (G && G.diffMode === "pro" && G.yearByName[name] == null) {
+    var elig = T82.poolYearsEligible(G, name);
+    if (elig && elig.length > 1) {
+      G.yearByName[name] = elig[Math.floor(Math.random() * elig.length)][IDX.season];
+    }
+  }
   var row = resolveRow(name);
   var block = pickBlock(row);
   var open = !block;
   var sel = (G.selected === name) && open;
   var cls = "player-row" + (sel ? " sel" : "") + (open ? "" : " off");
   var tag = bucketTag(row) + (block ? " \u00B7 " + block.tag : "");
-  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "");
-  var sub2 = (MODE === "classic") ? '<span class="pr-sub pr-stats">' + statLine(row) + "</span>" : "";
+  var lit = MODE === "classic" && !boardBlind();   // stats and labels ride together
+  var sub1 = yearControlHtml(name, row) + (lit ? chipsFor(row, -1) : "");
+  var sub2 = lit ? '<span class="pr-sub pr-stats">' + statLine(row) + "</span>" : "";
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true" title="' + esc(block.why) + '"') + ">" +
     '<span class="pr-top"><span class="pr-name">' + esc(name) + "</span>" +
@@ -3600,7 +3655,7 @@ function renderDraft(anim) {
     poolHeadHtml = '<div class="pool-head"><span class="pool-count">pick a Kaman season \u00B7 repeats welcome</span></div>';
   } else {
     var chips = MODE === "cap" ? [["cost", "$"], ["min", "Min"], ["az", "A\u2013Z"]] : [["min", "Min"], ["az", "A\u2013Z"]];
-    if (MODE === "classic") chips.push(["obpm", "OBPM"], ["dbpm", "DBPM"]);
+    if (MODE === "classic" && !boardBlind()) chips.push(["obpm", "OBPM"], ["dbpm", "DBPM"]);
     var chipsHtml = chips.map(function (c) {
       var label = c[1];
       if (c[0] === "cost" && G.sortMode === "cost") label = "$ " + (G.costDir === "asc" ? "\u2191" : "\u2193");
@@ -3609,11 +3664,11 @@ function renderDraft(anim) {
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
       '<input type="search" id="poolSearch" class="pool-search" placeholder="search player name..." autocomplete="off" spellcheck="false">' +
-      (MODE === "classic"
+      (MODE === "classic" && !boardBlind()
         ? '<button class="trait-info-btn pool-trait-info" id="poolTraitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="poolTraitLegend" aria-expanded="false" title="Player label legend" hidden>i</button>'
         : "") +
       "</div>" +
-      (MODE === "classic" ? '<div class="trait-legend pool-trait-legend" id="poolTraitLegend" hidden></div>' : "");
+      (MODE === "classic" && !boardBlind() ? '<div class="trait-legend pool-trait-legend" id="poolTraitLegend" hidden></div>' : "");
   }
 
   // Compact draft chrome (2026-07-17): utility bar + mode panel replace the
@@ -6182,13 +6237,48 @@ var SD_CLASS_ORDER = ["2016", "2017", "2018", "2019", "2020", "2021", "1996", "2
    the draft snapshots its difficulty at sdFresh like it does the class, so
    a mid-flight switch never mutates a live draft. */
 var SD_DIFF = null;
-var SD_DIFF_KEY = "t82_redraft_diff_v1";
-function sdDiffRemembered() {
-  try { var v = localStorage.getItem(SD_DIFF_KEY); return (v === "pickup" || v === "pro") ? v : null; } catch (e) { return null; }
+/* v49.12 HARDENED DIFFICULTY MEMORY. Two mediums, self-healing: every read
+   checks localStorage first, falls back to a one-year cookie, and repairs
+   whichever medium is missing the value. Every write hits both and then
+   READS BACK, so diffRemember reports whether anything actually stuck
+   (private modes and corporate lockdowns fail silently otherwise). Keys are
+   per mode; only pickup/pro ever round-trip, anything else reads as null. */
+var DIFF_KEYS = { showdown: "t82_redraft_diff_v1", classic: "t82_classic_diff_v1" };
+function diffCookieRead(key) {
+  try { var m = document.cookie.match(new RegExp("(?:^|; )" + key + "=(pickup|pro)")); return m ? m[1] : null; } catch (e) { return null; }
 }
-function sdDiffRemember(diff, on) {
-  try { if (on && diff) localStorage.setItem(SD_DIFF_KEY, diff); else localStorage.removeItem(SD_DIFF_KEY); } catch (e) {}
+function diffCookieWrite(key, val) {
+  try { document.cookie = key + "=" + (val || "x") + ";path=/;max-age=" + (val ? 31536000 : 0) + ";SameSite=Lax"; } catch (e) {}
 }
+function diffLsRead(key) {
+  try { var v = localStorage.getItem(key); return (v === "pickup" || v === "pro") ? v : null; } catch (e) { return null; }
+}
+function diffRemembered(mode) {
+  var key = DIFF_KEYS[mode];
+  if (!key) return null;
+  var ls = diffLsRead(key), ck = diffCookieRead(key);
+  var v = ls || ck;
+  if (v && !ls) { try { localStorage.setItem(key, v); } catch (e) {} }   // heal LS from the cookie
+  if (v && !ck) diffCookieWrite(key, v);                                 // heal the cookie from LS
+  return v;
+}
+function diffRemember(mode, diff, on) {
+  var key = DIFF_KEYS[mode];
+  if (!key) return false;
+  try { if (on && diff) localStorage.setItem(key, diff); else localStorage.removeItem(key); } catch (e) {}
+  diffCookieWrite(key, on ? diff : null);
+  return on ? diffRemembered(mode) === diff : diffRemembered(mode) === null;
+}
+function diffStoreUsable() {
+  try { localStorage.setItem("t82_probe", "1"); var ok = localStorage.getItem("t82_probe") === "1"; localStorage.removeItem("t82_probe"); if (ok) return true; } catch (e) {}
+  diffCookieWrite("t82_probe", "pickup");
+  var ck = diffCookieRead("t82_probe") === "pickup";
+  diffCookieWrite("t82_probe", null);
+  return ck;
+}
+function sdDiffRemembered() { return diffRemembered("showdown"); }
+function sdDiffRemember(diff, on) { return diffRemember("showdown", diff, on); }
+var CL_DIFF = null;   // classic's session choice; a run snapshots it into G.diffMode
 var SD_CLASS_ID = "2016";
 /* The two rival GMs. needW weights how hard roster need pulls against raw
    value; scW rewards grabbing a scarce position before it dries up; jitter
@@ -6752,47 +6842,88 @@ function renderShowdownResults() {
    the arena tunnel on draft night: scanlines, a spotlight cone, the whole
    class waiting including the names only the sickos know. The cards ARE
    the theme; no explainer paragraph needed. */
-function renderShowdownDifficulty() {
+function renderDifficultyScreen(cfg) {
   ensureShowdownCss();
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
+  var remembered = diffRemembered(cfg.mode);
+  var usable = diffStoreUsable();
   app().innerHTML =
     '<section class="ticket intro dy-gate sdd-wrap">' +
-      '<p class="eyebrow">\uD83D\uDD01 THE REDRAFTED</p>' +
+      '<p class="eyebrow">' + cfg.eyebrow + '</p>' +
       '<h2 class="sdd-title">DIFFICULTY?</h2>' +
       '<button type="button" class="sdd-card sdd-pickup tm-flat" data-diff="pickup">' +
         '<span class="sdd-net" aria-hidden="true"></span>' +
         '<span class="sdd-name">PICKUP</span>' +
-        '<span class="sdd-sub">Peak seasons of the best players.</span>' +
-        '<span class="sdd-fine">Roll up. Everyone arrives in their prime. The short board.</span>' +
-        '<span class="sdd-chips"><span class="sdd-chip">THE HEADLINERS</span><span class="sdd-chip">PEAKS PRE-SET</span></span>' +
+        '<span class="sdd-sub">' + cfg.pickup.sub + '</span>' +
+        '<span class="sdd-fine">' + cfg.pickup.fine + '</span>' +
+        '<span class="sdd-chips">' + cfg.pickup.chips.map(function (c) { return '<span class="sdd-chip">' + c + '</span>'; }).join("") + '</span>' +
       '</button>' +
       '<button type="button" class="sdd-card sdd-pro tm-flat" data-diff="pro">' +
         '<span class="sdd-name">PRO</span>' +
-        '<span class="sdd-sub">Pick the season. Draft the whole class.</span>' +
-        '<span class="sdd-fine">Second rounders. Undrafteds. Seasons come randomized. Prove you know.</span>' +
-        '<span class="sdd-chips"><span class="sdd-chip">FULL CLASS</span><span class="sdd-chip">SEASONS RANDOMIZED</span></span>' +
+        '<span class="sdd-sub">' + cfg.pro.sub + '</span>' +
+        '<span class="sdd-fine">' + cfg.pro.fine + '</span>' +
+        '<span class="sdd-chips">' + cfg.pro.chips.map(function (c) { return '<span class="sdd-chip">' + c + '</span>'; }).join("") + '</span>' +
       '</button>' +
-      '<label class="sdd-remember" for="sddRemember">' +
-        '<input type="checkbox" id="sddRemember"' + (sdDiffRemembered() === null ? "" : " checked") + '>' +
+      '<label class="sdd-remember' + (usable ? "" : " off") + '" for="sddRemember">' +
+        '<input type="checkbox" id="sddRemember"' + (remembered === null ? "" : " checked") + (usable ? "" : " disabled") + '>' +
         '<span class="sdd-box" aria-hidden="true"></span>' +
-        '<span class="sdd-remember-txt">Remember my choice</span>' +
+        '<span class="sdd-remember-txt">Remember my choice' +
+          (usable ? "" : ' <i class="sdd-remember-note">Not available in this browser</i>') + '</span>' +
       '</label>' +
-      '<p class="sdd-foot">Change it any time from the class gate.</p>' +
+      '<p class="sdd-foot">' + cfg.foot + '</p>' +
       '<button class="startover-btn dy-back" id="sdBackBtn2" type="button">\u2039 Back</button>' +
     '</section>';
   app().querySelectorAll(".sdd-card").forEach(function (b) {
     b.addEventListener("click", function () {
-      SD_DIFF = b.getAttribute("data-diff");
+      var diff = b.getAttribute("data-diff");
       var box = el("sddRemember");
-      sdDiffRemember(SD_DIFF, !!(box && box.checked));
-      analyticsTrack("showdown_state", { surface: "redraft_gate", action: "difficulty_select", mode: "showdown",
-        outcome: SD_DIFF, value: box && box.checked ? 1 : 0 });
+      var wanted = !!(box && box.checked);
+      var stuck = diffRemember(cfg.mode, diff, wanted);
+      analyticsTrack("difficulty_select", { surface: cfg.surface, mode: cfg.mode, action: "select",
+        outcome: diff, value: wanted ? 1 : 0, source: wanted ? (stuck ? "stored" : "store_failed") : "session" });
       buzz(10);
-      renderShowdownGate();
+      cfg.onPick(diff);
     });
   });
-  el("sdBackBtn2").addEventListener("click", function () { renderIntro(); });
+  el("sdBackBtn2").addEventListener("click", cfg.onBack);
+}
+function renderShowdownDifficulty() {
+  renderDifficultyScreen({
+    mode: "showdown", surface: "redraft_gate",
+    eyebrow: "\uD83D\uDD01 THE REDRAFTED",
+    pickup: { sub: "Peak seasons of the best players.",
+              fine: "Roll up. Everyone arrives in their prime. The short board.",
+              chips: ["THE HEADLINERS", "PEAKS PRE-SET"] },
+    pro: { sub: "Pick the season. Draft the whole class.",
+           fine: "Second rounders. Undrafteds. Seasons come randomized. Prove you know.",
+           chips: ["FULL CLASS", "SEASONS RANDOMIZED"] },
+    foot: "Change it any time from the class gate.",
+    onPick: function (diff) { SD_DIFF = diff; renderShowdownGate(); },
+    onBack: function () { renderIntro(); }
+  });
+}
+/* CLASSIC's difficulty (owner, 2026-08-08): the same two courts, the one axis
+   that translates. PICKUP is today's Classic exactly: peak season pre-set on
+   every card. PRO deals the same board but every default season comes
+   randomized; the dropdown, the stats, the sorts, the skips are all still
+   Classic. Board composition never changes: the difficulty is only who you
+   THINK these seasons are. Applies to freeform Classic only; dailies, duels,
+   challenge links, Presti, and the standalone Pro mode never see this. */
+function renderClassicDifficulty(onPick) {
+  renderDifficultyScreen({
+    mode: "classic", surface: "home",
+    eyebrow: "\uD83C\uDFC0 CLASSIC",
+    pickup: { sub: "Peak seasons of the best players.",
+              fine: "Every card arrives at its peak, stats on. Classic as you know it.",
+              chips: ["FULL STATS", "PEAKS PRE-SET"] },
+    pro: { sub: "Same board, dealt blind.",
+           fine: "No stats, no labels. A name, a position, and a random season. The menu still works, also blind.",
+           chips: ["NO STATS", "SEASONS RANDOMIZED"] },
+    foot: "Change it any time from the home screen.",
+    onPick: function (diff) { CL_DIFF = diff; onPick(diff); },
+    onBack: function () { renderIntro(); }
+  });
 }
 
 function renderShowdownGate(silent) {
@@ -6916,14 +7047,22 @@ function ensureShowdownCss() {
     ".sdd-pro .sdd-name{color:var(--amber);text-shadow:0 0 9px rgba(255,181,46,.75),0 0 26px rgba(255,181,46,.35)}" +
     ".sdd-pro .sdd-fine{color:#9fb0c0}" +
     ".sdd-pro .sdd-chip{border:1px solid rgba(255,181,46,.45);color:var(--amber);background:rgba(0,0,0,.45)}" +
-    ".sdd-remember{display:flex;align-items:center;gap:10px;margin:16px 2px 0;cursor:pointer;min-height:44px}" +
+    ".sdd-remember{display:flex;align-items:center;gap:11px;margin:16px 0 0;cursor:pointer;min-height:48px;" +
+      "padding:4px 13px;border-radius:12px;border:1.5px solid var(--tunnel-2);background:rgba(255,255,255,.03);" +
+      "transition:border-color .15s ease,background .15s ease,box-shadow .15s ease}" +
+    ".sdd-remember:has(input:checked){border-color:var(--amber);background:rgba(255,181,46,.10);" +
+      "box-shadow:0 0 0 1px rgba(255,181,46,.25),0 0 18px rgba(255,181,46,.12)}" +
     ".sdd-remember input{position:absolute;opacity:0;width:0;height:0}" +
-    ".sdd-box{flex:0 0 auto;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--maple);background:rgba(0,0,0,.3);position:relative}" +
+    ".sdd-box{flex:0 0 auto;width:24px;height:24px;border-radius:7px;border:2px solid var(--maple);background:rgba(0,0,0,.3);position:relative}" +
     ".sdd-box::after{content:'';position:absolute;left:7px;top:2.5px;width:6px;height:12px;border:solid var(--ink);border-width:0 2.5px 2.5px 0;transform:rotate(45deg) scale(0);transition:transform .14s cubic-bezier(.2,1.5,.4,1)}" +
     ".sdd-remember input:checked+.sdd-box{background:var(--amber);border-color:var(--amber)}" +
     ".sdd-remember input:checked+.sdd-box::after{transform:rotate(45deg) scale(1)}" +
     ".sdd-remember input:focus-visible+.sdd-box{box-shadow:0 0 0 3px rgba(255,181,46,.35)}" +
-    ".sdd-remember-txt{font-size:14px;color:var(--chalk);font-weight:600}" +
+    ".sdd-remember-txt{font-size:14.5px;color:var(--chalk);font-weight:700}" +
+    ".sdd-remember:has(input:checked) .sdd-remember-txt{color:#ffe9be}" +
+    ".sdd-remember.off{opacity:.55;cursor:default}" +
+    ".sdd-remember-note{display:block;font-size:11px;font-style:normal;font-weight:500;color:var(--chalk-dim)}" +
+    ".sdd-pillrow{margin:7px 0 0;text-align:center}" +
     ".sdd-foot{margin:8px 2px 0;font-size:11.5px;color:var(--chalk-dim);text-align:center}" +
     ".sdd-pill{display:inline-flex;align-items:center;margin:10px 0 0;padding:6px 12px;border-radius:99px;" +
       "border:1px solid var(--maple);background:transparent;color:var(--amber);font-family:var(--mono);" +

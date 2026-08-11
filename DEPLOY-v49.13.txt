@@ -1,0 +1,65 @@
+TRUE 82 v49.13 - CLASSIC PRO DEALS BLIND
+========================================
+Files: app.js, index.html. Key: app.js?v=20260808-blindpro-v49.
+BUILD_V stays v49. No D1 paste. No worker change. sim-core untouched.
+
+WHAT CHANGED
+Classic's PRO difficulty now hides the numbers, matching what the
+standalone Pro mode has always done. One predicate, boardBlind(), owns
+the rule for both surfaces so they can never drift apart:
+  boardBlind() = MODE is pro, OR (MODE is classic AND the run's
+  difficulty snapshot is pro).
+
+BLIND MEANS THE WHOLE INFORMATION SURFACE, not just the stat line.
+Four things go, because hiding only the stat line would have left the
+numbers readable three other ways:
+  1. The stat line under each card.
+  2. The community label chips (CLTCH, RIM-D, GRAVITY). They are
+     stat-derived and they identify the season, so they ride with the
+     stats. The pool label pass now exits early: no chips injected
+     after render, and no label fetch at all on a blind board.
+  3. The OBPM and DBPM sort chips. Sorting by a hidden number reveals
+     it ordinally, which is why the standalone Pro mode never had them.
+  4. The label legend (i) button, which explains chips that are gone.
+
+BUG CAUGHT WHILE BUILDING (would have shipped otherwise)
+Tapping ANY sort chip calls applyMetricYears(true), and its force path
+deletes every undrafted player's year override to restore engine-value
+defaults. On a blind board that would have wiped the randomized seasons
+and let the lazy seeder re-roll fresh ones on the next render: an
+unstable board, and a free reroll for anyone who tapped Min repeatedly.
+applyMetricYears now returns early on a blind board. Tested both ways.
+
+STILL VISIBLE, DELIBERATELY
+The season menu, also blind (change years at your own risk). The search
+box. The team and era skips. Names, positions, teams, years. And the
+results screen reveals everything: the engine grades your five with the
+real numbers at the end, which is the whole point of playing blind.
+
+The draft plaque now reads CLASSIC . PRO / NO STATS . TAP MENU TO
+CHANGE SEASON so the player can see which rules they are under. The
+HOW TO PLAY brief was rewritten: bullet one splits by difficulty and
+bullet three scopes the BPM sorts to Pickup.
+
+FLAG FOR YOU (product, not a bug)
+With this change, Classic + PRO difficulty is now functionally the same
+game as the standalone Pro mode tile on the home screen: no stats, no
+labels, randomized default seasons, season menu still live. The Pro
+mode tile's own rules text already describes exactly this. Two options
+whenever you want to decide, no rush:
+  A. Retire the Pro tile and let Classic's difficulty own it. Frees a
+     home-screen slot and removes the naming collision I flagged last
+     pass (a MODE called Pro next to a DIFFICULTY called PRO).
+  B. Keep both and differentiate them, e.g. Pro mode keeps a curated
+     short board while Classic PRO keeps the full board.
+I changed nothing about the Pro tile.
+
+QA on deploy
+1. Classic, pick PRO: cards show name, position, team, year, nothing
+   else. No chips. Sort row shows only Min and A-Z. No (i) legend.
+2. Tap Min, then A-Z, then Min again: the years on the board must NOT
+   change. That is the bug above.
+3. Finish the run: results show full stats and the label chips as
+   always, including the vote strips.
+4. Classic, pick PICKUP: everything back, OBPM/DBPM sorts present.
+5. A daily and a duel: full stats, house rules, no difficulty screen.
