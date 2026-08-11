@@ -3072,7 +3072,7 @@ function renderIntro() {
     renderDynastyGate();   // the gate needs no player data; the launch inside it queues on DATA_READY
   });
   el("startRedraft").addEventListener("click", function () {
-    SD_DIFF = null;                 // the intro asks on every entry (owner spec)
+    SD_DIFF = sdDiffRemembered();   // asks on every entry unless the player asked to be remembered
     analyticsTrack("mode_select", { mode: "showdown", surface: "home", action: "redraft" });
     renderShowdownGate();   // same shape as the dynasty gate: no player data needed to pitch
   });
@@ -6182,6 +6182,13 @@ var SD_CLASS_ORDER = ["2016", "2017", "2018", "2019", "2020", "2021", "1996", "2
    the draft snapshots its difficulty at sdFresh like it does the class, so
    a mid-flight switch never mutates a live draft. */
 var SD_DIFF = null;
+var SD_DIFF_KEY = "t82_redraft_diff_v1";
+function sdDiffRemembered() {
+  try { var v = localStorage.getItem(SD_DIFF_KEY); return (v === "pickup" || v === "pro") ? v : null; } catch (e) { return null; }
+}
+function sdDiffRemember(diff, on) {
+  try { if (on && diff) localStorage.setItem(SD_DIFF_KEY, diff); else localStorage.removeItem(SD_DIFF_KEY); } catch (e) {}
+}
 var SD_CLASS_ID = "2016";
 /* The two rival GMs. needW weights how hard roster need pulls against raw
    value; scW rewards grabbing a scarce position before it dries up; jitter
@@ -6750,34 +6757,42 @@ function renderShowdownDifficulty() {
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
   app().innerHTML =
-    '<section class="card sdd-wrap">' +
+    '<section class="ticket intro dy-gate sdd-wrap">' +
       '<p class="eyebrow">\uD83D\uDD01 THE REDRAFTED</p>' +
       '<h2 class="sdd-title">DIFFICULTY?</h2>' +
-      '<button type="button" class="sdd-card sdd-pickup" data-diff="pickup">' +
+      '<button type="button" class="sdd-card sdd-pickup tm-flat" data-diff="pickup">' +
         '<span class="sdd-net" aria-hidden="true"></span>' +
         '<span class="sdd-name">PICKUP</span>' +
         '<span class="sdd-sub">Peak seasons of the best players.</span>' +
         '<span class="sdd-fine">Roll up. Everyone arrives in their prime. The short board.</span>' +
         '<span class="sdd-chips"><span class="sdd-chip">THE HEADLINERS</span><span class="sdd-chip">PEAKS PRE-SET</span></span>' +
       '</button>' +
-      '<button type="button" class="sdd-card sdd-pro" data-diff="pro">' +
+      '<button type="button" class="sdd-card sdd-pro tm-flat" data-diff="pro">' +
         '<span class="sdd-name">PRO</span>' +
         '<span class="sdd-sub">Pick the season. Draft the whole class.</span>' +
         '<span class="sdd-fine">Second rounders. Undrafteds. Seasons come randomized. Prove you know.</span>' +
         '<span class="sdd-chips"><span class="sdd-chip">FULL CLASS</span><span class="sdd-chip">SEASONS RANDOMIZED</span></span>' +
       '</button>' +
-      '<p class="sdd-foot">You can change this any time from the class gate.</p>' +
-      '<p class="center" style="margin-top:12px"><button class="btn" id="sdDiffBack" type="button">\u2039 BACK</button></p>' +
+      '<label class="sdd-remember" for="sddRemember">' +
+        '<input type="checkbox" id="sddRemember"' + (sdDiffRemembered() === null ? "" : " checked") + '>' +
+        '<span class="sdd-box" aria-hidden="true"></span>' +
+        '<span class="sdd-remember-txt">Remember my choice</span>' +
+      '</label>' +
+      '<p class="sdd-foot">Change it any time from the class gate.</p>' +
+      '<button class="startover-btn dy-back" id="sdBackBtn2" type="button">\u2039 Back</button>' +
     '</section>';
   app().querySelectorAll(".sdd-card").forEach(function (b) {
     b.addEventListener("click", function () {
       SD_DIFF = b.getAttribute("data-diff");
-      analyticsTrack("showdown_state", { surface: "redraft_gate", action: "difficulty_select", mode: "showdown", outcome: SD_DIFF });
+      var box = el("sddRemember");
+      sdDiffRemember(SD_DIFF, !!(box && box.checked));
+      analyticsTrack("showdown_state", { surface: "redraft_gate", action: "difficulty_select", mode: "showdown",
+        outcome: SD_DIFF, value: box && box.checked ? 1 : 0 });
       buzz(10);
       renderShowdownGate();
     });
   });
-  el("sdDiffBack").addEventListener("click", function () { renderIntro(); });
+  el("sdBackBtn2").addEventListener("click", function () { renderIntro(); });
 }
 
 function renderShowdownGate(silent) {
@@ -6856,38 +6871,60 @@ function ensureShowdownCss() {
        glow). The cards carry the theme so the copy can stay short. */
     ".sdd-wrap{max-width:460px;margin:0 auto}" +
     ".sdd-title{font-family:var(--disp);font-weight:800;font-size:34px;letter-spacing:.06em;margin:2px 0 12px;color:var(--chalk);text-align:left}" +
-    ".sdd-card{position:relative;display:block;width:100%;text-align:left;border-radius:14px;overflow:hidden;" +
-      "padding:17px 16px 15px;margin-top:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;" +
+    ".sdd-card{position:relative;display:block;width:100%;text-align:left;border-radius:16px;overflow:hidden;" +
+      "padding:20px 18px 17px;margin-top:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;" +
       "-webkit-appearance:none;appearance:none;border:1px solid var(--tunnel-2);animation:sddIn .45s ease-out both}" +
     ".sdd-card+.sdd-card{animation-delay:.09s}" +
     ".sdd-card:active{transform:scale(.985)}" +
     "@keyframes sddIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}" +
-    ".sdd-name{display:block;font-family:var(--disp);font-weight:800;font-size:29px;letter-spacing:.05em;line-height:1;margin-bottom:6px}" +
-    ".sdd-sub{display:block;font-size:14.5px;line-height:1.35;color:var(--chalk);font-weight:600}" +
-    ".sdd-fine{display:block;font-size:12.5px;line-height:1.4;color:var(--chalk-dim);margin-top:4px}" +
-    ".sdd-chips{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}" +
-    ".sdd-chip{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;padding:4px 8px;border-radius:99px;" +
-      "border:1px solid rgba(255,255,255,.22);color:var(--chalk);background:rgba(0,0,0,.25);white-space:nowrap}" +
-    /* PICKUP: asphalt, sunset rim light, chalk free-throw arc, chain lattice */
-    ".sdd-pickup{background:radial-gradient(120% 90% at 18% -12%,rgba(255,181,46,.22),transparent 55%)," +
-      "repeating-radial-gradient(circle at 30% 40%,rgba(255,255,255,.016) 0 1px,transparent 1px 3px)," +
-      "linear-gradient(180deg,#24272c,#181b1f)}" +
-    ".sdd-pickup::before{content:'';position:absolute;right:-58px;bottom:-84px;width:190px;height:190px;border-radius:50%;" +
-      "border:2px solid rgba(240,236,224,.28);pointer-events:none}" +
-    ".sdd-pickup::after{content:'';position:absolute;right:0;bottom:0;left:0;height:2px;background:rgba(240,236,224,.2)}" +
-    ".sdd-net{position:absolute;inset:0 0 auto 0;height:20px;pointer-events:none;opacity:.5;" +
-      "background:repeating-linear-gradient(55deg,rgba(255,255,255,.10) 0 1.5px,transparent 1.5px 9px)," +
-      "repeating-linear-gradient(-55deg,rgba(255,255,255,.10) 0 1.5px,transparent 1.5px 9px)}" +
-    ".sdd-pickup .sdd-name{color:#f0ece0;transform:rotate(-1.3deg);transform-origin:left bottom;" +
-      "text-shadow:0 1px 0 rgba(0,0,0,.5),0 0 14px rgba(240,236,224,.14)}" +
-    /* PRO: tunnel black, scanlines, spotlight cone, bulb-glow wordmark */
-    ".sdd-pro{background:radial-gradient(85% 130% at 50% -25%,rgba(255,181,46,.17),transparent 62%)," +
-      "linear-gradient(180deg,#0c0f13,#12161c);border-color:var(--maple-line)}" +
-    ".sdd-pro::after{content:'';position:absolute;inset:0;pointer-events:none;" +
-      "background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px)}" +
-    ".sdd-pro .sdd-name{color:var(--amber);text-shadow:0 0 7px rgba(255,181,46,.6),0 0 18px rgba(255,181,46,.28)}" +
-    ".sdd-pro .sdd-chip{border-color:rgba(255,181,46,.4);color:var(--amber)}" +
-    ".sdd-foot{margin:12px 2px 0;font-size:11.5px;color:var(--chalk-dim);text-align:center}" +
+    ".sdd-name{position:relative;display:block;font-family:var(--disp);font-weight:800;font-size:33px;" +
+      "letter-spacing:.05em;line-height:1;margin-bottom:8px}" +
+    ".sdd-sub{position:relative;display:block;font-size:15px;line-height:1.3;color:#fff;font-weight:700}" +
+    ".sdd-fine{position:relative;display:block;font-size:12.5px;line-height:1.42;margin-top:5px}" +
+    ".sdd-chips{position:relative;display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}" +
+    ".sdd-chip{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;padding:5px 9px;border-radius:99px;" +
+      "white-space:nowrap}" +
+    /* PICKUP: golden hour on the blacktop. Warm asphalt, a low sun burning in
+       from the upper left, the chalk arc catching the light, chain-link
+       shadow across the top. Daylight, so it must not read like PRO. */
+    ".sdd-pickup{border-color:#6b5637;" +
+      "background:radial-gradient(78% 120% at 6% -18%,rgba(255,196,92,.5),rgba(255,150,50,.14) 42%,transparent 68%)," +
+      "linear-gradient(158deg,#4a4136 0%,#38332c 46%,#26241f 100%)}" +
+    ".sdd-pickup::before{content:\'\';position:absolute;right:-70px;bottom:-104px;width:230px;height:230px;" +
+      "border-radius:50%;border:3px solid rgba(255,240,214,.34);pointer-events:none}" +
+    ".sdd-pickup::after{content:\'\';position:absolute;left:-30px;bottom:-2px;width:150%;height:3px;" +
+      "background:linear-gradient(90deg,rgba(255,240,214,.5),rgba(255,240,214,.06));pointer-events:none}" +
+    ".sdd-net{position:absolute;inset:0 0 auto 0;height:34px;pointer-events:none;opacity:.34;" +
+      "background:repeating-linear-gradient(58deg,rgba(20,14,6,.9) 0 2px,transparent 2px 11px)," +
+      "repeating-linear-gradient(-58deg,rgba(20,14,6,.9) 0 2px,transparent 2px 11px);" +
+      "-webkit-mask-image:linear-gradient(180deg,#000,transparent);mask-image:linear-gradient(180deg,#000,transparent)}" +
+    ".sdd-pickup .sdd-name{color:#fff6e4;transform:rotate(-1.4deg);transform-origin:left bottom;" +
+      "text-shadow:0 2px 0 rgba(60,34,8,.55),0 0 22px rgba(255,196,92,.4)}" +
+    ".sdd-pickup .sdd-fine{color:#e6d7bd}" +
+    ".sdd-pickup .sdd-chip{border:1px solid rgba(255,240,214,.4);color:#fff6e4;background:rgba(40,26,10,.42)}" +
+    /* PRO: the tunnel, hours before tip. Near black, scanlines, one hard
+       spotlight falling from above, the wordmark lit like a scoreboard bulb. */
+    ".sdd-pro{border-color:var(--maple-line);" +
+      "background:linear-gradient(198deg,rgba(255,181,46,.13),transparent 40%)," +
+      "radial-gradient(60% 78% at 50% -32%,rgba(255,181,46,.3),transparent 66%)," +
+      "linear-gradient(180deg,#080a0d,#0f1319 62%,#05070a)}" +
+    ".sdd-pro::before{content:\'\';position:absolute;top:-58%;left:16%;width:52%;height:150%;pointer-events:none;" +
+      "background:linear-gradient(180deg,rgba(255,214,140,.16),transparent 62%);" +
+      "clip-path:polygon(38% 0,62% 0,100% 100%,0 100%)}" +
+    ".sdd-pro::after{content:\'\';position:absolute;inset:0;pointer-events:none;" +
+      "background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}" +
+    ".sdd-pro .sdd-name{color:var(--amber);text-shadow:0 0 9px rgba(255,181,46,.75),0 0 26px rgba(255,181,46,.35)}" +
+    ".sdd-pro .sdd-fine{color:#9fb0c0}" +
+    ".sdd-pro .sdd-chip{border:1px solid rgba(255,181,46,.45);color:var(--amber);background:rgba(0,0,0,.45)}" +
+    ".sdd-remember{display:flex;align-items:center;gap:10px;margin:16px 2px 0;cursor:pointer;min-height:44px}" +
+    ".sdd-remember input{position:absolute;opacity:0;width:0;height:0}" +
+    ".sdd-box{flex:0 0 auto;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--maple);background:rgba(0,0,0,.3);position:relative}" +
+    ".sdd-box::after{content:'';position:absolute;left:7px;top:2.5px;width:6px;height:12px;border:solid var(--ink);border-width:0 2.5px 2.5px 0;transform:rotate(45deg) scale(0);transition:transform .14s cubic-bezier(.2,1.5,.4,1)}" +
+    ".sdd-remember input:checked+.sdd-box{background:var(--amber);border-color:var(--amber)}" +
+    ".sdd-remember input:checked+.sdd-box::after{transform:rotate(45deg) scale(1)}" +
+    ".sdd-remember input:focus-visible+.sdd-box{box-shadow:0 0 0 3px rgba(255,181,46,.35)}" +
+    ".sdd-remember-txt{font-size:14px;color:var(--chalk);font-weight:600}" +
+    ".sdd-foot{margin:8px 2px 0;font-size:11.5px;color:var(--chalk-dim);text-align:center}" +
     ".sdd-pill{display:inline-flex;align-items:center;margin:10px 0 0;padding:6px 12px;border-radius:99px;" +
       "border:1px solid var(--maple);background:transparent;color:var(--amber);font-family:var(--mono);" +
       "font-size:10px;letter-spacing:.12em;cursor:pointer;-webkit-appearance:none;appearance:none}" +
