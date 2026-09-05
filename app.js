@@ -4494,7 +4494,14 @@ function picksInSlotOrder() {
   return G.picks.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return BUCKETS.indexOf(a.p.slot) - BUCKETS.indexOf(b.p.slot); });
 }
 
-function shareModeLabel() { return MODE === "kaman" ? "Kaman Mode" : MODE === "pro" ? "Pro" : MODE === "cap" ? "Presti" : "Classic"; }
+// v49.14: a blind run shares as "Pro" whichever door it came through (owner,
+// 2026-08-08). boardBlind() is already true for the standalone Pro mode, so
+// the old MODE === "pro" arm is folded into it. No extra text: Classic-PICKUP
+// is "Classic", Classic-PRO is "Pro", exactly as if the mode tile still existed.
+function shareModeLabel() {
+  return MODE === "kaman" ? "Kaman Mode" : MODE === "cap" ? "Presti"
+    : boardBlind() ? "Pro" : "Classic";
+}
 function shareSurname(nm) {
   var parts = String(nm).trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
@@ -4715,8 +4722,10 @@ function shareCompFor(wins, undefeated) {
   return "";
 }
 function shareHeadCtx() {
-  return MODE === "cap" ? "Presti Mode" : MODE === "pro" ? "Pro Mode"
-       : MODE === "kaman" ? "Kaman Mode" : "Classic Mode";
+  // Same rule as shareModeLabel: blind is Pro, sighted is Classic, and the
+  // existing " Mode" suffix is kept for all four so nothing new is added.
+  return MODE === "cap" ? "Presti Mode" : MODE === "kaman" ? "Kaman Mode"
+       : boardBlind() ? "Pro Mode" : "Classic Mode";
 }
 function shareRecord(wins) {
   var undef = wins >= CFG.GAMES_IN_SEASON;
@@ -6231,6 +6240,134 @@ var SD_CLASSES = {
   }
 };
 var SD_CLASS_ORDER = ["2016", "2017", "2018", "2019", "2020", "2021", "1996", "2003", "2009"];
+
+/* ---------- every class, derived from the data itself (ported 2026-09-05) ----
+   A player's class is the year before his FIRST season in the dataset
+   (seasons are end-years: a June-Y draftee debuts in season Y+1). Cohorts
+   are ranked by best eligible season and capped to a compact board. The
+   hand-curated classes above stay authoritative for their years, and any
+   name in a curated class (short board OR deep tier) is excluded from every
+   auto cohort. Derived classes carry no picks map, so the board falls to
+   the undrafted peakMp order. PRO extends to the whole eligible cohort
+   (capped by SD_PRO_CAP), derived from the data, no authoring needed. */
+var SD_ENTRY_OFFSET = 1;
+/* SMOKE TEST for the offset: open CLASS OF 1984 and confirm Jordan, Hakeem,
+   Barkley, and Stockton headline it. If they sit under 1983 or 1985, the
+   season ints are not end-years: adjust this one constant. */
+var SD_MIN_COHORT = SD_CFG.rosterSize * 3;   // smaller cohorts never materialize
+var SD_COHORT_CAP = 21;                      // compact PICKUP board, per the brief
+var SD_PRO_CAP = 50;                         // ceiling on the full PRO board, pathology guard only
+/* Famous draft-and-stash and redshirt cases, mapped to their real class.
+   Keys are data spellings; diacritic names carry both. A name mapped into a
+   hand-curated year is dropped unless that curated list names him. */
+var SD_REDSHIRTS = {
+  "Larry Bird": 1978,
+  "Drazen Petrovic": 1986, "Dra\u017een Petrovi\u0107": 1986,
+  "Arvydas Sabonis": 1986,
+  "Sarunas Marciulionis": 1987, "\u0160ar\u016bnas Mar\u010diulionis": 1987,
+  "Dino Radja": 1989, "Dino Ra\u0111a": 1989,
+  "Toni Kukoc": 1990, "Toni Kuko\u010d": 1990,
+  "Manu Ginobili": 1999, "Manu Gin\u00f3bili": 1999,
+  "Luis Scola": 2002,
+  "Tiago Splitter": 2007,
+  "Nikola Mirotic": 2011, "Nikola Miroti\u0107": 2011,
+  "Joel Embiid": 2014,
+  "Nikola Jokic": 2014, "Nikola Joki\u0107": 2014,
+  "Dario Saric": 2014, "Dario \u0160ari\u0107": 2014,
+  "Bogdan Bogdanovic": 2016, "Bogdan Bogdanovi\u0107": 2016
+};
+/* Years that deserve a mark on the chip and their own words. */
+var SD_SPECIAL = {
+  "1976": { cue: "\u2726", blurb: "The merger class. The ABA folds in: Erving, Gervin, Gilmore, and the league's flair arrive at once." }
+};
+var SD_DERIVED = 0;
+function sdCohortPick(ranked) {
+  // Top of the cohort by best season, GROWN (never swapped) until it can
+  // field three legal teams; null when the whole cohort cannot.
+  var take = ranked.slice(0, Math.min(SD_COHORT_CAP, ranked.length));
+  var need = {};
+  Object.keys(SD_CFG.caps).forEach(function (b) { need[b] = SD_CFG.caps[b] * 3; });
+  for (var g = 0; g <= 4; g++) {
+    var S = sdHall(need, take.map(function (p) { return p.buckets; }));
+    if (!S) return take;
+    var added = null;
+    for (var i = take.length; i < ranked.length; i++) {
+      var cand = ranked[i], hit = false, inTake = false, j;
+      for (j = 0; j < take.length; j++) if (take[j] === cand) { inTake = true; break; }
+      if (inTake) continue;
+      for (j = 0; j < S.length; j++) if (cand.buckets.indexOf(S[j]) !== -1) { hit = true; break; }
+      if (hit) { added = cand; break; }
+    }
+    if (!added) return null;
+    take.push(added);
+  }
+  return null;
+}
+function sdDeriveClasses() {
+  if (SD_DERIVED || !DATA_READY) return;
+  SD_DERIVED = 1;
+  var curatedNames = {};
+  SD_CLASS_ORDER.forEach(function (id) {
+    var c = SD_CLASSES[id];
+    (c.names.concat(c.deep || [])).forEach(function (e) {
+      e.split("|").forEach(function (v) { curatedNames[v] = 1; });
+    });
+  });
+  var info = {}, floor = Infinity;
+  POOL_YEARS.forEach(function (cell) {
+    cell.forEach(function (rows, name) {
+      var rec = info[name];
+      if (!rec) { rec = { min: Infinity, best: -Infinity, bk: {} }; info[name] = rec; }
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i], sn = r[IDX.season];
+        if (sn < rec.min) rec.min = sn;      // RAW minimum: a 300-minute rookie year still marks entry
+        if (sn < floor) floor = sn;
+        if (r[IDX.mp] < 785) continue;
+        var v = valueOf(r);
+        if (v > rec.best) rec.best = v;
+        sdRowBuckets(r).forEach(function (b) { rec.bk[b] = 1; });
+      }
+    });
+  });
+  var cohorts = {};
+  Object.keys(info).forEach(function (name) {
+    if (curatedNames[name]) return;          // curated membership wins everywhere
+    var rec = info[name];
+    if (rec.best === -Infinity) return;      // never an eligible season anywhere
+    var y = SD_REDSHIRTS[name] != null ? SD_REDSHIRTS[name] : rec.min - SD_ENTRY_OFFSET;
+    if (y <= floor - SD_ENTRY_OFFSET) return; // the floor cohort is "already in the league", not a class
+    var yk = String(y);
+    if (SD_CLASSES[yk] && !SD_CLASSES[yk].auto) return;   // year is hand-curated and authoritative
+    if (!cohorts[yk]) cohorts[yk] = [];
+    cohorts[yk].push({ name: name, best: rec.best, buckets: Object.keys(rec.bk) });
+  });
+  Object.keys(cohorts).forEach(function (yk) {
+    var c = cohorts[yk];
+    if (c.length < SD_MIN_COHORT) return;
+    c.sort(function (a, b) { return b.best - a.best; });
+    var picked = sdCohortPick(c);
+    if (!picked) return;                     // the whole cohort cannot field the board
+    var sp = SD_SPECIAL[yk];
+    SD_CLASSES[yk] = {
+      label: "CLASS OF " + yk, auto: 1,
+      blurb: sp && sp.blurb ? sp.blurb : "Headlined by " + picked[0].name + ", " + picked[1].name + ", and " + picked[2].name + ".",
+      names: picked.map(function (p) { return p.name; })
+    };
+    /* PRO gets the WHOLE eligible cohort: everyone who entered this year and
+       ever logged a 785-minute season, the same bar the authored deep tiers
+       used. Rides the existing deep merge in sdBuildPool unchanged. */
+    var extras = [];
+    for (var x = 0; x < c.length && picked.length + extras.length < SD_PRO_CAP; x++) {
+      if (picked.indexOf(c[x]) === -1) extras.push(c[x].name);
+    }
+    if (extras.length) SD_CLASSES[yk].deep = extras;
+  });
+}
+function sdOrderAll() {
+  var ys = Object.keys(SD_CLASSES);
+  ys.sort(function (a, b) { return (+b) - (+a); });
+  return ys;
+}
 /* v49.10 DIFFICULTY (owner spec, 2026-08-07). PICKUP: the curated short
    board, peak seasons pre-set as the default. PRO: the whole class (deep
    lists join the board), seasons randomized. The intro asks on every entry;
@@ -6931,12 +7068,27 @@ function renderShowdownGate(silent) {
   ensureShowdownCss();
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
+  sdDeriveClasses();
+  if (SD_QA.cls && !SD_QA.used && SD_CLASSES[SD_QA.cls]) { SD_CLASS_ID = SD_QA.cls; SD_QA.used = 1; }
   var cls = SD_CLASSES[SD_CLASS_ID];
   var ready = DATA_READY ? sdBuildPool() : null;
   var thin = ready && ready.list.length < SD_CFG.rosterSize * 3;
   var stuck = ready && !thin ? sdClassViable(ready) : null;
-  var chips = SD_CLASS_ORDER.map(function (id) {
-    return '<button class="sd-chip' + (id === SD_CLASS_ID ? " on" : "") + '" data-cls="' + id + '" type="button">\u2019' + id.slice(2) + '</button>';
+  var order = SD_DERIVED ? sdOrderAll() : SD_CLASS_ORDER.slice();
+  var decades = [], byDec = {};
+  order.forEach(function (id) {
+    var d = Math.floor((+id) / 10) * 10;
+    if (!byDec[d]) { byDec[d] = []; decades.push(d); }
+    byDec[d].push(id);
+  });
+  decades.sort(function (a, b) { return b - a; });
+  var chips = decades.map(function (d) {
+    var row = byDec[d].map(function (id) {
+      var sp = SD_SPECIAL[id];
+      return '<button class="sd-chip' + (id === SD_CLASS_ID ? " on" : "") + '" data-cls="' + id + '" type="button">\u2019' + id.slice(2) +
+        (sp && sp.cue ? '<i class="sd-cue">' + sp.cue + '</i>' : '') + '</button>';
+    }).join("");
+    return '<div class="sd-decade"><span class="sd-dec-label mono">' + d + 's</span><div class="sd-chips">' + row + '</div></div>';
   }).join("");
   var posNames = { G: "guards", F: "forwards", C: "centers" };
   var tail;
@@ -6948,19 +7100,24 @@ function renderShowdownGate(silent) {
   } else {
     tail = (ready
       ? '<p class="sd-resolved mono">' + ready.list.length + ' players on the board' + (ready.missing.length ? ' \u00B7 ' + ready.missing.length + ' name' + (ready.missing.length > 1 ? "s" : "") + ' missing from the data (console)' : '') + '</p>'
-      : '') +
+      : '<p class="sd-resolved mono">More classes arrive with the player data\u2026</p>') +
       '<button class="btn btn-primary btn-block presti-spin" id="sdGoBtn">DRAFT THE CLASS</button>';
   }
   var inner = '<p class="eyebrow">\uD83D\uDD01 THE REDRAFTED \u00B7 ALPHA</p>' +
     '<h1 class="intro-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + '. Three GMs. One board.</h1>' +
     '<button type="button" class="sdd-pill" id="sdDiffPill">' + (SD_DIFF === "pickup" ? "PICKUP" : "PRO") + ' \u00B7 CHANGE</button>' +
-    '<div class="sd-chips" id="sdChips">' + chips + '</div>' +
+    '<div id="sdChips">' + chips + '</div>' +
     '<p class="intro-lead"><b>' + esc(cls.blurb) + '</b></p>' +
     '<p class="intro-lead dy-fine">A snake draft against two rival GMs over one shared pool. Five each, any season of their careers, every pick exclusive. MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine scores all three seasons and settles it.</p>' +
     tail;
   app().innerHTML = '<section class="ticket intro dy-gate">' + inner +
     '<button class="startover-btn dy-back" id="sdBackBtn2" type="button">\u2039 Back</button></section>';
   if (!silent) analyticsTrack("mode_impression", { surface: "redraft_gate", action: thin ? "thin_pool" : (stuck ? "unfieldable" : "fresh"), mode: "showdown", season: +SD_CLASS_ID });
+  if (!DATA_READY) {
+    // when the data lands, refresh the picker with the derived classes, but
+    // only if the person is still looking at this gate
+    PENDING_FN = function () { if (el("sdChips")) renderShowdownGate(true); };
+  }
   var pill = el("sdDiffPill");
   if (pill) pill.addEventListener("click", function () { SD_DIFF = null; renderShowdownGate(); });
   el("sdChips").addEventListener("click", function (ev) {
@@ -6981,6 +7138,7 @@ function renderShowdownGate(silent) {
   el("sdBackBtn2").addEventListener("click", function () { renderIntro(); });
 }
 function sdStart() {
+  sdDeriveClasses();
   var pool = sdBuildPool();
   if (pool.list.length < SD_CFG.rosterSize * 3 || sdClassViable(pool)) { renderShowdownGate(); return; }
   SD = sdFresh();
@@ -7072,7 +7230,10 @@ function ensureShowdownCss() {
     "@media(prefers-reduced-motion:reduce){.sdd-card{animation:none}}" +
     ".sd-head{padding:12px 14px}" +
     ".sd-headrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}" +
-    ".sd-chips{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 4px}" +
+    ".sd-chips{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 4px}" +
+    ".sd-decade{margin:9px 0 0}" +
+    ".sd-dec-label{display:block;font-size:10px;letter-spacing:.14em;color:#5d6a77}" +
+    ".sd-cue{font-style:normal;color:#FFB52E;font-size:9px;margin-left:2px;vertical-align:top}" +
     ".sd-chip{font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.06em;padding:7px 11px;min-height:36px;" +
       "border:1px solid #2a323b;border-radius:9px;background:#141a21;color:#8b98a5;cursor:pointer}" +
     ".sd-chip.on{border-color:#FFB52E;color:#FFB52E;box-shadow:0 0 0 1px rgba(255,181,46,.25)}" +
