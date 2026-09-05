@@ -1,0 +1,51 @@
+TRUE 82 v49.9 - five of six
+===========================
+Files: app.js, index.html, functions/api/traits.js.
+Key: app.js?v=20260807-redrafted-v49. BUILD_V stays v49. No D1 paste.
+Item 5 (difficulty menu) NOT built pending owner answers, see chat.
+
+1. SEASON CHANGE NO LONGER SNAPS THE BOARD
+   The year dropdown re-renders the whole draft; the handler now captures
+   window scroll before the render and restores it after (same pattern the
+   results re-render already used).
+
+2. VOTE CELEBRATION
+   Tap an arm: it latches AND pops (spring scale), a colored ring bursts
+   off it, a +1 (or -1) floats up and fades. The tally swap is HELD until
+   ~520ms after the tap so the hit reads before the text changes, then the
+   tally punches in with a spring. Amber for agree, ember for disagree.
+   prefers-reduced-motion kills all of it. The instant-vanish is gone.
+
+3. HOMEPAGE POLLS: WHY INCOGNITO SHOWED NOTHING NEW
+   Working as designed: op=featured serves exactly ONE question per day,
+   picked deterministically from the day number SERVER-side, so incognito
+   cannot change it. Fresh questions (under 5 votes) serve on even day
+   numbers, one per day. Your 24 landed (their priorities put them inside
+   the serving window) and will cycle through the featured slot starting
+   the next even day. Real bug found while proving it: the pool query was
+   LIMIT 80 and the pool is now 104, silently making the 24 lowest-priority
+   OLD questions unreachable forever. Raised to 200. If one-fresh-every-
+   other-day is too slow a drip for 21 new questions, the rotation cadence
+   is one expression in op=featured; say the word.
+
+4. THE REDRAFTED SLOTS BY PRIMARY POSITION ONLY
+   A player's eligible slot is the PRIMARY position of the selected season
+   (first listed in the row's own position text), parsed app-side with a
+   fallback to the engine's full read if the text is unparseable. Applies
+   to pool buckets, AI qualification, human pick checks, tray buttons, and
+   the board tag. This is also the app-side half of the 77-5 slot
+   laundering: 23-24 Caruso is a guard here, full stop.
+   RISK TO WATCH: primary-only tightens class viability. The gate check
+   (sdClassViable) will refuse a class it cannot field three legal teams
+   from and names the short position. Tap all NINE class chips on deploy;
+   2009 (deliberate center famine) is the likeliest to refuse. If one
+   refuses, the fix is adding names to that class list, not reverting.
+
+5. RENAME
+   The mode is THE REDRAFTED everywhere a player sees it: home button,
+   gate eyebrow, draft header, share text, podium eyebrow, win stamps
+   ("YOU WIN THE REDRAFTED"). Class labels still ride alongside.
+
+QA: draft in The Redrafted changing several seasons mid-scroll (no snap);
+tap through all nine class chips (viability under primary positions);
+vote on a results card and feel it; check the gate and podium wording.

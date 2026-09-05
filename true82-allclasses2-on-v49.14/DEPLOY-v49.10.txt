@@ -1,0 +1,77 @@
+THE REDRAFTED v49.10 - DIFFICULTY
+=================================
+Files: app.js, index.html. Key: app.js?v=20260808-difficulty2-v49.
+BUILD_V stays v49. No D1 paste. sim-core untouched.
+
+THE SCREEN
+Opening The Redrafted now asks DIFFICULTY? with two full-bleed court
+cards. PICKUP is the blacktop at golden hour: asphalt wash, sunset rim
+light, a chalk free-throw arc clipped into the corner, a chain-link
+lattice along the top edge, the wordmark hand-tilted like court paint.
+PRO is the arena tunnel on draft night: scanlines, a spotlight cone
+from above, the wordmark in scoreboard bulb glow. Cards stagger in;
+reduced-motion stills them. The intro asks on EVERY entry; a PICKUP/
+PRO pill on the class gate reopens it; RUN IT BACK keeps your choice.
+A live draft snapshots its difficulty like it snapshots its class, so
+switching mid-flight never mutates a running draft.
+
+PICKUP (the short board)
+Curated headliner lists exactly as before. Peak season is the DEFAULT
+(the season dropdown still works and still overrides).
+
+PRO (the whole class)
+Each class gains a deep tier that joins the board: about 140 authored
+names across the nine classes, every one with at least one plausibly
+viable (785+ minute) season, real draft position wired into board
+order, undrafteds sorting after the picks by peak minutes. Darko at 2.
+Thabeet at 2. Jonny Flynn one pick before Curry. Duncan Robinson,
+Alvarado, Moochie Norris, the Junkyard Dog. Seasons stay randomized.
+Names the live data spells differently are aliased (Hernangomez,
+Labissiere, Maledon, Teodosic, Darko, Pietrus, B.J./Byron Mullens,
+Kira Lewis Jr., Xavier Tillman Sr., Harry Giles III, Kevin Knox II,
+Lonnie Walker IV, Danuel House). A name that resolves to no viable
+season silently never appears; a name the data cannot resolve at all
+logs to console as before.
+
+QA on deploy (matters more than usual: ~140 new data resolutions):
+1. Open The Redrafted, pick PRO, tap through ALL NINE class chips with
+   the console open. Watch for "[redraft] ... names not in live data,
+   dropped:" lines: each named player there needs an alias fix.
+2. Confirm a PRO 2016 board runs Simmons 1 through Brogdon 36 into the
+   deep names, undrafteds last; then switch the pill to PICKUP and see
+   the short board with peak seasons pre-set.
+3. Also still open from v49.9: nine-chip viability under primary-only
+   positions (PICKUP boards especially; PRO boards are looser).
+
+
+v49.11 AMENDMENT - the screen was being repainted, and it remembers now
+======================================================================
+THE BUG (why it looked wrong on your phone and right in my tests):
+decorate3dButtons() adds .presti-spin to EVERY button that does not opt
+out via BTN3D_EXCLUDE, which painted both difficulty cards with the gold
+raised-button skin: PICKUP became a gold slab, PRO became amber text on
+amber. My render harness did not run the decorator, so it could not see
+it. Both cards now carry .tm-flat (the documented opt-out, same marker
+the vote arms and the widget IDK button use), the harness now runs the
+real decorator, and h7 asserts the marker so this cannot regress.
+The screen also uses the gate's own back control now instead of a .btn.
+
+THEMING PUSHED
+The two cards had to read as two different places, so PICKUP is now
+genuinely daylight: warm asphalt, a low sun burning in from the upper
+left, a thick chalk arc catching the light, chain-link shadow fading
+down the top edge, a baseline highlight along the bottom. PRO went the
+other way: near black, a hard spotlight cone falling from above the
+wordmark, scanlines, bulb glow. Names went to 33px, body copy to full
+white, fine copy tinted per court (warm sand on PICKUP, cool grey on
+PRO).
+
+REMEMBER MY CHOICE
+A checkbox under the cards writes the choice to localStorage
+(t82_redraft_diff_v1). If set, opening The Redrafted skips the screen
+and goes straight to the class gate; the PICKUP/PRO pill there still
+reopens it. The box shows already checked when a choice is remembered,
+and unchecking then picking clears the memory while still applying that
+pick. Difficulty analytics carry value 1/0 for whether it was
+remembered. NOTE: this is Redrafted only. Classic is untouched, per
+your instruction to hold it for a later pass.

@@ -1,0 +1,36 @@
+TRUE82 DEPLOY CARD - MID-SEASON HEAT CHECK (v47.18 STACKING FIX, BUILD_V stays v47)
+=====================================================================
+
+WHAT SHIPS (cumulative snapshot - contains everything through v47.15)
+  app.js       the mid-season Heat Check: the season reel is now a pausable
+               game-by-game cursor; a Presti roster over +20 net that would
+               take its first loss gets ONE shot to catch fire and re-sim the
+               rest of the season. Post-season 81-0 Heat Check now fires only
+               for runs that never took the mid-sim spin.
+  index.html   app.js cache key -> 20260801-midheat-stack-v47 (app.js AND styles.css)
+  Changed vs v47.14: app.js + index.html only. styles.css and bonuses/ are
+  byte-identical to v47.14 (the overlay reuses existing hh-* CSS).
+  functions/ (votes worker, database) UNTOUCHED. Engine UNTOUCHED.
+
+STEPS
+  1. Drag the package contents into the GitHub repo root (flat), commit,
+     let Cloudflare Pages deploy.
+  2. NO D1 MIGRATION. NO CONSOLE COMMAND.
+  3. Hard-reload once so the app.js cache key takes.
+  4. Footer still reads "| v47".
+
+VERIFY (60 seconds)
+  - Draft a Presti team over +20 net that loses a game (or add ?midhot=1 to
+    the URL to force it). The season reel freezes right before the first L
+    and the Heat Check opens: "Game N. You're W-0 and down entering the 4th
+    quarter."
+  - Land HOT or better: a starter catches fire and the rest of the season
+    re-sims at the higher win rate (it can still lose - one spin per season).
+  - Land COLD/WARM or decline: the loss lands, season plays out as it was.
+  - QA: ?clutch=1 still forces the end-of-season 81-0 ceremony.
+
+FULL DETAIL + SMOKE CHECKLIST
+  RETURN-HANDOFF-MIDSEASON-HEATCHECK.md (sections 8 and 10).
+
+ROLLBACK
+  Restore app.js + index.html from the v47.14 package. No data to unwind.

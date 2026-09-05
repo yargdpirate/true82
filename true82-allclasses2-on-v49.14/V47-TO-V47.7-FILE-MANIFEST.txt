@@ -1,0 +1,32 @@
+TRUE82 v47 -> v47.7 focused file manifest
+
+Executable files changed:
+- app.js
+- functions/api/traits.js
+- bonuses/index.html
+- index.html (cache-bust only)
+
+Migrations added:
+- migrations/0018_trait_categories_v1.sql
+- migrations/0019_editorial_label_expansion_v1.sql
+- migrations/0020_homepage_superstar_controversy_v1.sql
+- migrations/0023_homepage_superstar_controversy_v2.sql
+- migrations/VERIFY-0020-HOMEPAGE.sql
+- migrations/VERIFY-0023-HOMEPAGE.sql
+
+Documentation-only changes:
+- AGENT-HANDOFF.md
+- PATCH-MANIFEST-V44.txt
+- README-DEPLOY.txt
+- TRAITS-OWNER-DECISIONS.md
+- migrations/MIGRATIONS-NOTES.md
+- DEPLOY-0019-LABELS.txt
+- DEPLOY-0020-HOMEPAGE.txt
+- DEPLOY-0021-TRAIT-CARD-UI.txt
+- DEPLOY-0022-TWO-ANSWER-CEILING.txt
+- DEPLOY-0023-HOMEPAGE-V2.txt
+
+Local artifacts in v47.7 archive; do not deploy:
+- candidates.tsv
+- test.db
+- test0023.db

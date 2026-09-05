@@ -1,0 +1,35 @@
+TRUE82 DEPLOY CARD - POLL SHARING PACKAGE (v47.14, BUILD_V stays v47)
+=====================================================================
+
+WHAT SHIPS
+  app.js              widget foot SHARE tool; VOTE ON 5 MORE links the full page,
+                      rules-sheet footer: engine-math link out, STATS
+                      REFRESHER is a real button
+  styles.css          rules-foot button styling
+  bonuses/index.html  toprow SHARE on every question card, pre-vote share
+                      text, paired STATS REFRESHER + SHARE button row on each card; refresher resolves the actual bbref player page via /bbref-map.json
+  index.html          app.js + styles.css cache keys -> 20260731-poll-share-r2-v47
+  Everything else is byte-identical to the v47.11 base.
+  functions/ (votes worker, database) UNTOUCHED.
+
+STEPS
+  1. Drag the package contents into the GitHub repo root (flat), commit,
+     let Cloudflare Pages deploy.
+  2. NO D1 MIGRATION. NO CONSOLE COMMAND.
+  3. Hard-reload once so both cache keys take.
+  4. Footer still reads "| v47".
+
+VERIFY (60 seconds, phone)
+  - Homepage widget: SHARE + FULL PAGE sit right of the pips, box same size.
+    SHARE opens the share sheet with the exact question's link.
+  - /bonuses/: SHARE beside the 1/5 counter; vote once - everything after
+    the vote looks exactly like yesterday.
+  - HOW TO PLAY: two footer buttons, STATS REFRESHER dark, GOT IT amber,
+    no "Full engine math".
+
+FULL DETAIL + SMOKE CHECKLIST
+  RETURN-HANDOFF-POLL-SHARING.md (sections 3 and 5).
+
+ROLLBACK
+  Restore app.js / styles.css / bonuses/index.html / index.html from the
+  v47.11 package. No data to unwind.

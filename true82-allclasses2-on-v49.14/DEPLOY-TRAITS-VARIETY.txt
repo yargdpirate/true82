@@ -1,0 +1,38 @@
+TRUE82 DEPLOY CARD - QUESTION VARIETY + IDK + SEEN STORE (v47.16, BUILD_V v47)
+==============================================================================
+
+WHAT SHIPS (cumulative - contains everything through v47.16)
+  functions/api/traits.js  session ranking: pure quality score, top-18 pool,
+                           shuffled draw. New users stop seeing the same five
+                           in the same order; junk questions can never
+                           surface past 18 better ones. Query change only -
+                           vote path, abuse controls, all other ops untouched.
+  app.js                   widget vote row is YES / NO / IDK (grey, equal
+                           thirds, same 52px row). IDK = pass, recorded
+                           locally only. Persistent seen store: voted or
+                           passed questions stop appearing (localStorage,
+                           shared with /bonuses/).
+  bonuses/index.html       votes persist to the same seen store; session
+                           fetch excludes it; shared links always land.
+  index.html               app.js cache key -> 20260801-traits-variety-v47
+  styles.css byte-identical to v47.15. Engine UNTOUCHED.
+
+STEPS
+  1. Drag the package contents into the GitHub repo root (flat), commit,
+     let Cloudflare Pages deploy (the worker rides the same deploy).
+  2. NO D1 MIGRATION. NO CONSOLE COMMAND.
+  3. Hard-reload once so the app.js cache key takes.
+  4. Footer still reads "| v47".
+
+VERIFY (60 seconds)
+  - Two fresh private windows: different question mixes/orders on the widget.
+  - Widget shows YES / NO / IDK, three equal buttons, IDK grey.
+  - IDK passes and the question never returns; a vote never returns either
+    (same browser). A shared question link still always lands.
+
+FULL DETAIL + SMOKE CHECKLIST
+  RETURN-HANDOFF-TRAITS-VARIETY.md
+
+ROLLBACK
+  Restore the four changed files from the v47.15 package. The localStorage
+  key is inert without the code. No data to unwind.

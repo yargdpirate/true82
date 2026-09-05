@@ -1,0 +1,18 @@
+TRUE 82 v49.14 - BLIND RUNS SHARE AS PRO
+========================================
+Files: app.js, index.html. Key: app.js?v=20260808-shareblind-v49.
+BUILD_V stays v49. No D1 paste. No worker change. Pro mode code KEPT.
+
+Both share label functions now key on boardBlind() instead of MODE:
+  shareHeadCtx()   "TRUE 82 Classic Mode" / "TRUE 82 Pro Mode"
+  shareModeLabel() "Classic" / "Pro"   (the bundle box row)
+So Classic-PICKUP shares as Classic, Classic-PRO shares as Pro, and the
+standalone Pro mode is unchanged because boardBlind() was already true
+for it. No extra text anywhere; the existing " Mode" suffix is kept for
+all four labels. Presti and Kaman untouched.
+
+NOT CHANGED, NEEDS YOUR CALL (see chat): the percentile fetch still
+sends mode=classic for a blind Classic run, so those runs are ranked
+against sighted Classic runs. Sending mode=pro instead would be the
+right yardstick and needs no worker change, but the Pro pool isnearly empty
+so the Top X% line would go missing until it fills.

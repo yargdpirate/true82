@@ -1,0 +1,39 @@
+SEASON REEL v49.4 (scoreboard cut) - deploy notes
+=================================================
+Files changed: app.js, styles.css, index.html. Nothing else.
+No D1 paste. No migrations. sim-core.js untouched. REDRAFT untouched
+(this package includes the v49.3 redraft knowledge pass).
+Cache keys: app.js?v=20260806-reel-v49, styles.css?v=20260806-reel-v49.
+BUILD_V stays v49.
+
+What changed (classic vanilla + Presti season reel only):
+1. RETRO SCOREBOARD pinned above the calendar: GAME, RECORD, and live
+   PACE in amber bulb digits that pulse each game. A live perfect
+   season sets the panel glowing until the zero dies.
+2. Calendar explainer, prominent: "Your 82 game season, October
+   through April. One square is one game."
+3. Event flash line under the board. The season's first loss gets
+   "The zero died. Dec 12." (cities are cut). Each month's first loss
+   gets a player blame line, live at the square instead of buried in
+   the month note. Win streaks flag at ten and every five after,
+   skids at three straight.
+4. Tempo has an arc now: watchable October, compressed December
+   through March, slow April. Losses hang a beat before they land;
+   notable ones stamp bigger and hold after.
+5. Finale reuses the results language: record, "Better than the ..."
+   comp, "Top X%" percentile. The percentile fetch now starts BEFORE
+   the reel (one-fetch guard added to scheduleSharePct) so the number
+   is usually home by the finale.
+6. One prominent full-width SKIP TO RESULTS button at the card foot.
+7. Month desk lines are italic and city-free. Blame lines stay.
+
+Mid-Season Heat Check: pause is still square-exact (one square per
+tick under every tempo), SKIP still cannot dodge an armed spin,
+boosted re-rolls still resume the reel. All verified in Chromium.
+
+QA on deploy:
+- Run one classic season: scoreboard ticks, pace reads sane, first
+  loss flashes with a date and no city, skip works from anywhere.
+- Presti run above +20 net with a loss: the reel still pauses for
+  the Mid-Season Heat Check on the exact square.
+- prefers-reduced-motion: digits and squares stop animating.

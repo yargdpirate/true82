@@ -1,0 +1,54 @@
+TRUE 82 v49.8 - four changes
+============================
+Files: app.js, styles.css, index.html, functions/api/traits.js,
+functions/api/event.js, migrations/0025_homepage_barstool_v1.sql,
+migrations/VERIFY-0025-HOMEPAGE.sql.
+Keys: app.js?v=20260807-engq-v49, styles.css?v=20260807-engq-v49.
+BUILD_V stays v49. sim-core.js untouched.
+D1 PASTE REQUIRED for 0025 (order does not matter, paste any time).
+
+1. 3PT / GRAVITY NOW WORK EVERYWHERE
+   Cause was not legacy properties. op=roster creates only TWO questions
+   per drafted player, chosen by a hash of name+season out of twelve
+   traits, so whether a shooter question existed was a lottery. That is
+   why CP3 and Mullin had arrows and Baron Davis, Luka and McAdoo did
+   not. New worker op=engq mints the shooter question on demand using
+   the SAME id formula op=roster uses (INSERT OR IGNORE, restricted to
+   three-point-shooter and super-three-point-shooter, max five players
+   per call, one confirming read so a retired row is never offered).
+   The client calls it only for cards whose engine chip did not resolve.
+   Fails soft: no answer means the chip keeps plain expansion, and no
+   vote is ever offered against a question that does not exist.
+
+2. SEASON REEL TITLE
+   "THE SEASON . GAME BY GAME" goes 9.5px to 13px, tracking eased, and
+   steps to 11.5px below 360 so it never wraps. Measured at five widths.
+
+3. WIDGET TAG CHIP CENTERED
+   The .tm-lead row was space-between, pinning the chip to the border.
+   Now the chip carries auto margins and the row gap is zero, so it
+   centers in the space left over after the title. Measured within 2px
+   at 320/360/375/390/430 with three tag widths, never touching the
+   title. Home module and results module both, one rule.
+
+4. TWENTY-FOUR FRESH HOMEPAGE POLLS (migration 0025)
+   r/nba-flavored fights: 2011 Finals LeBron clutch, Jokic team defense,
+   Gobert on a switch, MVP Harden as foul merchant, Trae fouls, D-Rose
+   as a title #1, 2021 Westbrook stat padding, 81-point Kobe clutch,
+   Shaq late, Reggie, Big Shot Bob, DeRozan, Playoff Jimmy, Ja, Kyrie,
+   Draymond and Rodman as knuckleheads, Wilt padding, Vince, 2006 Wade,
+   Randle stopping the ball, CP3 in the Finals, Embiid rim protection,
+   Zion at the rim. All homepage_eligible with share previews.
+   Three ids already existed (Harden 2018 foul merchant, Westbrook 2021
+   stat padder, Wade 2006 championship #1): those keep their existing
+   wording and are simply promoted to the homepage. Verified by
+   replaying the whole real migration chain into sqlite twice: identical
+   counts on re-paste, zero orphans, zero duplicate slugs, homepage pool
+   goes to 104. Paste migrations/VERIFY-0025-HOMEPAGE.sql to confirm.
+
+QA
+- Finish a run: every card with 3PT or GRAVITY should now show arrows.
+- Watch a season reel: the title reads as a title, one line at any width.
+- Home page: the trait tag sits centered between the title and the edge.
+- After the D1 paste, reload the homepage a few times: new questions
+  should appear in rotation.

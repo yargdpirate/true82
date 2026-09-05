@@ -1,0 +1,37 @@
+DEPLOY - EVERY CLASS, DERIVED (on v49.14)
+=========================================
+FILES TO UPLOAD (2):
+  app.js      key 20260905-allclasses2-v49  (was 20260808-shareblind-v49)
+  index.html
+
+No D1 paste. No worker change. No styles.css change. BUILD_V stays v49.
+
+WHAT SHIPS: every viable draft class in the data derives itself at load.
+Your nine curated classes stay authoritative; every other year builds from
+the dataset (class = year before a player's first season, cohorts ranked
+by best eligible season, boards capped near 21 and grown a few slots when
+the top of a class cannot field three legal teams under the primary
+position rule). Cohorts under 15 never materialize. The floor cohort
+(everyone already in the league when the data begins) is dropped, which is
+what "omit pre-'75" means in code. Class 1976 wears a merger mark on its
+chip. Derived classes carry no picks map (board falls to the biggest
+season of minutes). PICKUP keeps the compact board; PRO extends to the
+WHOLE eligible cohort, straight from the data: every entrant of that year
+who ever logged a 785-minute season, capped at 50. That is the full first
+round minus the busts who never played (undraftable anyway), plus every
+performing second rounder and undrafted. The gate groups chips by decade.
+
+FIRST DEPLOY, IN ORDER:
+1.  THE OFFSET SMOKE TEST: open /?redraft=1984 and confirm Jordan, Hakeem,
+    Barkley, and Stockton headline the board. Wrong neighbors under 1983
+    or 1985 means season ints are not end-years: SD_ENTRY_OFFSET is one
+    constant next to a comment saying exactly this.
+2.  Check '76 wears its merger mark and blurb.
+3.  With the console open, spot-check one derived chip per decade. Derived
+    classes come straight from your data so they cannot misspell; the
+    curated nine still can. A class short on bodies or centers refuses at
+    the gate and says why; under the primary position rule 2009 stays the
+    one to watch.
+4.  Famous redshirts are remapped in SD_REDSHIRTS (Bird to 1978, Jokic and
+    Embiid to 2014, Ginobili to 1999, Arvydas Sabonis to 1986, and so on).
+    A mislabeled favorite means adding one line to that map.

@@ -1,0 +1,54 @@
+TRUE 82 v49.12 - CLASSIC DIFFICULTY + HARDENED MEMORY
+=====================================================
+Files: app.js, index.html, functions/api/event.js.
+Key: app.js?v=20260808-classicdiff-v49. BUILD_V stays v49. No D1 paste.
+functions/api/event.js MUST deploy: "difficulty_select" joined the event
+whitelist; without it BOTH modes' difficulty analytics drop silently.
+
+1. CLASSIC GETS THE SAME TWO COURTS
+Tapping Classic on the home screen now asks DIFFICULTY? on the same
+blacktop/tunnel cards. The one axis that translates is season defaults:
+PICKUP is today's Classic exactly (peak pre-set, stats on); PRO deals
+the SAME board with every default season randomized (stats on, dropdown
+still overrides, sorts and skips untouched). Board composition never
+changes; the difficulty is only whether you trust your memory of who
+these seasons are. FREEFORM CLASSIC ONLY: dailies, duels, challenge
+links, Presti, Kaman and the standalone Pro mode never see the screen
+and always play house rules. A run snapshots its difficulty at start,
+so nothing can mutate a live run. Random defaults use Math.random,
+never the seed stream: the DEAL stays seeded and replay-lawful, the
+default is a suggestion the player can override like always.
+NAMING FLAG, decide at leisure: the home screen already has a MODE
+called "Pro" (pick seasons from memory). Difficulty PRO inside Classic
+is a different thing wearing the same word. Shipped consistent with The
+Redrafted per your instruction; if it confuses people the fix is a copy
+change on one card, say the word.
+
+2. ANALYTICS, ONE EVENT, SPLIT BY MODE
+difficulty_select {mode: "classic"|"showdown", outcome: pickup|pro,
+value: 1|0 (remember box checked), source: stored|store_failed|session}.
+The Redrafted's old emit moved to the same event, so /avocado reads one
+name and splits by mode. "source: store_failed" means the player asked
+to be remembered and NO storage medium accepted the write.
+
+3. THE REMEMBER CHECKBOX, HARDENED
+Two mediums, self-healing: every write goes to localStorage AND a
+one-year SameSite=Lax cookie; every read tries localStorage, falls back
+to the cookie, and REPAIRS whichever medium lost the value (Safari's
+7-day localStorage eviction and corporate storage policies are the
+usual killers; the cookie survives most of them, and vice versa).
+Writes read back and report success. Only "pickup"/"pro" ever
+round-trip; garbage reads as null. Keys are per mode
+(t82_redraft_diff_v1, t82_classic_diff_v1) and never cross. When NO
+medium works, the box renders dimmed, disabled, and says "Not available
+in this browser" instead of pretending. Visually the row is now a
+full-width bordered panel that lights amber when checked.
+A remembered Classic player skips the screen; a "PICKUP/PRO - CHANGE"
+pill under the Classic button reopens it.
+
+QA on deploy: tap Classic fresh (screen shows), pick PRO with the box
+checked, finish or abandon, return home (pill shows PRO), tap Classic
+again (no screen, defaults scrambled), tap the pill to switch. Then a
+daily and a duel: no screen, peak defaults. Redrafted unchanged flow.
+Airplane-test one difficulty pick and check /avocado for
+difficulty_select rows split by mode.

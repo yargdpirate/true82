@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101418">
+<meta name="t82-build" content="v49">
+<link rel="canonical" href="https://true82.net/">
+<meta property="og:title" content="TRUE 82 — NBA Draft Game for the 82-0 Chase">
+<meta property="og:description" content="Draft five NBA players from random franchise-and-era tickets, then a BPM-based season engine projects whether your lineup can chase 82-0.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://true82.net/">
+<meta property="og:site_name" content="TRUE 82">
+<meta property="og:image" content="https://true82.net/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="TRUE 82 logo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="TRUE 82 — NBA Draft Game for the 82-0 Chase">
+<meta name="twitter:description" content="Draft five NBA players from random teams and eras. Chase 82-0 with a BPM-based season engine that cares about roster fit.">
+<meta name="twitter:image" content="https://true82.net/og-image.png">
+<meta name="twitter:image:alt" content="TRUE 82 logo">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23101418'/%3E%3Crect x='20' y='20' width='24' height='24' transform='rotate(45 32 32)' fill='%23FFB52E'/%3E%3C/svg%3E">
+<title>TRUE 82 — NBA Draft Game for the 82-0 Chase</title>
+<meta name="description" content="Free NBA draft game: build a five-player lineup from random franchise-and-era tickets, then a BPM-based season engine projects your shot at a perfect 82-0 season.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://true82.net/#organization",
+      "name": "TRUE 82",
+      "url": "https://true82.net/",
+      "logo": "https://true82.net/logo.png",
+      "email": "true82mailbox@gmail.com"
+    },
+    {
+      "@type": ["WebApplication", "VideoGame"],
+      "@id": "https://true82.net/#game",
+      "name": "TRUE 82",
+      "url": "https://true82.net/",
+      "image": "https://true82.net/og-image.png",
+      "description": "TRUE 82 is a free browser-based NBA draft game: build a five-player lineup from random franchise-and-era tickets and chase a projected 82-0 season through a BPM-based season engine with roster-fit adjustments.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript",
+      "genre": ["Basketball", "Sports", "Draft simulator", "Browser game"],
+      "isAccessibleForFree": true,
+      "inLanguage": "en-US",
+      "publisher": { "@id": "https://true82.net/#organization" },
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=20260807-engq-v49">
+<style id="t82-live-hide">
+  /* LIVE LANE ONLY. app.js and styles.css are byte-identical to the
+     accounts-test branch; this block is the single behavioural divergence on
+     live, and it lives HERE (in the one file allowed to differ per lane) so the
+     shared engine/shell/CSS never fork. It hides the account/duel/league entry
+     points renderIntro() emits unconditionally, which would otherwise be dead
+     buttons on the public site. To LAUNCH one of these on live: add the
+     required account/feature files to LIVE_FILES and the critical chain as
+     documented in DEPLOY-LANES.md, then delete its #id from the rule
+     below. (dailyStrip/startWeekly are already hidden by attribute; listed for
+     completeness so this block is the full "not-yet-live UI" manifest.)
+     2026-07-12: THE DAILY launched via the sanctioned path — challenges.js
+     promoted to shared, daily-core.js added to the critical chain on both
+     lanes. #startDaily needs no unhide: app.js swaps it into the Pro slot when
+     T82DAILY is present, and renders the old Pro button when it is not. */
+  #arenaChip, #startDuel, #startLeague, #startWeekly, #dailyStrip, #runStatus { display: none !important; }
+</style>
+</head>
+<body>
+<header class="site-head">
+  <img class="brand-logo" src="logo.png" alt="TRUE 82" width="800" height="188" decoding="async" fetchpriority="high">
+  <div class="round-pips" id="roundPips" aria-hidden="true"></div>
+</header>
+
+<main id="app">
+  <!-- Static fallback for crawlers, slow connections, and no-JS visitors.
+       app.js renderIntro() replaces #app wholesale on boot — this block is the
+       initial-HTML version of the intro, not a second UI. Keep copy in rough
+       sync with renderIntro() when positioning changes. -->
+  <section class="ticket intro" id="staticIntro">
+    <h1 class="intro-title">TRUE 82 — an NBA draft game built for the 82&#8211;0 chase</h1>
+    <p class="intro-lead">TRUE 82 is a free browser game: draft five NBA players from random franchise-and-era tickets, and a BPM-based season engine projects whether your lineup could run the table. It rewards roster fit &mdash; shooting, usage, defense, positional balance &mdash; not just stacking box-score legends.</p>
+    <p class="eyebrow">How to play</p>
+    <p>Each of five rounds deals a random NBA franchise and decade. Draft a player who suited up for that franchise in that era and fill a two-guard, two-forward, one-center lineup, using any season of each player's career. The engine grades your five on advanced impact (BPM) and converts net rating into a projected 82-game record; every draft screen carries a HOW TO PLAY button with the full rules. Going 82&#8211;0 is possible. It is not likely.</p>
+    <p class="eyebrow">Learn more</p>
+    <ul class="static-links">
+      <li><a href="/how-it-works/">How the TRUE 82 season engine works</a></li>
+      <li><a href="/faq/">TRUE 82 FAQ</a></li>
+      <li><a href="/can-you-go-82-0/">Can an NBA team really go 82&#8211;0?</a></li>
+      <li><a href="/what-is-bpm/">What is BPM in basketball?</a></li>
+      <li><a href="/traits/">Player Traits: vote on disputed NBA player calls</a></li>
+    </ul>
+    <noscript><p class="dim">TRUE 82 needs JavaScript to run the draft. Enable it and reload to play &mdash; the pages above work without it.</p></noscript>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <p class="games-count mono">Contact: <a href="mailto:true82mailbox@gmail.com">true82mailbox@gmail.com</a></p>
+  <div class="foot-stats mono" id="footStats"></div>
+  <nav class="site-links" aria-label="TRUE 82 information pages">
+    <a href="/">Play</a>
+    <a href="/how-it-works/">How it works</a>
+    <a href="/faq/">FAQ</a>
+    <a href="/can-you-go-82-0/">82&#8211;0 explainer</a>
+    <a href="/what-is-bpm/">BPM explained</a>
+    <a href="/traits/">Player Traits</a>
+  </nav>
+  <details class="legal">
+    <summary>PLEASE READ - Legal / disclaimer</summary>
+    <p>TRUE 82 is an independent, non-commercial fan project. It is not affiliated with, endorsed by, or sponsored by the National Basketball Association, the American Basketball Association, any team, 82-0.com and its affiliates, or Sports Reference LLC (Basketball Reference). All team names, logos, nicknames, and player names are the property of their respective owners and are used for identification, commentary, and historical-reference purposes only. Player statistics are factual historical records. No official affiliation or commercial use is intended or claimed.</p>
+    <p>Player and team data comes from Basketball Reference and Stathead, maintained by Sports Reference LLC &mdash; the definitive public record of basketball history and an extraordinary resource for fans. Sincere thanks to their team; this project simply would not exist without their work. Their data is used here for non-commercial commentary, analysis, and historical reference, with no claim of ownership and no commercial use intended.</p>
+    <p>Privacy: TRUE 82 uses first-party analytics to understand whether the game works and whether players return. It creates no account, fingerprint, advertising identifier, IP hash, or third-party tracking profile, and nothing is sold or shared for targeted advertising. For retention measurement, TRUE 82 assigns one random browser identifier stored in a secure first-party cookie with a local-storage fallback for up to 400 days; it is disabled for EEA, UK, and Swiss traffic, for unknown locations, and after a TRUE 82-specific opt-out (run t82RetentionOptOut() in the browser console; t82RetentionOptIn() reverses it). Do Not Track and Global Privacy Control are recorded as diagnostics for strictly first-party measurement. Clearing site data or changing browsers/devices starts a new anonymous identity. Player Traits votes are stored as anonymous tallies keyed by a one-way hash, never by the raw identifier. The Daily separately keeps a small on-device record so its official-run and streak features work.</p>
+    <p>If you believe you have any potential legal claim against me, please email me at <a href="mailto:true82legal@gmail.com?subject=LEGAL%20ISSUE">true82legal@gmail.com</a>, subject line &ldquo;LEGAL ISSUE&rdquo;, I will go out of my way to remedy the situation as amicably and swiftly as possible.</p>
+  </details>
+</footer>
+
+<script src="analytics.js?v=20260725-traits-v44" defer></script>
+<script src="retention-client.js?v=20260725-traits-v44" defer></script>
+<script src="sim-core.js?v=20260724-retention-v43" defer></script>
+<script src="challenges.js?v=20260720-duo-keys-v15" defer></script>
+<script src="daily-core.js?v=20260721-analytics-v39" defer></script>
+<script src="app.js?v=20260905-allclasses2-v49" defer></script>
+</body>
+</html>

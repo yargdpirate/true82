@@ -1,0 +1,219 @@
+TRUE 82 v47.2 - additive shadow-mode trait categories
+  NEW      migrations/0018_trait_categories_v1.sql
+           Five core voting/label categories; 124 curated questions; 123
+           editorial QUALIFIES seeds; 2016 Draymond Ball Pounder remains
+           unruled, top-priority, and homepage-eligible.
+  DOCS     AGENT-HANDOFF.md, TRAITS-OWNER-DECISIONS.md,
+           migrations/MIGRATIONS-NOTES.md, README-DEPLOY.txt
+  SAFETY   Data/docs only: no worker, app.js, sim-core, site_data, scoring,
+           value, roster-generation, tax, net-rating, or win changes. Stat
+           Padder engine wording is poll copy only.
+  DB       Apply 0018 after 0017; pure SQL and rerun-safe.
+
+v47.3 module format rework (owner spec): linked title line VOTE ON
+PLAYER BONUSES / HELP BALANCE THE GAME (no FULL PAGE link, no pill, no
+TODAY'S CALL), question, definition, YES/NO, the draft-mode diamond pips
+with no text, footer 'Crowdsourcing your vote to rate player fit
+properly.'; results screen adds the centered heading VOTE: DID WE GET IT
+WRONG? above the same box. Migration 0015 copy pass: superlative and
+historical framings removed from curated sentences (elite-qualification
+framing instead), playmaker definition is now 'Makes teammates way
+better.', the super three-point trait asks 'Does X have gravity?' with
+'Makes defenses reorganize around stopping his shot.' everywhere
+(curated rows, roster templates, trait fallback); Klay gravity OG card
+regenerated to match. Paste 0010-0015.
+
+TRUE 82 v47 (current) - the homepage VOTES: visual redesign of every
+Player Bonuses surface (owner screenshots + mock, 2026-07-27)
+  CHANGED  app.js               homepage module rebuilt to the mock's language:
+                                glow-border card (2px amber + soft bloom), NEW
+                                pill, TODAY'S CALL eyebrow, the question, its
+                                WHAT COUNTS line, and INLINE YES/NO voting with
+                                the site's chunky gradient-and-shadow buttons;
+                                five votes run right on the homepage with
+                                progress dots and "Vote N of 5 - About 20
+                                seconds", a compact result beat per vote (pct
+                                or counts plus the bonus status), completion
+                                with VOTE ON 5 MORE, FULL PAGE door top-right,
+                                question itself links to /bonuses/; any fetch
+                                trouble mid-run hands off to the full page with
+                                nothing lost. Results prompt gets the glow-lite
+                                treatment and a solid VOTE button. BUILD_V v47
+  CHANGED  bonuses/index.html   the three vote controls now live in ONE padded
+                                group (no more orphaned third button), YES/NO
+                                get the site's chunky depth with pressed
+                                states, and every result state carries a
+                                CHANGE VOTE link that restores live controls
+                                with the standing answer pressed (the backend
+                                always supported changed votes; now the UI
+                                says so)
+  CHANGED  index.html           app token 20260727-homevote-v47, meta v47
+  NOTE     UNSURE stays on the full page by design; the module is the
+           quick-fire YES/NO lane
+  LIVE-FIX module question no longer renders as a blue underlined link
+           (anchor inherits color, no decoration); module compacted about
+           fifty vertical pixels for tall-phone screens (question 25px,
+           one-line definition with ellipsis, 52px buttons, tighter gaps)
+  LIVE-ADD migrations/0014_homepage_rotation_v1.sql: twenty more marquee
+           flags (homepage pool 9 -> 29, none desk-ruled); op=featured now
+           serves the LIVEST fight (closest split with 5+ eligible votes,
+           day-rotated across the top eight; calendar rotation until real
+           fights exist); op=roster filters trait pools by position before
+           the hash (guards never draw rim-protector, centers never draw
+           gameplan gravity; client sends the position tail, absent
+           position degrades to the full pool)
+  LIVE-ADD RATE YOUR FIVE: the results screen mounts the same inline voting
+           card fed by the NEW worker op=roster, which lazily creates
+           question rows for any drafted player (two deterministic core
+           traits per player, ids in the shared curated id space so votes
+           pool with desk questions and label chips learn from roster
+           voting; template sentences composed at serve time, never stored;
+           uncurated rows never surface in sessions, homepage, or shares).
+           Falls back to the curated session feed if the roster lane is
+           empty. Every player in the game is now votable.
+
+TRUE 82 v46 (current) - PLAYER BONUSES + Presti uncap
+  NEW      bonuses/index.html   the voting page, rebuilt to the final Player Bonuses
+                                spec: editorial question sentences, quiet 1 / 5 progress,
+                                WHAT COUNTS? expander, YES/NO/UNSURE, percentage-led
+                                result with BONUS ACTIVE / NO BONUS / STILL DISPUTED /
+                                BONUS PENDING chips, EARLY RESULT counts, TRY AGAIN that
+                                never advances, native share + copy with factual
+                                templates, five-vote completion state, no build numbers
+  NEW      functions/bonuses/[slug].js  direct question routes /bonuses/<slug>: serves the
+                                shell with per-question title/OG metadata and a preload
+                                payload; any failure serves the untouched shell
+  NEW      migrations/0013_bonuses_meta_v1.sql  curated launch pool: 76 editorial rows
+                                (slug, public question, WHAT COUNTS?, metadata line,
+                                homepage flag x9, share preview); 5 questions left dormant
+  CHANGED  functions/api/traits.js  serving is curated-only (meta join); slugs resolve
+                                everywhere; op=featured (daily homepage rotation);
+                                op=prompt prefers a drafted player's dispute
+                                (players= pairs); vote/result responses carry the
+                                display block (counts pre-quorum, whole percentages
+                                after, agreement, status); votes always store the
+                                canonical question id
+  CHANGED  traits/index.html    now a redirect stub to /bonuses/ preserving q and src
+  CHANGED  app.js               homepage module reworked (PLAYER BONUSES / NEW, one
+                                rotating curated question via op=featured, VOTE, whole
+                                card tappable, ~40% shorter); results prompt reworked
+                                (compact PLAYER BONUS card, drafted-player preference);
+                                PRESTI UNCAP: cap mode overrides PG_CAP to 1 per run,
+                                classic keeps the shipped value; BUILD_V v46
+  CHANGED  index.html           app token 20260726-bonuses-v46, meta v46 (styles token
+                                unchanged: styles.css untouched this build)
+  DB       paste 0010, 0011, 0012, 0013 (all pure SQL, rerun-safe)
+  DESIGN   v46 senior pass on /bonuses/: header steps back so the question is
+           the biggest thing on screen; result reveals in sequence (count-up
+           percentage, staggered lines, bar fills, chip lands) inside the
+           spec's motion budget with full reduced-motion fallbacks; page
+           atmosphere (court-line texture, vignette, card depth) matches the
+           game's material; skeleton card while the session loads; amber
+           discipline (BONUS ACTIVE is an outline chip so one amber hero per
+           state); UNSURE contrast raised; focus moves to the result;
+           question renders sentence case
+  HAPTICS  site-wide buzz() gains the iOS door (checkbox switch toggle,
+           Safari 17.4+; synthetic path patched by Apple in iOS 26.5, so
+           timed/async ticks reach 17.4-26.4 and no-op beyond). The Bonuses
+           page adds real invisible switch overlays on YES / NO / UNSURE /
+           NEXT QUESTION / VOTE ON 5 MORE, so tap-moment haptics fire on ALL
+           iOS versions including 26.5+. Android keeps navigator.vibrate
+           patterns. No audio-session path anywhere: music and podcasts are
+           never ducked or paused.
+  LIVE-ADD Presti plays ANY GIVEN NIGHT: cap mode realizes the season game
+           by game with the full reel, uncapped (PG_CAP override), so 82-0
+           can literally happen and a realized 81-1 triggers the Heat Check
+           spin exactly as designed; percentile still ships raw pre-boost
+           net (realization never touches e.net). Dailies, challenges, and
+           pro remain analytic.
+  LIVE-FIX comp ladder keys on REALIZED WINS again (owner ruling): one rung
+           per win from 81 down, so every record maps to one name (76 wins
+           sits under the Shaqobe Core); the NET-keyed selection bunched
+           results among the top few names and is retired. Top X% on the
+           results comp line now inherits the comp typography (styles.css
+           touched for the first time in v46: token bumped to
+           20260726-bonuses-v46). DEPLOY NOTE: _routes.json needs
+           "/bonuses/*" in its include array (manual one-liner, see README).
+  NEW      og/bonus-<slug>.png  nine hand-cut 1200x630 typography previews
+           for the homepage-eligible questions; functions/bonuses/[slug].js
+           swaps og:image for those slugs (brand image for all others);
+           shell adds twitter:card summary_large_image
+
+TRUE 82 v45 (current) - v42 finals graft + manual tags + Daily sheet + roster labels
+  NEW      styles.css           COMPLETE v42-final stylesheet, first styles.css shipped since v40
+                                (reel 25px W/L squares, reel-done button, charity treatment, v41 sheet)
+  NEW      migrations/0012_trait_editorial_v1.sql  desk seed rulings (21), community supersedes at volume
+  CHANGED  app.js               v42 FINALS GRAFTED from the owner's canonical v42 file (22 hunks):
+                                W/L squares, SEE THE FULL RESULTS + tap-skip removed + no auto-dismiss,
+                                scapegoat loss lines, slower month pacing, NET-keyed comps/climb
+                                (compNetFor), Dream/Redeem/OG ladder top, percentile rides the comp
+                                segment + on-screen comp-pct, post_daily_finish return_profile,
+                                DATA_URL sc-v42c, cap copy 99-in-100; PLUS Daily rules sheet reorder
+                                (today's rule + Daily rules lead), wireTraitsLabels roster chips,
+                                BUILD_V v45
+  CHANGED  functions/api/traits.js  op=labels merges editorial desk rulings (e:1), community wins
+  CHANGED  index.html           app + styles tokens 20260726-labels-v45; meta v45
+  DB       apply 0010, 0011, 0012 (whichever are not yet live; all rerun-safe)
+  DATA     site_data.json must be the v42-final one (meta.scoring.PG_CAP = 0.99); console check:
+           T82.t.SC.PG_CAP after deploy. If 0.978 or undefined, drop site_data.json from
+           true82-full-state-v42.zip into the repo. sim-core.js: live already realizes seasons
+           (the reel runs), so v42 sim-core is present; the guard is fail-soft regardless.
+
+v44.1 (superseded by v45 above)
+NEW
+  traits/index.html                       Player Traits voting page (self-contained)
+  functions/api/traits.js                 session serving, prompt, vote + settle-on-write
+  migrations/0010_traits_v1.sql           trait tables, rules, 5 draft traits, 27 questions
+  retention-client.js                     v40r2 client, upgraded to the subscriber hook
+  functions/api/identity.js               v40r2 cookie identity + coverage (replaces v43 file)
+  functions/api/retention.js              v40r2 isolated retention ingestion
+  functions/api/retention-dashboard.js    v40r2 standalone retention report (stale 180-day line fixed)
+  migrations/0008_retention_events_v1.sql already applied in production; repo truth
+  migrations/0009_retention_coverage_v1.sql already applied in production; repo truth
+  ANALYTICS-V44-RETENTION-AND-TRAITS.md   merged analytics + traits contract
+  TRAITS-OWNER-DECISIONS.md               the decisions only the owner can make
+  PATCH-MANIFEST-V44.txt
+
+CHANGED
+  analytics.js          v43 identity experiment stripped; t82AnalyticsSubscribe hook;
+                        /traits page key; retention state surfaced in t82AnalyticsDebug;
+                        ANALYTICS_BUILD v44
+  app.js                BUILD_V v44; PLAYER TRAITS homepage module + impression + wiring;
+                        results-screen disputed-call prompt (fail-soft, hidden by default);
+                        stale analytics comment corrected
+  functions/api/event.js  v43 visitor_id/local_day tier removed (v40-first ladder);
+                        traits_session / traits_question / traits_vote allowlisted
+  functions/avocado.js  v40r2 Avocado v42.2 base + two Player Traits cards
+                        (funnel + ledger), schema-guarded, limiter-conformant;
+                        dashboard stamp v44
+  index.html            meta v44; retention-client.js loaded between analytics.js and
+                        sim-core.js; tokens 20260725-traits-v44 on changed files;
+                        privacy disclosure rewritten to the live v40r2 model plus the
+                        traits hash note; Player Traits in static links and footer nav
+  404.html              analytics token bump
+  faq/index.html        privacy answer rewritten; "no cookies" corrected to
+                        "no sign-in of any kind"; Player Traits FAQ entry; token bump
+  md/faq.md             same privacy rewrite + Player Traits entry
+  how-it-works/index.html   analytics token bump
+  what-is-bpm/index.html    analytics token bump
+  can-you-go-82-0/index.html analytics token bump
+  README-DEPLOY.txt     rewritten for v44
+  AGENT-HANDOFF.md      V44 section appended; header + load order updated
+
+REMOVED (deliberately absent)
+  migrations/0008_retention_identity.sql  the retired v43 experiment; never apply
+  ANALYTICS-V43-RETENTION.md              instructed applying the retired migration
+  PATCH-MANIFEST-V43.txt                  superseded
+
+UNTOUCHED (not in this patch; live repo versions remain canonical)
+  sim-core.js, challenges.js, daily-core.js, styles.css, logo.png,
+  functions/[id].js and functions/r/[id].js ship unchanged from v43,
+  _routes.json, all account-lane files
+
+DATABASE
+  Apply migrations/0010_traits_v1.sql once. Nothing else. Additive, idempotent.
+
+CACHE KEYS (index.html)
+  analytics.js, retention-client.js, app.js -> 20260725-traits-v44
+  styles.css, sim-core.js -> 20260724-retention-v43 (unchanged files, v43's keys kept)
+  challenges.js, daily-core.js -> unchanged from v43
