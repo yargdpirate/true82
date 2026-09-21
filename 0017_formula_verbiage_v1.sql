@@ -1,5 +1,0 @@
-UPDATE trait_question_meta_v1 SET public_question = (SELECT 'Did ' || season || ' ' || player_name || ' attack the rim?' FROM trait_questions_v1 WHERE id = question_id), what_counts = 'Attacks the rim, gets fouled, forces teams to pack the paint.' WHERE question_id IN (SELECT id FROM trait_questions_v1 WHERE trait_id = 'rim-pressurer');
-UPDATE trait_question_meta_v1 SET public_question = (SELECT 'Did ' || season || ' ' || player_name || ' have gravity?' FROM trait_questions_v1 WHERE id = question_id), what_counts = 'His shooting prowess breaks the normal defensive gameplan.' WHERE question_id IN (SELECT id FROM trait_questions_v1 WHERE trait_id = 'super-three-point-shooter');
-UPDATE traits_v1 SET short_definition = 'Attacks the rim, gets fouled, forces teams to pack the paint.' WHERE id = 'rim-pressurer';
-UPDATE traits_v1 SET short_definition = 'His shooting prowess breaks the normal defensive gameplan.' WHERE id = 'super-three-point-shooter';
-UPDATE traits_v1 SET short_definition = 'Had severe off-court issues that could threaten the team''s success.' WHERE id = 'off-court-knucklehead';
