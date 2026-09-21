@@ -1,5 +1,5 @@
 // TRUE 82 — headless logic test harness (no browser needed).
-// Run:  node test.js   (from the repo root; expects app.js beside it)
+// Run:  node test.js   (from the repo root; expects app.js + sim-core.js beside it)
 // Covers: career position buckets, chargeReroll refund/fire-sale slices + blocking,
 // effCost fire-sale floor, capRoll bargain decay (monotonic, rip-offs invariant),
 // lineup swap legality + doLineupMove/doLineupSwap state, FORCE_CLUTCH/prefersReduce
@@ -9,6 +9,7 @@
 const fs = require("fs");
 const vm = require("vm");
 
+let core = fs.readFileSync("sim-core.js", "utf8");
 let code = fs.readFileSync("app.js", "utf8");
 // disarm the auto-boot line for headless testing
 code = code.replace('if (typeof document !== "undefined" && document.getElementById) { boot(); }', "");
@@ -24,6 +25,9 @@ const ctx = {
   Math, console,
 };
 vm.createContext(ctx);
+// sim-core.js defines T82 (the engine namespace); app.js reads it at load time,
+// so the core must be evaluated into the sandbox first or app.js throws on line 1.
+vm.runInContext(core, ctx);
 vm.runInContext(code, ctx);
 
 let pass = 0, fail = 0;
