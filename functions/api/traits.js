@@ -1,4 +1,4 @@
-// /api/traits — PLAYER BONUSES community voting for TRUE 82 (v47.6).
+// /api/traits — PLAYER BONUSES community voting for TRUE 82 (v49.9).
 // (Internal names keep the traits_* vocabulary; the public product name,
 // routes, and all end-user copy say PLAYER BONUSES per the final spec.)
 //
@@ -18,9 +18,18 @@
 //        has EARNED (qualifies) or been ruled OUT of (does_not_qualify, the
 //        anti-label). Shadow-mode read for the results roster; retired traits
 //        never label. Exact match on lower(player_name) + season end year.
-// POST /api/traits  {op:"vote", question_id, response, source, sid}
+//        v49.9: also reads trait_scout_v1 (the model backfill, migration
+//        0013) as a third layer below community and editorial; scout yes hits
+//        carry s:1 and a why, scout unsure lands in `open`. All reads scoped
+//        to the requested players.
+//        v50 (tag ballot): anti hits are no longer emitted (a ruled-out trait
+//        simply leaves the card); `split` names traits whose community tally
+//        sits in the disputed band; `mine=1` adds this voter's own answers.
+// POST /api/traits  {op:"vote", question_id, response, source, sid[, player, season]}
 //        Record or change one call, then settle that question's consensus
-//        in the same request and return the fresh snapshot.
+//        in the same request and return the fresh snapshot. v50: a vote on a
+//        question that does not exist yet creates it first, when player and
+//        season are sent and the id is exactly slug(player)-season-<core trait>.
 //
 // Identity for duplicate control rides the deployed v40r2 retention layer:
 // when the first-party HttpOnly t82_rid cookie is present, the voter key is a
@@ -38,7 +47,7 @@ const RID_COOKIE = "t82_rid";
 const ID_RE = /^v1-[A-Za-z0-9-]{16,60}$/;
 const QID_RE = /^[a-z0-9][a-z0-9-]{2,78}$/;
 const RESPONSES = new Set(["yes", "no", "unsure"]);
-const SOURCES = new Set(["home_module", "results_prompt", "direct", "link", "session", "share"]);
+const SOURCES = new Set(["home_module", "results_prompt", "direct", "link", "session", "share", "card", "record"]);
 const SESSION_SIZE = 5;
 
 const DEFAULT_RULES = {
@@ -98,44 +107,123 @@ async function handleGet(context) {
   }
 
   if (op === "labels") {
+    // v49.5: each hit now carries its question id (q.id) so a label chip on a
+    // results card can post a vote without a second lookup. Additive field;
+    // older clients ignore it.
+    // v49.7: `qids` maps trait display name -> question id for every ACTIVE
+    // question on each pair, settled or not. The engine's own 3PT and GRAVITY
+    // chips have no consensus row of their own, so this is how a card learns
+    // which question a vote on them belongs to. Read-only and caught: if the
+    // query fails the chips simply stay unvotable.
     // v47.9: cap raised to 60 for THIS op only, so the classic draft pool
-    // labels in one request. The query below reads the full settled label
-    // set per call regardless of pair count, so 60 pairs cost what 8 did.
-    // op=roster and friends keep the 8-pair cap (they create rows per pair).
+    // labels in one request.
+    // v49.9 SCOUT CLAIMS (migration 0013): a third label layer read from
+    // trait_scout_v1, the model backfill. Precedence is settled community
+    // ruling, then editorial desk ruling, then scout claim; a scout claim never
+    // overrides either. Scout yes rides in `labels` with s:1 and its why; scout
+    // unsure lands in the new `open` map (trait name -> question id), the
+    // vote-candidate list a card can surface. Every query here is now scoped
+    // to the requested players with lower(player_name) IN (...): the old
+    // unscoped reads scanned the whole label tables per call, which was fine
+    // at a few hundred curated rows and would burn the D1 read allowance now
+    // that ~29K scout rows exist. Table absent (0013 unapplied) degrades to the
+    // two older layers.
     const pairs = parsePlayerPairs(url.searchParams.get("players"), 60);
     if (!pairs.length) return json({ ok: false, reason: "bad_players" }, 200);
+    const names = Array.from(new Set(pairs.map((p) => p.name)));
+    const nameSql = names.map(() => "?").join(",");
     const rows = await env.DB.prepare(`
-      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, c.status status
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, c.status status, q.id qid
       FROM trait_consensus_v1 c
       JOIN trait_questions_v1 q ON q.id = c.question_id
       JOIN traits_v1 t ON t.id = q.trait_id
-      WHERE t.status = 'core' AND c.status IN ('qualifies','does_not_qualify')`)
-      .all().then((r) => r.results || []).catch(() => null);
+      WHERE t.status = 'core' AND c.status IN ('qualifies','does_not_qualify','disputed')
+        AND lower(q.player_name) IN (${nameSql})`)
+      .bind(...names).all().then((r) => r.results || []).catch(() => null);
     if (!rows) return json({ ok: false, reason: "labels_query" }, 200);
     // Editorial desk rulings (0012) fill in before community volume exists;
     // a settled COMMUNITY ruling on the same question always supersedes.
     // Table absent (0012 unapplied) degrades to community-only.
     const edRows = await env.DB.prepare(`
-      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, e.verdict verdict
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, e.verdict verdict, q.id qid
       FROM trait_editorial_v1 e
       JOIN trait_questions_v1 q ON q.id = e.question_id
       JOIN traits_v1 t ON t.id = q.trait_id
-      WHERE t.status = 'core' AND q.status = 'active'`)
-      .all().then((r) => r.results || []).catch(() => []);
-    const labels = {};
+      WHERE t.status = 'core' AND q.status = 'active'
+        AND lower(q.player_name) IN (${nameSql})`)
+      .bind(...names).all().then((r) => r.results || []).catch(() => []);
+    const scoutRows = await env.DB.prepare(`
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, s.verdict verdict, s.why why, q.id qid
+      FROM trait_scout_v1 s
+      JOIN trait_questions_v1 q ON q.id = s.question_id
+      JOIN traits_v1 t ON t.id = q.trait_id
+      WHERE t.status = 'core' AND q.status = 'active'
+        AND lower(q.player_name) IN (${nameSql})`)
+      .bind(...names).all().then((r) => r.results || []).catch(() => []);
+    const qRows = await env.DB.prepare(`
+      SELECT lower(q.player_name) pname, q.season season, t.display_name tname, q.id qid
+      FROM trait_questions_v1 q
+      JOIN traits_v1 t ON t.id = q.trait_id
+      WHERE t.status = 'core' AND q.status = 'active'
+        AND lower(q.player_name) IN (${nameSql})`)
+      .bind(...names).all().then((r) => r.results || []).catch(() => []);
+    // v50: the voter's own standing answers, only when the card asks for them
+    // (the draft pool never does). Scoped by player name, so the bind count
+    // stays at names + 1 however many questions those players carry.
+    let mineRows = [];
+    if (url.searchParams.get("mine") === "1" && names.length <= 8) {
+      try {
+        const voter = await voterKey(request, url.searchParams.get("sid"));
+        mineRows = await env.DB.prepare(`
+          SELECT lower(q.player_name) pname, q.season season, t.display_name tname, v.response response
+          FROM trait_votes_v1 v
+          JOIN trait_questions_v1 q ON q.id = v.question_id
+          JOIN traits_v1 t ON t.id = q.trait_id
+          WHERE v.voter_hash = ?1 AND t.status = 'core' AND q.status = 'active'
+            AND lower(q.player_name) IN (${names.map((_, i) => "?" + (i + 2)).join(",")})`)
+          .bind(voter.hash, ...names).all().then((r) => r.results || []).catch(() => []);
+      } catch { mineRows = []; }
+    }
+    const labels = {}, qids = {}, open = {}, split = {}, mine = {};
     for (const p of pairs) {
+      const key = p.name + "~" + p.season;
+      const own = (r) => r.pname === p.name && Number(r.season) === p.season;
       const seen = new Set();
-      const hits = rows
-        .filter((r) => r.pname === p.name && Number(r.season) === p.season)
-        .map((r) => { seen.add(r.tname); return { t: r.tname, anti: r.status === "does_not_qualify" }; });
+      const hits = [];
+      // A settled community ruling is final either way: qualifies puts the
+      // tag on the card, does_not_qualify keeps every lower layer from
+      // resurrecting it. The anti chip itself is retired (v50), so a ruled-out
+      // trait simply is not on the card. A disputed tally blocks nothing; it
+      // marks the trait unsettled.
+      for (const r of rows) {
+        if (!own(r)) continue;
+        if (r.status === "disputed") { (split[key] = split[key] || {})[r.tname] = r.qid; continue; }
+        seen.add(r.tname);
+        if (r.status === "qualifies") hits.push({ t: r.tname, anti: false, id: r.qid });
+      }
       for (const r of edRows) {
-        if (r.pname === p.name && Number(r.season) === p.season && !seen.has(r.tname)) {
-          hits.push({ t: r.tname, anti: r.verdict === "does_not_qualify", e: 1 });
+        if (!own(r) || seen.has(r.tname)) continue;
+        seen.add(r.tname);
+        if (r.verdict !== "does_not_qualify") hits.push({ t: r.tname, anti: false, e: 1, id: r.qid });
+      }
+      for (const r of scoutRows) {
+        if (!own(r) || seen.has(r.tname)) continue;
+        if (r.verdict === "yes") {
+          seen.add(r.tname);
+          hits.push({ t: r.tname, anti: false, s: 1, why: r.why || null, id: r.qid });
+        } else if (r.verdict === "unsure") {
+          (open[key] = open[key] || {})[r.tname] = r.qid;
         }
       }
-      if (hits.length) labels[p.name + "~" + p.season] = hits;
+      if (hits.length) labels[key] = hits;
+      const qm = {};
+      for (const r of qRows) if (own(r)) qm[r.tname] = r.qid;
+      if (Object.keys(qm).length) qids[key] = qm;
+      const mm = {};
+      for (const r of mineRows) if (own(r)) mm[r.tname] = r.response;
+      if (Object.keys(mm).length) mine[key] = mm;
     }
-    return json({ ok: true, labels, count: Object.keys(labels).length });
+    return json({ ok: true, labels, qids, open, split, mine, rules: publicRules(rules), count: Object.keys(labels).length });
   }
 
   if (op === "roster") {
@@ -224,7 +312,7 @@ async function handleGet(context) {
       LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
       WHERE m.homepage_eligible = 1 AND m.active = 1 AND q.status = 'active'
       ORDER BY q.editorial_priority DESC, m.slug
-      LIMIT 80`).all().then((r) => r.results || []).catch(() => []);
+      LIMIT 200`).all().then((r) => r.results || []).catch(() => []);
     if (!pool.length) return json({ ok: false, reason: "no_questions" }, 200);
     const day = Math.floor(Date.now() / 86400000);
     const fresh = pool.filter((p) => Number(p.ev) < 5);
@@ -424,9 +512,14 @@ async function handleVote(context) {
   const source = SOURCES.has(body.source) ? body.source : "direct";
   if (!qid || !response) return json({ ok: false, reason: "bad_vote" }, 200);
 
-  const question = await questionById(env.DB, qid);
-  if (!question || question.status !== "active") return json({ ok: false, reason: "unknown_question" }, 200);
-  const canonicalId = question.id;
+  let question = await questionById(env.DB, qid);
+  // v50 ADD-A-TAG: a question that does not exist yet may be created by its
+  // first vote, but only in the shared deterministic id space op=roster and
+  // the scout backfill already use (slug(player)-season-trait), and only for
+  // a core trait. Nothing is written until the vote clears the fences below.
+  const pending = question ? null : await creatableQuestion(env.DB, qid, body);
+  if (!question && !pending) return json({ ok: false, reason: "unknown_question" }, 200);
+  if (question && question.status !== "active") return json({ ok: false, reason: "unknown_question" }, 200);
 
   const rules = await loadRules(env.DB);
   const voter = await voterKey(request, body.sid);
@@ -449,6 +542,19 @@ async function handleVote(context) {
       now - Number(burst.latest) < rules.vote_min_spacing_ms) {
     return json({ ok: false, reason: "rate_limited" }, 200);
   }
+
+  if (pending) {
+    try {
+      await env.DB.prepare(`
+        INSERT OR IGNORE INTO trait_questions_v1
+          (id, trait_id, player_name, season, season_label, prompt_override, editorial_priority, status, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, NULL, 0, 'active', ?6, ?6)`)
+        .bind(pending.id, pending.trait, pending.player, pending.season, pending.label, now).run();
+    } catch {}
+    question = await questionById(env.DB, qid);
+    if (!question || question.status !== "active") return json({ ok: false, reason: "unknown_question" }, 200);
+  }
+  const canonicalId = question.id;
 
   // One counted call per voter per question; a repeat is a CHANGED call, which
   // the product treats as a first-class action, not an error.
@@ -478,6 +584,25 @@ async function handleVote(context) {
     vote: { response, answer_count: answerCount },
     display: displayFor(consensus, response, rules)
   });
+}
+
+// The one shape a first vote may create: the id must be exactly what
+// op=roster and the scout backfill would have minted for this player-season
+// and trait, and the trait must be core. Accented names are allowed here
+// (the roster regex is ASCII-only); the slug folds them the same way.
+async function creatableQuestion(db, qid, body) {
+  const player = String(body.player || "").trim().replace(/\s+/g, " ");
+  const season = Number(body.season);
+  if (!player || player.length > 40 || !/^[\p{L}][\p{L} .'-]{1,39}$/u.test(player)) return null;
+  if (!Number.isInteger(season) || season < 1947 || season > 2100) return null;
+  const slug = player.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const prefix = slug + "-" + season + "-";
+  if (!slug || qid.indexOf(prefix) !== 0) return null;
+  const trait = qid.slice(prefix.length);
+  const row = await db.prepare(`SELECT id FROM traits_v1 WHERE id = ?1 AND status = 'core'`)
+    .bind(trait).all().then((r) => (r.results || [])[0]).catch(() => null);
+  if (!row) return null;
+  return { id: qid, trait, player, season, label: (season - 1) + "-" + String(season).slice(2) };
 }
 
 async function settleQuestion(db, qid, rules, now) {
@@ -572,7 +697,8 @@ async function loadRules(db) {
 }
 
 function publicRules(rules) {
-  return { min_eligible_votes: rules.min_eligible_votes };
+  return { min_eligible_votes: rules.min_eligible_votes,
+    qualify_yes_share: rules.qualify_yes_share, disqualify_yes_share: rules.disqualify_yes_share };
 }
 
 const ROSTER_TRAITS = ["off-court-knucklehead", "clutch", "tough-shot-maker", "iso-defender", "playmaker",

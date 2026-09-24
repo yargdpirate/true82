@@ -1,0 +1,1 @@
+INSERT OR IGNORE INTO traits_v1 (id, display_name, short_definition, category, definition_version, status, created_at, updated_at) VALUES ('hunted', 'Hunted', 'Opponents go at him on purpose: switch onto him, post him, run him off screens.', 'defense', 1, 'core', CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000);

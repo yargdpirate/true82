@@ -109,3 +109,35 @@ SCOUT-GENERATED.sql (read-only, paste any time)
 ## 0023_homepage_superstar_controversy_v2.sql
 
 Adds 25 additional high-priority superstar controversy/meme questions to the homepage pool. This is a data-only, idempotent promotion of existing active questions: it sets `homepage_eligible = 1`, refreshes homepage/share copy, and raises editorial priority to at least 97. It does not insert, delete, or modify user votes, consensus, editorial rulings, labels, or gameplay data. Run `VERIFY-0023-HOMEPAGE.sql` separately after applying; when the prior homepage total is 55, the expected total is 80.
+
+## 0026_scout_claims_v1.sql (v50, 2026-09-24; the voting package's 0013_scout_claims.sql, renumbered)
+
+The model backfill behind the tag ballot: one new table (`trait_scout_v1`),
+one index on `trait_questions_v1 (lower(player_name), season)`, 29,221
+question rows and 29,221 scout claims (12,770 yes, 16,451 unsure). Every
+insert is INSERT OR IGNORE, so a desk-written question always wins and a
+rerun is harmless (applied twice to a local copy without error). Renamed
+from 0013 because 0013 is already bonuses_meta here, and not 0025 because
+the accounts-test branch uses 0025_homepage_barstool. Nothing in it depends
+on the number.
+
+7.6 MB: too big for the D1 console paste path. Apply it with wrangler:
+`npx wrangler d1 execute <database name> --remote --file=migrations/0026_scout_claims_v1.sql`
+(the package's GitHub Actions version of the same command is kept at
+docs/ballot/d1-scout-claims.yml; it needs the database name and two repo
+secrets before it can run). Apply it in the same window as the v50 deploy:
+the new traits.js reads it, and the old one ignores it. Sessions and the
+homepage stay curated-only (a question with no meta row never surfaces), so
+the 29K new rows only ever appear as labels on the players they describe.
+
+Check: `SELECT verdict, COUNT(*) n FROM trait_scout_v1 GROUP BY verdict`
+returns unsure 16451, yes 12770. Rollback is deploying the previous
+traits.js; the table then sits unused.
+
+## 0027_hunted_trait_v1.sql (v50)
+
+One core trait row: `hunted` (display name Hunted, category defense). It is
+the owner's new bad trait from the ballot handoff; Ball Stopper and Stat
+Padder were already core (0018). No questions are seeded: a hunted question
+is created by its first vote (op=vote create-on-first-vote). Paste-safe,
+idempotent. Apply with or after 0026.
