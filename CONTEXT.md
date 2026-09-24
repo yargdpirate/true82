@@ -1,5 +1,10 @@
 # TRUE 82 — Project Context
 
+> **Stale since 2026-07-04. Read `AGENT-HANDOFF.md` first.** The decision log below is
+> still valid history, but Current State predates later work. Known drift: the engine was
+> split out of app.js into `sim-core.js` on 2026-07-08 (the "module split declined" entry
+> is superseded), app.js is ~6,500 lines, and build v48 added the riso reel.
+
 <!-- Maintenance: Current State is edited in place, keep it small. Decision Log
 is append-only — new entries go above the marker below, existing entries are
 never touched. Never regenerate this whole file. Log a new entry at the end of
