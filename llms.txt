@@ -8,7 +8,7 @@
 
 ## Explainers
 
-- [How TRUE 82 works](https://true82.net/how-it-works/): How the draft, the BPM-based season engine, roster-fit adjustments, and the solo, daily, weekly, duel, and league formats turn five drafted players into a projected 82-game record.
+- [How TRUE 82 works](https://true82.net/how-it-works/): How the draft, the BPM-based season engine, roster-fit adjustments, and the solo and daily formats turn five drafted players into a projected 82-game record.
 - [Can an NBA team go 82-0?](https://true82.net/can-you-go-82-0/): Why a perfect NBA season is so hard, the closest real near-misses (the 73-9 Warriors, the Lakers' 33-game win streak), and how TRUE 82 turns the question into a game.
 - [What is BPM in basketball?](https://true82.net/what-is-bpm/): Box Plus/Minus explained. What it estimates (a player's per-100-possession value versus league average, from box-score stats), its limits, and why TRUE 82 builds a draft game on it.
 - [TRUE 82 FAQ](https://true82.net/faq/): Common questions about what TRUE 82 is, how to play, the ways to play, why the engine uses BPM, whether 82-0 is actually possible, and where the player data comes from.

@@ -58,10 +58,9 @@ the season and hands you a projected record.
 The four solo modes are Classic, Pro, Presti Mode, and Kaman Mode. Classic
 shows full stat lines and lets you choose a player season; Pro hides the stats
 and locks each player to a mystery season; Presti gives you a $50 cap against
-prices that lie; and Kaman Mode is five Chris Kamans. Beyond solo play, Today's
-Board and the weekly challenge give everyone the same setup, Duel is a
-correspondence head-to-head draft, League turns weekly challenges into a
-season, and Arena collects profiles, leaderboards, and run history.
+prices that lie; and Kaman Mode is five Chris Kamans. Beyond solo play, The
+Daily gives everyone the same board and the same twist each day, and a
+challenge link lets a friend try to beat your five.
 
 ## What makes TRUE 82 different from other 82-0 games?
 
