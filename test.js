@@ -4,8 +4,9 @@
 // effCost fire-sale floor, capRoll bargain decay (monotonic, rip-offs invariant),
 // lineup swap legality + doLineupMove/doLineupSwap state, FORCE_CLUTCH/prefersReduce
 // flags, and the crest load-race regression. Run this BEFORE and AFTER any change
-// to game logic in app.js. 44 checks (the last three pin the v48 riso reel's
-// pacing and copy rules); exits nonzero on any failure.
+// to game logic in app.js. 54 checks (three pin the v48 riso reel's pacing and
+// copy rules; the last ten pin the v50 tag ballot's card logic, vote ids and
+// tally words); exits nonzero on any failure.
 
 const fs = require("fs");
 const vm = require("vm");
@@ -184,6 +185,39 @@ const EM = String.fromCharCode(0x2014);
 const lossLines = [{ cl: 1, prevStreak: 31 }, { cl: 1, prevStreak: 0 }, { cl: 3, lossRun: 2 }, { cl: 4, lossRun: 1 }]
   .map(i => RISO.lossCopy(Object.assign({ city: "Orlando", date: "Dec 23" }, i)).join(" "));
 eq("riso reel: loss copy has zero em-dashes (copy law)", lossLines.some(l => l.includes(EM)), false);
+
+// v50 tag ballot (app.js): the card's tag logic, the vote id, and the tally
+// words are pure, so they are pinned here. The owner's rules: three states
+// (on / ? / off), a NO on a settled tag stays visible, gravity implies 3PT,
+// the engine's own chip can be disputed but never removed, zero em-dashes.
+const tagsOf = (card) => ctx.ballotTagModel(Object.assign({ eng: "", settled: {}, open: {}, split: {}, qids: {}, mine: {} }, card))
+  .tags.map(t => t.T.chip + ":" + t.state + (t.mine ? "*" : ""));
+eq("ballot: settled first, then unsettled, in trait order",
+  tagsOf({ settled: { "Playmaker": 1, "Three-Point Shooter": 1 }, open: { "Clutch": "q1" } }), ["3PT:on", "PLAY:on", "CLUTCH:q"]);
+eq("ballot: a NO on a settled tag leaves it hollow and ringed",
+  tagsOf({ settled: { "Playmaker": 1 }, mine: { "Playmaker": "no" } }), ["PLAY:off*"]);
+eq("ballot: a NO on an unsettled tag sends it back to the picker",
+  ctx.ballotTagModel({ eng: "", settled: {}, open: { "Clutch": "q1" }, split: {}, qids: {}, mine: { "Clutch": "no" } }).reopen.map(T => T.chip), ["CLUTCH"]);
+eq("ballot: settled gravity hides 3PT; unsettled gravity does not",
+  [tagsOf({ eng: "3PT", settled: { "Super Three-Point Shooter": 1 } }), tagsOf({ eng: "3PT", open: { "Super Three-Point Shooter": "g" } })],
+  [["GRAVITY:on"], ["3PT:on", "GRAVITY:q"]]);
+eq("ballot: the engine's chip survives a NO as unsettled, never removed",
+  tagsOf({ eng: "GRAVITY", mine: { "Super Three-Point Shooter": "no" } }), ["GRAVITY:q*"]);
+eq("ballot: a crowd split marks a settled tag unsettled",
+  tagsOf({ settled: { "Clutch": 1 }, split: { "Clutch": "q2" } }), ["CLUTCH:q"]);
+eq("ballot: a tag you add joins the settled group with your ring",
+  tagsOf({ open: { "Clutch": "q1" }, mine: { "Hunted": "yes" } }), ["HUNTED:on*", "CLUTCH:q"]);
+eq("ballot: vote ids match op=roster and the scout backfill (accents fold)",
+  [ctx.ballotQid("Luka Don\u010di\u0107", 2024, "hunted"), ctx.ballotQid("Shaquille O'Neal", 2000, "clutch")],
+  ["luka-don-i-2024-hunted", "shaquille-o-neal-2000-clutch"]);
+const t1 = ctx.ballotTally({ mode: "counts", yes: 1, no: 0, unsure: 0 }, { status: "unresolved", votes_needed: 24 }, "yes", null);
+const t2 = ctx.ballotTally({ mode: "pct", yes: 440, no: 372, unsure: 0 }, { status: "disputed" }, "no", { qualify_yes_share: 0.62 });
+eq("ballot: tally words, pill, and no big percent off one vote",
+  [t1.big, t1.line, t1.pill, t2.big, t2.line, t2.pill],
+  [false, "1 vote so far \u00B7 1 yes, 0 no \u00B7 you said yes", "24 more votes settle it", true,
+    "812 people have voted \u00B7 54% say yes \u00B7 you said no", "Disputed \u00B7 flips at 62%"]);
+const ballotCopy = [].concat(...ctx.BALLOT_TRAITS.map(T => [T.chip, T.q, T.d || ""]), [t1.line, t1.pill, t2.line, t2.pill]);
+eq("ballot: trait copy and tally words have zero em-dashes (copy law)", ballotCopy.some(l => l.includes(EM)), false);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -724,7 +724,9 @@ var _buttonStyleObserver = null;
 // control's position:absolute, background:none and color - which is why it
 // rendered as a stray amber slab floating mid-overlay on the left instead of
 // the quiet top-right text link it was written as.
-var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)";
+// v50: the tag ballot's keycaps, sheet buttons and tiles print their own ink.
+var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)" +
+  ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done)";
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -1919,10 +1921,9 @@ function buildTraitLegendInto(panel, scope) {
   }
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
     '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
-    '<div class="trait-legend-note">Community votes confirm or overturn these labels. Crossed out = ruled out.' +
+    '<div class="trait-legend-note">Community votes confirm or overturn these labels.' +
     (hasEng ? " 3PT and GRAVITY are the engine\u2019s own shooting math, not votes." : "") + "</div>";
 }
-function buildTraitLegend(sec) { buildTraitLegendInto(sec && sec.querySelector("#traitLegend"), sec); }
 // One shared open/close for every label-legend (i) button.
 function traitInfoToggle(ib, legend) {
   collapseTraitChip();
@@ -1952,43 +1953,6 @@ function wireTraitChipTaps() {
     }
     if (traitExpandedChip) collapseTraitChip();
   });
-}
-function wireTraitCardUi() {
-  var sec = document.querySelector('[data-result-section="roster"]');
-  if (!sec) return;
-  if (!sec.querySelector(".tchip[data-full]")) return;
-  var info = sec.querySelector("#traitInfoBtn");
-  var legend = sec.querySelector("#traitLegend");
-  if (info) info.hidden = false;
-  buildTraitLegend(sec);   // rebuilt on every call: labels land after the engine chips
-  if (sec.getAttribute("data-trait-ui-wired") === "1") return;
-  sec.setAttribute("data-trait-ui-wired", "1");
-  wireTraitChipTaps();
-
-  sec.addEventListener("click", function (ev) {
-    var ib = ev.target.closest ? ev.target.closest("#traitInfoBtn") : null;
-    if (ib && sec.contains(ib) && legend) {
-      ev.preventDefault();
-      stopTraitCardCue(sec);
-      traitInfoToggle(ib, legend);
-    }
-  });
-
-  if (!traitCardUiSeen()) {
-    var fireCue = function () {
-      if (traitCardUiSeen() || !document.body.contains(sec)) return;
-      sec.classList.add("trait-card-cue");
-      setTimeout(function () { sec.classList.remove("trait-card-cue"); }, 1500);
-    };
-    if (window.IntersectionObserver) {
-      var io = new IntersectionObserver(function (entries) {
-        if (entries[0] && entries[0].isIntersecting) { io.disconnect(); fireCue(); }
-      }, { threshold: 0.28 });
-      io.observe(sec);
-    } else {
-      setTimeout(fireCue, 350);
-    }
-  }
 }
 function ensureTraitsCss() {
   if (document.getElementById(TRAITS_CSS_ID)) return;
@@ -2403,56 +2367,6 @@ function wireBonusesModule() {
 // Fail-soft by construction: the section ships hidden and empty; only a clean
 // /api/traits answer ever reveals it. Any network or schema failure leaves the
 // results screen exactly as it was.
-function wireTraitsPrompt() {
-  var sec = el("traitsPromptSec");
-  if (!sec || !window.fetch) return;
-  // RATE YOUR FIVE (owner ruling, 2026-07-27): the results screen votes
-  // inline on the players you just drafted. op=roster lazily makes any
-  // drafted player votable in the shared question-id space; if the roster
-  // lane comes back empty the card falls back to the curated session feed,
-  // so the surface never dies.
-  var pairs = "";
-  try {
-    pairs = picksInSlotOrder().map(function (en) {
-      return encodeURIComponent(en.p.row[IDX.name]) + "~" + en.p.row[IDX.season] +
-        (function (r) { var pv = IDX.pos !== undefined ? r[IDX.pos] : (IDX.position !== undefined ? r[IDX.position] : "");
-          return pv ? "~" + encodeURIComponent(String(pv).slice(0, 3)) : ""; })(en.p.row);
-    }).join(",");
-  } catch (e) {}
-  ensureTraitsCss();
-  sec.innerHTML = traitsModuleHtml();
-  sec.hidden = false;
-  TM.source = "results_prompt";
-  var tmT = el("tmTitle"); if (tmT) tmT.href = "/bonuses/?src=" + TM.source;
-  TM.wired = false;
-  TM.loader = function () {
-    if (!pairs) return tmSessionLoader();
-    return fetch("/api/traits?op=roster&sid=" + TM.sid + "&players=" + pairs, { credentials: "same-origin" })
-      .then(function (r) { return r.json(); })
-      .then(function (x) {
-        var roster = x && x.ok && x.questions ? x.questions.slice(0, 5) : [];
-        var sk = tmSeenList();
-        roster = roster.filter(function (q) { return q && sk.indexOf(q.id) === -1; });
-        if (roster.length >= 5) return { ok: true, questions: roster, rules: x.rules };
-        // Preserve drafted-player questions first, then fill any open slots
-        // from the broader under-two curated pool. This avoids forcing a third
-        // roster repeat while other eligible questions remain.
-        return tmSessionLoader().then(function (feed) {
-          var merged = roster.slice(), ids = {};
-          merged.forEach(function (q) { ids[q.id] = 1; });
-          if (feed && feed.ok && feed.questions) feed.questions.forEach(function (q) {
-            if (merged.length < 5 && q && !ids[q.id]) { ids[q.id] = 1; merged.push(q); }
-          });
-          return merged.length ? { ok: true, questions: merged, rules: (x && x.rules) || (feed && feed.rules) } : feed;
-        });
-      });
-  };
-  tmStart(false);
-  var head = el("tmHead");
-  if (head) head.hidden = false;
-  var title = el("tmTitle");
-  if (title) title.href = "/bonuses/?src=results_prompt";
-}
 // Shadow-mode labels on player cards: each card gets the community tags its
 // player-season has EARNED (gold slab) or been RULED OUT of (red slab with
 // the cross-out). Read-only, zero scoring effect, absent on any failure or
@@ -2488,7 +2402,8 @@ function traitLabelsAfterEngineFilter(hits, engAbbr) {
 // dedup) into a card's first .pr-sub line. Works on results pick-cards and
 // classic draft-pool rows alike; returns whether anything was added.
 function applyLabelChips(container, hits, tab) {
-  if (!container || !hits || !hits.length || container.querySelector(".tchips")) return false;
+  hits = (hits || []).filter(function (hh) { return hh && !hh.anti; });   // v50: the strike-through anti chip is retired everywhere
+  if (!container || !hits.length || container.querySelector(".tchips")) return false;
   var sub = container.querySelector(".pr-sub:not(.pr-stats)") || container;
   var engBtn = sub.querySelector(".tchip.eng");
   var use = traitLabelsAfterEngineFilter(hits, engBtn ? engBtn.getAttribute("data-abbr") : "").slice(0, 4);
@@ -2499,26 +2414,496 @@ function applyLabelChips(container, hits, tab) {
   sub.appendChild(wrap);
   return true;
 }
-function wireTraitsLabels(entries) {
-  if (!window.fetch || !entries || !entries.length) return;
-  var qs = entries.map(function (e) { return encodeURIComponent(e.name) + "~" + e.season; }).join(",");
-  fetch("/api/traits?op=labels&players=" + qs, { credentials: "same-origin" })
+/* ---------- v50 THE TAG BALLOT (results roster) ----------
+   The five results cards ARE the ballot (owner spec, TAG_BALLOT_HANDOFF
+   2026-09-24). A card shows only what is true of the player. Tap a tag and
+   it asks that trait's own question: YES / NO / NOT SURE. "+" adds any
+   trait. A "?" badge marks a tag that is still unsettled (the scout called
+   it close, or the crowd is split). One meaning per color: sun = the site's
+   yes, scarlet = a bad trait, the blue ring = you weighed in. No legends, no
+   instructions; a white glove shows the two taps once per browser.
+   Reads op=labels (mine=1 for the rings), writes one op=vote per answer
+   (source "card"; player + season ride along so a brand-new tag can create
+   its question on first vote). The engine's own 3PT / GRAVITY designation
+   is a settled tag: a crowd NO can mark it unsettled but never removes it,
+   because the engine still counts it. Nothing here touches the engine.
+   The draft pool's chips stay read-only (v47.9) and the old strike-through
+   anti chips are retired everywhere. Copy law: zero em-dashes. */
+var BALLOT_TRAITS = [
+  // pick = offered by "+" (the owner's set: 12 core + three bad traits).
+  // The other three core traits show when a ruling says so and vote like
+  // any tag, but are not offered as adds (owner's four-negative ceiling).
+  { id: "three-point-shooter", name: "Three-Point Shooter", chip: "3PT", q: "a 3PT shooter", g: "off", pick: 1 },
+  { id: "super-three-point-shooter", name: "Super Three-Point Shooter", chip: "GRAVITY", q: "a gravity shooter", g: "off", pick: 1,
+    d: "So feared from deep that he warps the whole defense." },
+  { id: "rim-pressurer", name: "Rim Pressurer", chip: "RIM+", q: "a rim pressurer", g: "off", pick: 1,
+    d: "Lives at the rim and the foul line." },
+  { id: "off-ball-scorer", name: "Off-Ball Scorer", chip: "OFF-B", q: "an off-ball scorer", g: "off", pick: 1,
+    d: "Scores without the ball in his hands: cuts, screens, relocations." },
+  { id: "tough-shot-maker", name: "Tough Shot Maker", chip: "TSHOT", q: "a tough shot maker", g: "off", pick: 1 },
+  { id: "playmaker", name: "Playmaker", chip: "PLAY", q: "a playmaker", g: "off", pick: 1 },
+  { id: "iso-defender", name: "Iso Defender", chip: "ISO-D", q: "an iso defender", g: "def", pick: 1 },
+  { id: "team-defender", name: "Team Defender", chip: "TEAM-D", q: "a team defender", g: "def", pick: 1 },
+  { id: "switchable-defender", name: "Switchable Defender", chip: "SWITCH", q: "switchable on defense", g: "def", pick: 1,
+    d: "Guards guards and bigs alike." },
+  { id: "rim-protector", name: "Rim Protector", chip: "RIM-P", q: "a rim protector", g: "def", pick: 1 },
+  { id: "clutch", name: "Clutch", chip: "CLUTCH", q: "clutch", g: "rep", pick: 1 },
+  { id: "championship-number-one", name: "Championship #1", chip: "TITLE #1", q: "a title team’s number one", g: "rep",
+    d: "The best player on a team that could win it all." },
+  { id: "hunted", name: "Hunted", chip: "HUNTED", q: "hunted on defense", g: "rep", neg: 1, pick: 1,
+    d: "Opponents go at him on purpose: switch onto him, post him, run him off screens." },
+  { id: "ball-stopper", name: "Ball Stopper", chip: "BALL-STOP", q: "a ball stopper", g: "rep", neg: 1, pick: 1,
+    d: "The ball goes in and does not come out." },
+  { id: "ball-pounder", name: "Ball Pounder", chip: "BALL-POUND", q: "a ball pounder", g: "rep", neg: 1,
+    d: "Needs a lot of dribbles before anything happens." },
+  { id: "foul-merchant", name: "Foul Merchant", chip: "FOUL-MERCH", q: "a foul merchant", g: "rep", neg: 1,
+    d: "Hunts whistles for cheap free throws." },
+  { id: "stat-padder", name: "Stat Padder", chip: "STAT-PAD", q: "a stat padder", g: "rep", neg: 1, pick: 1 },
+  { id: "off-court-knucklehead", name: "Off-Court Knucklehead", chip: "KNUCK", q: "an off-court knucklehead", g: "rep", neg: 1, pick: 1 }
+];
+var BALLOT_GROUPS = [["Offense", "off"], ["Defense", "def"], ["Reputation", "rep"]];
+var BALLOT_BY_NAME = {};
+BALLOT_TRAITS.forEach(function (T) { BALLOT_BY_NAME[T.name] = T; });
+var BALLOT_ENG = { "3PT": "Three-Point Shooter", "GRAVITY": "Super Three-Point Shooter" };
+var BALLOT_HINT_KEY = "tb-hint";
+var BALLOT = { cards: [], rules: null, queue: [], busy: false, lastPost: 0, cur: null, toastT: 0, wired: false };
+
+function ballotSid() {
+  if (!TM.sid) TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
+  return TM.sid;
+}
+function ballotSurname(nm) { return bbrefLastName(nm) || String(nm || ""); }
+// The deterministic question id op=roster and the scout backfill already
+// use, so a first vote lands on the same row anyone else would have minted.
+function ballotQid(name, season, traitId) {
+  var slug = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return slug + "-" + season + "-" + traitId;
+}
+function ballotEngAbbr(row) {
+  var sp = row && IDX ? row[IDX.sp] : 0;
+  return sp >= 1.5 ? "GRAVITY" : sp === 1 ? "3PT" : "";
+}
+function ballotNewCard(entry) {
+  var row = entry.p.row, name = row[IDX.name], season = row[IDX.season];
+  return {
+    i: entry.i, name: name, season: season, key: String(name).toLowerCase() + "~" + season,
+    eng: ballotEngAbbr(row), settled: {}, open: {}, split: {}, qids: {}, mine: {}, loaded: false
+  };
+}
+// Pure: the tags a card shows, in order. state "on" = the site's yes,
+// "off" = you overturned it (hollow, stays so the dispute reads), "q" =
+// unsettled. Settled first, then "?", in trait order; "+" is appended by
+// the renderer. Also returns what the "+" picker should offer.
+function ballotTagModel(card) {
+  var engName = BALLOT_ENG[card.eng] || "";
+  var on = [], q = [], reopen = [], shown = {};
+  BALLOT_TRAITS.forEach(function (T) {
+    var eng = T.name === engName;
+    var settled = !!card.settled[T.name] || eng;
+    var unsettled = card.open[T.name] || card.split[T.name];
+    var m = card.mine[T.name] || "";
+    var tag = null;
+    if (settled) {
+      if (m === "no" && !eng) tag = { T: T, state: "off", mine: true };
+      else if (card.split[T.name] || (eng && m === "no")) tag = { T: T, state: "q", mine: !!m };
+      else tag = { T: T, state: "on", mine: !!m };
+    } else if (unsettled) {
+      if (m === "no" || m === "unsure") reopen.push(T);
+      else tag = { T: T, state: "q", mine: !!m };
+    } else if (m === "yes") {
+      tag = { T: T, state: "on", mine: true };          // a tag you added joins the settled group
+    }
+    if (!tag) return;
+    shown[T.name] = 1;
+    if (tag.state === "q") q.push(tag); else on.push(tag);
+  });
+  // Settled gravity implies 3PT, so the two never both print. An unsettled
+  // GRAVITY question leaves a settled 3PT alone: "3PT, and gravity?" is the
+  // honest read.
+  var gravityShown = on.some(function (t) { return t.T.id === "super-three-point-shooter" && t.state === "on"; });
+  if (gravityShown) {
+    on = on.filter(function (t) { return t.T.id !== "three-point-shooter" || t.mine; });
+    q = q.filter(function (t) { return t.T.id !== "three-point-shooter" || t.mine; });
+  }
+  var offer = BALLOT_TRAITS.filter(function (T) {
+    return T.pick && !shown[T.name] && reopen.indexOf(T) === -1 && !(gravityShown && T.id === "three-point-shooter");
+  });
+  return { tags: on.concat(q), reopen: reopen, offer: offer };
+}
+function ballotTagHtml(tag) {
+  var T = tag.T, cls = "bt-tag" + (T.neg ? " neg" : "") + (tag.state === "q" ? " q" : "") +
+    (tag.state === "off" ? " off" : "") + (tag.mine ? " mine" : "");
+  var aria = T.name + (tag.state === "q" ? ", unsettled" : tag.state === "off" ? ", you said no" : "") +
+    (tag.mine ? ", you voted" : "") + ". Tap to weigh in.";
+  return '<button type="button" class="' + cls + '" data-trait="' + esc(T.id) + '" aria-label="' + esc(aria) + '">' +
+    esc(T.chip) + (tag.state === "off" ? '<span class="bt-x" aria-hidden="true">✕</span>' : "") + "</button>";
+}
+function ballotTagsHtml(card) {
+  var model = ballotTagModel(card);
+  return model.tags.map(ballotTagHtml).join("") +
+    '<button type="button" class="bt-tag add" data-add="1" aria-label="Add a tag for ' + esc(card.name) + '">+</button>';
+}
+function ballotBoxHtml(row) {
+  function cell(v, lab) {
+    return '<span><b>' + (v === null || v === undefined || !isFinite(v) ? "\u2013" : Number(v).toFixed(1)) + "</b><small>" + lab + "</small></span>";
+  }
+  return cell(row[IDX.ppg], "PTS") + cell(row[IDX.rpg], "REB") + cell(row[IDX.apg], "AST") +
+    cell(row[IDX.spg], "STL") + cell(row[IDX.bpg], "BLK") + cell(row[IDX.usage], "USG%");
+}
+function ballotCard(i) {
+  for (var k = 0; k < BALLOT.cards.length; k++) if (BALLOT.cards[k].i === i) return BALLOT.cards[k];
+  return null;
+}
+function ballotRender(card) {
+  var box = document.querySelector('.bt-tags[data-bt="' + card.i + '"]');
+  if (box) box.innerHTML = ballotTagsHtml(card);
+}
+function ballotApplyLabels(x) {
+  if (!x || !x.ok) return;
+  if (x.rules) BALLOT.rules = x.rules;
+  BALLOT.cards.forEach(function (card) {
+    var k = card.key;
+    (x.labels && x.labels[k] || []).forEach(function (h) {
+      if (!h || h.anti || !BALLOT_BY_NAME[h.t]) return;
+      card.settled[h.t] = 1;
+      if (h.id) card.qids[h.t] = h.id;
+    });
+    var maps = [["open", x.open], ["split", x.split], ["qids", x.qids]];
+    maps.forEach(function (m) {
+      var src = m[1] && m[1][k];
+      if (!src) return;
+      Object.keys(src).forEach(function (t) {
+        if (!BALLOT_BY_NAME[t]) return;
+        if (m[0] !== "qids") card[m[0]][t] = src[t];
+        card.qids[t] = card.qids[t] || src[t];
+      });
+    });
+    var mine = x.mine && x.mine[k];
+    if (mine) Object.keys(mine).forEach(function (t) { if (BALLOT_BY_NAME[t] && !card.mine[t]) card.mine[t] = mine[t]; });
+    card.loaded = true;
+    ballotRender(card);
+  });
+}
+function wireBallot(entries) {
+  BALLOT.cards = entries.map(ballotNewCard);
+  BALLOT.cur = null;
+  BALLOT.cards.forEach(ballotRender);                  // engine tags and "+" are live before the labels land
+  var roster = document.querySelector('[data-result-section="roster"]');
+  if (roster && !roster.__ballot) {
+    roster.__ballot = 1;
+    roster.addEventListener("click", function (ev) {
+      var tag = ev.target.closest ? ev.target.closest(".bt-tag") : null;
+      if (!tag || !roster.contains(tag)) return;
+      var cardEl = tag.closest(".bt-card");
+      var card = cardEl ? ballotCard(+cardEl.getAttribute("data-pick")) : null;
+      if (!card) return;
+      ballotHintStop();
+      if (tag.getAttribute("data-add")) ballotOpenPicker(card);
+      else ballotOpenAsk(card, tag.getAttribute("data-trait"));
+    });
+  }
+  ballotArmHint();
+  if (!window.fetch || !BALLOT.cards.length) return;
+  var qs = BALLOT.cards.map(function (c) { return encodeURIComponent(c.name) + "~" + c.season; }).join(",");
+  fetch("/api/traits?op=labels&mine=1&sid=" + ballotSid() + "&players=" + qs, { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (x) {
-      if (!x || !x.ok || !x.labels) return;
-      ensureTraitsCss();
-      var added = 0;
-      entries.forEach(function (e) {
-        var key = String(e.name).toLowerCase() + "~" + e.season;
-        var hits = x.labels[key];
-        TRAIT_LABEL_CACHE[key] = hits || [];   // warm the draft-pool cache too
-        if (!hits || !hits.length) return;
-        var card = document.querySelector('.pick-card[data-pick="' + e.i + '"]');
-        if (applyLabelChips(card, hits, 0)) added += 1;
-      });
-      if (added) wireTraitCardUi();
+      ballotApplyLabels(x);
+      if (x && x.ok && x.labels) BALLOT.cards.forEach(function (c) { TRAIT_LABEL_CACHE[c.key] = x.labels[c.key] || []; });
     })
     .catch(function () {});
+}
+
+/* ---- the sheet ---- */
+function ballotSheetEls() {
+  var bd = el("btBackdrop"), sh = el("btSheet");
+  if (bd && sh) return { bd: bd, sh: sh, inn: el("btSheetIn") };
+  bd = document.createElement("div"); bd.id = "btBackdrop"; bd.className = "bt-backdrop";
+  sh = document.createElement("div"); sh.id = "btSheet"; sh.className = "bt-sheet";
+  sh.setAttribute("role", "dialog"); sh.setAttribute("aria-modal", "true");
+  sh.innerHTML = '<div class="bt-grab" aria-hidden="true"></div><div class="bt-in" id="btSheetIn"></div>';
+  try { var paper = window.T82PRINT && T82PRINT.paper(); if (paper) sh.style.backgroundImage = "url(" + paper + ")"; } catch (e) {}
+  document.body.appendChild(bd); document.body.appendChild(sh);
+  bd.addEventListener("click", ballotClose);
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && sh.classList.contains("on")) ballotClose(); });
+  sh.addEventListener("click", ballotSheetClick);
+  return { bd: bd, sh: sh, inn: el("btSheetIn") };
+}
+function ballotShow(label) {
+  var s = ballotSheetEls();
+  s.sh.setAttribute("aria-label", label);
+  s.bd.classList.add("on");
+  void s.sh.offsetWidth;                                // commit the closed pose so the slide-up transitions
+  s.sh.classList.add("on");
+  document.body.classList.add("bt-open");
+  setTimeout(function () {
+    var f = s.sh.querySelector(".bt-big, .bt-tile, .bt-done");
+    if (f && f.focus) try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); }
+  }, 60);
+  return s;
+}
+function ballotClose() {
+  var bd = el("btBackdrop"), sh = el("btSheet");
+  if (bd) bd.classList.remove("on");
+  if (sh) sh.classList.remove("on");
+  document.body.classList.remove("bt-open");
+  BALLOT.cur = null;
+}
+function ballotTrait(id) {
+  for (var i = 0; i < BALLOT_TRAITS.length; i++) if (BALLOT_TRAITS[i].id === id) return BALLOT_TRAITS[i];
+  return null;
+}
+function ballotWho(card) {
+  var p = G && G.picks[card.i];
+  var fr = p && p.fr ? titleCase(p.fr) : "";
+  return card.name + " · " + shortSeason(card.season) + (fr ? " · " + fr : "");
+}
+function ballotQuestionHtml(card, T) {
+  return "Was " + esc(String(card.season)) + " " + esc(ballotSurname(card.name)) + " " +
+    '<mark class="' + (T.neg ? "neg" : "") + '">' + esc(T.q) + "</mark>?";
+}
+function ballotOpenAsk(card, traitId) {
+  var T = ballotTrait(traitId);
+  if (!T) return;
+  BALLOT.cur = { card: card, T: T };
+  var s = ballotSheetEls();
+  s.inn.innerHTML =
+    '<div class="bt-who">' + esc(ballotWho(card)) + "</div>" +
+    '<div class="bt-q">' + ballotQuestionHtml(card, T) + "</div>" +
+    (T.d ? '<p class="bt-def">' + esc(T.d) + "</p>" : "") +
+    '<div class="bt-btns" id="btBtns">' +
+      '<button type="button" class="bt-big yes" data-v="yes">Yes</button>' +
+      '<button type="button" class="bt-big no" data-v="no">No</button>' +
+      '<button type="button" class="bt-big idk" data-v="unsure">Not sure</button>' +
+    "</div>" +
+    '<div class="bt-result" id="btResult" hidden></div>';
+  ballotShow("Weigh in on " + T.name);
+  analyticsTrack("traits_question", { surface: "results_card", action: "view", challenge: ballotQidFor(card, T), source: "card", sid: ballotSid() });
+  var m = card.mine[T.name];
+  if (m) ballotResultFetch(card, T, m);
+}
+function ballotQidFor(card, T) {
+  return card.qids[T.name] || card.open[T.name] || card.split[T.name] || ballotQid(card.name, card.season, T.id);
+}
+function ballotOpenPicker(card) {
+  var model = ballotTagModel(card), h = "";
+  BALLOT.cur = { card: card, T: null };
+  function tile(T) {
+    return '<button type="button" class="bt-tile' + (T.neg ? " neg" : "") + '" data-trait="' + esc(T.id) + '"><b>' + esc(T.chip) + "</b>" +
+      (T.d ? "<small>" + esc(T.d) + "</small>" : "") + "</button>";
+  }
+  h += '<h2 class="bt-h">Add a tag</h2><p class="bt-sub">' + esc(card.name) + ", " + esc(shortSeason(card.season)) + ". What else was he?</p>";
+  if (model.reopen.length) h += '<div class="bt-grp">Open questions</div><div class="bt-grid">' + model.reopen.map(tile).join("") + "</div>";
+  BALLOT_GROUPS.forEach(function (gp) {
+    var items = model.offer.filter(function (T) { return T.g === gp[1]; });
+    if (items.length) h += '<div class="bt-grp">' + gp[0] + '</div><div class="bt-grid">' + items.map(tile).join("") + "</div>";
+  });
+  h += '<p class="bt-foot">Every tag, spelled out: <a href="/traits/">Player Traits</a></p>';
+  var s = ballotSheetEls();
+  s.inn.innerHTML = h;
+  ballotShow("Add a tag for " + card.name);
+  analyticsTrack("traits_question", { surface: "results_card", action: "add_open", source: "card", sid: ballotSid() });
+}
+function ballotSheetClick(ev) {
+  var t = ev.target.closest ? ev.target : null;
+  if (!t) return;
+  var cur = BALLOT.cur;
+  var tile = t.closest(".bt-tile");
+  if (tile && cur) { ballotOpenAsk(cur.card, tile.getAttribute("data-trait")); return; }
+  var big = t.closest(".bt-big");
+  if (big && cur && cur.T) { ballotAnswer(cur.card, cur.T, big.getAttribute("data-v")); return; }
+  if (t.closest(".bt-change") && cur && cur.T) {
+    el("btResult").hidden = true; el("btBtns").hidden = false;
+    var f = el("btBtns").querySelector(".bt-big"); if (f) f.focus();
+    return;
+  }
+  if (t.closest(".bt-done")) ballotClose();
+}
+function ballotToast(msg) {
+  var t = el("btToast");
+  if (!t) { t = document.createElement("div"); t.id = "btToast"; t.className = "bt-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(BALLOT.toastT);
+  BALLOT.toastT = setTimeout(function () { t.classList.remove("on"); }, 1800);
+}
+function ballotAnswer(card, T, resp) {
+  if (resp !== "yes" && resp !== "no" && resp !== "unsure") return;
+  var wasShown = !!ballotTagModel(card).tags.filter(function (t) { return t.T === T && t.state !== "off"; }).length;
+  var prev = card.mine[T.name] || "";
+  card.mine[T.name] = resp;
+  ballotRender(card);
+  buzz(12);
+  var who = ballotSurname(card.name);
+  ballotToast(resp === "yes" ? (wasShown ? "Noted: " + T.chip : T.chip + " added to " + who)
+    : resp === "no" ? "Noted: not " + T.chip.toLowerCase() : "Noted");
+  el("btBtns").hidden = true;
+  var res = el("btResult");
+  res.hidden = false;
+  res.innerHTML = '<div class="bt-counting">Counting…</div>';
+  var qid = ballotQidFor(card, T);
+  ballotEnqueue({ card: card, T: T, resp: resp, prev: prev, qid: qid, tries: 0 });
+}
+function ballotEnqueue(job) {
+  BALLOT.queue.push(job);
+  ballotPump();
+}
+// One answer at a time, spaced past the server's 1.2s cadence fence, so a
+// quick change of heart never reads as a script.
+function ballotPump() {
+  if (BALLOT.busy || !BALLOT.queue.length) return;
+  var wait = BALLOT.lastPost + 1300 - Date.now();
+  if (wait > 0) { setTimeout(ballotPump, wait); return; }
+  var job = BALLOT.queue.shift();
+  BALLOT.busy = true;
+  BALLOT.lastPost = Date.now();
+  var t0 = Date.now();
+  fetch("/api/traits", {
+    method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ op: "vote", question_id: job.qid, response: job.resp, source: "card", sid: ballotSid(),
+      player: job.card.name, season: job.card.season })
+  }).then(function (r) { return r.json(); }).then(function (x) {
+    BALLOT.busy = false;
+    if (x && x.ok) {
+      if (!job.card.qids[job.T.name]) job.card.qids[job.T.name] = job.qid;
+      analyticsTrack("traits_vote", { surface: "results_card", action: job.resp, challenge: job.qid, outcome: x.outcome,
+        value: Date.now() - t0, source: "card", sid: ballotSid() });
+      ballotShowResult(job.card, job.T, job.resp, x.display || null, x.consensus || null);
+    } else if (x && x.reason === "rate_limited" && job.tries < 2) {
+      job.tries++; BALLOT.lastPost = Date.now(); BALLOT.queue.unshift(job);
+    } else ballotFailed(job, (x && x.reason) || "bad_reply");
+    ballotPump();
+  }).catch(function () { BALLOT.busy = false; ballotFailed(job, "network"); ballotPump(); });
+}
+function ballotFailed(job, why) {
+  if (job.card.mine[job.T.name] === job.resp) {
+    if (job.prev) job.card.mine[job.T.name] = job.prev; else delete job.card.mine[job.T.name];
+    ballotRender(job.card);
+  }
+  analyticsTrack("traits_vote", { surface: "results_card", action: job.resp, challenge: job.qid, outcome: "error_" + why, source: "card", sid: ballotSid() });
+  var cur = BALLOT.cur;
+  if (cur && cur.card === job.card && cur.T === job.T) {
+    var res = el("btResult"), btns = el("btBtns");
+    if (res) res.hidden = true;
+    if (btns) btns.hidden = false;
+  }
+  ballotToast("Not saved. Try again.");
+}
+function ballotResultFetch(card, T, resp) {
+  el("btBtns").hidden = true;
+  var res = el("btResult");
+  res.hidden = false;
+  res.innerHTML = '<div class="bt-counting">Counting…</div>';
+  var qid = ballotQidFor(card, T);
+  if (!window.fetch) return;
+  fetch("/api/traits?op=result&q=" + encodeURIComponent(qid) + "&sid=" + ballotSid(), { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (x) {
+      if (!x || !x.ok) { ballotShowResult(card, T, resp, null, null); return; }
+      ballotShowResult(card, T, x.my_response || resp, x.display || null, x.consensus || null);
+    })
+    .catch(function () { ballotShowResult(card, T, resp, null, null); });
+}
+// Pure: the tally in words, the bar, and the ruling pill.
+function ballotTally(d, c, resp, rules) {
+  var yes = d ? d.yes || 0 : 0, no = d ? d.no || 0 : 0, uns = d ? d.unsure || 0 : 0;
+  var total = yes + no + uns, eligible = yes + no, pct = eligible ? Math.round(100 * yes / eligible) : null;
+  var said = resp === "unsure" ? "not sure" : resp;
+  var line = total <= 0 ? "You are the first to weigh in"
+    : (d && d.mode === "pct" && pct !== null)
+      ? total + (total === 1 ? " person has" : " people have") + " voted · " + pct + "% say yes"
+      : total + (total === 1 ? " vote" : " votes") + " so far · " + yes + " yes, " + no + " no";
+  line += " · you said " + said;
+  var status = (c && c.status) || (d && d.status) || "unresolved";
+  var flip = Math.round(100 * ((rules && rules.qualify_yes_share) || 0.62));
+  var need = c && typeof c.votes_needed === "number" ? c.votes_needed : null;
+  var pill = status === "qualifies" ? "Ruling stands"
+    : status === "does_not_qualify" ? "Ruled out"
+    : status === "disputed" ? "Disputed · flips at " + flip + "%"
+    : need ? need + " more " + (need === 1 ? "vote settles" : "votes settle") + " it" : "Still open";
+  // The big percentage waits for a real sample; below the minimum the words carry it.
+  var big = d && d.mode === "pct" && pct !== null;
+  return { pct: pct, big: big, line: line, pill: pill, lead: pct === null ? null : (pct >= 50 ? "yes" : "no") };
+}
+function ballotShowResult(card, T, resp, d, c) {
+  var cur = BALLOT.cur;
+  if (!cur || cur.card !== card || cur.T !== T) return;
+  var res = el("btResult");
+  if (!res) return;
+  var t = ballotTally(d, c, resp, BALLOT.rules);
+  res.innerHTML =
+    (!t.big ? "" : '<div class="bt-pct ' + t.lead + '">' + (t.lead === "yes" ? t.pct : 100 - t.pct) + "% " + (t.lead === "yes" ? "YES" : "NO") + "</div>") +
+    '<div class="bt-you">' + esc(t.line) + "</div>" +
+    (t.pct === null ? "" : '<div class="bt-bar"><i style="width:' + t.pct + '%"></i></div>') +
+    '<div class="bt-pill">' + esc(t.pill) + "</div>" +
+    '<div class="bt-row"><button type="button" class="bt-change">Change vote</button><button type="button" class="bt-done">Done</button></div>';
+  var done = res.querySelector(".bt-done");
+  if (done && document.activeElement && document.activeElement.closest && document.activeElement.closest("#btSheet")) done.focus();
+}
+
+/* ---- the one-time glove ---- */
+var BALLOT_HINT = null;
+function ballotHintSeen() { try { return localStorage.getItem(BALLOT_HINT_KEY) === "1"; } catch (e) { return true; } }
+function ballotHintStop() {
+  if (!BALLOT_HINT) return;
+  var H = BALLOT_HINT; BALLOT_HINT = null;
+  H.timers.forEach(clearTimeout);
+  if (H.hand && H.hand.parentNode) H.hand.parentNode.removeChild(H.hand);
+  document.querySelectorAll(".bt-tag.pressed").forEach(function (b) { b.classList.remove("pressed"); });
+  document.removeEventListener("pointerdown", ballotHintStop, true);
+  try { localStorage.setItem(BALLOT_HINT_KEY, "1"); } catch (e) {}
+}
+function ballotOverlayUp() {
+  return !!document.querySelector(".np-overlay, .hh-overlay, .reel-overlay, .rules-overlay, .bt-sheet.on");
+}
+function ballotArmHint() {
+  if (ballotHintSeen() || !window.IntersectionObserver) return;
+  var first = document.querySelector(".bt-card");
+  if (!first) return;
+  var poll = 0;
+  var io = new IntersectionObserver(function (ents) {
+    var vis = ents[0] && ents[0].isIntersecting;
+    clearInterval(poll);
+    if (!vis) return;
+    poll = setInterval(function () {
+      if (!document.body.contains(first)) { clearInterval(poll); io.disconnect(); return; }
+      if (ballotOverlayUp()) return;
+      clearInterval(poll); io.disconnect();
+      var go = function () { setTimeout(function () { if (document.body.contains(first) && !ballotOverlayUp()) ballotHintPlay(first); }, 700); };
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go();
+    }, 400);
+  }, { threshold: 0.9 });
+  io.observe(first);
+}
+function ballotHintPlay(cardEl) {
+  if (BALLOT_HINT || ballotHintSeen()) return;
+  var tag = cardEl.querySelector(".bt-tag:not(.q):not(.add)") || cardEl.querySelector(".bt-tag:not(.add)");
+  var plus = cardEl.querySelector(".bt-tag.add");
+  if (!tag || !plus) return;
+  var reduce = reducedMotion();
+  var hand = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  hand.setAttribute("viewBox", "0 0 48 48"); hand.setAttribute("aria-hidden", "true");
+  hand.setAttribute("class", "bt-hand");
+  hand.innerHTML = '<path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" fill="#FFFFFF" stroke="#232A4E" stroke-width="2.4" stroke-linejoin="round"/>';
+  document.body.appendChild(hand);
+  var H = BALLOT_HINT = { hand: hand, timers: [] };
+  function later(fn, ms) { H.timers.push(setTimeout(function () { if (BALLOT_HINT === H) fn(); }, ms)); }
+  function at(node) { var r = node.getBoundingClientRect(); hand.style.left = (r.left + r.width * 0.55) + "px"; hand.style.top = (r.top + r.height * 0.45) + "px"; }
+  function tapAt(node, t) {
+    later(function () { hand.classList.add("tap"); node.classList.add("pressed"); }, t);
+    later(function () { hand.classList.remove("tap"); node.classList.remove("pressed"); }, t + 180);
+  }
+  document.addEventListener("pointerdown", ballotHintStop, true);
+  later(function () {
+    hand.style.transition = "none"; at(tag);
+    if (!reduce) { hand.style.transform = "translate(40px,50px)"; void hand.getBoundingClientRect(); }
+    hand.style.transition = ""; hand.style.transform = ""; hand.classList.add("show");
+  }, 30);
+  tapAt(tag, 1000); tapAt(tag, 1450);
+  later(function () { at(plus); }, 2000);
+  tapAt(plus, 2550);
+  later(function () { hand.classList.remove("show"); }, 3000);
+  later(ballotHintStop, 3400);
 }
 
 /* ---------- community labels on the classic draft pool (v47.9) ----------
@@ -3812,6 +4197,7 @@ function hotHand(e) {
       }
       var rec = document.querySelector(".big");                  // updated W/L record (the win rate)
       if (rec) rec.textContent = G.hotWins + "\u2013" + (CFG.GAMES_IN_SEASON - G.hotWins);
+      resultsPrintRecord(e, G.hotWins);                         // v50: the print and the share poster follow the save
       setEliteResultGlow(G.hotWins);
       var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [bonus, hot-hand red]
       if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
@@ -4390,7 +4776,10 @@ function copyToClipboard(txt) {
 // sheet broken) the clipboard write succeeded. A DISMISSED sheet counts as
 // intent only, even though the clipboard has the text: they looked at the
 // door and backed out. The reveal-box fallback never counts.
-function shareOrCopy(txt, button, track) {
+// v50: files (the season print) ride along when the device can share them.
+// The text is byte-for-byte the locked share text either way; a sheet that
+// refuses the files falls back to the plain text path below.
+function shareOrCopy(txt, button, track, files) {
   var done = false;
   var eventProps = function (method, outcome, err) {
     var p = Object.assign({}, track || {});
@@ -4414,12 +4803,15 @@ function shareOrCopy(txt, button, track) {
   var copyP = copyToClipboard(txt);
   var copiedFlash = function () { copyP.then(function (ok) { if (ok) flashShareBtn("COPIED!", button); }); };
   if (navigator.share) {
-    var sp;
-    try { sp = navigator.share({ text: txt }); }
-    catch (e) { failed("native_share", "error", e); sp = null; }
+    var sp, how = files && files.length ? "native_share_print" : "native_share";
+    try { sp = navigator.share(files && files.length ? { files: files, text: txt } : { text: txt }); }
+    catch (e) {
+      if (files && files.length) { try { how = "native_share"; sp = navigator.share({ text: txt }); } catch (e2) { sp = null; } }
+      if (!sp) { failed(how, "error", e); sp = null; }
+    }
     if (sp && sp.then) {
-      sp.then(function () { completed("native_share"); copiedFlash(); }, function (err) {
-        if (err && err.name === "AbortError") { failed("native_share", "cancel", err); copiedFlash(); return; }  // user dismissed the sheet: intent only
+      sp.then(function () { completed(how); copiedFlash(); }, function (err) {
+        if (err && err.name === "AbortError") { failed(how, "cancel", err); copiedFlash(); return; }  // user dismissed the sheet: intent only
         copyP.then(function (ok) {
           if (ok) { completed("clipboard_fallback"); flashShareBtn("COPIED!", button); }
           else { failed("manual_reveal", "error", err); revealShareText(txt, button); }
@@ -5841,6 +6233,110 @@ function upgradeBbrefLinks() {
     }
   }
 }
+/* ---------- v50 THE RESULTS PRINT ----------
+   results-riso.js prints THE SHAPE OF A SEASON over the plain record. This
+   glue owns the spec (the realized games when there are any, else the
+   projected slope), the reveal once the page is actually in view (never
+   under the Tribune or the Heat Check), the 81 to 82 Heat Check save, and
+   the share poster, baked quietly after the page settles so the share tap
+   never waits on it. Everything fails soft to the typographic record. */
+var RESULTS_PRINT = null, RESULTS_POSTER = null, RESULTS_PRINT_SPEC = null, RESULTS_PRINT_OFF = false;
+function printCall(fn) {
+  if (RESULTS_PRINT_OFF) return null;
+  try { return fn(); } catch (err) {
+    RESULTS_PRINT_OFF = true;
+    if (typeof console !== "undefined" && console.warn) console.warn("[t82] results print off:", err);
+    return null;
+  }
+}
+function risoPaperOnce() {
+  if (document.documentElement.getAttribute("data-rr-paper")) return;
+  printCall(function () {
+    if (!window.T82PRINT || !T82PRINT.paper) return null;
+    document.documentElement.style.setProperty("--rr-paper", "url(" + T82PRINT.paper() + ")");
+    document.documentElement.setAttribute("data-rr-paper", "1");
+    return null;
+  });
+}
+function resultsPrintSpec(e, daily, winsNow) {
+  var games = e.season && e.season.games && e.season.games.length === CFG.GAMES_IN_SEASON
+    ? e.season.games.map(function (g) { return g ? 1 : 0; }) : null;
+  var wins = typeof winsNow === "number" ? winsNow : e.winTally, saved = null;
+  if (games) {
+    var have = games.reduce(function (a, g) { return a + g; }, 0);
+    for (var k = games.length - 1; have < wins && k >= 0; k--) {   // a Heat Check save flips the loss it rescued
+      if (!games[k]) { games[k] = 1; have++; saved = k; }
+    }
+  }
+  var picks = picksInSlotOrder();
+  var names = picks.map(function (en) { return "'" + String(en.p.row[IDX.season]).slice(-2) + " " + ballotSurname(en.p.row[IDX.name]); });
+  var net = typeof G.hotNewNet === "number" ? G.hotNewNet : e.net;
+  var context = daily ? "THE DAILY #" + G.social.num : (MODE === "cap" ? "PRESTI MODE" : MODE === "pro" ? "PRO MODE" : "CLASSIC MODE");
+  return {
+    games: games, wins: wins, saved: saved, context: context, names: names, net: signed1(net),
+    comp: wins >= CFG.GAMES_IN_SEASON ? "Greatest of all GOATs" : shareCompFor(wins, false),
+    seed: reelHash(names.join("|") + "#" + wins)
+  };
+}
+function mountResultsPrint(e, daily) {
+  RESULTS_POSTER = null;
+  if (RESULTS_PRINT) { try { RESULTS_PRINT.destroy(); } catch (err) {} RESULTS_PRINT = null; }
+  var host = el("rrPrint");
+  if (!host) return;
+  RESULTS_PRINT_SPEC = resultsPrintSpec(e, daily);
+  var canWatch = !!window.IntersectionObserver;
+  RESULTS_PRINT = printCall(function () { return window.T82PRINT ? T82PRINT.mount(host, RESULTS_PRINT_SPEC, { defer: canWatch }) : null; });
+  if (!RESULTS_PRINT) return;
+  var board = host.closest ? host.closest(".rr-board") : null;
+  if (board) board.classList.add("printed");                 // the print carries the mode line; the eyebrow steps aside
+  host.setAttribute("role", "img");
+  host.setAttribute("aria-label", RESULTS_PRINT_SPEC.wins + " and " + (CFG.GAMES_IN_SEASON - RESULTS_PRINT_SPEC.wins) +
+    ". The shape of the season: " + (RESULTS_PRINT_SPEC.games ? "every win lifts the ridge, every loss drops it." : "the projected climb."));
+  // Reveal only when the print is on screen and nothing sits over it.
+  if (canWatch) {
+    var poll = 0, io = new IntersectionObserver(function (ents) {
+      clearInterval(poll);
+      if (!ents[0] || !ents[0].isIntersecting) return;
+      poll = setInterval(function () {
+        if (!document.body.contains(host)) { clearInterval(poll); io.disconnect(); return; }
+        if (ballotOverlayUp()) return;
+        clearInterval(poll); io.disconnect();
+        printCall(function () { RESULTS_PRINT && RESULTS_PRINT.play(); return null; });
+      }, 300);
+    }, { threshold: 0.5 });
+    io.observe(host);
+  } else printCall(function () { RESULTS_PRINT.play(); return null; });
+  // Daily practice runs share the OFFICIAL numbers, so their poster would lie.
+  if (!daily || daily.isOfficial) setTimeout(function () { bakeResultsPoster(); }, 1800);
+}
+function bakeResultsPoster() {
+  var spec = RESULTS_PRINT_SPEC;
+  if (!spec || !window.T82PRINT || RESULTS_PRINT_OFF || typeof File !== "function") return;
+  printCall(function () {
+    T82PRINT.poster(spec, function (blob) {
+      if (!blob || spec !== RESULTS_PRINT_SPEC) return;
+      try { RESULTS_POSTER = new File([blob], "true82-" + spec.wins + "-" + (CFG.GAMES_IN_SEASON - spec.wins) + ".jpg", { type: "image/jpeg" }); }
+      catch (err) { RESULTS_POSTER = null; }
+    });
+    return null;
+  });
+}
+// The end-of-season Heat Check can turn 81-1 into 82-0 after the page is up.
+function resultsPrintRecord(e, wins) {
+  if (!RESULTS_PRINT_SPEC || wins === RESULTS_PRINT_SPEC.wins) return;
+  var daily = !!(G.social && window.T82DAILY);
+  RESULTS_PRINT_SPEC = resultsPrintSpec(e, daily ? { isOfficial: true } : null, wins);
+  RESULTS_POSTER = null;
+  var host = el("rrPrint");
+  if (host) host.setAttribute("aria-label", wins + " and " + (CFG.GAMES_IN_SEASON - wins) + ". The shape of the season.");
+  printCall(function () { if (RESULTS_PRINT) RESULTS_PRINT.update(RESULTS_PRINT_SPEC); return null; });
+  setTimeout(function () { bakeResultsPoster(); }, 900);
+}
+function resultsShareFiles() {
+  if (!RESULTS_POSTER || !navigator.canShare) return null;
+  try { return navigator.canShare({ files: [RESULTS_POSTER] }) ? [RESULTS_POSTER] : null; } catch (err) { return null; }
+}
+
 function renderResults(e, keepScroll) {
   // v30.2 hardening: if this render ever runs again (a future keepScroll
   // path), freshly built anchors must not quietly revert to search URLs.
@@ -5869,14 +6365,19 @@ function renderResults(e, keepScroll) {
       ? '<a class="pr-team" href="' + bbrefTag("https://www.basketball-reference.com/teams/" + code + "/" + yr + ".html", "results_team") + '" target="_blank" rel="noopener">' + team + "</a>"
       : '<span>' + team + "</span>");
   }
+  // v50 THE TAG BALLOT: each card is a printed slip (name, season, the
+  // engine value as the hero number, one box-score line, then the tags).
+  // wireBallot fills the tag row; the engine chip and "+" are live at once.
   var picksHtml = picksInSlotOrder().map(function (entry) {
     var p = entry.p, i = entry.i, row = p.row, name = row[IDX.name];
-    return '<div class="pick-card" data-pick="' + i + '">' +
-      '<div class="pick-top"><span class="pr-name"><span class="slot-badge">' + p.slot + "</span>" +
-        '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></span>" +
-      '<span class="pr-v"><small>V</small>' + valueOf(row).toFixed(2) + "</span></div>" +
-      '<div class="pr-sub">' + prTeamHtml(row, p.fr) + chipsFor(row) + "</div>" +
-      '<div class="pr-sub pr-stats">' + statLine(row) + "</div></div>";
+    return '<div class="pick-card bt-card" data-pick="' + i + '">' +
+      '<div class="bt-head"><div class="bt-who">' +
+        '<div class="pr-name bt-name"><span class="slot-badge">' + p.slot + "</span>" +
+          '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></div>" +
+        '<div class="bt-ssn">' + prTeamHtml(row, p.fr) + "</div></div>" +
+        '<div class="pr-v bt-val">' + valueOf(row).toFixed(2) + "</div></div>" +
+      '<div class="bt-box">' + ballotBoxHtml(row) + "</div>" +
+      '<div class="bt-tags" data-bt="' + i + '"></div></div>';
   }).join("");
 
   var ledger = '<div class="ledger">' +
@@ -5975,32 +6476,35 @@ function renderResults(e, keepScroll) {
     : "SHARE OFFICIAL (" + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) + ")";
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
-  app().innerHTML =
+  // v50 RISO RESULTS: the page prints on the same paper stock as the reel.
+  // The hero is THE SHAPE OF A SEASON (results-riso.js) over the plain
+  // record, which stays in the DOM for screen readers, the Heat Check's
+  // rewrite and the no-canvas fallback. The roster moved up under the hero
+  // (owner fact: about half of finishers never scroll to it, so the first
+  // ballot card has to sit above the fold); the two-way profile follows it.
+  // The bottom "did we get it wrong" prompt is gone: the cards are the ballot.
+  app().innerHTML = '<div class="rr">' +
     resultsTopBarHtml() +
-    '<section class="board' + (daily ? " plq-frame daily-framed" : "") + '" data-result-section="summary"><div class="goat-fw" id="wlFw" aria-hidden="true"></div>' +
+    '<section class="board rr-board' + (daily ? " daily-framed" : "") + '" data-result-section="summary"><div class="goat-fw" id="wlFw" aria-hidden="true"></div>' +
     (daily ? dailyHeadHtml : '<p class="eyebrow">' + boardEyebrow + "</p>") +
-      '<div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div><div class=\"big-label\">net rating " + signed1(e.net) + "</div>" +
+      '<div class="rr-print" id="rrPrint"><div class="big">' + e.winTally + "\u2013" + (CFG.GAMES_IN_SEASON - e.winTally) + "</div></div>" +
+      '<div class="big-label">net rating ' + signed1(e.net) + "</div>" +
       '<div class="res-comp">' + compHtml + '</div>' +
       dailyBoardHtml +
-      '<button class="btn btn-primary btn-block presti-spin' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
-    '<section class="section twoway-sec" data-result-section="two_way">' + twoWayHtml(e) + "</section>" +
+      '<button class="btn btn-primary btn-block presti-spin rr-share' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section traits-roster" data-result-section="roster">' +
-      '<div class="traits-roster-head"><p class="eyebrow">Your five</p>' +
-        '<button class="trait-info-btn" id="traitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="traitLegend" aria-expanded="false" title="Player label legend" hidden>i</button></div>' +
-      '<div class="trait-legend" id="traitLegend" hidden></div>' + picksHtml +
+      '<p class="eyebrow rr-eyebrow">Your five</p>' + picksHtml +
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
-    '<section class="section" data-result-section="goat_climb"><p class="eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
-    '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
-    '<section class="section traits-prompt" data-result-section="traits_prompt" id="traitsPromptSec" hidden></section>' +
+    '<section class="section twoway-sec" data-result-section="two_way"><p class="eyebrow rr-eyebrow">Two-way profile</p>' + twoWayHtml(e) + "</section>" +
+    '<section class="section rr-climb" data-result-section="goat_climb"><p class="eyebrow rr-eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
+    '<section class="section" data-result-section="scoring_card"><p class="eyebrow rr-eyebrow">Scoring Card</p>' + ledger + "</section>" +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
-    '<p class="run-status" id="runStatus"></p>';
+    '<p class="run-status" id="runStatus"></p></div>';
 
   trackResultSections();
-  wireTraitsPrompt();
-  wireTraitCardUi();   // engine chips are in the initial markup; labels rebuild the legend when they land
-  wireTraitsLabels(picksInSlotOrder().map(function (en) {
-    return { i: en.i, name: en.p.row[IDX.name], season: en.p.row[IDX.season] };
-  }));
+  risoPaperOnce();
+  wireBallot(picksInSlotOrder());
+  mountResultsPrint(e, daily);
 
   el("againBtn").addEventListener("click", function () {
     analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), { surface: "results", action: daily ? "daily_practice" : "same_mode" }));
@@ -6044,7 +6548,7 @@ function renderResults(e, keepScroll) {
           comp: shareCompFor(off.wins),
           pct: (typeof off.pct === "number") ? off.pct
              : (daily.isOfficial && typeof G.sharePct === "number") ? G.sharePct : null }
-      ), null, dTrack);
+      ), null, dTrack, daily.isOfficial ? resultsShareFiles() : null);
       return;
     }
     var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
@@ -6055,7 +6559,7 @@ function renderResults(e, keepScroll) {
       surface: "results", action: "team_result" };
     if (window.t82track) window.t82track("share_click", sTrack);
     publishRecap();
-    shareOrCopy(shareText(e2), null, sTrack);
+    shareOrCopy(shareText(e2), null, sTrack, resultsShareFiles());
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
   // The Tribune is now the season-end ceremony. The Heat Check lever survives ONLY
@@ -6387,7 +6891,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v48";
+var BUILD_V = "v50";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
