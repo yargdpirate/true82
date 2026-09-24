@@ -8,7 +8,7 @@ Hot Hand. Kaman is a hard-coded 82-0 gag. Constants below were read from app.js
 on 2026-07-03; if code and this doc disagree, code wins.
 
 Read this file only when touching engine or mode logic. Everyday state lives in
-CONTEXT.md.
+AGENT-HANDOFF.md.
 
 ---
 
@@ -181,5 +181,5 @@ clamps every numeric, never errors to the player.
   BENEATH the overlay before it appears — "skip →" and the non-clutch dismiss
   both just remove the overlay. Nothing is deferred.
 - **Only if editing site_data:** `meta.cols` order defines `IDX`; columns pos,
-  port, rim, pm, ht are currently unread (see CONTEXT.md open items) — do not
+  port, rim, pm, ht are currently unread (see the Open list in docs/history/CONTEXT-2026-07.md) — do not
   reorder cols without regenerating IDX assumptions everywhere.

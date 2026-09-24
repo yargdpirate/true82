@@ -58,6 +58,20 @@ Reel length measured: 82-0 11.8s (unchanged), 26-56 34.2s. Loss holds add
 up to about 12.5s for a season with 14 losses, about 5s for 78-4 (computed).
 node --check (all five browser JS files) and node test.js: 44 passed.
 
+### 00a. Housekeeping (2026-09-24, no build change; BUILD_V stays v48)
+
+- Public copy no longer promises gated features. Duel, League, Arena, the
+  weekly challenge and Today's Board need accounts.js / duel-*.js /
+  league-ui.js / arena-ui.js, which live only on `accounts-test` (all 404 on
+  true82.net; index.html's CSS block hides their buttons). The faq, md/faq.md,
+  how-it-works and llms.txt now describe only what ships: the solo modes and
+  THE DAILY with its challenge link. Re-add the copy when those files ship.
+- Removed stale root copies of functions/_middleware.js, functions/[id].js and
+  functions/r/[id].js (older versions, unreferenced, publicly downloadable).
+- CONTEXT.md retired to docs/history/CONTEXT-2026-07.md. This file is the only
+  current-state doc. (app.js still has one comment that says "see CONTEXT.md";
+  left alone to avoid a cache bump for a comment.)
+
 ---
 
 ## 0. V47.5: results-roster player-label UI

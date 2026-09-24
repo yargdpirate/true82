@@ -6,7 +6,6 @@ User-agent: OAI-SearchBot
 Allow: /
 Disallow: /api/
 Disallow: /avocado
-Disallow: /CONTEXT.md
 Disallow: /README.md
 Disallow: /MODES.md
 Disallow: /POPUPS.md
@@ -27,7 +26,6 @@ Disallow: /avocado
 
 # Internal dev docs. Publicly served on purpose (repo policy), but they read
 # like a spoiler guide — keep them out of search results.
-Disallow: /CONTEXT.md
 Disallow: /README.md
 Disallow: /MODES.md
 Disallow: /POPUPS.md

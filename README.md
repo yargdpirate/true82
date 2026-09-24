@@ -1,6 +1,6 @@
 # TRUE 82
 
-**AI agents: read `AGENT-HANDOFF.md` before doing anything.** It is the current source of truth. `CONTEXT.md` is an older snapshot (current state as of 2026-07-04) kept for its decision log.
+**AI agents: read `AGENT-HANDOFF.md` before doing anything.** It is the current source of truth. The old `CONTEXT.md` (a 2026-07-04 snapshot and decision log) is retired to `docs/history/CONTEXT-2026-07.md`.
 
 An "82-0"-style NBA draft game driven by advanced metrics — draft 5 players
 (2G/2F/1C) from random franchise/era tickets, simulate an 82-game season, chase
@@ -32,7 +32,6 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `404.html` | Real 404s for unknown paths (its presence disables Pages' SPA fallback, which soft-404'd everything to the homepage) |
 | `how-it-works/` `faq/` `can-you-go-82-0/` `what-is-bpm/` | Static SEO explainer pages (each an `index.html`; no analytics.js on purpose) |
 | `AGENT-HANDOFF.md` | Current architecture, recent changes, invariants, validation. **Start here** |
-| `CONTEXT.md` | Decision log (still useful) and a Current State section frozen at 2026-07-04 |
 | `reel-riso.js` | v48 riso season reel (cosmetic; `?riso=0` falls back to chips) |
 | `docs/MODES.md` | Deep mechanics reference (engine, modes, pricing, Hot Hand) |
 | `docs/POPUPS.md` | Player-facing mode-blurb copy drafts |
@@ -71,4 +70,4 @@ Independent, non-commercial fan project; full disclaimer in the site footer.
 - A crest can pop onto the first ticket a beat late on slow connections — that's
   `refreshTicketArt()` painting late-arriving data, not a flicker bug.
 - Everything in this repo is publicly served at `true82.net/<path>` (including
-  this file and CONTEXT.md). Policy: **no secrets in the repo, ever.**
+  this file and everything under docs/). Policy: **no secrets in the repo, ever.**

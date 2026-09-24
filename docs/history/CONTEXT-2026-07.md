@@ -1,7 +1,8 @@
 # TRUE 82 — Project Context
 
-> **Stale since 2026-07-04. Read `AGENT-HANDOFF.md` first.** The decision log below is
-> still valid history, but Current State predates later work. Known drift: the engine was
+> **Retired 2026-09-24 (moved from the repo root). Read `AGENT-HANDOFF.md` for current state.**
+> Nothing here is maintained. Current State and its Open list are a 2026-07-04 snapshot and
+> unverified since; the decision log is kept as history. Known drift: the engine was
 > split out of app.js into `sim-core.js` on 2026-07-08 (the "module split declined" entry
 > is superseded), app.js is ~6,500 lines, and build v48 added the riso reel.
 
