@@ -35,6 +35,7 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `docs/MODES.md` | Deep mechanics reference (engine, modes, pricing, Hot Hand) |
 | `docs/POPUPS.md` | Player-facing mode-blurb copy drafts |
 | `docs/history/` | Per-task records: return handoffs, per-change deploy notes, patch manifests, superseded docs. Kept for the record, not current guidance |
+| `docs/concepts/` | Design concepts. `print-shop.html` is the risograph makeover: five animated plates, opens directly in a browser |
 
 ## Local preview
 Serve over HTTP — `python3 -m http.server` in the repo root, then open
