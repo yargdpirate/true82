@@ -298,7 +298,7 @@ For Cloudflare Pages:
 
 ## 9. Historical documentation
 
-`CHANGES-THE-DAILY.md` contains the longer history of The Daily’s design and architecture. It predates some of the July 18 UI work, so use this handoff as the current-state summary and the older file as historical context.
+`docs/history/CHANGES-THE-DAILY.md` contains the longer history of The Daily’s design and architecture. It predates some of the July 18 UI work, so use this handoff as the current-state summary and the older file as historical context.
 
 ### 2026-07-18 mobile hierarchy follow-up (V16)
 - A regression appeared on mobile after the bank-prominence work: the **HOW TO PLAY** button expanded into the dominant full-width row while the **BANK** was pushed into a smaller top-right tile.
@@ -519,7 +519,7 @@ Live build v27.1 (client keys 20260719-ui-v26; the v27 changes were
 Function-side plus one client event, keys ui-v27 in index.html). Walk: 140
 green, three consecutive runs. Today = Daily #8 golden_age; rotation is
 live and verified against the fixture. Everything shipped this session is
-logged above in the V13-V27.1 sections and in CHANGES-THE-DAILY.md.
+logged above in the V13-V27.1 sections and in docs/history/CHANGES-THE-DAILY.md.
 
 ### V28 — practice restored, SHARE FORMAT LAW v2, percentile, Sports-Reference outbound (2026-07-19)
 Both FLAGGED items above are now BUILT; the queued share/bbref work from the
@@ -1235,7 +1235,7 @@ Migration: `migrations/0008_retention_identity.sql`. Critical chain: `analytics.
 ## V44 SESSION HANDOFF (2026-07-25): the retention merge + PLAYER TRAITS
 
 Read ANALYTICS-V44-RETENTION-AND-TRAITS.md for the full analytics and
-traits contract, PATCH-MANIFEST-V44.txt for the file inventory, and
+traits contract, docs/history/PATCH-MANIFEST-V44.txt for the file inventory, and
 TRAITS-OWNER-DECISIONS.md for what only the owner decides. This section is
 orientation plus the build record.
 

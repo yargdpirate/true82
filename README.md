@@ -34,6 +34,7 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `CONTEXT.md` | Living project state + decision log. **Start here** |
 | `docs/MODES.md` | Deep mechanics reference (engine, modes, pricing, Hot Hand) |
 | `docs/POPUPS.md` | Player-facing mode-blurb copy drafts |
+| `docs/history/` | Per-task records: return handoffs, per-change deploy notes, patch manifests, superseded docs. Kept for the record, not current guidance |
 
 ## Local preview
 Serve over HTTP — `python3 -m http.server` in the repo root, then open
