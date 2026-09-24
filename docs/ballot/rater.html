@@ -1,0 +1,196 @@
+<title>The Record</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#0E1114; --panel:#151A20; --panel2:#1B2129; --line:#2A323C; --ink:#EDE7DA; --muted:#8E98A6; --dim:#5F6873;
+  --gold:#F2B233; --gold-dk:#9E7016; --gold-ink:#1A1300; --red:#D9513F; --red-dk:#8C2F22;
+  --ring:#5B93E6; --ghost:#1C222A; --ghost-ink:#95A0AF; --ghost-neg:#271C1B; --ghost-neg-ink:#BE827A;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,sans-serif;font-size:17px;line-height:1.35;-webkit-tap-highlight-color:transparent;min-height:100vh}
+.wrap{max-width:440px;margin:0 auto;padding:16px 18px 130px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.find{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:14px;letter-spacing:.06em;text-transform:uppercase;padding:0 12px;min-height:36px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.find svg{width:14px;height:14px}
+.search{display:none;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:0 12px;min-height:50px;margin-top:12px}
+.search.on{display:flex}
+.search input{flex:1;background:transparent;border:0;color:var(--ink);font:inherit;font-size:17px;min-height:48px;outline:none}
+.search input::placeholder{color:var(--dim)}
+.results{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:6px 0 0;overflow:hidden;display:none}
+.results.on{display:block}
+.results button{appearance:none;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);width:100%;text-align:left;font:inherit;font-size:17px;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.results button:last-child{border-bottom:0}
+.results button small{color:var(--muted);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px}
+.seasons{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px 12px;border-top:1px solid var(--line)}
+.seasons button{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;padding:8px 11px;border-radius:8px;cursor:pointer}
+.nm{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:44px;line-height:.92;text-transform:uppercase;text-wrap:balance;margin-top:26px}
+.ssn{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;color:var(--muted);margin-top:8px}
+.line{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--dim);margin-top:4px;word-spacing:.2em}
+.tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.tag{appearance:none;border:0;display:inline-flex;align-items:center;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:19px;letter-spacing:.04em;text-transform:uppercase;padding:0 16px;min-height:50px;border-radius:10px;cursor:pointer;color:var(--gold-ink);background:var(--gold);box-shadow:0 4px 0 var(--gold-dk),inset 0 1px 0 rgba(255,255,255,.35);border-bottom:1px solid rgba(0,0,0,.25);position:relative}
+.tag:active,.tag.pressed{transform:translateY(3px);box-shadow:0 1px 0 var(--gold-dk)}
+.tag.neg{background:var(--red);color:#FFE9E4;box-shadow:0 4px 0 var(--red-dk),inset 0 1px 0 rgba(255,255,255,.25)}
+.tag.neg:active,.tag.neg.pressed{box-shadow:0 1px 0 var(--red-dk)}
+.tag.ghost{background:var(--ghost);color:var(--ghost-ink);box-shadow:none;border-bottom:0;font-weight:600;font-size:17px;min-height:46px}
+.tag.ghost.neg{background:var(--ghost-neg);color:var(--ghost-neg-ink)}
+.tag.ghost:active,.tag.ghost.pressed{transform:translateY(2px);background:var(--line)}
+.tag.hot::before{content:"?";position:absolute;top:-9px;right:-9px;min-width:22px;height:22px;padding:0 4px;border-radius:999px;background:var(--bg);color:var(--gold);border:2px solid var(--gold);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;font-weight:700;line-height:18px;text-align:center;letter-spacing:0}
+.tag.mine::after{content:"";position:absolute;inset:-4px;border:2px solid var(--ring);border-radius:13px;pointer-events:none}
+.tag.sel{outline:3px solid var(--ink);outline-offset:3px}
+.ask{margin-top:14px;background:var(--panel);border:1px solid var(--gold);border-radius:14px;padding:16px 16px 14px;display:none}
+.ask.on{display:block}
+.ask .q{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:28px;line-height:1.02;text-transform:uppercase;text-wrap:balance}
+.ask .q i{font-style:normal;color:var(--gold)}
+.ask .q i.neg{color:#F08C7C}
+.ask .d{color:var(--muted);font-size:16px;margin:8px 0 0}
+.ask .t{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted);margin-top:12px}
+.ask .meter{height:8px;border-radius:4px;background:var(--red);overflow:hidden;margin-top:6px}
+.ask .meter i{display:block;height:100%;background:var(--gold)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.big{appearance:none;border:0;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:26px;letter-spacing:.06em;text-transform:uppercase;min-height:62px;border-radius:12px;cursor:pointer}
+.big.yes{background:var(--gold);color:var(--gold-ink);box-shadow:0 4px 0 var(--gold-dk)}
+.big.no{background:var(--red);color:#2A0A05;box-shadow:0 4px 0 var(--red-dk)}
+.big.idk{grid-column:1 / -1;background:transparent;color:var(--muted);border:2px dashed var(--dim);font-size:17px;min-height:46px}
+.big:active{transform:translateY(2px)}
+.notk{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:30px 0 -10px}
+.empty{color:var(--muted);font-size:16px;margin:22px 0 0}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 18px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 75%,transparent)}
+.nav .in{max-width:404px;margin:0 auto;display:grid;grid-template-columns:52px 1fr;gap:10px}
+.nav button{appearance:none;border:0;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:20px;letter-spacing:.06em;text-transform:uppercase;min-height:56px;border-radius:12px;cursor:pointer}
+.nav .prev{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.nav .next{background:var(--gold);color:var(--gold-ink);box-shadow:0 4px 0 var(--gold-dk)}
+.nav .next:active{transform:translateY(2px);box-shadow:0 1px 0 var(--gold-dk)}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);font-weight:600;font-size:15px;padding:11px 10px 11px 16px;border-radius:12px;opacity:0;transition:opacity .2s,transform .2s;z-index:30;white-space:nowrap;pointer-events:none;display:flex;gap:14px;align-items:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.toast button{appearance:none;border:0;background:var(--gold);color:var(--gold-ink);font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:15px;letter-spacing:.08em;text-transform:uppercase;padding:7px 12px;border-radius:8px;cursor:pointer}
+.hand{position:fixed;z-index:15;width:44px;height:44px;pointer-events:none;opacity:0;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));transition:left .45s ease,top .45s ease,opacity .3s ease,transform .18s ease}
+.hand.show{opacity:1}
+.hand.tap{transform:translate(-3px,-6px) scale(.86)}
+.note{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;color:var(--dim);text-align:center;margin-top:34px;line-height:1.6}
+.replay{appearance:none;background:transparent;border:0;color:var(--dim);font:inherit;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px}
+.tag:focus-visible,.big:focus-visible,.nav button:focus-visible,.find:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){ .toast,.hand{transition:none} }
+</style>
+
+<div class="wrap">
+  <div class="bar"><span class="eyebrow" id="where">Most disputed · 1 of 6</span><button class="find" id="findBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Find a player</button></div>
+  <div class="search" id="search"><input id="q" type="search" placeholder="Any player, any season" autocomplete="off" autocapitalize="words"></div>
+  <div class="results" id="results"></div>
+  <div id="stage"></div>
+  <p class="note">Prototype. Nothing is saved. Counts and rankings are made up.<br><button class="replay" id="replay">Replay the tap hint</button></p>
+</div>
+<div class="nav"><div class="in"><button class="prev" id="prev" aria-label="Previous player">‹</button><button class="next" id="next">Next player ›</button></div></div>
+<svg class="hand" id="hand" viewBox="0 0 48 48" aria-hidden="true"><path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" fill="#FFFFFF" stroke="#1A1300" stroke-width="2.4" stroke-linejoin="round"/></svg>
+<div class="toast" id="toast"><span id="toastText"></span><button id="undo">Undo</button></div>
+
+<script>
+const T={
+ "3pt":   {w:"3PT shooter",     q:"a 3PT shooter",        d:"Defenses had to guard him past the arc."},
+ "grav":  {w:"Gravity",         q:"a gravity shooter",     d:"So feared from deep that he warps the whole defense."},
+ "rim":   {w:"Rim pressure",    q:"a rim pressurer",       d:"Lives at the rim and the foul line."},
+ "offb":  {w:"Off-ball scorer", q:"an off-ball scorer",    d:"Scores without the ball in his hands: cuts, screens, relocations."},
+ "tshot": {w:"Tough shots",     q:"a tough shot maker",    d:"Makes contested, late-clock shots nobody should take."},
+ "play":  {w:"Playmaker",       q:"a playmaker",           d:"Runs the offense and makes teammates better."},
+ "isod":  {w:"Iso defender",    q:"an iso defender",       d:"You put him on their best scorer, one on one."},
+ "teamd": {w:"Team defender",   q:"a team defender",       d:"Rotations, help, hands in passing lanes."},
+ "switch":{w:"Switchable",      q:"switchable on defense", d:"Guards guards and bigs alike."},
+ "rimp":  {w:"Rim protector",   q:"a rim protector",       d:"Shots at the rim change because he is there."},
+ "clutch":{w:"Clutch",          q:"clutch",                d:"You want the last shot in his hands. So does he."},
+ "hunted":{w:"Hunted",          q:"hunted on defense",     d:"Opponents go at him on purpose: switch onto him, post him, run him off screens.", neg:true},
+ "stop":  {w:"Ball stopper",    q:"a ball stopper",        d:"The ball goes in and does not come out.", neg:true},
+ "pad":   {w:"Stat padder",     q:"a stat padder",         d:"Numbers that do not add up to winning.", neg:true},
+ "knuck": {w:"Knucklehead",     q:"an off-court knucklehead", d:"Suspensions, arrests, feuds. Trouble the team has to manage.", neg:true},
+};
+const FEED=[
+ {sec:"Most disputed",name:"Tyrese Haliburton",year:2024,ssn:"2023-24 · Indiana Pacers · G",box:[20.1,3.9,10.9,1.2,0.7,24.6],scout:{"3pt":"yes","play":"yes","hunted":"yes","clutch":"maybe"},hot:{"hunted":1},tally:{"hunted":[54,1204],"clutch":[52,310]}},
+ {sec:"Most disputed",name:"Russell Westbrook",year:2017,ssn:"2016-17 · Oklahoma City Thunder · G",box:[31.6,10.7,10.4,1.6,0.4,41.7],scout:{"rim":"yes","play":"yes","tshot":"yes","pad":"yes","clutch":"maybe"},hot:{"pad":1,"play":1},tally:{"pad":[62,2040],"play":[57,900],"clutch":[49,400]}},
+ {sec:"Most disputed",name:"Draymond Green",year:2016,ssn:"2015-16 · Golden State Warriors · F",box:[14.0,9.5,7.4,1.5,1.4,18.8],scout:{"play":"yes","teamd":"yes","switch":"yes","rimp":"yes","knuck":"yes"},hot:{"knuck":1},tally:{"knuck":[81,860]}},
+ {sec:"Biggest names",name:"Stephen Curry",year:2016,ssn:"2015-16 · Golden State Warriors · G",box:[30.1,5.4,6.7,2.1,0.2,32.6],scout:{"grav":"yes","play":"yes","clutch":"yes","tshot":"maybe"},hot:{"play":1},tally:{"play":[58,640],"tshot":[51,220]}},
+ {sec:"Biggest names",name:"Michael Jordan",year:1996,ssn:"1995-96 · Chicago Bulls · G",box:[30.4,6.6,4.3,2.2,0.5,33.7],scout:{"rim":"yes","tshot":"yes","isod":"yes","teamd":"yes","clutch":"yes","offb":"maybe"},hot:{},tally:{"offb":[50,120]}},
+ {sec:"Biggest names",name:"Shaquille O'Neal",year:2000,ssn:"1999-2000 · Los Angeles Lakers · C",box:[29.7,13.6,3.8,0.5,3.0,31.2],scout:{"rim":"yes","rimp":"yes","clutch":"maybe","hunted":"maybe"},hot:{},tally:{"clutch":[48,700],"hunted":[45,300]}},
+];
+const INDEX=[
+ ["Andrei Kirilenko",["2003-04 · Utah Jazz · F","2004-05 · Utah Jazz · F","2005-06 · Utah Jazz · F"]],["Kobe Bryant",["2005-06 · Los Angeles Lakers · G","2007-08 · Los Angeles Lakers · G"]],["Tim Duncan",["2001-02 · San Antonio Spurs · F","2002-03 · San Antonio Spurs · F"]],["Steve Nash",["2004-05 · Phoenix Suns · G","2005-06 · Phoenix Suns · G"]],["Allen Iverson",["2000-01 · Philadelphia 76ers · G"]],["Nikola Jokić",["2020-21 · Denver Nuggets · C","2022-23 · Denver Nuggets · C"]],["Giannis Antetokounmpo",["2018-19 · Milwaukee Bucks · F","2019-20 · Milwaukee Bucks · F"]],["Luka Dončić",["2021-22 · Dallas Mavericks · G","2023-24 · Dallas Mavericks · G"]],["Stephen Curry",["2014-15 · Golden State Warriors · G","2015-16 · Golden State Warriors · G","2019-20 · Golden State Warriors · G"]],["Tyrese Haliburton",["2022-23 · Indiana Pacers · G","2023-24 · Indiana Pacers · G"]],["Russell Westbrook",["2015-16 · Oklahoma City Thunder · G","2016-17 · Oklahoma City Thunder · G"]],["Draymond Green",["2015-16 · Golden State Warriors · F"]],["Michael Jordan",["1990-91 · Chicago Bulls · G","1995-96 · Chicago Bulls · G"]],["Shaquille O'Neal",["1999-2000 · Los Angeles Lakers · C"]],["Dudley Bradley",["1979-80 · Indiana Pacers · G"]]
+];
+FEED.forEach(p=>{p.mine={};});
+let cur=0, openT=null;
+const stage=document.getElementById('stage');
+
+function isOn(p,t){ const m=p.mine[t]; if(m) return m==='yes'; return p.scout[t]==='yes'||p.scout[t]==='maybe'; }
+function isHot(p,t){ return !p.mine[t] && (p.hot[t] || p.scout[t]==='maybe'); }
+function tallyOf(p,t){ const b=p.tally&&p.tally[t]?p.tally[t]:null; if(!b) return null; const m=p.mine[t]; return [b[0]+(m==='yes'?1:m==='no'?-1:0), b[1]+(m?1:0)]; }
+function askHtml(p,t){
+  const d=T[t], ty=tallyOf(p,t), m=p.mine[t];
+  return `<div class="ask on" id="ask"><div class="q">Was ${p.year} ${p.name.split(' ').pop()} <i class="${d.neg?'neg':''}">${d.q}</i>?</div><p class="d">${d.d}</p>
+    ${ty?`<div class="t"><span>${ty[0]}% say yes · ${ty[1].toLocaleString()} votes${m?' · you said '+(m==='idk'?'not sure':m):''}</span><span>flips at 60%</span></div><div class="meter"><i style="width:${ty[0]}%"></i></div>`:`<div class="t"><span>${m?'You said '+(m==='idk'?'not sure':m):'No votes yet. Yours is the first.'}</span></div>`}
+    <div class="btns"><button class="big yes" data-v="yes">Yes</button><button class="big no" data-v="no">No</button><button class="big idk" data-v="idk">Not sure</button></div></div>`;
+}
+function render(){
+  const p=FEED[cur];
+  const on=[],off=[];
+  for(const t in T){ if(t==='3pt' && isOn(p,'grav') && !p.mine['3pt']) continue; (isOn(p,t)?on:off).push(t); }
+  const pill=(t,ghost)=>`<button class="tag${ghost?' ghost':''}${T[t].neg?' neg':''}${p.mine[t]?' mine':''}${!ghost&&isHot(p,t)?' hot':''}${openT===t?' sel':''}" data-t="${t}">${T[t].w}</button>`;
+  const box=p.box.map((v,k)=>`${v}<span style="color:var(--dim)">${['p','r','a','s','b','%'][k]}</span>`).join('  ');
+  const onOpen = openT && on.includes(openT) ? askHtml(p,openT) : '';
+  const offOpen = openT && off.includes(openT) ? askHtml(p,openT) : '';
+  stage.innerHTML=`<div class="nm">${p.name}</div><div class="ssn">${p.ssn}</div><div class="line">${box}</div>
+    ${on.length?`<div class="tags">${on.map(t=>pill(t,false)).join('')}</div>`:`<p class="empty">Nothing on him yet. Tap anything below to start.</p>`}
+    ${onOpen}
+    <div class="notk">Not on him</div>
+    <div class="tags">${off.map(t=>pill(t,true)).join('')}</div>
+    ${offOpen}`;
+  document.getElementById('where').textContent=`${p.sec} · ${cur+1} of ${FEED.length}`;
+  document.getElementById('prev').disabled=cur===0;
+  document.getElementById('next').textContent=cur+1<FEED.length?'Next player ›':'Back to top';
+}
+stage.addEventListener('click',e=>{
+  const p=FEED[cur];
+  const v=e.target.closest('[data-v]'); if(v && openT){ const t=openT, prev=p.mine[t]; p.mine[t]=v.dataset.v; openT=null; render();
+    toast(v.dataset.v==='yes'?`${T[t].w} is on ${p.name.split(' ').pop()}`:v.dataset.v==='no'?`${T[t].w} taken off`:'Noted',()=>{ if(prev) p.mine[t]=prev; else delete p.mine[t]; render(); }); return; }
+  const tag=e.target.closest('.tag'); if(!tag) return;
+  openT = openT===tag.dataset.t ? null : tag.dataset.t; render();
+  if(openT){ const a=document.getElementById('ask'); if(a){ const r=a.getBoundingClientRect(); if(r.bottom>window.innerHeight-90) window.scrollBy({top:r.bottom-window.innerHeight+100,behavior:'smooth'}); } }
+});
+document.getElementById('next').onclick=()=>{ cur=(cur+1)%FEED.length; openT=null; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+document.getElementById('prev').onclick=()=>{ if(cur>0){cur--; openT=null; render(); window.scrollTo({top:0,behavior:'smooth'});} };
+let tt=null; function toast(s,undo){ const t=document.getElementById('toast'); document.getElementById('toastText').textContent=s; document.getElementById('undo').onclick=()=>{undo(); t.classList.remove('on');}; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),3200); }
+
+const qEl=document.getElementById('q'), res=document.getElementById('results'), sbox=document.getElementById('search');
+document.getElementById('findBtn').onclick=()=>{ sbox.classList.toggle('on'); if(sbox.classList.contains('on')) qEl.focus(); else { res.classList.remove('on'); qEl.value=''; } };
+qEl.addEventListener('input',()=>{
+  const q=qEl.value.trim().toLowerCase(); if(q.length<2){res.classList.remove('on');res.innerHTML='';return;}
+  const hits=INDEX.filter(([n])=>n.toLowerCase().includes(q)).slice(0,6);
+  res.innerHTML=hits.length?hits.map(([n,ss])=>`<button data-n="${n}">${n}<small>${ss.length} seasons</small></button>`).join(''):`<button disabled>No match. The pool is only players who have been drafted.</button>`;
+  res.classList.add('on');
+});
+res.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-n]'); if(b){ const [n,ss]=INDEX.find(x=>x[0]===b.dataset.n); res.innerHTML=`<button data-n="${n}">${n}<small>pick a season</small></button><div class="seasons">${ss.map(x=>`<button data-pick="${n}|${x}">${x.split(' · ')[0]}</button>`).join('')}</div>`; return; }
+  const sb=e.target.closest('button[data-pick]'); if(!sb) return;
+  const [n,ssn]=sb.dataset.pick.split('|'); const end=ssn.split(' · ')[0].split('-')[1]; const year=end.length===2?parseInt(ssn.slice(0,2)+end,10):parseInt(end,10);
+  const known=FEED.find(p=>p.name===n && p.ssn===ssn);
+  const card=known?JSON.parse(JSON.stringify(known)):{box:[16.5,8.1,3.2,1.9,2.8,21.0],scout:{},hot:{},tally:{}};
+  Object.assign(card,{sec:"Your pick",name:n,ssn,year,mine:{}});
+  FEED.unshift(card); cur=0; openT=null; render();
+  res.classList.remove('on'); res.innerHTML=''; qEl.value=''; sbox.classList.remove('on'); window.scrollTo({top:0,behavior:'smooth'});
+});
+
+function tapHint(force){
+  let seen=false; try{ seen=localStorage.getItem('rec-hint')==='1'; }catch(e){}
+  if(seen && !force) return;
+  const tag=stage.querySelector('.tag:not(.ghost)')||stage.querySelector('.tag'); if(!tag) return;
+  const hand=document.getElementById('hand'); const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const at=(el)=>{ const r=el.getBoundingClientRect(); hand.style.left=(r.left+Math.min(r.width*.5,60))+'px'; hand.style.top=(r.top+r.height*.45)+'px'; };
+  const timers=[]; const later=(fn,ms)=>timers.push(setTimeout(fn,ms)); let live=true;
+  const stop=()=>{ if(!live) return; live=false; timers.forEach(clearTimeout); hand.classList.remove('show','tap'); tag.classList.remove('pressed'); try{ localStorage.setItem('rec-hint','1'); }catch(e){} stage.removeEventListener('pointerdown',stop); };
+  stage.addEventListener('pointerdown',stop,{once:true});
+  later(()=>{ hand.style.transition='none'; at(tag); hand.style.transform='translate(40px,50px)'; void hand.offsetWidth; hand.style.transition=''; hand.style.transform=''; hand.classList.add('show'); },reduce?0:400);
+  later(()=>{hand.classList.add('tap');tag.classList.add('pressed');},1050); later(()=>{hand.classList.remove('tap');tag.classList.remove('pressed');},1230);
+  later(()=>hand.classList.remove('show'),1700); later(stop,2100);
+}
+function armHint(){ const go=()=>setTimeout(()=>tapHint(false),800); if(document.fonts&&document.fonts.ready) document.fonts.ready.then(go); else go(); }
+render();
+if(document.readyState==='complete') armHint(); else window.addEventListener('load',armHint);
+document.getElementById('replay').onclick=()=>{ window.scrollTo({top:0,behavior:'instant'}); setTimeout(()=>tapHint(true),250); };
+</script>

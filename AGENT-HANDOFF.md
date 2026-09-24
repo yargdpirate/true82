@@ -1,12 +1,153 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. The v48 work lives on branch `c-code-clean` until it is merged to `main`.
+**Current source of truth:** the GitHub repo. The v48 and v50 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-24
-**Build:** `v48` (`BUILD_V` and every bumped cache key agree).
-**Most recent functional change:** the season reel prints as a risograph ledger (reel-riso.js). See section 00.
+**Build:** `v50` (`BUILD_V` and every bumped cache key agree). There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork, so this line skips to v50 to keep the analytics build filter unambiguous.
+**Most recent functional change:** the results screen prints in the riso style and its five player cards are the tag ballot. See section 000.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 000. V50: riso results + the tag ballot
+
+The results screen now prints on the reel's paper stock, and the five
+player cards under the score are the tag ballot from the owner's voting
+package (`docs/ballot/`: AGENT_BRIEF.md, TAG_BALLOT_HANDOFF.md and the two
+prototypes; the prototypes are behavior specs, not pixel specs).
+
+What the player sees, top to bottom:
+- THE SHAPE OF A SEASON (results-riso.js): the season as a riso landscape.
+  Waterline = .500, each win lifts the ridge, each loss drops it and leaves
+  a pink bead, sun height = win rate, inks cool as the record falls (golden,
+  dusk, night with a moon). The strip under it is the exact game-by-game
+  record. Analytic runs (Daily, Pro, challenges) have no games, so they print
+  the projected slope and say PROJECTED OVER 82 GAMES. The plain record stays
+  in the DOM (screen readers, the Heat Check rewrite, no-canvas fallback).
+- Net rating, the comp line, SHARE (navy keycap, pink offset; sunflower
+  offset and pulse at 81/82).
+- YOUR FIVE: the ballot. Card = slot badge + name (bbref link), season and
+  team (team link), the engine value as the hero number in DM Serif Display,
+  one mono box-score line, then the tags. Moved up above the two-way profile
+  (owner fact: about half of finishers never scroll to the roster).
+- Two-way profile, GOAT Climb, Scoring Card, Run it back: same content, re-inked
+  on paper slips. On paper, riso blue means "you" everywhere: your ballot
+  ring, your climb rail and marker.
+
+The ballot (app.js, "v50 THE TAG BALLOT"):
+- Three tag states only: on (sunflower keycap; scarlet for a bad trait),
+  "?" (same keycap plus a navy badge: the scout called it close, or the crowd
+  is split), off (hollow with an X: you said NO to a settled tag; it stays so
+  the dispute reads). "+" last. Blue ring = you voted.
+- Tap a tag: bottom sheet, the trait's own question ("Was 2016 Huertas
+  hunted on defense?"), YES / NO / NOT SURE, then the tally in words, a bar
+  and a pill (Ruling stands / Ruled out / Disputed, flips at 62% / N more
+  votes settle it). The big percentage only prints once the vote minimum is
+  met. Change vote, Done. "+" opens the picker: Open questions first, then
+  Offense / Defense / Reputation.
+- One op=vote per answer, source "card", spaced 1.3s apart client-side (the
+  server fence is 1.2s). A failure reverts the tag and toasts "Not saved".
+- White-glove hint once per browser (localStorage `tb-hint`), only when the
+  first card is fully on screen and nothing is over it.
+- The bottom "did we get it wrong" widget, the label legend and the
+  tap-to-expand label chips are gone from results (wireTraitsPrompt,
+  wireTraitCardUi, wireTraitsLabels and buildTraitLegend were deleted). The
+  draft pool keeps its read-only chips; the strike-through anti chip is
+  retired everywhere (applyLabelChips filters it, the server stops sending it).
+
+Server (functions/api/traits.js, starts from the package's v49.9):
+- op=labels reads the scout layer (community > desk > scout), scoped to the
+  requested players; returns `labels`, `qids`, `open` (scout unsure), `split`
+  (community tally in the disputed band), `rules`, and with `mine=1` the
+  voter's own answers. Anti hits are no longer emitted (a ruled-out trait
+  still blocks lower layers).
+- op=vote creates a missing question on its first vote when the body carries
+  `player` and `season` and the id is exactly slug(player)-season-<core trait>
+  (the same id space op=roster and the scout backfill use; accented names
+  fold the same way). Creation happens after the rate fences.
+- Sources gain "card" (results) and "record" (the future rater page). The
+  package's op=engq is not carried over: create-on-first-vote replaces it.
+
+Migrations (NOT applied to production by this session; see MIGRATIONS-NOTES):
+- `0026_scout_claims_v1.sql` (the package's 0013, renumbered; 7.6 MB, needs
+  wrangler, not the console paste) and `0027_hunted_trait_v1.sql`. Apply both
+  when v50 deploys. Before 0026 lands, the new traits.js degrades to the two
+  older label layers; without 0027, a HUNTED vote returns unknown_question
+  and the card reverts it.
+
+Files and keys:
+- `results-riso.js` (new), `app.js`, `styles.css` at `20260924-riso-results-v50`;
+  `reel-riso.js` unchanged at its v48 key. `BUILD_V = "v50"`.
+- index.html loads DM Serif Display (the value serif, the owner's pick). New
+  CSS uses only weights already loaded (no 800), so no existing text changed.
+- The site's 3D button decorator skips the ballot's buttons (BTN3D_EXCLUDE).
+
+Invariants (do not break):
+1. Cosmetic print. results-riso.js reads only the spec app.js hands it; any
+   throw logs "[t82] results print off" once and the plain record stays.
+   `?riso=0` turns off both the reel and the print.
+2. The print never reveals under an overlay: it mounts on blank paper and
+   prints in once it is on screen with no Tribune / Heat Check / sheet up.
+   A hidden page prints it finished.
+3. The Heat Check 81 to 82 save re-prints the season (the rescued loss flips
+   and gets a pink ring) and re-bakes the share poster (resultsPrintRecord).
+4. Share text is byte-for-byte the locked SHARE FORMAT LAW text. When the
+   device can share files, the season poster (1080x1350 JPEG, baked in idle
+   chunks after the page settles) rides along; the analytics method reads
+   `native_share_print`. Daily practice runs never attach it (they share the
+   official numbers). No poster ready = plain text share, never a wait.
+5. Ballot copy has zero em-dashes (test.js pins it).
+6. The engine is untouched. The engine's own 3PT / GRAVITY chip is a settled
+   tag; a NO can mark it "?" but never removes it. Settled gravity hides 3PT;
+   an unsettled gravity question does not.
+
+Calls made to reconcile the package with this branch (owner may overrule):
+- The brief was written against the accounts-test fork (v49.x, per-chip vote
+  strips, op=engq). This line never had those; the ballot was wired straight
+  onto the v47.5 roster, and the brief's "deploy after each step" became
+  "push c-code-clean", since main auto-deploys.
+- Five core traits the brief does not list exist in D1 (0018): Championship #1
+  (TITLE #1, sunflower), Ball Pounder and Foul Merchant (scarlet), plus Ball
+  Stopper and Stat Padder, which the brief does list. All show when a
+  ruling says so and vote like any tag. "+" offers only the brief's set
+  (12 core + Hunted, Ball stopper, Stat padder), which keeps the owner's
+  four-negative ceiling for adds.
+- Thresholds are the server's live rules (qualify 62%, rule out 38%, 25 vote
+  floor) rather than the brief's working 60/40/10; the pill reads the live
+  number, so changing the D1 rule changes the copy.
+- NOT SURE on a settled tag leaves it on (ringed) instead of a fourth
+  hollow-with-? state, to keep three states.
+- Hunted sits in the Reputation group, as in the brief's rater list.
+
+Verified 2026-09-24 against a local Pages + D1 copy (wrangler pages dev with
+migrations 0010-0027 applied locally): Classic 79-3, 80-2, 81-1, a 4-78
+night print, a Presti run through the mid-season Heat Check, the Daily
+(projected print, official run); tag sheet, NO to hollow, reopen shows the
+live tally, change vote, Escape, the "+" picker, create-on-first-vote
+(Hunted, and an accented name), the ring from mine=1, a simulated 81 to 82
+save re-printing the season, the share poster file, draft pool chips with no
+anti chips, mobile 375 and desktop 1280. node --check on all eight browser
+JS files and node test.js: 54 passed (10 new ballot checks).
+Not verifiable in the headless pane: the reveal animation and the glove fly-in
+(the pane was hidden, which pauses animation frames); both were exercised by
+direct call.
+
+Open items for the owner:
+- Apply 0026 and 0027 with the v50 deploy (the 0026 step needs wrangler or the
+  GitHub Action in docs/ballot, which needs the database name and two secrets).
+- The standalone rater (/bonuses/ as "The Record", brief section 7) is not
+  built; it needs op=disputed, which does not exist yet.
+- The draft pool still prints the old abbreviations (CLTCH, RIM-D, SWCH-D,
+  GRAV...) while the ballot uses the brief's (CLUTCH, RIM-P, SWITCH, GRAVITY).
+  Left alone because the brief says the draft screen is untouched and longer
+  chips would re-wrap the tuned pool rows.
+- Curated questions spell accented names without accents (nikola-jokic-2023)
+  while the game and the scout data keep them (Nikola Jokić), so those
+  players' desk labels never match. A name-folding migration would fix it.
+- Per-run link cards (OG images for Tribune editions) are still the share
+  law's queued "visual layer"; v50 attaches the poster in the share sheet
+  instead.
 
 ---
 

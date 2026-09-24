@@ -1,0 +1,28 @@
+name: Load scout claims into D1
+
+on:
+  workflow_dispatch:
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the repo files
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run the SQL file against the live database
+        run: npx --yes wrangler@4 d1 execute "PUT_YOUR_DATABASE_NAME_HERE" --remote --yes --file=migrations/0026_scout_claims_v1.sql
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Count what landed
+        run: npx --yes wrangler@4 d1 execute "PUT_YOUR_DATABASE_NAME_HERE" --remote --yes --command "SELECT verdict, COUNT(*) AS n FROM trait_scout_v1 GROUP BY verdict"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -33,6 +33,8 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `how-it-works/` `faq/` `can-you-go-82-0/` `what-is-bpm/` | Static SEO explainer pages (each an `index.html`; no analytics.js on purpose) |
 | `AGENT-HANDOFF.md` | Current architecture, recent changes, invariants, validation. **Start here** |
 | `reel-riso.js` | v48 riso season reel (cosmetic; `?riso=0` falls back to chips) |
+| `results-riso.js` | v50 results print, THE SHAPE OF A SEASON, and the share poster (cosmetic; `?riso=0` falls back to the plain record) |
+| `docs/ballot/` | The owner's tag-ballot package: brief, handoff, prototypes, and the scout-claims GitHub Action (reference, not installed) |
 | `docs/MODES.md` | Deep mechanics reference (engine, modes, pricing, Hot Hand) |
 | `docs/POPUPS.md` | Player-facing mode-blurb copy drafts |
 | `docs/history/` | Per-task records: return handoffs, per-change deploy notes, patch manifests, superseded docs. Kept for the record, not current guidance |

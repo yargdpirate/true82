@@ -1,0 +1,267 @@
+<title>Verdict Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#0E1114; --panel:#151A20; --panel2:#1B2129; --line:#2A323C; --ink:#EDE7DA; --muted:#8E98A6; --dim:#5F6873;
+  --gold:#F2B233; --gold-ink:#1A1300; --red:#D9513F; --red-soft:#3A1A16; --green:#4FBF84; --amber:#E2A02A; --amber-soft:#3A2A0F;
+  --page:#0A0C0F; --note:#F2B233;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:Barlow,system-ui,sans-serif;font-size:15px;line-height:1.35;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 14px 60px}
+h1{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;text-transform:uppercase;font-size:30px;letter-spacing:.02em;margin:0}
+.lede{color:var(--muted);max-width:62ch;margin:6px 0 18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:26px 22px;align-items:start}
+.shot{display:grid;gap:10px}
+.shot h2{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;text-transform:uppercase;font-size:18px;letter-spacing:.06em;color:var(--gold);margin:0}
+.shot h2 small{color:var(--muted);font-weight:600;letter-spacing:.04em;margin-left:8px}
+.phone{background:var(--bg);border:1px solid var(--line);border-radius:22px;padding:14px 12px 18px;position:relative;max-width:400px}
+.notes{color:var(--muted);font-size:14px;display:grid;gap:5px;max-width:400px}
+.notes b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--note);color:var(--gold-ink);font-size:12px;font-weight:700;margin-right:6px;vertical-align:middle}
+.tag{position:absolute;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--note);color:var(--gold-ink);font-size:12px;font-weight:700;box-shadow:0 0 0 3px var(--bg);z-index:2}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.eyebrow.dim{color:var(--muted)}
+.logo{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:34px;letter-spacing:.06em;text-align:center;margin:2px 0 10px;text-transform:uppercase}
+.logo span{color:var(--gold)}
+.rule{height:2px;background:var(--gold);opacity:.5;margin:0 0 12px}
+.btn{display:block;width:100%;background:var(--gold);color:var(--gold-ink);font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;text-transform:uppercase;font-size:17px;letter-spacing:.05em;text-align:center;padding:13px 10px;border-radius:8px;box-shadow:0 4px 0 #9E7016;margin:10px 0}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);box-shadow:none;font-size:14px;padding:10px}
+.daily{border:1px solid var(--gold);border-radius:8px;padding:10px;text-align:center;margin:10px 0}
+.daily .t{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:22px;color:var(--gold);letter-spacing:.06em}
+.daily .s{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:14px;letter-spacing:.1em}
+.ticker{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:6px;padding:8px 10px;font-size:14px;display:flex;gap:8px;align-items:center;margin:0 0 12px}
+.ticker .live{width:8px;height:8px;border-radius:50%;background:var(--red);flex:0 0 auto}
+.ticker .n{font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--gold);font-weight:500}
+.ticker .go{margin-left:auto;color:var(--muted);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;white-space:nowrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0}
+.score{text-align:center;border-color:var(--gold)}
+.score .rec{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:58px;color:var(--gold);line-height:1}
+.score .net{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+.score .line{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;color:var(--gold);margin-top:6px;letter-spacing:.03em}
+.hook{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0;display:grid;gap:6px}
+.hook .q{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:19px;line-height:1.1;text-transform:uppercase}
+.hook .q i{color:var(--red);font-style:normal}
+.hook .a{display:flex;gap:8px;align-items:center;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.hook .a span{background:var(--gold);color:var(--gold-ink);font-weight:500;padding:5px 10px;border-radius:5px;letter-spacing:.08em;text-transform:uppercase}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:16px;text-transform:uppercase}
+.bar i{grid-column:1 / -1;height:7px;border-radius:4px;background:var(--line);position:relative}
+.bar i::after{content:"";position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--gold);width:96%}
+.bar.w i::after{width:5%;background:var(--red)}
+.bar em{font-style:normal;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.14em;color:var(--gold)}
+.bar.w em{color:var(--red)}
+.player{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 11px;margin:8px 0}
+.player .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.player .nm{font-weight:600;font-size:17px}
+.player .nm b{display:inline-block;background:var(--gold);color:var(--gold-ink);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;padding:1px 5px;border-radius:3px;margin-right:6px;vertical-align:2px}
+.player .v{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;color:var(--gold);font-size:18px}
+.player .v small{color:var(--muted);font-weight:600;margin-right:2px}
+.player .ssn{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted);margin:3px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.c{display:inline-flex;align-items:center;gap:6px;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:0 9px;min-height:30px;border-radius:6px}
+.c.on{background:var(--gold);color:var(--gold-ink);box-shadow:0 2px 0 #9E7016}
+.c.on .x{opacity:.6;font-size:15px;margin-left:2px}
+.c.neg{background:var(--red);color:#FFE9E4;box-shadow:0 2px 0 #8C2F22}
+.c.neg .x{opacity:.7;font-size:15px;margin-left:2px}
+.c.offneg{border:1.5px dashed #8C3A2E;color:#B0574A}
+.c.more{border:1.5px dashed var(--muted);color:var(--muted);min-width:34px;justify-content:center;font-size:16px}
+.c.less{border:1.5px solid var(--muted);color:var(--muted);min-width:34px;justify-content:center;font-size:16px}
+.c.maybe{border:2px dashed var(--amber);color:var(--amber);background:var(--amber-soft)}
+.c.off{border:1.5px dashed var(--dim);color:var(--dim)}
+.c .plus{font-size:15px;line-height:1}
+.c .q{font-size:9px;letter-spacing:.1em;opacity:.85}
+.stats{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted);margin-top:7px}
+.sc{border-top:1px solid var(--line)}
+.sc .row{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.sc .row .l{font-size:15px}
+.sc .row .d{grid-column:1;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.sc .row .n{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:15px;font-weight:500;text-align:right}
+.n.neg{color:var(--red)} .n.pos{color:var(--green)}
+.sc .row.new{background:var(--red-soft);margin:0 -12px;padding:9px 12px;border-left:3px solid var(--red)}
+.sc .row.new .d a{color:var(--gold);text-decoration:underline;text-underline-offset:3px}
+.sc .row.tot{background:var(--panel2);margin:0 -12px;padding:10px 12px;border:0}
+.month{margin:10px 0}
+.month .mh{display:flex;gap:10px;align-items:baseline;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:22px}
+.month .mh span{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;color:var(--gold);font-weight:500}
+.sq{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.sq i{width:30px;height:30px;border-radius:5px;background:var(--gold);color:var(--gold-ink);display:grid;place-items:center;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;font-weight:500;font-style:normal}
+.sq i.l{background:#5A1E17;color:#FFB3A6;box-shadow:0 0 0 2px var(--red)}
+.loss{background:var(--panel2);border:1px solid var(--red);border-radius:8px;padding:9px 11px;font-size:14px;display:grid;gap:4px}
+.loss .d{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+.loss .s{color:var(--muted);font-size:13px}
+.loss .s a{color:var(--gold)}
+.cap{font-style:italic;color:var(--muted);font-size:14px}
+.rec-h{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:28px;line-height:1;text-transform:uppercase;margin:4px 0 2px}
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;margin:12px 0}
+.verdict .big{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;font-size:56px;line-height:1;color:var(--red)}
+.verdict .big.y{color:var(--gold)}
+.verdict .who{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted);line-height:1.5}
+.tally{height:9px;border-radius:5px;background:var(--gold);position:relative;overflow:hidden;margin:6px 0 4px}
+.tally::after{content:"";position:absolute;right:0;top:0;bottom:0;width:58%;background:var(--red)}
+.tl{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:8px 0}
+.why{font-size:14px;color:var(--muted);margin:6px 0}
+.why b{color:var(--ink);font-weight:600}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.split .btn{margin:0}
+.split .btn.red{background:var(--red);color:#fff;box-shadow:0 4px 0 #8C2F22}
+.list{display:grid;gap:6px;margin-top:10px}
+.list .it{display:flex;justify-content:space-between;gap:8px;font-size:14px;border-bottom:1px solid var(--line);padding:6px 0}
+.list .it span:last-child{font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--muted);font-size:12px;white-space:nowrap}
+.foot{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;color:var(--dim);text-align:center;margin-top:14px}
+@media (max-width:420px){.grid{gap:30px}.phone{max-width:none}.notes{max-width:none}}
+
+.rows{display:grid;gap:4px;margin-top:2px}
+.rw{display:grid;grid-template-columns:30px 1fr;gap:6px;align-items:start}
+.rw .k{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:var(--dim);padding-top:8px}
+.compact .c.off,.compact .c.offneg{min-height:24px;font-size:11px;padding:0 7px;letter-spacing:.05em;border-width:1px;opacity:.8}
+.compact .c.off .plus,.compact .c.offneg .plus{display:none}
+.compact .c.maybe{min-height:26px;font-size:12px;padding:0 8px}
+.def{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px;font-size:13px;color:var(--muted)}
+.def b{color:var(--red);font-family:"Barlow Condensed",Impact,sans-serif;letter-spacing:.06em;font-size:13px}
+.def i{color:var(--dim);font-style:normal}
+.lb{display:inline-block;border:1px solid #5A4A1F;border-radius:3px;padding:0 4px;font-family:"Barlow Condensed",Impact,sans-serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin:1px 1px 1px 0;vertical-align:1px}
+.lb.neg{color:#F08C7C;border-color:#6E2E25}
+.lb.miss{color:var(--dim);border-style:dashed;border-color:var(--dim)}
+.lb.close{color:var(--amber);border-style:dashed;border-color:var(--amber)}
+.sc .sec{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);padding:10px 0 2px}
+.sc .row .d a{color:var(--gold);text-decoration:underline;text-underline-offset:3px}
+
+.c.hollow{border:1.5px solid var(--gold);color:var(--gold);background:transparent;box-shadow:none}
+.c.hollow.n{border-color:var(--red);color:#F08C7C}
+.c .qm{opacity:.85;margin-left:-3px}
+.q .c{cursor:default}
+.words{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--dim);line-height:2;margin-top:4px}
+.words i{font-style:normal;color:#343B44;padding:0 5px}
+.words .fold{color:var(--muted);margin-left:8px}
+.q .chips{gap:6px 6px}
+
+.c.ghost{background:#1F262E;color:#8E98A6;box-shadow:none;font-size:12px;min-height:28px;padding:0 9px;font-weight:600}
+.c.ghost.n{background:#261C1B;color:#B07A71}
+.c.ghost.f{background:transparent;color:#6A7480;border:1px solid #2A323C}
+</style>
+
+<div class="wrap">
+  <h1>The Record, on every screen</h1>
+  <p class="lede">Static mockups in the site's own look. Nothing is wired. Each screen shows the proposal from our conversation with the changes numbered; the existing screens they replace are the ones you sent.</p>
+
+  <div class="grid">
+
+    <div class="shot">
+      <h2>1. Home <small>ticker above the buttons</small></h2>
+      <div class="phone">
+        <div class="tag" style="left:-6px;top:52px">1</div>
+        <div class="logo">True <span>82</span></div>
+        <div class="rule"></div>
+        <div class="ticker"><span class="live"></span><span><span class="n">2,314</span> Pacers fans say Haliburton holds up on defense. The scout disagrees.</span><span class="go">FIGHT →</span></div>
+        <div class="btn">🏀 Classic · Full stats</div>
+        <div class="btn">🐐 Presti Mode · Salary cap &amp; random</div>
+        <div class="daily"><div class="t">📅 THE DAILY #55</div><div class="s">BLIND NINETIES</div></div>
+        <div class="btn">🔁 The Redrafted · Nine classes, two rival GMs</div>
+        <div class="tag" style="left:-6px;bottom:118px">2</div>
+        <div class="card" style="border-color:var(--gold)">
+          <div class="eyebrow">Most disputed right now</div>
+          <div class="hook" style="margin:6px 0 0;padding:0;border:0;background:transparent">
+            <div class="q">Was 2017 Westbrook a <i>stat padder?</i></div>
+            <div class="tally" style="margin-top:4px"></div>
+            <div class="tl"><span>62% yes · 1,204 votes</span><span>still disputed</span></div>
+            <div class="split"><div class="btn">Yes</div><div class="btn red">No</div></div>
+          </div>
+        </div>
+        <div class="foot">16,816 Classic drafts · 14 rulings overturned by fans this month</div>
+      </div>
+      <div class="notes">
+        <div><b>1</b>One line, about 40px, reports the live fight and links to that ruling's record page. Never displaces a draft button, visible on every phone.</div>
+        <div><b>2</b>The existing widget stays below the buttons but leads with the tally, not the question. Headline is the trait's own bar (stat padder), never a raised one like "best in the league."</div>
+      </div>
+    </div>
+
+    <div class="shot">
+      <h2>2. Results, every card open <small>quiet, tappable</small></h2>
+      <div class="phone">
+        <div class="eyebrow" style="margin:0 0 2px">Your five</div>
+        <div class="player q"><div class="h"><div class="nm"><b>G</b>Tyrese Haliburton</div><div class="v"><small>v</small>6.14</div></div><div class="ssn">23-24 · Pacers</div><div class="chips"><span class="c on">3PT</span><span class="c on">Play</span><span class="c neg">Hunted</span><span class="c hollow">Clutch<span class="qm">?</span></span></div><div class="chips" style="margin-top:6px"><span class="c ghost">Gravity</span><span class="c ghost">Rim+</span><span class="c ghost">Off-B</span><span class="c ghost">Tshot</span><span class="c ghost">Iso-D</span><span class="c ghost">Team-D</span><span class="c ghost">Switch</span><span class="c ghost">Rim-P</span><span class="c ghost n">Ball-stop</span><span class="c ghost n">Stat-pad</span><span class="c ghost n">Knuck</span><span class="c ghost f">less ˄</span></div><div class="def"><b>HUNTED</b> · Offenses go at him on purpose. Switch onto him, post him, run him off screens.</div><div class="stats">20.1p 3.9r 10.9a 1.2s 0.7b · usg 24.6</div></div><div class="player q"><div class="h"><div class="nm"><b>G</b>Stephen Curry</div><div class="v"><small>v</small>10.14</div></div><div class="ssn">15-16 · Warriors</div><div class="chips"><span class="c on">Gravity</span><span class="c on">Play</span><span class="c on">Clutch</span><span class="c hollow">Tshot<span class="qm">?</span></span></div><div class="chips" style="margin-top:6px"><span class="c ghost">Rim+</span><span class="c ghost">Off-B</span><span class="c ghost">Iso-D</span><span class="c ghost">Team-D</span><span class="c ghost">Switch</span><span class="c ghost">Rim-P</span><span class="c ghost n">Hunted</span><span class="c ghost n">Ball-stop</span><span class="c ghost n">Stat-pad</span><span class="c ghost n">Knuck</span><span class="c ghost f">less ˄</span></div><div class="stats">30.1p 5.4r 6.7a 2.1s 0.2b · usg 32.6</div></div><div class="player q"><div class="h"><div class="nm"><b>F</b>Vince Carter</div><div class="v"><small>v</small>7.19</div></div><div class="ssn">00-01 · Raptors</div><div class="chips"><span class="c on">3PT</span><span class="c on">Rim+</span><span class="c on">Tshot</span><span class="c hollow">Switch<span class="qm">?</span></span></div><div class="chips" style="margin-top:6px"><span class="c ghost">Gravity</span><span class="c ghost">Off-B</span><span class="c ghost">Play</span><span class="c ghost">Iso-D</span><span class="c ghost">Team-D</span><span class="c ghost">Rim-P</span><span class="c ghost">Clutch</span><span class="c ghost n">Hunted</span><span class="c ghost n">Ball-stop</span><span class="c ghost n">Stat-pad</span><span class="c ghost n">Knuck</span><span class="c ghost f">less ˄</span></div><div class="stats">27.6p 5.5r 3.9a 1.5s 1.1b · usg 30.7</div></div><div class="player q"><div class="h"><div class="nm"><b>F</b>John Havlicek</div><div class="v"><small>v</small>4.77</div></div><div class="ssn">73-74 · Celtics</div><div class="chips"><span class="c on">Off-B</span><span class="c on">Team-D</span><span class="c on">Clutch</span><span class="c hollow">Iso-D<span class="qm">?</span></span></div><div class="chips" style="margin-top:6px"><span class="c ghost">3PT</span><span class="c ghost">Gravity</span><span class="c ghost">Rim+</span><span class="c ghost">Tshot</span><span class="c ghost">Play</span><span class="c ghost">Switch</span><span class="c ghost">Rim-P</span><span class="c ghost n">Hunted</span><span class="c ghost n">Ball-stop</span><span class="c ghost n">Stat-pad</span><span class="c ghost n">Knuck</span><span class="c ghost f">less ˄</span></div><div class="stats">22.6p 6.4r 5.9a 1.3s 0.4b · usg 25.2</div></div><div class="player q"><div class="h"><div class="nm"><b>C</b>Moses Malone</div><div class="v"><small>v</small>7.52</div></div><div class="ssn">81-82 · Rockets</div><div class="chips"><span class="c hollow">Tshot<span class="qm">?</span></span><span class="c hollow">Rim-P<span class="qm">?</span></span></div><div class="chips" style="margin-top:6px"><span class="c ghost">3PT</span><span class="c ghost">Gravity</span><span class="c ghost">Rim+</span><span class="c ghost">Off-B</span><span class="c ghost">Play</span><span class="c ghost">Iso-D</span><span class="c ghost">Team-D</span><span class="c ghost">Switch</span><span class="c ghost">Clutch</span><span class="c ghost n">Hunted</span><span class="c ghost n">Ball-stop</span><span class="c ghost n">Stat-pad</span><span class="c ghost n">Knuck</span><span class="c ghost f">less ˄</span></div><div class="stats">31.1p 14.7r 1.8a 0.9s 1.5b · usg 29.9</div></div>
+        <div class="cap" style="text-align:center;margin-top:8px">Tap a tag to flip it. ? means the scout called it close.</div>
+      </div>
+      <div class="notes">
+        <div><b>3</b>The unlit traits are pills again, so they read as the same kind of control as the lit ones, but tonal instead of outlined: a slightly lighter fill, no border, no plus, smaller and dimmer. A filled shape with no line around it is much quieter to the eye than a dashed box, and it still says "button." Negatives get a faint red tint so you know which ones bite.</div>
+        <div><b>4</b>Everything else stays: gold and red for what's true, hollow gold with ? for close calls, tap to flip, definition prints under the card on tap, fold with the last pill.</div>
+      </div>
+    </div>
+
+    <div class="shot">
+      <h2>3. Scoring card <small>every line shows its labels</small></h2>
+      <div class="phone">
+        <div class="eyebrow">Scoring card</div>
+        <div class="card sc" style="padding-top:2px">
+          <div class="sec">Talent</div>
+          <div class="row"><div class="l">Raw talent ΣV</div><div class="n">35.8</div><div class="d">Sum of each pick's value over a replacement-level player.</div></div>
+          <div class="sec">Fit</div>
+          <div class="row"><div class="l">Usage tax</div><div class="n neg">-3.1</div><div class="d">Σ usage 143.0 vs budget 110. One ball.</div></div>
+          <div class="row"><div class="l">Spacing</div><div class="n pos">+1.0</div><div class="d">3.5 shooters: <span class="lb">3PT Haliburton</span> <span class="lb">3PT Carter</span> <span class="lb">Gravity Curry</span> <a>Disagree?</a></div></div>
+          <div class="row"><div class="l">Rim protection</div><div class="n neg">-2.0</div><div class="d">No <span class="lb miss">Rim-P</span> label on your frontcourt. <span class="lb close">Rim-P Malone · close call</span> <a>Vote</a></div></div>
+          <div class="row"><div class="l">Rebounding</div><div class="n neg">-0.5</div><div class="d">Team-level: one board-eater, four wings.</div></div>
+          <div class="sec">Reputation</div>
+          <div class="tag" style="left:-18px;margin-top:6px">7</div>
+          <div class="row new"><div class="l">Defensive target</div><div class="n neg">-1.5</div><div class="d"><span class="lb neg">Hunted Haliburton</span> and nobody covers for him. <a>Disagree?</a></div></div>
+          <div class="row"><div class="l">Clutch</div><div class="n pos">+0.5</div><div class="d"><span class="lb">Clutch Curry</span> <span class="lb">Clutch Havlicek</span> <span class="lb close">Clutch Haliburton · close</span> <a>Vote</a></div></div>
+          <div class="row"><div class="l">Locker room</div><div class="n">0.0</div><div class="d">No knuckleheads on your five. <span class="lb miss">Knuck</span> <span class="lb miss">Ball-stop</span> <span class="lb miss">Stat-pad</span></div></div>
+          <div class="row tot"><div class="l">Team score → net rating</div><div class="n pos">+26.2</div><div class="d">Score 30.2 minus league baseline 4.0. Numbers illustrative.</div></div>
+        </div>
+        <div class="btn">Run it back</div>
+      </div>
+      <div class="notes">
+        <div><b>7</b>There is no "label tax" line, because labels are not one line. They are inputs to several: 3PT and Gravity feed spacing, Rim-P feeds rim protection, Hunted feeds defense, Knuck feeds locker room. So the card groups into Talent, Fit (team construction: usage from stats; spacing and rim protection from labels; rebounding and bench depth as team-level lines) and Reputation, and every line names the labels behind it as tiny chips, with a Disagree or Vote link on any line a label decided. A close call that would have changed a line shows up as amber right on the receipt. That is the dispute door on the money itself.</div>
+      </div>
+    </div>
+
+    <div class="shot">
+      <h2>4. The season <small>losses with a name</small></h2>
+      <div class="phone">
+        <div class="eyebrow dim" style="text-align:center">The season · game by game</div>
+        <div class="month"><div class="mh">NOV <span>13-2</span></div>
+          <div class="sq"><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i class="l">L</i><i>W</i><i class="l">L</i><i>W</i><i>W</i><i>W</i></div>
+          <div class="tag" style="left:-6px;margin-top:-6px">8</div>
+          <div class="loss"><div class="d">Nov 14 · L by 2 at Boston</div><div>Boston hunted Haliburton on every switch in the fourth.</div><div class="s">The record says he gets hunted. <a>Disagree?</a></div></div>
+          <div class="cap" style="margin-top:8px">13 and 2. Business handled, mostly.</div>
+        </div>
+        <div class="month"><div class="mh">DEC <span>15-0</span></div>
+          <div class="sq"><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i><i>W</i></div>
+          <div class="cap">15 and 0. The rotation is humming and everybody eats.</div>
+        </div>
+      </div>
+      <div class="notes">
+        <div><b>8</b>Each L gets one sentence that blames a label. It is presentation of a tax the engine already computed, nothing in the engine changes. This is the Haliburton tweet written for you, in the game's voice, and it waits on the tax going live.</div>
+      </div>
+    </div>
+
+    <div class="shot">
+      <h2>5. Record page <small>the URL a mob can hit</small></h2>
+      <div class="phone">
+        <div class="eyebrow">The record · true82.net/record/tyrese-haliburton-2024/hunted</div>
+        <div class="rec-h">Tyrese Haliburton</div>
+        <div class="mono" style="font-size:12px;color:var(--muted)">2023-24 · Pacers · Hunted</div>
+        <div class="tag" style="left:-6px;margin-top:8px">9</div>
+        <div class="verdict"><div class="big">YES</div><div class="who">Ruling stands<br>Scout said yes · Desk agreed<br>Fans: 58% yes, 42% no</div></div>
+        <div class="tally"></div>
+        <div class="tl"><span>1,204 votes</span><span>flips at 60% no</span></div>
+        <div class="pill">Still disputed</div>
+        <div class="why"><b>Scout:</b> opponents target him on switches, Pacers defense was bottom five with him on the floor.</div>
+        <div class="why"><b>Top dissent:</b> "led the league in deflections and you're telling me he can't rotate." (Pacers fan, 340 upvotes)</div>
+        <div class="split"><div class="btn">Yes, hunted</div><div class="btn red">No, he holds up</div></div>
+        <div class="btn ghost">Share the ruling · bring your people</div>
+        <div class="eyebrow dim" style="margin-top:12px">Also disputed this week</div>
+        <div class="list">
+          <div class="it"><span>2017 Westbrook · Stat padder</span><span>62% yes</span></div>
+          <div class="it"><span>2007 Stephen Jackson · Knucklehead</span><span>81% yes</span></div>
+          <div class="it"><span>2019 Kawhi · Playmaker</span><span>51% yes</span></div>
+        </div>
+      </div>
+      <div class="notes">
+        <div><b>9</b>Your existing after-vote screen ("62% yes, still disputed") is the template. It just needs its own URL per claim, to lead with the ruling instead of the question, and to say what it takes to flip it. This page is what gets quote-tweeted and where a fanbase goes to brigade.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
