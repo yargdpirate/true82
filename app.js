@@ -5552,6 +5552,14 @@ function showSeasonReel(season, e, done, midTrigger) {
   document.body.appendChild(ov);
   var acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
   var finished = false, timers = [];
+  // v48 RISO REEL: reel-riso.js prints the season as a risograph ledger:
+  // stamped coins for wins, and for every loss a hard stop, a hit to the card
+  // and a slow-draining L. Cosmetic only: it never touches season.games, and
+  // any throw drops back to the W/L chips below (QA: ?riso=0 forces chips).
+  var riso = null, ff = false, winRun = 0, lossRun = 0;
+  function risoOff(err) { riso = null; if (typeof console !== "undefined" && console.warn) console.warn("[t82] riso reel off:", err); }
+  try { if (window.T82RISO && T82RISO.create) riso = T82RISO.create(ov, season); } catch (err) { risoOff(err); }
+  function risoCall(fn) { if (!riso) return 0; try { return fn() || 0; } catch (err) { risoOff(err); return 0; } }
   // v47.15: the reel is now a cursor engine instead of a pre-scheduled cascade,
   // so it can pause on the exact square where the Mid-Season Heat Check
   // fires and resume onto a re-rolled remainder. Month W-L headers tick live
@@ -5572,6 +5580,7 @@ function showSeasonReel(season, e, done, midTrigger) {
     if (!midDone && triggerIdx >= 0) { fastForwardToPause(); return; }   // SKIP cannot dodge the spin
     finished = true;
     timers.forEach(clearTimeout);
+    if (riso) { try { riso.destroy(); } catch (err) { /* cosmetic */ } }
     ov.remove();
     done();
   }
@@ -5589,6 +5598,7 @@ function showSeasonReel(season, e, done, midTrigger) {
     row.__grid = row.querySelector(".reel-grid");
     recEl = row.querySelector(".reel-mo-rec");
     acts.appendChild(row);
+    risoCall(function () { return riso.openMonth(row, mi, REEL_MONTHS[mi][1]); });
     acts.scrollTop = acts.scrollHeight;
   }
   function closeMonth() {
@@ -5597,18 +5607,27 @@ function showSeasonReel(season, e, done, midTrigger) {
     var note = row.querySelector(".reel-note");
     note.textContent = reelLine(mi, monthW, monthL, cw, clx, firstLossNow(), monthStart) + (monthL > 0 ? " " + reelBlame(mi) : "");
     note.classList.remove("reel-note-pending");
+    risoCall(function () { return riso.closeMonth(row, mi, monthW, monthL); });
     acts.scrollTop = acts.scrollHeight;
   }
   function placeSquare() {
-    var win = season.games[gi];
-    var sq = document.createElement("span");
-    sq.className = "reel-day " + (win ? "w" : "l");
-    sq.textContent = win ? "W" : "L";
-    row.__grid.appendChild(sq);
-    if (win) { cw++; monthW++; } else { clx++; monthL++; }
+    var win = season.games[gi], prevStreak = winRun, hold = 0;
+    if (win) { cw++; monthW++; winRun++; lossRun = 0; } else { clx++; monthL++; lossRun++; winRun = 0; }
     runEl.textContent = cw + "\u2013" + clx;
     recEl.textContent = monthW + "\u2013" + monthL;
+    if (riso) {
+      var info = { gi: gi, cw: cw, cl: clx, streak: winRun, prevStreak: prevStreak, lossRun: lossRun,
+        city: reelCity(gi), date: reelDate(gi), instant: ff };
+      hold = risoCall(function () { return riso.stamp(row, gi - monthStart, !!win, info); });
+    }
+    if (!riso) {
+      var sq = document.createElement("span");
+      sq.className = "reel-day " + (win ? "w" : "l");
+      sq.textContent = win ? "W" : "L";
+      row.__grid.appendChild(sq);
+    }
     gi++; monthLeft--;
+    return ff ? 0 : hold;                                     // a loss holds the cursor (riso only)
   }
 
   function advance() {
@@ -5621,9 +5640,9 @@ function showSeasonReel(season, e, done, midTrigger) {
   function tick() {
     if (finished) return;
     if (!midDone && gi === triggerIdx) { firePause(); return; }
-    placeSquare();
-    if (monthLeft === 0) advance();
-    else schedule(tick, 48);
+    var hold = placeSquare();
+    if (monthLeft === 0) { if (hold) schedule(advance, hold); else advance(); }
+    else schedule(tick, 48 + hold);
   }
 
   function applyMidBoost(boost) {
@@ -5650,10 +5669,12 @@ function showSeasonReel(season, e, done, midTrigger) {
   }
   function fastForwardToPause() {
     timers.forEach(clearTimeout); timers = [];
+    ff = true;
     while (gi < triggerIdx) {
       if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
       placeSquare();
     }
+    ff = false;
     if (mi < 0 || monthLeft === 0) { closeMonth(); openMonth(); }
     acts.scrollTop = acts.scrollHeight;
     firePause();
@@ -5667,6 +5688,7 @@ function showSeasonReel(season, e, done, midTrigger) {
       '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>' +
       '<button class="reel-done" id="reelDone" type="button">SEE THE FULL RESULTS \u2192</button>';
     acts.appendChild(fin);
+    risoCall(function () { return riso.finale(fin, season); });
     fin.querySelector("#reelDone").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
     acts.scrollTop = acts.scrollHeight;
   }
@@ -6365,7 +6387,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v47";
+var BUILD_V = "v48";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

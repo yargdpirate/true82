@@ -3115,4 +3115,36 @@ body.gating .gate-back {
 /* V42 amendment 2 - the verdict button and the inline percentile */
 .reel-done { display: block; margin: 14px auto 2px; background: var(--amber); color: var(--ink); border: 1px solid var(--amber); border-radius: 8px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.09em; padding: 12px 22px; min-height: 44px; cursor: pointer; box-shadow: 0 2px 0 var(--maple); }
 .reel-done:active { background: var(--maple); border-color: var(--maple); color: var(--chalk); box-shadow: none; }
+
+/* ---------- v48 RISO REEL (reel-riso.js) ----------
+   The season prints as a risograph ledger on paper. Everything is scoped to
+   .reel-overlay.riso: if the module is missing or bails, the reel keeps the
+   dark card and W/L chips above, untouched. */
+.reel-overlay.riso .reel-card { position: relative; overflow: hidden; min-height: min(540px, 82vh); background-color: #F4ECDD; background-size: cover; background-position: center; border-color: #CFC2A6; box-shadow: 0 20px 70px rgba(0,0,0,0.6); }
+.reel-overlay.riso .reel-head { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; column-gap: 12px; row-gap: 2px; border-bottom: 1.5px solid #232A4E; }
+.reel-overlay.riso .reel-eyebrow { grid-column: 1; grid-row: 1; color: #232A4E; }
+.reel-overlay.riso .riso-streak { grid-column: 1; grid-row: 2; min-height: 14px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; color: #C8217A; transform-origin: left center; }
+.reel-overlay.riso .riso-streak.hot { color: #D6208A; text-shadow: 1px -1px 0 rgba(255,181,17,0.95); }
+.reel-overlay.riso .riso-streak.dead { color: #C92F3B; text-decoration: line-through; text-decoration-thickness: 2px; }
+.reel-overlay.riso .riso-streak.cold { color: #C92F3B; }
+.reel-overlay.riso .reel-run { grid-column: 2; grid-row: 1 / span 2; margin-left: 0; display: inline-block; font-family: var(--disp); font-size: 30px; line-height: 1; letter-spacing: 0.02em; color: #232A4E; text-shadow: 1.5px -1px 0 rgba(255,72,176,0.7); }
+.reel-overlay.riso .reel-run i, .reel-overlay.riso .reel-final-rec i { font-style: normal; color: #D63A45; }
+.reel-overlay.riso .reel-skip { grid-column: 3; grid-row: 1 / span 2; color: #232A4E; border-color: #232A4E; }
+.reel-overlay.riso .reel-skip:active { color: #C8217A; border-color: #C8217A; }
+.reel-overlay.riso .reel-acts { flex: 1 1 auto; }   /* a ledger page that fills in, not a box that grows */
+.reel-overlay.riso .reel-act { border-bottom: 1px dashed rgba(35,42,78,0.3); }
+.reel-overlay.riso .reel-mo-line { align-items: center; }
+.reel-overlay.riso .reel-mo { color: #232A4E; }
+.reel-overlay.riso .reel-mo-rec { color: #5B5E73; }
+.reel-overlay.riso .reel-note { color: #4A4E66; font-style: italic; }
+.reel-overlay.riso .reel-grid { display: block; margin: 7px 0 3px; }
+.reel-overlay.riso .riso-strip { display: block; mix-blend-mode: multiply; }
+.reel-overlay.riso .reel-day.w { background: #FFB511; border-color: #E0981A; color: #232A4E; }
+.reel-overlay.riso .reel-day.l { background: #F65058; border-color: #C92F3B; color: #fff; }
+.reel-overlay.riso .riso-swept { display: inline-block; margin-left: 4px; padding: 2px 6px 1px; border: 2px solid #E0348E; border-radius: 3px; color: #E0348E; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; transform: rotate(-9deg); text-shadow: 1px 1px 0 rgba(0,120,191,0.35); }
+.reel-overlay.riso .riso-flash { position: absolute; inset: 0; z-index: 2; background: #F65058; mix-blend-mode: multiply; opacity: 0; pointer-events: none; }
+.reel-overlay.riso .riso-fx { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; pointer-events: none; }
+.reel-overlay.riso .reel-final-rec { display: inline-block; color: #232A4E; text-shadow: 2px -1.5px 0 rgba(255,72,176,0.7); }
+.reel-overlay.riso .reel-done { background: #232A4E; border-color: #232A4E; color: #F4ECDD; box-shadow: 3px 3px 0 #FF48B0; }
+.reel-overlay.riso .reel-done:active { background: #C8217A; border-color: #C8217A; box-shadow: none; }
 .comp-pct { color: var(--amber); white-space: nowrap; }

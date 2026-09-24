@@ -4,7 +4,8 @@
 // effCost fire-sale floor, capRoll bargain decay (monotonic, rip-offs invariant),
 // lineup swap legality + doLineupMove/doLineupSwap state, FORCE_CLUTCH/prefersReduce
 // flags, and the crest load-race regression. Run this BEFORE and AFTER any change
-// to game logic in app.js. 41 checks; exits nonzero on any failure.
+// to game logic in app.js. 44 checks (the last three pin the v48 riso reel's
+// pacing and copy rules); exits nonzero on any failure.
 
 const fs = require("fs");
 const vm = require("vm");
@@ -171,6 +172,18 @@ ctx.G = null;
 eq("refreshTicketArt: safe with no game", (ctx.refreshTicketArt(), "ok"), "ok");
 ctx.G = { screen: "results", cur: { fr: "TESTFR", dec: 1990 } };
 eq("refreshTicketArt: safe off the draft screen", (ctx.refreshTicketArt(), "ok"), "ok");
+
+// v48 riso reel (reel-riso.js): cosmetic, but these three are promises.
+vm.runInContext(fs.readFileSync("reel-riso.js", "utf8"), ctx);
+const RISO = ctx.window.T82RISO;
+let minFlashHold = Infinity;
+for (let n = 1; n <= 82; n++) if (RISO.heavy(n)) for (const st of [0, 4, 31]) minFlashHold = Math.min(minFlashHold, RISO.holdFor(n, st));
+eq("riso reel: red-flash losses come under 3 per second (photosensitivity line)", 1000 / (minFlashHold + 48) < 3, true);
+eq("riso reel: the loss that ends a real streak holds longest", RISO.holdFor(1, 31) > Math.max(RISO.holdFor(1, 0), RISO.holdFor(2, 0), RISO.holdFor(20, 0)), true);
+const EM = String.fromCharCode(0x2014);
+const lossLines = [{ cl: 1, prevStreak: 31 }, { cl: 1, prevStreak: 0 }, { cl: 3, lossRun: 2 }, { cl: 4, lossRun: 1 }]
+  .map(i => RISO.lossCopy(Object.assign({ city: "Orlando", date: "Dec 23" }, i)).join(" "));
+eq("riso reel: loss copy has zero em-dashes (copy law)", lossLines.some(l => l.includes(EM)), false);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

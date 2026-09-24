@@ -68,7 +68,7 @@ any session that ships a real change; skip it for small back-and-forth. -->
   `boot`/`loadCrests`/`start` (load flow) · `setFootStats`/`fetchFootStats`/
   `gameFinishedPings` (footer stat line). functions/: event.js (ingest),
   games.js (KV counter), api/stats.js (footer stats), avocado.js (dashboard + DASH_KEY).
-- **Tests:** `node test.js` (41 checks) before touching game logic.
+- **Tests:** `node test.js` (44 checks) before touching game logic.
 - **Mechanics reference:** `docs/MODES.md` — read only when touching engine/mode
   logic. Player-facing copy: `docs/POPUPS.md`.
 

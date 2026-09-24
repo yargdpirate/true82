@@ -21,7 +21,7 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `crests.json` | Team-era crest images (base64 WebP), fetched in background, never blocks play |
 | `logo.png` | 9.8 KB quantized logo (replaced a 140 KB inline base64) |
 | `analytics.js` | Cookieless client tracker → `/api/event` |
-| `test.js` | Headless logic harness — `node test.js`, 41 checks. Run before changing game logic |
+| `test.js` | Headless logic harness — `node test.js`, 44 checks. Run before changing game logic |
 | `functions/api/event.js` | POST ingestion → D1 (allowlists, clamps, swallows errors) |
 | `functions/api/games.js` | KV games-played counter (accrues via POST; no longer displayed) |
 | `functions/api/stats.js` | Public footer stats from D1: per-mode finished drafts + Presti 82-0 incl. Hot Hand |

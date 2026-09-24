@@ -1,12 +1,62 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** this folder, packaged as `true82-v47.6-two-answer-ceiling.zip`.
+**Current source of truth:** the GitHub repo. The v48 work lives on branch `c-code-clean` until it is merged to `main`.
 
-**Date:** 2026-07-31
-**Packaging label:** `v47.6`; runtime build remains `v47`, with an `app.js` cache-key refresh only.
-**Most recent functional change:** anonymous per-question two-answer delivery ceiling in the trait feed.
+**Date:** 2026-09-24
+**Build:** `v48` (`BUILD_V` and every bumped cache key agree).
+**Most recent functional change:** the season reel prints as a risograph ledger (reel-riso.js). See section 00.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00. V48: riso reel (THE SEASON · GAME BY GAME)
+
+The season reel now prints as a risograph ledger on a paper card. Wins stamp
+in as Sunflower coins that run hotter with the streak (thicker rim at 10,
+halo at 20, glint at 30, a burst every tenth straight; SWEPT stamp on a
+perfect month). Losses break the rhythm on purpose: the cursor holds, the
+card shakes and flashes red, a scarlet ring slams down, cracks, sprays and
+bleeds, and a giant misregistered L lands and drains while the card sags.
+The drips stay in the ledger, so losses still read at the end.
+
+Files and keys:
+- `reel-riso.js` (new): all rendering. Loaded by a plain deferred tag in
+  index.html, not loadScriptOnce (that would log an analytics event per load).
+- `app.js` showSeasonReel: small hooks only (riso.create / openMonth / stamp /
+  closeMonth / finale / destroy). Chips remain the fallback.
+- `styles.css`: one block scoped to `.reel-overlay.riso`.
+- Keys: styles.css, app.js and reel-riso.js at `20260924-riso-reel-v48`;
+  `BUILD_V = "v48"`.
+
+Invariants (do not break):
+1. Cosmetic only. reel-riso.js never reads or writes season.games; the
+   cursor engine in app.js owns the season, the Mid-Season Heat Check pause,
+   its re-roll and SKIP. Squares are stamped from the live value at
+   placement, so a Heat Check re-roll is always honored.
+2. Fail soft. Every call goes through risoCall; any throw logs
+   "[t82] riso reel off" once and the reel continues on W/L chips.
+3. Loss pacing lives in holdFor/heavy. The first 14 losses get the full bang
+   and never arrive faster than ~1.3 per second (red-flash safety, well
+   under 3/s); after 14, losses still slam and bleed but skip the flash and
+   hold only 240ms so a bad season never drags. test.js pins this.
+4. Copy law holds: loss captions have zero em-dashes (pinned by test.js).
+5. Fast-forward (SKIP before the Heat Check) stamps instantly with no
+   effects and no hold.
+
+QA switches:
+- `?riso=0`: plain W/L chips (the pre-v48 reel), for comparison or rollback.
+- `?risoslow=6`: every reel effect and the loss hold run 6x slower, for
+  reviewing a loss frame by frame.
+- `?midhot=1` (existing): forces the Mid-Season Heat Check, which exercises
+  the pause, resume and fast-forward paths through the new hooks.
+
+Verified 2026-09-24 on a local build: real Classic run; a 78-4, a 26-56 and
+an 82-0 season fed straight to showSeasonReel; a loss in game 2; Presti with
+?midhot=1 through the pause, decline and resume; ?riso=0. No console errors.
+Reel length measured: 82-0 11.8s (unchanged), 26-56 34.2s. Loss holds add
+up to about 12.5s for a season with 14 losses, about 5s for 78-4 (computed).
+node --check (all five browser JS files) and node test.js: 44 passed.
 
 ---
 
