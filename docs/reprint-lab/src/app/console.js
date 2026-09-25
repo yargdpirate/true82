@@ -15,7 +15,10 @@
   function toast(msg) { var t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 1800); }
 
   /* ---- recipe state ---- */
-  var rc = LAB.recipe(store("t82lab-rc") || (LAB.presets && LAB.presets[0] ? LAB.presets[0].rc : {}));
+  // First visit opens on the look the judges rated best; "Today, printed" stays first in the list as the baseline.
+  function openingPreset() { var list = LAB.presets || [], pick = list.filter(function (p) { return p.id === LAB.OPENING_PRESET; })[0]; return pick || list[0]; }
+  LAB.OPENING_PRESET = LAB.OPENING_PRESET || "evolution-night-shift";
+  var rc = LAB.recipe(store("t82lab-rc") || (openingPreset() ? openingPreset().rc : {}));
   var view = store("t82lab-view") || "masthead", stateIx = {};
   var DEVICES = { phone: [390, 780], tablet: [768, 1000], desktop: [1280, 800] }, device = store("t82lab-device") || "phone";
   function dev() { return DEVICES[device] || DEVICES.phone; }
@@ -221,7 +224,7 @@
       } }, ["★ Star this look"]),
       el("button", { type: "button", class: "btn", id: "cmpBtn", "aria-pressed": "false", onclick: function () { compareOn = !compareOn; this.setAttribute("aria-pressed", String(compareOn)); this.textContent = compareOn ? "Stop comparing" : "Compare stars"; schedule("compare"); } }, ["Compare stars"]),
       el("button", { type: "button", class: "btn", onclick: function () { shuffle(); } }, ["Shuffle"]),
-      el("button", { type: "button", class: "btn", onclick: function () { rc = LAB.recipe(LAB.presets && LAB.presets[0] ? LAB.presets[0].rc : {}); store("t82lab-rc", rc); sync(); schedule("reset"); } }, ["Reset"])
+      el("button", { type: "button", class: "btn", onclick: function () { rc = LAB.recipe(openingPreset() ? openingPreset().rc : {}); store("t82lab-rc", rc); sync(); schedule("reset"); } }, ["Reset"])
     ]));
     wrap.appendChild(grid);
     wrap.appendChild(el("p", { class: "foot", text: "Your code. Send it to Claude and it builds exactly this:" }));
@@ -277,7 +280,9 @@
   function stageW() { return Math.max(260, $("#stage").clientWidth - 20); }
   function headerBanner(r) {
     // the masthead as the site header shows it: 232 css px wide at 2x, on the ground color
-    return LAB.image(r, 300, 2).then(function (im) {
+    // Today's site keeps its own flat night header: print the plate without paper tooth so no box shows around it.
+    var rp = r.sysPalette === "today" ? Object.assign({}, r, { tooth: 0 }) : r;
+    return LAB.image(rp, 300, 2).then(function (im) {
       var roles = LAB.roles(LAB.palettes[r.sysPalette && r.sysPalette !== "match" && r.sysPalette !== "today" ? r.sysPalette : r.palette], r.ground);
       im.cssW = Math.min(290, Math.round(100 * im.w / im.h));   // sized by height (100px) with a width cap, like a real header
       im.headBg = r.sysPalette === "today" ? "" : roles.ground;
@@ -384,16 +389,36 @@
         });
       });
     });
-    if (why === "load") presetImgs.forEach(function (p) { chain = chain.then(function () { return LAB.image(p.rc, 300, 1).then(function (im) { p.img.src = im.canvas.toDataURL("image/jpeg", 0.8); p.img.style.background = im.paper || ""; }); }); });
+    if (why === "load") {
+      var groups = {}, order = [];                         // one print per look, shared by the rail and the list
+      presetImgs.forEach(function (p) { var k = JSON.stringify(p.rc); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(p); });
+      var pchain = Promise.resolve();                      // looks first, independent of the icon thumbnails
+      order.forEach(function (k) { pchain = pchain.then(function () { return LAB.image(groups[k][0].rc, 300, 1).then(function (im) { var u = im.canvas.toDataURL("image/jpeg", 0.8); groups[k].forEach(function (p) { p.img.src = u; p.img.style.background = im.paper || ""; }); }); }); });
+    }
   }
 
   /* ---- boot ---- */
+  // The looks rail: every preset as a small ticket above the screen tabs, so a phone can switch looks without scrolling.
+  function buildRail() {
+    var host = $("#rail"); if (!host) return;
+    host.innerHTML = "";
+    (LAB.presets || []).forEach(function (p) {
+      var img = el("img", { alt: "" }), b = el("button", { type: "button", class: "rail-item", "data-id": p.id, title: p.line || "", onclick: function () {
+        rc = LAB.recipe(p.rc); store("t82lab-rc", rc); sync(); schedule("preset");
+        var n = $("#g-presets .note"); if (n) n.textContent = p.note || "";
+        toast(p.name);
+      } }, [img, el("span", { text: p.name })]);
+      host.appendChild(b); presetImgs.push({ img: img, rc: p.rc });
+    });
+    binders.push(function () { var code = JSON.stringify(rc); host.querySelectorAll(".rail-item").forEach(function (b) { var p = (LAB.presets || []).filter(function (x) { return x.id === b.getAttribute("data-id"); })[0]; b.setAttribute("aria-pressed", String(!!p && JSON.stringify(LAB.recipe(p.rc)) === code)); }); });
+  }
   LAB.boot = function () {
-    buildConsole(); buildViews();
+    buildRail(); buildConsole(); buildViews();
     $("#jump").addEventListener("click", function () {
       var c = $("#console"), top = c.getBoundingClientRect().top;
       if (top > 40) c.scrollIntoView({ behavior: "smooth" }); else $("#bed").scrollIntoView({ behavior: "smooth" });
     });
     schedule("load");
+    setTimeout(function () { var r = $("#rail"), a = r && r.querySelector('.rail-item[aria-pressed="true"]'); if (a) r.scrollLeft = Math.max(0, a.offsetLeft - r.offsetLeft - 8); }, 50);
   };
 })();

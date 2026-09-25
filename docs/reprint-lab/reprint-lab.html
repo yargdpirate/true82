@@ -62,6 +62,12 @@ h1 { margin: 2px 0 0; font: 900 clamp(38px, 7vw, 58px)/.9 var(--display); text-t
   font: 800 15px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; background: var(--chip-bg); color: var(--chip-fg);
 }
 .views button[aria-selected="true"] { background: var(--on-bg); color: var(--on-fg); box-shadow: 3px 2px 0 var(--pink); }
+.rail { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 4px 6px 0; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.rail::-webkit-scrollbar { display: none; }
+.rail-item { all: unset; box-sizing: border-box; cursor: pointer; flex: 0 0 128px; display: grid; gap: 3px; padding: 4px; border: 1.5px solid var(--fg); background: var(--chip-bg); color: var(--chip-fg); scroll-snap-align: start; }
+.rail-item img { width: 100%; aspect-ratio: 1000 / 300; object-fit: contain; display: block; }
+.rail-item span { font: 800 13px/1 var(--display); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-item[aria-pressed="true"] { background: var(--on-bg); color: var(--on-fg); box-shadow: 3px 2px 0 var(--pink); }
 .states { display: flex; flex-wrap: wrap; gap: 5px; min-height: 26px; }
 .states button { font: 600 11px/1 var(--mono); letter-spacing: .02em; text-transform: none; padding: 5px 8px; border-width: 1px; }
 .states button[aria-pressed="true"] { background: var(--on-bg); color: var(--on-fg); }
@@ -165,6 +171,7 @@ input[type=text] { width: 100%; padding: 6px 8px; border: 1.5px solid var(--fg);
     </div>
   </header>
   <section class="bed" id="bed" aria-label="Preview">
+    <div class="rail" id="rail" aria-label="Looks"></div>
     <nav class="views" id="views" role="tablist" aria-label="Screens"></nav>
     <div class="states" id="states"></div>
     <div class="stage" id="stage"></div>
@@ -7150,8 +7157,9 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
   function paperDeepCSS(r) {
     var pa = 64, pm = 60, pb = 72, pg = 70;
     if (r) {
-      pa = deep(r.accent, r.shadow, r.paper, 3.4); pm = deep(r.metal, r.shadow, r.paper, 3.2);
-      pb = deep(r.bad, r.shadow, r.paper, 3.8); pg = deep(r.good, r.shadow, r.paper, 3.8);
+      // small type on paper (prices, badges, positions, run lines) needs 4.5:1 (final QA sweep)
+      pa = deep(r.accent, r.shadow, r.paper, 4.5); pm = deep(r.metal, r.shadow, r.paper, 4.5);
+      pb = deep(r.bad, r.shadow, r.paper, 4.5); pg = deep(r.good, r.shadow, r.paper, 4.5);
     }
     return rule("html[data-card]",
       "--s-p-accent: " + mix("var(--t-accent)", pa, "var(--t-shadow)") + "; --s-p-metal: " + mix("var(--t-metal)", pm, "var(--t-shadow)") + ";" +
@@ -8399,14 +8407,46 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
 </script>
 <script>/* system/90-lead.js */
 /* ---------- TRUE 82 LAB: the lead's cross-cutting patches ----------
-   Small fixes found in final QA that sit between owners' files. */
+   Small fixes found in the final QA sweep that sit between owners' files.
+   Everything is computed from the recipe's roles, so it holds in every palette. */
 (function () {
-  var LAB = window.LAB;
-  LAB.component({ id: "lead-patches", css: function () {
-    // The riso reel's streak label and SWEPT stamp are small type on paper. The site prints them in a deep
-    // pink; a palette's bright offset ink is too faint for 10px text, so pull it toward the ink.
-    return "html[data-btn] .reel-overlay.riso .riso-streak:not(.dead):not(.cold), html[data-btn] .reel-overlay.riso .riso-swept" +
-      " { color: color-mix(in srgb, var(--t-offset) 52%, var(--t-ink)); border-color: color-mix(in srgb, var(--t-offset) 52%, var(--t-ink)); }\n";
+  var LAB = window.LAB, C = LAB.color;
+  function hue(hex) {
+    var c = window.RISO.hexRGB(hex), r = c[0] / 255, g = c[1] / 255, b = c[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+    if (!d) return -1;
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h *= 60; return h < 0 ? h + 360 : h;
+  }
+  function near(a, b, deg) { var x = hue(a), y = hue(b); if (x < 0 || y < 0) return false; var d = Math.abs(x - y); return Math.min(d, 360 - d) < deg; }
+  function rolesFor(rc) { return LAB.roles(LAB.palettes[rc.sysPalette && rc.sysPalette !== "match" && rc.sysPalette !== "today" ? rc.sysPalette : rc.palette], rc.ground || "night"); }
+
+  LAB.component({ id: "lead-patches", css: function (rc) {
+    var r = rolesFor(rc), s = "";
+    // 1. Good news on the reel (the streak line, SWEPT) is small type on paper. The site prints it in a deep pink;
+    //    a palette's bright offset is too faint, and where the offset is red it reads as a loss. Use a deepened
+    //    offset, or fire gold when the offset sits next to the bad red.
+    var newsBase = near(r.offset, r.bad, 38) ? r.sun : r.offset;
+    var news = C.ensure(newsBase, r.paper, 4.5, r.ink);
+    s += "html[data-btn] .reel-overlay.riso .riso-streak:not(.dead):not(.cold), html[data-btn] .reel-overlay.riso .riso-swept { color: " + news + "; border-color: " + news + "; }\n";
+    s += "html[data-btn] [data-kit-ghost] .riso-streak, html[data-btn] [data-kit-ghost] .riso-swept { color: var(--t-text); border-color: var(--t-text); }\n";
+
+    // 2. The hot pick is the best pick (a bonus), so it wears fire gold, not the NO red. Re-point the bad roles on
+    //    the hot pick's own marks only; the trait tags inside keep the real red for bad traits.
+    var hot = r.sun, hotInk = C.ensure(r["sun-ink"] || r.sun, r.paper, 4.5, r.ink), hotEdge = r["sun-edge"] || r.sun;
+    // (the results page also carries its own scarlet as --rr-scar*, resolved on .rr, so those are re-pointed too)
+    var HOTV = "--t-bad: " + hot + "; --t-bad-ink: " + hotInk + "; --t-bad-edge: " + hotEdge + "; --s-p-bad: " + hotInk + "; --c-bad: " + hot + "; --c-bad-edge: " + hotEdge + "; --c-bad-lab: " + C.inkOn(hot, r.ink, r.paper) + "; --c-bad-ink: " + hotInk + ";" +
+      " --rr-scar: " + hot + "; --rr-scar-edge: " + hotEdge + "; --rr-scar-deep: " + hotInk + ";";
+    s += "html[data-btn] .rr .bt-card.hot-pick { --t-bad: " + hot + "; --rr-scar: " + hot + "; --rr-scar-edge: " + hotEdge + "; --rr-scar-deep: " + hotInk + "; }\n";
+    s += "html[data-btn] .rr .bt-card.hot-pick > * { --t-bad: " + r.bad + "; --rr-scar: " + r.bad + "; --rr-scar-edge: " + r["bad-edge"] + "; --rr-scar-deep: " + r["bad-ink"] + "; }\n";
+    s += "html[data-btn] .rr .hot-pick .pr-name, html[data-btn] .rr .hot-pick .bt-val, html[data-btn] .rr .hot-pick .slot-badge, html[data-btn] .rr .hot-pick .hot-bonus, html[data-btn] .rr .big-label .net-bonus { " + HOTV + " }\n";
+
+    // 3. Text printed on the results paper in the good green or the "you" blue: the night palette's versions are
+    //    too light on cream, so deepen them to 4.5:1 inside the results page.
+    s += "html[data-btn] .rr { --t-good: " + C.ensure(r.good, r.paper, 4.5, r.ink) + "; --t-you: " + C.ensure(r.you, r.paper, 4.5, r.ink) + "; }\n";
+
+    // 4. The Daily plaque title on paper cards: the site's 0.85 opacity washes the gold out.
+    s += "html[data-card=\"paper\"] .daily-tile .dt-title { opacity: 1; }\n";
+    return s;
   } });
 })();
 
@@ -8801,7 +8841,10 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
   function toast(msg) { var t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 1800); }
 
   /* ---- recipe state ---- */
-  var rc = LAB.recipe(store("t82lab-rc") || (LAB.presets && LAB.presets[0] ? LAB.presets[0].rc : {}));
+  // First visit opens on the look the judges rated best; "Today, printed" stays first in the list as the baseline.
+  function openingPreset() { var list = LAB.presets || [], pick = list.filter(function (p) { return p.id === LAB.OPENING_PRESET; })[0]; return pick || list[0]; }
+  LAB.OPENING_PRESET = LAB.OPENING_PRESET || "evolution-night-shift";
+  var rc = LAB.recipe(store("t82lab-rc") || (openingPreset() ? openingPreset().rc : {}));
   var view = store("t82lab-view") || "masthead", stateIx = {};
   var DEVICES = { phone: [390, 780], tablet: [768, 1000], desktop: [1280, 800] }, device = store("t82lab-device") || "phone";
   function dev() { return DEVICES[device] || DEVICES.phone; }
@@ -9007,7 +9050,7 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
       } }, ["★ Star this look"]),
       el("button", { type: "button", class: "btn", id: "cmpBtn", "aria-pressed": "false", onclick: function () { compareOn = !compareOn; this.setAttribute("aria-pressed", String(compareOn)); this.textContent = compareOn ? "Stop comparing" : "Compare stars"; schedule("compare"); } }, ["Compare stars"]),
       el("button", { type: "button", class: "btn", onclick: function () { shuffle(); } }, ["Shuffle"]),
-      el("button", { type: "button", class: "btn", onclick: function () { rc = LAB.recipe(LAB.presets && LAB.presets[0] ? LAB.presets[0].rc : {}); store("t82lab-rc", rc); sync(); schedule("reset"); } }, ["Reset"])
+      el("button", { type: "button", class: "btn", onclick: function () { rc = LAB.recipe(openingPreset() ? openingPreset().rc : {}); store("t82lab-rc", rc); sync(); schedule("reset"); } }, ["Reset"])
     ]));
     wrap.appendChild(grid);
     wrap.appendChild(el("p", { class: "foot", text: "Your code. Send it to Claude and it builds exactly this:" }));
@@ -9063,7 +9106,9 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
   function stageW() { return Math.max(260, $("#stage").clientWidth - 20); }
   function headerBanner(r) {
     // the masthead as the site header shows it: 232 css px wide at 2x, on the ground color
-    return LAB.image(r, 300, 2).then(function (im) {
+    // Today's site keeps its own flat night header: print the plate without paper tooth so no box shows around it.
+    var rp = r.sysPalette === "today" ? Object.assign({}, r, { tooth: 0 }) : r;
+    return LAB.image(rp, 300, 2).then(function (im) {
       var roles = LAB.roles(LAB.palettes[r.sysPalette && r.sysPalette !== "match" && r.sysPalette !== "today" ? r.sysPalette : r.palette], r.ground);
       im.cssW = Math.min(290, Math.round(100 * im.w / im.h));   // sized by height (100px) with a width cap, like a real header
       im.headBg = r.sysPalette === "today" ? "" : roles.ground;
@@ -9170,17 +9215,37 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
         });
       });
     });
-    if (why === "load") presetImgs.forEach(function (p) { chain = chain.then(function () { return LAB.image(p.rc, 300, 1).then(function (im) { p.img.src = im.canvas.toDataURL("image/jpeg", 0.8); p.img.style.background = im.paper || ""; }); }); });
+    if (why === "load") {
+      var groups = {}, order = [];                         // one print per look, shared by the rail and the list
+      presetImgs.forEach(function (p) { var k = JSON.stringify(p.rc); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(p); });
+      var pchain = Promise.resolve();                      // looks first, independent of the icon thumbnails
+      order.forEach(function (k) { pchain = pchain.then(function () { return LAB.image(groups[k][0].rc, 300, 1).then(function (im) { var u = im.canvas.toDataURL("image/jpeg", 0.8); groups[k].forEach(function (p) { p.img.src = u; p.img.style.background = im.paper || ""; }); }); }); });
+    }
   }
 
   /* ---- boot ---- */
+  // The looks rail: every preset as a small ticket above the screen tabs, so a phone can switch looks without scrolling.
+  function buildRail() {
+    var host = $("#rail"); if (!host) return;
+    host.innerHTML = "";
+    (LAB.presets || []).forEach(function (p) {
+      var img = el("img", { alt: "" }), b = el("button", { type: "button", class: "rail-item", "data-id": p.id, title: p.line || "", onclick: function () {
+        rc = LAB.recipe(p.rc); store("t82lab-rc", rc); sync(); schedule("preset");
+        var n = $("#g-presets .note"); if (n) n.textContent = p.note || "";
+        toast(p.name);
+      } }, [img, el("span", { text: p.name })]);
+      host.appendChild(b); presetImgs.push({ img: img, rc: p.rc });
+    });
+    binders.push(function () { var code = JSON.stringify(rc); host.querySelectorAll(".rail-item").forEach(function (b) { var p = (LAB.presets || []).filter(function (x) { return x.id === b.getAttribute("data-id"); })[0]; b.setAttribute("aria-pressed", String(!!p && JSON.stringify(LAB.recipe(p.rc)) === code)); }); });
+  }
   LAB.boot = function () {
-    buildConsole(); buildViews();
+    buildRail(); buildConsole(); buildViews();
     $("#jump").addEventListener("click", function () {
       var c = $("#console"), top = c.getBoundingClientRect().top;
       if (top > 40) c.scrollIntoView({ behavior: "smooth" }); else $("#bed").scrollIntoView({ behavior: "smooth" });
     });
     schedule("load");
+    setTimeout(function () { var r = $("#rail"), a = r && r.querySelector('.rail-item[aria-pressed="true"]'); if (a) r.scrollLeft = Math.max(0, a.offsetLeft - r.offsetLeft - 8); }, 50);
   };
 })();
 

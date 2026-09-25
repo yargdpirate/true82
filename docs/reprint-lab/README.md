@@ -6,7 +6,7 @@ every screen of the game. Built overnight 2026-09-24/25. Nothing here is shipped
 version implements them.
 
 - Open `reprint-lab.html` in a browser (it is one self-contained file, about 7 MB). On the branch preview:
-  `https://c-code-clean.true82.pages.dev/docs/reprint-lab/reprint-lab.html`. A private Claude artifact copy exists too.
+  `https://c-code-clean.true82.pages.dev/docs/reprint-lab/reprint-lab`. A private Claude artifact copy exists too.
 - The Tribune is not in the lab: it is being retired.
 
 ## How the owner uses it
@@ -36,6 +36,13 @@ code starts `T82-` and decodes (`LAB.decode(code)` in the lab's console) to the 
 6. **The masthead.** `src/engine.js` is the riso compositor (grown from `results-riso.js`: any Riso ink, any paper
    stock including dark screen-print stock, halftone screens, grain, starvation, misregistration). `src/banner.js`
    composes the wordmark, depth, icon concept (`src/concepts/`), layout and additions into plates.
+
+## Design calls the lab makes that differ from today's site
+
+- The hot pick (the Heat Check save, the best pick with a bonus) is marked in fire gold in every themed look, not the
+  scarlet that also means NO and bad traits (one meaning per color). "Today's site" keeps the scarlet.
+- Small type on paper (prices, badges, positions, run lines, green and blue values on the results paper) is deepened
+  to at least 4.5:1 in every palette.
 
 ## Shipping a look (the plan for the implementing version)
 

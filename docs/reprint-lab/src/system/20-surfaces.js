@@ -114,8 +114,9 @@
   function paperDeepCSS(r) {
     var pa = 64, pm = 60, pb = 72, pg = 70;
     if (r) {
-      pa = deep(r.accent, r.shadow, r.paper, 3.4); pm = deep(r.metal, r.shadow, r.paper, 3.2);
-      pb = deep(r.bad, r.shadow, r.paper, 3.8); pg = deep(r.good, r.shadow, r.paper, 3.8);
+      // small type on paper (prices, badges, positions, run lines) needs 4.5:1 (final QA sweep)
+      pa = deep(r.accent, r.shadow, r.paper, 4.5); pm = deep(r.metal, r.shadow, r.paper, 4.5);
+      pb = deep(r.bad, r.shadow, r.paper, 4.5); pg = deep(r.good, r.shadow, r.paper, 4.5);
     }
     return rule("html[data-card]",
       "--s-p-accent: " + mix("var(--t-accent)", pa, "var(--t-shadow)") + "; --s-p-metal: " + mix("var(--t-metal)", pm, "var(--t-shadow)") + ";" +
