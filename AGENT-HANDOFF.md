@@ -22,6 +22,31 @@ styles.css, engine or site_data.json change, no cache keys bumped.
 When the owner sends picks, they arrive as `T82-...` codes; decode with `LAB.decode` in the lab. The ship path
 (tokenized styles.css + one theme block + generated component CSS + an exported masthead) is in the README.
 
+Owner reactions so far (2026-09-25): he loves the dramatic neon buttons (Heat Vice; the lab's "Neon amount: More"
+spreads them to every button, secondaries in the palette's second neon). He found the white paper tiles on the
+results page jarring in dark looks ("Results tiles" setting added; default now follows the look's cards), and he
+ruled out paper-only special cases: "nothing else is skeuomorphic", so a control must look the same on every surface.
+
+### Next: one enforced global style guide (owner's request, 2026-09-25; not started)
+
+The owner is about to add several new game modes and does not want to standardize screens piecemeal again. Goal:
+every screen draws from ONE set of tokens and components, so a new mode is styled by construction.
+- **The season reel (game by game) and the results page are off-system** (grafted on later: they carry their own
+  fixed riso inks, the `.rr` private `--rr-*` tokens and their own type). Put them on the global roles: win/loss
+  coins and their text in the system colors (e.g. the look's pink + teal, or at least a neon red for losses), the
+  YOUR FIVE player result boxes on the global type scale and card component, and the crowdsourced-data pop-up
+  (the tag ballot sheet; likewise the poll card and Bonuses) on the global sheet, button and chip components.
+- **Section headers as a component** ("division headers"): one class with a few variants chosen in the backend by
+  a single attribute, so modules can be dropped into any screen and match.
+- **Enforce it**: styles.css consumes only tokens (the lab's tokenizer and audit in `docs/reprint-lab/` already map
+  every color literal to a role); results-riso.js and reel-riso.js take their inks from the theme (the lab's
+  `src/vendor/` copies show the hook); a test.js check fails on any new hex color or font-family literal outside
+  the theme block. New modes use only the shared components.
+- **Update the lab to match**: coins, reel text and results boxes follow the palette; a toggle for the header
+  variants.
+- **Share picture**: add a white text overlay on the final results print (the season picture and the share poster)
+  with the five player names stacked, so the shared image reads as a roster card.
+
 Site bugs the capture agents found in passing (not fixed; owner's call):
 - Question share links under `/bonuses/<slug>` 404 because `_routes.json` does not route `/bonuses/*` to
   `functions/bonuses/[slug].js` (already listed as a pending manual edit).
