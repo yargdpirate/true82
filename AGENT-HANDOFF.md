@@ -131,6 +131,30 @@ The lab (docs/reprint-lab, read its README) is now built on the site's own syste
   publish that file to the url (no icon on a redeploy). NOT republished this session: the artifact still shows
   the pre-v51 lab; point the owner at the branch preview copy meanwhile.
 
+### Owner's queued tweaks (2026-09-25, end of session; rough priority and logical order)
+Most are for the Heat Vice direction (neon). Do them after the lab recapture and artifact republish above.
+1. Player trait badges are still yellow: find a color that matches the scheme.
+2. The player value on results needs back the symbol it used to have (a Greek letter, an EV-style mark).
+3. Most text looks italic (the chosen font, or real italics?): it is hard to read on badges and body text. Use an upright face.
+4. Position badges on the results player cards: neon pink.
+5. Wins and losses: probably light blue (aqua) as the main win color and the pink neon for losses. Many colors
+   on that screen should probably swap this way.
+6. Ballot sheet: the main YES/NO buttons should not be red and yellow (they clash with the palette).
+7. GOAT Climb needs a neon teal secondary color (it is solid right now).
+8. Offense/defense box: fold it into the bottom of the team record box, just above SHARE YOUR TEAM, with no
+   border and slight padding.
+9. The season-print mountain should fill with color only partially, in proportion to wins out of 82.
+10. Masthead: the TRUE 82 title should be more neon, less riso/hand-drawn, closer to the ball icon. Keep the
+    comet icon as configured but crop it tight (no blank space around it).
+11. The dunk-the-ball interaction (Daily gate) needs a Vice neon makeover.
+12. Home page: replace the intro text with a one-liner plus possibly a HOW TO PLAY button; the text below the
+    voting card also goes, replaced by a how-to-play button somewhere.
+13. Make sure HOW TO PLAY is dead simple (maybe a CSS tapping finger running a short video-like demo).
+14. ADD DEFINITIONS TO TRAITS: where did those go? (Owner is asking; find and restore them.)
+15. Import the "redraftables" from the test archive and review the other deltas with it.
+16. Add Daily archive retrieval (play or view past Dailies).
+17. Later: leaderboards, high scores, etc. with accounts (the accounts-test fork went far down that road).
+
 ### Calls made (owner may overrule)
 - In today's colors the results, the reel and the ballot sheet are dark site cards (owner confirmed 2026-09-25).
 - The season print on dark cards glows (screen blend on the card color) instead of the lab's old negative
