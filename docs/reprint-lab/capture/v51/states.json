@@ -1,0 +1,863 @@
+{
+ "kit": [
+  {
+   "snap": "kit",
+   "label": "The kit",
+   "y": 0,
+   "note": "",
+   "url": "",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "home": [
+  {
+   "snap": "home-intro",
+   "label": "At rest",
+   "y": 0,
+   "note": "Homepage at rest, scrollTop 0, phone 390x844. Browser localStorage already has a finished daily (t82_daily1), so THE DAILY plaque shows YOUR RUN 76-6 + CHALLENGE A FRIEND / RUN IT BACK (returning-player variant). Poll card live with question 1 of 5.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-intro-fresh",
+   "label": "First visit",
+   "y": 0,
+   "note": "Homepage at rest for a FIRST-TIME player (loaded on http://127.0.0.1:8788 so localStorage is empty): THE DAILY plaque is the unplayed button variant (THE DAILY #75 + board name HYPERINFLATION, no result/actions), poll card on question 1 of 5, Draft/Winning copy below. Base href points at 127.0.0.1:8788.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-poll-voted",
+   "label": "Poll answered",
+   "y": 0,
+   "note": "Homepage after tapping YES on poll question 1 (WAS 2008 KOBE AN ELITE WING DEFENDER?): result beat shown in #tmRes (1 YES · 0 NO so far), vote buttons hidden, module has .tm-locked, dots advance. This beat lasts ~1.5s before question 2 slides in.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-poll-done",
+   "label": "Poll finished",
+   "y": 0,
+   "note": "Homepage poll card completion state after answering all 5 questions (1 YES + 4 NO): \"5 VOTES IN\", \"Your votes helped set player bonuses.\", gold VOTE ON 5 MORE button, all five diamond pips filled. Note: #tmShare has hidden attr but .tm-sharebar{display:block} overrides it, so the Share Vote bar still shows.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-poll-share-copied",
+   "label": "Vote link copied",
+   "y": 0,
+   "note": "Homepage poll card right after tapping the Share Vote bar (no native share sheet): the bar text becomes \"COPIED\" and gets .flashed (gold text + gold border) for 1.4s. Clipboard success SIMULATED (navigator.clipboard.writeText stubbed to resolve; the unfocused background tab cannot write, real clipboard untouched). Returning-player homepage (daily played).",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-daily-challenge",
+   "label": "Challenge a friend",
+   "y": 0,
+   "note": "Homepage (returning player, daily already played) right after tapping CHALLENGE A FRIEND on THE DAILY plaque: no native share sheet, so the daily share text goes to the clipboard and the button label flips to \"COPIED!\" for 1.6s. Clipboard success SIMULATED (writeText stubbed to resolve).",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-daily-link-gate",
+   "label": "Arrived from a friend's link",
+   "y": 0,
+   "note": "Homepage landing from a TODAY beat-my-five link (/?d=20260924&w=76&n=171, first-time player on 127.0.0.1; params stripped on load): the app skips the menu and opens THE DAILY gate directly, with an extra ember mono .gate-target line under a hairline inside the variation plaque: \"Their five went 76-6 (Net +17.1). Beat it.\" Otherwise same as home-daily-gate. body.gating.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-poll-idk-pressed",
+   "label": "Poll: I don't know",
+   "y": 0,
+   "note": "Homepage poll card in the instant after tapping IDK (a local \"pass\", nothing written server-side): the dashed IDK button gets .pressed (gold text + gold dashed border), then ~260ms later the next question slides in. Captured synchronously in the tap tick. First-time player origin (127.0.0.1), question 1 = WAS 2008 KOBE AN ELITE WING DEFENDER?",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-legal-open",
+   "label": "Footer and legal",
+   "y": 1032,
+   "note": "Homepage scrolled to the bottom (scrollY ~1032 of 1876) with footer <details class=\"legal\"> opened (PLEASE READ - Legal / disclaimer, 4 paragraphs). Footer also shows contact mail, #footStats \"v50\", site-links nav. Poll card above is in its 5 VOTES IN completion state from earlier voting.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "draft": [
+  {
+   "snap": "classic-round1",
+   "label": "Round 1",
+   "y": 0,
+   "note": "Classic run, round 1 (pick 1 of 5) settled after the deal: mode panel (CLASSIC MODE + HOW TO PLAY), ticket (90s Bucks, crest, SKIP TEAM/SKIP ERA), sort chips (MIN active), search, player pool with MORE PLAYERS cue, empty G G F F C lineup rail tray. body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-pick-selected",
+   "label": "Player picked",
+   "y": 0,
+   "note": "Round 1 after tapping Ray Allen in the pool: row gets selected outline, tray grows with \"Assign Ray Allen 98-99 to:\" and GUARD / FORWARD confirm buttons; MORE PLAYERS cue still up. body.drafting.has-pick",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-pick-single",
+   "label": "One open slot",
+   "y": 0,
+   "note": "Round 3, tapped George McGinnis (F-only): single-slot confirm variant: tray shows the lineup rail (Allen G, Leonard F with SWAP badges) plus one wide DRAFT YOUR PLAYER button (no confirm-label, no position choice). body.drafting.has-pick",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-deal-spin",
+   "label": "Dealing the next ticket",
+   "y": 0,
+   "note": "Mid-animation (~380ms) right after drafting Ray Allen at GUARD: round 2 deal in flight: ticket-roll.reeling slot reels flipping decade/franchise decoys, crest reel cycling logos, pool.scrambling years roulette; lineup rail shows Allen filled in a G slot. body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-sort",
+   "label": "Sorted",
+   "y": 0,
+   "note": "Round 1 after tapping the OBPM sort chip (sort chips are plain toggles, no dropdown/open state): OBPM chip active, pool re-sorted by offensive BPM with metric years (Ricky Pierce, Dell Curry with a fixed-year face, Ray Allen still selected). Tray GUARD/FORWARD up. body.drafting.has-pick",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-search-empty",
+   "label": "Search, no match",
+   "y": 0,
+   "note": "Round 1, focused the search box and typed \"zzq\" (zero matches): search field focused with clear X, pool empty with NO empty-state message, (i) legend button hidden, but the MORE PLAYERS cue still floats over the blank pool (UX gap). Ray Allen still selected so tray shows GUARD/FORWARD. body.drafting.has-pick. Search value mirrored into the value attribute for the snapshot",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-chip-expanded",
+   "label": "Trait chip opened",
+   "y": 0,
+   "note": "Round 1, Ray Allen selected; tapped his GRAVITY trait chip in the pool: chip expands in place to its full name ELITE GUNNER (.tchip.expanded, aria-pressed=true). Tray GUARD/FORWARD still up. body.drafting.has-pick",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-legend-open",
+   "label": "Label legend",
+   "y": 0,
+   "note": "Round 1, Ray Allen selected, tapped the gold (i) beside search: PLAYER LABELS legend panel expanded between the pool head and the pool (RIM+, TSHOT, PLAY, ISO-D, TEAM-D, RIM-D, OFF-B, GRAVITY, 3PT + footnote); (i) turns into an X; tray with GUARD/FORWARD still up. body.drafting.has-pick",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-skip-used",
+   "label": "Skip used",
+   "y": 0,
+   "note": "Round 4 after tapping SKIP TEAM (re-dealt to 00s Hawks): SKIP TEAM button now disabled \"0 LEFT\" (disabled skip-btn style) beside the live SKIP ERA; pool has an off row (Toni Kukoc \"F · full\"); rail Allen G, Leonard F, McGinnis F. body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-round3",
+   "label": "Round 3",
+   "y": 0,
+   "note": "Round 3 (pick 3 of 5) settled: 70s Pacers (INA/IND) ticket, OBPM sort still active, pool (McGinnis, Dantley, Knight, English); lineup rail partly filled: Ray Allen (RA, G) and Kawhi Leonard (KL, F) tokens with gold SWAP badges, open G / F / C slots. No pick selected. body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-round5",
+   "label": "Round 5",
+   "y": 0,
+   "note": "Round 5 (pick 5 of 5, final pick) settled: 20s Hornets ticket, both skip buttons disabled (SKIP TEAM 0 LEFT; SKIP ERA shows 1 LEFT but disabled since no era target), most pool rows dimmed \"G · full\"/\"G/F · full\" (.off), only C-eligible Mark Williams live; lineup rail 4/5 filled: Allen G, Terry G, Leonard F, McGinnis F, open C. body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-row-denied",
+   "label": "Player won't fit",
+   "y": 0,
+   "note": "Second classic run (Run it back), round 5 (only F open): pool scrolled (#pool scrollTop 330); tapped Steve Francis, a dimmed \"G · full\" row: .player-row.off.deny mid-shake (520ms deny animation, title \"No open slot fits him.\") captured ~140ms after the tap; neighbours Hedo Turkoglu / Juwan Howard live, Darrell Armstrong also off. Lineup rail Beal G, Johnson G (SWAP badges), Abdur-Rahim F, open F, Abdul-Jabbar C. body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-lineup-move",
+   "label": "Moving a player",
+   "y": 0,
+   "note": "Round 3, tapped Ray Allen token in the lineup rail: lineup move/swap mode: Allen token .moving with MOVING badge; legal destinations light up as .swap-target with HERE badges and pulsing dashed ring (Leonard F token = swap, open F slot = move). Pool unchanged, no pick selected. body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "classic-rules-sheet",
+   "label": "How to play",
+   "y": 0,
+   "note": "Round 1 with Ray Allen selected, then tapped HOW TO PLAY: rules sheet (dialog) open over dimmed draft: GAME BASICS, HOW TO PLAY THIS MODE (CLASSIC) bullets, NEED A REFRESHER callout, sticky footer STATS REFRESHER link + GOT IT button, close X. body.rules-open; sheet scrolls internally",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "presti": [
+  {
+   "snap": "presti-round1",
+   "label": "Round 1",
+   "y": 0,
+   "note": "Presti Mode draft, pick 1 of 5, $50M bank scoreboard + meter, team card with SKIP TEAM/ERA/YRS cost chips, $ sort chips, player list with price tags, empty position dock. Reached via homepage PRESTI MODE button on /?midhot=1",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-pick-selected",
+   "label": "Player picked",
+   "y": 0,
+   "note": "Presti pick 1, single-position player (Thomas Bryant C, $12M) tapped: row gold-outlined, price tag lit, body.has-pick, fixed bottom dock shows \"Thomas Bryant 19-20 · $12M · leaves $38M\" + DRAFT YOUR PLAYER button",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-pick-selected-multi",
+   "label": "Two positions",
+   "y": 0,
+   "note": "Presti pick 1, dual-position player (Porzingis F/C, $5M) tapped: row highlighted gold, body.has-pick, bottom dock shows \"Assign ... $5M · leaves $45M to:\" with FORWARD / CENTER confirm buttons",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-skip",
+   "label": "Paying to skip",
+   "y": 0,
+   "note": "Presti pick 2 of 5 (Stockton drafted, $36M bank) ~280ms after pressing SKIP TEAM: bank box .bank-down counting $36M->$35M with transient red deduction chip (#bankDed.show.neg \"−$1M\"), ticket decade/franchise slot reels and pool prices mid-scramble, SKIP TEAM/ERA/YRS cost chips visible",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-skip-refund",
+   "label": "Refund",
+   "y": 0,
+   "note": "Presti pick 1 after SKIP TEAM landed the rare REFUND perk (7.5%): all three cost buttons flash green (.skip-btn.refunded, text REFUND!) for 2.5s with a money-emoji spray; bank stays $50M; new Jazz team card. (Flash re-fired via flashRefund() so the snapshot lands inside the 2.5s window; a live skip rolled REFUND first)",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-skip-firesale",
+   "label": "Fire sale",
+   "y": 0,
+   "note": "Presti pick 3 of 5 ($13M bank) right after SKIP YRS rolled the rare FIRE SALE perk: all three cost buttons flash red (.skip-btn.firesale, text FIRE SALE) with down-arrow spray; every pool price shows base struck through in red with the -$2 price in green (G.fireSale active for this board)",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-bank-mid",
+   "label": "Money running low",
+   "y": 0,
+   "note": "Presti pick 4 of 5, bank $4M (.mp-bank.bank-mid, meter nearly empty): unaffordable rows dimmed with \"over\" tag + greyed price, affordable rows normal; dock shows Stockton G, Hayward F (SWAP badge), O'Neal C filled, G and F open",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-bank-low",
+   "label": "Almost broke",
+   "y": 0,
+   "note": "Presti pick 5 of 5, bank $1M (.mp-bank.bank-low: red amount + sliver meter), all three SKIP buttons disabled (cannot reroll with $1 per open slot), pool rows dimmed with \"full\" (position filled) or \"over\" (unaffordable) tags; dock has 4 filled coins (two SWAP badges) and one open F slot",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-swap",
+   "label": "Swapping",
+   "y": 0,
+   "note": "Presti pick 4, $4M bank-mid: tapped Hayward's SWAP badge in the lineup dock -> his coin lifts with a MOVING tag (.lineup-slot.movable.moving) and the open G slot pulses as a HERE target (.lineup-slot.open.swap-target)",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-rules-sheet",
+   "label": "How to play",
+   "y": 0,
+   "note": "Presti draft pick 1, HOW TO PLAY rules overlay open (fixed .rules-overlay > .rules-sheet.plq-frame, body.rules-open + drafting); GAME BASICS + PRESTI mode rules, refresher callout, STATS REFRESHER / GOT IT footer. Opened via #rulesBtn",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "daily": [
+  {
+   "snap": "daily-gate",
+   "label": "The gate",
+   "y": 0,
+   "note": "THE DAILY gate / reading room (first-time player on a fresh *.localhost origin, tapped the unplayed THE DAILY #75 plaque): body.gating (masthead + footer hidden), section.gate: gold ← BACK pill, mono eyebrow 📅 THE DAILY #75 · THU, SEP 24, big amber THE DAILY title, three-line law, plaque-framed TODAY'S VARIATION · PRESTI MODE (i) box with HYPERINFLATION name + body, DUNK THE BALL TO START ↓ DRAG cue, basketball+hoop lever (#gateLever), gold PLAY IT button",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-shot",
+   "label": "Dunking in",
+   "y": 0,
+   "note": "THE DAILY gate mid-dunk: finger dragging the basketball ~93% down through the hoop, past the ignite point (#gateLever.hh-lever.pulling.ignited, flames .hh-fire lit, #gateArm inline translateY(140px)); not yet released (fires at 97%, then the draft launches after 700ms). body.gating",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-daily-gate-info",
+   "label": "Gate, rules open",
+   "y": 0,
+   "note": "THE DAILY gate (from the homepage, first-time player) with the variation box (i) button tapped: #gateTip .cap-tip revealed inside the plaque frame as a gold-left-ruled mono box with the Presti Mode rules paragraph + \"Scout the era on Basketball Reference ↗\" link; (i) has aria-expanded=true. Pushes the dunk lever and PLAY IT below the fold.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-round1",
+   "label": "Draft",
+   "y": 0,
+   "note": "THE DAILY #75 official run, pick 1 of 5 (reached by dunking the ball on the gate): Daily money panel variant (📅 DAILY #75 id, gold \"1 OFFICIAL ATTEMPT\" badge, sub \"PRESTI RULES · PRICES TRIPLED. BUDGET $75M. THE MATH LIES.\", HOW TO PLAY, BANK $75M + meter), '70s Sonics ticket with SKIP TEAM/ERA/YRS -$1M chips, sort chips + search, priced player list, empty G G F F C dock; body.drafting",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-pick-selected",
+   "label": "Player picked",
+   "y": 0,
+   "note": "THE DAILY #75 pick 1, tapped Gus Williams (G, $15M): row gold-outlined with lit price tag, body.has-pick, bottom dock shows \"Gus Williams 77-78 · $15M · leaves $60M\" + DRAFT YOUR PLAYER; Daily money panel (1 OFFICIAL ATTEMPT badge, BANK $75M) above",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-rules-sheet",
+   "label": "How to play",
+   "y": 0,
+   "note": "THE DAILY draft pick 1 with HOW TO PLAY open: .rules-overlay > .rules-sheet.plq-frame, Daily variant leads with a nested plaque \"TODAY'S RULE · DAILY #75 / Hyperinflation\" + body, then HOW TO PLAY THIS MODE (THE DAILY) bullets, then PLUS PRESTI MODE RULES bullets; STATS REFRESHER / GOT IT footer; body.drafting.rules-open",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-results-top",
+   "label": "Results",
+   "y": 0,
+   "note": "THE DAILY #75 results page, OFFICIAL run (analytic, projected), top: START OVER + FEATURE REQUESTS? BUGS?, daily-framed riso board with head line \"THE DAILY #75 • OFFICIAL RUN • LOCKED\", canvas \"shape of a season\" halftone print labelled THE DAILY #75 and PROJECTED OVER 82 GAMES (no realized W/L ticks), 72-10, NET RATING +13.5, comp line, navy SHARE THE DAILY; YOUR FIVE tag-ballot cards (Gus Williams first) with an animated tap-hint hand over the first trait chip",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-share-copied",
+   "label": "Shared",
+   "y": 0,
+   "note": "THE DAILY #75 official results, tapped SHARE THE DAILY: no native share sheet on this browser, so the challenge text (\"TRUE 82 #75 ... Beat my five: <link>?d=20260924&w=72&n=135\") goes to the clipboard and the navy button flips to COPIED! for ~1.6s. Clipboard success SIMULATED (writeText stubbed to resolve so the real clipboard is untouched)",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-plaque-played",
+   "label": "Plaque after playing",
+   "y": 0,
+   "note": "Homepage after the official Daily is recorded (returned via START OVER from results, no reload): THE DAILY #75 plaque in its played state: \"✓ YOUR RUN 78-4 · Net +18.6\" mono line, CHALLENGE A FRIEND and RUN IT BACK · PRACTICE stacked gold actions; poll card below. NOTE body keeps a stale .has-pick class from the draft/results",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-practice-round1",
+   "label": "Practice draft",
+   "y": 0,
+   "note": "THE DAILY #75 PRACTICE rerun (Run it back · practice from the official results, target kept), pick 1 of 5: money panel badge switches to a dashed outline PRACTICE RUN chip (vs gold 1 OFFICIAL ATTEMPT), BEAT 72-10 · NET +13.5 target line kept, BANK $75M; same board",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-practice-results",
+   "label": "Practice results",
+   "y": 0,
+   "note": "THE DAILY #75 PRACTICE run results (challenge target kept, deliberately cheap roster), top: head line \"THE DAILY #75 • PRACTICE RUN • OFFICIAL 78-4\", riso print in its losing/night variant (deep navy halftone field with a moon, 5-77), NET RATING -18.9, comp line, red mono .daily-target-line.dt-hold \"Their five: 72-10 (Net +13.5) · They hold the board.\", navy SHARE OFFICIAL (78-4) (practice always shares the official record); ballot cards with negative values",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-challenge",
+   "label": "A friend's challenge",
+   "y": 0,
+   "note": "CHALLENGE A FRIEND, receiver side: a friend opened the beat-my-five link (/?d=20260924&w=72&n=135, fresh player on a new *.localhost origin; params stripped on load) and lands straight on THE DAILY gate (body.gating) with the ember mono target line inside the variation plaque under a hairline: \"Their five went 72-10 (Net +13.5). Beat it.\" + DUNK THE BALL TO START lever + PLAY IT",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-challenge-round1",
+   "label": "Challenge draft",
+   "y": 0,
+   "note": "CHALLENGE A FRIEND receiver's draft, pick 1 of 5 (from the beat-my-five link, PLAY IT on the gate): Daily money panel gains the target line .mp-target \"BEAT 72-10 · NET +13.5\" (ember mono) under the sub copy, above BANK $75M; same shared board as the sender ('70s Sonics, same players/prices)",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "daily-challenge-results",
+   "label": "Challenge results",
+   "y": 0,
+   "note": "CHALLENGE A FRIEND receiver's results (their official Daily #75 run from the beat-my-five link), top: daily-framed riso board \"THE DAILY #75 • OFFICIAL RUN • LOCKED\", projected print 78-4, NET RATING +18.6, comp line, green mono verdict line .daily-target-line.dt-win \"Their five: 72-10 (Net +13.5) · You take the board.\" above navy SHARE THE DAILY; YOUR FIVE ballot cards",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-daily-share-reveal",
+   "label": "Share fallback",
+   "y": 0,
+   "note": "Homepage THE DAILY plaque in the share FALLBACK state: tapped CHALLENGE A FRIEND where neither native share nor clipboard works (SIMULATED: writeText rejects, execCommand(copy) returns false; real in-app browsers hit this). A readonly textarea#shareTextOut.share-out (rows 9) with the full daily share text is inserted inside .dt-actions right under CHALLENGE A FRIEND, focused with all text selected and scrolled to the bottom (data-snap-scroll), and the button reads \"↓ SELECT & COPY\" for 1.6s. RUN IT BACK · PRACTICE sits below it. The plaque grows to ~390px tall.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "home-daily-stale-link",
+   "label": "Old link",
+   "y": 0,
+   "note": "Homepage for a fresh player (127.0.0.1 origin, empty localStorage) landing from an OLD daily beat-my-five link (/?d=20260921&w=70&n=123, stripped from the URL on load): unplayed THE DAILY #75 / HYPERINFLATION plaque followed by the mono .daily-stale note \"That link was for Daily #72. Today's board is #75.\" (0.72rem, chalk-dim, pulled up with -8px margin). Poll card on question 1.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "reel": [
+  {
+   "snap": "reel-mid",
+   "label": "First loss",
+   "y": 0,
+   "note": "Season reel overlay right after the first loss stamps (game 3, record 2-1), captured under ?risoslow=6 (URL param added via replaceState before the final pick; only slows timing): fixed .reel-overlay.riso over the dimmed final draft screen; riso paper card, head THE SEASON · GAME BY GAME + 2-1 (loss count in <i> scarlet) + gold SKIP; OCT month line 2-1 with two sunflower coin stamps and a scarlet cracked ring + drip on a canvas strip; the riso-fx canvas shows the giant misregistered pink/scarlet L with FIRST L · AT DENVER / OCT 26. Canvases converted to images.",
+   "url": "/?risoslow=6",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "reel-win-streak",
+   "label": "On a streak",
+   "y": 0,
+   "note": "Second classic run, season reel mid-streak (no loss hold in progress): head shows sunflower \"6 STRAIGHT\" streak label (.riso-streak) and running record 17–9; current month strip mid-fill with freshly popping coin stamps (canvas), earlier months closed with desk notes; faint drips from earlier losses stay in the ledger. Normal speed (no risoslow).",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "reel-streak-dies",
+   "label": "Streak dies",
+   "y": 0,
+   "note": "Season reel ~3 months in (19-4), a loss that ended a 13-game streak just stamped (risoslow=6): head shows struck-through red \"13 STRAIGHT\" (.riso-streak.dead) beside 19-4; OCT 3-2 and NOV 14-1 month strips closed with italic desk notes (\"The zero died in Denver...\", \"14 and 1. Business handled, mostly...\"), DEC in progress with its first loss; giant L + AT LOS ANGELES / DEC 5 over the card. Canvases converted.",
+   "url": "/?risoslow=6",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "reel-final",
+   "label": "Finale",
+   "y": 0,
+   "note": "Season reel finale, 76-6: card head THE SEASON · GAME BY GAME, \"18 STRAIGHT\" streak label (sunflower), 76-6 with scarlet 6, SKIP; #reelActs scrolled to bottom (scrollTop 466 of 1130) showing JAN 15-0 / FEB 11-0 / APR 6-0 with rotated pink SWEPT stamps, MAR 14-1, italic desk notes, then .reel-final: big 76-6 record, \"The verdict is in.\", navy SEE THE FULL RESULTS button with pink offset shadow. Coin strips are canvases (converted).",
+   "url": "/?risoslow=6",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-reel",
+   "label": "Presti, resumed",
+   "y": 0,
+   "note": "Presti season reel resumed after the Mid-Season Heat Check saved game 37: fixed .reel-overlay riso ledger card (canvas coin stamps), header THE SEASON · GAME BY GAME + live record + streak + SKIP, month rows OCT..JAN with stamped win coins and SWEPT stamps, italic month notes; the rest of the season re-rolled at the boosted net",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-reel-final",
+   "label": "Presti finale",
+   "y": 0,
+   "note": "Presti season reel finished: riso ledger scrolled to bottom (FEB/MAR/APR rows with red-pinned loss coins and narrative notes naming players), big final record 79-3 (navy + red riso), \"The verdict is in.\", navy SEE THE FULL RESULTS button with pink offset; header shows 79-3 + SKIP",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "heat": [
+  {
+   "snap": "heat-check",
+   "label": "The offer",
+   "y": 0,
+   "note": "Mid-Season Heat Check OFFER: fixed .hh-overlay.in.hh-mid over the paused season reel (36-0, first realized loss at game 37). Card: glowing eyebrow \"Game 37. You're 36-0 and down entering the 4th quarter. Clutch heroics to stay perfect?\", basketball-through-hoop lever (.hh-lever) with bouncing PULL DOWN hint, I DON'T WANT YOUR CHARITY decline button. Reached: Presti run on /?midhot=1, drafted 5, reel auto-paused",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "heat-wheel",
+   "label": "Name spinning",
+   "y": 0,
+   "note": "Mid-Season Heat Check step 2 mid-spin: name reel landed on the hot player (.hh-name.hot between payline rules), 5-segment heat meter (.hh-seg.lvl0..4) racing with one .lit segment and the big tier label (#hhmHeatLabel.hh-heatlabel.lvlN, inline scale) cycling COLD/WARM/HOT/ON FIRE/SUPERNOVA; verdict not yet shown",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "heat-pull",
+   "label": "Pulling",
+   "y": 0,
+   "note": "Mid-Season Heat Check mid-drag: finger holding the basketball ~80% down through the hoop (.hh-lever.pulling, #hhmArm inline translateY(120px)), PULL DOWN hint hidden while pulling, charity button still offered; not yet ignited (ignites at 90%)",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "heat-ignite",
+   "label": "Ignited",
+   "y": 0,
+   "note": "Mid-Season Heat Check the instant the pull completes: ball dunked through the net and on fire (.hh-lever.pulling.ignited, flames .hh-fire visible), charity button fading out (.hh-charity.gone); ~350ms after release, before the name strip opens",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "heat-shot",
+   "label": "The shot",
+   "y": 0,
+   "note": "Mid-Season Heat Check SHOT in flight (~1s after the ball drops): overlay .hh-overlay.hh-mid.lit, ignited lever, charity button gone, step 1 (.hh-step.on) slot window (.hh-window) with the roster surnames repeated on .hh-strip frozen mid-glide (inline translateY set to ~55% of its landing offset, transition none, to stand in for the motion frame) under the gold .hh-payline; heat meter not yet shown",
+   "url": "/?midhot=1&risoslow=6",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "heat-result-saved",
+   "label": "Saved",
+   "y": 0,
+   "note": "Mid-Season Heat Check RESULT, qualified (HOT or better): overlay .hh-overlay.hh-mid.lit.won, name reel landed on J. STOCKTON, heat meter filled to HOT (.hh-seg.fill + .result), big stamp \"J. STOCKTON CATCHES FIRE\" (.hh-verdict.on .hh-stamp), caption \"HOT · VALUE ×1.35 · NET +18.4 → +20.5\", goat fireworks layer, BACK TO THE SEASON button (.hh-actions.on)",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "heat-result-miss",
+   "label": "Missed",
+   "y": 0,
+   "note": "Mid-Season Heat Check RESULT, no save (spin below HOT): overlay .hh-overlay.hh-mid.lit.missed, name reel landed on the hot player, heat meter filled only to the cool tier (.hh-seg.fill/.result), grey NO SAVE stamp (.hh-stamp.miss) + caption \"<TIER> · THE LOSS LANDS\", BACK TO THE SEASON button. Presti run on /?midhot=1&risoslow=6, auto-drafted roster, eyebrow: Game 2. You’re 1–0 and down entering the 4th quarter. Clutch heroics to stay perfect?",
+   "url": "/?midhot=1&risoslow=6",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "heat-result-supernova",
+   "label": "Supernova",
+   "y": 0,
+   "note": "Mid-Season Heat Check RESULT at the top tier: SUPERNOVA (all 5 heat segments filled, last one white-hot .hh-seg.lvl4.result), label SUPERNOVA (#hhmHeatLabel.lvl4, supernova eruption fx), stamp \"S. BARNES CATCHES FIRE\", caption \"SUPERNOVA · VALUE ×2 · NET +7.2 → +8.6\", BACK TO THE SEASON; overlay .hh-mid.lit.won; game 4 at 3-0",
+   "url": "/?midhot=1&risoslow=6",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "hot-check",
+   "label": "82-0 shot: offer",
+   "y": 0,
+   "note": "Post-season Presti HOT HAND (82-0 shot) OFFER over the results page: fixed .hh-overlay.in (no hh-mid), small \"skip →\" (.hh-skip) top-right, glowing eyebrow .hh-clutch \"You're 81-0 and down entering the 4th quarter. Clutch heroics to go undefeated?\", basketball-through-hoop lever with PULL DOWN hint, I DON'T WANT YOUR CHARITY; results page (net +15.7) dimmed underneath. Forced with /?clutch=1 on a Presti run (real trigger: a realized exactly-81-win Presti season)",
+   "url": "/?clutch=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "hot-wheel",
+   "label": "82-0 shot: spinning",
+   "y": 0,
+   "note": "Post-season Hot Hand step 2 mid-spin: name reel landed on the hot player (.hh-name.hot), 5-segment heat meter racing (.hh-seg.lit) with the big cycling tier label (#hhHeatLabel.lvlN); step 3 net bar not yet shown",
+   "url": "/?clutch=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "hot-shot",
+   "label": "82-0 shot: in the air",
+   "y": 0,
+   "note": "Post-season Hot Hand SHOT in flight: .hh-overlay.in.lit, ignited lever, charity gone, skip → still top-right, step 1 slot window (.hh-window) with the roster surname strip (#hhStrip) frozen mid-glide (inline translateY ~55% of landing offset, transition none, standing in for the motion frame) under the payline",
+   "url": "/?clutch=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "hot-climb",
+   "label": "82-0 shot: climbing",
+   "y": 0,
+   "note": "Post-season Hot Hand step 3: NET RATING number ticking up (#hhNet, .over once it crosses 82-0) above a progress bar toward 82-0 (.hh-bar: gold base fill .hh-fill = wins earned, red glowing bonus .hh-fill-bonus growing from that mark, .hh-thresh line at the 82-0 net); heat meter settled on the spun tier above",
+   "url": "/?clutch=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "hot-result-miss",
+   "label": "82-0 shot: short",
+   "y": 0,
+   "note": "Post-season Hot Hand RESULT, fell short of 82-0: .hh-overlay.in.lit.missed; name reel on B. WALTON, heat meter ON FIRE, big NET RATING +21.4, bar almost to the 82-0 threshold (gold base + red bonus), grey stamp 79-3 FINAL RECORD (.hh-stamp.miss), actions SEE YOUR TEAM / RUN IT BACK (gold .hh-btn) and outlined HIS REAL HEATERS ↗ link (.hh-bref), skip → top-right; results page dimmed under",
+   "url": "/?clutch=1",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "results": [
+  {
+   "snap": "results-top",
+   "label": "Top",
+   "y": 0,
+   "note": "Classic results page (76-6, net +17.5) scrolled to top after SKIP TO RESULTS closed the Tribune: masthead TRUE 82 logo back, START OVER chip + FEATURE REQUESTS? BUGS? button, riso board .rr-board.printed with THE SHAPE OF A SEASON print (canvas: 76-6 misregistered numerals, halftone ridge with basketball sun, per-game tick strip, OCT..APR axis, CLASSIC MODE), NET RATING +17.5, comp line \"Almost as good as the Shaqobe Core\", navy SHARE YOUR TEAM button with pink offset shadow, YOUR FIVE ballot cards (position badge, name + external arrow, season/team, big value 2.78 / 3.89, stat line, trait tag pills incl. ? disputed markers and a dashed + add tag). body keeps a stale \"has-pick\" class from the draft.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "results-lower",
+   "label": "Further down",
+   "y": 1380,
+   "note": "Same 76-6 classic results page scrolled down (scrollY 1380 of 2603): bbref hint line, TWO-WAY PROFILE card (OFFENSE STRONG navy bar with pink tip, DEFENSE AVERAGE short bar), GOAT CLIMB ladder (82-0 top, named teams Dream Team ... Beautiful Game Spurs with dots on a blue rail, YOUR FIVE marker at OG Celts Big 3), SCORING CARD ledger (Raw talent 22.5, Usage tax -2.0 red, Spacing bonus +1.0 green, Team score -> net rating +17.5), cream RUN IT BACK button with pink offset shadow, then site footer (contact, v50, links, legal disclaimer). body stale \"has-pick\".",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "results-top-alt",
+   "label": "A 57-25 year",
+   "y": 0,
+   "note": "Second classic run results, 57-25 net +6.0, scrolled to top: same layout as results-top with different data: print shows a lower, more jagged ridge with many scarlet loss ticks in the per-game strip; comp line wraps to two lines (\"Almost as good as the Beautiful Game Spurs\"); SHARE YOUR TEAM; YOUR FIVE cards (Beal 3.86, Eddie Johnson 1.43) whose tags are all settled (no ? badges). body stale \"has-pick\".",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "results-print-mid",
+   "label": "80-2",
+   "y": 0,
+   "note": "Third classic run results (80-2, net +21.3, Dream Team comp), top of page, with THE SHAPE OF A SEASON riso print caught mid print-in (~1.25s of the ~2.4s reveal; replayed via the print's own update() path, same animation that runs after the Tribune closes): the three ink plates have wiped down, the game counter in the canvas title is partway through the season and the ridge/tick strip is revealed left to right only up to ~game 30. Rest of the page settled (SHARE YOUR TEAM, YOUR FIVE: Derek Harper 6.08, Wesley Person 4.42). Canvas converted to image.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "presti-results-top",
+   "label": "Presti results",
+   "y": 0,
+   "note": "Presti results page (after Mid-Season Heat Check saved game 37, finished 79-3), scrolled to top: site header, START OVER + FEATURE REQUESTS? BUGS? buttons, riso results print card (canvas \"shape of a season\" halftone chart, 79-3 record, PRESTI MODE tag, month ticks), NET RATING +18.4 + 2.1 boost, verdict line, navy SHARE YOUR TEAM, YOUR FIVE tag-ballot cards starting with the hot pick John Stockton (red outline .hot-pick, 9.06 + 2.12 value) with trait chips and ? badges; body.has-pick",
+   "url": "/?midhot=1",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "results-toast",
+   "label": "Not saved toast",
+   "y": 0,
+   "note": "Toast state: in the RIM+ sheet tapped CHANGE VOTE then NO (local vote); captured ~250ms later: fixed #btToast.bt-toast.on \"Noted: not rim+\" (navy pill, pink offset shadow) at top center over the masthead; the local API answered instantly so the sheet already shows the NO tally (\"1 vote so far · 0 yes, 1 no · you said no\", red bar, 24 MORE VOTES SETTLE IT pill, CHANGE VOTE / DONE); behind, the Allen RIM+ tag re-renders as .off (hollow with ✕, you overturned it). body.has-pick.bt-open. Toast auto-hides after 1.8s.",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "ballot": [
+  {
+   "snap": "sheet-tag",
+   "label": "A tag's question",
+   "y": 0,
+   "note": "Results page (top), tapped the unsettled RIM+ tag (with ? badge) on the Ray Allen ballot card: fixed .bt-backdrop.on dims the page, bottom sheet .bt-sheet.on (riso paper background image, grab handle) slides up: who line \"Ray Allen · 98-99 · Bucks\", question WAS 1999 ALLEN A RIM PRESSURER? with highlighted <mark>, definition \"Lives at the rim and the foul line.\", YES (gold) / NO (red) big buttons, dashed NOT SURE. body.has-pick.bt-open",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "sheet-tag-voted",
+   "label": "After voting",
+   "y": 0,
+   "note": "RIM+ sheet after answering YES (local vote on localhost D1): buttons hidden, #btResult shows tally line \"1 vote so far · 1 yes, 0 no · you said yes\", gold progress bar (100% yes), outlined pill \"24 MORE VOTES SETTLE IT\", underlined CHANGE VOTE link and navy DONE button with pink offset shadow. Behind: RIM+ tag on the Allen card now .mine. No big % (sample below minimum). body.has-pick.bt-open",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "sheet-tag-neg",
+   "label": "A bad trait",
+   "y": 0,
+   "note": "From the ADD A TAG picker tapped the red HUNTED tile: sheet swaps in place to the question view for a negative trait: \"Ray Allen · 98-99 · Bucks\", WAS 1999 ALLEN HUNTED ON DEFENSE? with a pink/red <mark class=\"neg\"> highlight (vs gold for positive traits), definition line, YES / NO / NOT SURE buttons. Sheet is shorter than the picker. body.has-pick.bt-open",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "sheet-add-picker",
+   "label": "Add a tag",
+   "y": 0,
+   "note": "Results page, tapped the dashed \"+\" on the Ray Allen ballot card: tall bottom sheet .bt-sheet.on (riso paper) with ADD A TAG title, sub \"Ray Allen, 98-99. What else was he?\", grouped 2-col tile grids (Open questions / Offense / Defense / Reputation): tiles .bt-tile with chip label + optional definition (RIM+ reopened under OPEN QUESTIONS after my NO vote; HUNTED is a .neg red tile); several tiles lack a definition so heights are uneven; footer link to Player Traits. Sheet scrolls internally. body.has-pick.bt-open",
+   "url": "/",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "bonuses": [
+  {
+   "snap": "bonus-question",
+   "label": "A question",
+   "y": 0,
+   "note": "/bonuses/ with a question loaded (first of a 5-question session): brand TRUE 82 mono line, PLAYER BONUSES h1 with gold CH#1 q-tag chip, hoop page-mark SVG top-right, .card with big Barlow Condensed question, .meta line, .q-def, .controls well (YES gold / NO red 3D .vbtn + UNSURE flat), .qx stack (Stats Refresher link, Share Vote 2-size button, amber PLAY THE GAME). Page has its own inline <style> and :root tokens; every button carries an invisible input[type=checkbox][switch] haptic overlay.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-answered",
+   "label": "Answered",
+   "y": 0,
+   "note": "/bonuses/ result state after voting YES on question 1 of 5 (vote changed from UNSURE): EARLY RESULT eyebrow, big chalk \"1 YES · 0 NO\" (.r-big.early, counts mode because <25 eligible votes locally), \"You voted YES · 100% agree\", BONUS PENDING chip, amber/ember split bar (.bar .y 100%), CHANGE VOTE link, amber NEXT QUESTION, outline SHARE QUESTION, empty #flash status line. Percent mode (.r-big.yes/.no with count-up) is unreachable locally.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-answered-no",
+   "label": "Answered NO",
+   "y": 0,
+   "note": "/bonuses/ result after voting NO on question 2 of 5 (OFF-B, 2009 Dwight off-ball scorer): \"0 YES · 1 NO\" early result, \"You voted NO · 100% agree\", BONUS PENDING chip, bar fully ember (.bar .y width 0%), CHANGE VOTE, NEXT QUESTION, SHARE QUESTION. Title chip OFF-B.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-change-vote",
+   "label": "Changing a vote",
+   "y": 0,
+   "note": "/bonuses/ after tapping CHANGE VOTE on the answered question: the live controls are rebuilt with the prior answer marked (.v-unsure.pressed = brightness 1.12 + scale .985, very subtle), qx stack (Stats Refresher / Share Vote / PLAY THE GAME) back. Otherwise identical to bonus-question.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-complete",
+   "label": "Five done",
+   "y": 0,
+   "note": "/bonuses/ session-complete state after voting on the 5th question (CH#1, 2007 Dirk, YES): result block (EARLY RESULT / 1 YES · 0 NO / You voted YES / BONUS PENDING / full amber bar / CHANGE VOTE) followed by done-head \"5 VOTES IN\" with its animated 64px amber underline (.done-head::after, settled), done-line, amber VOTE ON 5 MORE, outline SHARE LAST QUESTION and BACK TO TRUE 82 (an <a> styled as .act-share). Page is ~845px tall.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-loading",
+   "label": "Loading",
+   "y": 0,
+   "note": "/bonuses/ loading skeleton: captured synchronously right after tapping VOTE ON 5 MORE (the same skeleton shows on first page load while the session feed loads). section.skel card with shimmering .sk bars (skSweep 1.15s infinite gradient animation): two question-line bars, a meta bar, two 104px vote-button blocks, one 58px UNSURE block. Title chip hidden.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-vote-failed",
+   "label": "Vote failed",
+   "y": 0,
+   "note": "/bonuses/ vote-error state on question 3 (TEAM-D, 2019 Harden): tapped YES while the vote POST failed (SIMULATED by stubbing window.fetch to reject /api/traits POSTs, i.e. what an offline player sees). Controls stay .locked with YES .pressed, qx stack still shown, and #resultZone shows ember \"Vote didn't send.\" + amber TRY AGAIN (.act-next) below PLAY THE GAME.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-feed-error",
+   "label": "Feed error",
+   "y": 0,
+   "note": "/bonuses/ feed-error card: tapped VOTE ON 5 MORE while the session feed request failed (SIMULATED by stubbing window.fetch to reject /api/traits?op=session; real players hit this offline or on an API outage). .card with .toprow \"PLAYER BONUS\", .q at inline font-size:30px \"THE QUESTION FEED DID NOT ANSWER.\", amber TRY AGAIN (.act-next), outline BACK TO TRUE 82 (<a>.act-share). Title chip hidden.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "bonus-share-copied",
+   "label": "Link copied",
+   "y": 0,
+   "note": "/bonuses/ question card right after tapping Share Vote with no native share sheet: the button text becomes \"COPIED\" and gets .flashed (amber text + amber border) for 1.4s, then reverts. Clipboard success SIMULATED (navigator.clipboard.writeText stubbed to resolve without touching the real clipboard, because the unfocused background tab cannot write). Question: CH#1 peak Klay.",
+   "url": "/bonuses/",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "info": [
+  {
+   "snap": "info-how-it-works",
+   "label": "How it works",
+   "y": 0,
+   "note": "Static info page /how-it-works/ at scrollTop 0 (page is 2248px tall): site-head with linked logo, main.content-page with H1 + five gold H2 sections (draft format, season model, roster fit, ways to play, data/disclaimer), footer site-links + fineprint. Logo renders left of center on phone.",
+   "url": "/how-it-works/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "info-faq",
+   "label": "FAQ",
+   "y": 0,
+   "note": "Static info page /faq/ at scrollTop 0 (long page): H1 TRUE 82 FAQ, lead with underlined link, 12 gold H2 question headings each with a paragraph answer (some with external Basketball Reference links), full-width gold btn-primary \"Play TRUE 82\" at the end, footer site-links + fineprint.",
+   "url": "/faq/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "info-can-you-go",
+   "label": "82-0 explainer",
+   "y": 0,
+   "note": "Static info page /can-you-go-82-0/ at scrollTop 0: H1, intro paragraph, gold H2 sections with body copy incl. <sup> exponents (Pythagorean formula), a <ul> of near-undefeated teams and an <ol> list further down, gold btn-primary play button, footer site-links + fineprint.",
+   "url": "/can-you-go-82-0/",
+   "w": 390,
+   "h": 844
+  },
+  {
+   "snap": "info-what-is-bpm",
+   "label": "BPM explained",
+   "y": 0,
+   "note": "Static info page /what-is-bpm/ at scrollTop 0: H1, lead paragraph with underlined external link, gold H2 sections of body copy, gold btn-primary play button, footer with two .fineprint paragraphs + site-links. Note: this page has no <p class=\"lead\"> styling difference visible from body copy on phone.",
+   "url": "/what-is-bpm/",
+   "w": 390,
+   "h": 844
+  }
+ ],
+ "e404": [
+  {
+   "snap": "e404-page",
+   "label": "404",
+   "y": 0,
+   "note": "The 404 page (/404.html, served at /404): short content-page with H1 \"That page doesn't exist\", lead copy, full-width gold btn-primary PLAY TRUE 82, footer site-links (5 links, no Player Traits), contact line, mono fineprint. Whole page fits one phone screen; lots of empty ink below.",
+   "url": "/404",
+   "w": 390,
+   "h": 844
+  }
+ ]
+}

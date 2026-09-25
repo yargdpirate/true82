@@ -2,11 +2,221 @@
 
 **Current source of truth:** the GitHub repo. The v48 and v50 work lives on branch `c-code-clean` until it is merged to `main`.
 
-**Date:** 2026-09-24
-**Build:** `v50` (`BUILD_V` and every bumped cache key agree). There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork, so this line skips to v50 to keep the analytics build filter unambiguous.
-**Most recent functional change:** the results screen prints in the riso style and its five player cards are the tag ballot. See section 000.
+**Date:** 2026-09-25
+**Build:** `v51` IN PROGRESS, UNCOMMITTED on branch `c-code-clean` (`BUILD_V = "v51"`, cache keys `20260925-style-system-v51`). v50 is the last commit. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent functional change:** v51, one enforced global style system. Site side done and tested; Reprint Lab side NOT done. See section 00000 first.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000. V51: the one enforced style system (IN PROGRESS, 2026-09-25 session)
+
+The owner's request (section 0000, "Next: one enforced global style guide", plus a follow-up): force every
+screen onto one style guide so new experimental modes are styled by construction ("my grafts didn't get the
+style upgrades"), bring the grafted screens (game by game, results, the crowdsourced-data pop-up) onto it,
+add switchable section headers, add a white roster overlay to the final results picture, update the lab to
+match, and (in the lab's Heat Vice look, the owner's saved star) keep the stacked two-shade pink/aqua look but
+give the buttons dimensionality and clickability. Read `docs/STYLE-GUIDE.md` for the system itself.
+
+### State at the break (context ran out; nothing committed)
+- DONE, working tree only: everything under "What v51 changed on the site" below. `node test.js`: 61 passed.
+  `node tools/style-law.js`: clean. Nothing is committed or pushed; the owner has not asked for a commit yet.
+  Ask, then commit (branch `c-code-clean`; main auto-deploys, do not touch main).
+- IN FLIGHT when the session ended: four subagents recapturing all 93 Reprint Lab snapshots from the NEW
+  site (the lab's snapshots are frozen DOM of the OLD site). They save into the session scratchpad
+  `/private/tmp/claude-501/-Users-ggz-true82/7bd49d09-c078-4440-bffe-c363402fa23d/scratchpad/snaps/<name>.html`
+  (+ `.json`). The previous copies are in `.../scratchpad/snaps-old/`. The brief, the four state lists and the
+  capture script are also saved in the repo at `docs/reprint-lab/capture/v51/` (BRIEF.md, group-A..D.md,
+  states.json, snap.js). To see what got refreshed: `find <scratchpad>/snaps -maxdepth 1 -name '*.html' -newer <scratchpad>/capture/BRIEF.md`.
+  Recapture any missing ones with that brief (servers below). If /private/tmp was wiped, recapture all.
+- NOT STARTED: the Reprint Lab update (the plan is under "Next: the lab" below), the owner-facing review.
+- LAST THING DONE (after the first handoff): the owner's reel-timing request, item 9 below (every season's
+  reel ends at the same 16.8s). Tested (61 passed) and measured in a browser. Also uncommitted.
+- OPEN QUESTIONS FOR THE OWNER (ask at the start of the next session):
+  1. Commit and push v51 to `c-code-clean` so it shows on the branch preview? (He has not said yes yet.)
+  2. In today's colors the results, the reel and the tag sheet are now dark site cards, not cream paper. OK?
+  3. Reel pacing by the realized record (exact same end time, but a bad season ticks faster from game 1)
+     or by the pre-season net rating (no hint, but the end time drifts a little with luck)?
+  4. Heat Vice in the lab: pink wins and aqua losses as the default, with a neon-red option?
+- If the four recapture subagents' reports are missing from the transcript, do not wait for them: check the
+  snapshot files as described above and recapture what is stale.
+- RECAPTURE STATUS: groups D, A and B DONE (74 of 93); only group C (reel 6, Heat Check 13) was still out. Group D (results 6, ballot 4, Bonuses 9): all 19 with `#rrPrint[data-spec]`
+  (results-print-mid is a true mid-reveal frame; reprinting from data-spec would finish it, so the lab should
+  keep that one frozen). Group A (home 9, Daily 16, info 4, 404, kit): all 31. Group B (Classic 14, Presti 10):
+  all 24, from seeds `newGame("classic", 100)` and `newGame("cap", 9857)` on `/?midhot=1` (real REFUND and FIRE
+  SALE rolls). Group C (reel, Heat Check) had not reported at the break: check its 19 files by mtime. The local D1 now holds a few test votes (Allen 2001 RIM+,
+  some Bonuses questions).
+- FIX LIST found by the recapture (v51 site, not yet fixed):
+  1. Results top bar: START OVER (`.startover-btn`) is flat and square beside the 3D FEATURE REQUESTS button;
+     put it on `.t-btn` (quiet or sm).
+  2. Print roster: the slot letters and 'yy years are tiny and low contrast at phone size; enlarge/brighten
+     (results-riso.js `drawRoster`, BANNER.roster).
+  3. Add-a-tag picker: the group headers (`h3.bt-grp`) lost their top margin; add `.bt-grp { margin: 14px 0 7px; }`.
+  4. Bonuses: after Share Vote, "COPIED" replaces the 21px lead span with 13px text; keep the lead size.
+  5. The Presti Heat Check boost (+2.0 net, +2.05 value) is in `hot` red, the same red as taxes and NO, so a
+     gain reads as a penalty. The lab already makes `hot` fire gold; consider the same for today's theme
+     (one line in tools/theme-core.js ROLES, then node tools/theme.js). Owner call.
+  6. Trait codes differ by surface (results SWITCH/GRAVITY/RIM-P vs Bonuses SWCH-D/GRAV/RIM-D vs draft);
+     already an open item from v50.
+  7. Bonuses title chip is amber even for a bad trait; add `data-tone="bad"` for negative traits.
+  8. Ballot question: the highlight includes the article, leaving a lone underlined "A" at a line end;
+     Bonuses asks in sentence case, the sheet in caps.
+  9. The toast lowercases the code ("Noted: not rim+"); use the chip's casing.
+  10. On cards with 5+ tags the dashed "+" wraps alone onto a second row.
+  11. Bonuses vote-failed: the error and TRY AGAIN land below PLAY THE GAME, far from the vote buttons.
+  12. Behavior: a Bonuses vote within ~1.2s of the last returns rate_limited ("Vote didn't send"; the results
+      ballot queues, Bonuses does not); "You voted UNSURE · 100% agree" shows on a 0-0 tally; GOAT CLIMB
+      parks YOUR FIVE at the comp its net rating reaches, which can contradict the record's comp line.
+  From group A (home, Daily, info; all 31 captured, the four Daily results with data-spec; today's Daily is
+  #76, a Pro board, so the Daily draft states have no bank; set views.js home-legal-open y to 992, the page
+  can no longer scroll to 1032). Check each against v50 with compare.html before blaming v51:
+  13. Daily gate: the BACK button (`.gate-back`) renders as a gold keycap sitting on the eyebrow line and
+      covering the calendar icon; it should be the bare text button (likely v51: check its rules).
+  14. Played Daily plaque: CHALLENGE A FRIEND and RUN IT BACK · PRACTICE are identical small gold keycaps
+      (`.dt-act-ghost` reads as primary), and COPIED! makes the row jump for 1.6s.
+  15. Poll card: when finished, the Share Vote bar still shows (`.tm-sharebar {display:block}` beats
+      `hidden`, a known v50 bug the new CSS kept: add `.traits-module .tm-sharebar[hidden] { display: none; }`);
+      IDK is 31px wide and its dashed border (`--t-line`) is nearly invisible (use `--t-rule` or text-2).
+  16. The stale-link note renders 15px (`.intro p` outranks `.daily-stale`); footer legal text is 9px;
+      the logo sits ~37px left of center on the info pages and 404; the gate target line leaves "it." alone.
+  17. A negative player value (-1.89) prints in the same gold as positive ones (consider `--t-bad-soft`).
+  18. Copy (not styling): a 3-79 run reads "Almost as good as the Beautiful Game Spurs" (a losing record gets
+      the ladder's lowest entry); the results comp and the share text's comp can disagree for the same run;
+      the Daily HOW TO PLAY on a Pro board says "the same prices" and "Today's rule appears below" (it is above).
+  From group B (drafts):
+  19. Presti REFUND! / FIRE SALE flash: the text sits hard left in the small mono face (the flash replaces the
+      button's contents; `#app .ta-cap .skip-btn` is space-between); center it in the display face.
+  20. Classic search placeholder is cut to "search p" at 390px (four sort chips + the (i) leave ~115px); the
+      clear X is Chrome's blue; no empty-state message; the MORE PLAYERS cue floats over an empty pool.
+  21. Rules sheet footer: STATS REFRESHER is a square outline box beside the raised GOT IT; put it on `.t-btn`.
+  22. Money reads three ways on one Presti screen ("$ 16M" with a gap in the display face vs "$50M").
+  23. Classic pool trait chips are full raised keycaps like the main buttons, 2 to 4 a row: the pool reads
+      as a wall of buttons, and an expanded chip sits ~2px low. Consider a flatter chip for dense lists
+      (the chip's edge is `--chip-edge` in the SHARED PIECES block; a `data-size="sm"` flat chip would do).
+  24. With the legend open at 390x844 only one partial pool row shows and the cue covers its chips; the
+      legend footnote mentions GRAVITY even when no GRAVITY label is listed.
+
+### What v51 changed on the site
+1. **The theme** (`tools/theme-core.js`, the one source): about 40 base ROLES (each with one meaning:
+   ground, text, label, accent, bad, hot, good, you, win, loss, the season-print inks...), 24 named SHADES
+   (recipes: role mixed with a partner, computed ahead of time so the CSS never needs `color-mix`, which
+   older phones cannot read), fonts, radii, a type scale, print effects, fixed effects (fire, the basketball,
+   masks), and the legacy names (`--amber`, `--chalk`...) as aliases. `node tools/theme.js` writes the
+   generated `:root` block between markers at the top of `styles.css`; `--check` verifies it.
+2. **styles.css consumes only tokens.** All ~944 color uses were converted (the lab's color audit gave each a
+   role; a fitter kept today's look: every live screen within about 2.5 CIEDE2000 of before, verified
+   element by element on 99 snapshots with `docs/reprint-lab/capture/v51/compare.html`). Deliberate
+   standardizations: dark text on gold is one ink (`accent-ink`, was two near-blacks); the trait chips,
+   vote buttons and pool (i) button use the site keycap gold (was a slightly different slab); Heat meter
+   level 3 is a touch paler. See-through colors are `rgb(var(--t-name-rgb) / a)`.
+3. **Shared pieces** (styles.css "SHARED PIECES" section, shown live on `docs/style-guide.html`): `.t-btn`
+   (data-kind primary/yes/no/good/quiet/text, data-size lg/sm; any plain button still gets the keycap from
+   decorate3dButtons), `.t-chip` (tones yes/bad/plain/on, states .is-q/.is-off/.is-mine, `.t-chip-add`),
+   `.t-card` (data-tone feature), `.t-sheet` + `.t-backdrop` + `.t-grab`, `.t-toast`, `.t-head` (section
+   headers, 6 variants: eyebrow, rule, bar, title, banner, tab), type roles (`.t-num`, `.t-title`, `.t-name`,
+   `.t-meta`, `.t-data`, `.t-label`, `.t-body`, `.t-small`), and `.t-mode` (plain h2/h3/p/table/input inside a
+   mode root look right before they are styled).
+4. **Section headers**: `head(context, text, opts)` in app.js (next to `esc()`); `HEADS` maps each context
+   (home, poll, rules, reel, results, sheet, group) to a variant in one place; `?heads=<variant>` swaps all.
+   Migrated: homepage Draft/Winning, the vote card lead, HOW TO PLAY title and sections, the reel header,
+   results sections (and Kaman), ballot sheet title and group labels, the static index.html fallback.
+5. **The grafted screens are on the system** (in today's colors they are now dark like the rest of the site,
+   not cream paper; the owner has not seen this yet):
+   - Results: the `.rr` tiles are the site's cards; YOUR FIVE cards are `.t-card` with the value as `.t-num`
+     (DM Serif Display is gone, and dropped from index.html's font link); tags are the shared chip; SHARE is
+     the primary keycap. The riso paper overrides and `--rr-*` tokens are deleted (`risoPaperOnce` removed).
+   - THE SHAPE OF A SEASON (`results-riso.js`): reads every ink, the stock and both faces from the theme
+     (`readTheme`, lazily; any missing token throws and the plain record stays). On a dark stock
+     (`--t-print-paper` = the card color, `--t-print-blend: screen`) the inks glow like screen print on black
+     card and the key ink is turned down to a glow. The ROSTER OVERLAY is new: the five names (slot, full
+     name, 'yy) stacked in the theme's light ink with a pop-ink offset, on its own `.rr-print-names` canvas on
+     screen (fades in as the season finishes) and drawn onto the 1080x1350 share poster (whose foot now
+     only says TRUE82.NET · NET). `spec.roster` comes from app.js `resultsPrintSpec`.
+   - The reel (`reel-riso.js`): the site's card, coins in `--t-win`, rings/L/drips in `--t-loss`, rims in
+     `--t-print-pop`, veil in the stock color, faces from the theme (the L waits for the display face).
+     Header is `.t-head`, SKIP the quiet button, the verdict the primary one.
+   - The tag ballot sheet: `.t-sheet`/`.t-backdrop`, YES/NO/NOT SURE are `.t-btn` yes/no/quiet (lg),
+     the tally number `.t-num`, the pill a plain chip, Change vote a text button, Done primary, toast `.t-toast`,
+     the glove paints from CSS tokens.
+   - The homepage vote card: its CSS moved from app.js's injected `ensureTraitsCss` (deleted, with its dead
+     rules) into styles.css; YES/NO/IDK are `.t-btn`, the tag a chip, the lead a `.t-head`.
+   - Bonuses (`bonuses/index.html`): loads `/styles.css`; its own block is layout + tokens only; buttons are
+     `.t-btn`, status pills and the title tag are chips. `traits/index.html` (redirect stub) loads styles.css.
+   - SVG icons in app.js (hoop mark, book icon, ball lever) paint from tokens through `style="fill:var(...)"`.
+6. **Enforcement**: `tools/style-law.js` (run by test.js; 4 new checks): no hex/rgb/hsl/named
+   colors or color-mix and no font families outside the theme block in styles.css, the browser JS, the pages'
+   style blocks and style attributes (canvas modules may use pure black only as a coverage mask; browser
+   chrome like `<meta theme-color>` is exempt); the theme block must match the generator; every token read
+   must exist; the shared pieces and header variants must exist. Each finding names the nearest token.
+   `tools/stylefix.js <file> --write` rewrites a graft's CSS/page to tokens in one pass.
+7. **The lab can reprint the new pages** (hooks added for the lab update, not yet used): `#rrPrint` carries
+   `data-spec` (the print's recipe); each `.riso-strip` carries `data-games`, `data-streaks`, `data-gi0`,
+   `data-cl0`; `T82PRINT.print(spec, {root, width, dpr})` returns `{print, names, filter}` canvases;
+   `T82PRINT.fonts(root)`; `T82RISO.strip({root, games, streaks, gi0, cl0, cssW, d})` prints a settled
+   month; both modules accept `{root}` (the element whose theme to read) on mount/poster/create.
+8. Keys: styles.css, app.js, results-riso.js, reel-riso.js all at `20260925-style-system-v51`; bonuses and
+   traits load `/styles.css?v=20260925-style-system-v51`; `BUILD_V = "v51"`.
+9. **One end time for the reel** (owner, later the same day): every season's reel now finishes at
+   `REEL_END_MS` = 16.8s, so its length never spoils the record. `reelNaturalMs()` walks the natural schedule
+   (month leads, one tick per game, each loss's hold) and `showSeasonReel` scales every wait (and reel-riso's
+   hold and effect durations, via `info.pace`) by one factor. The target is the slowest of the 78-82-win
+   seasons (78-4 with its first loss ending a streak), so those play at the natural, slowest pace (82-0 is
+   stretched x1.44) and worse seasons run faster (41-41 x0.55, 10-72 x0.45; the old 26-56 took ~34s, now
+   16.8s). Measured in the browser: 80-2 in 17.1s, 30-52 in 17.3s (timer overhead). The red flash keeps its
+   own speed limit (`FLASH_GAP` 0.77s in reel-riso.js: never more than ~1.3 flashes a second, whatever the
+   pace). QA: `?reelms=20000` tries another end time. test.js pins it (61 checks). Not done, the owner's
+   "maybe": pacing by the pre-season net rating instead of the realized record (the player already knows
+   the net, so the speed would not hint at the result; the end time would then vary a little with luck).
+
+Verified in a browser (375px) on local servers: home (vote card, headers), a Classic draft, the reel (loss
+effect, streak labels, finale), results (cards, chips, dark print with roster), the ballot sheet (ask, tally,
+toast), Bonuses (question state), the share poster (saved and inspected), docs/style-guide.html.
+NOT yet looked at on v51: the Daily results (daily-framed board, head line), a Presti hot pick card, Kaman
+results, the Heat Check over the new results, the Tribune over the new results, desktop width, and a
+second full compare.html run after the late markup changes. The helpers' snapshot reports (if they arrive)
+list visual problems they saw; read them.
+
+### Calls made (owner may overrule)
+- In today's colors the results, the reel and the ballot sheet are dark site cards now (owner: "as much as
+  possible forced into the same style guide", "nothing else is skeuomorphic"). A paper look is a lab choice.
+- The season print on dark cards glows (screen blend on the card color) instead of the lab's old negative
+  filter (which went olive and pale cyan). `--t-print-filter` stays as an optional per-look knob.
+- Planned lab default for Heat Vice wins/losses: pink wins, aqua losses ("hot and cold"), with a toggle for
+  neon red losses and for the classic gold and red.
+
+### Next: the lab (plan; files are in docs/reprint-lab/src, the working copy was .../scratchpad/lab/src)
+The lab's dev tooling expects the scratchpad layout (`lab/src`, `snaps/`, a lab server on a port); this
+session's copy lives in the scratchpad above (`lab/`, `audit/`, `color/`, `labserver.py`). Launch configs
+(`.claude/launch.json`, local only): `site-api` (wrangler + D1 on :8789, the capture target), `lab2` (lab
+server on :8093, saves POSTed snapshots), `site-fresh` (no-cache static server on :8084), `true82-local`.
+1. Theme: load `tools/theme-core.js` in the lab (dev loader + build). `LAB.roles(pal, ground)` must also
+   produce the new roles (`rule` = the palette's line; `label` = metal lifted to 4.5:1 on the ground;
+   `hot` = sun, the lab's fire-gold call; `win`/`loss` from a new toggle; the print inks from 30-reprint.js
+   `drumFor`; `print-paper` = the card color for dark cards or paper for paper cards/day ground, with
+   `print-blend` screen or multiply). `LAB.themeVars(rc)` should return `T82THEME.vars(roles, fonts, shape)`
+   (every shade and rgb twin, which the new CSS needs) plus the lab's font/radius picks. Update `LAB.TODAY`
+   from `T82THEME.today()`.
+2. Site CSS: `LAB_SITE_CSS` becomes the repo's styles.css (the tokenizer, site.tok.css and role-fixes are
+   retired: the site is tokenized now). The build reads raw `snaps/<name>.html`, swaps the styles.css link
+   for `<link data-lab-site>`, strips `<base>`. "Today's site" = set no vars (the theme block is today).
+3. Canvases: replace the vendor copies with the live `results-riso.js` / `reel-riso.js`; 30-reprint.js
+   reprints `.rr-print-canvas` + `.rr-print-names` from `data-spec` with `T82PRINT.print(spec, {root: doc
+   .documentElement})`, month strips from `data-games` with `T82RISO.strip`, and keeps its pixel remap for
+   the frozen `.riso-fx` layer (today's win/loss/pop inks to the look's).
+4. Components: add `.t-btn` kinds, `.t-chip` tones, `.t-card`, `.t-sheet`, `.t-toast`, `.t-head` to the
+   families in 10-controls.js / 20-surfaces.js; the results tiles, the reel card and the ballot sheet are now
+   ordinary cards/sheets (drop them from the paper-slip lists); retire or repurpose "Results tiles"
+   (40-slips.js) since tiles follow the look's cards; recipe codes must still decode (ignore old keys).
+5. New toggles (console "Site system" group): "Section headers" (As built / Eyebrow / Rule / Bar / Title /
+   Banner / Tab: a page hook sets `data-head` on every `.t-head`); "Wins and losses" (Look pair / Red losses /
+   Gold and red); "Button depth" (Flat / Stacked / Keycap) for styles without depth, where Stacked gives a
+   neon button a two-shade base (pink face over an aqua slab for primaries, swapped for secondaries, like the
+   masthead's stack depth) that it sinks into on press. Heat Vice preset: depth Stacked, wins/losses Look pair.
+6. Rebuild (`node src/build.js` in the scratchpad lab), check all 17 looks on home, reel, results, ballot,
+   bonuses, kit; copy sources + build to `docs/reprint-lab/`; update its README; republish the private
+   artifact https://claude.ai/artifact/7Vqj7L2u5He21TRhETf8oH (read it first, then publish to that url).
+7. Then the owner review list: the dark results/reel/sheet in today's colors, the roster poster, headers.
 
 ---
 
@@ -225,10 +435,12 @@ Invariants (do not break):
    placement, so a Heat Check re-roll is always honored.
 2. Fail soft. Every call goes through risoCall; any throw logs
    "[t82] riso reel off" once and the reel continues on W/L chips.
-3. Loss pacing lives in holdFor/heavy. The first 14 losses get the full bang
-   and never arrive faster than ~1.3 per second (red-flash safety, well
-   under 3/s); after 14, losses still slam and bleed but skip the flash and
-   hold only 240ms so a bad season never drags. test.js pins this.
+3. Loss pacing lives in holdFor/heavy. The first 14 losses get the full bang;
+   after 14, losses still slam and bleed but skip the flash and hold only
+   240ms. Since v51 every hold is scaled by the season's pace (one end time
+   for every record, see section 00000 item 9), and the red flash has its own
+   limit (FLASH_GAP: never more than ~1.3 a second, well under 3/s). test.js
+   pins both.
 4. Copy law holds: loss captions have zero em-dashes (pinned by test.js).
 5. Fast-forward (SKIP before the Heat Check) stamps instantly with no
    effects and no hold.

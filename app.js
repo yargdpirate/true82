@@ -717,7 +717,7 @@ var _buttonStyleObserver = null;
 // .tchips button.tchip rule kept the near-transparent dark face, so every
 // positive label rendered near-black on dark (.tchip.anti at (0,2,0) kept
 // its red, which is why only the positive labels were unreadable). Trait
-// chips own their full skin in ensureTraitsCss now.
+// chips own their full skin in styles.css (the shared chip).
 // v47.21: .tm-flat is the general opt-out marker (the widget's IDK pass wears
 // it). .hh-skip joins it as a BUG FIX, not a restyle: button.presti-spin is
 // (0,1,1) and .hh-skip is (0,1,0), so the decorator was overriding the skip
@@ -1242,6 +1242,32 @@ function currentPoolRows() {
 /* ---------- formatting ---------- */
 
 function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+/* ---------- v51 SECTION HEADERS ----------
+   Every module header is one component: <h2 class="t-head" data-head="...">
+   (styles.css, docs/STYLE-GUIDE.md). HEADS picks each context's variant in one
+   place, so every header of a kind restyles with one edit here. Variants:
+   eyebrow, rule, bar, title, banner, tab. ?heads=<variant> swaps them all at
+   once for a quick look. A new mode adds its own context line. */
+var HEADS = {
+  home: "eyebrow",      // the homepage's explainer sections
+  poll: "eyebrow",      // the homepage vote card's lead
+  rules: "eyebrow",     // HOW TO PLAY's sections
+  reel: "eyebrow",      // THE SEASON, GAME BY GAME
+  results: "eyebrow",   // YOUR FIVE, TWO-WAY PROFILE, GOAT CLIMB, SCORING CARD
+  sheet: "title",       // a bottom sheet's title
+  group: "eyebrow"      // a group label inside a sheet or a list
+};
+var HEADS_FORCE = (function () {
+  var m = typeof location !== "undefined" && /[?&]heads=(eyebrow|rule|bar|title|banner|tab)(&|$)/.exec(location.search || "");
+  return m ? m[1] : null;
+})();
+// head(context, text, { tag, cls, id, aside (html), html (text is html) })
+function head(ctx, text, o) {
+  o = o || {};
+  var tag = o.tag || "h2", v = HEADS_FORCE || HEADS[ctx] || "eyebrow";
+  return "<" + tag + ' class="t-head' + (o.cls ? " " + o.cls : "") + '" data-head="' + v + '"' + (o.id ? ' id="' + o.id + '"' : "") + ">" +
+    (o.html ? text : esc(text)) + (o.aside ? '<span class="t-aside">' + o.aside + "</span>" : "") + "</" + tag + ">";
+}
 function titleCase(fr) { return fr.split(" ").map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }).join(" "); }
 function decLabel(dec) { return "\u2019" + String(dec).slice(2) + "s"; }
 // Optional custom era crest for the current franchise+decade. Keyed exactly like
@@ -1406,19 +1432,19 @@ function wireStartOver() {
 
 function hoopMarkSvg() {
   return '<svg class="du-brand" viewBox="0 0 32 36" aria-hidden="true" focusable="false">' +
-    '<path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" fill="var(--amber)"/>' +
-    '<rect x="5" y="15" width="22" height="3.4" rx="1.7" fill="var(--maple)"/>' +
-    '<path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" stroke="var(--maple)" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
+    '<path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" style="fill:var(--t-accent)"/>' +
+    '<rect x="5" y="15" width="22" height="3.4" rx="1.7" style="fill:var(--t-metal)"/>' +
+    '<path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" style="stroke:var(--t-metal)" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
   '</svg>';
 }
 function bookIconSvg() {
-  // A drawn open book: ink cover, cream pages, faint text lines. Fixed colors
-  // on purpose: it always sits on the gold presti-spin slab.
+  // A drawn open book: ink cover, pale pages, faint text lines. It always sits
+  // on the gold keycap, so it prints in the keycap's own ink and highlight.
   return '<svg class="mp-book" viewBox="0 0 26 22" aria-hidden="true" focusable="false">' +
-    '<path d="M13 3.4C11.2 1.8 8.5 1 5.4 1c-1.2 0-2.3.1-3.4.4-.6.1-1 .6-1 1.2v14.6c0 .8.8 1.4 1.6 1.2 1-.2 1.9-.3 2.8-.3 2.9 0 5.4.8 7.6 2.3 2.2-1.5 4.7-2.3 7.6-2.3.9 0 1.8.1 2.8.3.8.2 1.6-.4 1.6-1.2V2.6c0-.6-.4-1.1-1-1.2C22.9 1.1 21.8 1 20.6 1c-3.1 0-5.8.8-7.6 2.4z" fill="#2A1A05"/>' +
-    '<path d="M12.1 4.6C10.6 3.5 8.4 2.9 5.9 2.9c-.9 0-1.8.1-2.7.3v13.1c.9-.2 1.8-.2 2.7-.2 2.3 0 4.4.5 6.2 1.5z" fill="#FFF3D6"/>' +
-    '<path d="M13.9 4.6c1.5-1.1 3.7-1.7 6.2-1.7.9 0 1.8.1 2.7.3v13.1c-.9-.2-1.8-.2-2.7-.2-2.3 0-4.4.5-6.2 1.5z" fill="#FFF3D6"/>' +
-    '<path d="M5.2 6.4c1.7-.2 3.3 0 4.8.6M5.2 9.2c1.7-.2 3.3 0 4.8.6M5.2 12c1.7-.2 3.3 0 4.8.6M16 7c1.5-.6 3.1-.8 4.8-.6M16 9.8c1.5-.6 3.1-.8 4.8-.6M16 12.6c1.5-.6 3.1-.8 4.8-.6" stroke="#2A1A05" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".55"/>' +
+    '<path d="M13 3.4C11.2 1.8 8.5 1 5.4 1c-1.2 0-2.3.1-3.4.4-.6.1-1 .6-1 1.2v14.6c0 .8.8 1.4 1.6 1.2 1-.2 1.9-.3 2.8-.3 2.9 0 5.4.8 7.6 2.3 2.2-1.5 4.7-2.3 7.6-2.3.9 0 1.8.1 2.8.3.8.2 1.6-.4 1.6-1.2V2.6c0-.6-.4-1.1-1-1.2C22.9 1.1 21.8 1 20.6 1c-3.1 0-5.8.8-7.6 2.4z" style="fill:var(--t-accent-ink)"/>' +
+    '<path d="M12.1 4.6C10.6 3.5 8.4 2.9 5.9 2.9c-.9 0-1.8.1-2.7.3v13.1c.9-.2 1.8-.2 2.7-.2 2.3 0 4.4.5 6.2 1.5z" style="fill:var(--t-accent-hi)"/>' +
+    '<path d="M13.9 4.6c1.5-1.1 3.7-1.7 6.2-1.7.9 0 1.8.1 2.7.3v13.1c-.9-.2-1.8-.2-2.7-.2-2.3 0-4.4.5-6.2 1.5z" style="fill:var(--t-accent-hi)"/>' +
+    '<path d="M5.2 6.4c1.7-.2 3.3 0 4.8.6M5.2 9.2c1.7-.2 3.3 0 4.8.6M5.2 12c1.7-.2 3.3 0 4.8.6M16 7c1.5-.6 3.1-.8 4.8-.6M16 9.8c1.5-.6 3.1-.8 4.8-.6M16 12.6c1.5-.6 3.1-.8 4.8-.6" style="stroke:var(--t-accent-ink)" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".55"/>' +
   '</svg>';
 }
 function draftUtilityHtml() {
@@ -1723,7 +1749,7 @@ function rulesSheetHtml() {
   var baseKey = MODE === "cap" ? "cap" : MODE === "pro" ? "pro" : "classic";
   var baseName = MODE === "cap" ? "PRESTI" : MODE === "pro" ? "PRO" : "CLASSIC";
   var copy = (window.T82DAILY && T82DAILY.DAILY_COPY) || {};
-  var h = '<div class="rs-head"><span class="rs-title">HOW TO PLAY</span>' +
+  var h = '<div class="rs-head">' + head("sheet", "How to play", { cls: "rs-title" }) +
     '<button class="rs-close" id="rulesClose" type="button" aria-label="Close the rules">\u2715</button></div>' +
     '<div class="rs-scroll">';
 
@@ -1731,19 +1757,19 @@ function rulesSheetHtml() {
   // daily-specific material (today's rule, then the Daily's own rules) leads
   // and GAME BASICS follows: a Daily player opening the sheet wants today,
   // not the tutorial (owner directive, v45).
-  var basicsBlock = '<p class="rs-eyebrow">GAME BASICS</p><ul class="rs-list">' +
+  var basicsBlock = head("rules", "Game basics", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
     RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
-  var modeBlock = '<p class="rs-eyebrow">HOW TO PLAY THIS MODE (' + (isDaily ? "THE DAILY" : baseName) + ')</p><ul class="rs-list">' +
+  var modeBlock = head("rules", "How to play this mode (" + (isDaily ? "THE DAILY" : baseName) + ")", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
     (RULES_MODE[isDaily ? "daily" : baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   if (isDaily) {
-    modeBlock += '<p class="rs-eyebrow">PLUS ' + baseName + ' MODE RULES</p><ul class="rs-list">' +
+    modeBlock += head("rules", "Plus " + baseName + " mode rules", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
       (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   }
   var todayBlock = "";
   if (isDaily) {
     var brief = G.social.gate || G.social.short || "";
     todayBlock = '<div class="rs-today plq-frame plq-slim">' +
-      '<p class="rs-eyebrow rs-today-label">TODAY\u2019S RULE \u00B7 DAILY #' + G.social.num + '</p>' +
+      head("rules", "Today\u2019s rule \u00B7 Daily #" + G.social.num, { tag: "h3", cls: "rs-eyebrow rs-today-label" }) +
       '<p class="rs-today-name">' + esc(G.social.name) + '</p>' +
       (brief ? '<p class="rs-today-body">' + esc(brief) + '</p>' : '') +
       (G.social.target
@@ -1756,20 +1782,20 @@ function rulesSheetHtml() {
   if (!isDaily && ch) {
     var chBrief = (copy[ch.id] && copy[ch.id].g) || ch.blurb || "";
     h += '<div class="rs-today plq-frame plq-slim">' +
-      '<p class="rs-eyebrow rs-today-label">' + (G.weekly ? "THIS WEEK\u2019S TWIST" : "THE TWIST") + '</p>' +
+      head("rules", G.weekly ? "This week\u2019s twist" : "The twist", { tag: "h3", cls: "rs-eyebrow rs-today-label" }) +
       '<p class="rs-today-name">' + esc(ch.name || "") + '</p>' +
       (chBrief ? '<p class="rs-today-body">' + esc(chBrief) + '</p>' : '') +
       '</div>';
   }
 
-  h += '<div class="rs-ref"><p class="rs-eyebrow rs-ref-label">NEED A REFRESHER?</p>' + rulesRefresherHtml() + '</div>';
+  h += '<div class="rs-ref">' + head("rules", "Need a refresher?", { tag: "h3", cls: "rs-eyebrow rs-ref-label" }) + rulesRefresherHtml() + '</div>';
 
   var engineRules = RULES_ENGINE;
   if (baseKey === "classic" && !isDaily && !ch) {
     engineRules = RULES_ENGINE.concat([["ANY GIVEN NIGHT",
       "The season is played out one game at a time. No five wins a given night more than 99 times in 100, so a perfect season has to survive all 82."]]);
   }
-  h += '<p class="rs-eyebrow">WHAT WINS GAMES</p><ul class="rs-list rs-engine">' +
+  h += head("rules", "What wins games", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list rs-engine">' +
     engineRules.map(function (r) { return "<li><strong>" + r[0] + ":</strong> " + r[1] + "</li>"; }).join("") + "</ul>" +
     ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
 
@@ -1846,9 +1872,8 @@ function resultsTopBarHtml() {
 // app.js owns the two doorways: the homepage module (one curated rotating
 // question from op=featured) and the compact results-screen prompt, which
 // prefers a question about a player this user just drafted.
-// Styling is injected here, scoped under .traits-*, so the shared styles.css
-// stays untouched this build (fold into styles.css on its next owner pass).
-var TRAITS_CSS_ID = "traitsCss";
+// Styling lives in styles.css ("the homepage vote card"); v51 folded in the
+// block this file used to inject, so every surface reads the one theme.
 var TRAIT_CARD_ABBR = {
   "Three-Point Shooter": "3PT",
   "Super Three-Point Shooter": "GRAV",
@@ -1954,170 +1979,7 @@ function wireTraitChipTaps() {
     if (traitExpandedChip) collapseTraitChip();
   });
 }
-function ensureTraitsCss() {
-  if (document.getElementById(TRAITS_CSS_ID)) return;
-  var st = document.createElement("style");
-  st.id = TRAITS_CSS_ID;
-  st.textContent =
-    ".traits-module{display:block;text-align:left;color:inherit;position:relative;" +
-      "background:linear-gradient(180deg,#1a2129,#141a21);border:2px solid #FFB52E;border-radius:20px;" +
-      "padding:15px 15px 13px;margin:12px 0;" +
-      "box-shadow:0 0 0 1px rgba(255,181,46,.25),0 0 26px rgba(255,181,46,.16),0 14px 34px -18px rgba(0,0,0,.7)}" +
-    ".traits-module .tm-top{display:flex;align-items:center;gap:9px}" +
-    ".traits-module .tm-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12.5px;" +
-      "letter-spacing:.2em;color:#FFB52E;text-decoration:none;display:inline-block}" +
-    ".traits-module .tm-head:not([hidden]){display:block;text-align:center;font-family:'Barlow Condensed',sans-serif;" +
-      "font-weight:700;font-size:22px;letter-spacing:.08em;color:#f2ede4;margin-bottom:9px}" +
-    ".traits-module .tm-pips{align-items:center;gap:9px}" +
-    ".traits-module .tm-pips span{width:13px;height:13px}" +
-    ".traits-module .tm-pips span.done{width:16px;height:16px}" +
-    ".traits-module .tm-new{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;" +
-      "color:#9fe870;border:1px solid #4d7a35;border-radius:7px;padding:2px 7px}" +
-    ".traits-module .tm-call{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;" +
-      "letter-spacing:.22em;color:#8b98a5;margin-top:8px}" +
-    ".traits-module .tm-q{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
-      "font-size:25px;line-height:1.05;margin-top:4px;text-transform:uppercase;" +
-      "color:inherit;text-decoration:none}" +
-    ".traits-module .tm-q:active{color:#FFB52E}" +
-    ".traits-module .tm-def{display:block;font-size:13px;color:#8b98a5;margin-top:5px;" +
-      "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
-    /* v47.21: IDK narrows to exactly two thirds of its v47.19 width. Solve
-       y/(2x+y) = (2/3)(2/12) = 1/9 and you get x = 4y, so 4:4:1 is the ratio -
-       the width IDK gives up is split evenly back into YES/NO. Below ~350 the
-       grid item's min-content width floors it a hair wider, which is the
-       graceful end of the shrink rather than a clipped label. */
-    ".traits-module .tm-votes{display:grid;grid-template-columns:4fr 4fr 1fr;gap:11px;margin-top:11px}" +
-    ".traits-module .tm-vb.idk{font-size:14px;letter-spacing:.02em;padding:0 2px}" +
-    ".traits-module .tm-vb{position:relative;height:52px;border:0;border-radius:13px;cursor:pointer;" +
-      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:.1em;color:#1c1608;" +
-      "background:linear-gradient(180deg,#FFC957,#F2A81F);" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12,0 7px 14px -6px rgba(0,0,0,.6)}" +
-    ".traits-module .tm-vb.no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 #8c2317,0 7px 14px -6px rgba(0,0,0,.6)}" +
-    /* v47.21: the pass reads as a dashed outline, not a slab. Flat by two
-       mechanisms so neither can regress it alone - .tm-flat keeps the global
-       3D decorator off it, and these rules kill the lift and the fill. */
-    ".traits-module .tm-vb.idk{color:#9fabb7;background:none;border:1.5px dashed #4d5a67;box-shadow:none}" +
-    ".traits-module .tm-vb.idk:active,.traits-module .tm-vb.idk.pressed{transform:none;box-shadow:none;" +
-      "color:#FFB52E;border-color:#FFB52E}" +
-    ".traits-module .tm-vb:active,.traits-module .tm-vb.pressed{transform:translateY(2px);" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}" +
-    ".traits-module .tm-vb.no:active,.traits-module .tm-vb.no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2)," +
-      "0 1px 0 #8c2317,0 4px 8px -5px rgba(0,0,0,.6)}" +
-    ".traits-module.tm-locked .tm-vb{pointer-events:none;opacity:.55}" +
-    ".traits-module.tm-locked .tm-vb.pressed{opacity:1}" +
-    ".traits-module .tm-res{display:none;margin-top:12px;font-family:'Barlow Condensed',sans-serif;" +
-      "font-weight:700;font-size:19px;letter-spacing:.05em}" +
-    ".traits-module .tm-res b{color:#FFB52E}" +
-    ".traits-module .tm-res .neg{color:#E5533C}" +
-    ".traits-module .tm-foot{display:flex;align-items:center;margin-top:12px;justify-content:center}" +
-    ".traits-module .tm-eyeb{color:#FFB52E;font-weight:700}" +
-    /* v47.20 tag slot: the player-card chip exactly (gold face, ink text,
-       7px radius, Barlow Condensed 700) with the 3D lift swapped for a gold
-       hairline. The element a player portrait would later occupy.
-       v47.21: it no longer floats inside the question - it rides the lead
-       row opposite HELP BALANCE THE GAME, which hands the question back the
-       line the float was costing it. */
-    ".traits-module .tm-lead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:24px}" +
-    /* The lead only fits on one line beside the chip if the eyebrow gives
-       up tracking on narrow phones. Measured: one line down to 360; at 320
-       it wraps to two, which is still no taller than the two-clause
-       subtitle it replaced. */
-    "@media(max-width:389px){.traits-module .tm-eyebrow{font-size:12px;letter-spacing:.10em}}" +
-    ".traits-module .tm-tag[hidden]{display:none}" +
-    ".traits-module .tm-tag{flex:0 0 auto;display:inline-flex;align-items:center;" +
-      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.09em;" +
-      "text-transform:uppercase;color:#1c1608;background:linear-gradient(180deg,#FFC957,#F2A81F);" +
-      "border:1px solid #9a6a12;border-radius:7px;min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap}" +
-    /* v47.19: the diamonds sit centered and larger; sharing moved to a thin,
-       quiet 2D bar below them (excluded from the 3D decorator on purpose). */
-    ".traits-module .tm-sharebar{display:block;width:100%;height:32px;margin-top:9px;appearance:none;-webkit-appearance:none;" +
-      "background:none;border:1px solid #2c343d;border-radius:9px;cursor:pointer;" +
-      "font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.07em;color:#8b98a5;line-height:1}" +
-    ".traits-module .tm-shlead{font-weight:700;color:#c9d2da}" +
-    ".traits-module .tm-sharebar:active,.traits-module .tm-sharebar.flashed{color:#FFB52E;border-color:#FFB52E}" +
-    ".traits-module .tm-sharebar:focus-visible{outline:2px solid #FFB52E;outline-offset:2px}" +
-    ".traits-module .tm-dots{display:flex;gap:7px}" +
-    ".traits-module .tm-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4a5560;background:transparent}" +
-    ".traits-module .tm-dot.on{background:#FFB52E;border-color:#FFB52E}" +
-    ".traits-module .tm-count{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;color:#8b98a5}" +
-    ".traits-module .tm-why:not([hidden]){display:block;font-size:12px;color:#68737e;margin-top:8px}" +
-    ".traits-module .tm-open{position:absolute;top:16px;right:16px;font-family:'IBM Plex Mono',monospace;" +
-      "font-size:11px;letter-spacing:.12em;color:#8b98a5;text-decoration:none;padding:6px 0 6px 8px}" +
-    ".traits-module .tm-done{display:none;margin-top:13px}" +
-    ".traits-module .tm-done .td-h{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:23px;letter-spacing:.06em}" +
-    ".traits-module .tm-done .td-l{font-size:14px;color:#8b98a5;margin-top:3px}" +
-    ".traits-module .tm-again{display:inline-flex;align-items:center;justify-content:center;margin-top:11px;text-decoration:none;" +
-      "height:48px;padding:0 18px;border:0;border-radius:12px;cursor:pointer;" +
-      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
-      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;letter-spacing:.1em;" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
-    "@media (prefers-reduced-motion:reduce){.traits-module .tm-vb{transition:none}}" +
-    ".traits-prompt{background:linear-gradient(180deg,#1a2129,#141a21);border:1.5px solid #FFB52E;border-radius:16px;" +
-      "padding:16px;box-shadow:0 0 0 1px rgba(255,181,46,.18),0 0 18px rgba(255,181,46,.1)}" +
-    ".traits-prompt .tp-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;color:#FFB52E}" +
-    ".traits-prompt .tp-q{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;margin:7px 0 5px;text-transform:uppercase}" +
-    ".traits-prompt .tp-cta{display:inline-flex;align-items:center;justify-content:center;margin-top:9px;" +
-      "min-width:96px;height:46px;padding:0 16px;border-radius:12px;text-decoration:none;" +
-      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;" +
-      "font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:.12em;" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #9a6a12}" +
-    ".tchips{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}" +
-    /* display:contents dissolves the wrapper's box so each label chip packs
-       the .pr-sub flex line individually and only the true overflow wraps
-       (v47.11); the span stays in the DOM for the dedupe guard and cache. */
-    ".tchips-inline{display:contents}" +
-    /* Trait chips wear the house slab (v47.9): ink text on a bright gold
-       face, the site's own contrast law (dark text on amber, never
-       amber-on-amber). Anti-labels are the red slab with the cross-out in
-       the same ink. Chips own the whole skin here and are excluded from the
-       global presti-spin decorator, so no outside button rule can repaint
-       them into the old dark-on-dark. */
-    ".tchip{position:relative;display:inline-flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;" +
-      "font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#1c1608;" +
-      "background:linear-gradient(180deg,#FFC957,#F2A81F);border:0;border-radius:7px;" +
-      "min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap;cursor:pointer;" +
-      "appearance:none;-webkit-appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 #9a6a12,0 5px 10px -8px #000;" +
-      "transition:transform .1s ease,box-shadow .1s ease}" +
-    ".tchip:active,.tchip.expanded{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 #9a6a12}" +
-    ".tchip.anti{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 0 #8c2317,0 5px 10px -8px #000}" +
-    ".tchip.anti:active,.tchip.anti.expanded{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 0 #8c2317}" +
-    ".tchip.anti::after{content:'';position:absolute;left:6%;right:6%;top:50%;height:2px;margin-top:-1px;" +
-      "background:#2b0d09;transform:rotate(-5deg);border-radius:1px;pointer-events:none}" +
-    ".tchip:focus-visible{outline:2px solid #E8E4D8;outline-offset:2px}" +
-    ".traits-roster-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}" +
-    ".traits-roster-head .eyebrow{margin:0}" +
-    ".trait-info-btn{appearance:none;-webkit-appearance:none;width:27px;height:27px;flex:0 0 27px;padding:0;" +
-      "display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;" +
-      "background:linear-gradient(180deg,#FFC957,#F2A81F);color:#1c1608;font-family:Georgia,serif;font-weight:700;" +
-      "font-size:16px;line-height:1;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 #9a6a12,0 5px 10px -7px #000;" +
-      "touch-action:manipulation;-webkit-tap-highlight-color:transparent}" +
-    ".trait-info-btn[hidden]{display:none}" +
-    ".trait-info-btn:active,.trait-info-btn[aria-expanded=true]{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 #9a6a12}" +
-    ".pool-trait-info{margin-left:2px}" +
-    ".trait-legend{margin:0 0 8px;padding:10px 11px;border:1px solid #46515c;border-radius:9px;background:#11171d;" +
-      "box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}" +
-    ".trait-legend-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;color:#FFB52E;margin-bottom:7px}" +
-    ".trait-legend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px}" +
-    ".trait-legend-row{display:flex;align-items:baseline;gap:7px;min-width:0;font-family:'Barlow Condensed',sans-serif;" +
-      "font-size:13px;line-height:1.15;color:#d9d5ce}" +
-    ".trait-legend-row b{flex:0 0 auto;color:#FFB52E;letter-spacing:.06em}" +
-    ".trait-legend-row span{min-width:0}" +
-    ".trait-legend-note{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;line-height:1.3;color:#7f8b96}" +
-    "@keyframes traitChipPop{0%,100%{transform:translateY(0)}35%{transform:translateY(-4px)}65%{transform:translateY(1px)}}" +
-    "@keyframes traitInfoPulse{0%,100%{transform:scale(1);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #74500d,0 0 0 0 rgba(255,181,46,0)}" +
-      "45%{transform:scale(1.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 0 #74500d,0 0 0 6px rgba(255,181,46,.18)}}" +
-    ".traits-roster.trait-card-cue .tchip{animation:traitChipPop .58s ease both}" +
-    ".traits-roster.trait-card-cue .trait-info-btn{animation:traitInfoPulse 1.1s ease both}" +
-    "@media(max-width:390px){.trait-legend-grid{grid-template-columns:1fr}}" +
-    "@media(prefers-reduced-motion:reduce){.traits-roster.trait-card-cue .tchip,.traits-roster.trait-card-cue .trait-info-btn{animation:none}" +
-      ".tchip{transition:none}}";
-  document.head.appendChild(st);
-}
 function traitsModuleHtml() {
-  ensureTraitsCss();
   // Ships hidden; wireBonusesModule reveals it only with a live session in
   // hand, so the homepage never shows a stale or empty debate. The module IS
   // a voting surface (owner redesign, 2026-07-27): five quick YES/NO calls
@@ -2126,16 +1988,16 @@ function traitsModuleHtml() {
   return '<section class="traits-module" id="traitsModule" hidden>' +
     '<span class="tm-head" id="tmHead" hidden>VOTE: DID WE GET IT WRONG?</span>' +
     '<div class="tm-lead">' +
-      '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module"><span class="tm-eyeb">HELP BALANCE THE GAME</span></a>' +
-      '<span class="tm-tag" id="tmTag" hidden></span>' +
+      head("poll", '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module"><span class="tm-eyeb">HELP BALANCE THE GAME</span></a>', { tag: "h2", html: true, cls: "tm-lede" }) +
+      '<span class="tm-tag t-chip" id="tmTag" hidden></span>' +
     "</div>" +
     '<span class="tm-call" id="tmCall" hidden></span>' +
     '<span class="tm-q" id="tmQ"></span>' +
     '<span class="tm-def" id="tmDef"></span>' +
     '<div class="tm-votes" id="tmVotes">' +
-      '<button class="tm-vb" type="button" id="tmYes">YES</button>' +
-      '<button class="tm-vb no" type="button" id="tmNo">NO</button>' +
-      '<button class="tm-vb idk tm-flat" type="button" id="tmIdk">IDK</button>' +
+      '<button class="tm-vb t-btn" data-kind="yes" type="button" id="tmYes">YES</button>' +
+      '<button class="tm-vb no t-btn" data-kind="no" type="button" id="tmNo">NO</button>' +
+      '<button class="tm-vb idk tm-flat t-btn" data-kind="quiet" type="button" id="tmIdk">IDK</button>' +
     "</div>" +
     '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
     '<div class="tm-done" id="tmDone"></div>' +
@@ -2294,7 +2156,7 @@ function tmComplete() {
   var done = el("tmDone");
   done.style.display = "block";
   done.innerHTML = '<span class="td-l">Your votes helped set player bonuses.</span><br>' +
-    '<a class="tm-again" id="tmAgain" href="/bonuses/?src=' + TM.source + '">VOTE ON 5 MORE</a>';
+    '<a class="tm-again t-btn" id="tmAgain" href="/bonuses/?src=' + TM.source + '">VOTE ON 5 MORE</a>';
   tmDots();
   buzz([12, 70, 12]);
   analyticsTrack("traits_session", { surface: "traits", action: "complete", value: TM.qs.length, source: TM.source, sid: TM.sid });
@@ -2531,17 +2393,17 @@ function ballotTagModel(card) {
   return { tags: on.concat(q), reopen: reopen, offer: offer };
 }
 function ballotTagHtml(tag) {
-  var T = tag.T, cls = "bt-tag" + (T.neg ? " neg" : "") + (tag.state === "q" ? " q" : "") +
-    (tag.state === "off" ? " off" : "") + (tag.mine ? " mine" : "");
+  var T = tag.T, cls = "bt-tag t-chip" + (T.neg ? " neg" : "") + (tag.state === "q" ? " q is-q" : "") +
+    (tag.state === "off" ? " off is-off" : "") + (tag.mine ? " mine is-mine" : "");
   var aria = T.name + (tag.state === "q" ? ", unsettled" : tag.state === "off" ? ", you said no" : "") +
     (tag.mine ? ", you voted" : "") + ". Tap to weigh in.";
-  return '<button type="button" class="' + cls + '" data-trait="' + esc(T.id) + '" aria-label="' + esc(aria) + '">' +
+  return '<button type="button" class="' + cls + '" data-size="lg"' + (T.neg ? ' data-tone="bad"' : "") + ' data-trait="' + esc(T.id) + '" aria-label="' + esc(aria) + '">' +
     esc(T.chip) + (tag.state === "off" ? '<span class="bt-x" aria-hidden="true">✕</span>' : "") + "</button>";
 }
 function ballotTagsHtml(card) {
   var model = ballotTagModel(card);
   return model.tags.map(ballotTagHtml).join("") +
-    '<button type="button" class="bt-tag add" data-add="1" aria-label="Add a tag for ' + esc(card.name) + '">+</button>';
+    '<button type="button" class="bt-tag add t-chip t-chip-add" data-size="lg" data-add="1" aria-label="Add a tag for ' + esc(card.name) + '">+</button>';
 }
 function ballotBoxHtml(row) {
   function cell(v, lab) {
@@ -2618,11 +2480,10 @@ function wireBallot(entries) {
 function ballotSheetEls() {
   var bd = el("btBackdrop"), sh = el("btSheet");
   if (bd && sh) return { bd: bd, sh: sh, inn: el("btSheetIn") };
-  bd = document.createElement("div"); bd.id = "btBackdrop"; bd.className = "bt-backdrop";
-  sh = document.createElement("div"); sh.id = "btSheet"; sh.className = "bt-sheet";
+  bd = document.createElement("div"); bd.id = "btBackdrop"; bd.className = "bt-backdrop t-backdrop";
+  sh = document.createElement("div"); sh.id = "btSheet"; sh.className = "bt-sheet t-sheet";
   sh.setAttribute("role", "dialog"); sh.setAttribute("aria-modal", "true");
-  sh.innerHTML = '<div class="bt-grab" aria-hidden="true"></div><div class="bt-in" id="btSheetIn"></div>';
-  try { var paper = window.T82PRINT && T82PRINT.paper(); if (paper) sh.style.backgroundImage = "url(" + paper + ")"; } catch (e) {}
+  sh.innerHTML = '<div class="bt-grab t-grab" aria-hidden="true"></div><div class="bt-in" id="btSheetIn"></div>';
   document.body.appendChild(bd); document.body.appendChild(sh);
   bd.addEventListener("click", ballotClose);
   document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && sh.classList.contains("on")) ballotClose(); });
@@ -2668,13 +2529,13 @@ function ballotOpenAsk(card, traitId) {
   BALLOT.cur = { card: card, T: T };
   var s = ballotSheetEls();
   s.inn.innerHTML =
-    '<div class="bt-who">' + esc(ballotWho(card)) + "</div>" +
-    '<div class="bt-q">' + ballotQuestionHtml(card, T) + "</div>" +
+    '<div class="bt-who t-meta">' + esc(ballotWho(card)) + "</div>" +
+    '<div class="bt-q t-title">' + ballotQuestionHtml(card, T) + "</div>" +
     (T.d ? '<p class="bt-def">' + esc(T.d) + "</p>" : "") +
     '<div class="bt-btns" id="btBtns">' +
-      '<button type="button" class="bt-big yes" data-v="yes">Yes</button>' +
-      '<button type="button" class="bt-big no" data-v="no">No</button>' +
-      '<button type="button" class="bt-big idk" data-v="unsure">Not sure</button>' +
+      '<button type="button" class="bt-big yes t-btn" data-kind="yes" data-size="lg" data-v="yes">Yes</button>' +
+      '<button type="button" class="bt-big no t-btn" data-kind="no" data-size="lg" data-v="no">No</button>' +
+      '<button type="button" class="bt-big idk t-btn" data-kind="quiet" data-v="unsure">Not sure</button>' +
     "</div>" +
     '<div class="bt-result" id="btResult" hidden></div>';
   ballotShow("Weigh in on " + T.name);
@@ -2692,11 +2553,11 @@ function ballotOpenPicker(card) {
     return '<button type="button" class="bt-tile' + (T.neg ? " neg" : "") + '" data-trait="' + esc(T.id) + '"><b>' + esc(T.chip) + "</b>" +
       (T.d ? "<small>" + esc(T.d) + "</small>" : "") + "</button>";
   }
-  h += '<h2 class="bt-h">Add a tag</h2><p class="bt-sub">' + esc(card.name) + ", " + esc(shortSeason(card.season)) + ". What else was he?</p>";
-  if (model.reopen.length) h += '<div class="bt-grp">Open questions</div><div class="bt-grid">' + model.reopen.map(tile).join("") + "</div>";
+  h += head("sheet", "Add a tag", { cls: "bt-h" }) + '<p class="bt-sub">' + esc(card.name) + ", " + esc(shortSeason(card.season)) + ". What else was he?</p>";
+  if (model.reopen.length) h += head("group", "Open questions", { tag: "h3", cls: "bt-grp" }) + '<div class="bt-grid">' + model.reopen.map(tile).join("") + "</div>";
   BALLOT_GROUPS.forEach(function (gp) {
     var items = model.offer.filter(function (T) { return T.g === gp[1]; });
-    if (items.length) h += '<div class="bt-grp">' + gp[0] + '</div><div class="bt-grid">' + items.map(tile).join("") + "</div>";
+    if (items.length) h += head("group", gp[0], { tag: "h3", cls: "bt-grp" }) + '<div class="bt-grid">' + items.map(tile).join("") + "</div>";
   });
   h += '<p class="bt-foot">Every tag, spelled out: <a href="/traits/">Player Traits</a></p>';
   var s = ballotSheetEls();
@@ -2721,7 +2582,7 @@ function ballotSheetClick(ev) {
 }
 function ballotToast(msg) {
   var t = el("btToast");
-  if (!t) { t = document.createElement("div"); t.id = "btToast"; t.className = "bt-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  if (!t) { t = document.createElement("div"); t.id = "btToast"; t.className = "bt-toast t-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
   t.textContent = msg;
   t.classList.add("on");
   clearTimeout(BALLOT.toastT);
@@ -2832,11 +2693,11 @@ function ballotShowResult(card, T, resp, d, c) {
   if (!res) return;
   var t = ballotTally(d, c, resp, BALLOT.rules);
   res.innerHTML =
-    (!t.big ? "" : '<div class="bt-pct ' + t.lead + '">' + (t.lead === "yes" ? t.pct : 100 - t.pct) + "% " + (t.lead === "yes" ? "YES" : "NO") + "</div>") +
+    (!t.big ? "" : '<div class="bt-pct t-num ' + t.lead + '">' + (t.lead === "yes" ? t.pct : 100 - t.pct) + "% " + (t.lead === "yes" ? "YES" : "NO") + "</div>") +
     '<div class="bt-you">' + esc(t.line) + "</div>" +
     (t.pct === null ? "" : '<div class="bt-bar"><i style="width:' + t.pct + '%"></i></div>') +
-    '<div class="bt-pill">' + esc(t.pill) + "</div>" +
-    '<div class="bt-row"><button type="button" class="bt-change">Change vote</button><button type="button" class="bt-done">Done</button></div>';
+    '<div class="bt-pill t-chip" data-tone="plain">' + esc(t.pill) + "</div>" +
+    '<div class="bt-row"><button type="button" class="bt-change t-btn" data-kind="text">Change vote</button><button type="button" class="bt-done t-btn">Done</button></div>';
   var done = res.querySelector(".bt-done");
   if (done && document.activeElement && document.activeElement.closest && document.activeElement.closest("#btSheet")) done.focus();
 }
@@ -2884,7 +2745,7 @@ function ballotHintPlay(cardEl) {
   var hand = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   hand.setAttribute("viewBox", "0 0 48 48"); hand.setAttribute("aria-hidden", "true");
   hand.setAttribute("class", "bt-hand");
-  hand.innerHTML = '<path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" fill="#FFFFFF" stroke="#232A4E" stroke-width="2.4" stroke-linejoin="round"/>';
+  hand.innerHTML = '<path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" stroke-width="2.4" stroke-linejoin="round"/>';
   document.body.appendChild(hand);
   var H = BALLOT_HINT = { hand: hand, timers: [] };
   function later(fn, ms) { H.timers.push(setTimeout(function () { if (BALLOT_HINT === H) fn(); }, ms)); }
@@ -2949,7 +2810,6 @@ function wireDraftPoolLabels() {
   if (MODE !== "classic") return;
   var pool = el("pool");
   if (!pool) return;
-  ensureTraitsCss();
   var missing = applyPoolLabelPass(pool);
   refreshPoolTraitLegend();
   if (!missing.length || !window.fetch) return;
@@ -3052,9 +2912,9 @@ function renderIntro() {
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
-      '<p class="eyebrow">Draft</p>' +
+      head("home", "Draft") +
       "<p>Five rounds. Each one deals a random NBA franchise and decade; draft one player who suited up for that team in that era, any season of his career. Fill 2 guards, 2 forwards, and a center. In Classic you can skip the team once and the era once.</p>" +
-      '<p class="eyebrow">Winning</p>' +
+      head("home", "Winning") +
       "<p>The engine grades your five on advanced impact (BPM), then converts net rating into an 82-game record. It rewards real stars, wants about <strong>3 shooters</strong>, and punishes ball-hog pileups and bad-defense pairs. Every draft screen has a <strong>HOW TO PLAY</strong> button with the full rules and the day's twist.</p>" +
     "</section>";
   analyticsTrack("home_view", {
@@ -4441,19 +4301,19 @@ function ballLeverHtml(leverId, armId, ariaLabel) {
     '<span class="hh-ball" id="' + armId + '">' +
       '<svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">' +
         '<defs><radialGradient id="hhBg" cx="38%" cy="30%" r="78%">' +
-          '<stop offset="0%" stop-color="#ffcb84"/><stop offset="48%" stop-color="#e8802a"/><stop offset="100%" stop-color="#a64e10"/>' +
+          '<stop offset="0%" style="stop-color:var(--fx-ball-hi)"/><stop offset="48%" style="stop-color:var(--fx-ball)"/><stop offset="100%" style="stop-color:var(--fx-ball-lo)"/>' +
         '</radialGradient></defs>' +
-        '<circle cx="24" cy="24" r="22" fill="url(#hhBg)" stroke="#6e3208" stroke-width="1"/>' +
-        '<path d="M2 24H46M24 2V46M8 7Q24 24 8 41M40 7Q24 24 40 41" fill="none" stroke="#6e3208" stroke-width="1.5" stroke-linecap="round"/>' +
+        '<circle cx="24" cy="24" r="22" fill="url(#hhBg)" style="stroke:var(--fx-ball-seam)" stroke-width="1"/>' +
+        '<path d="M2 24H46M24 2V46M8 7Q24 24 8 41M40 7Q24 24 40 41" fill="none" style="stroke:var(--fx-ball-seam)" stroke-width="1.5" stroke-linecap="round"/>' +
       '</svg>' +
     '</span>' +
     '<span class="hh-hoop" aria-hidden="true">' +
       '<svg viewBox="0 0 96 76" width="96" height="76">' +
-        '<g fill="none" stroke="#e6e0d2" stroke-width="1" opacity="0.8">' +
+        '<g fill="none" style="stroke:var(--fx-ball-net)" stroke-width="1" opacity="0.8">' +
           '<path d="M16 20 L36 62"/><path d="M32 20 L42 62"/><path d="M48 20 L48 62"/><path d="M64 20 L54 62"/><path d="M80 20 L60 62"/>' +
           '<path d="M24 36 Q48 40 72 36"/><path d="M31 50 Q48 54 65 50"/>' +
         '</g>' +
-        '<ellipse cx="48" cy="16" rx="35" ry="9" fill="none" stroke="#e0531a" stroke-width="4"/>' +
+        '<ellipse cx="48" cy="16" rx="35" ry="9" fill="none" style="stroke:var(--fx-ball-rim)" stroke-width="4"/>' +
       '</svg>' +
     '</span>' +
     '<span class="hh-lever-hint">PULL DOWN<b>\u2193</b></span>' +
@@ -5622,6 +5482,37 @@ function finishRunTail(e) {
    bbref map loads behind it. Cities are cosmetic, seed-hashed, never the
    rng stream. Copy law: zero em-dashes. */
 var REEL_MONTHS = [["OCT", 5], ["NOV", 15], ["DEC", 15], ["JAN", 15], ["FEB", 11], ["MAR", 15], ["APR", 6]];
+/* v51 REEL PACING (owner, 2026-09-25): every season plays out in the same time, so the
+   reel's length never spoils the record. reelNaturalMs() walks the natural schedule (each
+   month's lead, one tick per game, each loss's hold from reel-riso.js); showSeasonReel
+   scales every wait by one factor so the finale always lands at REEL_END_MS. The target is
+   the slowest of the 78-82-win seasons (78-4 with its first loss ending a streak), so those
+   all play at the natural, slowest pace and worse seasons run faster. The red flash keeps its
+   own speed limit in reel-riso.js, so a compressed bad season never flashes faster than
+   before. QA: ?reelms=<ms> tries another end time. */
+var REEL_END_MS = 16800;
+var REEL_TICK = 48, REEL_LEAD0 = 650, REEL_LEAD = 960, REEL_OPEN = 140, REEL_CLOSE = 120, REEL_FIN = 640;
+function reelNaturalMs(games, holdFn) {
+  var t = 0, gi = 0, cl = 0, streak = 0;
+  for (var mi = 0; mi < REEL_MONTHS.length; mi++) {
+    t += (mi === 0 ? REEL_LEAD0 : REEL_LEAD) + REEL_OPEN;
+    for (var k = 0; k < REEL_MONTHS[mi][1] && gi < games.length; k++, gi++) {
+      var hold = 0;
+      if (games[gi]) streak++;
+      else { cl++; hold = holdFn ? holdFn(cl, streak) : 0; streak = 0; }
+      t += (k === REEL_MONTHS[mi][1] - 1 ? 0 : REEL_TICK) + hold;   // a month's last square hands straight to the next lead
+    }
+  }
+  return t + REEL_FIN;
+}
+function reelEndMs() {
+  var m = typeof location !== "undefined" && /[?&]reelms=(\d{4,6})(&|$)/.exec(location.search || "");
+  return m ? +m[1] : REEL_END_MS;
+}
+function reelPace(games, holdFn, endMs) {
+  var nat = reelNaturalMs(games, holdFn);
+  return nat > 0 ? Math.max(0.3, Math.min(2.5, (endMs || REEL_END_MS) / nat)) : 1;
+}
 var REEL_CITIES = ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cleveland", "Dallas", "Denver",
   "Detroit", "Golden State", "Houston", "Indiana", "Los Angeles", "Memphis", "Miami", "Milwaukee",
   "Minnesota", "New Orleans", "New York", "Oklahoma City", "Orlando", "Philadelphia", "Phoenix",
@@ -5937,9 +5828,9 @@ function showSeasonReel(season, e, done, midTrigger) {
   var ov = document.createElement("div");
   ov.className = "reel-overlay";
   ov.innerHTML = '<div class="reel-card">' +
-    '<div class="reel-head"><span class="reel-eyebrow">THE SEASON \u00B7 GAME BY GAME</span>' +
+    '<div class="reel-head">' + head("reel", "The season \u00B7 game by game", { tag: "span", cls: "reel-eyebrow" }) +
     '<span class="reel-run mono" id="reelRun">0\u20130</span>' +
-    '<button class="reel-skip mono" id="reelSkip" type="button">SKIP \u2192</button></div>' +
+    '<button class="reel-skip mono t-btn" data-kind="quiet" data-size="sm" id="reelSkip" type="button">SKIP \u2192</button></div>' +
     '<div class="reel-acts" id="reelActs"></div></div>';
   document.body.appendChild(ov);
   var acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
@@ -5952,6 +5843,8 @@ function showSeasonReel(season, e, done, midTrigger) {
   function risoOff(err) { riso = null; if (typeof console !== "undefined" && console.warn) console.warn("[t82] riso reel off:", err); }
   try { if (window.T82RISO && T82RISO.create) riso = T82RISO.create(ov, season); } catch (err) { risoOff(err); }
   function risoCall(fn) { if (!riso) return 0; try { return fn() || 0; } catch (err) { risoOff(err); return 0; } }
+  // v51: one pace for the whole season, so every record finishes at the same moment (see REEL_END_MS)
+  var PACE = reelPace(season.games, riso && window.T82RISO ? T82RISO.holdFor : null, reelEndMs());
   // v47.15: the reel is now a cursor engine instead of a pre-scheduled cascade,
   // so it can pause on the exact square where the Mid-Season Heat Check
   // fires and resume onto a re-rolled remainder. Month W-L headers tick live
@@ -6009,7 +5902,7 @@ function showSeasonReel(season, e, done, midTrigger) {
     recEl.textContent = monthW + "\u2013" + monthL;
     if (riso) {
       var info = { gi: gi, cw: cw, cl: clx, streak: winRun, prevStreak: prevStreak, lossRun: lossRun,
-        city: reelCity(gi), date: reelDate(gi), instant: ff };
+        city: reelCity(gi), date: reelDate(gi), instant: ff, pace: PACE };
       hold = risoCall(function () { return riso.stamp(row, gi - monthStart, !!win, info); });
     }
     if (!riso) {
@@ -6024,17 +5917,17 @@ function showSeasonReel(season, e, done, midTrigger) {
 
   function advance() {
     if (finished) return;
-    if (gi >= season.games.length) { schedule(closeMonth, 120); schedule(finale, 640); return; }
-    var lead = (mi < 0) ? 650 : 960;
-    if (mi >= 0) schedule(closeMonth, 120);
-    schedule(function () { openMonth(); schedule(tick, 140); }, lead);
+    if (gi >= season.games.length) { schedule(closeMonth, REEL_CLOSE * PACE); schedule(finale, REEL_FIN * PACE); return; }
+    var lead = ((mi < 0) ? REEL_LEAD0 : REEL_LEAD) * PACE;
+    if (mi >= 0) schedule(closeMonth, REEL_CLOSE * PACE);
+    schedule(function () { openMonth(); schedule(tick, REEL_OPEN * PACE); }, lead);
   }
   function tick() {
     if (finished) return;
     if (!midDone && gi === triggerIdx) { firePause(); return; }
     var hold = placeSquare();
     if (monthLeft === 0) { if (hold) schedule(advance, hold); else advance(); }
-    else schedule(tick, 48 + hold);
+    else schedule(tick, REEL_TICK * PACE + hold);
   }
 
   function applyMidBoost(boost) {
@@ -6078,7 +5971,7 @@ function showSeasonReel(season, e, done, midTrigger) {
     fin.className = "reel-final";
     fin.innerHTML = '<span class="reel-final-rec">' + season.wins + '\u2013' + season.losses + '</span>' +
       '<p class="reel-note">' + (season.losses === 0 ? "Eighty two and zero. Say it out loud." : "The verdict is in.") + '</p>' +
-      '<button class="reel-done" id="reelDone" type="button">SEE THE FULL RESULTS \u2192</button>';
+      '<button class="reel-done t-btn" id="reelDone" type="button">SEE THE FULL RESULTS \u2192</button>';
     acts.appendChild(fin);
     risoCall(function () { return riso.finale(fin, season); });
     fin.querySelector("#reelDone").addEventListener("click", function (ev) { ev.stopPropagation(); finishReel(); });
@@ -6249,15 +6142,6 @@ function printCall(fn) {
     return null;
   }
 }
-function risoPaperOnce() {
-  if (document.documentElement.getAttribute("data-rr-paper")) return;
-  printCall(function () {
-    if (!window.T82PRINT || !T82PRINT.paper) return null;
-    document.documentElement.style.setProperty("--rr-paper", "url(" + T82PRINT.paper() + ")");
-    document.documentElement.setAttribute("data-rr-paper", "1");
-    return null;
-  });
-}
 function resultsPrintSpec(e, daily, winsNow) {
   var games = e.season && e.season.games && e.season.games.length === CFG.GAMES_IN_SEASON
     ? e.season.games.map(function (g) { return g ? 1 : 0; }) : null;
@@ -6270,10 +6154,12 @@ function resultsPrintSpec(e, daily, winsNow) {
   }
   var picks = picksInSlotOrder();
   var names = picks.map(function (en) { return "'" + String(en.p.row[IDX.season]).slice(-2) + " " + ballotSurname(en.p.row[IDX.name]); });
+  // the roster the print stacks over the picture (v51): slot, full name, season
+  var roster = picks.map(function (en) { return { slot: en.p.slot, name: String(en.p.row[IDX.name]), yr: "'" + String(en.p.row[IDX.season]).slice(-2) }; });
   var net = typeof G.hotNewNet === "number" ? G.hotNewNet : e.net;
   var context = daily ? "THE DAILY #" + G.social.num : (MODE === "cap" ? "PRESTI MODE" : MODE === "pro" ? "PRO MODE" : "CLASSIC MODE");
   return {
-    games: games, wins: wins, saved: saved, context: context, names: names, net: signed1(net),
+    games: games, wins: wins, saved: saved, context: context, names: names, roster: roster, net: signed1(net),
     comp: wins >= CFG.GAMES_IN_SEASON ? "Greatest of all GOATs" : shareCompFor(wins, false),
     seed: reelHash(names.join("|") + "#" + wins)
   };
@@ -6285,6 +6171,7 @@ function mountResultsPrint(e, daily) {
   if (!host) return;
   RESULTS_PRINT_SPEC = resultsPrintSpec(e, daily);
   var canWatch = !!window.IntersectionObserver;
+  host.setAttribute("data-spec", JSON.stringify(RESULTS_PRINT_SPEC));   // the print's recipe rides the page (the Reprint Lab reprints it in any look)
   RESULTS_PRINT = printCall(function () { return window.T82PRINT ? T82PRINT.mount(host, RESULTS_PRINT_SPEC, { defer: canWatch }) : null; });
   if (!RESULTS_PRINT) return;
   var board = host.closest ? host.closest(".rr-board") : null;
@@ -6328,7 +6215,7 @@ function resultsPrintRecord(e, wins) {
   RESULTS_PRINT_SPEC = resultsPrintSpec(e, daily ? { isOfficial: true } : null, wins);
   RESULTS_POSTER = null;
   var host = el("rrPrint");
-  if (host) host.setAttribute("aria-label", wins + " and " + (CFG.GAMES_IN_SEASON - wins) + ". The shape of the season.");
+  if (host) { host.setAttribute("aria-label", wins + " and " + (CFG.GAMES_IN_SEASON - wins) + ". The shape of the season."); host.setAttribute("data-spec", JSON.stringify(RESULTS_PRINT_SPEC)); }
   printCall(function () { if (RESULTS_PRINT) RESULTS_PRINT.update(RESULTS_PRINT_SPEC); return null; });
   setTimeout(function () { bakeResultsPoster(); }, 900);
 }
@@ -6370,12 +6257,12 @@ function renderResults(e, keepScroll) {
   // wireBallot fills the tag row; the engine chip and "+" are live at once.
   var picksHtml = picksInSlotOrder().map(function (entry) {
     var p = entry.p, i = entry.i, row = p.row, name = row[IDX.name];
-    return '<div class="pick-card bt-card" data-pick="' + i + '">' +
+    return '<div class="pick-card bt-card t-card" data-pick="' + i + '">' +
       '<div class="bt-head"><div class="bt-who">' +
         '<div class="pr-name bt-name"><span class="slot-badge">' + p.slot + "</span>" +
           '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></div>" +
         '<div class="bt-ssn">' + prTeamHtml(row, p.fr) + "</div></div>" +
-        '<div class="pr-v bt-val">' + valueOf(row).toFixed(2) + "</div></div>" +
+        '<div class="pr-v bt-val t-num">' + valueOf(row).toFixed(2) + "</div></div>" +
       '<div class="bt-box">' + ballotBoxHtml(row) + "</div>" +
       '<div class="bt-tags" data-bt="' + i + '"></div></div>';
   }).join("");
@@ -6493,16 +6380,15 @@ function renderResults(e, keepScroll) {
       dailyBoardHtml +
       '<button class="btn btn-primary btn-block presti-spin rr-share' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section traits-roster" data-result-section="roster">' +
-      '<p class="eyebrow rr-eyebrow">Your five</p>' + picksHtml +
+      head("results", "Your five", { cls: "rr-eyebrow" }) + picksHtml +
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
-    '<section class="section twoway-sec" data-result-section="two_way"><p class="eyebrow rr-eyebrow">Two-way profile</p>' + twoWayHtml(e) + "</section>" +
-    '<section class="section rr-climb" data-result-section="goat_climb"><p class="eyebrow rr-eyebrow">GOAT Climb</p>' + climbHtml(e) + "</section>" +
-    '<section class="section" data-result-section="scoring_card"><p class="eyebrow rr-eyebrow">Scoring Card</p>' + ledger + "</section>" +
+    '<section class="section twoway-sec" data-result-section="two_way">' + head("results", "Two-way profile", { cls: "rr-eyebrow" }) + twoWayHtml(e) + "</section>" +
+    '<section class="section rr-climb" data-result-section="goat_climb">' + head("results", "GOAT Climb", { cls: "rr-eyebrow" }) + climbHtml(e) + "</section>" +
+    '<section class="section" data-result-section="scoring_card">' + head("results", "Scoring Card", { cls: "rr-eyebrow" }) + ledger + "</section>" +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
     '<p class="run-status" id="runStatus"></p></div>';
 
   trackResultSections();
-  risoPaperOnce();
   wireBallot(picksInSlotOrder());
   mountResultsPrint(e, daily);
 
@@ -6634,8 +6520,8 @@ function renderKamanResults() {
       '<p class="kaman-flavor">' + kamanFlavor() + "</p>" +
       '<button class="btn btn-primary btn-block presti-spin elite-result" id="shareTeamBtn">SHARE YOUR TEAM</button></section>' +
     '<section class="section twoway-sec" data-result-section="two_way"><div class="twoway">' + kamanBar("Offense") + kamanBar("Defense") + "</div></section>" +
-    '<section class="section" data-result-section="roster"><p class="eyebrow">Your five \u00B7 all centers, as nature intended</p>' + picksHtml + "</section>" +
-    '<section class="section" data-result-section="scoring_card"><p class="eyebrow">Scoring Card</p>' + ledger + "</section>" +
+    '<section class="section" data-result-section="roster">' + head("results", "Your five \u00B7 all centers, as nature intended") + picksHtml + "</section>" +
+    '<section class="section" data-result-section="scoring_card">' + head("results", "Scoring Card") + ledger + "</section>" +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">Kaman</button></div>';
 
   trackResultSections();
@@ -6891,7 +6777,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v50";
+var BUILD_V = "v51";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -6999,7 +6885,6 @@ function boot() {
   bindHaptics();
   bindVisibilityResync();
   wireDraftWheel();
-  ensureTraitsCss();      // v47.9: chips render on every surface; duel/league entry paths skip the homepage module that used to inject this
   wireTraitChipTaps();
   if (DUEL_ID) { app().innerHTML = '<section class="ticket duel"><p class="duel-wait">Setting the table\u2026</p></section>'; }
   else if (LEAGUE_ID) {

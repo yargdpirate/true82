@@ -15,48 +15,40 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script id="t82BonusPreload"></script>
+<link rel="stylesheet" href="/styles.css?v=20260925-style-system-v51">
 <style>
-:root{--ink:#101418;--panel:#151b21;--card:#131920;--line:#2a3540;--chalk:#f2ede4;--chalk-dim:#a8b0b8;--amber:#FFB52E;--ember:#E5533C;--mono:'IBM Plex Mono',monospace;--disp:'Barlow Condensed',sans-serif;--body:'Barlow',sans-serif}
+/* Player Bonuses (v51): this page wears the site's theme (styles.css: the
+   theme block and the shared pieces). Only its layout lives here, and every
+   color and font below is a theme token (test.js checks this block too). */
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--ink);color:var(--chalk);font-family:var(--body)}
+html,body{background:var(--t-ground);color:var(--t-text);font-family:var(--t-body)}
 body{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:22px 0 30px;overflow-x:hidden;
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(255,181,46,.05), transparent 55%),
-    repeating-linear-gradient(0deg, transparent 0 46px, rgba(242,237,228,.022) 46px 47px),
-    radial-gradient(140% 120% at 50% 110%, #0b0f13, var(--ink) 60%)}
+    radial-gradient(120% 90% at 50% 0%, rgb(var(--t-accent-rgb) / .05), transparent 55%),
+    repeating-linear-gradient(0deg, transparent 0 46px, rgb(var(--t-text-rgb) / .022) 46px 47px),
+    radial-gradient(140% 120% at 50% 110%, var(--t-overlay), var(--t-ground) 60%)}
 .wrap{width:100%;max-width:520px;padding:0 20px;position:relative}
-.brand{font-family:var(--mono);font-size:13px;letter-spacing:.28em;color:var(--chalk-dim)}
+.brand{font-family:var(--t-mono);font-size:13px;letter-spacing:.28em;color:var(--t-text-2)}
 .brand a{color:inherit;text-decoration:none}
 /* v47.21: the title row carries the trait chip - it sits right of the
-   wordmark and clear of the absolutely positioned hoop mark, which is
-   what the retired PLAYER BONUS n / N counter line used to cost a row
-   of its own to say. */
-h1{font-family:var(--disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--chalk-dim);margin:4px 0 18px;display:flex;align-items:center;gap:11px;padding-right:36px;min-height:26px}
-.card{background:linear-gradient(180deg,#161d26,#11161d);border:1px solid var(--line);border-top-color:rgba(242,237,228,.13);border-radius:23px;padding:26px 24px;position:relative;box-shadow:0 18px 44px -22px rgba(0,0,0,.65)}
-.toprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--chalk-dim);margin-bottom:14px}
+   wordmark and clear of the absolutely positioned hoop mark. */
+h1{font-family:var(--t-disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--t-text-2);margin:4px 0 18px;display:flex;align-items:center;gap:11px;padding-right:36px;min-height:26px}
+.card{background:linear-gradient(180deg,var(--t-ground-2),var(--t-ground));border:1px solid var(--t-line);border-top-color:rgb(var(--t-text-rgb) / .13);border-radius:23px;padding:26px 24px;position:relative;box-shadow:0 18px 44px -22px rgb(var(--t-shadow-rgb) / .65)}
+.toprow{display:flex;justify-content:space-between;font-family:var(--t-mono);font-size:12px;letter-spacing:.22em;color:var(--t-text-2);margin-bottom:14px}
 .q-tag[hidden]{display:none}
-.q-tag{flex:0 0 auto;display:inline-flex;align-items:center;font-family:var(--disp);
-  font-weight:700;font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#1c1608;
-  background:linear-gradient(180deg,#FFC957,#F2A81F);border:1px solid #9a6a12;border-radius:7px;
-  min-height:24px;padding:3px 8px 2px;line-height:1.1;white-space:nowrap}
-.q{font-family:var(--disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--chalk);margin-bottom:10px}
-.meta{font-size:14px;color:var(--chalk-dim);margin-bottom:8px}
+.q{font-family:var(--t-disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--t-text);margin-bottom:10px}
+.meta{font-size:14px;color:var(--t-text-2);margin-bottom:8px}
 .qx{display:flex;flex-direction:column;gap:11px;margin-top:11px}
 /* v47.19-r3: the share button carries two sizes on one line - the lead
-   matches UNSURE (21px), the parenthetical stays at its original small
-   13px. BOTH sizes are fixed by spec, so narrow screens are bought with
-   tracking and, below 380, by dropping the small part onto its own line -
-   never by shrinking either size. */
+   matches UNSURE (21px), the parenthetical stays at 13px. BOTH sizes are
+   fixed by spec, so narrow screens are bought with tracking and, below 380,
+   by dropping the small part onto its own line - never by shrinking. */
+.qx-btn{position:relative;flex:0 0 auto;width:100%;height:48px;min-height:0;border-radius:13px;font-weight:600;font-size:21px;letter-spacing:.07em;white-space:nowrap;gap:7px;line-height:1;padding:0 10px}
+.qx-btn[data-kind="quiet"]{color:var(--t-text);border-width:1px}
 .qx-btn.qx-share{font-size:13px;letter-spacing:.02em;gap:5px;padding:0 6px}
 .qx-lead{font-size:21px;letter-spacing:.03em}
-.qx-sub{font-size:13px;letter-spacing:.01em}
-.qx-btn{position:relative;flex:0 0 auto;width:100%;height:48px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk);font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.07em;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;line-height:1;padding:0 10px}
-.qx-btn:active,.qx-btn.flashed{color:var(--amber);border-color:var(--amber)}
-/* v47.21: the game door joins the stack instead of sitting alone under
-   the card. Same 2D outline geometry as its siblings, amber face kept. */
-.qx-btn.qx-play{background:var(--amber);border-color:#9a6a12;color:#131313;font-weight:700;letter-spacing:.1em}
-.qx-btn.qx-play:active,.qx-btn.qx-play.flashed{color:#131313;border-color:#9a6a12;filter:brightness(1.1)}
-.qx-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.qx-sub{font-size:13px;letter-spacing:.01em;text-transform:none}
+.qx-btn.qx-play{letter-spacing:.1em}
 a.qx-btn[hidden]{display:none}
 @media (max-width:380px){
   .qx-btn{letter-spacing:.03em}
@@ -70,20 +62,12 @@ a.qx-btn[hidden]{display:none}
   .qx-btn.qx-share{flex-direction:column;gap:1px;height:58px;line-height:1.05}
   .qx-btn{letter-spacing:.01em;padding:0 3px}
 }
-.q-def{font-size:15.5px;line-height:1.45;color:var(--chalk-dim);margin:2px 0 12px}
-.controls{margin-top:12px;background:#0e1319;border:1px solid #232d37;border-radius:24px;padding:12px}
+.q-def{font-size:15.5px;line-height:1.45;color:var(--t-text-2);margin:2px 0 12px}
+.controls{margin-top:12px;background:var(--t-ground);border:1px solid var(--t-line);border-radius:24px;padding:12px}
 .yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.vbtn{position:relative;border:none;border-radius:16px;height:100px;font-family:var(--disp);font-weight:700;font-size:38px;letter-spacing:.05em;color:#1c1608;cursor:pointer;transition:transform .12s ease,filter .12s ease}
-.vbtn:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
-.v-yes{background:linear-gradient(180deg,#FFC957,#F2A81F);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 #9a6a12,0 9px 16px -7px rgba(0,0,0,.6)}
-.v-no{color:#2b0d09;background:linear-gradient(180deg,#F06A54,#D9422D);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 4px 0 #8c2317,0 9px 16px -7px rgba(0,0,0,.6)}
-.vbtn:active,.vbtn.pressed{transform:translateY(3px)}
-.v-yes:active,.v-yes.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 0 #9a6a12,0 4px 8px -5px rgba(0,0,0,.6)}
-.v-no:active,.v-no.pressed{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 1px 0 #8c2317,0 4px 8px -5px rgba(0,0,0,.6)}
-.v-unsure{margin-top:12px;width:100%;height:56px;background:#131a21;border:1px solid #303b47;border-radius:14px;color:#c6ced6;font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.1em;cursor:pointer;position:relative}
-@media (prefers-reduced-motion:reduce){.vbtn{transition:none}.vbtn:active,.vbtn.pressed{transform:none}}
-.v-unsure:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-.pressed{filter:brightness(1.12);transform:scale(.985)}
+.vbtn{position:relative;height:100px;min-height:0;border-radius:16px;font-size:38px;letter-spacing:.05em}
+.v-unsure{margin-top:12px;width:100%;height:56px;min-height:0;border-radius:14px;font-weight:600;font-size:21px;letter-spacing:.1em;position:relative}
+.pressed{filter:brightness(1.12)}
 .locked .vbtn,.locked .v-unsure{pointer-events:none;opacity:.55}
 .locked .pressed{opacity:1}
 .result{opacity:0;transition:opacity .21s ease}
@@ -97,47 +81,45 @@ a.qx-btn[hidden]{display:none}
 .result.seq .rv:nth-child(6){animation-delay:.42s}
 @keyframes rvIn{to{opacity:1;transform:none}}
 .bar .y{transition:width .5s cubic-bezier(.2,.7,.2,1) .2s}
-.skel{border-radius:23px;border:1px solid var(--line);padding:26px 24px;background:linear-gradient(180deg,#161d26,#11161d)}
-.skel .sk{border-radius:9px;background:linear-gradient(100deg,#1a222c 30%,#212b36 45%,#1a222c 60%);background-size:220% 100%;animation:skSweep 1.15s linear infinite}
+.skel{border-radius:23px;border:1px solid var(--t-line);padding:26px 24px;background:linear-gradient(180deg,var(--t-ground-2),var(--t-ground))}
+.skel .sk{border-radius:9px;background:linear-gradient(100deg,var(--t-ground-2) 30%,var(--t-ground-3) 45%,var(--t-ground-2) 60%);background-size:220% 100%;animation:skSweep 1.15s linear infinite}
 @keyframes skSweep{to{background-position:-120% 0}}
-.done-head{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:.06em;color:var(--chalk)}
-.done-head::after{content:"";display:block;height:3px;width:0;background:var(--amber);border-radius:2px;margin-top:6px;animation:doneBar .5s ease-out .3s forwards}
+.done-head{font-family:var(--t-disp);font-weight:700;font-size:26px;letter-spacing:.06em;color:var(--t-text)}
+.done-head::after{content:"";display:block;height:3px;width:0;background:var(--t-accent);border-radius:2px;margin-top:6px;animation:doneBar .5s ease-out .3s forwards}
 @keyframes doneBar{to{width:64px}}
 @media (prefers-reduced-motion:reduce){
-  .result{transition:none}.vbtn{transition:none}
+  .result{transition:none}
   .result.seq .rv{animation:none;opacity:1;transform:none}
   .bar .y{transition:none}
   .skel .sk{animation:none}
   .done-head::after{animation:none;width:64px}
 }
-.r-eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.24em;color:var(--chalk-dim);margin-bottom:6px}
-.r-big{font-family:var(--disp);font-weight:700;font-size:clamp(52px,15vw,66px);line-height:1}
-.r-big.yes{color:var(--amber)}.r-big.no{color:var(--ember)}.r-big.early{color:var(--chalk);font-size:clamp(38px,11vw,50px)}
-.r-you{font-size:16px;color:var(--chalk);margin:10px 0 12px}
-.r-chip{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.2em;padding:7px 12px;border-radius:9px;margin-bottom:14px}
-.chip-active{border:1.5px solid var(--amber);color:var(--amber)}
-.chip-none{border:1.5px solid var(--ember);color:var(--ember)}
-.chip-disputed{border:1.5px solid var(--line);color:var(--chalk)}
-.chip-pending{border:1.5px solid var(--line);color:var(--chalk-dim)}
-.bar{height:9px;border-radius:5px;background:#0d1217;overflow:hidden;display:flex;margin-bottom:18px}
-.bar .y{background:var(--amber)}.bar .n{background:var(--ember)}
-.act-next{display:block;width:100%;height:56px;border:none;border-radius:15px;background:var(--amber);color:#131313;font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:.1em;cursor:pointer}
-.act-next:focus-visible{outline:3px solid var(--chalk);outline-offset:3px}
-.act-share{display:block;width:100%;height:48px;margin-top:11px;border:1px solid var(--line);border-radius:13px;background:none;color:var(--chalk-dim);font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:.1em;cursor:pointer}
-.act-share:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-.done-line{font-size:15px;color:var(--chalk-dim);margin:6px 0 16px}
-.t-link{display:block;text-align:center;margin-top:13px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;min-height:44px}
-.cv-link{display:inline-block;margin:2px 0 12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--chalk-dim);background:none;border:none;cursor:pointer;padding:8px 0;text-decoration:underline;text-underline-offset:3px}
-.err-line{color:var(--ember);font-size:14.5px;margin:12px 0 10px}
+.r-eyebrow{font-family:var(--t-mono);font-size:12px;letter-spacing:.24em;color:var(--t-text-2);margin-bottom:6px}
+.r-big{font-family:var(--t-disp);font-weight:700;font-size:clamp(52px,15vw,66px);line-height:1}
+.r-big.yes{color:var(--t-accent)}.r-big.no{color:var(--t-bad-soft)}.r-big.early{color:var(--t-text);font-size:clamp(38px,11vw,50px)}
+.r-you{font-size:16px;color:var(--t-text);margin:10px 0 12px}
+.r-chip{margin-bottom:14px;font-size:12px;letter-spacing:.2em;padding:7px 12px;min-height:0;border-width:1.5px}
+.chip-active{color:var(--t-accent);border-color:var(--t-accent)}
+.chip-none{color:var(--t-bad-soft);border-color:var(--t-bad-soft)}
+.chip-disputed{color:var(--t-text);border-color:var(--t-line)}
+.chip-pending{color:var(--t-text-2);border-color:var(--t-line)}
+.bar{height:9px;border-radius:5px;background:var(--t-ground);overflow:hidden;display:flex;margin-bottom:18px}
+.bar .y{background:var(--t-accent)}.bar .n{background:var(--t-bad-soft)}
+.act-next{display:flex;width:100%;height:56px;min-height:0;border-radius:15px;font-size:22px;letter-spacing:.1em}
+.act-share{display:flex;width:100%;height:48px;min-height:0;margin-top:11px;border-radius:13px;font-weight:600;font-size:18px;letter-spacing:.1em}
+.done-line{font-size:15px;color:var(--t-text-2);margin:6px 0 16px}
+.t-link{display:block;text-align:center;margin-top:13px;font-family:var(--t-mono);font-size:12px;letter-spacing:.14em;color:var(--t-text-2);background:none;border:none;cursor:pointer;min-height:44px}
+.cv-link{margin:2px 0 12px;padding:8px 0;min-height:0}
+.err-line{color:var(--t-bad-soft);font-size:14.5px;margin:12px 0 10px}
 .page-mark{position:absolute;top:0;right:20px;width:26px;height:29px;opacity:.9}
-.flash{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--amber)}
+.flash{font-family:var(--t-mono);font-size:12px;letter-spacing:.14em;color:var(--t-accent)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand"><a href="/?src=bonuses">TRUE 82</a></div>
-  <svg class="page-mark" viewBox="0 0 32 36" aria-hidden="true" focusable="false"><path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" fill="var(--amber)"/><rect x="5" y="15" width="22" height="3.4" rx="1.7" fill="#B98A4F"/><path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" stroke="#B98A4F" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
-  <h1>PLAYER BONUSES<span class="q-tag" id="titleTag" hidden></span></h1>
+  <svg class="page-mark" viewBox="0 0 32 36" aria-hidden="true" focusable="false"><path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" style="fill:var(--t-accent)"/><rect x="5" y="15" width="22" height="3.4" rx="1.7" style="fill:var(--t-metal)"/><path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" style="stroke:var(--t-metal)" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+  <h1>PLAYER BONUSES<span class="q-tag t-chip" id="titleTag" hidden></span></h1>
   <div id="stage"></div>
 </div>
 <script src="/analytics.js?v=20260725-traits-v44"></script>
@@ -294,10 +276,10 @@ a.qx-btn[hidden]{display:none}
   }
 
   function statusChip(status) {
-    if (status === "qualifies") return '<span class="r-chip chip-active">BONUS ACTIVE</span>';
-    if (status === "does_not_qualify") return '<span class="r-chip chip-none">NO BONUS</span>';
-    if (status === "disputed") return '<span class="r-chip chip-disputed">STILL DISPUTED</span>';
-    return '<span class="r-chip chip-pending">BONUS PENDING</span>';
+    if (status === "qualifies") return '<span class="r-chip t-chip chip-active" data-tone="plain">BONUS ACTIVE</span>';
+    if (status === "does_not_qualify") return '<span class="r-chip t-chip chip-none" data-tone="plain">NO BONUS</span>';
+    if (status === "disputed") return '<span class="r-chip t-chip chip-disputed" data-tone="plain">STILL DISPUTED</span>';
+    return '<span class="r-chip t-chip chip-pending" data-tone="plain">BONUS PENDING</span>';
   }
 
   function skeletonHtml() {
@@ -333,8 +315,8 @@ a.qx-btn[hidden]{display:none}
     stage.innerHTML =
       '<section class="card"><div class="toprow"><span>PLAYER BONUS</span></div>' +
       '<p class="q" style="font-size:30px">THE QUESTION FEED DID NOT ANSWER.</p>' +
-      '<button class="act-next" id="retryFeed">TRY AGAIN</button>' +
-      '<a class="act-share" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="/?src=bonuses">BACK TO TRUE 82</a></section>';
+      '<button class="act-next t-btn" id="retryFeed">TRY AGAIN</button>' +
+      '<a class="act-share t-btn" data-kind="quiet" href="/?src=bonuses">BACK TO TRUE 82</a></section>';
     track("traits_session", { surface: "traits", action: "feed_error", source: entrySource, outcome: String(reason || "unknown").slice(0, 40) });
     document.getElementById("retryFeed").addEventListener("click", function () { startSession(pinnedRef); });
   }
@@ -355,16 +337,16 @@ a.qx-btn[hidden]{display:none}
         (wc ? '<p class="q-def">' + esc(wc) + "</p>" : "") +
         '<div class="controls" id="controls">' +
           '<div class="yn">' +
-            '<button class="vbtn v-yes" data-v="yes">YES</button>' +
-            '<button class="vbtn v-no" data-v="no">NO</button>' +
+            '<button class="vbtn v-yes t-btn" data-kind="yes" data-v="yes">YES</button>' +
+            '<button class="vbtn v-no t-btn" data-kind="no" data-v="no">NO</button>' +
           "</div>" +
-          '<button class="v-unsure" data-v="unsure">UNSURE</button>' +
+          '<button class="v-unsure t-btn" data-kind="quiet" data-v="unsure">UNSURE</button>' +
         "</div>" +
         '<div class="qx" id="qx">' +
-          '<a class="qx-btn" id="qRef" hidden target="_blank" rel="noopener">Stats Refresher \u2197</a>' +
-          '<button class="qx-btn qx-share" id="qShare" type="button">' +
+          '<a class="qx-btn t-btn" data-kind="quiet" id="qRef" hidden target="_blank" rel="noopener">Stats Refresher \u2197</a>' +
+          '<button class="qx-btn qx-share t-btn" data-kind="quiet" id="qShare" type="button">' +
             '<span class="qx-lead">Share Vote</span><span class="qx-sub">(please don\u2019t vote brigade)</span></button>' +
-          '<a class="qx-btn qx-play" href="/?src=bonuses">PLAY THE GAME</a>' +
+          '<a class="qx-btn qx-play t-btn" href="/?src=bonuses">PLAY THE GAME</a>' +
         "</div>" +
         '<div id="resultZone" aria-live="polite"></div>' +
       "</section>";
@@ -426,7 +408,7 @@ a.qx-btn[hidden]{display:none}
     track("traits_question", { surface: "traits", action: "try_again", ordinal: idx + 1, challenge: q.id, outcome: String(reason || "unknown").slice(0, 40) });
     var zone = document.getElementById("resultZone");
     zone.innerHTML = '<p class="err-line">Vote didn\u2019t send.</p>' +
-      '<button class="act-next" id="tryBtn">TRY AGAIN</button>';
+      '<button class="act-next t-btn" id="tryBtn">TRY AGAIN</button>';
     document.getElementById("tryBtn").addEventListener("click", function () {
       zone.innerHTML = "";
       castVote(q, resp, btn, true);
@@ -446,16 +428,16 @@ a.qx-btn[hidden]{display:none}
     var elig = (d.yes || 0) + (d.no || 0);
     var barHtml = elig > 0
       ? '<div class="bar" aria-hidden="true"><span class="y" style="width:' + Math.round(100 * d.yes / elig) + '%"></span><span class="n" style="flex:1"></span></div>' : "";
-    var changeHtml = '<button class="cv-link" id="cvBtn">CHANGE VOTE</button>';
+    var changeHtml = '<button class="cv-link t-btn" data-kind="text" id="cvBtn">CHANGE VOTE</button>';
     var last = idx >= Q.length - 1;
     var actions = last
       ? '<p class="done-head" style="margin-top:4px">' + Q.length + (Q.length === 1 ? ' VOTE IN' : ' VOTES IN') + '</p>' +
         '<p class="done-line">Your votes helped set player bonuses.</p>' +
-        '<button class="act-next" id="moreBtn">VOTE ON 5 MORE</button>' +
-        '<button class="act-share" id="shareBtn">SHARE LAST QUESTION</button>' +
-        '<a class="act-share" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="/?src=bonuses">BACK TO TRUE 82</a>'
-      : '<button class="act-next" id="nextBtn">NEXT QUESTION</button>' +
-        '<button class="act-share" id="shareBtn">SHARE QUESTION</button>';
+        '<button class="act-next t-btn" id="moreBtn">VOTE ON 5 MORE</button>' +
+        '<button class="act-share t-btn" data-kind="quiet" id="shareBtn">SHARE LAST QUESTION</button>' +
+        '<a class="act-share t-btn" data-kind="quiet" href="/?src=bonuses">BACK TO TRUE 82</a>'
+      : '<button class="act-next t-btn" id="nextBtn">NEXT QUESTION</button>' +
+        '<button class="act-share t-btn" data-kind="quiet" id="shareBtn">SHARE QUESTION</button>';
     zone.innerHTML =
       '<div class="result seq" tabindex="-1"' + (minH ? ' style="min-height:' + minH + 'px"' : "") + ">" +
         '<div class="rv">' + (early ? '<p class="r-eyebrow">EARLY RESULT</p>' : "") +

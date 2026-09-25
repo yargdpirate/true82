@@ -16,12 +16,14 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 |---|---|
 | `index.html` | Shell: intro mount, footer, disclaimer. ~3 KB |
 | `app.js` | The game UI, modes and flow. ~6,500 lines. The season engine lives in `sim-core.js` |
-| `styles.css` | All styling. Design tokens in `:root` |
+| `styles.css` | All styling. The generated THEME block at the top is the only place colors and fonts are written; then the shared pieces (`.t-btn`, `.t-chip`, `.t-card`, `.t-sheet`, `.t-head`...). Read `docs/STYLE-GUIDE.md` |
 | `site_data.json` | 21,525 player-season rows + `meta` (cols, scoring constants). Crests/aliases deliberately NOT in here |
 | `crests.json` | Team-era crest images (base64 WebP), fetched in background, never blocks play |
 | `logo.png` | 9.8 KB quantized logo (replaced a 140 KB inline base64) |
 | `analytics.js` | Cookieless client tracker → `/api/event` |
-| `test.js` | Headless logic harness — `node test.js`, 44 checks. Run before changing game logic |
+| `test.js` | Headless logic harness — `node test.js`, 61 checks (incl. the style law and reel pacing). Run before changing game logic or styles |
+| `tools/` | `theme-core.js` (the theme's one source), `theme.js` (writes the theme block), `style-law.js` (the enforced style rules), `stylefix.js` (puts a graft on the theme) |
+| `docs/STYLE-GUIDE.md`, `docs/style-guide.html` | The style guide and its live page: tokens, shared pieces, section headers, how to add a mode |
 | `functions/api/event.js` | POST ingestion → D1 (allowlists, clamps, swallows errors) |
 | `functions/api/games.js` | KV games-played counter (accrues via POST; no longer displayed) |
 | `functions/api/stats.js` | Public footer stats from D1: per-mode finished drafts + Presti 82-0 incl. Hot Hand |

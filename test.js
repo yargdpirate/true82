@@ -4,9 +4,12 @@
 // effCost fire-sale floor, capRoll bargain decay (monotonic, rip-offs invariant),
 // lineup swap legality + doLineupMove/doLineupSwap state, FORCE_CLUTCH/prefersReduce
 // flags, and the crest load-race regression. Run this BEFORE and AFTER any change
-// to game logic in app.js. 54 checks (three pin the v48 riso reel's pacing and
-// copy rules; the last ten pin the v50 tag ballot's card logic, vote ids and
-// tally words); exits nonzero on any failure.
+// to game logic in app.js. 61 checks (six pin the riso reel's pacing, flash
+// limit and copy rules, including the v51 one-end-time pacing; ten pin the
+// v50 tag ballot's card logic, vote ids and tally words; the last four are the
+// v51 style law: no color or font outside the theme block, the shared pieces
+// exist, and the section header component);
+// exits nonzero on any failure.
 
 const fs = require("fs");
 const vm = require("vm");
@@ -181,6 +184,16 @@ let minFlashHold = Infinity;
 for (let n = 1; n <= 82; n++) if (RISO.heavy(n)) for (const st of [0, 4, 31]) minFlashHold = Math.min(minFlashHold, RISO.holdFor(n, st));
 eq("riso reel: red-flash losses come under 3 per second (photosensitivity line)", 1000 / (minFlashHold + 48) < 3, true);
 eq("riso reel: the loss that ends a real streak holds longest", RISO.holdFor(1, 31) > Math.max(RISO.holdFor(1, 0), RISO.holdFor(2, 0), RISO.holdFor(20, 0)), true);
+eq("riso reel: the red flash has its own speed limit, under 1.5 a second at any pace", 1 / RISO.flashGap < 1.5, true);
+// v51 reel pacing: every record finishes at the same moment; 78-82 wins take the natural, slowest pace
+const season = (w, lossesFirst) => { const g = []; for (let i = 0; i < 82; i++) g.push(1); let l = 82 - w;
+  for (let i = lossesFirst ? 0 : 81; l > 0; i += lossesFirst ? 1 : -1) { g[i] = 0; l--; } return g; };
+const spread = w => { const g = []; for (let i = 0; i < 82; i++) g.push(Math.floor((i + 1) * w / 82) > Math.floor(i * w / 82) ? 1 : 0); return g; };
+const seasons = [season(82), season(78, false), spread(78), spread(60), spread(41), season(26, true), season(0, true)];
+eq("reel pacing: every record finishes at the same moment",
+  seasons.map(g => Math.round(ctx.reelNaturalMs(g, RISO.holdFor) * ctx.reelPace(g, RISO.holdFor))), seasons.map(() => ctx.REEL_END_MS));
+eq("reel pacing: 78-82 wins play at the natural (slowest) pace or slower; worse seasons run faster",
+  [ctx.reelPace(spread(78), RISO.holdFor) >= 0.97, ctx.reelPace(season(82), RISO.holdFor) > 1, ctx.reelPace(spread(41), RISO.holdFor) < 0.8], [true, true, true]);
 const EM = String.fromCharCode(0x2014);
 const lossLines = [{ cl: 1, prevStreak: 31 }, { cl: 1, prevStreak: 0 }, { cl: 3, lossRun: 2 }, { cl: 4, lossRun: 1 }]
   .map(i => RISO.lossCopy(Object.assign({ city: "Orlando", date: "Dec 23" }, i)).join(" "));
@@ -218,6 +231,24 @@ eq("ballot: tally words, pill, and no big percent off one vote",
     "812 people have voted \u00B7 54% say yes \u00B7 you said no", "Disputed \u00B7 flips at 62%"]);
 const ballotCopy = [].concat(...ctx.BALLOT_TRAITS.map(T => [T.chip, T.q, T.d || ""]), [t1.line, t1.pill, t2.line, t2.pill]);
 eq("ballot: trait copy and tally words have zero em-dashes (copy law)", ballotCopy.some(l => l.includes(EM)), false);
+
+// ---------- v51 THE STYLE LAW: one theme, enforced (tools/style-law.js, docs/STYLE-GUIDE.md) ----------
+// Colors and fonts are written only in styles.css's generated theme block; every
+// other rule, page and script reads theme tokens. A finding names the token to use.
+const LAW = require("./tools/style-law.js");
+eq("style law: no color or font outside the theme block (run node tools/style-law.js for the fixes)", LAW.check().map(LAW.format), []);
+const STYLES = fs.readFileSync("styles.css", "utf8");
+const PIECES = [".t-btn", ".t-chip", ".t-card", ".t-sheet", ".t-backdrop", ".t-toast", ".t-head", ".t-num", ".t-title", ".t-mode",
+  '.t-head[data-head="rule"]', '.t-head[data-head="bar"]', '.t-head[data-head="title"]', '.t-head[data-head="banner"]', '.t-head[data-head="tab"]',
+  '.t-btn[data-kind="no"]', '.t-btn[data-kind="quiet"]', '.t-btn[data-kind="text"]', '.t-chip[data-tone="bad"]', '.t-chip[data-tone="plain"]'];
+eq("style law: the shared pieces every mode builds from are all in styles.css", PIECES.filter(p => STYLES.indexOf(p) < 0), []);
+const HEAD_VARIANTS = ["eyebrow", "rule", "bar", "title", "banner", "tab"];
+eq("section headers: every HEADS context names a real variant",
+  Object.keys(ctx.HEADS).filter(k => HEAD_VARIANTS.indexOf(ctx.HEADS[k]) < 0), []);
+eq("section headers: head() builds one component with the context's variant",
+  [ctx.head("results", "Your five"), ctx.head("sheet", "Add a tag", { cls: "bt-h" }), ctx.head("nope", "X", { tag: "h3" })],
+  ['<h2 class="t-head" data-head="' + ctx.HEADS.results + '">Your five</h2>', '<h2 class="t-head bt-h" data-head="' + ctx.HEADS.sheet + '">Add a tag</h2>',
+    '<h3 class="t-head" data-head="eyebrow">X</h3>']);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Style guide · TRUE 82</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css?v=20260925-style-system-v51">
+<style>
+/* This page is the living style guide: it wears styles.css and shows every
+   token and shared piece. Layout only here; the law applies to this block too. */
+.sg { max-width: 560px; margin: 0 auto; padding: 18px 16px 60px; }
+.sg-sec { margin: 26px 0; }
+.sg-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0 14px; }
+.sg-row.col { flex-direction: column; align-items: stretch; }
+.sg-note { font-family: var(--t-mono); font-size: 11px; color: var(--t-text-2); margin: 4px 0 10px; }
+.sg-code { font-family: var(--t-mono); font-size: 11px; color: var(--t-label); background: var(--t-ground-2); border: 1px solid var(--t-line); padding: 6px 8px; overflow-x: auto; white-space: pre; margin: 6px 0 12px; }
+.sg-sw { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.sg-chip { display: flex; gap: 8px; align-items: center; background: var(--t-ground-2); border: 1px solid var(--t-line); padding: 6px; min-width: 0; }
+.sg-dot { flex: 0 0 34px; height: 34px; border: 1px solid rgb(var(--t-light-rgb) / .15); }
+.sg-name { font-family: var(--t-mono); font-size: 10.5px; color: var(--t-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-val { font-family: var(--t-mono); font-size: 10px; color: var(--t-text-2); }
+.sg-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+</style>
+</head>
+<body>
+<main class="sg">
+  <h1 class="t-head" data-head="title">Style guide</h1>
+  <p class="t-small">Every color and font on this page comes from the theme block at the top of <code>styles.css</code>. Build new screens and modes from these pieces only; <code>node test.js</code> enforces it. The rules and the add-a-mode checklist: <code>docs/STYLE-GUIDE.md</code>.</p>
+
+  <section class="sg-sec">
+    <h2 class="t-head" data-head="rule">Section headers</h2>
+    <p class="sg-note">One component, six variants, chosen by data-head (app.js: head(context, text), HEADS picks each context's variant).</p>
+    <div class="sg-row col">
+      <h3 class="t-head" data-head="eyebrow">eyebrow · Your five</h3>
+      <h3 class="t-head" data-head="rule">rule · Two-way profile</h3>
+      <h3 class="t-head" data-head="bar">bar · GOAT Climb</h3>
+      <h3 class="t-head" data-head="title">title · Add a tag</h3>
+      <h3 class="t-head" data-head="banner">banner · Scoring Card</h3>
+      <div><h3 class="t-head" data-head="tab">tab · Your five</h3><div class="t-card">The card under a tab header.</div></div>
+      <h3 class="t-head" data-head="rule">With an aside <span class="t-aside"><span class="t-chip" data-tone="plain">3 of 5</span></span></h3>
+    </div>
+  </section>
+
+  <section class="sg-sec">
+    <h2 class="t-head" data-head="rule">Buttons</h2>
+    <div class="sg-row">
+      <button class="t-btn" type="button">Primary</button>
+      <button class="t-btn" data-kind="yes" type="button">Yes</button>
+      <button class="t-btn" data-kind="no" type="button">No</button>
+      <button class="t-btn" data-kind="good" type="button">Good</button>
+      <button class="t-btn" data-kind="quiet" type="button">Quiet</button>
+      <button class="t-btn" data-kind="text" type="button">Text</button>
+      <button class="t-btn" type="button" disabled>Disabled</button>
+    </div>
+    <div class="sg-grid2">
+      <button class="t-btn" data-kind="yes" data-size="lg" type="button">Yes</button>
+      <button class="t-btn" data-kind="no" data-size="lg" type="button">No</button>
+    </div>
+    <div class="sg-row"><button class="t-btn" data-size="sm" type="button">Small</button><button class="t-btn" data-kind="quiet" data-size="sm" type="button">Skip →</button></div>
+    <div class="sg-code">&lt;button class="t-btn" data-kind="no" data-size="lg"&gt;No&lt;/button&gt;</div>
+  </section>
+
+  <section class="sg-sec">
+    <h2 class="t-head" data-head="rule">Chips and tags</h2>
+    <div class="t-chips">
+      <span class="t-chip">3PT</span><span class="t-chip" data-tone="bad">Hunted</span><span class="t-chip" data-tone="plain">Sort: value</span><span class="t-chip" data-tone="on">Active</span>
+    </div>
+    <div class="t-chips" style="margin-top: 14px">
+      <button class="t-chip" data-size="lg" type="button">Clutch</button>
+      <button class="t-chip is-q" data-size="lg" type="button">Rim+</button>
+      <button class="t-chip is-off" data-size="lg" type="button">Iso-D <span class="bt-x" aria-hidden="true">✕</span></button>
+      <button class="t-chip is-mine" data-size="lg" type="button">Gravity</button>
+      <button class="t-chip" data-tone="bad" data-size="lg" type="button">Ball stopper</button>
+      <button class="t-chip t-chip-add" data-size="lg" type="button" aria-label="Add">+</button>
+    </div>
+  </section>
+
+  <section class="sg-sec">
+    <h2 class="t-head" data-head="rule">Cards and type</h2>
+    <div class="t-card" data-tone="feature">
+      <p class="t-label">A feature card</p>
+      <p class="t-num" style="font-size: var(--t-fs-hero)">76–6</p>
+      <p class="t-small">net rating +17.5</p>
+    </div>
+    <div class="t-card" style="margin-top: 8px">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
+        <div><div class="t-name">Ray Allen</div><div class="t-meta">98-99 · Bucks</div></div>
+        <div class="t-num">2.78</div>
+      </div>
+      <p class="t-data" style="margin: 8px 0 10px">17.1 PTS · 4.2 REB · 3.6 AST · 24.5 USG%</p>
+      <div class="t-chips"><span class="t-chip" data-size="lg">Gravity</span><span class="t-chip t-chip-add" data-size="lg">+</span></div>
+    </div>
+    <p class="t-title" style="margin-top: 18px">Was 1999 Allen a rim pressurer?</p>
+    <p class="t-body">Running text in the body face. <span class="t-small">A note in the small size.</span></p>
+  </section>
+
+  <section class="sg-sec">
+    <h2 class="t-head" data-head="rule">Sheet and toast</h2>
+    <div class="sg-row">
+      <button class="t-btn" data-kind="quiet" type="button" id="openSheet">Open a sheet</button>
+      <button class="t-btn" data-kind="quiet" type="button" id="showToast">Show a toast</button>
+    </div>
+  </section>
+
+  <section class="sg-sec t-mode">
+    <h2 class="t-head" data-head="rule">A mode's plain elements (.t-mode)</h2>
+    <h2>A plain h2</h2>
+    <h3>A plain h3</h3>
+    <p>A plain paragraph with <a href="#">a plain link</a>. <small>And small print.</small></p>
+    <hr>
+    <table><thead><tr><th>Player</th><th>Value</th></tr></thead><tbody><tr><td>Kawhi Leonard</td><td>7.07</td></tr><tr><td>Jason Terry</td><td>3.89</td></tr></tbody></table>
+    <p style="margin-top: 12px"><input type="text" placeholder="An input"> <select><option>A select</option></select></p>
+  </section>
+
+  <section class="sg-sec">
+    <h2 class="t-head" data-head="rule">Roles</h2>
+    <p class="sg-note">What a look sets. Read from the page's own theme, so this is always current.</p>
+    <div class="sg-sw" id="roles"></div>
+  </section>
+  <section class="sg-sec">
+    <h2 class="t-head" data-head="rule">Named shades</h2>
+    <p class="sg-note">Recipes over the roles, computed ahead of time by tools/theme-core.js.</p>
+    <div class="sg-sw" id="shades"></div>
+  </section>
+</main>
+
+<div class="t-backdrop" id="sgBackdrop"></div>
+<div class="t-sheet" id="sgSheet" role="dialog" aria-modal="true" aria-label="A sheet">
+  <div class="t-grab" aria-hidden="true"></div>
+  <div style="max-width: 420px; margin: 0 auto">
+    <div class="t-meta">Ray Allen · 98-99 · Bucks</div>
+    <div class="t-title">Was 1999 Allen a rim pressurer?</div>
+    <div class="sg-grid2"><button class="t-btn" data-kind="yes" data-size="lg" type="button">Yes</button><button class="t-btn" data-kind="no" data-size="lg" type="button">No</button></div>
+    <div class="sg-row" style="justify-content: space-between"><button class="t-btn" data-kind="text" type="button" id="closeSheet">Close</button><button class="t-btn" type="button" id="doneSheet">Done</button></div>
+  </div>
+</div>
+<div class="t-toast" id="sgToast" role="status">Noted: Clutch</div>
+
+<script src="/tools/theme-core.js"></script>
+<script>
+(function () {
+  var T = window.T82THEME, cs = getComputedStyle(document.documentElement);
+  function sw(host, name, note) {
+    var d = document.createElement("div"); d.className = "sg-chip";
+    d.innerHTML = '<span class="sg-dot" style="background: var(--t-' + name + ')"></span><span style="min-width:0"><div class="sg-name">--t-' + name + '</div><div class="sg-val">' +
+      cs.getPropertyValue("--t-" + name).trim() + '</div><div class="sg-val">' + (note || "") + "</div></span>";
+    host.appendChild(d);
+  }
+  if (T) {
+    T.roles().forEach(function (r) { sw(document.getElementById("roles"), r[0], r[2]); });
+    T.SHADES.forEach(function (s) { sw(document.getElementById("shades"), s[0], s[1] + " " + s[2] + "% + " + s[3]); });
+  }
+  var bd = document.getElementById("sgBackdrop"), sh = document.getElementById("sgSheet"), toast = document.getElementById("sgToast");
+  function open() { bd.classList.add("on"); sh.classList.add("on"); }
+  function close() { bd.classList.remove("on"); sh.classList.remove("on"); }
+  document.getElementById("openSheet").onclick = open;
+  document.getElementById("closeSheet").onclick = close;
+  document.getElementById("doneSheet").onclick = close;
+  bd.onclick = close;
+  document.getElementById("showToast").onclick = function () { toast.classList.add("on"); setTimeout(function () { toast.classList.remove("on"); }, 1600); };
+})();
+</script>
+</body>
+</html>
