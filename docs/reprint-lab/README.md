@@ -46,7 +46,12 @@ code starts `T82-` and decodes (`LAB.decode(code)` in the lab's console) to the 
 - "Results tiles" (Site system) re-inks the v50 paper surfaces (results slips, the tag sheet, the season reel card)
   for dark looks: Paper, Dim paper, Night, Tinted, Neon, Outline (`src/system/40-slips.js`). It also works with
   "Today's site" colors. In the dark schemes the season print and the reel's loss layer print as negatives.
-  Heat Vice uses Neon.
+  The default, "Match cards", makes the tiles follow the look's own card style. Heat Vice uses Neon.
+- No paper-only control rules (owner's call, 2026-09-25): a button looks the same on every surface. Only
+  see-through controls (outline labels, chip text, fields) follow a light surface, to stay readable.
+- "Neon amount" (Accents / More / Max, `src/system/50-neon.js`) spreads the Neon button style: More lights every
+  button, with secondaries in the palette's second neon (Vice: aqua); Max also lights chips, rows, pills, card
+  edges, meters and headings. Heat Vice uses More.
 
 ## Shipping a look (the plan for the implementing version)
 

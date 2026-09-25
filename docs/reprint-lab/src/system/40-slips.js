@@ -3,7 +3,8 @@
    tag sheet slides up on the same paper. In dark looks that reads as white
    tiles. This setting (recipe key "slips") re-inks those tiles from the
    palette's own night colors:
-     paper  the v50 light paper (default, unchanged)
+     match  the look's own cards (default): see LAB.slipsMode
+     paper  the v50 light paper
      dim    the paper pulled toward the ground: still paper, far less glare
      night  the palette's dark panel with light ink, on a dark paper stock
      tint   a dark panel washed with the palette's accent (Vice goes plum)
@@ -16,9 +17,17 @@
    pages.js injects LAB.slipsCSS(rc) as its own style block, after the others. */
 (function () {
   var LAB = window.LAB, R = window.RISO;
-  LAB.SYS.slips = [["paper", "Paper"], ["dim", "Dim paper"], ["night", "Night"], ["tint", "Tinted"], ["glow", "Neon"], ["clear", "Outline"]];
-  LAB.SYS_DEFAULT.slips = "paper";
-  LAB.DEFAULT.slips = "paper";
+  LAB.SYS.slips = [["match", "Match cards"], ["paper", "Paper"], ["dim", "Dim paper"], ["night", "Night"], ["tint", "Tinted"], ["glow", "Neon"], ["clear", "Outline"]];
+  LAB.SYS_DEFAULT.slips = "match";
+  LAB.DEFAULT.slips = "match";
+  // "match" (the default): the tiles are simply the look's cards. Paper only when the look's cards are paper
+  // (or the whole site is printed on paper), and today's colors keep today's paper.
+  LAB.slipsMode = function (rc) {
+    var m = rc.slips || "match";
+    if (m !== "match") return m;
+    if (rc.sysPalette === "today" || (rc.ground || "night") === "day") return "paper";
+    return { paper: "paper", outline: "clear", tunnel: "night", flat: "night", ticket: "night" }[rc.card || "tunnel"] || "night";
+  };
 
   function rolesFor(rc) {
     if (rc.sysPalette === "today") return LAB.roles(LAB.palettes.goldstandard, "night");
@@ -36,7 +45,7 @@
   }
 
   LAB.slipsCSS = function (rc) {
-    var mode = rc.slips || "paper";
+    var mode = LAB.slipsMode(rc);
     if (mode === "paper") return "";
     var C = LAB.color, r = rolesFor(rc), bg, bg2, ink, ink2, line, edge = "", tex;
     if (mode === "dim") {
@@ -85,10 +94,6 @@
     if (mode === "dim") s += A + ".rr .rr-print-canvas { filter: brightness(0.86) saturate(1.05); }\n";
     else s += A + ".rr .rr-print-canvas { filter: invert(0.94) hue-rotate(180deg) saturate(1.25) brightness(1.08); border-radius: 3px; }\n";
     if (dark) {
-      var TILES = ":is(.rr .rr-board, .rr .bt-card, .rr .twoway, .rr .ledger, .rr .rr-climb .climb, .bt-sheet, .reel-overlay.riso .reel-card)";
-      // the main action on a dark tile is the look's own accent, not the paper world's navy (which just turned light)
-      s += A + TILES + " { --c-pri: " + r.accent + "; --c-pri-hi: " + r["accent-hi"] + "; --c-pri-edge: " + r["accent-edge"] + "; --c-pri-ink: " + r["accent-ink"] + "; --c-pri-tone: " + r["accent-ink"] + ";" +
-        " --c-plate: " + r.ground + "; --c-plate-ink: " + r.text + "; --c-ring: " + r.text + "; --c-sheet: " + bg2 + "; --c-sheet-ink: " + ink + "; --c-sheet-bd: " + ink + "; --c-dis: " + ink2 + "; }\n";
       // labels printed in paper color on the table, and hollow tags inked for paper
       s += A + ".rr .rr-eyebrow { color: " + r.text + "; }\n";
       s += A + ".rr .bt-tag.off:not(.neg) { color: " + fit(r.sun) + "; }\n" + A + ".rr .bt-tag.off.neg { color: " + bad + "; }\n";

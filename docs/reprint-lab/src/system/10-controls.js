@@ -65,6 +65,7 @@
   var PAPER = ["[data-lab-paper]", ".rr .rr-board", ".rr .bt-card", ".rr .twoway", ".rr .ledger", ".rr .rr-climb .climb", ".bt-sheet", ".reel-overlay.riso .reel-card"];
   // the same, plus the whole site printed on paper (for styles that change their make on paper, like neon)
   var PAPER_ALL = PAPER.concat(['html[data-ground="day"] body']);
+  LAB.CTL = { FAM: FAM, NOT: NOT, PRESS: PRESS, PAPER: PAPER };        // shared with system/50-neon.js
 
   var INPUT = [".pool-search", ".search-input", ".browse-sel", ".share-out", ".arena-input", ".year-sel:not(.year-wrap .year-sel)"];
   var LINK = [".site-foot a", ".site-links a", ".static-links a", ".content-page a:not(.btn)", ".pr-bref", ".pr-team", ".res-comp .cl-link",
@@ -154,14 +155,11 @@
     s += rule('html[data-btn][data-ground="day"]',
       "--c-sheet: var(--t-paper); --c-sheet-bd: var(--t-text);" +
       "--c-plate: var(--t-text); --c-plate-ink: var(--t-ground); --c-ring: var(--t-text);");
-    // paper slips: navy key ink is the action, sunflower is yes
+    // light surfaces (paper slips, paper cards): buttons look exactly as they do everywhere else. Only what a
+    // see-through control prints straight onto the surface follows it, so outline labels, chip text and
+    // field text stay readable. (No paper-only faces, plates or flat-ink variants: owner's call, 2026-09-25.)
     var paper = "--c-bg: var(--t-paper); --c-fg: var(--t-ink); --c-fg2: var(--t-ink-2); --c-line: color-mix(in srgb, var(--t-line-paper) 26%, var(--t-paper)); --c-well: var(--t-paper-2);" +
-      "--c-pri: var(--t-ink); --c-pri-hi: " + mix("var(--t-ink)", 82, "var(--t-light)") + "; --c-pri-edge: " + mix("var(--t-ink)", 55, "var(--t-shadow)") + "; --c-pri-ink: var(--t-paper); --c-pri-tone: var(--t-ink);" +
-      paperTones +
-      "--c-bad-ink: " + badInkP + ";" +
-      "--c-off-pri: var(--t-offset); --c-off-yes: " + offYesPaper + "; --c-off-bad: " + offBadPaper + ";" + neon(paperPlate, "paper") +
-      "--c-sheet: var(--t-paper-2); --c-sheet-ink: var(--t-ink); --c-sheet-edge: " + mix("var(--t-paper-2)", 70, "var(--t-ink)") + "; --c-sheet-bd: var(--t-ink);" +
-      "--c-plate: var(--t-ink); --c-plate-ink: var(--t-paper); --c-ring: var(--t-ink); --c-dis: var(--t-ink-2);";
+      paperTones + "--c-ring: var(--t-ink); --c-dis: var(--t-ink-2);";
     s += rule("html[data-btn] " + IS(PAPER), paper);
     return s;
   }
@@ -343,9 +341,7 @@
   // The vote is read by shape, not only by hue: YES is a lit panel (the tube
   // filled with light, dark type), NO an outline tube on a plate tinted with
   // the bad color, the secondary family a dimmer tube so the votes lead.
-  // Light cannot glow on paper, so on paper slips (and on the day ground) neon
-  // prints as fluorescent ink instead: flat face, crisp ink outline, a hard
-  // offset. No dark plates and no blur on cream.
+  // Neon looks the same on every surface, paper included.
   STYLES.neon = function () {
     var st = "neon", P = B(st), A = P + F(BTN), s = sharedCSS(st);
     var glow = function (a, b) { return "0 0 0 1px " + mix("var(--k-neon)", 30) + ", 0 0 " + a + "px " + mix("var(--k-neon)", 60) + ", 0 0 " + b + "px -2px " + mix("var(--k-neon)", 45) + ", inset 0 0 9px " + mix("var(--k-neon)", 32); };
@@ -370,17 +366,6 @@
     s += iconCSS(st, "background: var(--c-plate); color: " + mix("var(--k-neon)", 62, "var(--t-light)") + "; border: 1.5px solid var(--k-neon); box-shadow: " + glow(6, 14) + "; text-shadow: 0 0 5px var(--k-neon);",
       "background: " + mix("var(--k-neon)", 25, "var(--c-plate)") + "; transform: scale(0.95);");
     s += disabledCSS(st);
-    // paper: fluorescent ink, not light (every rule here outranks the night rules above by the paper :is())
-    var NP = P + IS(PAPER_ALL) + " ", NA = NP + F(BTN);
-    s += rule(NA, "background: var(--k-face); color: var(--k-ink); border: 1.5px solid var(--c-fg); box-shadow: 3px 3px 0 var(--k-off); text-shadow: none; transform: none;");
-    s += rule(NP + F(FAM.sec), "background: var(--k-face); color: var(--k-ink); border: 1.5px solid var(--c-fg); box-shadow: 3px 3px 0 " + mix("var(--c-fg)", 30) + ";");
-    s += rule(NP + F(FAM.ghost), "background: transparent; color: var(--k-ink); border: 1.5px solid " + mix("var(--c-fg)", 45) + "; box-shadow: none;");
-    s += rule(NP + F([".dt-act-ghost", ".daily-strip", ".tm-vb.idk", ".bt-big.idk"]), "border-style: dashed; color: var(--c-fg2);");
-    s += rule(NA + ":not(:disabled)" + PRESS, "transform: translate(3px, 3px); box-shadow: 0 0 0 var(--k-off); background: var(--k-face); color: var(--k-ink);");
-    s += rule(NP + F(FAM.ghost) + ":not(:disabled)" + PRESS, "transform: translate(1px, 1px); background: " + mix("var(--c-fg)", 10) + "; color: var(--c-fg); border-color: var(--c-fg); box-shadow: none; text-shadow: none;");
-    s += rule(NP + IS(FAM.icon), "background: var(--c-well); color: var(--c-fg); border: 1.5px solid var(--c-fg); box-shadow: none; text-shadow: none;");
-    s += rule(NP + IS(LINK), "text-shadow: none;");
-    s += rule(NP + F(BTN.concat(FAM.icon)) + ":disabled", DISABLED);
     return s;
   };
 
@@ -594,11 +579,6 @@
       s += rule(I, "background-color: var(--c-plate); color: var(--c-plate-ink); border: 1px solid " + mix("var(--t-accent)", 55) + "; box-shadow: 0 0 8px " + mix("var(--t-accent)", 22) + ";");
       s += rule(I + ":focus", "border-color: var(--t-accent); box-shadow: 0 0 0 1px " + mix("var(--t-accent)", 40) + ", 0 0 14px " + mix("var(--t-accent)", 50) + ";");
       s += rule(face, "border-color: " + mix("var(--t-accent)", 50) + "; box-shadow: 0 0 6px " + mix("var(--t-accent)", 25) + ";");
-      // on paper (slips, the day ground): an ink field, no plate and no glow
-      var NI = P + IS(PAPER_ALL) + " " + IS(INPUT);
-      s += rule(NI, "background-color: var(--c-well); color: var(--c-fg); border: 1.5px solid var(--c-fg); box-shadow: none;");
-      s += rule(NI + ":focus", "border-color: var(--c-pri-tone); box-shadow: 0 0 0 3px " + mix("var(--c-pri-tone)", 28) + ";");
-      s += rule(P + IS(PAPER_ALL) + " " + IS([".year-face:not(.year-fixed)"]), "border-color: " + mix("var(--c-fg)", 55) + "; box-shadow: none;");
     }
     s += rule(P + IS([".pool-search", ".search-input"]) + "::placeholder", "color: var(--c-fg2);");
     return s;

@@ -63,6 +63,7 @@
       { type: "seg", key: "sysPalette", label: "Colors", options: function () { return [{ v: "match", t: "Match palette" }, { v: "today", t: "Today's site" }]; } },
       { type: "seg", key: "ground", label: "Ground", options: function () { return opts(LAB.SYS.ground); } },
       { type: "seg", key: "btn", label: "Buttons", options: function () { return opts(LAB.SYS.btn); } },
+      { type: "seg", key: "neon", label: "Neon amount", options: function () { return opts(LAB.SYS.neon || [["accents", "Accents"]]); }, also: function (v) { return v !== "accents" ? { btn: "neon" } : {}; } },
       { type: "seg", key: "card", label: "Cards", options: function () { return opts(LAB.SYS.card); } },
       { type: "seg", key: "slips", label: "Results tiles", options: function () { return opts(LAB.SYS.slips || [["paper", "Paper"]]); } },
       { type: "seg", key: "chip", label: "Chips", options: function () { return opts(LAB.SYS.chip); } },
@@ -132,7 +133,7 @@
     if (row.type === "seg") {
       var seg = el("div", { class: "seg", role: "group", "aria-label": row.label });
       list(row).forEach(function (o) {
-        var b = el("button", { type: "button", "data-v": o.v, title: o.d || "", onclick: function () { var p = {}; p[row.key] = isNaN(+o.v) || o.v === "" ? o.v : o.v; set(p, row.key); } }, [o.t]);
+        var b = el("button", { type: "button", "data-v": o.v, title: o.d || "", onclick: function () { var p = row.also ? row.also(o.v) : {}; p[row.key] = o.v; set(p, row.key); } }, [o.t]);
         seg.appendChild(b);
       });
       binders.push(function () { seg.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(String(rc[row.key]) === b.getAttribute("data-v"))); }); });

@@ -6436,6 +6436,7 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
   var PAPER = ["[data-lab-paper]", ".rr .rr-board", ".rr .bt-card", ".rr .twoway", ".rr .ledger", ".rr .rr-climb .climb", ".bt-sheet", ".reel-overlay.riso .reel-card"];
   // the same, plus the whole site printed on paper (for styles that change their make on paper, like neon)
   var PAPER_ALL = PAPER.concat(['html[data-ground="day"] body']);
+  LAB.CTL = { FAM: FAM, NOT: NOT, PRESS: PRESS, PAPER: PAPER };        // shared with system/50-neon.js
 
   var INPUT = [".pool-search", ".search-input", ".browse-sel", ".share-out", ".arena-input", ".year-sel:not(.year-wrap .year-sel)"];
   var LINK = [".site-foot a", ".site-links a", ".static-links a", ".content-page a:not(.btn)", ".pr-bref", ".pr-team", ".res-comp .cl-link",
@@ -6525,14 +6526,11 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
     s += rule('html[data-btn][data-ground="day"]',
       "--c-sheet: var(--t-paper); --c-sheet-bd: var(--t-text);" +
       "--c-plate: var(--t-text); --c-plate-ink: var(--t-ground); --c-ring: var(--t-text);");
-    // paper slips: navy key ink is the action, sunflower is yes
+    // light surfaces (paper slips, paper cards): buttons look exactly as they do everywhere else. Only what a
+    // see-through control prints straight onto the surface follows it, so outline labels, chip text and
+    // field text stay readable. (No paper-only faces, plates or flat-ink variants: owner's call, 2026-09-25.)
     var paper = "--c-bg: var(--t-paper); --c-fg: var(--t-ink); --c-fg2: var(--t-ink-2); --c-line: color-mix(in srgb, var(--t-line-paper) 26%, var(--t-paper)); --c-well: var(--t-paper-2);" +
-      "--c-pri: var(--t-ink); --c-pri-hi: " + mix("var(--t-ink)", 82, "var(--t-light)") + "; --c-pri-edge: " + mix("var(--t-ink)", 55, "var(--t-shadow)") + "; --c-pri-ink: var(--t-paper); --c-pri-tone: var(--t-ink);" +
-      paperTones +
-      "--c-bad-ink: " + badInkP + ";" +
-      "--c-off-pri: var(--t-offset); --c-off-yes: " + offYesPaper + "; --c-off-bad: " + offBadPaper + ";" + neon(paperPlate, "paper") +
-      "--c-sheet: var(--t-paper-2); --c-sheet-ink: var(--t-ink); --c-sheet-edge: " + mix("var(--t-paper-2)", 70, "var(--t-ink)") + "; --c-sheet-bd: var(--t-ink);" +
-      "--c-plate: var(--t-ink); --c-plate-ink: var(--t-paper); --c-ring: var(--t-ink); --c-dis: var(--t-ink-2);";
+      paperTones + "--c-ring: var(--t-ink); --c-dis: var(--t-ink-2);";
     s += rule("html[data-btn] " + IS(PAPER), paper);
     return s;
   }
@@ -6714,9 +6712,7 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
   // The vote is read by shape, not only by hue: YES is a lit panel (the tube
   // filled with light, dark type), NO an outline tube on a plate tinted with
   // the bad color, the secondary family a dimmer tube so the votes lead.
-  // Light cannot glow on paper, so on paper slips (and on the day ground) neon
-  // prints as fluorescent ink instead: flat face, crisp ink outline, a hard
-  // offset. No dark plates and no blur on cream.
+  // Neon looks the same on every surface, paper included.
   STYLES.neon = function () {
     var st = "neon", P = B(st), A = P + F(BTN), s = sharedCSS(st);
     var glow = function (a, b) { return "0 0 0 1px " + mix("var(--k-neon)", 30) + ", 0 0 " + a + "px " + mix("var(--k-neon)", 60) + ", 0 0 " + b + "px -2px " + mix("var(--k-neon)", 45) + ", inset 0 0 9px " + mix("var(--k-neon)", 32); };
@@ -6741,17 +6737,6 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
     s += iconCSS(st, "background: var(--c-plate); color: " + mix("var(--k-neon)", 62, "var(--t-light)") + "; border: 1.5px solid var(--k-neon); box-shadow: " + glow(6, 14) + "; text-shadow: 0 0 5px var(--k-neon);",
       "background: " + mix("var(--k-neon)", 25, "var(--c-plate)") + "; transform: scale(0.95);");
     s += disabledCSS(st);
-    // paper: fluorescent ink, not light (every rule here outranks the night rules above by the paper :is())
-    var NP = P + IS(PAPER_ALL) + " ", NA = NP + F(BTN);
-    s += rule(NA, "background: var(--k-face); color: var(--k-ink); border: 1.5px solid var(--c-fg); box-shadow: 3px 3px 0 var(--k-off); text-shadow: none; transform: none;");
-    s += rule(NP + F(FAM.sec), "background: var(--k-face); color: var(--k-ink); border: 1.5px solid var(--c-fg); box-shadow: 3px 3px 0 " + mix("var(--c-fg)", 30) + ";");
-    s += rule(NP + F(FAM.ghost), "background: transparent; color: var(--k-ink); border: 1.5px solid " + mix("var(--c-fg)", 45) + "; box-shadow: none;");
-    s += rule(NP + F([".dt-act-ghost", ".daily-strip", ".tm-vb.idk", ".bt-big.idk"]), "border-style: dashed; color: var(--c-fg2);");
-    s += rule(NA + ":not(:disabled)" + PRESS, "transform: translate(3px, 3px); box-shadow: 0 0 0 var(--k-off); background: var(--k-face); color: var(--k-ink);");
-    s += rule(NP + F(FAM.ghost) + ":not(:disabled)" + PRESS, "transform: translate(1px, 1px); background: " + mix("var(--c-fg)", 10) + "; color: var(--c-fg); border-color: var(--c-fg); box-shadow: none; text-shadow: none;");
-    s += rule(NP + IS(FAM.icon), "background: var(--c-well); color: var(--c-fg); border: 1.5px solid var(--c-fg); box-shadow: none; text-shadow: none;");
-    s += rule(NP + IS(LINK), "text-shadow: none;");
-    s += rule(NP + F(BTN.concat(FAM.icon)) + ":disabled", DISABLED);
     return s;
   };
 
@@ -6965,11 +6950,6 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
       s += rule(I, "background-color: var(--c-plate); color: var(--c-plate-ink); border: 1px solid " + mix("var(--t-accent)", 55) + "; box-shadow: 0 0 8px " + mix("var(--t-accent)", 22) + ";");
       s += rule(I + ":focus", "border-color: var(--t-accent); box-shadow: 0 0 0 1px " + mix("var(--t-accent)", 40) + ", 0 0 14px " + mix("var(--t-accent)", 50) + ";");
       s += rule(face, "border-color: " + mix("var(--t-accent)", 50) + "; box-shadow: 0 0 6px " + mix("var(--t-accent)", 25) + ";");
-      // on paper (slips, the day ground): an ink field, no plate and no glow
-      var NI = P + IS(PAPER_ALL) + " " + IS(INPUT);
-      s += rule(NI, "background-color: var(--c-well); color: var(--c-fg); border: 1.5px solid var(--c-fg); box-shadow: none;");
-      s += rule(NI + ":focus", "border-color: var(--c-pri-tone); box-shadow: 0 0 0 3px " + mix("var(--c-pri-tone)", 28) + ";");
-      s += rule(P + IS(PAPER_ALL) + " " + IS([".year-face:not(.year-fixed)"]), "border-color: " + mix("var(--c-fg)", 55) + "; box-shadow: none;");
     }
     s += rule(P + IS([".pool-search", ".search-input"]) + "::placeholder", "color: var(--c-fg2);");
     return s;
@@ -8411,7 +8391,8 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
    tag sheet slides up on the same paper. In dark looks that reads as white
    tiles. This setting (recipe key "slips") re-inks those tiles from the
    palette's own night colors:
-     paper  the v50 light paper (default, unchanged)
+     match  the look's own cards (default): see LAB.slipsMode
+     paper  the v50 light paper
      dim    the paper pulled toward the ground: still paper, far less glare
      night  the palette's dark panel with light ink, on a dark paper stock
      tint   a dark panel washed with the palette's accent (Vice goes plum)
@@ -8424,9 +8405,17 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
    pages.js injects LAB.slipsCSS(rc) as its own style block, after the others. */
 (function () {
   var LAB = window.LAB, R = window.RISO;
-  LAB.SYS.slips = [["paper", "Paper"], ["dim", "Dim paper"], ["night", "Night"], ["tint", "Tinted"], ["glow", "Neon"], ["clear", "Outline"]];
-  LAB.SYS_DEFAULT.slips = "paper";
-  LAB.DEFAULT.slips = "paper";
+  LAB.SYS.slips = [["match", "Match cards"], ["paper", "Paper"], ["dim", "Dim paper"], ["night", "Night"], ["tint", "Tinted"], ["glow", "Neon"], ["clear", "Outline"]];
+  LAB.SYS_DEFAULT.slips = "match";
+  LAB.DEFAULT.slips = "match";
+  // "match" (the default): the tiles are simply the look's cards. Paper only when the look's cards are paper
+  // (or the whole site is printed on paper), and today's colors keep today's paper.
+  LAB.slipsMode = function (rc) {
+    var m = rc.slips || "match";
+    if (m !== "match") return m;
+    if (rc.sysPalette === "today" || (rc.ground || "night") === "day") return "paper";
+    return { paper: "paper", outline: "clear", tunnel: "night", flat: "night", ticket: "night" }[rc.card || "tunnel"] || "night";
+  };
 
   function rolesFor(rc) {
     if (rc.sysPalette === "today") return LAB.roles(LAB.palettes.goldstandard, "night");
@@ -8444,7 +8433,7 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
   }
 
   LAB.slipsCSS = function (rc) {
-    var mode = rc.slips || "paper";
+    var mode = LAB.slipsMode(rc);
     if (mode === "paper") return "";
     var C = LAB.color, r = rolesFor(rc), bg, bg2, ink, ink2, line, edge = "", tex;
     if (mode === "dim") {
@@ -8493,10 +8482,6 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
     if (mode === "dim") s += A + ".rr .rr-print-canvas { filter: brightness(0.86) saturate(1.05); }\n";
     else s += A + ".rr .rr-print-canvas { filter: invert(0.94) hue-rotate(180deg) saturate(1.25) brightness(1.08); border-radius: 3px; }\n";
     if (dark) {
-      var TILES = ":is(.rr .rr-board, .rr .bt-card, .rr .twoway, .rr .ledger, .rr .rr-climb .climb, .bt-sheet, .reel-overlay.riso .reel-card)";
-      // the main action on a dark tile is the look's own accent, not the paper world's navy (which just turned light)
-      s += A + TILES + " { --c-pri: " + r.accent + "; --c-pri-hi: " + r["accent-hi"] + "; --c-pri-edge: " + r["accent-edge"] + "; --c-pri-ink: " + r["accent-ink"] + "; --c-pri-tone: " + r["accent-ink"] + ";" +
-        " --c-plate: " + r.ground + "; --c-plate-ink: " + r.text + "; --c-ring: " + r.text + "; --c-sheet: " + bg2 + "; --c-sheet-ink: " + ink + "; --c-sheet-bd: " + ink + "; --c-dis: " + ink2 + "; }\n";
       // labels printed in paper color on the table, and hollow tags inked for paper
       s += A + ".rr .rr-eyebrow { color: " + r.text + "; }\n";
       s += A + ".rr .bt-tag.off:not(.neg) { color: " + fit(r.sun) + "; }\n" + A + ".rr .bt-tag.off.neg { color: " + bad + "; }\n";
@@ -8512,6 +8497,89 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
     if (dark) s += A + ":is(.rr .rr-board, .rr .bt-card, .rr .twoway, .rr .rr-climb .climb, .rr .ledger) { box-shadow: inset 0 0 0 1px " + C.mix(ink, bg, 0.82) + (edge ? ", " + edge.replace("box-shadow: ", "").replace(";", "") : "") + "; }\n";
     return s;
   };
+})();
+
+</script>
+<script>/* system/50-neon.js */
+/* ---------- TRUE 82 LAB: neon amount ----------
+   How far the Neon button style spreads (recipe key "neon"; only with Buttons: Neon, on the night ground):
+     accents  the neon button style as built: the main action and the votes glow, secondaries half-lit
+     more     every button glows. The main action keeps the accent tube; secondary and quiet
+              buttons get a second tube in the palette's other neon (Vice: aqua), so pink still leads
+     max      more, plus the rest of the interface: sort chips, the selected player row, pills, a halo
+              on the tags, card and tile edges, meters, heading glow, text links
+   Buttons look the same on every surface (there are no paper-only variants), so this layer only
+   decides how much of the interface is lit. Rules sit under a six-id boost to outrank the controls layer. */
+(function () {
+  var LAB = window.LAB;
+  LAB.SYS.neon = [["accents", "Accents"], ["more", "More"], ["max", "Max"]];
+  LAB.SYS_DEFAULT.neon = "accents";
+  LAB.DEFAULT.neon = "accents";
+
+  var X0 = ':is(#lab-n#lab-n#lab-n#lab-n#lab-n#lab-n, html)[data-btn="neon"]', X = X0 + " ";
+  var DARK_SLIPS = { night: 1, tint: 1, glow: 1, clear: 1 };
+  var TILES = [".rr .rr-board", ".rr .bt-card", ".rr .twoway", ".rr .ledger", ".rr .rr-climb .climb", ".bt-sheet", ".reel-overlay.riso .reel-card"];
+  function mix(a, pct, b) { return "color-mix(in srgb, " + a + " " + pct + "%, " + (b || "transparent") + ")"; }
+  function rule(sel, body) { return sel + " { " + body + " }\n"; }
+  function is(list) { return ":is(" + list.join(", ") + ")"; }
+  function glow(c, a, b) { return "0 0 0 1px " + mix(c, 30) + ", 0 0 " + a + "px " + mix(c, 60) + ", 0 0 " + b + "px -2px " + mix(c, 45) + ", inset 0 0 9px " + mix(c, 32); }
+  function halo(c, a, b) { return "0 0 0 1px " + mix(c, 35) + ", 0 0 " + a + "px " + mix(c, 62) + ", 0 0 " + b + "px -2px " + mix(c, 48); }
+  function hue(hex) {
+    var c = window.RISO.hexRGB(hex), r = c[0] / 255, g = c[1] / 255, b = c[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+    if (!d) return -1;
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h *= 60; return h < 0 ? h + 360 : h;
+  }
+  function apart(a, b) { var x = hue(a), y = hue(b); if (x < 0 || y < 0) return true; var d = Math.abs(x - y); return Math.min(d, 360 - d) >= 40; }
+
+  LAB.component({ id: "neon-amount", css: function (rc) {
+    if (rc.btn !== "neon" || !LAB.CTL) return "";
+    var C = LAB.color, r = LAB.roles(LAB.palettes[rc.sysPalette && rc.sysPalette !== "match" ? rc.sysPalette : rc.palette], rc.ground || "night");
+    var F = LAB.CTL.FAM, NOT = LAB.CTL.NOT, PRESS = LAB.CTL.PRESS, lvl = rc.neon || "accents", night = (rc.ground || "night") === "night";
+    var tilesDark = !!DARK_SLIPS[LAB.slipsMode ? LAB.slipsMode(rc) : rc.slips], s = "";
+
+    // the second tube: the palette's other neon, far enough from the accent in hue to read as a second color
+    var plate = C.mix(r.ground, r.shadow, 0.28), neon2 = r.text;
+    ["offset", "you", "sun"].some(function (k) { if (r[k] && apart(r[k], r.accent) && C.contrast(r[k], plate) >= 3.4) { neon2 = r[k]; return true; } return false; });
+    s += rule(X0, "--lab-neon2: " + neon2 + ";");
+
+    if (lvl === "accents" || !night) return s;       // the paper ground keeps the built amount
+
+    // MORE: secondaries fully lit in the second tube, quiet buttons as thin tubes
+    s += rule(X + is(F.sec) + NOT + ":not(.refunded):not(.firesale)", "--k-neon: var(--lab-neon2);");
+    // quiet buttons get the same dark plate as every neon button, so they read on any surface
+    s += rule(X + is(F.ghost) + NOT + ":not(:disabled)",
+      "background: var(--c-plate); color: " + mix("var(--lab-neon2)", 70, "var(--t-light)") + "; border-width: 1.5px; border-color: var(--lab-neon2);" +
+      " box-shadow: 0 0 0 1px " + mix("var(--lab-neon2)", 25) + ", 0 0 8px " + mix("var(--lab-neon2)", 45) + ", inset 0 0 6px " + mix("var(--lab-neon2)", 22) + ";" +
+      " text-shadow: 0 0 6px " + mix("var(--lab-neon2)", 70) + ";");
+    s += rule(X + is(F.ghost) + NOT + ":not(:disabled)" + PRESS, "background: " + mix("var(--lab-neon2)", 18, "var(--c-plate)") + "; color: var(--t-light); box-shadow: " + glow("var(--lab-neon2)", 12, 26) + ";");
+    // bare text buttons (Exit run, Back, Change vote): a faint glow on the type
+    s += rule(X + is(F.text), "text-shadow: 0 0 7px " + mix("var(--lab-neon2)", 60) + ";");
+    if (lvl !== "max") return s;
+
+    // MAX: the rest of the interface
+    // sort chips: dim tubes, the active one lit in the accent
+    s += rule(X + ".sort-chip:not(.active)", "background: transparent; color: " + mix("var(--lab-neon2)", 70, "var(--t-light)") + "; border: 1px solid " + mix("var(--lab-neon2)", 55) + "; box-shadow: 0 0 7px " + mix("var(--lab-neon2)", 28) + ";");
+    s += rule(X + ".sort-chip.active", "background: var(--c-plate); color: " + mix("var(--t-accent)", 62, "var(--t-light)") + "; border: 1.5px solid var(--t-accent); box-shadow: " + glow("var(--t-accent)", 6, 14) + "; text-shadow: 0 0 6px " + mix("var(--t-accent)", 80) + ";");
+    // pills that point somewhere (More players, Drag): accent tubes
+    s += rule(X + is([".pool-cue", ".gate-drag"]), "background: var(--c-plate); color: " + mix("var(--t-accent)", 62, "var(--t-light)") + "; border: 1.5px solid var(--t-accent); box-shadow: " + glow("var(--t-accent)", 6, 16) + "; text-shadow: 0 0 6px " + mix("var(--t-accent)", 80) + ";");
+    // tags: a halo in their own ink (yes gold, bad red)
+    s += rule(X + is([".tchip:not(.anti)", ".bt-tag:not(.off):not(.add):not(.neg)", ".tm-tag", ".q-tag"]), "filter: drop-shadow(0 0 5px " + mix("var(--t-sun)", 55) + ");");
+    s += rule(X + is([".tchip.anti", ".bt-tag.neg:not(.off)"]), "filter: drop-shadow(0 0 5px " + mix("var(--t-bad)", 55) + ");");
+    // the picked row and the lineup tokens
+    s += rule(X + ".player-row.sel", "box-shadow: inset 0 0 0 1.5px var(--t-accent), 0 0 18px " + mix("var(--t-accent)", 40) + ";");
+    s += rule(X + is([".ls-token", ".lineup-slot .ls-token"]), "box-shadow: 0 0 8px " + mix("var(--lab-neon2)", 40) + ";");
+    // card and tile edges: an accent tube round each surface
+    var EDGES = [".ticket", ".traits-module", ".wrap .card", ".hh-card", ".rules-sheet", ".tray", ".plq-frame", ".board:not(.rr-board)"];
+    if (tilesDark) EDGES = EDGES.concat(TILES);
+    s += rule(X + is(EDGES), "box-shadow: inset 0 0 0 1.5px " + mix("var(--t-accent)", 75, "var(--t-text)") + ", 0 0 18px " + mix("var(--t-accent)", 32) + ";");
+    // meters and headings: glow in their own color
+    s += rule(X + is([".mpb-fill", ".hh-fill", ".tw-fill"]), "box-shadow: 0 0 10px " + mix("var(--t-accent)", 60) + ";");
+    s += rule(X + is([".daily-tile .dt-title", ".gate-title", ".mp-id", ".hh-eyebrow", ".intro-title", ".ticket-fr", ".ticket-dec", ".rr-eyebrow"]), "text-shadow: 0 0 10px " + mix("currentColor", 55) + ", 0 0 22px " + mix("currentColor", 25) + ";");
+    // links: a soft glow under the text
+    s += rule(X + is([".pr-bref", ".pr-team", ".cl-link", ".content-page a:not(.btn)", ".site-links a"]), "text-shadow: 0 0 6px " + mix("var(--lab-neon2)", 45) + ";");
+    return s;
+  } });
 })();
 
 </script>
@@ -8664,7 +8732,7 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
   window.LAB.presets = (window.LAB.presets || []).concat([
     { id: "team-nights-vice", name: "Heat Vice", line: "Neon script over a South Beach sunset.",
       note: "Pink and aqua on midnight, like the Vice jerseys: a script over a neon grid, a ball rising through the net. Look at the glowing buttons and the solid pink tags. No white paper: the results tiles glow too.",
-      rc: { slips: "glow", palette: "vice", ground: "night", layout: "inline", font: "yellowtail", font82: "bigshoulders", ink82: "a",
+      rc: { slips: "glow", neon: "more", palette: "vice", ground: "night", layout: "inline", font: "yellowtail", font82: "bigshoulders", ink82: "a",
         depth: "stack", concept: "hoop-sunrise", iconStyle: "print", backdrop: "grid", adds: ["star"],
         btn: "neon", card: "outline", chip: "ink", corners: "round", texture: "none", disp: "kanit", body: "rubik", mono: "spacemono" } },
     // No rays behind the name: the pink 82 sat on pink-red rays and turned to a smudge at header size.
@@ -9008,6 +9076,7 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
       { type: "seg", key: "sysPalette", label: "Colors", options: function () { return [{ v: "match", t: "Match palette" }, { v: "today", t: "Today's site" }]; } },
       { type: "seg", key: "ground", label: "Ground", options: function () { return opts(LAB.SYS.ground); } },
       { type: "seg", key: "btn", label: "Buttons", options: function () { return opts(LAB.SYS.btn); } },
+      { type: "seg", key: "neon", label: "Neon amount", options: function () { return opts(LAB.SYS.neon || [["accents", "Accents"]]); }, also: function (v) { return v !== "accents" ? { btn: "neon" } : {}; } },
       { type: "seg", key: "card", label: "Cards", options: function () { return opts(LAB.SYS.card); } },
       { type: "seg", key: "slips", label: "Results tiles", options: function () { return opts(LAB.SYS.slips || [["paper", "Paper"]]); } },
       { type: "seg", key: "chip", label: "Chips", options: function () { return opts(LAB.SYS.chip); } },
@@ -9077,7 +9146,7 @@ window.LAB_SNAPS = {"kit":"<!doctype html>\n<html lang=\"en\" style=\"--rr-paper
     if (row.type === "seg") {
       var seg = el("div", { class: "seg", role: "group", "aria-label": row.label });
       list(row).forEach(function (o) {
-        var b = el("button", { type: "button", "data-v": o.v, title: o.d || "", onclick: function () { var p = {}; p[row.key] = isNaN(+o.v) || o.v === "" ? o.v : o.v; set(p, row.key); } }, [o.t]);
+        var b = el("button", { type: "button", "data-v": o.v, title: o.d || "", onclick: function () { var p = row.also ? row.also(o.v) : {}; p[row.key] = o.v; set(p, row.key); } }, [o.t]);
         seg.appendChild(b);
       });
       binders.push(function () { seg.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(String(rc[row.key]) === b.getAttribute("data-v"))); }); });
