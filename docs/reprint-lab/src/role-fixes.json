@@ -1,0 +1,82 @@
+[
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": ".eyebrow, .rs-eyebrow, .reel-eyebrow, .pr-pos, .year-face, .year-sel, .cap-season, .cap-spent, .cap-row.off .cap-cost, .cc-tag, .pro-hint, .chip, .site-foot .games-count, .site-foot .foot-stats",
+    "prop": "color",
+    "value": "var(--maple)",
+    "role": "text-2",
+    "family": "data",
+    "note": "QA route. Text printed in --maple (positions F/C, seasons 96-97 MIL, cap seasons, eyebrows like DRAFT, footer counts) is draft data and labels, not ornament. --maple is the metal role, a decorative bronze with no contrast promise: on paper cards and the day ground it fell to 2.3-3.7:1. These uses follow text-2 (4.5:1 on the ground by construction, ink-2 inside paper contexts). Metal stays for rules, frames, pips and the rs-list marker; .hh-heatlabel.lvl1 keeps metal because it matches its heat-meter segment."
+  },
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": ".ls-token",
+    "prop": "background",
+    "value": "var(--maple)",
+    "role": "accent",
+    "family": "badge",
+    "note": "QA route. The lineup token prints its initials in accent-ink (the --ink route above), so its disc must be the accent fill that accent-ink is made for. On the metal disc the initials fell to 2.3:1 (Showtime: gold on gold-brown). Open slots keep their own transparent fill."
+  },
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": ".ls-token",
+    "prop": "border",
+    "value": "var(--amber)",
+    "role": "accent-edge",
+    "family": "badge",
+    "note": "QA route. With the disc now the accent, an accent ring would vanish into it; the ring takes the keycap edge color so the token still reads as a rimmed coin, also where the accent is close to the paper. Moving and swap-target states keep their accent rings."
+  },
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": "*",
+    "prop": "color",
+    "value": "var(--ink)",
+    "role": "accent-ink",
+    "family": "button-primary",
+    "note": "QA route. --ink is the page ground, but all 17 `color: var(--ink)` uses are dark labels on amber or maple fills (.confirm-btn, .btn-primary, .startover-btn, .slot-badge, .slot.filled, .ls-token, .ls-pos, .ls-swap.is-moving/.is-here, .tab.on, .cap-info, .rs-got, .rs-close:active, .reel-done, .reel-day.w, .content-page a.btn-block). Tokenized as var(--t-accent-ink, var(--ink)) so a light-ground theme keeps these labels dark."
+  },
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": "*",
+    "prop": "color",
+    "value": "var(--tunnel)",
+    "role": "accent-ink",
+    "family": "chip",
+    "note": "QA route. .sort-chip.active prints its label in --tunnel on an amber fill: that is the accent-ink job, not ground-2."
+  },
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": "*",
+    "prop": "border",
+    "value": "var(--tunnel-2)",
+    "role": "line",
+    "family": "divider",
+    "note": "QA route. --tunnel-2 is ground-3 (wells, hovers) but 20 of its uses are borders and rules (player-row, pick-card, slot, ledger-row, board-cell, skip-btn, site-foot, reel-head, reel-act, rs-foot). Matches border, border-top, border-color and the other border-* properties. Fills, the rail stroke and the rs-ref-btn extrusion stay ground-3."
+  },
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": "*",
+    "prop": "box-shadow",
+    "value": "var(--maple)",
+    "role": "accent-edge",
+    "family": "button-primary",
+    "note": "QA route. The only two box-shadow uses of --maple are the 2px bottom extrusion under amber slabs (.rules-overlay .rs-got, .reel-done): the accent keycap edge, so they follow accent-edge, not the bronze ornament color."
+  },
+  {
+    "src": "styles.css",
+    "line": null,
+    "sel": ".rr .rr-eyebrow",
+    "prop": "color",
+    "value": "var(--rr-c)",
+    "role": "text",
+    "family": "eyebrow",
+    "note": "QA route. The results-page section eyebrows (YOUR FIVE, THE ROOM SAYS...) sit on the dark table, not on a paper slip, but print in --rr-c (paper). Paper-colored text on the ground vanishes when a theme makes the ground light, so this use follows text (the same call the audit made for .rr .bref-credit, text-2)."
+  }
+]

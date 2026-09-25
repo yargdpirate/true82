@@ -1,0 +1,2479 @@
+{
+ "key": "css-c",
+ "entries": [
+  {
+   "src": "styles.css",
+   "line": 2251,
+   "sel": ".gate-title",
+   "prop": "text-shadow",
+   "value": "rgba(0,0,0,0.6)",
+   "role": "shadow",
+   "family": "heading",
+   "note": "1px drop under the amber THE DAILY display title"
+  },
+  {
+   "src": "styles.css",
+   "line": 2262,
+   "sel": ".gate-target",
+   "prop": "border-top",
+   "value": "rgba(232,154,28,0.24)",
+   "role": "accent-edge",
+   "family": "body",
+   "note": "faint goldenrod (#E89A1C = --spin-face) hairline above the whistle-red target line; acts as a divider. Alt role: line"
+  },
+  {
+   "src": "styles.css",
+   "line": 2276,
+   "sel": ".gate-tipoff .gate-pull",
+   "prop": "text-shadow",
+   "value": "rgba(255,181,46,0.4)",
+   "role": "accent",
+   "family": "heading",
+   "note": "12px amber glow behind the DUNK THE BALL instruction"
+  },
+  {
+   "src": "styles.css",
+   "line": 2294,
+   "sel": ".gate-play-btn:focus-visible",
+   "prop": "outline",
+   "value": "rgba(255, 214, 131, 0.95)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "pale gold #FFD683 focus ring around the presti keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 2388,
+   "sel": "#app .mp-rules-btn .mp-book-wrap",
+   "prop": "background",
+   "value": "rgba(42, 26, 5, 0.16)",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "16% spin-ink (#2A1A05) wash: a recessed icon well pressed into the amber HOW TO PLAY keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 2389,
+   "sel": "#app .mp-rules-btn .mp-book-wrap",
+   "prop": "box-shadow (inset ring)",
+   "value": "rgba(42, 26, 5, 0.22)",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "22% spin-ink inset ring around the icon well"
+  },
+  {
+   "src": "styles.css",
+   "line": 2389,
+   "sel": "#app .mp-rules-btn .mp-book-wrap",
+   "prop": "box-shadow (inset top highlight)",
+   "value": "rgba(255,255,255,0.18)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "white top-edge sheen inside the well"
+  },
+  {
+   "src": "styles.css",
+   "line": 2405,
+   "sel": ".rules-overlay",
+   "prop": "background",
+   "value": "rgba(6, 8, 11, 0.87)",
+   "role": "overlay",
+   "family": "sheet",
+   "note": "87% near-black scrim behind the rules sheet modal"
+  },
+  {
+   "src": "styles.css",
+   "line": 2465,
+   "sel": "#app .mp-rules-btn:focus-visible",
+   "prop": "outline",
+   "value": "rgba(255, 214, 131, 0.95)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "pale gold #FFD683 focus ring (same value as .gate-play-btn)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2488,
+   "sel": ".mp-bank",
+   "prop": "border",
+   "value": "rgba(255, 181, 46, 0.55)",
+   "role": "accent",
+   "family": "panel",
+   "note": "55% amber outline of the BANK scoreboard box"
+  },
+  {
+   "src": "styles.css",
+   "line": 2490,
+   "sel": ".mp-bank",
+   "prop": "box-shadow (inset top)",
+   "value": "rgba(0, 0, 0, 0.45)",
+   "role": "shadow",
+   "family": "panel",
+   "note": "inset top shade: recessed scoreboard"
+  },
+  {
+   "src": "styles.css",
+   "line": 2490,
+   "sel": ".mp-bank",
+   "prop": "box-shadow (inset ring)",
+   "value": "rgba(0, 0, 0, 0.22)",
+   "role": "shadow",
+   "family": "panel",
+   "note": "inset 1px dark ring"
+  },
+  {
+   "src": "styles.css",
+   "line": 2500,
+   "sel": ".mpb-lab",
+   "prop": "color",
+   "value": "rgba(255, 181, 46, 0.78)",
+   "role": "accent",
+   "family": "eyebrow",
+   "note": "BANK label, amber at 78%"
+  },
+  {
+   "src": "styles.css",
+   "line": 2513,
+   "sel": ".mpb-amt",
+   "prop": "text-shadow",
+   "value": "rgba(0, 0, 0, 0.5)",
+   "role": "shadow",
+   "family": "data",
+   "note": "1px drop under the bank amount"
+  },
+  {
+   "src": "styles.css",
+   "line": 2523,
+   "sel": ".mpb-meter",
+   "prop": "border",
+   "value": "rgba(255, 181, 46, 0.35)",
+   "role": "accent",
+   "family": "progress",
+   "note": "35% amber outline of the segmented bank meter"
+  },
+  {
+   "src": "styles.css",
+   "line": 2524,
+   "sel": ".mpb-meter",
+   "prop": "background",
+   "value": "rgba(0, 0, 0, 0.38)",
+   "role": "shadow",
+   "family": "progress",
+   "note": "38% black track fill; over --tunnel it composites to exactly #101418 (ground). Behaves as a darkening well; alt role ground"
+  },
+  {
+   "src": "styles.css",
+   "line": 2555,
+   "sel": ".mpb-delta.neg",
+   "prop": "color",
+   "value": "#FF8A77",
+   "role": "bad",
+   "family": "data",
+   "note": "light salmon #FF8A77: the -$NM spend flash. Lighter than whistle; a theme's bad must stay readable on tunnel"
+  },
+  {
+   "src": "styles.css",
+   "line": 2557,
+   "sel": ".mp-bank.bank-mid .mpb-amt",
+   "prop": "color",
+   "value": "#FFA043",
+   "role": "bad",
+   "family": "data",
+   "note": "soft orange #FFA043 = the MID-bank caution tier (between amber and whistle). No warn role exists; closest is bad. If a theme maps bad and this together the mid/low tiers lose their distinction: suggests a warn role"
+  },
+  {
+   "src": "styles.css",
+   "line": 2558,
+   "sel": ".mp-bank.bank-mid .mpb-fill",
+   "prop": "background",
+   "value": "#FFA043",
+   "role": "bad",
+   "family": "progress",
+   "note": "caution-tier orange meter fill; see .bank-mid .mpb-amt note (warn role candidate)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2562,
+   "sel": ".mp-bank.bank-down .mpb-amt",
+   "prop": "color",
+   "value": "#FF8A77",
+   "role": "bad",
+   "family": "data",
+   "note": "salmon flash when money is spent"
+  },
+  {
+   "src": "styles.css",
+   "line": 2563,
+   "sel": ".mp-bank.bank-down .mpb-fill",
+   "prop": "background",
+   "value": "#FF8A77",
+   "role": "bad",
+   "family": "progress",
+   "note": "salmon meter flash on spend"
+  },
+  {
+   "src": "styles.css",
+   "line": 2564,
+   "sel": ".mp-bank.bank-up .mpb-amt",
+   "prop": "color",
+   "value": "#7AE08D",
+   "role": "good",
+   "family": "data",
+   "note": "mint #7AE08D flash on a refund"
+  },
+  {
+   "src": "styles.css",
+   "line": 2565,
+   "sel": ".mp-bank.bank-up .mpb-fill",
+   "prop": "background",
+   "value": "#7AE08D",
+   "role": "good",
+   "family": "progress",
+   "note": "mint meter flash on refund"
+  },
+  {
+   "src": "styles.css",
+   "line": 2616,
+   "sel": "@media (max-width: 640px) #app .cap-mode-panel .mp-bank",
+   "prop": "box-shadow (inset top)",
+   "value": "rgba(0, 0, 0, 0.45)",
+   "role": "shadow",
+   "family": "panel",
+   "note": "mobile restatement of the scoreboard inset"
+  },
+  {
+   "src": "styles.css",
+   "line": 2616,
+   "sel": "@media (max-width: 640px) #app .cap-mode-panel .mp-bank",
+   "prop": "box-shadow (inset ring)",
+   "value": "rgba(0, 0, 0, 0.22)",
+   "role": "shadow",
+   "family": "panel",
+   "note": "mobile restatement of the inset ring"
+  },
+  {
+   "src": "styles.css",
+   "line": 2622,
+   "sel": "@media (max-width: 640px) #app .cap-mode-panel .mpb-lab",
+   "prop": "border",
+   "value": "rgba(255, 181, 46, 0.45)",
+   "role": "accent",
+   "family": "eyebrow",
+   "note": "on mobile the BANK label becomes a boxed tag with a 45% amber outline"
+  },
+  {
+   "src": "styles.css",
+   "line": 2629,
+   "sel": "@media (max-width: 640px) #app .cap-mode-panel .mpb-amt",
+   "prop": "text-shadow",
+   "value": "rgba(0, 0, 0, 0.5)",
+   "role": "shadow",
+   "family": "data",
+   "note": "mobile restatement of the amount drop"
+  },
+  {
+   "src": "styles.css",
+   "line": 2693,
+   "sel": ".sk-chip",
+   "prop": "background",
+   "value": "rgba(21, 13, 3, 0.82)",
+   "role": "accent-ink",
+   "family": "badge",
+   "note": "82% very dark brown (#150D03, a deeper spin-ink) cost chip inset into the amber skip keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 2693,
+   "sel": ".sk-chip",
+   "prop": "color",
+   "value": "#FFD98A",
+   "role": "accent-hi",
+   "family": "badge",
+   "note": "pale gold #FFD98A $1M text on the dark chip"
+  },
+  {
+   "src": "styles.css",
+   "line": 2694,
+   "sel": ".sk-chip",
+   "prop": "border",
+   "value": "rgba(0, 0, 0, 0.45)",
+   "role": "shadow",
+   "family": "badge",
+   "note": "45% black edge around the cost chip"
+  },
+  {
+   "src": "styles.css",
+   "line": 2707,
+   "sel": ".cap-row .cap-cost",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.4)",
+   "role": "shadow",
+   "family": "badge",
+   "note": "2px hard drop under the ink price box (mini extrusion)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2746,
+   "sel": ".player-row:not(.off):active .cap-cost",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.4)",
+   "role": "shadow",
+   "family": "badge",
+   "note": "pressed price box: drop shrinks to 1px"
+  },
+  {
+   "src": "styles.css",
+   "line": 2791,
+   "sel": ".pool-fade",
+   "prop": "background (linear-gradient start)",
+   "value": "rgba(16, 20, 24, 0)",
+   "role": "ground",
+   "family": "other",
+   "note": "transparent ink (#101418 at 0) start of the scroll-continuation fade; the end stop is var(--ink)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2799,
+   "sel": ".pool-cue",
+   "prop": "background",
+   "value": "rgba(16, 20, 24, 0.88)",
+   "role": "ground",
+   "family": "badge",
+   "note": "88% ink behind the floating MORE BELOW pill"
+  },
+  {
+   "src": "styles.css",
+   "line": 2866,
+   "sel": ".mp-bank.bank-low .mpb-amt",
+   "prop": "text-shadow",
+   "value": "rgba(0, 0, 0, 0.5)",
+   "role": "shadow",
+   "family": "data",
+   "note": "1px drop under the whistle-red low balance"
+  },
+  {
+   "src": "styles.css",
+   "line": 2867,
+   "sel": ".mp-bank.bank-low .mpb-lab",
+   "prop": "border-color",
+   "value": "rgba(224, 82, 60, 0.5)",
+   "role": "bad",
+   "family": "eyebrow",
+   "note": "rgb(224,82,60) ~ whistle at 50%: low-funds label outline"
+  },
+  {
+   "src": "styles.css",
+   "line": 2868,
+   "sel": ".mp-bank.bank-low",
+   "prop": "border-color",
+   "value": "rgba(224, 82, 60, 0.55)",
+   "role": "bad",
+   "family": "panel",
+   "note": "whistle-ish outline of the scoreboard when funds are low"
+  },
+  {
+   "src": "styles.css",
+   "line": 2870,
+   "sel": ".mp-bank.bank-low .mpb-meter",
+   "prop": "border-color",
+   "value": "rgba(224, 82, 60, 0.4)",
+   "role": "bad",
+   "family": "progress",
+   "note": "whistle-ish meter outline when low"
+  },
+  {
+   "src": "styles.css",
+   "line": 2956,
+   "sel": ".cy-dot",
+   "prop": "box-shadow (3px ring)",
+   "value": "rgba(255, 181, 46, 0.4)",
+   "role": "accent",
+   "family": "data",
+   "note": "amber halo ring on the YOUR FIVE climb marker"
+  },
+  {
+   "src": "styles.css",
+   "line": 2957,
+   "sel": ".cy-dot",
+   "prop": "box-shadow (14px glow)",
+   "value": "rgba(255, 181, 46, 0.6)",
+   "role": "accent",
+   "family": "data",
+   "note": "amber bloom, second layer"
+  },
+  {
+   "src": "styles.css",
+   "line": 2958,
+   "sel": ".cy-dot",
+   "prop": "box-shadow (34px glow)",
+   "value": "rgba(255, 181, 46, 0.32)",
+   "role": "accent",
+   "family": "data",
+   "note": "amber bloom, outer layer"
+  },
+  {
+   "src": "styles.css",
+   "line": 2963,
+   "sel": ".cy-label",
+   "prop": "text-shadow (8px)",
+   "value": "rgba(255, 181, 46, 0.95)",
+   "role": "accent",
+   "family": "data",
+   "note": "hard amber bloom on the YOUR FIVE label"
+  },
+  {
+   "src": "styles.css",
+   "line": 2964,
+   "sel": ".cy-label",
+   "prop": "text-shadow (22px)",
+   "value": "rgba(255, 181, 46, 0.6)",
+   "role": "accent",
+   "family": "data",
+   "note": "amber bloom, second layer"
+  },
+  {
+   "src": "styles.css",
+   "line": 2965,
+   "sel": ".cy-label",
+   "prop": "text-shadow (44px)",
+   "value": "rgba(255, 181, 46, 0.35)",
+   "role": "accent",
+   "family": "data",
+   "note": "amber bloom, outer layer"
+  },
+  {
+   "src": "styles.css",
+   "line": 2994,
+   "sel": ".pr-bref",
+   "prop": "text-decoration-color",
+   "value": "rgba(230,179,61,0.55)",
+   "role": "accent",
+   "family": "link",
+   "note": "dotted gold (#E6B33D) underline on player-name links, 55%"
+  },
+  {
+   "src": "styles.css",
+   "line": 3014,
+   "sel": ".pr-team",
+   "prop": "text-decoration-color",
+   "value": "rgba(230,179,61,0.4)",
+   "role": "accent",
+   "family": "link",
+   "note": "dotted gold underline on team-year links, 40%"
+  },
+  {
+   "src": "styles.css",
+   "line": 3016,
+   "sel": ".art-bref",
+   "prop": "text-decoration-color",
+   "value": "rgba(122,90,44,0.6)",
+   "role": "line-paper",
+   "family": "link",
+   "note": "sepia #7A5A2C dotted underline on citations INSIDE the Tribune article (newspaper paper #f2e9d3, ink #1b1611). A hairline on paper; alt metal (#7B5E3B family)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3019,
+   "sel": ".res-comp .cl-link",
+   "prop": "text-decoration-color",
+   "value": "rgba(230,179,61,0.45)",
+   "role": "accent",
+   "family": "link",
+   "note": "dotted gold underline on the results comp link, 45%"
+  },
+  {
+   "src": "styles.css",
+   "line": 3020,
+   "sel": ".hh-btn.hh-bref",
+   "prop": "border",
+   "value": "rgba(255,181,46,0.5)",
+   "role": "accent",
+   "family": "button-ghost",
+   "note": "50% amber outline on the Heat Check Basketball-Reference ghost link (an <a>, so not presti-decorated)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3032,
+   "sel": ".hh-charity",
+   "prop": "border",
+   "value": "rgba(255,181,46,0.6)",
+   "role": "accent",
+   "family": "button-ghost",
+   "note": "60% amber outline. LIKELY DEAD: .hh-charity is a <button>, decorate3dButtons adds .presti-spin, and button.presti-spin (0,1,1) beats .hh-charity (0,1,0) for border/background/color, so it renders as an amber keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 3086,
+   "sel": ".reel-overlay",
+   "prop": "background",
+   "value": "rgba(10,12,16,0.94)",
+   "role": "overlay",
+   "family": "overlay",
+   "note": "94% near-black scrim of the season reel"
+  },
+  {
+   "src": "styles.css",
+   "line": 3087,
+   "sel": ".reel-card",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.55)",
+   "role": "shadow",
+   "family": "overlay",
+   "note": "deep 18px/60px drop under the reel card"
+  },
+  {
+   "src": "styles.css",
+   "line": 3110,
+   "sel": ".reel-day.l",
+   "prop": "background",
+   "value": "#7e2a24",
+   "role": "bad",
+   "family": "data",
+   "note": "dark ember #7e2a24 loss square on the dark reel (a deep variant of whistle)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3110,
+   "sel": ".reel-day.l",
+   "prop": "border-color",
+   "value": "#a33a32",
+   "role": "bad-edge",
+   "family": "data",
+   "note": "#a33a32 loss square edge; note it is LIGHTER than its fill here"
+  },
+  {
+   "src": "styles.css",
+   "line": 3123,
+   "sel": ".reel-overlay.riso .reel-card",
+   "prop": "background-color",
+   "value": "#F4ECDD",
+   "role": "paper",
+   "family": "print",
+   "note": "cream paper stock of the riso reel; JS also sets a paper texture background-image"
+  },
+  {
+   "src": "styles.css",
+   "line": 3123,
+   "sel": ".reel-overlay.riso .reel-card",
+   "prop": "border-color",
+   "value": "#CFC2A6",
+   "role": "paper-2",
+   "family": "print",
+   "note": "tan #CFC2A6 paper edge of the slip (darker paper). Alt line-paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3123,
+   "sel": ".reel-overlay.riso .reel-card",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.6)",
+   "role": "shadow",
+   "family": "print",
+   "note": "20px/70px drop of the paper slip on the dark scrim"
+  },
+  {
+   "src": "styles.css",
+   "line": 3124,
+   "sel": ".reel-overlay.riso .reel-head",
+   "prop": "border-bottom",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "print",
+   "note": "solid 1.5px navy ledger rule (full ink strength, not the faint line-paper)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3125,
+   "sel": ".reel-overlay.riso .reel-eyebrow",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "eyebrow",
+   "note": "navy eyebrow on paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3126,
+   "sel": ".reel-overlay.riso .riso-streak",
+   "prop": "color",
+   "value": "#C8217A",
+   "role": "offset",
+   "family": "eyebrow",
+   "note": "deep pink #C8217A streak label ink"
+  },
+  {
+   "src": "styles.css",
+   "line": 3127,
+   "sel": ".reel-overlay.riso .riso-streak.hot",
+   "prop": "color",
+   "value": "#D6208A",
+   "role": "offset",
+   "family": "eyebrow",
+   "note": "hot-streak pink #D6208A"
+  },
+  {
+   "src": "styles.css",
+   "line": 3127,
+   "sel": ".reel-overlay.riso .riso-streak.hot",
+   "prop": "text-shadow",
+   "value": "rgba(255,181,17,0.95)",
+   "role": "sun",
+   "family": "eyebrow",
+   "note": "sunflower misregistration offset behind the hot streak"
+  },
+  {
+   "src": "styles.css",
+   "line": 3128,
+   "sel": ".reel-overlay.riso .riso-streak.dead",
+   "prop": "color",
+   "value": "#C92F3B",
+   "role": "bad-ink",
+   "family": "eyebrow",
+   "note": "deep scarlet #C92F3B struck-through dead streak text on paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3129,
+   "sel": ".reel-overlay.riso .riso-streak.cold",
+   "prop": "color",
+   "value": "#C92F3B",
+   "role": "bad-ink",
+   "family": "eyebrow",
+   "note": "deep scarlet cold-streak text on paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3130,
+   "sel": ".reel-overlay.riso .reel-run",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "data",
+   "note": "navy running record"
+  },
+  {
+   "src": "styles.css",
+   "line": 3130,
+   "sel": ".reel-overlay.riso .reel-run",
+   "prop": "text-shadow",
+   "value": "rgba(255,72,176,0.7)",
+   "role": "offset",
+   "family": "data",
+   "note": "pink misregistration offset on the record"
+  },
+  {
+   "src": "styles.css",
+   "line": 3131,
+   "sel": ".reel-overlay.riso .reel-run i, .reel-overlay.riso .reel-final-rec i",
+   "prop": "color",
+   "value": "#D63A45",
+   "role": "bad-ink",
+   "family": "data",
+   "note": "#D63A45 scarlet loss count inside the navy record, on paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3132,
+   "sel": ".reel-overlay.riso .reel-skip",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-ghost",
+   "note": "navy SKIP text. Background is NOT overridden here, so the presti-spin amber gradient still paints (see notes)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3132,
+   "sel": ".reel-overlay.riso .reel-skip",
+   "prop": "border-color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-ghost",
+   "note": "navy outline color; presti-spin sets border:0 so the width is 0 and this is invisible"
+  },
+  {
+   "src": "styles.css",
+   "line": 3133,
+   "sel": ".reel-overlay.riso .reel-skip:active",
+   "prop": "color",
+   "value": "#C8217A",
+   "role": "offset",
+   "family": "button-ghost",
+   "note": "pressed SKIP turns pink"
+  },
+  {
+   "src": "styles.css",
+   "line": 3133,
+   "sel": ".reel-overlay.riso .reel-skip:active",
+   "prop": "border-color",
+   "value": "#C8217A",
+   "role": "offset",
+   "family": "button-ghost",
+   "note": "pressed outline pink (width 0, see above)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3135,
+   "sel": ".reel-overlay.riso .reel-act",
+   "prop": "border-bottom",
+   "value": "rgba(35,42,78,0.3)",
+   "role": "line-paper",
+   "family": "row",
+   "note": "dashed 30% navy rule between month acts"
+  },
+  {
+   "src": "styles.css",
+   "line": 3137,
+   "sel": ".reel-overlay.riso .reel-mo",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "heading",
+   "note": "navy month name"
+  },
+  {
+   "src": "styles.css",
+   "line": 3138,
+   "sel": ".reel-overlay.riso .reel-mo-rec",
+   "prop": "color",
+   "value": "#5B5E73",
+   "role": "ink-2",
+   "family": "data",
+   "note": "grey-navy month record"
+  },
+  {
+   "src": "styles.css",
+   "line": 3139,
+   "sel": ".reel-overlay.riso .reel-note",
+   "prop": "color",
+   "value": "#4A4E66",
+   "role": "ink-2",
+   "family": "body",
+   "note": "italic commentary line"
+  },
+  {
+   "src": "styles.css",
+   "line": 3142,
+   "sel": ".reel-overlay.riso .reel-day.w",
+   "prop": "background",
+   "value": "#FFB511",
+   "role": "sun",
+   "family": "data",
+   "note": "sunflower win square (DOM fallback; the canvas strip normally prints the calendar)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3142,
+   "sel": ".reel-overlay.riso .reel-day.w",
+   "prop": "border-color",
+   "value": "#E0981A",
+   "role": "sun-edge",
+   "family": "data",
+   "note": "#E0981A win square edge"
+  },
+  {
+   "src": "styles.css",
+   "line": 3142,
+   "sel": ".reel-overlay.riso .reel-day.w",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "data",
+   "note": "navy date number on sunflower"
+  },
+  {
+   "src": "styles.css",
+   "line": 3143,
+   "sel": ".reel-overlay.riso .reel-day.l",
+   "prop": "background",
+   "value": "#F65058",
+   "role": "bad",
+   "family": "data",
+   "note": "scarlet loss square"
+  },
+  {
+   "src": "styles.css",
+   "line": 3143,
+   "sel": ".reel-overlay.riso .reel-day.l",
+   "prop": "border-color",
+   "value": "#C92F3B",
+   "role": "bad-edge",
+   "family": "data",
+   "note": "#C92F3B loss square edge"
+  },
+  {
+   "src": "styles.css",
+   "line": 3143,
+   "sel": ".reel-overlay.riso .reel-day.l",
+   "prop": "color",
+   "value": "#fff",
+   "role": "bad-ink",
+   "family": "data",
+   "note": "#fff date number on the scarlet fill (text on a bad fill). Theme's bad-ink must stay legible on bad"
+  },
+  {
+   "src": "styles.css",
+   "line": 3144,
+   "sel": ".reel-overlay.riso .riso-swept",
+   "prop": "border",
+   "value": "#E0348E",
+   "role": "offset",
+   "family": "badge",
+   "note": "#E0348E pink rotated SWEPT stamp outline"
+  },
+  {
+   "src": "styles.css",
+   "line": 3144,
+   "sel": ".reel-overlay.riso .riso-swept",
+   "prop": "color",
+   "value": "#E0348E",
+   "role": "offset",
+   "family": "badge",
+   "note": "pink SWEPT stamp text"
+  },
+  {
+   "src": "styles.css",
+   "line": 3144,
+   "sel": ".reel-overlay.riso .riso-swept",
+   "prop": "text-shadow",
+   "value": "rgba(0,120,191,0.35)",
+   "role": "offset",
+   "family": "badge",
+   "note": "riso-blue (0,120,191) second-ink misregistration shadow. Not the 'you' meaning; decorative offset. If themes want two offset inks this needs an offset-2"
+  },
+  {
+   "src": "styles.css",
+   "line": 3145,
+   "sel": ".reel-overlay.riso .riso-flash",
+   "prop": "background",
+   "value": "#F65058",
+   "role": "bad",
+   "family": "print",
+   "note": "scarlet full-card multiply flash layer fired on losses by reel-riso.js"
+  },
+  {
+   "src": "styles.css",
+   "line": 3147,
+   "sel": ".reel-overlay.riso .reel-final-rec",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "data",
+   "note": "navy final record"
+  },
+  {
+   "src": "styles.css",
+   "line": 3147,
+   "sel": ".reel-overlay.riso .reel-final-rec",
+   "prop": "text-shadow",
+   "value": "rgba(255,72,176,0.7)",
+   "role": "offset",
+   "family": "data",
+   "note": "pink misregistration offset"
+  },
+  {
+   "src": "styles.css",
+   "line": 3148,
+   "sel": ".reel-overlay.riso .reel-done",
+   "prop": "background",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-primary",
+   "note": "navy slab: the paper world's primary button"
+  },
+  {
+   "src": "styles.css",
+   "line": 3148,
+   "sel": ".reel-overlay.riso .reel-done",
+   "prop": "border-color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-primary",
+   "note": "navy edge"
+  },
+  {
+   "src": "styles.css",
+   "line": 3148,
+   "sel": ".reel-overlay.riso .reel-done",
+   "prop": "color",
+   "value": "#F4ECDD",
+   "role": "paper",
+   "family": "button-primary",
+   "note": "cream text knocked out of the navy slab"
+  },
+  {
+   "src": "styles.css",
+   "line": 3148,
+   "sel": ".reel-overlay.riso .reel-done",
+   "prop": "box-shadow",
+   "value": "#FF48B0",
+   "role": "offset",
+   "family": "button-primary",
+   "note": "hard 3px pink offset shadow (the riso extrusion)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3149,
+   "sel": ".reel-overlay.riso .reel-done:active",
+   "prop": "background",
+   "value": "#C8217A",
+   "role": "offset",
+   "family": "button-primary",
+   "note": "pressed slab turns deep pink #C8217A"
+  },
+  {
+   "src": "styles.css",
+   "line": 3149,
+   "sel": ".reel-overlay.riso .reel-done:active",
+   "prop": "border-color",
+   "value": "#C8217A",
+   "role": "offset",
+   "family": "button-primary",
+   "note": "pressed edge deep pink"
+  },
+  {
+   "src": "styles.css",
+   "line": 3162,
+   "sel": ".rr",
+   "prop": "custom property --rr-c",
+   "value": "#F4ECDD",
+   "role": "paper",
+   "family": "print",
+   "note": "cream paper token for every results slip"
+  },
+  {
+   "src": "styles.css",
+   "line": 3162,
+   "sel": ".rr",
+   "prop": "custom property --rr-navy",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "print",
+   "note": "navy key ink token"
+  },
+  {
+   "src": "styles.css",
+   "line": 3162,
+   "sel": ".rr",
+   "prop": "custom property --rr-navy2",
+   "value": "#5B5E73",
+   "role": "ink-2",
+   "family": "print",
+   "note": "secondary ink token"
+  },
+  {
+   "src": "styles.css",
+   "line": 3162,
+   "sel": ".rr",
+   "prop": "custom property --rr-rule",
+   "value": "rgba(35,42,78,0.24)",
+   "role": "line-paper",
+   "family": "print",
+   "note": "paper rule token (used by .ledger-row dashes)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3163,
+   "sel": ".rr",
+   "prop": "custom property --rr-sun",
+   "value": "#FFB511",
+   "role": "sun",
+   "family": "print",
+   "note": "sunflower token (elite share-button shadow)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3163,
+   "sel": ".rr",
+   "prop": "custom property --rr-sun-edge",
+   "value": "#C7870A",
+   "role": "sun-edge",
+   "family": "print",
+   "note": "declared but unused in styles.css (the keycaps hard-code #C7870A)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3163,
+   "sel": ".rr",
+   "prop": "custom property --rr-sun-deep",
+   "value": "#8A5D00",
+   "role": "sun-ink",
+   "family": "print",
+   "note": "declared but unused in styles.css (.bt-tag.off hard-codes #8A5D00)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3164,
+   "sel": ".rr",
+   "prop": "custom property --rr-scar",
+   "value": "#F65058",
+   "role": "bad",
+   "family": "print",
+   "note": "scarlet token (hot-pick ring, nub fill, hot slot badge)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3164,
+   "sel": ".rr",
+   "prop": "custom property --rr-scar-edge",
+   "value": "#B8323B",
+   "role": "bad-edge",
+   "family": "print",
+   "note": "declared but unused in styles.css (keycaps hard-code #B8323B)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3164,
+   "sel": ".rr",
+   "prop": "custom property --rr-scar-deep",
+   "value": "#B42A36",
+   "role": "bad-ink",
+   "family": "print",
+   "note": "deep scarlet text token (bonus, dt-hold, weak tier, tax)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3165,
+   "sel": ".rr",
+   "prop": "custom property --rr-pink",
+   "value": "#FF48B0",
+   "role": "offset",
+   "family": "print",
+   "note": "fluorescent pink offset token (button shadows, dhl-dot, comp underline)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3165,
+   "sel": ".rr",
+   "prop": "custom property --rr-blue",
+   "value": "#0078BF",
+   "role": "you",
+   "family": "print",
+   "note": "riso blue token: climb fill path + YOUR FIVE dot/arrow/label"
+  },
+  {
+   "src": "styles.css",
+   "line": 3165,
+   "sel": ".rr",
+   "prop": "custom property --rr-green",
+   "value": "#00875A",
+   "role": "good",
+   "family": "print",
+   "note": "green token: dt-win line and zero/good/hot ledger amounts"
+  },
+  {
+   "src": "styles.css",
+   "line": 3170,
+   "sel": ".rr .rr-board, .rr .bt-card, .rr .twoway, .rr .rr-climb .climb, .rr .ledger",
+   "prop": "box-shadow (1px lip)",
+   "value": "rgba(0,0,0,0.35)",
+   "role": "shadow",
+   "family": "print",
+   "note": "1px dark lip under each paper slip"
+  },
+  {
+   "src": "styles.css",
+   "line": 3170,
+   "sel": ".rr .rr-board, .rr .bt-card, .rr .twoway, .rr .rr-climb .climb, .rr .ledger",
+   "prop": "box-shadow (lift)",
+   "value": "rgba(0,0,0,0.85)",
+   "role": "shadow",
+   "family": "print",
+   "note": "deep soft lift of the slip off the dark table"
+  },
+  {
+   "src": "styles.css",
+   "line": 3173,
+   "sel": ".rr .rr-eyebrow",
+   "prop": "text-shadow",
+   "value": "rgba(255,72,176,0.55)",
+   "role": "offset",
+   "family": "eyebrow",
+   "note": "pink misregistration offset on the cream section eyebrow"
+  },
+  {
+   "src": "styles.css",
+   "line": 3183,
+   "sel": ".rr .rr-print .big",
+   "prop": "text-shadow",
+   "value": "rgba(255,72,176,0.5)",
+   "role": "offset",
+   "family": "data",
+   "note": "pink offset on the plain-type record fallback (shown when no canvas)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3203,
+   "sel": "@keyframes rr-elite 0%, 100%",
+   "prop": "box-shadow (pulse ring)",
+   "value": "rgba(255,181,17,0)",
+   "role": "sun",
+   "family": "button-primary",
+   "note": "transparent sunflower ring, pulse start/end on the elite share button"
+  },
+  {
+   "src": "styles.css",
+   "line": 3204,
+   "sel": "@keyframes rr-elite 50%",
+   "prop": "box-shadow (pulse ring)",
+   "value": "rgba(255,181,17,0.35)",
+   "role": "sun",
+   "family": "button-primary",
+   "note": "35% sunflower ring, pulse peak"
+  },
+  {
+   "src": "styles.css",
+   "line": 3212,
+   "sel": ".rr .bt-name .pr-bref",
+   "prop": "text-decoration-color",
+   "value": "rgba(35,42,78,0.35)",
+   "role": "line-paper",
+   "family": "link",
+   "note": "35% navy dotted underline on the player-name link on paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3217,
+   "sel": ".rr .bt-ssn .pr-team",
+   "prop": "text-decoration-color",
+   "value": "rgba(35,42,78,0.35)",
+   "role": "line-paper",
+   "family": "link",
+   "note": "35% navy dotted underline on the team-year link on paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3218,
+   "sel": ".rr .bt-val",
+   "prop": "text-shadow",
+   "value": "rgba(255,72,176,0.45)",
+   "role": "offset",
+   "family": "data",
+   "note": "pink offset on the big serif player value"
+  },
+  {
+   "src": "styles.css",
+   "line": 3228,
+   "sel": ".rr .bt-card.hot-pick",
+   "prop": "box-shadow (lift)",
+   "value": "rgba(0,0,0,0.85)",
+   "role": "shadow",
+   "family": "print",
+   "note": "restated slip lift beneath the scarlet hot-pick ring"
+  },
+  {
+   "src": "styles.css",
+   "line": 3231,
+   "sel": ".rr .bref-credit",
+   "prop": "color",
+   "value": "rgba(244,236,221,0.62)",
+   "role": "text-2",
+   "family": "body",
+   "note": "cream paper color at 62% as dim credit text on the DARK table (matches the cream .rr-eyebrow). Alt role paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3238,
+   "sel": ".bt-tag",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "chip",
+   "note": "navy label printed on the sunflower keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 3238,
+   "sel": ".bt-tag",
+   "prop": "background-color",
+   "value": "#FFB511",
+   "role": "sun",
+   "family": "chip",
+   "note": "sunflower keycap face: the ballot's yes"
+  },
+  {
+   "src": "styles.css",
+   "line": 3239,
+   "sel": ".bt-tag",
+   "prop": "background-image (halftone)",
+   "value": "rgba(255,255,255,0.2)",
+   "role": "light",
+   "family": "chip",
+   "note": "20% white halftone dots over the keycap face"
+  },
+  {
+   "src": "styles.css",
+   "line": 3240,
+   "sel": ".bt-tag",
+   "prop": "box-shadow (extrusion)",
+   "value": "#C7870A",
+   "role": "sun-edge",
+   "family": "chip",
+   "note": "4px sunflower-edge extrusion under the keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 3240,
+   "sel": ".bt-tag",
+   "prop": "box-shadow (inset top)",
+   "value": "rgba(255,255,255,0.45)",
+   "role": "light",
+   "family": "chip",
+   "note": "45% white top-edge sheen"
+  },
+  {
+   "src": "styles.css",
+   "line": 3244,
+   "sel": ".bt-tag:active, .bt-tag.pressed",
+   "prop": "box-shadow (extrusion)",
+   "value": "#C7870A",
+   "role": "sun-edge",
+   "family": "chip",
+   "note": "pressed: extrusion drops to 1px"
+  },
+  {
+   "src": "styles.css",
+   "line": 3244,
+   "sel": ".bt-tag:active, .bt-tag.pressed",
+   "prop": "box-shadow (inset top)",
+   "value": "rgba(255,255,255,0.35)",
+   "role": "light",
+   "family": "chip",
+   "note": "pressed sheen 35%"
+  },
+  {
+   "src": "styles.css",
+   "line": 3245,
+   "sel": ".bt-tag.neg",
+   "prop": "background-color",
+   "value": "#F65058",
+   "role": "bad",
+   "family": "chip",
+   "note": "scarlet keycap for a bad trait"
+  },
+  {
+   "src": "styles.css",
+   "line": 3245,
+   "sel": ".bt-tag.neg",
+   "prop": "box-shadow (extrusion)",
+   "value": "#B8323B",
+   "role": "bad-edge",
+   "family": "chip",
+   "note": "4px scarlet-edge extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 3245,
+   "sel": ".bt-tag.neg",
+   "prop": "box-shadow (inset top)",
+   "value": "rgba(255,255,255,0.35)",
+   "role": "light",
+   "family": "chip",
+   "note": "35% white sheen"
+  },
+  {
+   "src": "styles.css",
+   "line": 3246,
+   "sel": ".bt-tag.neg:active, .bt-tag.neg.pressed",
+   "prop": "box-shadow (extrusion)",
+   "value": "#B8323B",
+   "role": "bad-edge",
+   "family": "chip",
+   "note": "pressed: 1px extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 3246,
+   "sel": ".bt-tag.neg:active, .bt-tag.neg.pressed",
+   "prop": "box-shadow (inset top)",
+   "value": "rgba(255,255,255,0.25)",
+   "role": "light",
+   "family": "chip",
+   "note": "pressed sheen 25%"
+  },
+  {
+   "src": "styles.css",
+   "line": 3249,
+   "sel": ".bt-tag.q::before",
+   "prop": "background",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "badge",
+   "note": "navy disc of the disputed '?' marker"
+  },
+  {
+   "src": "styles.css",
+   "line": 3249,
+   "sel": ".bt-tag.q::before",
+   "prop": "color",
+   "value": "#F4ECDD",
+   "role": "paper",
+   "family": "badge",
+   "note": "cream '?' glyph knocked out of the navy disc"
+  },
+  {
+   "src": "styles.css",
+   "line": 3249,
+   "sel": ".bt-tag.q::before",
+   "prop": "border",
+   "value": "#FFB511",
+   "role": "sun",
+   "family": "badge",
+   "note": "2px sunflower ring around the disc"
+  },
+  {
+   "src": "styles.css",
+   "line": 3252,
+   "sel": ".bt-tag.off",
+   "prop": "color",
+   "value": "#8A5D00",
+   "role": "sun-ink",
+   "family": "chip",
+   "note": "deep sunflower text on the outlined (off) tag"
+  },
+  {
+   "src": "styles.css",
+   "line": 3252,
+   "sel": ".bt-tag.off",
+   "prop": "box-shadow (inset ring)",
+   "value": "#C7870A",
+   "role": "sun-edge",
+   "family": "chip",
+   "note": "2px sunflower-edge outline of the off tag"
+  },
+  {
+   "src": "styles.css",
+   "line": 3253,
+   "sel": ".bt-tag.off.neg",
+   "prop": "color",
+   "value": "#B42A36",
+   "role": "bad-ink",
+   "family": "chip",
+   "note": "deep scarlet text on the outlined bad tag"
+  },
+  {
+   "src": "styles.css",
+   "line": 3253,
+   "sel": ".bt-tag.off.neg",
+   "prop": "box-shadow (inset ring)",
+   "value": "#B8323B",
+   "role": "bad-edge",
+   "family": "chip",
+   "note": "2px scarlet-edge outline"
+  },
+  {
+   "src": "styles.css",
+   "line": 3254,
+   "sel": ".bt-tag.off:active, .bt-tag.off.pressed",
+   "prop": "box-shadow (inset ring)",
+   "value": "#C7870A",
+   "role": "sun-edge",
+   "family": "chip",
+   "note": "pressed off tag keeps its ring"
+  },
+  {
+   "src": "styles.css",
+   "line": 3256,
+   "sel": ".bt-tag.mine::after",
+   "prop": "border",
+   "value": "#0078BF",
+   "role": "you",
+   "family": "chip",
+   "note": "2px riso-blue ring = the tag YOU voted"
+  },
+  {
+   "src": "styles.css",
+   "line": 3259,
+   "sel": ".bt-tag.add",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "chip",
+   "note": "navy '+' glyph"
+  },
+  {
+   "src": "styles.css",
+   "line": 3259,
+   "sel": ".bt-tag.add",
+   "prop": "box-shadow (inset ring)",
+   "value": "rgba(35,42,78,0.5)",
+   "role": "line-paper",
+   "family": "chip",
+   "note": "50% navy ring. DEAD: overridden by the next rule (box-shadow: none; dashed border)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3262,
+   "sel": ".bt-tag.add",
+   "prop": "border",
+   "value": "rgba(35,42,78,0.55)",
+   "role": "line-paper",
+   "family": "chip",
+   "note": "2px dashed 55% navy outline of the '+' add tag"
+  },
+  {
+   "src": "styles.css",
+   "line": 3263,
+   "sel": ".bt-tag.add:active, .bt-tag.add.pressed",
+   "prop": "background",
+   "value": "rgba(35,42,78,0.08)",
+   "role": "ink",
+   "family": "chip",
+   "note": "8% navy wash as a pressed well on paper (alpha fill of ink; alt paper-2)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3264,
+   "sel": ".bt-tag:focus-visible",
+   "prop": "outline",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "chip",
+   "note": "3px navy focus ring on paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3269,
+   "sel": ".rr .tw-track",
+   "prop": "background",
+   "value": "rgba(35,42,78,0.12)",
+   "role": "ink",
+   "family": "progress",
+   "note": "12% navy wash as the two-way bar track (alpha fill of ink; alt paper-2)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3271,
+   "sel": ".rr .tw-fill.tw-off, .rr .tw-fill.tw-def",
+   "prop": "box-shadow",
+   "value": "rgba(255,72,176,0.5)",
+   "role": "offset",
+   "family": "progress",
+   "note": "pink misregistration offset behind the navy bar fill"
+  },
+  {
+   "src": "styles.css",
+   "line": 3277,
+   "sel": ".rr .rail-path",
+   "prop": "stroke (SVG)",
+   "value": "rgba(35,42,78,0.14)",
+   "role": "line-paper",
+   "family": "data",
+   "note": "14% navy climb rail line"
+  },
+  {
+   "src": "styles.css",
+   "line": 3280,
+   "sel": ".rr .climb-pin.comp",
+   "prop": "box-shadow (ring)",
+   "value": "rgba(35,42,78,0.18)",
+   "role": "line-paper",
+   "family": "data",
+   "note": "18% navy ring around the comp pin"
+  },
+  {
+   "src": "styles.css",
+   "line": 3284,
+   "sel": ".rr .cy-dot",
+   "prop": "box-shadow (ring)",
+   "value": "rgba(0,120,191,0.22)",
+   "role": "you",
+   "family": "data",
+   "note": "22% riso-blue halo on the YOUR FIVE marker (replaces the amber glow on paper)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3298,
+   "sel": ".bt-backdrop",
+   "prop": "background",
+   "value": "rgba(9,11,18,0.58)",
+   "role": "overlay",
+   "family": "sheet",
+   "note": "58% blue-black scrim behind the tag ballot sheet"
+  },
+  {
+   "src": "styles.css",
+   "line": 3302,
+   "sel": ".bt-sheet",
+   "prop": "background-color",
+   "value": "#F4ECDD",
+   "role": "paper",
+   "family": "sheet",
+   "note": "cream paper bottom sheet"
+  },
+  {
+   "src": "styles.css",
+   "line": 3302,
+   "sel": ".bt-sheet",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "sheet",
+   "note": "navy default text in the sheet"
+  },
+  {
+   "src": "styles.css",
+   "line": 3303,
+   "sel": ".bt-sheet",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.5)",
+   "role": "shadow",
+   "family": "sheet",
+   "note": "upward 40px drop of the sheet"
+  },
+  {
+   "src": "styles.css",
+   "line": 3309,
+   "sel": ".bt-grab",
+   "prop": "background",
+   "value": "rgba(35,42,78,0.25)",
+   "role": "line-paper",
+   "family": "sheet",
+   "note": "25% navy grab handle bar (rule-weight mark; alt ink)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3311,
+   "sel": ".bt-who",
+   "prop": "color",
+   "value": "#5B5E73",
+   "role": "ink-2",
+   "family": "eyebrow",
+   "note": "mono player meta line at the top of the sheet"
+  },
+  {
+   "src": "styles.css",
+   "line": 3313,
+   "sel": ".bt-q mark",
+   "prop": "background (gradient stop)",
+   "value": "rgba(255,181,17,0.9)",
+   "role": "sun",
+   "family": "heading",
+   "note": "90% sunflower highlighter band under the trait word"
+  },
+  {
+   "src": "styles.css",
+   "line": 3313,
+   "sel": ".bt-q mark",
+   "prop": "background (gradient stop)",
+   "value": "rgba(255,181,17,0.9)",
+   "role": "sun",
+   "family": "heading",
+   "note": "second stop of the same band"
+  },
+  {
+   "src": "styles.css",
+   "line": 3314,
+   "sel": ".bt-q mark.neg",
+   "prop": "background (gradient stop)",
+   "value": "rgba(246,80,88,0.75)",
+   "role": "bad",
+   "family": "heading",
+   "note": "75% scarlet highlighter band for a bad trait"
+  },
+  {
+   "src": "styles.css",
+   "line": 3314,
+   "sel": ".bt-q mark.neg",
+   "prop": "background (gradient stop)",
+   "value": "rgba(246,80,88,0.75)",
+   "role": "bad",
+   "family": "heading",
+   "note": "second stop of the same band"
+  },
+  {
+   "src": "styles.css",
+   "line": 3315,
+   "sel": ".bt-def",
+   "prop": "color",
+   "value": "#4A4E66",
+   "role": "ink-2",
+   "family": "body",
+   "note": "trait definition text"
+  },
+  {
+   "src": "styles.css",
+   "line": 3320,
+   "sel": ".bt-big",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-primary",
+   "note": "navy label on the big YES/NO keycaps"
+  },
+  {
+   "src": "styles.css",
+   "line": 3323,
+   "sel": ".bt-big.yes",
+   "prop": "background",
+   "value": "#FFB511",
+   "role": "sun",
+   "family": "button-primary",
+   "note": "sunflower YES keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 3323,
+   "sel": ".bt-big.yes",
+   "prop": "box-shadow",
+   "value": "#C7870A",
+   "role": "sun-edge",
+   "family": "button-primary",
+   "note": "5px sunflower-edge extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 3324,
+   "sel": ".bt-big.no",
+   "prop": "background",
+   "value": "#F65058",
+   "role": "bad",
+   "family": "button-danger",
+   "note": "scarlet NO keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 3324,
+   "sel": ".bt-big.no",
+   "prop": "box-shadow",
+   "value": "#B8323B",
+   "role": "bad-edge",
+   "family": "button-danger",
+   "note": "5px scarlet-edge extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 3325,
+   "sel": ".bt-big.idk",
+   "prop": "color",
+   "value": "#4A4E66",
+   "role": "ink-2",
+   "family": "button-ghost",
+   "note": "NOT SURE text"
+  },
+  {
+   "src": "styles.css",
+   "line": 3325,
+   "sel": ".bt-big.idk",
+   "prop": "border",
+   "value": "rgba(35,42,78,0.45)",
+   "role": "line-paper",
+   "family": "button-ghost",
+   "note": "2px dashed 45% navy outline"
+  },
+  {
+   "src": "styles.css",
+   "line": 3327,
+   "sel": ".bt-big.yes:active",
+   "prop": "box-shadow",
+   "value": "#C7870A",
+   "role": "sun-edge",
+   "family": "button-primary",
+   "note": "pressed: 2px extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 3328,
+   "sel": ".bt-big.no:active",
+   "prop": "box-shadow",
+   "value": "#B8323B",
+   "role": "bad-edge",
+   "family": "button-danger",
+   "note": "pressed: 2px extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 3329,
+   "sel": ".bt-big:focus-visible, .bt-tile:focus-visible, .bt-done:focus-visible, .bt-change:focus-visible",
+   "prop": "outline",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-primary",
+   "note": "3px navy focus ring shared by all sheet controls (mixed list: big buttons, tiles, done, change)"
+  },
+  {
+   "src": "styles.css",
+   "line": 3330,
+   "sel": ".bt-counting",
+   "prop": "color",
+   "value": "#5B5E73",
+   "role": "ink-2",
+   "family": "body",
+   "note": "COUNTING... interim line"
+  },
+  {
+   "src": "styles.css",
+   "line": 3331,
+   "sel": ".bt-pct",
+   "prop": "text-shadow",
+   "value": "rgba(255,72,176,0.35)",
+   "role": "offset",
+   "family": "data",
+   "note": "pink offset on the big percentage"
+  },
+  {
+   "src": "styles.css",
+   "line": 3332,
+   "sel": ".bt-pct.yes",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "data",
+   "note": "navy % when the room says yes"
+  },
+  {
+   "src": "styles.css",
+   "line": 3333,
+   "sel": ".bt-pct.no",
+   "prop": "color",
+   "value": "#B42A36",
+   "role": "bad-ink",
+   "family": "data",
+   "note": "deep scarlet % when the room says no"
+  },
+  {
+   "src": "styles.css",
+   "line": 3334,
+   "sel": ".bt-you",
+   "prop": "color",
+   "value": "#4A4E66",
+   "role": "ink-2",
+   "family": "body",
+   "note": "'you said X' line"
+  },
+  {
+   "src": "styles.css",
+   "line": 3335,
+   "sel": ".bt-bar",
+   "prop": "background",
+   "value": "#F65058",
+   "role": "bad",
+   "family": "progress",
+   "note": "scarlet NO share = the bar track"
+  },
+  {
+   "src": "styles.css",
+   "line": 3336,
+   "sel": ".bt-bar i",
+   "prop": "background",
+   "value": "#FFB511",
+   "role": "sun",
+   "family": "progress",
+   "note": "sunflower YES share fill"
+  },
+  {
+   "src": "styles.css",
+   "line": 3337,
+   "sel": ".bt-pill",
+   "prop": "border",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "badge",
+   "note": "1.5px solid navy outline pill"
+  },
+  {
+   "src": "styles.css",
+   "line": 3339,
+   "sel": ".bt-change",
+   "prop": "color",
+   "value": "#4A4E66",
+   "role": "ink-2",
+   "family": "button-ghost",
+   "note": "underlined CHANGE text button"
+  },
+  {
+   "src": "styles.css",
+   "line": 3340,
+   "sel": ".bt-done",
+   "prop": "background",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-primary",
+   "note": "navy DONE slab"
+  },
+  {
+   "src": "styles.css",
+   "line": 3340,
+   "sel": ".bt-done",
+   "prop": "color",
+   "value": "#F4ECDD",
+   "role": "paper",
+   "family": "button-primary",
+   "note": "cream text on navy"
+  },
+  {
+   "src": "styles.css",
+   "line": 3340,
+   "sel": ".bt-done",
+   "prop": "box-shadow",
+   "value": "#FF48B0",
+   "role": "offset",
+   "family": "button-primary",
+   "note": "hard 3px pink offset shadow"
+  },
+  {
+   "src": "styles.css",
+   "line": 3343,
+   "sel": ".bt-sub",
+   "prop": "color",
+   "value": "#4A4E66",
+   "role": "ink-2",
+   "family": "body",
+   "note": "sub line under the tag picker title"
+  },
+  {
+   "src": "styles.css",
+   "line": 3344,
+   "sel": ".bt-grp",
+   "prop": "color",
+   "value": "#5B5E73",
+   "role": "ink-2",
+   "family": "eyebrow",
+   "note": "mono group label in the tag picker"
+  },
+  {
+   "src": "styles.css",
+   "line": 3346,
+   "sel": ".bt-tile",
+   "prop": "border",
+   "value": "rgba(35,42,78,0.28)",
+   "role": "line-paper",
+   "family": "button-secondary",
+   "note": "28% navy outline of a tag-picker tile"
+  },
+  {
+   "src": "styles.css",
+   "line": 3346,
+   "sel": ".bt-tile",
+   "prop": "background",
+   "value": "rgba(255,255,255,0.35)",
+   "role": "light",
+   "family": "button-secondary",
+   "note": "35% white wash lifting the tile off the paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 3346,
+   "sel": ".bt-tile",
+   "prop": "color",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "button-secondary",
+   "note": "navy tile text"
+  },
+  {
+   "src": "styles.css",
+   "line": 3347,
+   "sel": ".bt-tile:active",
+   "prop": "background",
+   "value": "rgba(255,181,17,0.3)",
+   "role": "sun",
+   "family": "button-secondary",
+   "note": "30% sunflower pressed tile"
+  },
+  {
+   "src": "styles.css",
+   "line": 3349,
+   "sel": ".bt-tile.neg b",
+   "prop": "color",
+   "value": "#B42A36",
+   "role": "bad-ink",
+   "family": "button-secondary",
+   "note": "deep scarlet name of a bad-trait tile"
+  },
+  {
+   "src": "styles.css",
+   "line": 3350,
+   "sel": ".bt-tile small",
+   "prop": "color",
+   "value": "#5B5E73",
+   "role": "ink-2",
+   "family": "button-secondary",
+   "note": "tile description text"
+  },
+  {
+   "src": "styles.css",
+   "line": 3351,
+   "sel": ".bt-foot",
+   "prop": "color",
+   "value": "#5B5E73",
+   "role": "ink-2",
+   "family": "body",
+   "note": "mono footnote in the sheet"
+  },
+  {
+   "src": "styles.css",
+   "line": 3356,
+   "sel": ".bt-toast",
+   "prop": "background",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "toast",
+   "note": "navy toast slab"
+  },
+  {
+   "src": "styles.css",
+   "line": 3356,
+   "sel": ".bt-toast",
+   "prop": "color",
+   "value": "#F4ECDD",
+   "role": "paper",
+   "family": "toast",
+   "note": "cream toast text"
+  },
+  {
+   "src": "styles.css",
+   "line": 3357,
+   "sel": ".bt-toast",
+   "prop": "box-shadow",
+   "value": "#FF48B0",
+   "role": "offset",
+   "family": "toast",
+   "note": "hard 3px pink offset shadow"
+  },
+  {
+   "src": "styles.css",
+   "line": 3362,
+   "sel": ".bt-hand",
+   "prop": "filter drop-shadow",
+   "value": "rgba(0,0,0,0.5)",
+   "role": "shadow",
+   "family": "other",
+   "note": "drop shadow under the one-time white glove hint (its SVG fill/stroke are set in app.js)"
+  }
+ ],
+ "components": {
+  "button-primary": [
+   {
+    "sel": "button.presti-spin (decorator, defined L229, applied by app.js decorate3dButtons to every <button> not in BTN3D_EXCLUDE)",
+    "treatment": "context: goldenrod gradient keycap (#F8B647 -> #E89A1C), 9px radius, no border, #2A1A05 ink, white inset top sheen, 5px #9E5A0F extrusion + soft drop; press translates 4px"
+   },
+   {
+    "sel": ".gate-play-btn / .gate-play-btn:focus-visible",
+    "treatment": "presti keycap, disp 1rem uppercase .08em, min-width 160px; 2px pale-gold #FFD683 focus ring offset 4px"
+   },
+   {
+    "sel": "#app .mp-rules-btn (+ .mp-book-wrap, .mp-rules-main, responsive restatements)",
+    "treatment": "presti keycap HOW TO PLAY, 12px radius, min-h 58 (44 on phones), book icon in a 10px-radius well (16% spin-ink wash, 22% ring, white sheen), disp 700 16px; #FFD683 focus ring"
+   },
+   {
+    "sel": "#app .ta-cap .skip-btn (+ .sk-lab)",
+    "treatment": "presti keycaps in a 3-col grid, label centered left of a dark cost chip, disp 700 14px, min-h 42 (36 on phones)"
+   },
+   {
+    "sel": ".rules-overlay .rs-got / :active",
+    "treatment": "flat amber slab (var(--amber)) with ink text, 1px amber border, 2px hard maple shadow, disp 17px .09em; press -> maple fill, chalk text, no shadow. Beats presti-spin on specificity (0,2,0)"
+   },
+   {
+    "sel": ".reel-done / :active",
+    "treatment": "authored: amber slab, ink mono 13px 700, 8px radius, 2px maple hard shadow. In practice overridden by button.presti-spin (0,1,1 > 0,1,0) on the dark reel"
+   },
+   {
+    "sel": ".reel-overlay.riso .reel-done / :active",
+    "treatment": "riso: navy slab, cream text, 3px pink hard offset shadow; press -> deep pink #C8217A"
+   },
+   {
+    "sel": ".rr #shareTeamBtn.presti-spin (+ .elite-result, @keyframes rr-elite)",
+    "treatment": "navy slab, cream disp 700 20px .1em, 6px radius, 4px pink hard offset shadow, press translates 4px into it; elite: sunflower offset + pulsing 5px sunflower ring"
+   },
+   {
+    "sel": ".rr .actions #againBtn.presti-spin",
+    "treatment": "paper slab (cream + paper texture), navy disp 700 18px, 6px radius, 4px pink hard offset shadow"
+   },
+   {
+    "sel": ".bt-big, .bt-big.yes (+ :active)",
+    "treatment": "ballot keycap, 10px radius, min-h 64, disp 700 26px uppercase navy; YES = sunflower face + 5px #C7870A extrusion, press -> 2px"
+   },
+   {
+    "sel": ".bt-done / :active",
+    "treatment": "navy slab, cream disp 700 18px, 8px radius, 3px pink hard offset shadow; press translates 3px"
+   },
+   {
+    "sel": ".bt-big:focus-visible, .bt-tile:focus-visible, .bt-done:focus-visible, .bt-change:focus-visible",
+    "treatment": "shared 3px navy outline offset 3px"
+   }
+  ],
+  "button-secondary": [
+   {
+    "sel": ".rules-overlay a.rs-ref-btn / :active",
+    "treatment": "dark slab: tunnel fill, amber text, maple-line border, 2px tunnel-2 hard shadow, 14px .06em; press -> maple fill chalk text"
+   },
+   {
+    "sel": ".bt-tile (+ :active, b, small, .neg b)",
+    "treatment": "tag-picker tile: 9px radius, 1.5px 28% navy outline, 35% white wash on paper, disp 700 16px name + 12.5px ink-2 note; press -> 30% sunflower"
+   }
+  ],
+  "button-ghost": [
+   {
+    "sel": "#app .du-exit / :active",
+    "treatment": "bare text button EXIT RUN: italic disp 600 15px uppercase chalk, no bg/border/shadow; press -> amber"
+   },
+   {
+    "sel": "body.gating .gate-back",
+    "treatment": "italic disp 600 uppercase text button (colors from elsewhere)"
+   },
+   {
+    "sel": ".hh-btn.hh-bref / :hover",
+    "treatment": "<a> ghost: transparent, 1px 50% amber outline, amber text, no shadow; hover full amber border"
+   },
+   {
+    "sel": ".hh-charity (+ .gone, :hover, phone width)",
+    "treatment": "authored ghost: transparent, 1px 60% amber outline, chalk mono .8rem .09em, 7px radius, min-h 44, full width on phones. BUT it is a <button> and presti-spin wins (0,1,1), so it renders as an amber keycap"
+   },
+   {
+    "sel": ".reel-skip / :active",
+    "treatment": "authored ghost: transparent, 1px maple-line, 6px radius, chalk-dim 9.5px .1em. <button> -> presti-spin wins, so it renders as an amber keycap"
+   },
+   {
+    "sel": ".reel-overlay.riso .reel-skip / :active",
+    "treatment": "riso: navy text and border-color (pink on press); background not reset, so the presti gradient still paints under navy text and border width stays 0"
+   },
+   {
+    "sel": ".bt-big.idk",
+    "treatment": "NOT SURE: transparent, 2px dashed 45% navy, ink-2 disp 18px, spans both columns"
+   },
+   {
+    "sel": ".bt-change",
+    "treatment": "bare underlined mono 12px .1em uppercase ink-2 text button"
+   }
+  ],
+  "button-danger": [
+   {
+    "sel": ".bt-big.no / :active",
+    "treatment": "scarlet #F65058 keycap, 10px radius, 5px #B8323B extrusion (2px pressed), navy disp 26px"
+   }
+  ],
+  "button-icon": [
+   {
+    "sel": ".rules-overlay .rs-close / :active",
+    "treatment": "34px square, 8px radius, 1px maple border on ink, amber x glyph (v41); press -> amber fill, ink glyph. Excluded from presti-spin"
+   }
+  ],
+  "chip": [
+   {
+    "sel": ".bt-tag (+ :active/.pressed, :focus-visible)",
+    "treatment": "ink keycap tag: sunflower #FFB511 face with 20% white halftone dots, 7px radius, min-h 34, 4px #C7870A extrusion + 45% white inset sheen, disp 700 14px uppercase navy; press translates 3px to a 1px extrusion; 3px navy focus ring"
+   },
+   {
+    "sel": ".bt-tag.neg (+ pressed)",
+    "treatment": "scarlet #F65058 face, 4px #B8323B extrusion"
+   },
+   {
+    "sel": ".bt-tag.off, .bt-tag.off.neg (+ pressed)",
+    "treatment": "unprinted: transparent with a 2px inset ring in the edge ink, text in the deep ink (#8A5D00 / #B42A36)"
+   },
+   {
+    "sel": ".bt-tag.mine::after",
+    "treatment": "2px riso-blue #0078BF ring, 11px radius, 5-7px outside the tag = your vote"
+   },
+   {
+    "sel": ".bt-tag.add (+ pressed)",
+    "treatment": "'+' tag: transparent, 2px dashed 55% navy border, 22px glyph; press -> 8% navy wash"
+   },
+   {
+    "sel": ".rr .bt-tags",
+    "treatment": "wrapping row of tags, min-h 38"
+   }
+  ],
+  "badge": [
+   {
+    "sel": ".sk-chip",
+    "treatment": "cost chip inside the skip keycap: mono 700 11px, 6px radius, 82% #150D03 fill, pale gold #FFD98A text, 45% black edge"
+   },
+   {
+    "sel": ".cap-row .cap-cost (+ .cc-tag, .cc-amt, .player-row.sel/.off/:active states)",
+    "treatment": "price box: ink fill, 1px maple-line border (amber when selected), 8px radius, 2px black hard drop (1px pressed); amount disp 700 16px amber, tag mono 7.5px maple"
+   },
+   {
+    "sel": ".pool-cue",
+    "treatment": "floating 999px pill: 88% ink, maple-line border, amber 9px .16em text, bobbing animation"
+   },
+   {
+    "sel": ".gate-drag",
+    "treatment": "999px pill: mono 700 .56em .16em amber on ink, maple-line border"
+   },
+   {
+    "sel": ".daily-stamp.stamp-top",
+    "treatment": "OFFICIAL/PRACTICE stamp spacing only (colors defined L2228-2232)"
+   },
+   {
+    "sel": ".reel-overlay.riso .riso-swept",
+    "treatment": "rubber stamp: 2px pink #E0348E border, 3px radius, rotated -9deg, 10px 700 .14em, blue offset text-shadow"
+   },
+   {
+    "sel": ".rr .bt-card .slot-badge / .rr .hot-pick .slot-badge",
+    "treatment": "navy fill cream text 11px, 3px radius (scarlet fill on the hot pick)"
+   },
+   {
+    "sel": ".bt-tag.q::before",
+    "treatment": "disputed '?' marker: 19px navy disc, cream glyph, 2px sunflower ring, pinned top-right of the tag"
+   },
+   {
+    "sel": ".bt-pill",
+    "treatment": "999px pill, 1.5px solid navy border, mono 11px .14em uppercase"
+   }
+  ],
+  "panel": [
+   {
+    "sel": ".mp-bank (+ bank-mid / bank-low / bank-zero / bank-down / bank-up, 640px + 420px restatements)",
+    "treatment": "v29 scoreboard: flat tunnel box, 10px radius, 1px 55% amber outline, two black inset shadows (recessed), no gradient/gloss; low state swaps the outline to whistle"
+   },
+   {
+    "sel": "#app .draft-utility",
+    "treatment": "3-col grid bar (EXIT RUN | pips + count | hoop mark), min-h 46, 1px tunnel-2 bottom rule"
+   },
+   {
+    "sel": ".rs-law, .rs-ref",
+    "treatment": "ink well with a 3px amber left bar, square corners"
+   },
+   {
+    "sel": ".tray (z-index/border-top-width), #app .ticket-actions, #app .ta-cap",
+    "treatment": "layout restatements only; skins defined earlier in the file"
+   }
+  ],
+  "frame": [
+   {
+    "sel": "#app .mode-panel, #app .cap-mode-panel",
+    "treatment": "wears .plq-frame.plq-slim (plaque at L2110); here only flex/grid layout: left meta | bank | rules button, restacked at 640/420/349px"
+   },
+   {
+    "sel": ".gate-var (+ -label, -name, -body)",
+    "treatment": "slim plaque insert (plq-frame plq-slim) centered under the gate law, 460px max"
+   },
+   {
+    "sel": "#app .rs-today, .rules-overlay .rs-today",
+    "treatment": "slim plaque inside the rules sheet (today's twist)"
+   },
+   {
+    "sel": ".board.daily-framed",
+    "treatment": "the ornate Daily results frame (defined elsewhere); here padding 18/14/16"
+   }
+  ],
+  "ticket": [
+   {
+    "sel": "#app .ticket, #app .ticket-sub, #app .ticket-actions, .ticket-dec, .ticket-fr, .ticket-roll, .ticket-art (compact + 640px diet)",
+    "treatment": "compaction only: tighter padding, clamp(22px,6.8vw,28px) headline, 84px art; skin defined at L135+"
+   }
+  ],
+  "sheet": [
+   {
+    "sel": ".rules-overlay",
+    "treatment": "fixed full-screen scrim, 87% rgb(6,8,11), centers the sheet, z 110"
+   },
+   {
+    "sel": ".rules-sheet (+ .rs-head, .rs-scroll, .rs-foot)",
+    "treatment": "440px x 88vh modal wearing .plq-frame; header row, scrolling body, footer with 1px tunnel-2 top rule and two buttons"
+   },
+   {
+    "sel": ".bt-backdrop",
+    "treatment": "fixed scrim 58% rgb(9,11,18), fades in"
+   },
+   {
+    "sel": ".bt-sheet (+ .bt-grab, .bt-in)",
+    "treatment": "cream paper bottom sheet, 16px top radius, upward 40px black shadow, slides up 0.22s; 42x5 navy-alpha grab handle"
+   }
+  ],
+  "overlay": [
+   {
+    "sel": ".reel-overlay",
+    "treatment": "full-screen 94% rgb(10,12,16) scrim, z 240"
+   },
+   {
+    "sel": ".reel-card, .reel-head, .reel-acts",
+    "treatment": "dark card: ink fill, 1px maple-line border, 12px radius, 18/60px black shadow; header with 1px tunnel-2 rule"
+   },
+   {
+    "sel": ".hh-overlay.hh-mid",
+    "treatment": "z-index 250 only (stacks the mid-season Heat Check over the reel)"
+   },
+   {
+    "sel": "body.gating .site-head/.site-foot/#app/.gate, .gate-tipoff, .gate .hh-lever",
+    "treatment": "full-screen Daily gate: chrome hidden, lever with amber focus ring and idle nudge animation"
+   }
+  ],
+  "print": [
+   {
+    "sel": ".reel-overlay.riso .reel-card",
+    "treatment": "cream #F4ECDD paper slip, JS paper texture, tan #CFC2A6 edge, 12px radius (inherited), 20/70px black shadow"
+   },
+   {
+    "sel": ".reel-overlay.riso .reel-head",
+    "treatment": "3-col grid header with a solid 1.5px navy ledger rule"
+   },
+   {
+    "sel": ".reel-overlay.riso .riso-flash / .riso-fx / .riso-strip",
+    "treatment": "scarlet multiply flash layer, full-card effects canvas, multiply calendar canvas strips"
+   },
+   {
+    "sel": ".rr (token scope)",
+    "treatment": "declares the 12 --rr-* riso inks"
+   },
+   {
+    "sel": ".rr .rr-board, .rr .bt-card, .rr .twoway, .rr .rr-climb .climb, .rr .ledger",
+    "treatment": "cream paper slips on the dark table: --rr-paper texture at 720px, no border, 3px radius, 1px dark lip + deep soft lift"
+   },
+   {
+    "sel": ".rr .bt-card.hot-pick",
+    "treatment": "2px scarlet ring instead of a border"
+   },
+   {
+    "sel": ".rr .rr-print, .rr .rr-print-canvas",
+    "treatment": "hero canvas print (results-riso.js), 2px radius, bleeds 4px"
+   }
+  ],
+  "toast": [
+   {
+    "sel": ".bt-toast (+ .on, body.bt-open)",
+    "treatment": "navy slab, cream disp 700 17px, 8px radius, 3px pink hard offset shadow; bottom center, jumps to top while the sheet is open"
+   }
+  ],
+  "input": [
+   {
+    "sel": ".year-face (+ .yf-caret, .year-fixed, .year-wrap:focus-within)",
+    "treatment": "visible face of the season select: mono 11px maple on ink, 1px maple-line, 5px radius, amber caret; focus -> maple border, amber text; fixed variant is bare chalk-dim"
+   },
+   {
+    "sel": ".year-wrap .year-sel",
+    "treatment": "invisible native select laid over the face (16px to stop iOS zoom)"
+   }
+  ],
+  "link": [
+   {
+    "sel": ".pr-bref (+ ::after, :hover, :focus-visible)",
+    "treatment": "inherits color, dotted 55% gold underline, small NE arrow; hover amber; amber focus ring"
+   },
+   {
+    "sel": ".pr-team, .res-comp .cl-link, .cl-link, .bref-credit a, .gate-scout a",
+    "treatment": "quiet dotted underline family (gold 40-45% alpha or inherited); hover amber"
+   },
+   {
+    "sel": ".art-bref",
+    "treatment": "Tribune citation: inherits newspaper ink, dotted sepia #7A5A2C underline at 60%"
+   },
+   {
+    "sel": ".rs-link, .rs-ref-body a",
+    "treatment": "amber text link, dotted underline in body copy"
+   },
+   {
+    "sel": ".rr .res-comp .cl-link, .rr .bt-name .pr-bref, .rr .bt-ssn .pr-team, .bt-foot a",
+    "treatment": "paper versions: dotted underline in pink (comp) or 35% navy"
+   }
+  ],
+  "heading": [
+   {
+    "sel": ".gate-title",
+    "treatment": "disp 2.3rem uppercase .05em amber, 1px black drop"
+   },
+   {
+    "sel": ".gate-tipoff .gate-pull (+ b, i)",
+    "treatment": "disp 700 1.4rem .06em amber with a 12px amber glow, bouncing arrow"
+   },
+   {
+    "sel": ".mp-id, .mp-name, .rs-title, .rs-today-name, .gate-var-name",
+    "treatment": "disp 600-700, 15-27px, chalk or amber"
+   },
+   {
+    "sel": ".res-comp, .daily-head-line (+ .dhl-dot)",
+    "treatment": "disp 700 15px uppercase letterspaced amber"
+   },
+   {
+    "sel": ".reel-mo, .reel-overlay.riso .reel-mo",
+    "treatment": "disp 700 18px .08em chalk (navy on paper)"
+   },
+   {
+    "sel": ".rr .res-comp, .rr .daily-head-line",
+    "treatment": "paper: italic disp 600 21px navy / 14px navy left-aligned, pink dots"
+   },
+   {
+    "sel": ".bt-q (+ mark, mark.neg), .bt-h",
+    "treatment": "disp 700 31px/28px uppercase; the trait word gets a sunflower (or scarlet) highlighter band"
+   }
+  ],
+  "eyebrow": [
+   {
+    "sel": ".gate-eyebrow, .gate-var-label, .rs-today-label, .rs-ref-label, .mp-target, .rs-target",
+    "treatment": "small letterspaced amber labels"
+   },
+   {
+    "sel": ".rs-eyebrow, .reel-eyebrow, .cc-tag",
+    "treatment": "mono 7.5-9.5px .16em uppercase maple"
+   },
+   {
+    "sel": ".mp-row2, .du-count",
+    "treatment": "8.5-9.5px uppercase chalk-dim meta"
+   },
+   {
+    "sel": ".mpb-lab",
+    "treatment": "9px 700 .28em BANK label, 78% amber; boxed with a 45% amber outline on phones; whistle when low"
+   },
+   {
+    "sel": ".reel-overlay.riso .riso-streak (+ .hot/.dead/.cold)",
+    "treatment": "10.5px 700 .12em pink; hot = brighter pink with sunflower offset; dead/cold = deep scarlet (dead struck through)"
+   },
+   {
+    "sel": ".rr .rr-eyebrow, .rr .rr-board .eyebrow",
+    "treatment": "11px .2em cream on the dark table with a pink offset / navy on paper"
+   },
+   {
+    "sel": ".bt-who, .bt-grp",
+    "treatment": "mono 11-12px ink-2 (grp .18em uppercase)"
+   }
+  ],
+  "body": [
+   {
+    "sel": ".gate-law p, .gate-var-body, .gate-target",
+    "treatment": "sans 0.92-1.02rem/1.5 chalk (dim for var body); target line in whistle with a faint goldenrod top rule"
+   },
+   {
+    "sel": ".rs-law p, .rs-list li (+ ::marker), .rs-today-body, .rs-ref-body, .rs-note",
+    "treatment": "13.5px/1.45-1.5 chalk; square maple list markers; mono italic dim note"
+   },
+   {
+    "sel": ".reel-note, .reel-overlay.riso .reel-note",
+    "treatment": "12.5px chalk-dim (italic ink-2 on paper)"
+   },
+   {
+    "sel": ".bref-credit, .gate-scout, .rr .bref-credit",
+    "treatment": "mono ~0.66rem whisper, chalk-dim (62% cream on the riso table)"
+   },
+   {
+    "sel": ".bt-def, .bt-sub, .bt-you, .bt-counting, .bt-foot",
+    "treatment": "ink-2 on paper, 11-16px, mono for meta"
+   }
+  ],
+  "data": [
+   {
+    "sel": ".mpb-amt (+ state classes), .mpb-delta (.neg/.pos)",
+    "treatment": "disp 800 clamp(28-36px) tabular amber with 1px black drop; state colors: #FFA043 mid, whistle low/zero, #FF8A77 spend flash, #7AE08D refund flash"
+   },
+   {
+    "sel": ".cc-amt, .m-lite, .comp-pct",
+    "treatment": "disp 700 amber amounts; lighter smaller trailing M"
+   },
+   {
+    "sel": ".reel-run, .reel-mo-rec, .reel-final-rec",
+    "treatment": "amber records (44px final) on the dark reel"
+   },
+   {
+    "sel": ".reel-day (+ .w, .l), .reel-grid",
+    "treatment": "25px mono 11px 700 date squares, 5px radius, tunnel-2 edge; win = amber fill ink text, loss = ember #7e2a24/#a33a32 with a pop"
+   },
+   {
+    "sel": ".reel-overlay.riso .reel-run, .reel-final-rec, .reel-day.w/.l",
+    "treatment": "navy disp 30px record with pink offset, scarlet loss count; sunflower/scarlet date squares (DOM fallback for the canvas strip)"
+   },
+   {
+    "sel": ".cy-dot, .cy-label",
+    "treatment": "YOUR FIVE marker: triple amber halo on the dot, triple amber bloom on the label"
+   },
+   {
+    "sel": ".climb-summit-cap",
+    "treatment": "no backing, ink text-halo"
+   },
+   {
+    "sel": ".rr .rr-print .big, .rr .bt-val (+ .hot-bonus), .rr .bt-box",
+    "treatment": "disp 88px / DM Serif Display 44px navy with pink offset; mono box score 11.5-12.5px with ink-2 small labels"
+   },
+   {
+    "sel": ".rr .climb-pin, .rr .climb-tag, .rr .rail-path, .rr .fill-path, .rr .cy-dot/.cy-arrow/.cy-label",
+    "treatment": "climb on paper: 14% navy rail, riso-blue fill path and YOUR FIVE marker (22% blue halo), navy/ink-2 pins and tags"
+   },
+   {
+    "sel": ".bt-pct (.yes/.no)",
+    "treatment": "disp 700 50px, navy or deep scarlet, 35% pink offset"
+   }
+  ],
+  "divider": [
+   {
+    "sel": ".gate-target (border-top), .rs-foot (border-top), #app .draft-utility (border-bottom), .reel-head (border-bottom)",
+    "treatment": "1px rules: tunnel-2 on dark, faint goldenrod on the gate target, solid 1.5px navy on the riso reel head"
+   }
+  ],
+  "row": [
+   {
+    "sel": ".player-row.cap-row (+ .cap-main, .cap-meta, .pr-pos, .cap-season)",
+    "treatment": "2-col grid row: name/meta stack left, price box right; 9px vertical padding"
+   },
+   {
+    "sel": ".reel-act (+ .reel-mo-line), .reel-overlay.riso .reel-act",
+    "treatment": "month blocks separated by a dotted tunnel-2 rule (dashed 30% navy on paper)"
+   },
+   {
+    "sel": ".bt-row, .rr .bt-head",
+    "treatment": "flex space-between rows"
+   }
+  ],
+  "progress": [
+   {
+    "sel": ".du-pips span",
+    "treatment": "11px pick pips in the utility bar"
+   },
+   {
+    "sel": ".mpb-meter (+ ::after), .mpb-fill",
+    "treatment": "8px track, 3px radius, 35% amber outline, 38% black well; one proportional amber fill under a notch overlay painted in --tunnel (10 notches, 5 on phones)"
+   },
+   {
+    "sel": ".rr .tw-track, .rr .tw-fill (.tw-off/.tw-def/.tw-nub)",
+    "treatment": "10px bar, 12% navy track, navy fill with pink offset, scarlet nub"
+   },
+   {
+    "sel": ".bt-bar (+ i)",
+    "treatment": "10px bar: scarlet NO track with sunflower YES fill"
+   },
+   {
+    "sel": ".lineup-rail, .lineup-slot, .ls-token, .ls-name (640px)",
+    "treatment": "mobile sizing of the tray medallions (40px tokens)"
+   }
+  ],
+  "table": [
+   {
+    "sel": ".rr .ledger, .rr .ledger-row (+ .why, .total), .rr .ledger-amt.*",
+    "treatment": "scoring ledger on paper: dashed --rr-rule row rules, 3px double navy total rule, deep scarlet tax, green zero/good/hot"
+   }
+  ],
+  "nav": [
+   {
+    "sel": "body.drafting .site-head, body.gating .site-head, body.gating .site-foot",
+    "treatment": "masthead/footer hidden during the draft and the gate"
+   },
+   {
+    "sel": ".du-brandbox, .du-brand",
+    "treatment": "24x27 hoop mark SVG at 0.9 opacity, right end of the utility bar"
+   }
+  ],
+  "other": [
+   {
+    "sel": ".pool-fade",
+    "treatment": "fixed 44px continuation fade above the tray, transparent ink -> ink at 82%"
+   },
+   {
+    "sel": "body.drafting, body.drafting #app, body.drafting .pool",
+    "treatment": "draft viewport: page locked, pool is the only scroller"
+   },
+   {
+    "sel": ".bt-hand (+ .show, .tap)",
+    "treatment": "44px white glove SVG hint with a 4px/6px black drop-shadow filter"
+   }
+  ]
+ },
+ "notes": [
+  "COUNT: grep over styles.css lines 2241-3369 finds 194 color literals (hex + rgb/rgba; no hsl) on 140 lines; this file has 194 entries, one per literal, validated line by line. Named colors in range: only 'transparent' (excluded as instructed); the other named-color regex hits are 'white-space' or words inside comments.",
+  "ALREADY THEMABLE: the range also carries 205 var() color references (var(--amber) x57, --rr-navy x21, --maple x17, --ink x15, --chalk x15, --rr-c x11, --chalk-dim x10, --rr-navy2 x8, --maple-line x8, --tunnel-2 x6, --rr-scar-deep x6, --rr-pink x6, --whistle x5, --tunnel x5, --rr-sun x4, --rr-blue x4, --rr-scar x3, --rr-green x2, --rr-rule x1, --ok x1). Those follow the :root / .rr tokens and need no literal work.",
+  "RISO TOKENS: .rr (L3161-3166) declares 12 --rr-* inks. Map these to theme roles and most of the results page follows. BUT the ballot sheet/toast/tags (.bt-*, appended to body outside .rr, L3234-3362) hard-code the same inks instead of using them: #232A4E, #F4ECDD, #FFB511, #C7870A, #F65058, #B8323B, #B42A36, #8A5D00, #0078BF, #FF48B0, #5B5E73, #4A4E66. --rr-sun-edge, --rr-sun-deep and --rr-scar-edge are declared but never referenced in styles.css. Suggest lifting the --rr-* set to :root (or to a shared .riso scope) so .bt-* and .reel-overlay.riso can use them.",
+  "RISO REEL (.reel-overlay.riso, L3123-3149) also hard-codes its inks, with near-duplicates of the .rr palette: scarlet edge/deep #C92F3B and #D63A45 (vs #B8323B / #B42A36), pinks #C8217A, #D6208A, #E0348E (vs #FF48B0), sunflower edge #E0981A (vs #C7870A), plus a tan paper edge #CFC2A6. Consolidation candidates when tokenizing.",
+  "AMBER ALPHAS: rgba(255,181,46,a) = exact --amber at 9 different alphas (.32 .35 .4 .45 .5 .55 .6 .78 .95). Near-ambers that are NOT --amber: rgba(230,179,61,a) = #E6B33D (link underlines only, 3 uses), rgba(232,154,28,.24) = spin-face #E89A1C (gate-target rule), rgba(255,214,131,.95) = #FFD683 (two focus rings), #FFD98A (skip-chip text), rgba(21,13,3,.82) = #150D03 (skip-chip fill, a deeper spin-ink), rgba(42,26,5,a) = spin-ink #2A1A05 (rules-button icon well).",
+  "REDS/ORANGES ON DARK: #FF8A77 (spend flash, 3 uses), #FFA043 (bank-mid caution, 2 uses), rgba(224,82,60,a) (bank-low outlines: close to but not equal to --whistle #E2654E = 226,101,78), #7e2a24 + #a33a32 (loss squares on the dark reel; the edge is LIGHTER than the fill). #FFA043 is a distinct caution tier with no role; classified bad, but a 'warn' role would keep bank-mid and bank-low distinguishable under a theme.",
+  "GREENS: .mpb-delta.pos uses var(--ok) #8FB99B while .bank-up uses literal #7AE08D in the same widget: two different 'good' greens for the same refund event.",
+  "SCRIMS: three different overlay bases: rgba(6,8,11,.87) rules sheet, rgba(10,12,16,.94) season reel, rgba(9,11,18,.58) ballot backdrop. All classified overlay.",
+  "NAVY ALPHA SPLIT: rgb(35,42,78) = ink. Classified line-paper when it draws a line (borders, dashed outlines, underlines, SVG rail stroke, rings, the grab handle) and ink when it is an alpha wash fill (.bt-tag.add pressed 8%, .rr .tw-track 12%), because a theme's line-paper color at 8% would vanish.",
+  "SPECIFICITY BUG (affects what these colors actually paint): decorate3dButtons (app.js L729-750, MutationObserver on the whole document) adds .presti-spin to every <button> not in BTN3D_EXCLUDE. button.presti-spin is (0,1,1) and sets background, border:0, color and box-shadow, so it beats single-class rules (0,1,0). Buttons in this range whose authored skin is therefore overridden: .hh-charity (authored transparent ghost, 60% amber outline, chalk text: renders as an amber keycap), .reel-skip (authored transparent ghost with maple-line border: amber keycap), dark-reel .reel-done (amber slab with maple shadow: presti gradient instead). .reel-overlay.riso .reel-skip (0,3,0) sets only color and border-color, so on paper it is navy text on the amber presti gradient with a zero-width border. Same class of bug as the documented .hh-skip fix. Deduced from the cascade, not checked in a browser. Fix: add these classes to BTN3D_EXCLUDE or raise specificity.",
+  "DEAD VALUE: .bt-tag.add box-shadow inset rgba(35,42,78,0.5) at L3259 is overridden by the next rule at L3262 (box-shadow: none; dashed border).",
+  "NOT REACHABLE FROM CSS (JS/canvas/SVG in this range's components): (1) reel-riso.js: calendar strips (.riso-strip) and effects (.riso-fx) are canvases inked from INKS rgb arrays sun [255,181,17], pink [255,72,176], scarlet [246,80,88] (L49-52), and the effects text uses inkPattern(scarlet); the reel card's paper texture is a canvas data URL set as card.style.backgroundImage (L256) drawn with #F4ECDD, #8b7f68, #776c5a, #ffffff. (2) results-riso.js: the hero print (.rr-print-canvas) uses INKS sun, pink, blue [0,120,191], teal [0,131,138], orange [255,108,47] (L82-86) plus PAPER #F4ECDD (L52) and the same paper-grain colors (L140, L147); app.js L6256 sets --rr-paper on :root to T82PRINT.paper() (a cream texture image), so slips keep a cream texture whatever --rr-c is. (3) app.js bookIconSvg (the HOW TO PLAY icon) hard-codes fill #2A1A05 and #FFF3D6; hoopMarkSvg (.du-brand) hard-codes #2A1A05 and #FFF3D6 next to var(--amber)/var(--maple). (4) app.js L2887 glove (.bt-hand) SVG hard-codes fill #FFFFFF and stroke #232A4E. (5) .mpb-fill width is set inline from JS (width only, no color); bank state colors come from classes (tickBank) and ARE reachable from CSS.",
+  "FAMILY CALLS: the reel's structural pieces are family overlay on the dark reel and print on the riso reel; text and buttons inside both are classed by element type (eyebrow, data, heading, button-*). .sk-chip and .cap-cost are classed badge (small non-interactive labels), not chip. The shared focus ring list at L3329 is filed under button-primary although it also covers tiles, done and change."
+ ],
+ "counts": {
+  "literals_grep": 194,
+  "entries": 194,
+  "lines_with_literals": 140
+ }
+}

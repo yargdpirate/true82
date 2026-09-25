@@ -1,0 +1,2506 @@
+{
+ "key": "css-b",
+ "entries": [
+  {
+   "src": "styles.css",
+   "line": 1109,
+   "sel": ".cap-info",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.35)",
+   "role": "shadow",
+   "family": "button-icon",
+   "note": "1px drop under the amber (i) disc"
+  },
+  {
+   "src": "styles.css",
+   "line": 1118,
+   "sel": ".daily-strap .strap-info",
+   "prop": "box-shadow",
+   "value": "#9E5A0F",
+   "role": "accent-edge",
+   "family": "button-icon",
+   "note": "fallback of var(--plq-deep, #9E5A0F): 2px extrusion under the amber (i) disc; at runtime --plq-deep comes from .plq-slim (2136)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1118,
+   "sel": ".daily-strap .strap-info",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.5)",
+   "role": "shadow",
+   "family": "button-icon"
+  },
+  {
+   "src": "styles.css",
+   "line": 1120,
+   "sel": ".daily-strap .strap-info:active",
+   "prop": "box-shadow",
+   "value": "#9E5A0F",
+   "role": "accent-edge",
+   "family": "button-icon",
+   "note": "pressed extrusion, fallback of var(--plq-deep)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1133,
+   "sel": ".hh-overlay",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(30,22,8,0.93)",
+   "role": "overlay",
+   "family": "overlay",
+   "note": "warm-black scrim center of the Hot Hand overlay"
+  },
+  {
+   "src": "styles.css",
+   "line": 1133,
+   "sel": ".hh-overlay",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(5,6,8,0.97)",
+   "role": "overlay",
+   "family": "overlay",
+   "note": "scrim outer edge"
+  },
+  {
+   "src": "styles.css",
+   "line": 1140,
+   "sel": ".hh-overlay.hh-reveal",
+   "prop": "background (radial-gradient)",
+   "value": "rgb(30,22,8)",
+   "role": "overlay",
+   "family": "overlay",
+   "note": "opaque version of the scrim (hides the board)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1140,
+   "sel": ".hh-overlay.hh-reveal",
+   "prop": "background (radial-gradient)",
+   "value": "rgb(5,6,8)",
+   "role": "overlay",
+   "family": "overlay"
+  },
+  {
+   "src": "styles.css",
+   "line": 1149,
+   "sel": ".hh-eyebrow",
+   "prop": "text-shadow",
+   "value": "rgba(255,181,46,0.5)",
+   "role": "accent",
+   "family": "heading",
+   "note": "amber glow around the 30px \"See Your Results\" display line"
+  },
+  {
+   "src": "styles.css",
+   "line": 1166,
+   "sel": ".hh-ball",
+   "prop": "filter drop-shadow",
+   "value": "rgba(0,0,0,0.5)",
+   "role": "shadow",
+   "family": "other",
+   "note": "basketball art"
+  },
+  {
+   "src": "styles.css",
+   "line": 1170,
+   "sel": ".hh-hoop",
+   "prop": "filter drop-shadow",
+   "value": "rgba(0,0,0,0.55)",
+   "role": "shadow",
+   "family": "other",
+   "note": "rim + net art"
+  },
+  {
+   "src": "styles.css",
+   "line": 1177,
+   "sel": ".hh-lever.ignited .hh-ball",
+   "prop": "filter drop-shadow",
+   "value": "#ff8a1e",
+   "role": "fixed",
+   "family": "other",
+   "note": "orange fire glow on the ignited ball; literal fire illustration in the Hot Hand lever; matches the hoop rim #e0531a hard-coded in the ballLeverHtml() SVG (app.js), which CSS cannot theme. Alternative if flames should follow the theme: accent-hi/accent/accent-edge (or a new heat role)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1177,
+   "sel": ".hh-lever.ignited .hh-ball",
+   "prop": "filter drop-shadow",
+   "value": "#ffd54a",
+   "role": "fixed",
+   "family": "other",
+   "note": "yellow fire glow; literal fire illustration in the Hot Hand lever; matches the hoop rim #e0531a hard-coded in the ballLeverHtml() SVG (app.js), which CSS cannot theme. Alternative if flames should follow the theme: accent-hi/accent/accent-edge (or a new heat role)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1180,
+   "sel": ".hh-fire i",
+   "prop": "background (radial-gradient)",
+   "value": "#fff",
+   "role": "fixed",
+   "family": "other",
+   "note": "white-hot flame core; literal fire illustration in the Hot Hand lever; matches the hoop rim #e0531a hard-coded in the ballLeverHtml() SVG (app.js), which CSS cannot theme. Alternative if flames should follow the theme: accent-hi/accent/accent-edge (or a new heat role)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1180,
+   "sel": ".hh-fire i",
+   "prop": "background (radial-gradient)",
+   "value": "#ffe07a",
+   "role": "fixed",
+   "family": "other",
+   "note": "flame yellow; literal fire illustration in the Hot Hand lever; matches the hoop rim #e0531a hard-coded in the ballLeverHtml() SVG (app.js), which CSS cannot theme. Alternative if flames should follow the theme: accent-hi/accent/accent-edge (or a new heat role)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1180,
+   "sel": ".hh-fire i",
+   "prop": "background (radial-gradient)",
+   "value": "#ff9a24",
+   "role": "fixed",
+   "family": "other",
+   "note": "flame orange; literal fire illustration in the Hot Hand lever; matches the hoop rim #e0531a hard-coded in the ballLeverHtml() SVG (app.js), which CSS cannot theme. Alternative if flames should follow the theme: accent-hi/accent/accent-edge (or a new heat role)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1180,
+   "sel": ".hh-fire i",
+   "prop": "background (radial-gradient)",
+   "value": "#e0531a",
+   "role": "fixed",
+   "family": "other",
+   "note": "flame red edge (= hoop rim color in JS SVG); literal fire illustration in the Hot Hand lever; matches the hoop rim #e0531a hard-coded in the ballLeverHtml() SVG (app.js), which CSS cannot theme. Alternative if flames should follow the theme: accent-hi/accent/accent-edge (or a new heat role)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1180,
+   "sel": ".hh-fire i",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(224,83,26,0)",
+   "role": "fixed",
+   "family": "other",
+   "note": "transparent tail of the flame red, keeps the fade on-hue; literal fire illustration in the Hot Hand lever; matches the hoop rim #e0531a hard-coded in the ballLeverHtml() SVG (app.js), which CSS cannot theme. Alternative if flames should follow the theme: accent-hi/accent/accent-edge (or a new heat role)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1194,
+   "sel": ".hh-lever-hint",
+   "prop": "text-shadow",
+   "value": "rgba(255,181,46,0.45)",
+   "role": "accent",
+   "family": "eyebrow",
+   "note": "glow on the amber PULL DOWN hint"
+  },
+  {
+   "src": "styles.css",
+   "line": 1212,
+   "sel": ".hh-window",
+   "prop": "-webkit-mask (linear-gradient)",
+   "value": "#000",
+   "role": "fixed",
+   "family": "overlay",
+   "note": "mask-image stop: only the alpha channel matters, the color is never seen"
+  },
+  {
+   "src": "styles.css",
+   "line": 1212,
+   "sel": ".hh-window",
+   "prop": "-webkit-mask (linear-gradient)",
+   "value": "#000",
+   "role": "fixed",
+   "family": "overlay",
+   "note": "mask-image stop: only the alpha channel matters, the color is never seen"
+  },
+  {
+   "src": "styles.css",
+   "line": 1213,
+   "sel": ".hh-window",
+   "prop": "mask (linear-gradient)",
+   "value": "#000",
+   "role": "fixed",
+   "family": "overlay",
+   "note": "mask-image stop: only the alpha channel matters, the color is never seen"
+  },
+  {
+   "src": "styles.css",
+   "line": 1213,
+   "sel": ".hh-window",
+   "prop": "mask (linear-gradient)",
+   "value": "#000",
+   "role": "fixed",
+   "family": "overlay",
+   "note": "mask-image stop: only the alpha channel matters, the color is never seen"
+  },
+  {
+   "src": "styles.css",
+   "line": 1221,
+   "sel": ".hh-name.hot",
+   "prop": "color",
+   "value": "#fff",
+   "role": "light",
+   "family": "overlay",
+   "note": "pure white text for the landed reel name (hotter than chalk); stays white because the overlay is always dark"
+  },
+  {
+   "src": "styles.css",
+   "line": 1221,
+   "sel": ".hh-name.hot",
+   "prop": "text-shadow",
+   "value": "rgba(255,181,46,0.95)",
+   "role": "accent",
+   "family": "overlay",
+   "note": "tight amber glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1221,
+   "sel": ".hh-name.hot",
+   "prop": "text-shadow",
+   "value": "rgba(255,181,46,0.7)",
+   "role": "accent",
+   "family": "overlay",
+   "note": "wide amber glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1222,
+   "sel": ".hh-payline",
+   "prop": "border-top",
+   "value": "rgba(255,181,46,0.32)",
+   "role": "accent",
+   "family": "overlay",
+   "note": "faint amber payline rule framing the reel window"
+  },
+  {
+   "src": "styles.css",
+   "line": 1222,
+   "sel": ".hh-payline",
+   "prop": "border-bottom",
+   "value": "rgba(255,181,46,0.32)",
+   "role": "accent",
+   "family": "overlay",
+   "note": "faint amber payline rule"
+  },
+  {
+   "src": "styles.css",
+   "line": 1226,
+   "sel": ".hh-seg",
+   "prop": "background",
+   "value": "rgba(185,138,79,0.14)",
+   "role": "metal",
+   "family": "progress",
+   "note": "empty heat segment: maple #B98A4F at 14%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1227,
+   "sel": ".hh-seg.fill.lvl0",
+   "prop": "background",
+   "value": "rgba(185,138,79,0.30)",
+   "role": "metal",
+   "family": "progress",
+   "note": "heat level 0 fill, maple at 30%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1228,
+   "sel": ".hh-seg.fill.lvl1",
+   "prop": "background",
+   "value": "rgba(185,138,79,0.55)",
+   "role": "metal",
+   "family": "progress",
+   "note": "heat level 1 fill, maple at 55%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1229,
+   "sel": ".hh-seg.fill.lvl2",
+   "prop": "background",
+   "value": "rgba(255,181,46,0.70)",
+   "role": "accent",
+   "family": "progress",
+   "note": "heat level 2 fill, amber at 70%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1230,
+   "sel": ".hh-seg.fill.lvl3",
+   "prop": "background",
+   "value": "rgba(255,200,90,0.90)",
+   "role": "accent-hi",
+   "family": "progress",
+   "note": "heat level 3, pale gold rgb(255,200,90)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1231,
+   "sel": ".hh-seg.fill.lvl4",
+   "prop": "background",
+   "value": "#ffe9b0",
+   "role": "accent-hi",
+   "family": "progress",
+   "note": "heat level 4, cream-gold #ffe9b0 (spec accent-hi)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1232,
+   "sel": ".hh-seg.lit",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,0.75)",
+   "role": "accent",
+   "family": "progress",
+   "note": "glow on the currently lit segment (fill itself is var(--amber))"
+  },
+  {
+   "src": "styles.css",
+   "line": 1233,
+   "sel": ".hh-seg.result",
+   "prop": "box-shadow",
+   "value": "rgba(255,233,176,0.95)",
+   "role": "accent-hi",
+   "family": "progress",
+   "note": "glow on the landed segment, #ffe9b0 at 95%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1237,
+   "sel": ".hh-heatlabel.lvl2",
+   "prop": "text-shadow",
+   "value": "rgba(255,181,46,0.55)",
+   "role": "accent",
+   "family": "heading",
+   "note": "amber glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1238,
+   "sel": ".hh-heatlabel.lvl3",
+   "prop": "color",
+   "value": "#ffd778",
+   "role": "accent-hi",
+   "family": "heading",
+   "note": "pale gold text"
+  },
+  {
+   "src": "styles.css",
+   "line": 1238,
+   "sel": ".hh-heatlabel.lvl3",
+   "prop": "text-shadow",
+   "value": "rgba(255,200,90,0.8)",
+   "role": "accent-hi",
+   "family": "heading",
+   "note": "pale gold glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1239,
+   "sel": ".hh-heatlabel.lvl4",
+   "prop": "color",
+   "value": "#fff",
+   "role": "light",
+   "family": "heading",
+   "note": "white-hot label text"
+  },
+  {
+   "src": "styles.css",
+   "line": 1239,
+   "sel": ".hh-heatlabel.lvl4",
+   "prop": "text-shadow",
+   "value": "#fff",
+   "role": "light",
+   "family": "heading",
+   "note": "white inner glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1239,
+   "sel": ".hh-heatlabel.lvl4",
+   "prop": "text-shadow",
+   "value": "rgba(255,210,120,0.9)",
+   "role": "accent-hi",
+   "family": "heading",
+   "note": "gold outer glow rgb(255,210,120)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1243,
+   "sel": ".hh-net.over",
+   "prop": "color",
+   "value": "#fff",
+   "role": "light",
+   "family": "data",
+   "note": "net rating number turns white once over the 82-0 threshold"
+  },
+  {
+   "src": "styles.css",
+   "line": 1243,
+   "sel": ".hh-net.over",
+   "prop": "text-shadow",
+   "value": "#fff",
+   "role": "light",
+   "family": "data",
+   "note": "white inner glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1243,
+   "sel": ".hh-net.over",
+   "prop": "text-shadow",
+   "value": "rgba(255,210,120,0.95)",
+   "role": "accent-hi",
+   "family": "data",
+   "note": "gold outer glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1245,
+   "sel": ".hh-bar",
+   "prop": "background",
+   "value": "rgba(185,138,79,0.14)",
+   "role": "metal",
+   "family": "progress",
+   "note": "empty net-rating track, maple at 14%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1246,
+   "sel": ".hh-fill",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(255,181,46,0.7)",
+   "role": "accent",
+   "family": "progress",
+   "note": "fill start, amber at 70%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1246,
+   "sel": ".hh-fill",
+   "prop": "background (linear-gradient)",
+   "value": "#ffe9b0",
+   "role": "accent-hi",
+   "family": "progress",
+   "note": "fill end, #ffe9b0"
+  },
+  {
+   "src": "styles.css",
+   "line": 1247,
+   "sel": ".hh-fill-bonus",
+   "prop": "background (linear-gradient)",
+   "value": "#ff4133",
+   "role": "bad",
+   "family": "progress",
+   "note": "red-hot clutch BONUS extension of the bar. Semantically POSITIVE (heat pushing past 82-0), it only borrows the hot-red slot (#FF4133 is listed under bad). Candidate for a heat role with the flames and .duel-fire"
+  },
+  {
+   "src": "styles.css",
+   "line": 1247,
+   "sel": ".hh-fill-bonus",
+   "prop": "background (linear-gradient)",
+   "value": "#ff7a5c",
+   "role": "bad",
+   "family": "progress",
+   "note": "lighter red-orange end of the bonus fill; same caveat"
+  },
+  {
+   "src": "styles.css",
+   "line": 1247,
+   "sel": ".hh-fill-bonus",
+   "prop": "box-shadow",
+   "value": "rgba(255,77,51,0.9)",
+   "role": "bad",
+   "family": "progress",
+   "note": "red glow of the bonus fill; same caveat"
+  },
+  {
+   "src": "styles.css",
+   "line": 1248,
+   "sel": ".hh-thresh",
+   "prop": "background",
+   "value": "#fff",
+   "role": "light",
+   "family": "progress",
+   "note": "white 2px threshold tick at the 82-0 line"
+  },
+  {
+   "src": "styles.css",
+   "line": 1248,
+   "sel": ".hh-thresh",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.9)",
+   "role": "light",
+   "family": "progress",
+   "note": "white glow on the tick"
+  },
+  {
+   "src": "styles.css",
+   "line": 1253,
+   "sel": ".hh-stamp",
+   "prop": "text-shadow",
+   "value": "rgba(255,210,120,0.7)",
+   "role": "accent-hi",
+   "family": "heading",
+   "note": "gold glow on the amber verdict stamp"
+  },
+  {
+   "src": "styles.css",
+   "line": 1295,
+   "sel": ".np-overlay",
+   "prop": "background",
+   "value": "rgba(6, 8, 11, 0)",
+   "role": "overlay",
+   "family": "overlay",
+   "note": "Tribune backdrop start state (alpha 0), animates to .82 via np-dim; keep hue so the fade interpolates cleanly"
+  },
+  {
+   "src": "styles.css",
+   "line": 1298,
+   "sel": "@keyframes np-dim (to) \u2014 animates .np-overlay",
+   "prop": "background",
+   "value": "rgba(6, 8, 11, 0.82)",
+   "role": "overlay",
+   "family": "overlay",
+   "note": "Tribune backdrop end state"
+  },
+  {
+   "src": "styles.css",
+   "line": 1302,
+   "sel": ".np-overlay.np-gate",
+   "prop": "background (radial-gradient)",
+   "value": "rgb(30, 22, 8)",
+   "role": "overlay",
+   "family": "overlay",
+   "note": "opaque warm-black backdrop (same as hh-reveal)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1302,
+   "sel": ".np-overlay.np-gate",
+   "prop": "background (radial-gradient)",
+   "value": "rgb(5, 6, 8)",
+   "role": "overlay",
+   "family": "overlay"
+  },
+  {
+   "src": "styles.css",
+   "line": 1306,
+   "sel": ".np-paper",
+   "prop": "--np-ink (custom property)",
+   "value": "#1b1611",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "Tribune primary ink (warm black). Tribune newsprint is deliberately off the site palette (warm black ink #1b1611 on cream), per the source comment at 1287-1290"
+  },
+  {
+   "src": "styles.css",
+   "line": 1307,
+   "sel": ".np-paper",
+   "prop": "--np-paper (custom property)",
+   "value": "#f2e9d3",
+   "role": "paper",
+   "family": "newspaper",
+   "note": "Tribune stock. Tribune newsprint is deliberately off the site palette (warm black ink #1b1611 on cream), per the source comment at 1287-1290"
+  },
+  {
+   "src": "styles.css",
+   "line": 1314,
+   "sel": ".np-paper",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(27, 22, 17, 0.05)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "5px halftone dot texture printed in ink at 5%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1315,
+   "sel": ".np-paper",
+   "prop": "background (linear-gradient)",
+   "value": "#f6efdc",
+   "role": "paper",
+   "family": "newspaper",
+   "note": "lighter top of the paper gradient"
+  },
+  {
+   "src": "styles.css",
+   "line": 1315,
+   "sel": ".np-paper",
+   "prop": "background (linear-gradient)",
+   "value": "#e9dec2",
+   "role": "paper-2",
+   "family": "newspaper",
+   "note": "darker, aged bottom of the paper gradient"
+  },
+  {
+   "src": "styles.css",
+   "line": 1318,
+   "sel": ".np-paper",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.85)",
+   "role": "shadow",
+   "family": "newspaper",
+   "note": "deep drop shadow onto the backdrop"
+  },
+  {
+   "src": "styles.css",
+   "line": 1318,
+   "sel": ".np-paper",
+   "prop": "box-shadow",
+   "value": "rgba(27, 22, 17, 0.35)",
+   "role": "shadow",
+   "family": "newspaper",
+   "note": "1px ink-toned edge ring around the sheet (spread shadow, rgba(27,22,17) used as shadow per spec)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1330,
+   "sel": ".np-mast-side",
+   "prop": "color",
+   "value": "#4a4034",
+   "role": "ink-2",
+   "family": "newspaper",
+   "note": "secondary mono masthead text"
+  },
+  {
+   "src": "styles.css",
+   "line": 1347,
+   "sel": ".np-dek",
+   "prop": "border-top",
+   "value": "rgba(27, 22, 17, 0.4)",
+   "role": "line-paper",
+   "family": "newspaper",
+   "note": "hairline above the dek"
+  },
+  {
+   "src": "styles.css",
+   "line": 1354,
+   "sel": ".np-byline",
+   "prop": "color",
+   "value": "#4a4034",
+   "role": "ink-2",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1354,
+   "sel": ".np-byline",
+   "prop": "border-bottom",
+   "value": "rgba(27, 22, 17, 0.28)",
+   "role": "line-paper",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1370,
+   "sel": ".np-actions .np-read",
+   "prop": "--spin-face (custom property)",
+   "value": "#ffb52e",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "re-skins the presti-spin keycap face brighter than the default goldenrod (#E89A1C)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1371,
+   "sel": ".np-actions .np-read",
+   "prop": "--spin-top (custom property)",
+   "value": "#ffd270",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "keycap top-gradient highlight"
+  },
+  {
+   "src": "styles.css",
+   "line": 1372,
+   "sel": ".np-actions .np-read",
+   "prop": "--spin-side (custom property)",
+   "value": "#8a5200",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "keycap 5px extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 1373,
+   "sel": ".np-actions .np-read",
+   "prop": "--spin-ink (custom property)",
+   "value": "#17110a",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "label ink on the keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 1375,
+   "sel": ".np-actions .np-read",
+   "prop": "outline",
+   "value": "rgba(255, 236, 176, 0.88)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "2px pale-gold outline ring at offset 3px, the \"one saturated object on the newsprint\""
+  },
+  {
+   "src": "styles.css",
+   "line": 1386,
+   "sel": "@keyframes np-share-glow (0%,100%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.66)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "inset top highlight of the keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 1386,
+   "sel": "@keyframes np-share-glow (0%,100%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,210,112,.42)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "2px pale-gold spread ring"
+  },
+  {
+   "src": "styles.css",
+   "line": 1386,
+   "sel": "@keyframes np-share-glow (0%,100%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.48)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "near amber glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1386,
+   "sel": "@keyframes np-share-glow (0%,100%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.20)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "far amber glow"
+  },
+  {
+   "src": "styles.css",
+   "line": 1387,
+   "sel": "@keyframes np-share-glow (50%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.78)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "inset highlight at pulse peak"
+  },
+  {
+   "src": "styles.css",
+   "line": 1387,
+   "sel": "@keyframes np-share-glow (50%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,238,184,.72)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "3px cream-gold ring at pulse peak"
+  },
+  {
+   "src": "styles.css",
+   "line": 1387,
+   "sel": "@keyframes np-share-glow (50%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.76)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "near amber glow at peak"
+  },
+  {
+   "src": "styles.css",
+   "line": 1387,
+   "sel": "@keyframes np-share-glow (50%) \u2014 animates .np-read",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.34)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "far amber glow at peak"
+  },
+  {
+   "src": "styles.css",
+   "line": 1397,
+   "sel": ".np-share-note",
+   "prop": "color",
+   "value": "#4a4034",
+   "role": "ink-2",
+   "family": "newspaper",
+   "note": "share status line under the button"
+  },
+  {
+   "src": "styles.css",
+   "line": 1412,
+   "sel": ".np-gline",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(27,22,17,0.16)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "greeked skeleton bar (loading copy), ink at 16%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1412,
+   "sel": ".np-gline",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(27,22,17,0.30)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "shimmer band, ink at 30%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1412,
+   "sel": ".np-gline",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(27,22,17,0.16)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "greeked skeleton bar, ink at 16%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1423,
+   "sel": ".np-ticker",
+   "prop": "color",
+   "value": "#4a4034",
+   "role": "ink-2",
+   "family": "newspaper",
+   "note": "teletype ticker text"
+  },
+  {
+   "src": "styles.css",
+   "line": 1480,
+   "sel": ".daily-strip",
+   "prop": "border (dashed)",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "button-ghost",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule). Note: .daily-strip is a <button> not in BTN3D_EXCLUDE, so app.js adds .presti-spin and button.presti-spin {border:0} (higher specificity) likely wins over this dashed border"
+  },
+  {
+   "src": "styles.css",
+   "line": 1501,
+   "sel": ".duel-banner",
+   "prop": "border",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "panel",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1502,
+   "sel": ".duel-banner.you",
+   "prop": "border-color",
+   "value": "#3fae5a",
+   "role": "you",
+   "family": "panel",
+   "note": "\"your turn\" state marks the viewer; green today (#3fae5a is listed under good). Alternative: good. duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1502,
+   "sel": ".duel-banner.you",
+   "prop": "color",
+   "value": "#3fae5a",
+   "role": "you",
+   "family": "panel",
+   "note": "same as border-color; duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1506,
+   "sel": "@keyframes duelPulse (50%) \u2014 animates .duel-banner.you",
+   "prop": "box-shadow",
+   "value": "rgba(63,174,90,.18)",
+   "role": "you",
+   "family": "panel",
+   "note": "green pulse ring for \"your turn\"; alternative good. duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1509,
+   "sel": ".duel-fire",
+   "prop": "color",
+   "value": "#e5533d",
+   "role": "bad",
+   "family": "badge",
+   "note": "red-orange bold small text; name suggests a hot-streak indicator (heat, not loss), red slot borrowed; could not verify, markup source missing. duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1510,
+   "sel": ".duel-pool",
+   "prop": "border-top",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "row",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1511,
+   "sel": ".duel-prow",
+   "prop": "border-bottom",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "row",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1516,
+   "sel": ".duel-slot",
+   "prop": "border",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "button-ghost",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1524,
+   "sel": ".duel-rrow",
+   "prop": "border-bottom (dotted)",
+   "value": "rgba(128,128,128,.25)",
+   "role": "line",
+   "family": "row",
+   "note": "neutral mid-gray at 25%, written to work on any ground; duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1530,
+   "sel": ".duel-qchip",
+   "prop": "border",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "chip",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1533,
+   "sel": ".duel-link",
+   "prop": "border (dashed)",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "panel",
+   "note": "dashed share-link box; fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1535,
+   "sel": ".duel-toast",
+   "prop": "background",
+   "value": "#1c1a16",
+   "role": "ground-2",
+   "family": "toast",
+   "note": "warm near-black toast surface; duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1535,
+   "sel": ".duel-toast",
+   "prop": "color",
+   "value": "#f3ead8",
+   "role": "text",
+   "family": "toast",
+   "note": "warm cream text; duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1535,
+   "sel": ".duel-toast",
+   "prop": "border",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "toast",
+   "note": "literal #6a5a3a (not via var(--line)); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1541,
+   "sel": ".arena-chip",
+   "prop": "border",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "chip",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1548,
+   "sel": ".arena-input",
+   "prop": "border",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "input",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1552,
+   "sel": ".arena-board",
+   "prop": "border-top",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "table",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1558,
+   "sel": ".arena-merank",
+   "prop": "color",
+   "value": "#3fae5a",
+   "role": "you",
+   "family": "row",
+   "note": "the viewer's own leaderboard rank line; green today (#3fae5a listed under good). Alternative: good. duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1563,
+   "sel": ".lg-fmt.on, .lg-rnd.on",
+   "prop": "border-color",
+   "value": "#3fae5a",
+   "role": "accent",
+   "family": "chip",
+   "note": "selected-option state of format/round pickers; green today (#3fae5a listed under good). Functionally a selection highlight; alternative: good. duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1563,
+   "sel": ".lg-fmt.on, .lg-rnd.on",
+   "prop": "color",
+   "value": "#3fae5a",
+   "role": "accent",
+   "family": "chip",
+   "note": "same as border-color; duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1564,
+   "sel": ".lg-matchup",
+   "prop": "border",
+   "value": "#6a5a3a",
+   "role": "line",
+   "family": "card",
+   "note": "fallback of var(--line, #6a5a3a); --line is never defined in :root, so the fallback always renders. Plain border/rule on dark = line (spec lists #6A5A3A under metal, but here it is a plain rule); duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1565,
+   "sel": ".lg-me",
+   "prop": "color",
+   "value": "#3fae5a",
+   "role": "you",
+   "family": "row",
+   "note": "marks the viewer's own team; green today. Alternative: good. duel/arena/league block: duel-ui.js, arena-ui.js, league-ui.js are loaded on demand by app.js but are not in the repo, so this markup is currently unreachable from this checkout"
+  },
+  {
+   "src": "styles.css",
+   "line": 1612,
+   "sel": ".np-bundle",
+   "prop": "color",
+   "value": "#1b1611",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "base text ink of the bundle (a native button excluded from presti-spin)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1624,
+   "sel": ".np-bundle:focus-visible",
+   "prop": "outline",
+   "value": "#f2b544",
+   "role": "accent",
+   "family": "newspaper",
+   "note": "3px gold focus ring (a slightly softer amber than #FFB52E)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1637,
+   "sel": ".np-sheet",
+   "prop": "border",
+   "value": "rgba(27, 22, 17, 0.36)",
+   "role": "line-paper",
+   "family": "newspaper",
+   "note": "sheet edge hairline"
+  },
+  {
+   "src": "styles.css",
+   "line": 1639,
+   "sel": ".np-sheet",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(27, 22, 17, 0.055)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "halftone dot texture, ink at 5.5%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1640,
+   "sel": ".np-sheet",
+   "prop": "background (linear-gradient)",
+   "value": "#f7f0de",
+   "role": "paper",
+   "family": "newspaper",
+   "note": "sheet top"
+  },
+  {
+   "src": "styles.css",
+   "line": 1640,
+   "sel": ".np-sheet",
+   "prop": "background (linear-gradient)",
+   "value": "#f1e7cf",
+   "role": "paper",
+   "family": "newspaper",
+   "note": "sheet middle"
+  },
+  {
+   "src": "styles.css",
+   "line": 1640,
+   "sel": ".np-sheet",
+   "prop": "background (linear-gradient)",
+   "value": "#e8dab9",
+   "role": "paper-2",
+   "family": "newspaper",
+   "note": "aged sheet bottom"
+  },
+  {
+   "src": "styles.css",
+   "line": 1641,
+   "sel": ".np-sheet",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.82)",
+   "role": "shadow",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1649,
+   "sel": ".np-sheet-back::before, .np-sheet-back::after",
+   "prop": "background",
+   "value": "rgba(27, 22, 17, 0.22)",
+   "role": "line-paper",
+   "family": "newspaper",
+   "note": "two printed rules on the backing sheets"
+  },
+  {
+   "src": "styles.css",
+   "line": 1655,
+   "sel": ".np-sheet-back-2",
+   "prop": "background-color",
+   "value": "#ddcfaa",
+   "role": "paper-2",
+   "family": "newspaper",
+   "note": "darkest backing sheet (deepest in the stack)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1656,
+   "sel": ".np-sheet-back-2",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.82)",
+   "role": "shadow",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1660,
+   "sel": ".np-sheet-back-1",
+   "prop": "background-color",
+   "value": "#eadfbe",
+   "role": "paper-2",
+   "family": "newspaper",
+   "note": "middle backing sheet"
+  },
+  {
+   "src": "styles.css",
+   "line": 1670,
+   "sel": ".np-sheet-top",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.86)",
+   "role": "shadow",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1671,
+   "sel": ".np-sheet-top",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(255, 255, 255, 0.34)",
+   "role": "light",
+   "family": "newspaper",
+   "note": "1px white inner sheen on the cover sheet edge"
+  },
+  {
+   "src": "styles.css",
+   "line": 1681,
+   "sel": ".np-sheet-top::after",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(70, 53, 31, 0.12)",
+   "role": "shadow",
+   "family": "newspaper",
+   "note": "vertical fold crease, multiply-blended warm brown"
+  },
+  {
+   "src": "styles.css",
+   "line": 1682,
+   "sel": ".np-sheet-top::after",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(70, 53, 31, 0.1)",
+   "role": "shadow",
+   "family": "newspaper",
+   "note": "horizontal fold crease"
+  },
+  {
+   "src": "styles.css",
+   "line": 1693,
+   "sel": ".np-bundle-mast",
+   "prop": "border-bottom (3px double)",
+   "value": "#1b1611",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "heavy masthead rule printed in full ink (same rule as .np-mast which uses var(--np-ink)); not a hairline, so ink rather than line-paper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1707,
+   "sel": ".np-bundle-side",
+   "prop": "color",
+   "value": "#514637",
+   "role": "ink-2",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1718,
+   "sel": ".np-bundle-kicker",
+   "prop": "border-bottom",
+   "value": "rgba(27, 22, 17, 0.42)",
+   "role": "line-paper",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1722,
+   "sel": ".np-bundle-extra",
+   "prop": "background",
+   "value": "#a13c2c",
+   "role": "offset",
+   "family": "badge",
+   "note": "Tribune second spot ink (EXTRA flag, record stamp). Not a loss signal, so not bad; spec lists #A13C2C under bad-edge but here it is decorative spot color. Closest functional role is offset (the print world second ink)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1723,
+   "sel": ".np-bundle-extra",
+   "prop": "color",
+   "value": "#f5ead2",
+   "role": "paper",
+   "family": "badge",
+   "note": "paper-colored knockout text on the spot-red flag"
+  },
+  {
+   "src": "styles.css",
+   "line": 1733,
+   "sel": ".np-bundle-kicker-copy",
+   "prop": "color",
+   "value": "#4a4034",
+   "role": "ink-2",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1750,
+   "sel": ".np-bundle-teaser, .np-bundle-box",
+   "prop": "border-top (2px)",
+   "value": "#1b1611",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "heavy column-head rule in full ink"
+  },
+  {
+   "src": "styles.css",
+   "line": 1751,
+   "sel": ".np-bundle-teaser, .np-bundle-box",
+   "prop": "border-bottom",
+   "value": "rgba(27, 22, 17, 0.45)",
+   "role": "line-paper",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1752,
+   "sel": ".np-bundle-teaser, .np-bundle-box",
+   "prop": "background",
+   "value": "rgba(255, 255, 255, 0.16)",
+   "role": "light",
+   "family": "newspaper",
+   "note": "faint white lift on the side columns"
+  },
+  {
+   "src": "styles.css",
+   "line": 1765,
+   "sel": ".np-bundle-copyline",
+   "prop": "background",
+   "value": "rgba(27, 22, 17, 0.35)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "greeked copy line, ink at 35%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1766,
+   "sel": ".np-bundle-copyline",
+   "prop": "box-shadow",
+   "value": "rgba(27, 22, 17, 0.17)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "a second, fainter greeked line drawn with a 9px offset shadow (it is content, not a shadow)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1772,
+   "sel": ".np-bundle-box-row",
+   "prop": "border-top",
+   "value": "rgba(27, 22, 17, 0.28)",
+   "role": "line-paper",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1783,
+   "sel": ".np-bundle-stamp",
+   "prop": "border (3px double)",
+   "value": "#a13c2c",
+   "role": "offset",
+   "family": "newspaper",
+   "note": "Tribune second spot ink (EXTRA flag, record stamp). Not a loss signal, so not bad; spec lists #A13C2C under bad-edge but here it is decorative spot color. Closest functional role is offset (the print world second ink)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1784,
+   "sel": ".np-bundle-stamp",
+   "prop": "color",
+   "value": "#a13c2c",
+   "role": "offset",
+   "family": "newspaper",
+   "note": "record text in spot red; Tribune second spot ink (EXTRA flag, record stamp). Not a loss signal, so not bad; spec lists #A13C2C under bad-edge but here it is decorative spot color. Closest functional role is offset (the print world second ink)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1788,
+   "sel": ".np-bundle-stamp",
+   "prop": "background",
+   "value": "rgba(247, 240, 222, 0.78)",
+   "role": "paper",
+   "family": "newspaper",
+   "note": "paper at 78% behind the stamp"
+  },
+  {
+   "src": "styles.css",
+   "line": 1789,
+   "sel": ".np-bundle-stamp",
+   "prop": "box-shadow",
+   "value": "rgba(161, 60, 44, 0.06)",
+   "role": "offset",
+   "family": "newspaper",
+   "note": "4px spot-red ink bleed at 6%"
+  },
+  {
+   "src": "styles.css",
+   "line": 1796,
+   "sel": ".np-bundle-stamp::before, .np-bundle-stamp::after",
+   "prop": "background",
+   "value": "rgba(161, 60, 44, 0.35)",
+   "role": "offset",
+   "family": "newspaper",
+   "note": "spot-red rules inside the stamp"
+  },
+  {
+   "src": "styles.css",
+   "line": 1829,
+   "sel": ".np-bundle-folio",
+   "prop": "border-top (3px double)",
+   "value": "#1b1611",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "heavy folio rule in full ink"
+  },
+  {
+   "src": "styles.css",
+   "line": 1835,
+   "sel": ".np-bundle-hint, .np-bundle-foldnote",
+   "prop": "color",
+   "value": "#4a4034",
+   "role": "ink-2",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1847,
+   "sel": ".np-bundle-cta",
+   "prop": "border",
+   "value": "#120f0b",
+   "role": "ink",
+   "family": "button-secondary",
+   "note": "darkest ink border of the ink-black CTA keycap"
+  },
+  {
+   "src": "styles.css",
+   "line": 1848,
+   "sel": ".np-bundle-cta",
+   "prop": "background",
+   "value": "#241d15",
+   "role": "ink",
+   "family": "button-secondary",
+   "note": "ink-black keycap face"
+  },
+  {
+   "src": "styles.css",
+   "line": 1849,
+   "sel": ".np-bundle-cta",
+   "prop": "color",
+   "value": "#f4ead4",
+   "role": "paper",
+   "family": "button-secondary",
+   "note": "paper-colored label knocked out of the ink face"
+  },
+  {
+   "src": "styles.css",
+   "line": 1852,
+   "sel": ".np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "#080705",
+   "role": "shadow",
+   "family": "button-secondary",
+   "note": "4px solid extrusion under the ink keycap; no ink-edge role exists, shadow keeps it darker than the face whatever ink becomes"
+  },
+  {
+   "src": "styles.css",
+   "line": 1853,
+   "sel": ".np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.3)",
+   "role": "shadow",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1854,
+   "sel": ".np-bundle-cta",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(255,255,255,0.11)",
+   "role": "light",
+   "family": "button-secondary",
+   "note": "top-edge sheen"
+  },
+  {
+   "src": "styles.css",
+   "line": 1873,
+   "sel": "@keyframes np-cta-breathe (0%,100%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "#080705",
+   "role": "shadow",
+   "family": "button-secondary",
+   "note": "solid extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 1873,
+   "sel": "@keyframes np-cta-breathe (0%,100%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.3)",
+   "role": "shadow",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1873,
+   "sel": "@keyframes np-cta-breathe (0%,100%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(255,255,255,.11)",
+   "role": "light",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1874,
+   "sel": "@keyframes np-cta-breathe (50%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "#080705",
+   "role": "shadow",
+   "family": "button-secondary",
+   "note": "solid extrusion, raised"
+  },
+  {
+   "src": "styles.css",
+   "line": 1874,
+   "sel": "@keyframes np-cta-breathe (50%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.38)",
+   "role": "shadow",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1874,
+   "sel": "@keyframes np-cta-breathe (50%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(255,255,255,.14)",
+   "role": "light",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1876,
+   "sel": ".np-bundle:hover .np-bundle-cta",
+   "prop": "background",
+   "value": "#17120d",
+   "role": "ink",
+   "family": "button-secondary",
+   "note": "darker ink face on hover"
+  },
+  {
+   "src": "styles.css",
+   "line": 1877,
+   "sel": ".np-bundle:active .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "#080705",
+   "role": "shadow",
+   "family": "button-secondary",
+   "note": "compressed 1px extrusion"
+  },
+  {
+   "src": "styles.css",
+   "line": 1877,
+   "sel": ".np-bundle:active .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.28)",
+   "role": "shadow",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1891,
+   "sel": ".np-twine-h",
+   "prop": "background (repeating-linear-gradient)",
+   "value": "rgba(255,255,255,0.12)",
+   "role": "light",
+   "family": "newspaper",
+   "note": "white twist highlights on the twine"
+  },
+  {
+   "src": "styles.css",
+   "line": 1892,
+   "sel": ".np-twine-h",
+   "prop": "background (linear-gradient)",
+   "value": "#b18d5e",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "twine light tan (spec metal #B18D5E)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1892,
+   "sel": ".np-twine-h",
+   "prop": "background (linear-gradient)",
+   "value": "#7b5e3b",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "twine mid brown (spec metal #7B5E3B)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1892,
+   "sel": ".np-twine-h",
+   "prop": "background (linear-gradient)",
+   "value": "#584329",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "twine dark brown (spec metal #584329)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1893,
+   "sel": ".np-twine-h",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.34)",
+   "role": "shadow",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1893,
+   "sel": ".np-twine-h",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(255, 255, 255, 0.26)",
+   "role": "light",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1902,
+   "sel": ".np-twine-v",
+   "prop": "background (repeating-linear-gradient)",
+   "value": "rgba(255,255,255,0.1)",
+   "role": "light",
+   "family": "newspaper",
+   "note": "white twist highlights on the twine"
+  },
+  {
+   "src": "styles.css",
+   "line": 1903,
+   "sel": ".np-twine-v",
+   "prop": "background (linear-gradient)",
+   "value": "#b18d5e",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "twine light tan (spec metal #B18D5E)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1903,
+   "sel": ".np-twine-v",
+   "prop": "background (linear-gradient)",
+   "value": "#7b5e3b",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "twine mid brown (spec metal #7B5E3B)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1903,
+   "sel": ".np-twine-v",
+   "prop": "background (linear-gradient)",
+   "value": "#584329",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "twine dark brown (spec metal #584329)"
+  },
+  {
+   "src": "styles.css",
+   "line": 1904,
+   "sel": ".np-twine-v",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.28)",
+   "role": "shadow",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1904,
+   "sel": ".np-twine-v",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(255, 255, 255, 0.24)",
+   "role": "light",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1914,
+   "sel": ".np-twine-knot",
+   "prop": "background (radial-gradient)",
+   "value": "#b18d5e",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "knot highlight tan"
+  },
+  {
+   "src": "styles.css",
+   "line": 1914,
+   "sel": ".np-twine-knot",
+   "prop": "background (radial-gradient)",
+   "value": "#6b5133",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "knot mid brown"
+  },
+  {
+   "src": "styles.css",
+   "line": 1914,
+   "sel": ".np-twine-knot",
+   "prop": "background (radial-gradient)",
+   "value": "#493720",
+   "role": "metal",
+   "family": "newspaper",
+   "note": "knot dark brown"
+  },
+  {
+   "src": "styles.css",
+   "line": 1915,
+   "sel": ".np-twine-knot",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.42)",
+   "role": "shadow",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1915,
+   "sel": ".np-twine-knot",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(255, 255, 255, 0.28)",
+   "role": "light",
+   "family": "newspaper"
+  },
+  {
+   "src": "styles.css",
+   "line": 1921,
+   "sel": ".np-fold-shadow",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(0,0,0,0.28)",
+   "role": "shadow",
+   "family": "newspaper",
+   "note": "fold shade during opening"
+  },
+  {
+   "src": "styles.css",
+   "line": 1936,
+   "sel": "@keyframes np-cta-commit (42%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "#080705",
+   "role": "shadow",
+   "family": "button-secondary",
+   "note": "extrusion collapsed to 0"
+  },
+  {
+   "src": "styles.css",
+   "line": 1936,
+   "sel": "@keyframes np-cta-commit (42%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.24)",
+   "role": "shadow",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1937,
+   "sel": "@keyframes np-cta-commit (100%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "#080705",
+   "role": "shadow",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 1937,
+   "sel": "@keyframes np-cta-commit (100%) \u2014 animates .np-bundle-cta",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.2)",
+   "role": "shadow",
+   "family": "button-secondary"
+  },
+  {
+   "src": "styles.css",
+   "line": 2052,
+   "sel": ".np-press-sweep",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(32,25,17,.06)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "traveling ink sweep (multiply), leading edge"
+  },
+  {
+   "src": "styles.css",
+   "line": 2052,
+   "sel": ".np-press-sweep",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(32,25,17,.22)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "ink sweep core"
+  },
+  {
+   "src": "styles.css",
+   "line": 2052,
+   "sel": ".np-press-sweep",
+   "prop": "background (linear-gradient)",
+   "value": "rgba(32,25,17,.05)",
+   "role": "ink",
+   "family": "newspaper",
+   "note": "ink sweep trailing edge"
+  },
+  {
+   "src": "styles.css",
+   "line": 2070,
+   "sel": ".np-press-status",
+   "prop": "border",
+   "value": "rgba(244,234,212,.3)",
+   "role": "paper",
+   "family": "toast",
+   "note": "paper-tone hairline on the ink status plate"
+  },
+  {
+   "src": "styles.css",
+   "line": 2071,
+   "sel": ".np-press-status",
+   "prop": "background",
+   "value": "rgba(25,20,14,.92)",
+   "role": "ink",
+   "family": "toast",
+   "note": "ink-black status plate (\"BREAKING THE TWINE\") at 92%"
+  },
+  {
+   "src": "styles.css",
+   "line": 2072,
+   "sel": ".np-press-status",
+   "prop": "color",
+   "value": "#f4ead4",
+   "role": "paper",
+   "family": "toast",
+   "note": "paper-colored label on the ink plate"
+  },
+  {
+   "src": "styles.css",
+   "line": 2073,
+   "sel": ".np-press-status",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.42)",
+   "role": "shadow",
+   "family": "toast"
+  },
+  {
+   "src": "styles.css",
+   "line": 2112,
+   "sel": ".plq-frame",
+   "prop": "border (2px)",
+   "value": "#9E5A0F",
+   "role": "metal",
+   "family": "frame",
+   "note": "fallback of var(--plq-deep, #9E5A0F): the brass plaque border. Same hex as accent-edge; here it is the ornate frame, so metal. --plq-deep also feeds the .strap-info extrusion (1118)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2114,
+   "sel": ".plq-frame",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(248, 182, 71, 0.09)",
+   "role": "accent-hi",
+   "family": "frame",
+   "note": "faint gold top glow on the dark plate (#F8B647 = --spin-top)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2114,
+   "sel": ".plq-frame",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(0, 0, 0, 0)",
+   "role": "fixed",
+   "family": "frame",
+   "note": "fully transparent stop (alpha 0 = transparent); no visible color, tokenizing is pointless, keep literal"
+  },
+  {
+   "src": "styles.css",
+   "line": 2117,
+   "sel": ".plq-frame",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(0, 0, 0, 0.55)",
+   "role": "shadow",
+   "family": "frame",
+   "note": "1px black inner keyline"
+  },
+  {
+   "src": "styles.css",
+   "line": 2118,
+   "sel": ".plq-frame",
+   "prop": "box-shadow (inset)",
+   "value": "rgba(232, 154, 28, 0.22)",
+   "role": "metal",
+   "family": "frame",
+   "note": "4px goldenrod inner band. Daily plaque brass frame line; hex is goldenrod #E89A1C (spec lists it under accent-edge) but here it draws the ornate frame, so metal"
+  },
+  {
+   "src": "styles.css",
+   "line": 2119,
+   "sel": ".plq-frame",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.55)",
+   "role": "shadow",
+   "family": "frame"
+  },
+  {
+   "src": "styles.css",
+   "line": 2123,
+   "sel": ".plq-frame::before",
+   "prop": "border",
+   "value": "rgba(232, 154, 28, 0.4)",
+   "role": "metal",
+   "family": "frame",
+   "note": "inner 1px double-frame hairline at inset 6px. Daily plaque brass frame line; hex is goldenrod #E89A1C (spec lists it under accent-edge) but here it draws the ornate frame, so metal"
+  },
+  {
+   "src": "styles.css",
+   "line": 2128,
+   "sel": ".plq-frame::after",
+   "prop": "background-image (radial-gradient)",
+   "value": "rgba(0,0,0,0)",
+   "role": "fixed",
+   "family": "frame",
+   "note": "rivet gradient falloff; fully transparent stop (alpha 0 = transparent); no visible color, tokenizing is pointless, keep literal. The rivet itself is var(--amber)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2129,
+   "sel": ".plq-frame::after",
+   "prop": "background-image (radial-gradient)",
+   "value": "rgba(0,0,0,0)",
+   "role": "fixed",
+   "family": "frame",
+   "note": "rivet gradient falloff; fully transparent stop (alpha 0 = transparent); no visible color, tokenizing is pointless, keep literal. The rivet itself is var(--amber)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2130,
+   "sel": ".plq-frame::after",
+   "prop": "background-image (radial-gradient)",
+   "value": "rgba(0,0,0,0)",
+   "role": "fixed",
+   "family": "frame",
+   "note": "rivet gradient falloff; fully transparent stop (alpha 0 = transparent); no visible color, tokenizing is pointless, keep literal. The rivet itself is var(--amber)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2131,
+   "sel": ".plq-frame::after",
+   "prop": "background-image (radial-gradient)",
+   "value": "rgba(0,0,0,0)",
+   "role": "fixed",
+   "family": "frame",
+   "note": "rivet gradient falloff; fully transparent stop (alpha 0 = transparent); no visible color, tokenizing is pointless, keep literal. The rivet itself is var(--amber)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2136,
+   "sel": ".plq-slim",
+   "prop": "--plq-deep (custom property)",
+   "value": "#9E5A0F",
+   "role": "metal",
+   "family": "frame",
+   "note": "defines the plaque border color (metal) AND is read by .daily-strap .strap-info as its accent-edge extrusion. One variable, two roles today; split it when tokenizing"
+  },
+  {
+   "src": "styles.css",
+   "line": 2158,
+   "sel": "#app button.daily-tile",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(248,182,71,0.09)",
+   "role": "accent-hi",
+   "family": "frame",
+   "note": "duplicate of the .plq-frame glow, re-declared with #app specificity to beat UA/presti-spin button backgrounds"
+  },
+  {
+   "src": "styles.css",
+   "line": 2158,
+   "sel": "#app button.daily-tile",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(0,0,0,0)",
+   "role": "fixed",
+   "family": "frame",
+   "note": "fully transparent stop (alpha 0 = transparent); no visible color, tokenizing is pointless, keep literal"
+  },
+  {
+   "src": "styles.css",
+   "line": 2164,
+   "sel": "#app .daily-tile:hover::before",
+   "prop": "border-color",
+   "value": "rgba(248, 182, 71, 0.7)",
+   "role": "accent-hi",
+   "family": "frame",
+   "note": "inner frame hairline lights up on hover (brighter than the resting metal line)"
+  },
+  {
+   "src": "styles.css",
+   "line": 2169,
+   "sel": ".daily-tile .dt-title",
+   "prop": "text-shadow",
+   "value": "rgba(0, 0, 0, 0.7)",
+   "role": "shadow",
+   "family": "heading",
+   "note": "1px black letterpress shadow under the gold THE DAILY title"
+  },
+  {
+   "src": "styles.css",
+   "line": 2185,
+   "sel": ".dt-act-share",
+   "prop": "color",
+   "value": "#1a1206",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "dark ink on the flat amber share button"
+  },
+  {
+   "src": "styles.css",
+   "line": 2210,
+   "sel": ".ds-pill.ds-off",
+   "prop": "color",
+   "value": "#1a1206",
+   "role": "accent-ink",
+   "family": "badge",
+   "note": "dark ink on the amber OFFICIAL pill"
+  },
+  {
+   "src": "styles.css",
+   "line": 2230,
+   "sel": ".daily-stamp",
+   "prop": "border-top",
+   "value": "rgba(232,154,28,0.28)",
+   "role": "metal",
+   "family": "eyebrow",
+   "note": "goldenrod hairline over the official/practice status line inside the plaque card. Daily plaque brass frame line; hex is goldenrod #E89A1C (spec lists it under accent-edge) but here it draws the ornate frame, so metal"
+  }
+ ],
+ "components": {
+  "button-icon": [
+   {
+    "sel": ".cap-info",
+    "treatment": "22px filled amber disc (var(--amber)), no border, radius 50%, Georgia italic 700 14px 'i' in var(--ink), 1px black drop; brightness hover, 1px press. Excluded from presti-spin in app.js"
+   },
+   {
+    "sel": ".gate .cap-info",
+    "treatment": "same disc at 24px / 15px glyph"
+   },
+   {
+    "sel": ".daily-strap .strap-info",
+    "treatment": "30px disc, 18px glyph, raised by a 2px var(--plq-deep,#9E5A0F) extrusion + soft black drop; compresses to 1px on :active"
+   }
+  ],
+  "panel": [
+   {
+    "sel": ".cap-tip",
+    "treatment": "tunnel fill, 1px maple-line border + 3px maple left rule, square corners, mono 11px chalk-dim"
+   },
+   {
+    "sel": ".duel-banner",
+    "treatment": "centered Barlow Condensed 700 status band, 1px line border, radius 10px; .you = green border+text with a pulsing 3px green ring; .them dimmed (dormant)"
+   },
+   {
+    "sel": ".duel-link",
+    "treatment": "mono .8rem share link, 1px dashed line border, radius 8px (dormant)"
+   }
+  ],
+  "overlay": [
+   {
+    "sel": ".hh-overlay",
+    "treatment": "fixed full-screen z90, warm-black radial scrim (93-97%), 0.45s fade; .hh-reveal makes it opaque"
+   },
+   {
+    "sel": ".hh-card",
+    "treatment": "chrome-less centered column, max 380px, 12px gap; hosts emoji fireworks layer .goat-fw"
+   },
+   {
+    "sel": ".hh-window, .hh-strip, .hh-name, .hh-payline",
+    "treatment": "slot-reel: 162px window with top/bottom alpha mask, 54px rows of disp 700 27px uppercase chalk at 50%; .hot row goes white, scales 1.07, double amber glow; payline = two faint amber hairlines"
+   },
+   {
+    "sel": ".np-overlay",
+    "treatment": "fixed full-screen z120 Tribune backdrop, cold near-black fading 0 to 82%; .np-gate = opaque warm radial like hh-reveal"
+   },
+   {
+    "sel": ".np-stage",
+    "treatment": "3D stage (perspective 1500px) that grows from bundle height to open-paper height over 1.05s"
+   }
+  ],
+  "heading": [
+   {
+    "sel": ".hh-eyebrow",
+    "treatment": "disp 700 30px uppercase amber with 16px amber glow (despite the name it is the overlay title); .hh-clutch = 19px sentence case"
+   },
+   {
+    "sel": ".hh-heatlabel",
+    "treatment": "disp 700 24px uppercase; color steps chalk-dim > maple > amber > pale gold > white with growing gold glow per level"
+   },
+   {
+    "sel": ".hh-stamp",
+    "treatment": "disp 700 34px tabular amber verdict with gold glow; .miss = chalk-dim, no glow"
+   },
+   {
+    "sel": ".content-page h1",
+    "treatment": "disp 700 32px chalk, 1.08 line-height"
+   },
+   {
+    "sel": ".content-page h2",
+    "treatment": "disp 600 21px amber"
+   },
+   {
+    "sel": ".daily-tile .dt-title",
+    "treatment": "disp 1.9rem uppercase .06em in --plq-gold (amber), 1px black letterpress text-shadow"
+   },
+   {
+    "sel": ".daily-tile .dt-board",
+    "treatment": "disp 1.14rem uppercase chalk"
+   },
+   {
+    "sel": ".gate-title",
+    "treatment": "disp 2.3rem uppercase amber, 1px black text-shadow"
+   },
+   {
+    "sel": ".gate-var-name",
+    "treatment": "disp 1.18rem uppercase chalk"
+   },
+   {
+    "sel": ".daily-verdict",
+    "treatment": "disp 1.08rem uppercase chalk at 92% (1.2rem inside .daily-card)"
+   },
+   {
+    "sel": ".duel-h, .arena-tag",
+    "treatment": "duel title spacing only; arena tag = mono 1.5rem 600 .08em (dormant)"
+   }
+  ],
+  "eyebrow": [
+   {
+    "sel": ".cap-note",
+    "treatment": "mono 700 10.5px amber"
+   },
+   {
+    "sel": ".hh-cap, .hh-netcap",
+    "treatment": "mono 10-10.5px uppercase, .16-.24em tracking, chalk-dim"
+   },
+   {
+    "sel": ".hh-lever-hint",
+    "treatment": "disp 700 18px .16em amber PULL DOWN with amber glow and a bobbing arrow"
+   },
+   {
+    "sel": ".weekly-tile .wk-eyebrow",
+    "treatment": ".68rem .12em at 75% opacity (inherits keycap ink)"
+   },
+   {
+    "sel": ".daily-tile .dt-date",
+    "treatment": ".64rem .24em chalk-dim"
+   },
+   {
+    "sel": ".daily-tile .dt-tomorrow",
+    "treatment": ".6rem .12em amber over a maple-line hairline"
+   },
+   {
+    "sel": ".daily-strap .ds-tag",
+    "treatment": "amber 600 .08em"
+   },
+   {
+    "sel": ".daily-stamp",
+    "treatment": "mono .66rem uppercase .12em under a goldenrod 28% hairline; .is-official amber, .is-practice whistle"
+   },
+   {
+    "sel": ".gate-eyebrow, .gate-var-label",
+    "treatment": ".62-.68rem .22em amber (mono via .mono class)"
+   },
+   {
+    "sel": ".np-bundle-eyebrow, .np-bundle-sub",
+    "treatment": "mono 7.5-8px, .18-.24em tracking, inherits stamp spot red"
+   }
+  ],
+  "body": [
+   {
+    "sel": ".hh-sub, .hh-vsub",
+    "treatment": "mono 12px chalk-dim, max 280px"
+   },
+   {
+    "sel": ".content-page p, .content-page li, .content-page .lead",
+    "treatment": "15px body chalk"
+   },
+   {
+    "sel": ".fineprint",
+    "treatment": "12.5px chalk-dim"
+   },
+   {
+    "sel": ".gate-law p",
+    "treatment": "var(--body) 1.02rem/1.5 chalk, one calm block"
+   },
+   {
+    "sel": ".gate-var-body, .daily-tile .dt-sub, .daily-strap .ds-rule",
+    "treatment": "small (.74-.92rem) chalk-dim, italic for dt-sub and ds-rule"
+   },
+   {
+    "sel": ".daily-brand, .daily-stale",
+    "treatment": ".66-.72rem chalk-dim"
+   },
+   {
+    "sel": ".weekly-tile .wk-name, .wk-blurb, .wk-meta",
+    "treatment": "700 1.05rem name, .85rem blurb at 85%, .75rem meta at 70%, keycap ink"
+   },
+   {
+    "sel": ".run-status, .duel-sub, .duel-fine, .duel-wait, .duel-vs, .duel-quip, .arena-name, .arena-boardsub, .arena-chips, .arena-picked, .duel-colmeta",
+    "treatment": "inherit color, differentiated only by opacity (.6-.9) and size (.75-1rem)"
+   },
+   {
+    "sel": ".tray-deny",
+    "treatment": "mono .68rem whistle, deny feedback line"
+   }
+  ],
+  "progress": [
+   {
+    "sel": ".hh-heat, .hh-seg",
+    "treatment": "row of flat 18px segments, radius 3px, 6px gap; maple-alpha track, fills step maple 30% > 55% > amber 70% > pale gold > cream; .lit = amber, scaleY 1.28, amber glow; .result = cream glow"
+   },
+   {
+    "sel": ".hh-bar, .hh-fill, .hh-fill-bonus, .hh-thresh",
+    "treatment": "10px track radius 5px maple 14%; amber-to-cream gradient fill (scaleX); red-orange bonus fill with red glow; 2px white threshold tick with white glow"
+   }
+  ],
+  "data": [
+   {
+    "sel": ".hh-net",
+    "treatment": "disp 700 62px tabular chalk; .over = white with white+gold glow"
+   },
+   {
+    "sel": ".daily-tile .dt-result, .daily-target-line",
+    "treatment": "mono .78-.8rem; ok green on win, whistle on hold"
+   },
+   {
+    "sel": ".daily-strap .ds-target",
+    "treatment": "whistle .72rem, right-aligned"
+   },
+   {
+    "sel": ".duel-cost, .arena-val, .arena-rank",
+    "treatment": "IBM Plex Mono .82rem at 60-90% opacity (dormant)"
+   },
+   {
+    "sel": ".duel-fire",
+    "treatment": "#e5533d bold .8rem (dormant)"
+   }
+  ],
+  "button-primary": [
+   {
+    "sel": ".hh-btn",
+    "treatment": "presti-spin extruded goldenrod keycap (9px radius, 5px --spin-side extrusion), 14px .12em, 14px 26px padding"
+   },
+   {
+    "sel": ".np-actions .np-read",
+    "treatment": "presti-spin keycap re-skinned brighter (face #ffb52e, top #ffd270, side #8a5200, ink #17110a), disp 16px uppercase, 2px pale-gold outline at 3px offset, stamp-in then infinite gold glow pulse; desaturated when disabled"
+   },
+   {
+    "sel": ".np-underbtn",
+    "treatment": "full-width presti-spin keycap, disp 17px .06em uppercase, 14px padding"
+   },
+   {
+    "sel": ".weekly-tile",
+    "treatment": "btn-primary presti-spin keycap laid out as a left-aligned stacked tile (eyebrow, name, blurb, meta)"
+   },
+   {
+    "sel": ".more-modes, #startPro, .arena-duelbtn, .duel-act",
+    "treatment": "spacing only; skin comes from presti-spin"
+   },
+   {
+    "sel": ".dt-act-share",
+    "treatment": "FLAT amber fill + amber 1px border, radius 2px, mono .66rem uppercase 700 in #1a1206 (but receives .presti-spin at runtime, so the keycap rule competes)"
+   }
+  ],
+  "button-secondary": [
+   {
+    "sel": ".np-bundle-cta",
+    "treatment": "ink-black keycap inside the bundle: 2px #120f0b border, #241d15 face, square corners, 4px solid #080705 extrusion + soft drop + 1px top sheen, cream disp 18px .09em label over a mono 7px kicker; breathing 1.9s bob; hover darker; active compresses 3px"
+   }
+  ],
+  "button-ghost": [
+   {
+    "sel": ".hh-dismiss, .hh-skip",
+    "treatment": "no background/border, mono 12px chalk-dim; skip pinned top-right under safe-area (hh-skip excluded from presti-spin; hh-dismiss is not in current markup)"
+   },
+   {
+    "sel": ".gate-back",
+    "treatment": "left-aligned mono .7rem .12em chalk-dim '<- back', chalk on hover (is a button not in BTN3D_EXCLUDE, so presti-spin gets added at runtime)"
+   },
+   {
+    "sel": ".dt-act-ghost",
+    "treatment": "transparent, 1px dashed maple-line border, radius 2px, mono uppercase chalk-dim; hover chalk text, chalk-dim border"
+   },
+   {
+    "sel": ".daily-strip",
+    "treatment": "full-width transparent strip, 1px dashed line border, radius 10px, .95rem centered (button, also receives presti-spin)"
+   },
+   {
+    "sel": ".duel-slot, .arena-pencil",
+    "treatment": "1px line border, radius 8px, bold, transparent, scale .96 on press (dormant)"
+   }
+  ],
+  "chip": [
+   {
+    "sel": ".duel-qchip, .arena-chip",
+    "treatment": "1px line border, radius 14px pill, transparent, .78-.8rem (dormant)"
+   },
+   {
+    "sel": ".lg-fmt.on, .lg-rnd.on",
+    "treatment": "selected option: green #3fae5a border + text, 700 (dormant)"
+   }
+  ],
+  "badge": [
+   {
+    "sel": ".ds-pill",
+    "treatment": "mono .6rem .12em uppercase, radius 2px; .ds-off solid amber with #1a1206 ink 700; .ds-prac dashed maple-line outline chalk-dim"
+   },
+   {
+    "sel": ".np-bundle-extra",
+    "treatment": "spot-red #a13c2c block, cream disp 13px .12em EXTRA flag, square"
+   }
+  ],
+  "toast": [
+   {
+    "sel": ".duel-toast",
+    "treatment": "fixed bottom-center, #1c1a16 fill, 1px #6a5a3a border, radius 10px, cream .85rem, slide-up fade (dormant)"
+   },
+   {
+    "sel": ".np-press-status",
+    "treatment": "ink plate at 92% with paper 30% hairline, square, mono 8px .18em cream, deep drop; appears during the bundle opening, pulses while awaiting copy"
+   }
+  ],
+  "link": [
+   {
+    "sel": ".site-links a, .static-links a, .content-page a",
+    "treatment": "chalk text, underline offset 3px, amber on hover (site-links at 90% opacity)"
+   },
+   {
+    "sel": ".content-page a.btn-block",
+    "treatment": "no underline, centered, var(--ink) text (keycap link via a.btn)"
+   }
+  ],
+  "nav": [
+   {
+    "sel": ".site-links",
+    "treatment": "footer nav: flex-wrap, mono 11px 600 .04em, 6px 18px gaps"
+   },
+   {
+    "sel": ".static-links",
+    "treatment": "indented list of underlined links, 15px items"
+   },
+   {
+    "sel": "a.brand-link, .intro-toprow, .duel-top",
+    "treatment": "layout only"
+   }
+  ],
+  "frame": [
+   {
+    "sel": ".plq-frame",
+    "treatment": "brass plaque: 2px deep-amber (--plq-deep #9E5A0F) border, radius 4px, tunnel plate with faint gold top radial glow, inset 1px black keyline + 4px goldenrod 22% band, soft drop; ::before 1px goldenrod 40% hairline at inset 6px radius 2px; ::after four 5px amber corner rivets"
+   },
+   {
+    "sel": ".plq-slim",
+    "treatment": "tighter variant: inner hairline at 4px, rivets at 7px"
+   },
+   {
+    "sel": "#app .daily-tile, #app button.daily-tile",
+    "treatment": "THE DAILY menu tile on the plaque, full width centered, chalk text; hover border goes amber and inner hairline 70% gold; 1px press; focus amber outline"
+   },
+   {
+    "sel": ".daily-strap",
+    "treatment": "slim plaque strap .78rem, 9px 13px padding (flex rows: tag, name, target, (i))"
+   },
+   {
+    "sel": ".daily-card",
+    "treatment": "plaque results card, max 360px centered"
+   },
+   {
+    "sel": ".gate-var",
+    "treatment": "plaque variation insert, max 460px, centered"
+   }
+  ],
+  "card": [
+   {
+    "sel": ".lg-matchup",
+    "treatment": "centered .95rem, 1px line border, radius 10px (dormant)"
+   }
+  ],
+  "row": [
+   {
+    "sel": ".duel-pool, .duel-prow",
+    "treatment": "pool list with 1px line top rule and 1px line row separators, flex 8px gap (dormant)"
+   },
+   {
+    "sel": ".duel-rrow",
+    "treatment": "roster row .85rem, 1px dotted gray 25% separator, .open at 35% (dormant)"
+   },
+   {
+    "sel": ".arena-lbrow, .arena-merank, .lg-me",
+    "treatment": "leaderboard row .9rem; viewer's own rank/team in green #3fae5a (dormant)"
+   },
+   {
+    "sel": ".player-row.deny",
+    "treatment": "shake animation, pos + cost turn whistle"
+   }
+  ],
+  "table": [
+   {
+    "sel": ".arena-board",
+    "treatment": "leaderboard block with 1px line top rule (dormant)"
+   }
+  ],
+  "input": [
+   {
+    "sel": ".arena-input",
+    "treatment": "transparent, 1px line border, radius 8px, inherited font (dormant)"
+   },
+   {
+    "sel": ".lg-name, .duel-year",
+    "treatment": "sizing only"
+   }
+  ],
+  "newspaper": [
+   {
+    "sel": ".np-paper",
+    "treatment": "cream stock (#f6efdc > #f2e9d3 > #e9dec2) + 5px ink halftone dots, warm-black ink #1b1611, square, deep drop + 1px ink edge ring, scrolls"
+   },
+   {
+    "sel": ".np-mast, .np-mast-name, .np-mast-side",
+    "treatment": "3px double ink rule; Georgia 700 19px nameplate; mono 8.5px #4a4034 side lines"
+   },
+   {
+    "sel": ".np-banner",
+    "treatment": "full-bleed ink bar, paper-colored mono 10px .22em knockout"
+   },
+   {
+    "sel": ".np-head, .np-dek, .np-byline, .np-body",
+    "treatment": "Georgia 700 clamp(26-34px) headline; Georgia italic 14px dek over an ink 40% hairline; mono 9px uppercase byline over ink 28% hairline; Georgia 15.5px justified body with a 40px drop cap"
+   },
+   {
+    "sel": ".np-gline, .np-ticker, .np-share-note",
+    "treatment": "greeked skeleton bars (ink 16-30% shimmer); mono 9px #4a4034 teletype ticker with blinking block cursor; mono 9px share note"
+   },
+   {
+    "sel": ".np-bundle, .np-sheet, .np-sheet-back-1/2, .np-sheet-top",
+    "treatment": "three stacked cream sheets (#f7f0de/#f1e7cf/#e8dab9 with halftone), backing sheets darker (#eadfbe, #ddcfaa) and rotated, ink 36% edge hairline, heavy drop shadows, cover has white inner sheen + multiply fold creases"
+   },
+   {
+    "sel": ".np-bundle-mast, .np-bundle-kicker, .np-bundle-face, .np-bundle-teaser, .np-bundle-box, .np-bundle-copyline, .np-bundle-box-row, .np-bundle-folio, .np-bundle-hint, .np-bundle-foldnote, .np-bundle-side, .np-bundle-kicker-copy, .np-bundle-name",
+    "treatment": "miniature front page: 3px double ink rules top/bottom, 2px ink column heads, ink hairlines, greeked copy lines, mono 7-7.5px #4a4034/#514637 small type, Georgia nameplate"
+   },
+   {
+    "sel": ".np-bundle-stamp, .np-bundle-rec",
+    "treatment": "rotated -1.15deg spot-red 3px double-bordered record stamp on paper 78%, Georgia 700 clamp(42-60px) record, inner spot-red rules"
+   },
+   {
+    "sel": ".np-twine-h, .np-twine-v, .np-twine-knot",
+    "treatment": "8px bronze cord gradients (#b18d5e > #7b5e3b > #584329) with white twist stripes, inset sheen and drop; radial knot"
+   },
+   {
+    "sel": ".np-fold-shadow, .np-press-fx, .np-press-sweep",
+    "treatment": "animation-only shading: black fold shade, warm-ink multiply sweep"
+   }
+  ],
+  "other": [
+   {
+    "sel": ".hh-lever, .hh-ball, .hh-hoop",
+    "treatment": "132x216 drag lever; ball + hoop are inline SVGs from ballLeverHtml() in app.js with drop shadows; ignited ball gets orange/yellow fire glow"
+   },
+   {
+    "sel": ".hh-fire i",
+    "treatment": "three CSS flame tongues: radial gradient white > #ffe07a > #ff9a24 > #e0531a, teardrop radius, flicker animation"
+   },
+   {
+    "sel": ".hh-stage, .hh-step, .hh-verdict, .hh-actions",
+    "treatment": "layout / reveal states (opacity .22 until .on)"
+   }
+  ]
+ },
+ "notes": [
+  "Literal count: 208 color literals in styles.css lines 1101-2240 (regex #hex{3,8} | rgb[a]() | hsl[a]()); 208 entries written, 1:1 by (line, occurrence). Named colors: every hit of white/black/gold/cream in the range is inside a comment or 'white-space'; 'transparent' used as a value was excluded per the brief. No hsl() in range.",
+  "Most of the range already reads var(--amber|--chalk|--chalk-dim|--maple|--maple-line|--tunnel|--ink|--whistle|--ok); those are not counted here but a theme reaches them through the :root tokens (lines 9-18).",
+  "Three sub-palettes live in this range: (1) Hot Hand overlay, an amber-to-white heat ramp on a warm-black scrim; (2) the Tribune, deliberately off-palette warm-black ink #1b1611 on cream with a spot red #a13c2c and bronze twine; (3) the Daily brass plaque in goldenrod #E89A1C / #F8B647 / #9E5A0F.",
+  "Tribune roles map onto ink/ink-2/paper/paper-2/line-paper, but its ink is warm black, not the riso navy #232A4E. If one theme sets --t-ink for both the riso slips and the Tribune they will converge; consider whether the Tribune needs its own newspaper sub-tokens. It already has two local vars, --np-ink and --np-paper (1306-1307), but ~40 literals repeat the same rgb(27,22,17) and #1b1611 instead of using them.",
+  "Judgment calls to review: (a) #a13c2c Tribune spot red classified offset (second print ink), not bad; (b) #3fae5a green used to mark the viewer (duel-banner.you, arena-merank, lg-me) classified you, and as a selected-option state (lg-fmt.on/lg-rnd.on) classified accent; the spec lists #3FAE5A under good; (c) Daily plaque frame lines in #9E5A0F / rgba(232,154,28) classified metal even though the spec lists those hexes under accent-edge, because they draw the ornate frame; (d) .hh-fill-bonus red classified bad but it means POSITIVE clutch heat; (e) Hot Hand flames kept fixed because they match the JS-drawn hoop rim.",
+  "--plq-deep (2136, fallbacks at 1118, 1120, 2112) is one variable serving two roles: the plaque border (metal) and the .strap-info keycap extrusion (accent-edge). Split it when tokenizing, or accept that one role drives both.",
+  "Duplicated literals: the plaque glow radial is declared twice (2114 .plq-frame and 2158 #app button.daily-tile). The warm-black scrim rgb(30,22,8)/rgb(5,6,8) appears three times (1133, 1140, 1302). #6a5a3a appears 12 times, 11 as the fallback of var(--line, ...) where --line is never defined in :root, so the fallback always renders; defining --line (or --t-line) would reach all 11 at once. The 12th, .duel-toast border at 1535, is a bare literal.",
+  "Dormant CSS: the duel/arena/league block (1492-1565, 22 literals) styles markup from duel-ui.js, arena-ui.js and league-ui.js. app.js loads these on demand, but none of the three files is in the repo, so these selectors cannot render from this checkout. Theme them cheaply or drop them.",
+  "Runtime override caveat: app.js decorate3dButtons adds .presti-spin to every <button> not in BTN3D_EXCLUDE (a MutationObserver keeps it up). In this range that covers .daily-strip, .dt-act-share, .dt-act-ghost, .gate-back, #startDaily (.daily-tile), .duel-slot, .duel-qchip and .arena-chip. The flat, ghost and dashed treatments written for them compete with button.presti-spin (specificity 0,1,1) for border, background and box-shadow. The Daily tile defends itself with #app specificity; the others may render as keycaps. Check this on the live pages before assuming the treatments listed here are what users see.",
+  "NOT reachable from CSS: (1) the Hot Hand basketball and hoop are inline SVGs built in app.js ballLeverHtml(), at about lines 4438-4458, with hard-coded stop-color and stroke #ffcb84, #e8802a, #a64e10, #6e3208, #e6e0d2, #e0531a; (2) the fireworks and sprays (fireGoats, emojiSpray, supernovaErupt) are emoji glyphs, so their color comes from the platform emoji font; (3) HH_SEGMENTS picks heat classes lvl0-4 in JS, but the colors themselves live in CSS and are themeable; (4) no canvas drawing and no JS style.color or background writes touch the selectors in this range (the only nearby JS style write is a paper texture backgroundImage at app.js:2625, which belongs to another component)."
+ ]
+}

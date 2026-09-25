@@ -39,6 +39,7 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `docs/POPUPS.md` | Player-facing mode-blurb copy drafts |
 | `docs/history/` | Per-task records: return handoffs, per-change deploy notes, patch manifests, superseded docs. Kept for the record, not current guidance |
 | `docs/concepts/` | Design concepts. `print-shop.html` is the risograph makeover: five animated plates, opens directly in a browser |
+| `docs/reprint-lab/` | The Reprint Lab: masthead + whole-site redesign explorer on real snapshots of every screen, 17 looks, one self-contained `reprint-lab.html` (see its README) |
 
 ## Local preview
 Serve over HTTP — `python3 -m http.server` in the repo root, then open

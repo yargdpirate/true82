@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Look boards</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  body { margin: 0; background: #1B1E26; color: #F1EADB; font: 13px/1.4 "IBM Plex Mono", monospace; }
+  .board { padding: 22px 22px 26px; display: grid; gap: 14px; width: max-content; }
+  .board + .board { border-top: 2px solid #2E3240; }
+  h2 { margin: 0; font: 900 44px/.9 "Big Shoulders Display", sans-serif; text-transform: uppercase; letter-spacing: .01em; text-shadow: 3px 2px 0 #FF48B0; }
+  .line { margin: 2px 0 0; color: #CFC8B8; max-width: 70ch; }
+  .mast { display: block; height: auto; box-shadow: 0 14px 30px -18px #000; }
+  .phones { display: flex; gap: 14px; align-items: flex-start; }
+  .ph { overflow: hidden; border-radius: 18px; box-shadow: 0 0 0 5px #05060a, 0 0 0 6px #3a3d48; background: #000; position: relative; }
+  .ph iframe { width: 390px; border: 0; transform-origin: 0 0; display: block; }
+  .cap { font-size: 12px; color: #9EA3B5; margin-top: 6px; text-align: center; letter-spacing: .06em; text-transform: uppercase; }
+</style></head>
+<body><div id="out"></div>
+<script>
+/* One board per look: name, line, the masthead print, and real screens.
+   ?p=<preset ids comma list | all>&snaps=home-intro,classic-pick-selected,results-top&s=0.62&h=844
+   window.BOARD_DONE turns true when every phone is themed. */
+</script>
+<script src="loader.js"></script>
+<script>
+(function () {
+  function load(f) { return new Promise(function (res) { var s = document.createElement("script"); s.src = f + "?t=" + Date.now(); s.onload = res; s.onerror = res; document.head.appendChild(s); }); }
+  var q = new URLSearchParams(location.search);
+  window.BOARD_DONE = false;
+  LAB_READY.then(function () {
+    return fetch("../app/", { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (h) {
+      var m, re = /href="(presets-[^"?#]+\.js)"/g, more = []; while ((m = re.exec(h))) more.push("../app/" + m[1]); return more.sort();
+    });
+  }).then(function (more) {
+    return ["../app/views.js"].concat(more, ["../app/presets.js", "../app/pages.js"]).reduce(function (p, f) { return p.then(function () { return load(f); }); }, Promise.resolve());
+  }).then(function () {
+    var ids = (q.get("p") || "all"), list = ids === "all" ? LAB.presets : ids.split(",").map(function (id) { return LAB.presets.filter(function (p) { return p.id === id; })[0]; }).filter(Boolean);
+    var snaps = (q.get("snaps") || "home-intro,classic-pick-selected,results-top").split(","), S = +(q.get("s") || 0.62), H = +(q.get("h") || 844);
+    var out = document.getElementById("out"), chain = Promise.resolve();
+    var names = { "home-intro": "Home", "classic-pick-selected": "Draft", "results-top": "Results", "sheet-tag": "Ballot sheet", "bonus-question": "Bonuses", "heat-check": "Heat Check", "reel-final": "Season reel", "daily-gate": "The Daily", "presti-round1": "Presti", "kit": "Every piece", "info-faq": "FAQ" };
+    list.forEach(function (p) {
+      var rc = LAB.recipe(p.rc), b = document.createElement("section"); b.className = "board"; b.id = "b-" + p.id;
+      var h = document.createElement("h2"); h.textContent = p.name; b.appendChild(h);
+      var ln = document.createElement("p"); ln.className = "line"; ln.textContent = p.note || p.line || ""; b.appendChild(ln);
+      var mc = document.createElement("canvas"); mc.className = "mast"; b.appendChild(mc);
+      var row = document.createElement("div"); row.className = "phones"; b.appendChild(row);
+      out.appendChild(b);
+      var W = snaps.length * (390 * S + 14) - 14;
+      mc.style.width = Math.round(W) + "px";
+      chain = chain.then(function () {
+        return LAB.print(Object.assign({}, rc, { motion: "none" }), { cssW: Math.round(W), dpr: 2 }).then(function (pr) { mc.width = pr.w; mc.height = pr.h; pr.draw(mc.getContext("2d"), null, null); });
+      }).then(function () {
+        return LAB.image(rc, 300, 2).then(function (im) {
+          var roles = LAB.roles(LAB.palettes[rc.sysPalette && rc.sysPalette !== "match" && rc.sysPalette !== "today" ? rc.sysPalette : rc.palette], rc.ground);
+          im.cssW = Math.min(290, Math.round(100 * im.w / im.h)); im.headBg = rc.sysPalette === "today" ? "" : roles.ground; return im;
+        });
+      }).then(function (banner) {
+        return snaps.reduce(function (pp, sn) {
+          return pp.then(function () {
+            var col = document.createElement("div"), ph = document.createElement("div"), fr = document.createElement("iframe"), cap = document.createElement("div");
+            ph.className = "ph"; ph.style.width = (390 * S) + "px"; ph.style.height = (H * S) + "px";
+            fr.style.height = H + "px"; fr.style.transform = "scale(" + S + ")";
+            cap.className = "cap"; cap.textContent = names[sn] || sn;
+            ph.appendChild(fr); col.appendChild(ph); col.appendChild(cap); row.appendChild(col);
+            return LAB.pages.mount(fr, sn, rc, banner, 0);
+          });
+        }, Promise.resolve());
+      });
+    });
+    chain.then(function () { setTimeout(function () { window.BOARD_DONE = true; }, 1800); });
+  });
+})();
+</script>
+</body></html>

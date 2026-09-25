@@ -1,0 +1,49 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>surf harness</title>
+<style>
+body{margin:0;background:#6d6d6d;font:11px/1.2 monospace;color:#fff}
+.g{display:flex;flex-wrap:wrap;gap:6px;padding:6px;align-items:flex-start}
+.c{display:flex;flex-direction:column;gap:2px}
+.ph{overflow:hidden;background:#000;position:relative}
+.ph iframe{width:390px;border:0;transform-origin:0 0;display:block}
+.lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style></head><body><div class="g" id="g"></div>
+<script src="loader.js"></script>
+<script>
+(function(){
+  function load(f){return new Promise(function(res){var s=document.createElement('script');s.src=f+'?t='+Date.now();s.onload=res;s.onerror=res;document.head.appendChild(s);});}
+  var q=new URLSearchParams(location.search);
+  window.H_DONE=false; window.H_DOCS=[];
+  LAB_READY.then(function(){return load('../app/views.js');}).then(function(){return load('../app/pages.js');}).then(function(){
+    var snaps=(q.get('snap')||'home-intro').split(','), base=JSON.parse(q.get('base')||'{}');
+    var vary=q.get('vary'), vals=vary?(q.get('vals')||'').split(','):[null];
+    var vary2=q.get('vary2'), vals2=vary2?(q.get('vals2')||'').split(','):[null];
+    var S=+(q.get('s')||0.5), H=+(q.get('h')||844), y=+(q.get('y')||0), logo=q.get('logo')==='1';
+    var jobs=[];
+    snaps.forEach(function(sn){vals.forEach(function(v){vals2.forEach(function(v2){jobs.push([sn,v,v2]);});});});
+    var g=document.getElementById('g');
+    var cache={};
+    function banner(rc){
+      if(logo) return Promise.resolve(null);
+      var key=JSON.stringify(rc); if(cache[key]) return cache[key];
+      cache[key]=LAB.image(rc,300,2).then(function(im){
+        var roles=LAB.roles(LAB.palettes[rc.sysPalette&&rc.sysPalette!=='match'&&rc.sysPalette!=='today'?rc.sysPalette:rc.palette],rc.ground);
+        im.cssW=Math.min(290,Math.round(100*im.w/im.h)); im.headBg=rc.sysPalette==='today'?'':roles.ground; return im;});
+      return cache[key];
+    }
+    var p=Promise.resolve();
+    jobs.forEach(function(j){
+      var rc=Object.assign({},base); if(vary) rc[vary]=j[1]; if(vary2) rc[vary2]=j[2];
+      rc=LAB.recipe(rc);
+      var c=document.createElement('div'); c.className='c';
+      var l=document.createElement('div'); l.className='lbl'; l.style.width=(390*S)+'px'; l.textContent=j[0]+(vary?' '+vary+'='+j[1]:'')+(vary2?' '+vary2+'='+j[2]:'');
+      var ph=document.createElement('div'); ph.className='ph'; ph.style.width=(390*S)+'px'; ph.style.height=(H*S)+'px';
+      var fr=document.createElement('iframe'); fr.style.height=H+'px'; fr.style.transform='scale('+S+')';
+      ph.appendChild(fr); c.appendChild(l); c.appendChild(ph); g.appendChild(c);
+      p=p.then(function(){return banner(rc);}).then(function(b){return LAB.pages.mount(fr,j[0],rc,b,y).then(function(d){window.H_DOCS.push(d);});});
+    });
+    p.then(function(){setTimeout(function(){window.H_DONE=true;},400);});
+  });
+})();
+</script>
+</body></html>

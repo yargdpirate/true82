@@ -1,0 +1,1495 @@
+{
+ "key": "css-a",
+ "entries": [
+  {
+   "src": "styles.css",
+   "line": 3,
+   "sel": "header comment (/* PERFECT FIVE ... Tokens */)",
+   "prop": "comment",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "inside the file's header comment documenting the tokens; not rendered. Tokenizer must skip it (or only update the prose). Names Ink."
+  },
+  {
+   "src": "styles.css",
+   "line": 3,
+   "sel": "header comment (/* PERFECT FIVE ... Tokens */)",
+   "prop": "comment",
+   "value": "#1A2027",
+   "role": "ground-2",
+   "family": "other",
+   "note": "inside the file's header comment documenting the tokens; not rendered. Tokenizer must skip it (or only update the prose). Names Tunnel."
+  },
+  {
+   "src": "styles.css",
+   "line": 3,
+   "sel": "header comment (/* PERFECT FIVE ... Tokens */)",
+   "prop": "comment",
+   "value": "#E8E4D8",
+   "role": "text",
+   "family": "other",
+   "note": "inside the file's header comment documenting the tokens; not rendered. Tokenizer must skip it (or only update the prose). Names Chalk."
+  },
+  {
+   "src": "styles.css",
+   "line": 4,
+   "sel": "header comment (/* PERFECT FIVE ... Tokens */)",
+   "prop": "comment",
+   "value": "#B98A4F",
+   "role": "metal",
+   "family": "other",
+   "note": "inside the file's header comment documenting the tokens; not rendered. Tokenizer must skip it (or only update the prose). Names Maple."
+  },
+  {
+   "src": "styles.css",
+   "line": 4,
+   "sel": "header comment (/* PERFECT FIVE ... Tokens */)",
+   "prop": "comment",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "inside the file's header comment documenting the tokens; not rendered. Tokenizer must skip it (or only update the prose). Names Amber."
+  },
+  {
+   "src": "styles.css",
+   "line": 4,
+   "sel": "header comment (/* PERFECT FIVE ... Tokens */)",
+   "prop": "comment",
+   "value": "#E2654E",
+   "role": "bad",
+   "family": "other",
+   "note": "inside the file's header comment documenting the tokens; not rendered. Tokenizer must skip it (or only update the prose). Names Whistle."
+  },
+  {
+   "src": "styles.css",
+   "line": 9,
+   "sel": ":root",
+   "prop": "--ink",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Token --ink. body background, tray, inputs, board-cell. DOUBLE DUTY: also used 16x file-wide as `color` for dark text on amber/maple fills (.confirm-btn, .btn-primary, .slot.filled, .slot-badge, .ls-token, .ls-pos, .ls-swap.is-moving/.is-here, .startover-btn, .tab.on, .cap-info) = accent-ink job. Those uses should point at --t-accent-ink, or a light-ground theme turns amber-button text light."
+  },
+  {
+   "src": "styles.css",
+   "line": 10,
+   "sel": ":root",
+   "prop": "--tunnel",
+   "value": "#1A2027",
+   "role": "ground-2",
+   "family": "other",
+   "note": "Token --tunnel. Card/ticket/board/player-row/search fill. Also used once as text on amber (.sort-chip.active color) = accent-ink job."
+  },
+  {
+   "src": "styles.css",
+   "line": 11,
+   "sel": ":root",
+   "prop": "--tunnel-2",
+   "value": "#232B34",
+   "role": "ground-3",
+   "family": "other",
+   "note": "Token --tunnel-2. File-wide it is used ~21x as a BORDER (player-row, pick-card, ledger, slot, tab, site-foot rule) vs ~7x as a fill (player-row:active/.sel, tw-track, five-chip) and once as an SVG stroke (.rail-path). Border uses are really `line`; the tokenizer should route border uses to --t-line or a line-on-dark theme will repaint wells too."
+  },
+  {
+   "src": "styles.css",
+   "line": 12,
+   "sel": ":root",
+   "prop": "--chalk",
+   "value": "#E8E4D8",
+   "role": "text",
+   "family": "other",
+   "note": "Token --chalk. Primary text on dark (body color, 43 color uses)."
+  },
+  {
+   "src": "styles.css",
+   "line": 13,
+   "sel": ":root",
+   "prop": "--chalk-dim",
+   "value": "#9AA0A6",
+   "role": "text-2",
+   "family": "other",
+   "note": "Token --chalk-dim. Secondary/dim text (54 color uses), placeholder text."
+  },
+  {
+   "src": "styles.css",
+   "line": 14,
+   "sel": ":root",
+   "prop": "--maple",
+   "value": "#B98A4F",
+   "role": "metal",
+   "family": "other",
+   "note": "Token --maple. Ornament bronze: 3px ticket/board top rules, pips, focus borders. Also used as TEXT (16x: .eyebrow, .pr-pos, .chip, .pro-hint, .year-sel, .cap-season, footer stats) and as FILL behind ink text (.slot-badge, .slot.filled, .tab.on, .ls-token, .climb-pin, .round-pips .done). A theme that repaints metal repaints all eyebrow labels too."
+  },
+  {
+   "src": "styles.css",
+   "line": 15,
+   "sel": ":root",
+   "prop": "--maple-line",
+   "value": "#6E5530",
+   "role": "line",
+   "family": "other",
+   "note": "Token --maple-line. Plain 1-2px rules/borders on dark (site-head, tray top, ticket, board, chips, inputs, cap-bar). One non-rule use: hard 3px text-shadow extrusion under .kaman-big."
+  },
+  {
+   "src": "styles.css",
+   "line": 16,
+   "sel": ":root",
+   "prop": "--amber",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Token --amber. Brand amber: primary fills (.confirm-btn, .btn-primary, .sort-chip.active), key numbers (.pr-v, .board .big, .ticket-dec), focus outlines, rings. 61 color + 21 background uses file-wide."
+  },
+  {
+   "src": "styles.css",
+   "line": 17,
+   "sel": ":root",
+   "prop": "--whistle",
+   "value": "#E2654E",
+   "role": "bad",
+   "family": "other",
+   "note": "Token --whistle. Negative values: ledger tax, weak tier, warn stats, .error-box border, .tw-nub, strike-through old price."
+  },
+  {
+   "src": "styles.css",
+   "line": 18,
+   "sel": ":root",
+   "prop": "--ok",
+   "value": "#8FB99B",
+   "role": "good",
+   "family": "other",
+   "note": "Token --ok. Positive values: ledger zero/good/hot, good stats, fire-sale new price."
+  },
+  {
+   "src": "styles.css",
+   "line": 225,
+   "sel": ".skip-btn:disabled",
+   "prop": "color",
+   "value": "#555c63",
+   "role": "text-2",
+   "family": "button-secondary",
+   "note": "Disabled reroll label grey (dimmer than --chalk-dim). Probably DEAD: every .skip-btn also carries .presti-spin (app.js:3611-3615 + decorate3dButtons), and button.presti-spin:disabled (0,2,1) outranks .skip-btn:disabled (0,2,0), so #6c6048 wins."
+  },
+  {
+   "src": "styles.css",
+   "line": 232,
+   "sel": "button.presti-spin, button.more-modes, a.btn",
+   "prop": "--spin-face",
+   "value": "#E89A1C",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "Keycap FACE fill (gradient 48%-100%). Goldenrod, deeper/oranger than --amber #FFB52E. The spec lists #E89A1C as an accent-edge example, but here it is the main face of the primary button, so accent. Duplicated verbatim in .donate-btn (line 934)."
+  },
+  {
+   "src": "styles.css",
+   "line": 233,
+   "sel": "button.presti-spin, button.more-modes, a.btn",
+   "prop": "--spin-top",
+   "value": "#F8B647",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Keycap top-of-gradient sheen (0%). Duplicated in .donate-btn (line 935)."
+  },
+  {
+   "src": "styles.css",
+   "line": 234,
+   "sel": "button.presti-spin, button.more-modes, a.btn",
+   "prop": "--spin-side",
+   "value": "#9E5A0F",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "Keycap 5px solid extrusion (box-shadow 0 5px 0 0 var(--spin-side)); also used by #shareTeamBtn.elite-result. Duplicated in .donate-btn (line 936)."
+  },
+  {
+   "src": "styles.css",
+   "line": 235,
+   "sel": "button.presti-spin, button.more-modes, a.btn",
+   "prop": "--spin-ink",
+   "value": "#2A1A05",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Label color on the keycap. Duplicated in .donate-btn (line 937)."
+  },
+  {
+   "src": "styles.css",
+   "line": 244,
+   "sel": "button.presti-spin, button.more-modes, a.btn",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.45)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "inset 0 1px 0 white-alpha top-edge highlight on the keycap."
+  },
+  {
+   "src": "styles.css",
+   "line": 246,
+   "sel": "button.presti-spin, button.more-modes, a.btn",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.5)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "0 7px 9px -3px grounding drop shadow under the extrusion."
+  },
+  {
+   "src": "styles.css",
+   "line": 258,
+   "sel": "button.presti-spin:not(:disabled):active, button.more-modes:not(:disabled):active, a.btn:active",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.35)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Pressed state: dimmer inset top highlight."
+  },
+  {
+   "src": "styles.css",
+   "line": 260,
+   "sel": "button.presti-spin:not(:disabled):active, button.more-modes:not(:disabled):active, a.btn:active",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.45)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "Pressed state: tighter drop shadow."
+  },
+  {
+   "src": "styles.css",
+   "line": 264,
+   "sel": "button.presti-spin:disabled, button.more-modes:disabled",
+   "prop": "color",
+   "value": "#6c6048",
+   "role": "text-2",
+   "family": "button-primary",
+   "note": "Disabled keycap label: warm olive-grey. No `disabled` role in the vocabulary; text-2 is the closest (dim text on dark)."
+  },
+  {
+   "src": "styles.css",
+   "line": 265,
+   "sel": "button.presti-spin:disabled, button.more-modes:disabled",
+   "prop": "background",
+   "value": "#3a352a",
+   "role": "ground-3",
+   "family": "button-primary",
+   "note": "Disabled keycap flat fill: warm dark brown-grey (flattens the gradient, removes extrusion). No `disabled` role; ground-3 (well on dark) is closest."
+  },
+  {
+   "src": "styles.css",
+   "line": 266,
+   "sel": "button.presti-spin:disabled, button.more-modes:disabled",
+   "prop": "box-shadow",
+   "value": "#4a4434",
+   "role": "line",
+   "family": "button-primary",
+   "note": "Disabled keycap 1px inset hairline outline (warm). No `disabled` role; line is closest."
+  },
+  {
+   "src": "styles.css",
+   "line": 270,
+   "sel": ".skip-btn.presti-spin.refunded",
+   "prop": "--spin-face",
+   "value": "#2FA866",
+   "role": "good",
+   "family": "button-primary",
+   "note": "Green 'free spin / refund' keycap face (flash state of the reroll keycap)."
+  },
+  {
+   "src": "styles.css",
+   "line": 271,
+   "sel": ".skip-btn.presti-spin.refunded",
+   "prop": "--spin-top",
+   "value": "#4FC487",
+   "role": "good",
+   "family": "button-primary",
+   "note": "Green keycap top sheen. No good-hi role; mapped to good (a theme setting --t-good flattens the gradient but stays legible). Proposal: add good-hi."
+  },
+  {
+   "src": "styles.css",
+   "line": 272,
+   "sel": ".skip-btn.presti-spin.refunded",
+   "prop": "--spin-side",
+   "value": "#1B6E40",
+   "role": "good",
+   "family": "button-primary",
+   "note": "Green keycap 5px extrusion. No good-edge role; mapped to good (theme would lose the 3D edge contrast). Proposal: add good-edge."
+  },
+  {
+   "src": "styles.css",
+   "line": 273,
+   "sel": ".skip-btn.presti-spin.refunded",
+   "prop": "color",
+   "value": "#082A1A",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Deep-green label printed ON the green keycap. No good-ink role; accent-ink chosen because it is the 'dark keycap label' job (mapping it to good would make text = face color under a theme). Proposal: add good-ink."
+  },
+  {
+   "src": "styles.css",
+   "line": 290,
+   "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+   "prop": "background (radial-gradient)",
+   "value": "#fff",
+   "role": "light",
+   "family": "button-primary",
+   "note": "White marquee light-bulb dots (masked dot grid) blinking around the refund/firesale keycap."
+  },
+  {
+   "src": "styles.css",
+   "line": 290,
+   "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+   "prop": "background (radial-gradient)",
+   "value": "rgba(255,255,255,0)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Transparent-white outer stop of each bulb dot (alpha 0)."
+  },
+  {
+   "src": "styles.css",
+   "line": 292,
+   "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+   "prop": "-webkit-mask",
+   "value": "#000",
+   "role": "fixed",
+   "family": "button-primary",
+   "note": "Mask layer (content-box). Only alpha matters in a mask; the hue is meaningless. Do not tokenize."
+  },
+  {
+   "src": "styles.css",
+   "line": 292,
+   "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+   "prop": "-webkit-mask",
+   "value": "#000",
+   "role": "fixed",
+   "family": "button-primary",
+   "note": "Mask layer (border-box). Only alpha matters; do not tokenize."
+  },
+  {
+   "src": "styles.css",
+   "line": 293,
+   "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+   "prop": "mask",
+   "value": "#000",
+   "role": "fixed",
+   "family": "button-primary",
+   "note": "Mask layer (content-box). Only alpha matters; do not tokenize."
+  },
+  {
+   "src": "styles.css",
+   "line": 293,
+   "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+   "prop": "mask",
+   "value": "#000",
+   "role": "fixed",
+   "family": "button-primary",
+   "note": "Mask layer (border-box). Only alpha matters; do not tokenize."
+  },
+  {
+   "src": "styles.css",
+   "line": 296,
+   "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+   "prop": "filter (drop-shadow)",
+   "value": "rgba(255,255,255,0.7)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "White glow halo around each bulb."
+  },
+  {
+   "src": "styles.css",
+   "line": 307,
+   "sel": ".skip-btn.presti-spin.firesale",
+   "prop": "--spin-face",
+   "value": "#D63B2F",
+   "role": "bad",
+   "family": "button-primary",
+   "note": "FIRE SALE red keycap face (panic state of the reroll keycap, not a destructive action)."
+  },
+  {
+   "src": "styles.css",
+   "line": 308,
+   "sel": ".skip-btn.presti-spin.firesale",
+   "prop": "--spin-top",
+   "value": "#F06A55",
+   "role": "bad",
+   "family": "button-primary",
+   "note": "Red keycap top sheen (lighter coral). No bad-hi role; mapped to bad. Proposal: add bad-hi."
+  },
+  {
+   "src": "styles.css",
+   "line": 309,
+   "sel": ".skip-btn.presti-spin.firesale",
+   "prop": "--spin-side",
+   "value": "#7E1D14",
+   "role": "bad-edge",
+   "family": "button-primary",
+   "note": "Red keycap 5px extrusion."
+  },
+  {
+   "src": "styles.css",
+   "line": 310,
+   "sel": ".skip-btn.presti-spin.firesale",
+   "prop": "color",
+   "value": "#2A0703",
+   "role": "bad-ink",
+   "family": "button-primary",
+   "note": "Near-black red label printed on the red keycap."
+  },
+  {
+   "src": "styles.css",
+   "line": 414,
+   "sel": ".year-sel",
+   "prop": "background-image (SVG data URI stroke)",
+   "value": "%23B98A4F",
+   "role": "metal",
+   "family": "input",
+   "note": "Select chevron drawn in maple, URL-encoded as %23B98A4F inside a data: SVG. The hex regex misses it and var() cannot reach it. Theme fix: draw the chevron with mask-image + background-color: var(--t-metal), or stroke='currentColor' is not available in a data URI either."
+  },
+  {
+   "src": "styles.css",
+   "line": 558,
+   "sel": ".ls-swap",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.75)",
+   "role": "shadow",
+   "family": "badge",
+   "note": "Drop shadow under the floating SWAP pill."
+  },
+  {
+   "src": "styles.css",
+   "line": 563,
+   "sel": "@keyframes swapBreathe 0%, 100% (animates .ls-swap)",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.75)",
+   "role": "shadow",
+   "family": "badge",
+   "note": "Same drop shadow, repeated inside the keyframe."
+  },
+  {
+   "src": "styles.css",
+   "line": 563,
+   "sel": "@keyframes swapBreathe 0%, 100% (animates .ls-swap)",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,0)",
+   "role": "accent",
+   "family": "badge",
+   "note": "Amber glow at alpha 0 (resting frame of the breathe)."
+  },
+  {
+   "src": "styles.css",
+   "line": 564,
+   "sel": "@keyframes swapBreathe 50% (animates .ls-swap)",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.75)",
+   "role": "shadow",
+   "family": "badge",
+   "note": "Same drop shadow, repeated inside the keyframe."
+  },
+  {
+   "src": "styles.css",
+   "line": 564,
+   "sel": "@keyframes swapBreathe 50% (animates .ls-swap)",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,0.32)",
+   "role": "accent",
+   "family": "badge",
+   "note": "Soft 8px amber glow at the peak of the breathe ('this is tappable')."
+  },
+  {
+   "src": "styles.css",
+   "line": 571,
+   "sel": ".lineup-slot.moving .ls-token",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.35)",
+   "role": "accent",
+   "family": "chip",
+   "note": "3px amber halo ring around the lifted lineup token."
+  },
+  {
+   "src": "styles.css",
+   "line": 571,
+   "sel": ".lineup-slot.moving .ls-token",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.65)",
+   "role": "shadow",
+   "family": "chip",
+   "note": "Lift drop shadow under the moving token."
+  },
+  {
+   "src": "styles.css",
+   "line": 576,
+   "sel": ".ls-swap.is-moving",
+   "prop": "box-shadow",
+   "value": "rgba(0, 0, 0, 0.7)",
+   "role": "shadow",
+   "family": "badge",
+   "note": "Drop shadow under the solid MOVING pill."
+  },
+  {
+   "src": "styles.css",
+   "line": 590,
+   "sel": "@keyframes swapPulse 0%, 100% (animates .lineup-slot.swap-target .ls-token)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.55)",
+   "role": "accent",
+   "family": "chip",
+   "note": "Amber pulse ring start (0px spread)."
+  },
+  {
+   "src": "styles.css",
+   "line": 591,
+   "sel": "@keyframes swapPulse 50% (animates .lineup-slot.swap-target .ls-token)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.12)",
+   "role": "accent",
+   "family": "chip",
+   "note": "Amber pulse ring expanded to 6px, faded."
+  },
+  {
+   "src": "styles.css",
+   "line": 679,
+   "sel": "#shareTeamBtn.elite-result",
+   "prop": "outline",
+   "value": "rgba(255, 240, 184, 0.78)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Pale-gold 2px outline around the 81/82-win share keycap."
+  },
+  {
+   "src": "styles.css",
+   "line": 682,
+   "sel": "#shareTeamBtn.elite-result",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.62)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Keycap inset top highlight (brighter than normal keycap)."
+  },
+  {
+   "src": "styles.css",
+   "line": 684,
+   "sel": "#shareTeamBtn.elite-result",
+   "prop": "box-shadow",
+   "value": "rgba(255, 211, 106, 0.48)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "2px light-gold ring."
+  },
+  {
+   "src": "styles.css",
+   "line": 685,
+   "sel": "#shareTeamBtn.elite-result",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.55)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "20px amber bloom."
+  },
+  {
+   "src": "styles.css",
+   "line": 686,
+   "sel": "#shareTeamBtn.elite-result",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.24)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "46px outer amber bloom."
+  },
+  {
+   "src": "styles.css",
+   "line": 691,
+   "sel": "@keyframes elite-result-glow 0%, 100% (animates #shareTeamBtn.elite-result)",
+   "prop": "outline-color",
+   "value": "rgba(255, 240, 184, 0.68)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Pale-gold outline, resting frame."
+  },
+  {
+   "src": "styles.css",
+   "line": 692,
+   "sel": "@keyframes elite-result-glow 0%, 100% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.58)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Inset top highlight, resting frame."
+  },
+  {
+   "src": "styles.css",
+   "line": 692,
+   "sel": "@keyframes elite-result-glow 0%, 100% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 211, 106, 0.42)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "2px light-gold ring, resting frame."
+  },
+  {
+   "src": "styles.css",
+   "line": 692,
+   "sel": "@keyframes elite-result-glow 0%, 100% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.42)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "16px amber bloom, resting frame."
+  },
+  {
+   "src": "styles.css",
+   "line": 692,
+   "sel": "@keyframes elite-result-glow 0%, 100% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.18)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "36px outer amber bloom, resting frame."
+  },
+  {
+   "src": "styles.css",
+   "line": 695,
+   "sel": "@keyframes elite-result-glow 50% (animates #shareTeamBtn.elite-result)",
+   "prop": "outline-color",
+   "value": "rgba(255, 247, 211, 0.98)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Near-white gold outline at the glow peak."
+  },
+  {
+   "src": "styles.css",
+   "line": 696,
+   "sel": "@keyframes elite-result-glow 50% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.70)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Inset top highlight at the peak."
+  },
+  {
+   "src": "styles.css",
+   "line": 696,
+   "sel": "@keyframes elite-result-glow 50% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 231, 157, 0.72)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "3px light-gold ring at the peak."
+  },
+  {
+   "src": "styles.css",
+   "line": 696,
+   "sel": "@keyframes elite-result-glow 50% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.72)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "28px amber bloom at the peak."
+  },
+  {
+   "src": "styles.css",
+   "line": 696,
+   "sel": "@keyframes elite-result-glow 50% (animates #shareTeamBtn.elite-result)",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.32)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "62px outer amber bloom at the peak."
+  },
+  {
+   "src": "styles.css",
+   "line": 701,
+   "sel": "#shareTeamBtn.elite-result:not(:disabled):active",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.45)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Pressed: inset top highlight."
+  },
+  {
+   "src": "styles.css",
+   "line": 701,
+   "sel": "#shareTeamBtn.elite-result:not(:disabled):active",
+   "prop": "box-shadow",
+   "value": "rgba(255, 231, 157, 0.72)",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Pressed: 2px light-gold ring."
+  },
+  {
+   "src": "styles.css",
+   "line": 701,
+   "sel": "#shareTeamBtn.elite-result:not(:disabled):active",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.58)",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "Pressed: 20px amber bloom."
+  },
+  {
+   "src": "styles.css",
+   "line": 704,
+   "sel": ".board .big-label .net-bonus",
+   "prop": "color",
+   "value": "#ff5a4a",
+   "role": "bad",
+   "family": "data",
+   "note": "Heat Check '+ N' bonus added to the net rating, in fire red. SEMANTICS: this red marks a POSITIVE bonus ('hot'), not a loss; the spec lists #FF5A4A under bad so it is mapped there. A theme recoloring bad would recolor the hot bonus too. Proposal: a dedicated `hot` role."
+  },
+  {
+   "src": "styles.css",
+   "line": 704,
+   "sel": ".board .big-label .net-bonus",
+   "prop": "text-shadow",
+   "value": "rgba(255,65,51,0.55)",
+   "role": "bad",
+   "family": "data",
+   "note": "10px red glow behind the hot bonus number (rgb 255,65,51 = #ff4133)."
+  },
+  {
+   "src": "styles.css",
+   "line": 757,
+   "sel": ".pick-card.hot-pick",
+   "prop": "border-color",
+   "value": "#ff4133",
+   "role": "bad",
+   "family": "card",
+   "note": "Hot (Heat Check) pick card border, fire red. Positive meaning (see line 704 note)."
+  },
+  {
+   "src": "styles.css",
+   "line": 758,
+   "sel": ".pick-card.hot-pick",
+   "prop": "box-shadow",
+   "value": "#ff4133",
+   "role": "bad",
+   "family": "card",
+   "note": "1px solid red ring doubling the border."
+  },
+  {
+   "src": "styles.css",
+   "line": 758,
+   "sel": ".pick-card.hot-pick",
+   "prop": "box-shadow",
+   "value": "rgba(255,65,51,0.55)",
+   "role": "bad",
+   "family": "card",
+   "note": "16px red outer bloom."
+  },
+  {
+   "src": "styles.css",
+   "line": 758,
+   "sel": ".pick-card.hot-pick",
+   "prop": "box-shadow",
+   "value": "rgba(255,65,51,0.12)",
+   "role": "bad",
+   "family": "card",
+   "note": "18px inset red glow inside the card."
+  },
+  {
+   "src": "styles.css",
+   "line": 760,
+   "sel": ".hot-pick .pr-name",
+   "prop": "color",
+   "value": "#ff5a4a",
+   "role": "bad",
+   "family": "card",
+   "note": "Hot player's name in bonus red."
+  },
+  {
+   "src": "styles.css",
+   "line": 761,
+   "sel": ".hot-pick .pr-v .hot-bonus",
+   "prop": "color",
+   "value": "#ff5a4a",
+   "role": "bad",
+   "family": "data",
+   "note": "'+ N' hot bonus after the gold value."
+  },
+  {
+   "src": "styles.css",
+   "line": 761,
+   "sel": ".hot-pick .pr-v .hot-bonus",
+   "prop": "text-shadow",
+   "value": "rgba(255,65,51,0.6)",
+   "role": "bad",
+   "family": "data",
+   "note": "10px red glow on the hot bonus."
+  },
+  {
+   "src": "styles.css",
+   "line": 763,
+   "sel": ".hot-pick .slot-badge",
+   "prop": "color",
+   "value": "#ff5a4a",
+   "role": "bad",
+   "family": "badge",
+   "note": "Slot badge text goes red on a hot pick (badge becomes an outline)."
+  },
+  {
+   "src": "styles.css",
+   "line": 764,
+   "sel": ".hot-pick .slot-badge",
+   "prop": "text-shadow",
+   "value": "rgba(255,65,51,0.6)",
+   "role": "bad",
+   "family": "badge",
+   "note": "Red glow on the badge text."
+  },
+  {
+   "src": "styles.css",
+   "line": 766,
+   "sel": ".hot-pick .slot-badge",
+   "prop": "border",
+   "value": "#ff4133",
+   "role": "bad",
+   "family": "badge",
+   "note": "1px red badge outline."
+  },
+  {
+   "src": "styles.css",
+   "line": 767,
+   "sel": ".hot-pick .slot-badge",
+   "prop": "box-shadow",
+   "value": "rgba(255,65,51,0.5)",
+   "role": "bad",
+   "family": "badge",
+   "note": "8px red glow around the badge."
+  },
+  {
+   "src": "styles.css",
+   "line": 840,
+   "sel": ".goat-particle",
+   "prop": "filter (drop-shadow)",
+   "value": "rgba(0, 0, 0, .55)",
+   "role": "shadow",
+   "family": "other",
+   "note": "Drop shadow under the emoji confetti particles (glyphs are emoji, not themeable)."
+  },
+  {
+   "src": "styles.css",
+   "line": 869,
+   "sel": ".climb-pin.comp",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.25)",
+   "role": "accent",
+   "family": "progress",
+   "note": "2px amber halo on the comparison-team pins of the climb ladder."
+  },
+  {
+   "src": "styles.css",
+   "line": 893,
+   "sel": ".cy-dot",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.22)",
+   "role": "accent",
+   "family": "progress",
+   "note": "3px amber halo around the 'you' dot on the climb ladder."
+  },
+  {
+   "src": "styles.css",
+   "line": 898,
+   "sel": ".cy-arrow",
+   "prop": "text-shadow",
+   "value": "rgba(255, 181, 46, 0.5)",
+   "role": "accent",
+   "family": "progress",
+   "note": "6px amber glow on the 'you' arrow glyph."
+  },
+  {
+   "src": "styles.css",
+   "line": 934,
+   "sel": ".donate-btn",
+   "prop": "--spin-face",
+   "value": "#E89A1C",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "Duplicate of the keycap face (line 232). The donate link is an <a> styled as the same keycap; should inherit a shared token instead of redefining."
+  },
+  {
+   "src": "styles.css",
+   "line": 935,
+   "sel": ".donate-btn",
+   "prop": "--spin-top",
+   "value": "#F8B647",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Duplicate of line 233."
+  },
+  {
+   "src": "styles.css",
+   "line": 936,
+   "sel": ".donate-btn",
+   "prop": "--spin-side",
+   "value": "#9E5A0F",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "Duplicate of line 234."
+  },
+  {
+   "src": "styles.css",
+   "line": 937,
+   "sel": ".donate-btn",
+   "prop": "--spin-ink",
+   "value": "#2A1A05",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Duplicate of line 235."
+  },
+  {
+   "src": "styles.css",
+   "line": 946,
+   "sel": ".donate-btn",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.45)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Keycap inset top highlight (duplicate of line 244)."
+  },
+  {
+   "src": "styles.css",
+   "line": 948,
+   "sel": ".donate-btn",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.5)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "Keycap grounding drop (duplicate of line 246)."
+  },
+  {
+   "src": "styles.css",
+   "line": 956,
+   "sel": ".donate-btn:active",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,0.35)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Pressed inset highlight (duplicate of line 258)."
+  },
+  {
+   "src": "styles.css",
+   "line": 958,
+   "sel": ".donate-btn:active",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,0.45)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "Pressed drop (duplicate of line 260)."
+  },
+  {
+   "src": "styles.css",
+   "line": 1048,
+   "sel": ".btn-dark",
+   "prop": "box-shadow",
+   "value": "rgba(255, 181, 46, 0.22)",
+   "role": "accent",
+   "family": "button-secondary",
+   "note": "1px inset faint amber inner ring inside the amber border of the dark outline button."
+  }
+ ],
+ "components": {
+  "button-primary": [
+   {
+    "sel": "button.presti-spin, button.more-modes, a.btn",
+    "treatment": "The extruded goldenrod keycap. 9px radius, no border; linear-gradient 180deg #F8B647 (0%) to #E89A1C (48-100%); box-shadow = inset 1px white top sheen + 0 5px 0 0 #9E5A0F solid extrusion + 0 7px 9px -3px black drop; label #2A1A05 weight 600; padding 10px 6px 11px. decorate3dButtons (app.js:728) adds .presti-spin to every <button> except ~19 excluded classes."
+   },
+   {
+    "sel": "button.presti-spin:not(:disabled):active, button.more-modes:not(:disabled):active, a.btn:active",
+    "treatment": "Press: translateY(4px) and extrusion shrinks to 1px, drop tightens (70ms)."
+   },
+   {
+    "sel": "button.presti-spin:disabled, button.more-modes:disabled",
+    "treatment": "Disabled: flat warm #3a352a fill, 1px inset #4a4434 hairline, #6c6048 label, no extrusion, no transform."
+   },
+   {
+    "sel": ".skip-btn.presti-spin.refunded",
+    "treatment": "Free-spin flash: same keycap re-skinned green (#4FC487/#2FA866/#1B6E40, ink #082A1A, weight 700) with spinRefund pop animation."
+   },
+   {
+    "sel": ".skip-btn.presti-spin.firesale",
+    "treatment": "FIRE SALE: same keycap re-skinned red (#F06A55/#D63B2F/#7E1D14, ink #2A0703, weight 700) with spinRefund pop."
+   },
+   {
+    "sel": ".skip-btn.presti-spin.refunded::before, .skip-btn.presti-spin.refunded::after, .skip-btn.presti-spin.firesale::before, .skip-btn.presti-spin.firesale::after",
+    "treatment": "Marquee: white 1.8px dots on a 10px grid, masked to a 4px ring inset 3px from the edge (7px radius), white drop-shadow glow, two layers blinking in antiphase (bulbsA/bulbsB, 0.26s steps)."
+   },
+   {
+    "sel": "#shareTeamBtn.elite-result",
+    "treatment": "81/82-win share keycap: keycap + 2px pale-gold outline (offset 3px) + light-gold 2px ring + two amber blooms (20px, 46px), breathing via elite-result-glow 2.2s."
+   },
+   {
+    "sel": ".confirm-btn",
+    "treatment": "Base draft button: flat amber fill, --ink text, Barlow Condensed 700 19px uppercase 0.06em, square corners, padding 11px 8px (normally overridden by presti-spin)."
+   },
+   {
+    "sel": ".confirm-btn.presti-spin",
+    "treatment": "Hero draft keycap: fit-content, min-width 240px, centered, IBM Plex Mono 13px 700 0.08em tracking, padding 13px 22px. .confirm-multi variant: min-width 0, padding 12px 18px."
+   },
+   {
+    "sel": ".donate-btn",
+    "treatment": "<a> donate link restyled as the same keycap (palette redefined inline), mono 11px uppercase 0.07em, padding 6px 12px 7px, max-width 62% with ellipsis."
+   },
+   {
+    "sel": ".btn",
+    "treatment": "Generic button: flex 1, Barlow Condensed 700 17px uppercase 0.06em, padding 11px 8px, centered. a.btn also gets the keycap."
+   },
+   {
+    "sel": ".btn-primary",
+    "treatment": "Flat amber fill with --ink text (under presti-spin the keycap gradient wins)."
+   },
+   {
+    "sel": ".btn-block, .eval-btn",
+    "treatment": "Full-width block buttons, margin-top 10-16px."
+   }
+  ],
+  "button-secondary": [
+   {
+    "sel": ".skip-btn",
+    "treatment": "Reroll button base: flex 1, --ink fill, 1px --tunnel-2 border, square, IBM Plex Mono 11.5px uppercase 0.06em, chalk text; active border maple. In practice always also .presti-spin, so it renders as the keycap."
+   },
+   {
+    "sel": ".skip-btn:disabled",
+    "treatment": "Grey #555c63 label (overridden by the keycap disabled rule)."
+   },
+   {
+    "sel": ".startover-btn",
+    "treatment": "Excluded from presti-spin. Flat small amber block: amber fill + 1px amber border, --ink text, mono 11px uppercase 0.07em, padding 5px 11px, square; :active swaps to maple fill."
+   },
+   {
+    "sel": ".btn-dark",
+    "treatment": "Dark outline button: --ink fill, amber text, 1px amber border + 1px inset faint-amber ring, square; :active --tunnel fill."
+   }
+  ],
+  "button-ghost": [
+   {
+    "sel": ".btn-ghost",
+    "treatment": "Transparent, 1px --maple-line border, chalk text (Condensed 700 17px via .btn)."
+   }
+  ],
+  "badge": [
+   {
+    "sel": ".slot-badge",
+    "treatment": "Square maple block, --ink mono 10px 600 0.06em text, padding 1px 5px."
+   },
+   {
+    "sel": ".hot-pick .slot-badge",
+    "treatment": "Becomes a transparent outline: #ff4133 1px border + red glow, #ff5a4a glowing text."
+   },
+   {
+    "sel": ".ls-pos",
+    "treatment": "Corner position tag on the lineup token: amber fill, --ink mono 9px 700, 7px radius, 1.5px --ink border."
+   },
+   {
+    "sel": ".ls-swap",
+    "treatment": "Floating SWAP pill: 999px radius, --ink fill, 1.5px amber border, amber Barlow Condensed 700 10px uppercase 0.07em, black drop shadow, 2.7s amber breathe glow."
+   },
+   {
+    "sel": ".ls-swap.is-moving, .ls-swap.is-here",
+    "treatment": "Solid amber pill with --ink text; is-here bobs 2px (herePulse)."
+   },
+   {
+    "sel": ".info-i",
+    "treatment": "13px outline circle (1.4px currentColor), Georgia italic 700 9px 'i'."
+   },
+   {
+    "sel": ".cap-info",
+    "treatment": "22px filled amber disc, --ink Georgia italic 700 14px 'i', no border (rule continues past line 1100)."
+   },
+   {
+    "sel": ".cap-season",
+    "treatment": "Inline season label: --ink fill, 1px --maple-line border, maple mono 11px, square."
+   }
+  ],
+  "chip": [
+   {
+    "sel": ".sort-chip",
+    "treatment": "Pill (999px), transparent, 1px --maple-line border, chalk-dim mono 11px uppercase 0.04em, padding 5px 9px."
+   },
+   {
+    "sel": ".sort-chip.active",
+    "treatment": "Amber fill + amber border, --tunnel text, weight 600."
+   },
+   {
+    "sel": ".chips, .chip",
+    "treatment": "Trait chip: square, 1px --maple-line border, maple mono 9.5px 0.04em, padding 1px 5px; .half = dashed border."
+   },
+   {
+    "sel": ".five-chip",
+    "treatment": "Test-mode chip: --tunnel-2 fill, 1px --maple-line border, square, 13px chalk; small = chalk-dim mono 10px; .rm whistle mono 700."
+   },
+   {
+    "sel": ".ls-token",
+    "treatment": "Lineup avatar token: 46px circle, maple fill, --ink Barlow Condensed 700 17px initials, 2px amber border."
+   },
+   {
+    "sel": ".ls-token.is-open",
+    "treatment": "Open slot: transparent, 2px dashed --tunnel-2 ring, chalk-dim mono 14px 600 position letter."
+   },
+   {
+    "sel": ".lineup-slot.moving .ls-token",
+    "treatment": "Lifted -4px with 3px amber halo + black drop."
+   },
+   {
+    "sel": ".lineup-slot.swap-target .ls-token",
+    "treatment": "2px dashed amber ring with 0.9s amber pulse (swapPulse)."
+   },
+   {
+    "sel": ".lineup-slot.movable:focus-visible .ls-token",
+    "treatment": "2px amber outline, offset 3px."
+   }
+  ],
+  "card": [
+   {
+    "sel": ".board",
+    "treatment": "Results board: --tunnel fill, 1px --maple-line border with 3px maple top rule, square, padding 16px, centered, overflow hidden (same shell as .ticket)."
+   },
+   {
+    "sel": ".kaman-board",
+    "treatment": "Board variant, relative/overflow hidden."
+   },
+   {
+    "sel": ".pick-card",
+    "treatment": "Drafted pick card: --tunnel fill, 1px --tunnel-2 border, square, padding 10px 12px."
+   },
+   {
+    "sel": ".pick-card.hot-pick",
+    "treatment": "Fire-red #ff4133 border + 1px red ring + 16px red bloom + 18px inset red glow."
+   },
+   {
+    "sel": ".hot-pick .pr-name",
+    "treatment": "Player name in #ff5a4a."
+   },
+   {
+    "sel": ".pick-top",
+    "treatment": "Flex row name/value."
+   }
+  ],
+  "ticket": [
+   {
+    "sel": ".ticket",
+    "treatment": "Signature roll ticket: --tunnel fill, 1px --maple-line border, 3px maple top rule, square, padding 14px 16px 12px."
+   },
+   {
+    "sel": ".ticket-head, .ticket-headtext, .ticket-roll, .ticket-roll.reeling",
+    "treatment": "Layout; reeling = one-line clipped reel window."
+   },
+   {
+    "sel": ".ticket-art, .crest-img",
+    "treatment": "116px right zone holding a 96px team crest IMAGE (not themeable)."
+   },
+   {
+    "sel": ".ticket-dec",
+    "treatment": "Decade: Barlow Condensed 700 40px, amber, 0.02em."
+   },
+   {
+    "sel": ".ticket-fr",
+    "treatment": "Franchise: Barlow Condensed 700 40px uppercase 0.03em, inherits chalk."
+   },
+   {
+    "sel": ".ticket-sub",
+    "treatment": "Mono 11px chalk-dim."
+   },
+   {
+    "sel": ".ticket-actions",
+    "treatment": "Flex row of reroll buttons, gap 8px."
+   },
+   {
+    "sel": ".kaman-ticket",
+    "treatment": "Centered 96px-min ticket body for Kaman Mode."
+   },
+   {
+    "sel": ".kaman-big",
+    "treatment": "Barlow Condensed 800 clamp(52px,19vw,104px) uppercase 0.06em amber with a hard 0 3px 0 --maple-line text-shadow extrusion."
+   }
+  ],
+  "panel": [
+   {
+    "sel": ".tray",
+    "treatment": "Fixed bottom draft tray: --ink fill, 2px --maple-line top rule, safe-area padding."
+   },
+   {
+    "sel": ".tray-inner, .lineup-rail, .lineup-slot",
+    "treatment": "Layout within the tray; lineup-rail 5-across tokens with 15px pill headroom."
+   },
+   {
+    "sel": ".board-cell",
+    "treatment": "Recessed stat cell: --ink fill, 1px --tunnel-2 border, square."
+   },
+   {
+    "sel": ".twoway",
+    "treatment": "1px --tunnel-2 bordered well, padding 14px 12px."
+   },
+   {
+    "sel": ".cap-bar",
+    "treatment": "--tunnel fill, 1px --maple-line border, 3px amber left bar, padding 8px 12px."
+   },
+   {
+    "sel": ".error-box",
+    "treatment": "1px --whistle border, mono 12.5px chalk, padding 14px."
+   },
+   {
+    "sel": ".results-topbar, .actions, .confirm-multi, .tabs, .browse-row, .five-chips, .pool-head, .pool-head-tools",
+    "treatment": "Flex layout bars (no color)."
+   }
+  ],
+  "input": [
+   {
+    "sel": ".pool-search",
+    "treatment": "--tunnel fill, 1px --maple-line border, 8px radius, chalk mono 13px (16px on coarse pointers), placeholder chalk-dim, focus border maple, no outline."
+   },
+   {
+    "sel": ".year-sel",
+    "treatment": "Native select reset: --ink fill, 1px --maple-line border, square, maple mono 11px, chevron = maple SVG data URI (hard-coded %23B98A4F); focus border maple, text amber."
+   },
+   {
+    "sel": ".search-input",
+    "treatment": "--tunnel fill, 1px --tunnel-2 border, square, chalk Barlow 16px; focus border maple."
+   },
+   {
+    "sel": ".browse-sel",
+    "treatment": "--tunnel fill, 1px --tunnel-2 border, square, chalk mono 13px."
+   },
+   {
+    "sel": ".share-out",
+    "treatment": "Share textarea: --ink fill, 1px amber border, 4px radius, chalk mono 13px/1.5."
+   }
+  ],
+  "row": [
+   {
+    "sel": ".player-row",
+    "treatment": "Pool row button: --tunnel fill, 1px --tunnel-2 border + 3px --tunnel-2 left bar, square, padding 10px 12px; :active --tunnel-2; focus 2px amber outline; .off opacity .35."
+   },
+   {
+    "sel": ".player-row.sel",
+    "treatment": "Selected: maple border, amber 3px left bar, --tunnel-2 fill."
+   },
+   {
+    "sel": ".pr-top, .pr-sub, .cap-row .pr-sub",
+    "treatment": "Row layout; pr-sub mono 11px chalk-dim."
+   },
+   {
+    "sel": ".pr-name",
+    "treatment": "Barlow 500 16px, chalk."
+   },
+   {
+    "sel": ".pr-pos",
+    "treatment": "Mono 600 13px maple."
+   },
+   {
+    "sel": ".pr-stats",
+    "treatment": "10.5px chalk-dim."
+   },
+   {
+    "sel": ".ledger-row",
+    "treatment": "Ledger line: flex, 1px --tunnel-2 bottom rule, 13.5px; .total --tunnel fill 500; .why mono 10.5px chalk-dim."
+   },
+   {
+    "sel": ".tw-row, .tw-top",
+    "treatment": "Two-way profile row layout."
+   }
+  ],
+  "table": [
+   {
+    "sel": ".ledger",
+    "treatment": "1px --tunnel-2 bordered list box of ledger rows, square."
+   },
+   {
+    "sel": ".board-grid",
+    "treatment": "2-col grid of board cells, mono."
+   }
+  ],
+  "data": [
+   {
+    "sel": ".mono",
+    "treatment": "IBM Plex Mono utility."
+   },
+   {
+    "sel": ".pr-v, .pr-v-inline",
+    "treatment": "Mono 600 16px / 13px amber value; small = chalk-dim 10px."
+   },
+   {
+    "sel": ".hot-pick .pr-v .hot-bonus",
+    "treatment": "#ff5a4a with red glow."
+   },
+   {
+    "sel": ".board .big",
+    "treatment": "Barlow Condensed 700 64px amber, line-height 1."
+   },
+   {
+    "sel": ".board .big-label .net-base / .net-bonus",
+    "treatment": "net-base amber; net-bonus #ff5a4a with red glow."
+   },
+   {
+    "sel": ".board-cell .v",
+    "treatment": "Mono 17px 600."
+   },
+   {
+    "sel": ".tray-stats, .tray-stats b",
+    "treatment": "5-col grid mono 10.5px chalk-dim labels over 12.5px 600 chalk values; b.warn whistle, b.good ok."
+   },
+   {
+    "sel": ".ledger-amt",
+    "treatment": "Mono 600; .tax whistle, .zero/.good/.hot ok."
+   },
+   {
+    "sel": ".tw-tier, .tier-elite/.tier-strong/.tier-solid/.tier-avg/.tier-weak",
+    "treatment": "Mono 10px uppercase tier word; amber / chalk / chalk-dim / chalk-dim / whistle."
+   },
+   {
+    "sel": ".pool-count, .cap-bar-sub, .cap-spent",
+    "treatment": "Mono 11-12px chalk-dim (cap-spent maple)."
+   },
+   {
+    "sel": ".cap-bar-amt, .cap-cost",
+    "treatment": "Mono 700 22px / 16px amber; .cost-old whistle strike-through 13px, .cost-new ok; .cap-row.off .cap-cost maple."
+   }
+  ],
+  "progress": [
+   {
+    "sel": ".round-pips span",
+    "treatment": "9px diamonds (rotated squares) with 1px maple outline; .done maple fill; .now amber fill + border."
+   },
+   {
+    "sel": ".slot-rail, .slot",
+    "treatment": "5 equal square cells, 1px --tunnel-2 border, mono 11px chalk-dim (b chalk); .filled = maple fill, --ink text."
+   },
+   {
+    "sel": ".tw-track, .tw-fill",
+    "treatment": "9px --tunnel-2 track, 5px radius; fill amber (.tw-off/.tw-def), .tw-nub 7px whistle; width set inline from JS (app.js:3818)."
+   },
+   {
+    "sel": ".climb-track, .climb-svg, .rail-path, .fill-path",
+    "treatment": "Vertical ladder chart: 8px round SVG strokes, rail --tunnel-2, fill amber."
+   },
+   {
+    "sel": ".climb-pin, .climb-pin.comp",
+    "treatment": "7px maple dots with 1px --ink ring; comp = 10px amber with 2px amber halo; top% set inline from JS."
+   },
+   {
+    "sel": ".climb-tag, .climb-summit-cap",
+    "treatment": "Mono 9.5px 600 chalk-dim labels (comp amber, b chalk); summit cap Condensed 700 13px amber on --ink."
+   },
+   {
+    "sel": ".cy-dot, .cy-arrow, .cy-label",
+    "treatment": "'You' marker: 16px amber dot with 2px --ink border + 3px amber halo; amber arrow glyph with glow; Condensed 700 16px amber label with mono 10.5px chalk-dim small."
+   }
+  ],
+  "heading": [
+   {
+    "sel": ".intro-title",
+    "treatment": "Barlow Condensed 700 36px/1.05, 0.02em, chalk."
+   },
+   {
+    "sel": ".tw-end",
+    "treatment": "Barlow Condensed 17px uppercase 0.02em chalk."
+   }
+  ],
+  "eyebrow": [
+   {
+    "sel": ".eyebrow, .intro .eyebrow",
+    "treatment": "IBM Plex Mono 10.5px, 0.14em tracking, uppercase, maple (intro: weight 600, +20px top)."
+   },
+   {
+    "sel": ".board .big-label, .board-cell .k",
+    "treatment": "Mono 10-11px uppercase 0.08-0.1em chalk-dim."
+   },
+   {
+    "sel": ".confirm-label",
+    "treatment": "Mono 11px 0.04em chalk-dim, centered."
+   }
+  ],
+  "body": [
+   {
+    "sel": "body",
+    "treatment": "--ink background, chalk text, Barlow 16px/1.45, antialiased."
+   },
+   {
+    "sel": ".dim",
+    "treatment": "chalk-dim utility."
+   },
+   {
+    "sel": ".intro p, .intro-lead",
+    "treatment": "15px running text, chalk lead."
+   },
+   {
+    "sel": ".pro-hint, .pro-hint em",
+    "treatment": "Mono 11px/1.4 maple; em italic amber."
+   },
+   {
+    "sel": ".kaman-flavor, .mode-note, .mode-note strong",
+    "treatment": "Mono 11-12px/1.45 chalk-dim; strong amber 700."
+   },
+   {
+    "sel": ".loading-state, .test-empty, .test-need, .test-more, .tray-hint",
+    "treatment": "Small centered/utility text, 11-12px."
+   }
+  ],
+  "nav": [
+   {
+    "sel": ".site-head",
+    "treatment": "560px centered column, 2px --maple-line bottom rule."
+   },
+   {
+    "sel": ".brand-logo",
+    "treatment": "logo.png raster, 232px (max 68%). NOT themeable from CSS."
+   },
+   {
+    "sel": ".site-foot",
+    "treatment": "1px --tunnel-2 top rule, IBM Plex Mono 9px/1.35 chalk-dim; .games-count/.foot-stats mono 11px maple."
+   },
+   {
+    "sel": ".site-foot details.legal summary",
+    "treatment": "Mono 10px uppercase 0.04em chalk-dim with rotating triangle disclosure."
+   },
+   {
+    "sel": ".tabs, .tab, .tab.on",
+    "treatment": "Segmented tabs: square, 1px --tunnel-2 border, mono 12px uppercase 0.06em chalk-dim; .on = maple fill + border, --ink text."
+   }
+  ],
+  "link": [
+   {
+    "sel": ".site-foot a",
+    "treatment": "Chalk, underlined."
+   }
+  ],
+  "other": [
+   {
+    "sel": ":root",
+    "treatment": "10 color tokens (--ink, --tunnel, --tunnel-2, --chalk, --chalk-dim, --maple, --maple-line, --amber, --whistle, --ok) + 3 font tokens (--disp Barlow Condensed, --body Barlow, --mono IBM Plex Mono)."
+   },
+   {
+    "sel": "button",
+    "treatment": "Global reset: inherit font/color, no bg/border/padding."
+   },
+   {
+    "sel": "button:focus-visible, summary:focus-visible",
+    "treatment": "2px amber outline, 2px offset (the site's focus ring)."
+   },
+   {
+    "sel": "#app, body.drafting #app",
+    "treatment": "560px centered container; bottom padding clears the fixed tray."
+   },
+   {
+    "sel": ".goat-fw, .spray-layer, .goat-particle",
+    "treatment": "Emoji confetti particles (JS-spawned, app.js:3979) with black drop shadow; glyph colors are emoji, not themeable."
+   },
+   {
+    "sel": ".flap",
+    "treatment": "flap-pop entrance animation (no color)."
+   }
+  ]
+ },
+ "notes": [
+  "Literal count: grep for hex/rgb()/rgba()/hsl() over styles.css lines 1-1100 finds 97. Entries = 98: the extra one is %23B98A4F (URL-encoded #B98A4F) inside the .year-sel SVG data URI (line 414), which the plain hex regex misses.",
+  "6 of the 98 (lines 3-4) sit in the header comment and are not rendered; the tokenizer should skip them.",
+  "No hsl()/hsla() and no named colors used as real colors in range (only 'transparent' for resets/tap-highlight and 'currentColor' on .info-i).",
+  "4 entries are #000 inside mask layers (lines 292-293, marquee bulbs): hue is irrelevant in a mask; role fixed, do not tokenize.",
+  "--ink does double duty: page ground AND the dark label on amber/maple fills (16 `color: var(--ink)` uses file-wide). --tunnel is used once the same way (.sort-chip.active). Those uses need to read var(--t-accent-ink) or a light theme breaks every amber button label.",
+  "--tunnel-2 (ground-3) is mostly used as a border (~21 border uses vs ~7 fills). A theme needs border uses split onto --t-line.",
+  "--maple (metal) doubles as the eyebrow/label text color and as a fill behind ink text (.slot-badge, .slot.filled, .tab.on, .ls-token). Repainting metal repaints all eyebrows.",
+  "The keycap palette (#E89A1C face / #F8B647 top / #9E5A0F side / #2A1A05 ink + white inset + black drop) is written twice: button.presti-spin group (232-260) and .donate-btn (934-958). Should become one shared set of --t-accent* tokens.",
+  "#E89A1C is the keycap FACE here (accent), although the spec lists it as an accent-edge example. It is oranger/deeper than --amber #FFB52E, so the keycap and flat amber fills (.confirm-btn, .btn-primary, .startover-btn, .sort-chip.active) are two different ambers today.",
+  "Refund (green) and fire-sale (red) keycap variants need hi/edge/ink roles the vocabulary lacks: good-hi, good-edge, good-ink, bad-hi. Mapped to good / accent-ink / bad with notes.",
+  "The Heat Check 'hot' reds (#ff5a4a text, #ff4133 border, rgba(255,65,51,a) glows; 13 entries) mean a POSITIVE bonus but were mapped to bad per the spec's examples. A `hot` role would let a theme keep losses and hot bonuses apart. Meanwhile .ledger-amt.hot uses --ok (green) for the same concept.",
+  "Disabled keycap colors (#6c6048 / #3a352a / #4a4434) are warm-tinted and have no `disabled` role; mapped text-2 / ground-3 / line.",
+  "#555c63 (.skip-btn:disabled, line 225) is likely dead CSS: .skip-btn always carries .presti-spin, and button.presti-spin:disabled (specificity 0,2,1) beats .skip-btn:disabled (0,2,0).",
+  "Not reachable from CSS variables: (1) the .year-sel chevron color, baked into a data: SVG URI (line 414); (2) .brand-logo = logo.png raster (index.html:81); (3) .crest-img team crest images; (4) .goat-particle emoji glyphs. JS in this range's classes only sets positions (tw-fill width, climb-pin top), not colors. app.js:1409-1411 builds an inline SVG with fill='var(--amber)' / stroke='var(--maple)', which IS reachable through the tokens.",
+  "Shape language in range: square corners almost everywhere (cards, tickets, rows, chips, tabs, inputs, badges); rounded only for keycaps (9px), .pool-search (8px), .share-out (4px), .ls-pos (7px), pills (.sort-chip, .ls-swap 999px), round tokens/dots (50%), tw-track (5px). Depth only on keycaps (5px solid extrusion + drop) and glow effects (amber halos, red hot glows).",
+  "Type: Barlow Condensed 700/800 for display numbers and names (ticket 40px, board big 64px, kaman up to 104px, intro 36px); IBM Plex Mono for every label, eyebrow, stat, chip, input; Barlow for running text and player names; Georgia italic only for the (i) info glyphs."
+ ]
+}

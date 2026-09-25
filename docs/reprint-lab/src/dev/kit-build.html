@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kit builder</title>
+<style>
+  body { margin: 0; padding: 16px; font: 14px/1.4 ui-monospace, "IBM Plex Mono", monospace; background: #f3efe6; color: #222; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p { margin: 0 0 10px; max-width: 70ch; }
+  button { font: inherit; padding: 6px 12px; margin: 0 6px 10px 0; cursor: pointer; }
+  .wrap { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+  #preview { width: 390px; height: 780px; border: 1px solid #999; background: #fff; flex: 0 0 auto; }
+  #orig { position: absolute; left: -2000px; top: 0; width: 390px; height: 780px; border: 0; }
+  table { border-collapse: collapse; font-size: 12px; }
+  td, th { border-bottom: 1px solid #ddd; padding: 3px 8px 3px 0; text-align: left; vertical-align: top; }
+  .bad { color: #b00; } .ok { color: #070; }
+  pre { white-space: pre-wrap; font-size: 11px; max-width: 900px; }
+</style>
+</head><body>
+<h1>Every piece: kit builder</h1>
+<p>Builds snaps/tok/kit.html (the lab's "Every piece" view) from the real tokenized snapshots. Every piece is a copy of real markup; the list below says where each one comes from. Build runs on load. Save writes the file. Check compares each piece's computed styles with the same element in its source snapshot.</p>
+<p>URL options: ?save=1 saves after building, ?check=1 runs the check after building.</p>
+<div>
+  <button type="button" id="bBuild">Build</button>
+  <button type="button" id="bSave">Save kit.html</button>
+  <button type="button" id="bCheck">Check against sources</button>
+  <span id="status"></span>
+</div>
+<div class="wrap">
+  <iframe id="preview" title="kit preview"></iframe>
+  <div>
+    <table id="list"><thead><tr><th>Section</th><th>Piece</th><th>Source snapshot</th><th>Selector</th><th>Check</th></tr></thead><tbody></tbody></table>
+    <pre id="diffs"></pre>
+  </div>
+</div>
+<iframe id="orig" title="source snapshot" aria-hidden="true"></iframe>
+<script>
+(function () {
+  "use strict";
+  var SNAPS = "/snaps/tok/";
+  var SAVE_TO = "/snap/tok/kit.html";
+  var SITE_CSS = '<link rel="stylesheet" href="http://localhost:8091/lab/build/site.tok.css" data-lab-site="">';
+  var BASE = '<base href="http://localhost:8788/">';
+  // Anything the site positions fixed (overlays, sheets, the tray, toasts) is made static in the kit.
+  var FIXED = ".tray, .rules-overlay, .hh-overlay, .reel-overlay, .np-overlay, .bt-sheet, .bt-toast, .bt-backdrop, .spray-layer, .pool-fade, .pool-cue, .bt-hand";
+  // Context wrappers that define variables but paint nothing: keep them as they are.
+  var PAINT_ALWAYS = ".rr";
+
+  /* ---------- the kit's own CSS: layout only; colors only through var(--t-...) ---------- */
+  var KIT_CSS = [
+    "/* kit layout: sections, labels, rows */",
+    ".kit-sec { margin: 0 0 34px; }",
+    ".kit-sec > .kit-label { margin: 0 0 14px; padding-top: 12px; border-top: 1px solid var(--t-line, var(--maple-line)); }",
+    ".kit-item { margin: 0 0 18px; min-width: 0; max-width: 100%; }",
+    ".kit-cap { font-family: var(--mono); font-size: 11px; line-height: 1.3; letter-spacing: 0.02em; opacity: 0.55; margin: 0 0 7px; }",
+    ".kit-sec:first-child > .kit-label { border-top: 0; padding-top: 0; }",
+    "#app { overflow-x: clip; }",
+    ".kit-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 14px; margin: 0 0 18px; }",
+    ".kit-row > .kit-item { margin: 0; }",
+    ".kit-note { font-family: var(--mono); font-size: 11px; line-height: 1.45; opacity: 0.7; margin: 0 0 18px; }",
+    ".kit-tagcell { display: inline-flex; flex-direction: column; align-items: center; gap: 5px; }",
+    ".kit-tagcap { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }",
+    "/* context wrappers: keep the selectors and inherited type, drop their own painting */",
+    "[data-kit-ghost] { background: none !important; border: 0 !important; box-shadow: none !important; outline: 0 !important; padding: 0 !important; margin: 0 !important;",
+    "  min-height: 0 !important; height: auto !important; max-height: none !important; overflow: visible !important; filter: none !important; animation: none !important; opacity: 1 !important; -webkit-mask: none !important; mask: none !important; }",
+    "[data-kit-ghost]::before, [data-kit-ghost]::after { content: none !important; display: none !important; }",
+    "/* fixed parts sit in the flow */",
+    "[data-kit-static] { position: relative !important; inset: auto !important; top: auto !important; right: auto !important; bottom: auto !important; left: auto !important;",
+    "  transform: none !important; z-index: auto !important; visibility: visible !important; opacity: 1 !important; max-height: none !important; transition: none !important; }",
+    ".kit-item .tray { margin: 0 -16px; }",
+    ".kit-item .bt-sheet { margin: 0 -16px; }",
+    ".kit-item .bt-toast { width: max-content; max-width: 100%; white-space: normal; }",
+    ".kit-item .rules-sheet { width: auto !important; max-width: 100% !important; max-height: 640px !important; }",
+    ".kit-item .reel-card { max-height: none !important; min-height: 0 !important; }",
+    ".kit-item .hh-card { margin: 0 auto; }"
+  ].join("\n");
+
+  /* ---------- the pieces ----------
+     I(snapshot, selector, options)
+       i      which match (default 0)
+       ctx    ancestors to copy around the piece (shallow), so contextual CSS still applies;
+              they are ghosted (no painting) unless they match `paint` or are .rr
+       paint  ancestors to keep painted
+       drop   descendants to remove
+       limit  { selector: n } keep only the first n matches
+       edit   function(node) for a made-up state that uses a real CSS class
+       made   short note when edit makes a state that no snapshot has                         */
+  function I(snap, sel, o) { o = o || {}; o.snap = snap; o.sel = sel; return o; }
+  function row() { return { row: [].slice.call(arguments) }; }
+
+  var SPEC = [
+    { id: "type", label: "Type", items: [
+      I("home-daily-gate", "h2.gate-title", { cap: "Display heading", ctx: ".gate" }),
+      I("home-intro", "#introTitle", { cap: "Intro title", ctx: "section.intro" }),
+      I("home-intro", ".intro-lead", { cap: "Lead", ctx: "section.intro" }),
+      I("home-intro", "section.intro > p.eyebrow", { cap: "Eyebrow", ctx: "section.intro" }),
+      I("home-intro", "section.intro > p:not([class])", { cap: "Body", ctx: "section.intro" }),
+      I("classic-pick-selected", ".player-row.sel .pr-stats", { cap: "Data", ctx: ".player-row" }),
+      I("info-can-you-go", ".content-page > h1", { cap: "Page heading (info pages)", ctx: ".content-page" }),
+      I("info-can-you-go", ".content-page > h2", { cap: "Page subhead", ctx: ".content-page" }),
+      I("info-can-you-go", ".content-page > ul", { cap: "List with links", ctx: ".content-page", limit: { "li": 2 } }),
+      I("results-top", ".bref-credit", { cap: "Small print with a link", ctx: ".rr" })
+    ]},
+    { id: "buttons", label: "Buttons", items: [
+      I("classic-pick-selected", ".tray .confirm-multi", { cap: "Primary" }),
+      I("home-intro", "#startClassic", { cap: "Mode: Classic", ctx: "section.intro" }),
+      I("home-intro", "#startCap", { cap: "Mode: Presti", ctx: "section.intro" }),
+      I("classic-round1", "section.ticket .ticket-actions", { cap: "Secondary" }),
+      I("presti-round1", "section.ticket .ticket-actions.ta-cap", { cap: "Secondary with a price" }),
+      row(
+        I("presti-skip-firesale", ".skip-btn.firesale", { cap: "On sale", ctx: ".ticket-actions" }),
+        I("presti-skip-refund", ".skip-btn.refunded", { cap: "Refund", ctx: ".ticket-actions" })
+      ),
+      row(
+        I("classic-skip-used", "#skipTeam[disabled]", { cap: "Disabled", ctx: ".ticket-actions" }),
+        I("classic-round1", "#startOverBtn", { cap: "Ghost" })
+      ),
+      row(
+        I("classic-round1", "#rulesBtn", { cap: "How to play" }),
+        I("classic-round1", "#poolTraitInfoBtn", { cap: "Icon", ctx: ".pool-head" })
+      ),
+      I("home-intro-fresh", "#startDaily", { cap: "The Daily button" }),
+      I("home-intro", "#tmVotes", { cap: "Yes, danger No, flat IDK", ctx: "#traitsModule" }),
+      row(
+        I("heat-check", "#hhmCharity", { cap: "Heat Check offer", ctx: ".hh-overlay, .hh-card" }),
+        I("heat-result-saved", "#hhmBack", { cap: "Heat Check done", ctx: ".hh-overlay, .hh-card, .hh-stage, .hh-actions" })
+      )
+    ]},
+    { id: "chips", label: "Chips and tags", items: [
+      I("classic-round1", "#sortChips", { cap: "Sort chips", ctx: ".pool-head" }),
+      row(
+        I("classic-pick-selected", ".player-row .tchips", { i: 0, cap: "Trait chip", ctx: ".player-row, .pr-sub" }),
+        I("classic-pick-selected", ".player-row .chips", { i: 0, cap: "Engine chip", ctx: ".player-row, .pr-sub" }),
+        I("classic-chip-expanded", ".tchip.expanded", { cap: "Chip opened", ctx: ".player-row, .pr-sub, .chips" })
+      ),
+      { cap: "Ballot tags", make: ballotTags, snaps: ["results-top", "hot-check", "sheet-tag-voted"] }
+    ]},
+    { id: "badges", label: "Badges and pills", items: [
+      row(
+        I("home-intro", "#tmTag", { cap: "Poll tag", ctx: "#traitsModule, .tm-lead" }),
+        I("classic-pick-selected", ".player-row .pr-pos", { cap: "Position", ctx: ".player-row, .pr-top" }),
+        I("presti-round1", ".cap-row .cap-cost", { cap: "Price", ctx: ".player-row" })
+      ),
+      row(
+        I("daily-round1", ".ds-pill", { cap: "Daily status", ctx: "#modePanel, .mp-left, .mp-row1" }),
+        I("daily-practice-round1", ".ds-pill", { cap: "Practice", ctx: "#modePanel, .mp-left, .mp-row1" }),
+        I("classic-round1", "#drPickCount", { cap: "Count", ctx: "#draftUtility, .du-mid" }),
+        I("reel-final", ".riso-streak", { cap: "Streak", ctx: ".reel-overlay, .reel-card, .reel-head" })
+      )
+    ]},
+    { id: "inputs", label: "Inputs", items: [
+      I("classic-round1", "#poolSearch", { cap: "Pool search", ctx: ".pool-head" }),
+      row(
+        I("classic-pick-selected", ".player-row.sel .year-wrap", { cap: "Year select", ctx: ".player-row, .pr-sub" }),
+        I("classic-pick-selected", ".player-row .year-fixed", { cap: "One season only", ctx: ".player-row, .pr-sub" })
+      ),
+      I("home-daily-share-reveal", "textarea.share-out", { cap: "Share text box", ctx: ".daily-tile, .dt-actions" })
+    ]},
+    { id: "cards", label: "Cards and panels", items: [
+      I("home-intro", "section.ticket.intro", { cap: "Intro card (its buttons, plaque and poll are shown on their own)", drop: "button, .daily-tile, #traitsModule, .intro-toprow, p.eyebrow ~ p.eyebrow, p.eyebrow ~ p.eyebrow ~ p" }),
+      I("home-intro", "#traitsModule", { cap: "Poll card" }),
+      I("classic-round1", "#draftUtility", { cap: "Draft top bar" }),
+      I("classic-round1", "section.ticket", { cap: "Draft ticket" }),
+      I("classic-pick-selected", "#pool", { cap: "Pool rows: normal, then picked", limit: { ".player-row": 2 } }),
+      I("classic-row-denied", ".player-row.deny", { cap: "Pool row: won't fit", ctx: "#pool" }),
+      I("presti-pick-selected", "#pool", { cap: "Presti pool rows", limit: { ".player-row": 2 } }),
+      I("classic-legend-open", "#poolTraitLegend", { cap: "Label legend" }),
+      I("classic-round3", ".lineup-rail", { cap: "Lineup rail", ctx: ".tray, .tray-inner" }),
+      I("classic-lineup-move", ".lineup-rail", { cap: "Lineup rail, moving a player", ctx: ".tray, .tray-inner" }),
+      I("classic-pick-selected", ".tray", { cap: "Tray" })
+    ]},
+    { id: "frames", label: "Frames", items: [
+      I("home-intro", ".daily-tile.plq-frame", { cap: "The Daily plaque" }),
+      I("classic-round1", "#modePanel", { cap: "Mode plaque" }),
+      I("presti-round1", "#modePanel", { cap: "Presti plaque with the bank" }),
+      I("home-daily-gate", ".gate-var.plq-frame", { cap: "The Daily twist", ctx: ".gate" })
+    ]},
+    { id: "results", label: "Results", items: [
+      I("results-top", ".rr .results-topbar", { cap: "Results top bar", ctx: ".rr" }),
+      I("results-top", ".rr-board", { cap: "Net rating board", ctx: ".rr" }),
+      I("daily-challenge-results", ".rr-board", { cap: "The Daily result board", ctx: ".rr" }),
+      I("results-top", ".rr .bt-card", { cap: "Ballot card", ctx: ".rr, .traits-roster" }),
+      I("presti-results-top", ".rr .bt-card.hot-pick", { cap: "Ballot card, hot pick", ctx: ".rr, .traits-roster" }),
+      I("results-top", ".rr .ledger", { cap: "Scoring card", ctx: ".rr, .section" })
+    ]},
+    { id: "sheets", label: "Sheets", items: [
+      I("sheet-tag", "#btSheet", { cap: "Ballot sheet: the question" }),
+      I("sheet-tag-voted", "#btSheet", { cap: "Ballot sheet: after voting" }),
+      I("sheet-add-picker", "#btSheet", { cap: "Ballot sheet: add a tag (first two groups)", limit: { ".bt-grp": 2, ".bt-grid": 2 } }),
+      I("classic-rules-sheet", "#rulesSheet", { cap: "Rules sheet", ctx: "#rulesOverlay" })
+    ]},
+    { id: "progress", label: "Progress", items: [
+      row(
+        I("classic-round3", "#drPips", { cap: "Round pips", ctx: "#draftUtility, .du-mid" }),
+        I("home-poll-voted", "#tmDots", { cap: "Poll pips", ctx: "#traitsModule, .tm-foot" })
+      ),
+      I("presti-bank-mid", "#mpBank", { cap: "Bank meter", ctx: "#modePanel" }),
+      I("results-top", ".rr .twoway", { cap: "Two-way bars", ctx: ".rr, .twoway-sec" }),
+      I("heat-result-saved", ".hh-heat", { cap: "Heat meter", ctx: ".hh-overlay, .hh-card, .hh-stage, .hh-step" }),
+      I("hot-climb", "#hhStep3", { cap: "82-0 shot meter", ctx: ".hh-overlay, .hh-card, .hh-stage" })
+    ]},
+    { id: "toast", label: "Toast and notices", items: [
+      I("results-toast", "#btToast", { cap: "Toast" }),
+      I("home-poll-share-copied", ".tm-sharebar.flashed", { cap: "Copied flash", ctx: "#traitsModule" }),
+      I("home-daily-stale-link", ".daily-stale", { cap: "Old link notice", ctx: "section.intro" })
+    ]},
+    { id: "overlays", label: "Big moments", items: [
+      I("heat-result-saved", ".hh-card", { cap: "Heat Check card, saved", ctx: ".hh-overlay" }),
+      I("reel-final", ".reel-card", { cap: "Season reel card (first month and the finale)", ctx: ".reel-overlay", limit: { ".reel-act": 1 }, drop: ".riso-flash, .riso-fx" })
+    ]},
+    { id: "footer", label: "Footer", items: [], note: "The real footer is below. The Bonuses page uses its own stylesheet, so its pieces are not on this page." }
+  ];
+
+  function ballotTags(take, docs) {
+    // A real ballot card shell (.rr > .bt-card > .bt-tags) holding one tag in every state.
+    var rt = docs["results-top"], card = rt.querySelector(".rr .bt-card");
+    var rr = rt.querySelector(".rr").cloneNode(false), c = card.cloneNode(false), tags = card.querySelector(".bt-tags").cloneNode(false);
+    rr.appendChild(c); c.appendChild(tags);
+    function cell(node, cap) {
+      var s = document.createElement("span"); s.className = "kit-tagcell"; s.appendChild(node);
+      var p = document.createElement("span"); p.className = "kit-tagcap"; p.textContent = cap; s.appendChild(p);
+      tags.appendChild(s);
+    }
+    cell(take("results-top", ".rr .bt-tag:not(.q):not(.add)"), "on");
+    cell(take("results-top", ".rr .bt-tag.q:not(.neg):not(.mine)"), "disputed");
+    cell(take("results-top", ".rr .bt-tag:not(.q):not(.add)", { i: 1, edit: function (n) { n.classList.add("off"); }, made: "no snapshot has .bt-tag.off; a real tag with the real .off class added" }), "off");
+    cell(take("hot-check", ".rr .bt-tag.neg"), "bad");
+    cell(take("sheet-tag-voted", ".rr .bt-tag.mine"), "your vote");
+    cell(take("results-top", ".rr .bt-tag.add"), "add");
+    return rr;
+  }
+
+  /* ---------- building ---------- */
+  var cache = {};
+  function load(n) {
+    if (!cache[n]) cache[n] = fetch(SNAPS + n + ".html", { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("missing snapshot " + n); return r.text();
+    }).then(function (t) { return { text: t, doc: new DOMParser().parseFromString(t, "text/html") }; });
+    return cache[n];
+  }
+  function allItems() {
+    var out = [];
+    SPEC.forEach(function (s) { s.items.forEach(function (it) { if (it.row) it.row.forEach(function (x) { out.push([s, x]); }); else out.push([s, it]); }); });
+    return out;
+  }
+  function neededSnaps() {
+    var set = { "home-intro": 1, "results-top": 1 };
+    allItems().forEach(function (p) { var it = p[1]; if (it.snap) set[it.snap] = 1; (it.snaps || []).forEach(function (n) { set[n] = 1; }); });
+    return Object.keys(set);
+  }
+
+  var PIECES, ERRORS;
+  function makeTake(docs) {
+    return function take(snap, sel, o) {
+      o = o || {};
+      var doc = docs[snap]; if (!doc) throw new Error("snapshot not loaded: " + snap);
+      var all = doc.querySelectorAll(sel), el = all[o.i || 0];
+      if (!el) throw new Error("not found in " + snap + ": " + sel + (o.i ? " #" + o.i : ""));
+      var node = el.cloneNode(true), modified = false;
+      if (o.drop) { node.querySelectorAll(o.drop).forEach(function (d) { d.remove(); }); modified = true; }
+      if (o.limit) Object.keys(o.limit).forEach(function (s) { var ms = node.querySelectorAll(s); for (var k = o.limit[s]; k < ms.length; k++) ms[k].remove(); modified = true; });
+      if (o.edit) { o.edit(node, doc); modified = true; }
+      var n = PIECES.length;
+      PIECES.push({ snap: snap, sel: sel, i: o.i || 0, modified: modified, made: o.made || "", cap: o.cap || "" });
+      node.setAttribute("data-kit-root", String(n));
+      if (node.matches(FIXED)) node.setAttribute("data-kit-static", "");
+      var main = doc.getElementById("app");
+      for (var p = el.parentElement; p && p !== main && p !== doc.body && p !== doc.documentElement; p = p.parentElement) {
+        if (!o.ctx || !p.matches(o.ctx)) continue;
+        var w = p.cloneNode(false);
+        if (w.tagName === "MAIN") { var dv = document.createElement("div"); [].forEach.call(w.attributes, function (a) { dv.setAttribute(a.name, a.value); }); w = dv; }
+        if (!p.matches(PAINT_ALWAYS) && !(o.paint && p.matches(o.paint))) w.setAttribute("data-kit-ghost", "");
+        if (p.matches(FIXED)) w.setAttribute("data-kit-static", "");
+        w.appendChild(node); node = w;
+      }
+      return node;
+    };
+  }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+  function build() {
+    PIECES = []; ERRORS = [];
+    var names = neededSnaps();
+    return Promise.all(names.map(function (n) { return load(n).then(function (x) { return [n, x]; }, function (e) { ERRORS.push(String(e.message || e)); return [n, null]; }); })).then(function (pairs) {
+      var docs = {}, texts = {};
+      pairs.forEach(function (p) { if (p[1]) { docs[p[0]] = p[1].doc; texts[p[0]] = p[1].text; } });
+      var take = makeTake(docs);
+      var home = docs["home-intro"], res = docs["results-top"];
+      function one(it) {
+        var box = document.createElement("div"); box.className = "kit-item";
+        if (it.cap) { var c = document.createElement("p"); c.className = "kit-cap"; c.textContent = it.cap; box.appendChild(c); }
+        try { box.appendChild(it.make ? it.make(take, docs) : take(it.snap, it.sel, it)); }
+        catch (e) { ERRORS.push((it.cap || it.sel) + ": " + (e.message || e)); return null; }
+        return box;
+      }
+      var main = document.createElement("main"); main.id = "app";
+      SPEC.forEach(function (s) {
+        var sec = document.createElement("section"); sec.className = "kit-sec"; sec.id = "kit-" + s.id;
+        var lab = document.createElement("p"); lab.className = "eyebrow kit-label"; lab.textContent = s.label; sec.appendChild(lab);
+        s.items.forEach(function (it) {
+          if (it.row) {
+            var r = document.createElement("div"); r.className = "kit-row";
+            it.row.forEach(function (x) { var b = one(x); if (b) r.appendChild(b); });
+            sec.appendChild(r);
+          } else { var b = one(it); if (b) sec.appendChild(b); }
+        });
+        if (s.note) { var nt = document.createElement("p"); nt.className = "kit-note"; nt.textContent = s.note; sec.appendChild(nt); }
+        main.appendChild(sec);
+      });
+
+      // head: the site's own head (base, fonts, tokenized CSS, the page's style blocks) plus the kit's layout CSS
+      var head = [];
+      [].forEach.call(home.head.children, function (h) {
+        var t = h.tagName.toLowerCase();
+        if (t === "base") head.push(BASE);
+        else if (t === "meta" && (h.hasAttribute("charset") || /^(viewport|theme-color|t82-build)$/.test(h.getAttribute("name") || ""))) head.push(h.outerHTML);
+        else if (t === "link" && h.hasAttribute("data-lab-site")) head.push(SITE_CSS);
+        else if (t === "link" && (/preconnect|icon/.test(h.getAttribute("rel") || "") || /fonts\.googleapis/.test(h.getAttribute("href") || ""))) head.push(h.outerHTML);
+        else if (t === "style") head.push(h.outerHTML);
+      });
+      head.push("<title>TRUE 82: every piece</title>");
+      head.push('<style id="kit-css">\n' + KIT_CSS + "\n</style>");
+
+      // <html>: the results pages carry the paper texture as --rr-paper; the kit needs it for its paper pieces
+      var htmlAttrs = ' lang="en"', rp = res.documentElement.style.getPropertyValue("--rr-paper");
+      if (rp) htmlAttrs += ' style="' + esc("--rr-paper: " + rp.trim() + ";") + '"';
+      if (res.documentElement.hasAttribute("data-rr-paper")) htmlAttrs += ' data-rr-paper="' + esc(res.documentElement.getAttribute("data-rr-paper")) + '"';
+
+      var headEl = home.querySelector("header.site-head").cloneNode(true);
+      var foot = home.querySelector("footer.site-foot").cloneNode(true);
+      var html = "<!doctype html>\n<html" + htmlAttrs + "><head>" + head.join("\n") + "\n</head>\n<body>\n" +
+        headEl.outerHTML + "\n" + main.outerHTML + "\n" + foot.outerHTML + "\n</body></html>\n";
+      window.KIT = { html: html, pieces: PIECES, errors: ERRORS };
+      return html;
+    });
+  }
+
+  /* ---------- UI ---------- */
+  var $ = function (s) { return document.querySelector(s); };
+  function status(t) { $("#status").textContent = t; }
+  function showList(diffs) {
+    var tb = $("#list tbody"); tb.innerHTML = "";
+    var sec = {}; allItems().forEach(function (p) { if (p[1].cap) sec[p[1].cap] = p[0].label; });
+    PIECES.forEach(function (p, k) {
+      var tr = document.createElement("tr"), d = diffs && diffs[k];
+      var chk = !diffs ? "" : d == null ? "" : d.length ? d.length + " diff" : "same";
+      tr.innerHTML = "<td>" + esc(sec[p.cap] || "Ballot tags") + "</td><td>" + esc(p.cap || "(tag)") + (p.made ? " *" : "") + "</td><td>" + esc(p.snap) + "</td><td>" + esc(p.sel + (p.i ? " #" + p.i : "")) + "</td><td class='" + (d && d.length ? "bad" : "ok") + "'>" + chk + "</td>";
+      tb.appendChild(tr);
+    });
+  }
+  function preview(html) {
+    return new Promise(function (res) { var f = $("#preview"); f.onload = function () { res(f.contentDocument); }; f.srcdoc = html; });
+  }
+  function doBuild() {
+    status("building...");
+    return build().then(function (html) {
+      showList(null);
+      $("#diffs").textContent = ERRORS.length ? "Errors:\n" + ERRORS.join("\n") : "";
+      status("built: " + PIECES.length + " pieces, " + Math.round(html.length / 1024) + " KB" + (ERRORS.length ? ", " + ERRORS.length + " errors" : ""));
+      return preview(html);
+    });
+  }
+  function doSave() {
+    if (!window.KIT) return Promise.resolve();
+    return fetch(SAVE_TO, { method: "POST", body: window.KIT.html }).then(function (r) { return r.text(); }).then(function (t) { status(t); return t; });
+  }
+
+  // computed-style check: each piece against the same element in its source snapshot
+  var PROPS = ["color", "background-color", "background-image", "font-family", "font-size", "font-weight", "font-style", "letter-spacing", "text-transform", "text-shadow", "text-align",
+    "border-top-color", "border-top-width", "border-left-color", "border-left-width", "border-bottom-color", "border-bottom-width", "border-top-left-radius",
+    "box-shadow", "padding-top", "padding-left", "display", "opacity", "visibility", "line-height"];
+  function sig(win, el) {
+    var cs = win.getComputedStyle(el), o = {};
+    PROPS.forEach(function (p) { var v = cs.getPropertyValue(p); if (v.length > 160) v = v.slice(0, 120) + "...(" + v.length + ")"; o[p] = v; });
+    return o;
+  }
+  function flat(el) { return [el].concat([].slice.call(el.querySelectorAll("*"))); }
+  function loadInto(frame, html) {
+    return new Promise(function (res) {
+      frame.onload = function () { var d = frame.contentDocument; (d.fonts ? d.fonts.ready : Promise.resolve()).then(function () { setTimeout(function () { res(d); }, 80); }); };
+      frame.srcdoc = html;
+    });
+  }
+  function doCheck() {
+    var kitDoc = $("#preview").contentDocument, orig = $("#orig"), diffs = {}, lines = [];
+    var bySnap = {};
+    PIECES.forEach(function (p, k) { (bySnap[p.snap] = bySnap[p.snap] || []).push(k); });
+    var snaps = Object.keys(bySnap), idx = 0;
+    status("checking...");
+    function next() {
+      if (idx >= snaps.length) {
+        showList(diffs);
+        $("#diffs").textContent = (ERRORS.length ? "Errors:\n" + ERRORS.join("\n") + "\n\n" : "") + (lines.length ? lines.join("\n") : "Every piece matches its source.");
+        window.KIT.diffs = diffs; window.KIT.diffText = lines.join("\n");
+        status("check done");
+        return Promise.resolve(diffs);
+      }
+      var n = snaps[idx++];
+      return load(n).then(function (x) { return loadInto(orig, x.text); }).then(function (od) {
+        bySnap[n].forEach(function (k) {
+          var p = PIECES[k], src = od.querySelectorAll(p.sel)[p.i], dst = kitDoc.querySelector('[data-kit-root="' + k + '"]');
+          if (!src || !dst) { diffs[k] = ["missing " + (!src ? "source" : "kit") + " element"]; lines.push("#" + k + " " + p.cap + ": missing"); return; }
+          var A = p.modified ? [src] : flat(src), B = p.modified ? [dst] : flat(dst), out = [];
+          for (var j = 0; j < Math.min(A.length, B.length); j++) {
+            var sa = sig(od.defaultView, A[j]), sb = sig(kitDoc.defaultView, B[j]);
+            PROPS.forEach(function (pr) { if (sa[pr] !== sb[pr]) out.push((j ? B[j].tagName.toLowerCase() + "." + (B[j].getAttribute("class") || "").split(" ").join(".") + " " : "") + pr + ": " + sa[pr] + " -> " + sb[pr]); });
+          }
+          if (A.length !== B.length) out.push("element count " + A.length + " -> " + B.length);
+          diffs[k] = out;
+          if (out.length) lines.push("#" + k + " " + (p.cap || "tag") + " [" + p.snap + " " + p.sel + "]\n   " + out.slice(0, 12).join("\n   ") + (out.length > 12 ? "\n   ... " + (out.length - 12) + " more" : ""));
+        });
+        return next();
+      });
+    }
+    return next();
+  }
+
+  $("#bBuild").onclick = doBuild;
+  $("#bSave").onclick = doSave;
+  $("#bCheck").onclick = doCheck;
+  var q = location.search;
+  window.KIT_READY = doBuild().then(function () {
+    var p = Promise.resolve();
+    if (/save=1/.test(q)) p = p.then(doSave);
+    if (/check=1/.test(q)) p = p.then(doCheck);
+    return p;
+  });
+  window.KIT_BUILD = { build: doBuild, save: doSave, check: doCheck, spec: SPEC };
+})();
+</script>
+</body></html>

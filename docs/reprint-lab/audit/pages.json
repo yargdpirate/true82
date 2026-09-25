@@ -1,0 +1,1026 @@
+{
+ "key": "pages",
+ "entries": [
+  {
+   "src": "bonuses/index.html",
+   "line": 13,
+   "sel": "meta[name=\"theme-color\"] (head)",
+   "prop": "meta theme-color content",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Browser chrome / status-bar tint = --ink. Not reachable from CSS; a theme needs <meta media=\"(prefers-color-scheme:...)\"> pairs or JS to rewrite content."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--ink",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Token --ink (page ground). Used 2x: html,body background and the body vignette's outer stop. Same value as styles.css --ink but a SEPARATE definition: this page does not load /styles.css, so a theme set there never reaches it."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--panel",
+   "value": "#151b21",
+   "role": "ground-2",
+   "family": "other",
+   "note": "Token --panel. DEFINED BUT NEVER USED (0 var(--panel) in the file); the recessed surfaces use literals instead (#0e1319 .controls, #131a21 .v-unsure, #0d1217 .bar). Safe to repoint or drop."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--card",
+   "value": "#131920",
+   "role": "ground-2",
+   "family": "other",
+   "note": "Token --card. DEFINED BUT NEVER USED (0 var(--card)); .card and .skel paint a literal #161d26 -> #11161d gradient instead."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--line",
+   "value": "#2a3540",
+   "role": "line",
+   "family": "other",
+   "note": "Token --line. 6 uses: .card/.skel border, .qx-btn outline, .act-share outline, .chip-disputed/.chip-pending borders. Same hex as the spec's line example; styles.css has no --line (it uses --tunnel-2/--maple-line)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--chalk",
+   "value": "#f2ede4",
+   "role": "text",
+   "family": "other",
+   "note": "Token --chalk. 9 uses: body text, .q, .done-head, .r-big.early, .r-you, .chip-disputed text, .qx-btn text, and the focus-visible outline on .vbtn/.act-next. Warmer/lighter than styles.css --chalk #E8E4D8."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--chalk-dim",
+   "value": "#a8b0b8",
+   "role": "text-2",
+   "family": "other",
+   "note": "Token --chalk-dim. 11 uses: .brand, h1 (the page title is DIM), .toprow, .meta, .q-def, .r-eyebrow, .chip-pending, .act-share, .done-line, .t-link, .cv-link. styles.css equivalent is #9AA0A6."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--amber",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Token --amber. 14 uses: .qx-play/.act-next fills, .r-big.yes, .chip-active, .bar .y, .done-head underline, .flash, active/flashed .qx-btn text+border, amber focus rings, and the star in the inline SVG page-mark (fill=\"var(--amber)\")."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 19,
+   "sel": ":root",
+   "prop": "--ember",
+   "value": "#E5533C",
+   "role": "bad",
+   "family": "other",
+   "note": "Token --ember. 5 uses: .r-big.no, .chip-none, .bar .n, .err-line. Page-local red; not the same hex as styles.css --whistle #E2654E nor the .v-no keycap reds (#F06A54/#D9422D)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 24,
+   "sel": "body",
+   "prop": "background (layer 1: radial-gradient top glow)",
+   "value": "rgba(255,181,46,.05)",
+   "role": "accent",
+   "family": "body",
+   "note": "Amber (= --amber rgb) wash at 5% fading to transparent at 55%: a faint warm glow over the top of the page."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 25,
+   "sel": "body",
+   "prop": "background (layer 2: repeating-linear-gradient rules)",
+   "value": "rgba(242,237,228,.022)",
+   "role": "line",
+   "family": "body",
+   "note": "Chalk (= --chalk rgb) at 2.2% drawn as a 1px horizontal rule every 47px: a ruled-notebook texture over the ground. By rgb it is `text`; classified `line` by function. If the tokenizer maps rgba to the role's rgb, note that --t-line at .022 will be far fainter than chalk at .022."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 26,
+   "sel": "body",
+   "prop": "background (layer 3: radial-gradient vignette, inner stop)",
+   "value": "#0b0f13",
+   "role": "ground",
+   "family": "body",
+   "note": "Darker-than-ink center of a bottom vignette (at 50% 110%) fading out to var(--ink) at 60%. A deeper ground step; no separate role exists."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 35,
+   "sel": ".card",
+   "prop": "background (linear-gradient 180deg, top stop)",
+   "value": "#161d26",
+   "role": "ground-2",
+   "family": "card",
+   "note": "Card gradient top; also repeated in .skel (line 100)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 35,
+   "sel": ".card",
+   "prop": "background (linear-gradient 180deg, bottom stop)",
+   "value": "#11161d",
+   "role": "ground-2",
+   "family": "card",
+   "note": "Card gradient bottom; also repeated in .skel (line 100)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 35,
+   "sel": ".card",
+   "prop": "border-top-color",
+   "value": "rgba(242,237,228,.13)",
+   "role": "light",
+   "family": "card",
+   "note": "Chalk-tinted top rim at 13% over the 1px var(--line) border: a lit top edge. rgb is --chalk (warm white), function is a highlight, so `light`."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 35,
+   "sel": ".card",
+   "prop": "box-shadow (0 18px 44px -22px)",
+   "value": "rgba(0,0,0,.65)",
+   "role": "shadow",
+   "family": "card",
+   "note": "Soft drop shadow under the card."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 39,
+   "sel": ".q-tag",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "badge",
+   "note": "Dark brown text printed on the amber tag gradient."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 40,
+   "sel": ".q-tag",
+   "prop": "background (linear-gradient 180deg, top stop)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "badge",
+   "note": "Light top of the amber tag."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 40,
+   "sel": ".q-tag",
+   "prop": "background (linear-gradient 180deg, bottom stop)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "badge",
+   "note": "Base of the amber tag; a slightly deeper close variant of #FFB52E."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 40,
+   "sel": ".q-tag",
+   "prop": "border (1px solid)",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "badge",
+   "note": "Dark amber outline of the tag."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 57,
+   "sel": ".qx-btn.qx-play",
+   "prop": "border-color",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "Flat (2D) amber PLAY THE GAME button; dark amber 1px outline."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 57,
+   "sel": ".qx-btn.qx-play",
+   "prop": "color",
+   "value": "#131313",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Neutral near-black on amber; differs from the warm #1c1608 accent-ink used by .q-tag/.vbtn on the same page."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 58,
+   "sel": ".qx-btn.qx-play:active, .qx-btn.qx-play.flashed",
+   "prop": "color",
+   "value": "#131313",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Pins the text dark on press (overrides the generic .qx-btn:active amber text)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 58,
+   "sel": ".qx-btn.qx-play:active, .qx-btn.qx-play.flashed",
+   "prop": "border-color",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "Pins the outline on press (overrides the generic .qx-btn:active amber border)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 74,
+   "sel": ".controls",
+   "prop": "background",
+   "value": "#0e1319",
+   "role": "ground-2",
+   "family": "panel",
+   "note": "Sunken tray holding YES / NO / UNSURE inside the card; darker than --ink itself. Recessed well -> ground-2 (spec's ground-3 examples are lighter, elevated fills)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 74,
+   "sel": ".controls",
+   "prop": "border (1px solid)",
+   "value": "#232d37",
+   "role": "line",
+   "family": "panel",
+   "note": "Tray outline; a hair darker than --line #2a3540."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 76,
+   "sel": ".vbtn",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Default label color for both vote keycaps; effectively only paints YES because .v-no overrides it with #2b0d09."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 78,
+   "sel": ".v-yes",
+   "prop": "background (linear-gradient 180deg, top stop)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Extruded amber YES keycap: light top."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 78,
+   "sel": ".v-yes",
+   "prop": "background (linear-gradient 180deg, bottom stop)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "YES keycap face."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 78,
+   "sel": ".v-yes",
+   "prop": "box-shadow (inset 0 1px 0)",
+   "value": "rgba(255,255,255,.35)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Top-edge sheen inside the keycap."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 78,
+   "sel": ".v-yes",
+   "prop": "box-shadow (0 4px 0, extrusion)",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "4px solid bottom extrusion of the YES keycap."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 78,
+   "sel": ".v-yes",
+   "prop": "box-shadow (0 9px 16px -7px)",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "Cast shadow under the keycap."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 79,
+   "sel": ".v-no",
+   "prop": "color",
+   "value": "#2b0d09",
+   "role": "bad-ink",
+   "family": "button-danger",
+   "note": "Deep oxblood label printed on the red NO keycap."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 79,
+   "sel": ".v-no",
+   "prop": "background (linear-gradient 180deg, top stop)",
+   "value": "#F06A54",
+   "role": "bad",
+   "family": "button-danger",
+   "note": "Light top of the red NO keycap. There is no bad-hi role (unlike accent-hi); closest is `bad`. A theme lab may want a bad-hi."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 79,
+   "sel": ".v-no",
+   "prop": "background (linear-gradient 180deg, bottom stop)",
+   "value": "#D9422D",
+   "role": "bad",
+   "family": "button-danger",
+   "note": "NO keycap face (spec lists #D9422D under bad)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 79,
+   "sel": ".v-no",
+   "prop": "box-shadow (inset 0 1px 0)",
+   "value": "rgba(255,255,255,.28)",
+   "role": "light",
+   "family": "button-danger",
+   "note": "Top-edge sheen inside the NO keycap."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 79,
+   "sel": ".v-no",
+   "prop": "box-shadow (0 4px 0, extrusion)",
+   "value": "#8c2317",
+   "role": "bad-edge",
+   "family": "button-danger",
+   "note": "4px solid bottom extrusion of the NO keycap."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 79,
+   "sel": ".v-no",
+   "prop": "box-shadow (0 9px 16px -7px)",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-danger",
+   "note": "Cast shadow under the keycap."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 81,
+   "sel": ".v-yes:active, .v-yes.pressed",
+   "prop": "box-shadow (inset 0 1px 0)",
+   "value": "rgba(255,255,255,.25)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Pressed state: dimmer sheen."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 81,
+   "sel": ".v-yes:active, .v-yes.pressed",
+   "prop": "box-shadow (0 1px 0, extrusion)",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "Pressed state: extrusion collapses to 1px."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 81,
+   "sel": ".v-yes:active, .v-yes.pressed",
+   "prop": "box-shadow (0 4px 8px -5px)",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "Pressed state: tighter cast shadow."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 82,
+   "sel": ".v-no:active, .v-no.pressed",
+   "prop": "box-shadow (inset 0 1px 0)",
+   "value": "rgba(255,255,255,.2)",
+   "role": "light",
+   "family": "button-danger",
+   "note": "Pressed state: dimmer sheen."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 82,
+   "sel": ".v-no:active, .v-no.pressed",
+   "prop": "box-shadow (0 1px 0, extrusion)",
+   "value": "#8c2317",
+   "role": "bad-edge",
+   "family": "button-danger",
+   "note": "Pressed state: extrusion collapses to 1px."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 82,
+   "sel": ".v-no:active, .v-no.pressed",
+   "prop": "box-shadow (0 4px 8px -5px)",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-danger",
+   "note": "Pressed state: tighter cast shadow."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 83,
+   "sel": ".v-unsure",
+   "prop": "background",
+   "value": "#131a21",
+   "role": "ground-2",
+   "family": "button-secondary",
+   "note": "Flat dark UNSURE bar under the two keycaps."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 83,
+   "sel": ".v-unsure",
+   "prop": "border (1px solid)",
+   "value": "#303b47",
+   "role": "line",
+   "family": "button-secondary",
+   "note": "Slightly lighter than --line #2a3540."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 83,
+   "sel": ".v-unsure",
+   "prop": "color",
+   "value": "#c6ced6",
+   "role": "text-2",
+   "family": "button-secondary",
+   "note": "Cool light grey label: a third neutral text step between --chalk #f2ede4 and --chalk-dim #a8b0b8, used only here. Read as de-emphasised text -> text-2."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 100,
+   "sel": ".skel",
+   "prop": "background (linear-gradient 180deg, top stop)",
+   "value": "#161d26",
+   "role": "ground-2",
+   "family": "card",
+   "note": "Loading skeleton card; copies .card's gradient."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 100,
+   "sel": ".skel",
+   "prop": "background (linear-gradient 180deg, bottom stop)",
+   "value": "#11161d",
+   "role": "ground-2",
+   "family": "card",
+   "note": "Loading skeleton card; copies .card's gradient."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 101,
+   "sel": ".skel .sk",
+   "prop": "background (linear-gradient 100deg, 30% stop)",
+   "value": "#1a222c",
+   "role": "ground-3",
+   "family": "progress",
+   "note": "Skeleton placeholder bar base (animated sweep)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 101,
+   "sel": ".skel .sk",
+   "prop": "background (linear-gradient 100deg, 45% stop, sweep highlight)",
+   "value": "#212b36",
+   "role": "ground-3",
+   "family": "progress",
+   "note": "Lighter band of the shimmer sweep; opaque, so ground-3 rather than light."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 101,
+   "sel": ".skel .sk",
+   "prop": "background (linear-gradient 100deg, 60% stop)",
+   "value": "#1a222c",
+   "role": "ground-3",
+   "family": "progress",
+   "note": "Skeleton placeholder bar base (animated sweep)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 122,
+   "sel": ".bar",
+   "prop": "background",
+   "value": "#0d1217",
+   "role": "ground-2",
+   "family": "progress",
+   "note": "Recessed track of the YES/NO split bar (fills are var(--amber) / var(--ember))."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 124,
+   "sel": ".act-next",
+   "prop": "color",
+   "value": "#131313",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Near-black label on the flat amber NEXT QUESTION / TRY AGAIN / VOTE ON 5 MORE button."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 139,
+   "sel": "svg.page-mark > rect (inline SVG hoop rim, top-right of .wrap)",
+   "prop": "SVG fill attribute",
+   "value": "#B98A4F",
+   "role": "metal",
+   "family": "nav",
+   "note": "Bronze hoop rim of the star-over-hoop page mark (mirrors logo.png). Presentation attribute: a theme can reach it only by adding a CSS rule like .page-mark rect{fill:...}; better to rewrite as fill=\"var(--maple,#B98A4F)\". The star beside it already uses var(--amber)."
+  },
+  {
+   "src": "bonuses/index.html",
+   "line": 139,
+   "sel": "svg.page-mark > path (inline SVG net strokes)",
+   "prop": "SVG stroke attribute",
+   "value": "#B98A4F",
+   "role": "metal",
+   "family": "nav",
+   "note": "Bronze net lines of the page mark. Same reachability caveat as the rim."
+  },
+  {
+   "src": "404.html",
+   "line": 6,
+   "sel": "meta[name=\"theme-color\"] (head)",
+   "prop": "meta theme-color content",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Browser chrome / status-bar tint = --ink. Not reachable from CSS; needs <meta media> variants or JS."
+  },
+  {
+   "src": "404.html",
+   "line": 9,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, <rect width=64 height=64>",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Favicon tile background (URL-encoded %23 = #) inside a data:image/svg+xml URI in <link rel=\"icon\">. Functionally the ink ground, but NOT tokenizable and NOT reachable from CSS: a theme must swap the href from JS or ship a second icon; recommend treating the favicon as a fixed brand mark."
+  },
+  {
+   "src": "404.html",
+   "line": 9,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, rotated <rect> (diamond)",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Favicon amber diamond (URL-encoded) in the data: URI. Functionally the brand accent; same CSS-unreachable caveat as the tile."
+  },
+  {
+   "src": "index.html",
+   "line": 6,
+   "sel": "meta[name=\"theme-color\"] (head)",
+   "prop": "meta theme-color content",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Browser chrome / status-bar tint = --ink. Not reachable from CSS; needs <meta media> variants or JS."
+  },
+  {
+   "src": "index.html",
+   "line": 23,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, <rect width=64 height=64>",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Favicon tile background (URL-encoded %23 = #) inside a data:image/svg+xml URI in <link rel=\"icon\">. Functionally the ink ground, but NOT tokenizable and NOT reachable from CSS: a theme must swap the href from JS or ship a second icon; recommend treating the favicon as a fixed brand mark."
+  },
+  {
+   "src": "index.html",
+   "line": 23,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, rotated <rect> (diamond)",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Favicon amber diamond (URL-encoded) in the data: URI. Functionally the brand accent; same CSS-unreachable caveat as the tile."
+  },
+  {
+   "src": "how-it-works/index.html",
+   "line": 6,
+   "sel": "meta[name=\"theme-color\"] (head)",
+   "prop": "meta theme-color content",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Browser chrome / status-bar tint = --ink. Not reachable from CSS; needs <meta media> variants or JS."
+  },
+  {
+   "src": "how-it-works/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, <rect width=64 height=64>",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Favicon tile background (URL-encoded %23 = #) inside a data:image/svg+xml URI in <link rel=\"icon\">. Functionally the ink ground, but NOT tokenizable and NOT reachable from CSS: a theme must swap the href from JS or ship a second icon; recommend treating the favicon as a fixed brand mark."
+  },
+  {
+   "src": "how-it-works/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, rotated <rect> (diamond)",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Favicon amber diamond (URL-encoded) in the data: URI. Functionally the brand accent; same CSS-unreachable caveat as the tile."
+  },
+  {
+   "src": "faq/index.html",
+   "line": 6,
+   "sel": "meta[name=\"theme-color\"] (head)",
+   "prop": "meta theme-color content",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Browser chrome / status-bar tint = --ink. Not reachable from CSS; needs <meta media> variants or JS."
+  },
+  {
+   "src": "faq/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, <rect width=64 height=64>",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Favicon tile background (URL-encoded %23 = #) inside a data:image/svg+xml URI in <link rel=\"icon\">. Functionally the ink ground, but NOT tokenizable and NOT reachable from CSS: a theme must swap the href from JS or ship a second icon; recommend treating the favicon as a fixed brand mark."
+  },
+  {
+   "src": "faq/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, rotated <rect> (diamond)",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Favicon amber diamond (URL-encoded) in the data: URI. Functionally the brand accent; same CSS-unreachable caveat as the tile."
+  },
+  {
+   "src": "can-you-go-82-0/index.html",
+   "line": 6,
+   "sel": "meta[name=\"theme-color\"] (head)",
+   "prop": "meta theme-color content",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Browser chrome / status-bar tint = --ink. Not reachable from CSS; needs <meta media> variants or JS."
+  },
+  {
+   "src": "can-you-go-82-0/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, <rect width=64 height=64>",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Favicon tile background (URL-encoded %23 = #) inside a data:image/svg+xml URI in <link rel=\"icon\">. Functionally the ink ground, but NOT tokenizable and NOT reachable from CSS: a theme must swap the href from JS or ship a second icon; recommend treating the favicon as a fixed brand mark."
+  },
+  {
+   "src": "can-you-go-82-0/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, rotated <rect> (diamond)",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Favicon amber diamond (URL-encoded) in the data: URI. Functionally the brand accent; same CSS-unreachable caveat as the tile."
+  },
+  {
+   "src": "what-is-bpm/index.html",
+   "line": 6,
+   "sel": "meta[name=\"theme-color\"] (head)",
+   "prop": "meta theme-color content",
+   "value": "#101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Browser chrome / status-bar tint = --ink. Not reachable from CSS; needs <meta media> variants or JS."
+  },
+  {
+   "src": "what-is-bpm/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, <rect width=64 height=64>",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23101418",
+   "role": "ground",
+   "family": "other",
+   "note": "Favicon tile background (URL-encoded %23 = #) inside a data:image/svg+xml URI in <link rel=\"icon\">. Functionally the ink ground, but NOT tokenizable and NOT reachable from CSS: a theme must swap the href from JS or ship a second icon; recommend treating the favicon as a fixed brand mark."
+  },
+  {
+   "src": "what-is-bpm/index.html",
+   "line": 18,
+   "sel": "link[rel=\"icon\"] data:image/svg+xml favicon, rotated <rect> (diamond)",
+   "prop": "SVG fill (URL-encoded)",
+   "value": "%23FFB52E",
+   "role": "accent",
+   "family": "other",
+   "note": "Favicon amber diamond (URL-encoded) in the data: URI. Functionally the brand accent; same CSS-unreachable caveat as the tile."
+  },
+  {
+   "src": "traits/index.html",
+   "line": 17,
+   "sel": "body (inline style attribute, /traits/ redirect shell)",
+   "prop": "background",
+   "value": "#101418",
+   "role": "ground",
+   "family": "body",
+   "note": "OUTSIDE the assigned list, added so no live page is missed: /traits/ is a JS + meta-refresh redirect to /bonuses/ and paints this for a frame (or longer with JS off)."
+  },
+  {
+   "src": "traits/index.html",
+   "line": 17,
+   "sel": "body (inline style attribute, /traits/ redirect shell)",
+   "prop": "color",
+   "value": "#a8b0b8",
+   "role": "text-2",
+   "family": "body",
+   "note": "OUTSIDE the assigned list. Bonuses-page --chalk-dim value."
+  },
+  {
+   "src": "traits/index.html",
+   "line": 18,
+   "sel": "a[href=\"/bonuses/\"] (inline style attribute)",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "link",
+   "note": "OUTSIDE the assigned list. Amber fallback link to /bonuses/."
+  }
+ ],
+ "components": {
+  "heading": [
+   {
+    "sel": "bonuses/index.html h1",
+    "treatment": "Barlow Condensed 700, clamp(24-30px), .05em tracking, colored --chalk-dim (the page title is DIM on purpose); flex row that also carries the .q-tag badge; 36px right padding clears the page-mark."
+   },
+   {
+    "sel": "bonuses/index.html .q",
+    "treatment": "The question itself: Barlow Condensed 700, clamp(36-44px), line-height 1.03, --chalk. Error variant is inline style font-size:30px."
+   },
+   {
+    "sel": "bonuses/index.html .r-big (.yes/.no/.early)",
+    "treatment": "Result headline: Barlow Condensed 700 clamp(52-66px); amber for YES, ember for NO, chalk + smaller clamp(38-50px) for early counts; JS counts the number up over 500ms."
+   },
+   {
+    "sel": "bonuses/index.html .done-head",
+    "treatment": "'N VOTES IN': Barlow Condensed 700 26px .06em, chalk; ::after amber 3px underline that grows 0 -> 64px."
+   },
+   {
+    "sel": "styles.css .content-page h1 (how-it-works, faq, can-you-go-82-0, what-is-bpm, 404)",
+    "treatment": "Barlow Condensed 700 32px, line-height 1.08, .02em, --chalk."
+   },
+   {
+    "sel": "styles.css .content-page h2 (static pages)",
+    "treatment": "Barlow Condensed 600 21px .03em, colored --amber (section heads are the page's only color)."
+   },
+   {
+    "sel": "styles.css .intro-title (index.html static fallback)",
+    "treatment": "Barlow Condensed 700 36px, --chalk; replaced by app.js renderIntro() on boot."
+   }
+  ],
+  "eyebrow": [
+   {
+    "sel": "bonuses/index.html .brand",
+    "treatment": "IBM Plex Mono 13px, .28em tracking, --chalk-dim wordmark 'TRUE 82' (text, not the logo image)."
+   },
+   {
+    "sel": "bonuses/index.html .toprow",
+    "treatment": "Mono 12px .22em --chalk-dim row (only rendered in the feed-error card: 'PLAYER BONUS')."
+   },
+   {
+    "sel": "bonuses/index.html .r-eyebrow",
+    "treatment": "Mono 12px .24em --chalk-dim ('EARLY RESULT')."
+   },
+   {
+    "sel": "styles.css .eyebrow (index.html static fallback 'How to play' / 'Learn more')",
+    "treatment": "Mono 10.5px .14em uppercase, --maple bronze; .intro .eyebrow adds 600 weight and 20px top margin."
+   }
+  ],
+  "badge": [
+   {
+    "sel": "bonuses/index.html .q-tag",
+    "treatment": "Trait abbreviation pill in the h1 (3PT, ISO-D...): amber vertical gradient #FFC957 -> #F2A81F, 1px #9a6a12 border, 7px radius, Barlow Condensed 700 12.5px uppercase, #1c1608 text. Flat, no extrusion."
+   }
+  ],
+  "chip": [
+   {
+    "sel": "bonuses/index.html .r-chip + .chip-active/.chip-none/.chip-disputed/.chip-pending",
+    "treatment": "Outline status chip: 1.5px border, 9px radius, mono 12px .2em, transparent fill. active=amber border+text, none=ember, disputed=--line border + chalk text, pending=--line border + chalk-dim text."
+   }
+  ],
+  "card": [
+   {
+    "sel": "bonuses/index.html .card",
+    "treatment": "The one content card: vertical gradient #161d26 -> #11161d, 1px --line border with a chalk 13% lit top edge, 23px radius, 26x24 padding, soft 0 18px 44px -22px black 65% shadow. Rounded and soft, unlike the square-cornered styles.css ticket/card world."
+   },
+   {
+    "sel": "bonuses/index.html .skel",
+    "treatment": "Loading placeholder with the same shell as .card (gradient, --line border, 23px radius) minus the lit edge and shadow."
+   }
+  ],
+  "panel": [
+   {
+    "sel": "bonuses/index.html .controls",
+    "treatment": "Sunken tray for the vote controls: #0e1319 fill (darker than the page), 1px #232d37 border, 24px radius, 12px padding."
+   }
+  ],
+  "button-primary": [
+   {
+    "sel": "bonuses/index.html .vbtn.v-yes",
+    "treatment": "Extruded amber keycap, the page's hero control: 100px tall, 16px radius, no border, gradient #FFC957 -> #F2A81F, inset white 35% top sheen, 4px solid #9a6a12 extrusion + black 60% cast shadow; press = translateY(3px), extrusion 1px. Barlow Condensed 700 38px, #1c1608 label. Own geometry, NOT the styles.css presti-spin keycap (which is goldenrod #E89A1C, 9px radius, 5px #9E5A0F extrusion)."
+   },
+   {
+    "sel": "bonuses/index.html .qx-btn.qx-play",
+    "treatment": "Flat amber PLAY THE GAME: var(--amber) fill, 1px #9a6a12 border, 13px radius, 48px tall, Barlow Condensed 700 21px .1em, #131313 label; press = brightness(1.1)."
+   },
+   {
+    "sel": "bonuses/index.html .act-next",
+    "treatment": "Flat amber NEXT / TRY AGAIN / VOTE ON 5 MORE: var(--amber) fill, no border, 15px radius, 56px tall, Barlow Condensed 700 22px .1em, #131313 label, chalk 3px focus ring."
+   },
+   {
+    "sel": "styles.css a.btn.btn-primary.btn-block ('Play TRUE 82' on 404 + four static pages)",
+    "treatment": "a.btn beats .btn-primary: extruded goldenrod keycap (gradient --spin-top #F8B647 -> --spin-face #E89A1C, inset white 45% sheen, 5px #9E5A0F extrusion, 9px radius), Barlow Condensed 700 17px uppercase .06em, full width; .content-page a.btn-block forces the label to var(--ink) #101418 instead of --spin-ink #2A1A05. So the static pages' only button is dark-ink-on-goldenrod, and .btn-primary's var(--amber) background never paints."
+   }
+  ],
+  "button-danger": [
+   {
+    "sel": "bonuses/index.html .vbtn.v-no",
+    "treatment": "Extruded red keycap twin of YES: gradient #F06A54 -> #D9422D, inset white 28% sheen, 4px #8c2317 extrusion, black 60% cast shadow, 16px radius, 100px, Barlow Condensed 700 38px, #2b0d09 label."
+   }
+  ],
+  "button-secondary": [
+   {
+    "sel": "bonuses/index.html .v-unsure",
+    "treatment": "Flat dark full-width bar: #131a21 fill, 1px #303b47 border, 14px radius, 56px, Barlow Condensed 600 21px .1em, #c6ced6 label, amber focus ring."
+   }
+  ],
+  "button-ghost": [
+   {
+    "sel": "bonuses/index.html .qx-btn (Stats Refresher link, Share Vote)",
+    "treatment": "Outline button: transparent, 1px --line border, 13px radius, 48px, Barlow Condensed 600 21px .07em, --chalk text; :active/.flashed turns text+border amber. .qx-share splits into a 21px lead + 13px parenthetical and stacks to 58px under 375px width."
+   },
+   {
+    "sel": "bonuses/index.html .act-share",
+    "treatment": "Outline button: transparent, 1px --line border, 13px radius, 48px, Barlow Condensed 600 18px .1em, --chalk-dim text. The 'BACK TO TRUE 82' <a> variant gets inline display:flex centering."
+   },
+   {
+    "sel": "bonuses/index.html .cv-link",
+    "treatment": "Text button 'CHANGE VOTE': mono 11.5px .14em --chalk-dim, underlined (3px offset), no chrome."
+   },
+   {
+    "sel": "bonuses/index.html .t-link",
+    "treatment": "Text button: mono 12px .14em --chalk-dim, centered, 44px min tap height. Defined but not emitted by the current script."
+   }
+  ],
+  "progress": [
+   {
+    "sel": "bonuses/index.html .bar / .bar .y / .bar .n",
+    "treatment": "9px split bar, 5px radius, #0d1217 track; YES share var(--amber), NO share var(--ember); width animates in over .5s."
+   },
+   {
+    "sel": "bonuses/index.html .skel .sk",
+    "treatment": "Skeleton bars, 9px radius, #1a222c base with a #212b36 shimmer sweep (1.15s linear infinite)."
+   },
+   {
+    "sel": "styles.css .round-pips span (index.html header, filled by app.js)",
+    "treatment": "9px rotated-square pips, 1px --maple border; .done = --maple fill, .now = --amber fill."
+   }
+  ],
+  "body": [
+   {
+    "sel": "bonuses/index.html html, body",
+    "treatment": "--ink ground + three stacked backgrounds: 5% amber top glow, chalk 2.2% ruled lines every 47px, #0b0f13 bottom vignette. Barlow body font, --chalk text. The only page with a textured ground."
+   },
+   {
+    "sel": "bonuses/index.html .meta, .q-def, .r-you, .done-line",
+    "treatment": "Barlow 14-16px running text; .meta/.q-def/.done-line --chalk-dim, .r-you --chalk."
+   },
+   {
+    "sel": "bonuses/index.html .err-line",
+    "treatment": "Barlow 14.5px, --ember text ('Vote didn't send.')."
+   },
+   {
+    "sel": "styles.css body (all styles.css pages)",
+    "treatment": "--ink ground, --chalk text, Barlow 16px / 1.45, antialiased. Flat, no texture."
+   },
+   {
+    "sel": "styles.css .content-page p, li, .lead, ul, ol (static pages)",
+    "treatment": "Barlow 15px, --chalk; .lead is the same color (no size change); lists 20px indent. <ol> on can-you-go-82-0 and <strong>/<em>/<sup> rely on UA defaults."
+   },
+   {
+    "sel": "styles.css .fineprint",
+    "treatment": "12.5px --chalk-dim, 560px max width; used in every static footer and inside what-is-bpm's main."
+   },
+   {
+    "sel": "styles.css .intro p / .intro-lead / .dim (index.html static fallback)",
+    "treatment": "15px --chalk; .dim = --chalk-dim for the <noscript> note."
+   }
+  ],
+  "link": [
+   {
+    "sel": "bonuses/index.html .brand a",
+    "treatment": "Inherits --chalk-dim, no underline."
+   },
+   {
+    "sel": "styles.css .content-page a (static pages)",
+    "treatment": "--chalk, underlined 3px offset; hover --amber."
+   },
+   {
+    "sel": "styles.css .static-links a (index.html static fallback)",
+    "treatment": "--chalk, underlined 3px offset; hover --amber; 15px list items."
+   },
+   {
+    "sel": "traits/index.html a (inline style)",
+    "treatment": "Plain amber #FFB52E link on the redirect shell."
+   }
+  ],
+  "toast": [
+   {
+    "sel": "bonuses/index.html .flash",
+    "treatment": "Inline status line (role=status) 'LINK COPIED': mono 12px .14em --amber text, no container."
+   }
+  ],
+  "nav": [
+   {
+    "sel": "bonuses/index.html svg.page-mark",
+    "treatment": "26x29 star-over-hoop mark absolutely positioned top-right at 90% opacity: star var(--amber), rim and net #B98A4F bronze (literal SVG attributes)."
+   },
+   {
+    "sel": "styles.css .site-head / a.brand-link / .brand-logo (index, 404, static pages)",
+    "treatment": "560px centered column, 2px --maple-line bottom rule; the logo is logo.png (800x188 raster: chalk-white TRUE 82 lettering + gold star/hoop on transparent), 232px wide. Image colors are baked in."
+   },
+   {
+    "sel": "styles.css .site-foot / .site-links / .games-count / .foot-stats / details.legal (index, 404, static pages)",
+    "treatment": "1px --tunnel-2 top rule, IBM Plex Mono 9-11px; .site-links 600 11px --chalk underlined, hover amber; .games-count/.foot-stats --maple; legal <summary> 10px uppercase --chalk-dim with a rotating triangle; footer links --chalk underlined."
+   }
+  ],
+  "ticket": [
+   {
+    "sel": "styles.css .ticket.intro#staticIntro (index.html static fallback)",
+    "treatment": "The no-JS intro sits in the signature ticket: --tunnel fill, 1px --maple-line border, 3px --maple top rule, square corners."
+   }
+  ],
+  "other": [
+   {
+    "sel": "bonuses/index.html :root",
+    "treatment": "Page-local token set (--ink --panel --card --line --chalk --chalk-dim --amber --ember + font stacks); --panel and --card are unused."
+   },
+   {
+    "sel": "bonuses/index.html .wrap",
+    "treatment": "520px max column, 20px gutters (vs 560px / 16px in styles.css pages)."
+   },
+   {
+    "sel": "bonuses/index.html :focus-visible rules",
+    "treatment": "2px amber outline at 2px offset (.qx-btn, .v-unsure, .act-share); 3px chalk outline at 3px offset (.vbtn, .act-next)."
+   },
+   {
+    "sel": "index/404/static pages: meta theme-color + link[rel=icon] data: URI favicon",
+    "treatment": "Browser chrome ink #101418; favicon = ink tile with an amber diamond. bonuses/ has theme-color but NO favicon link."
+   },
+   {
+    "sel": "index.html style#t82-live-hide",
+    "treatment": "#arenaChip, #startDuel, #startLeague, #startWeekly, #dailyStrip, #runStatus {display:none !important}. Visibility only; zero color literals."
+   }
+  ]
+ },
+ "notes": [
+  "Literal count (assigned sources): 74 color literals by regex (#hex{3,8} | %23hex in data: URIs | rgb[a]() | hsl[a](), HTML numeric entities like &#8211; excluded); 74 entries, verified 1:1 by (line, value) per file. Breakdown: bonuses/index.html 56, each of index.html / 404.html / how-it-works / faq / can-you-go-82-0 / what-is-bpm 3 (meta theme-color + 2 favicon fills).",
+  "Plus 3 entries from traits/index.html (not assigned): /traits/ is a live redirect shell to /bonuses/ with inline body/link colors. Total entries 77.",
+  "No hsl() anywhere; no named colors used as real colors ('transparent' appears only as gradient stops in the bonuses body background, 'white' only inside 'white-space').",
+  "index.html: the #t82-live-hide style block has zero colors (display:none only). index.html has no other inline style block or style attributes; its only literals are meta theme-color and the favicon. The static #staticIntro markup uses styles.css classes and is replaced by app.js on boot.",
+  "BIGGEST REACH GAP: bonuses/index.html does NOT link /styles.css. It runs a self-contained design system (own :root tokens with the same names as styles.css but different values: --chalk #f2ede4 vs #E8E4D8, --chalk-dim #a8b0b8 vs #9AA0A6, plus --ember #E5533C instead of --whistle, plus --line/--panel/--card that styles.css lacks). A theme defined in styles.css will not reach this page at all; it needs a shared tokens file linked from both, or the theme duplicated inline.",
+  "bonuses/index.html: 47 of its 56 literals are raw values in rules or SVG attributes (8 are the :root token definitions, 1 is meta theme-color). --panel and --card are defined but never referenced; the surfaces they name are painted with literals (#161d26/#11161d card gradient, #0e1319 tray, #131a21 unsure bar, #0d1217 bar track, #1a222c/#212b36 skeleton). Two different accent-ink values (#1c1608 on .q-tag/.vbtn, #131313 on .qx-play/.act-next).",
+  "bonuses/index.html vs styles.css keycap: the vote keycaps and amber buttons are page-local geometry (16/13/15px radii, 4px extrusion, #9a6a12 edge, #FFC957/#F2A81F face) and do not use the presti-spin variables (--spin-face #E89A1C, --spin-top #F8B647, --spin-side #9E5A0F, 9px radius, 5px extrusion). The card is soft and rounded (23px) where the styles.css world is square-cornered tickets.",
+  "Static pages (how-it-works, faq, can-you-go-82-0, what-is-bpm) and 404.html have NO inline <style> and NO style attributes; their only own literals are meta theme-color and the favicon. They use these styles.css classes: site-head, brand-link, brand-logo, content-page (h1, h2, p, ul, ol, li, a), lead, btn, btn-primary, btn-block (a.btn keycap), site-foot, site-links, games-count, mono, fineprint. index.html additionally uses round-pips, ticket, intro, intro-title, intro-lead, eyebrow, static-links, dim, foot-stats, details.legal. None load app.js, so decorate3dButtons never runs there; a.btn gets the keycap from CSS alone.",
+  "Static pages link /styles.css with NO ?v= cache-bust (index.html uses ?v=20260924-riso-results-v50). A theme shipped in styles.css may render stale on these pages until caches expire; add the same version query when theming ships.",
+  "Static Play button detail: a.btn (0,1,1) beats .btn-primary (0,1,0), so the button paints goldenrod --spin-face #E89A1C, not var(--amber); .content-page a.btn-block sets its label to var(--ink) #101418, so on these pages the ground token doubles as accent-ink. A theme that lightens --t-ground will wreck this label unless a.btn-block's color moves to accent-ink.",
+  "NOT reachable from CSS: (1) meta theme-color #101418 on all 7 pages (browser chrome; needs <meta name=theme-color media=...> pairs or JS); (2) the data: URI favicon (%23101418 tile + %23FFB52E diamond) on index/404/static pages, URL-encoded, cannot take var(); bonuses/ has no favicon link at all; (3) logo.png in every styles.css page header is a raster with baked chalk-white lettering (~#E0E0E0) and gold star/hoop on transparent: on a light/paper theme the wordmark disappears, so a light theme needs a second logo asset or a CSS filter; (4) og-image.png is a baked share image (not theme-relevant on page). Reachable only with an added rule: the bonuses inline SVG page-mark uses fill/stroke presentation attributes #B98A4F (any CSS rule overrides them; rewriting as var(--maple,#B98A4F) is cleaner).",
+  "JS-set colors: none. The bonuses script builds markup with inline style attributes (skeleton heights/widths, error-card font-size, BACK button display:flex, result min-height, bar width) but no color values; functions/bonuses/[slug].js only injects window.__T82_BONUS__ JSON, no styles. Haptic switch inputs are opacity:0.",
+  "Role judgment calls: body ruled-texture rgba(242,237,228,.022) -> line (rgb is chalk/text); .card top edge rgba(242,237,228,.13) -> light (rgb is chalk); #0e1319 tray and #0d1217 bar track -> ground-2 (recessed, darker than ground; ground-3 kept for the lighter skeleton fills); #F06A54 NO-keycap top stop -> bad (no bad-hi role exists; consider adding one to mirror accent-hi); #c6ced6 UNSURE label -> text-2 (a third neutral text step found nowhere else); #0b0f13 vignette -> ground (a ground-deep step)."
+ ]
+}

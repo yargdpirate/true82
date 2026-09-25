@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lab grid</title>
+<style>
+  body { margin: 0; background: #2a2a2e; color: #eee; font: 12px/1.4 ui-monospace, Menlo, monospace; padding: 12px; }
+  h1 { font-size: 14px; margin: 0 0 8px; }
+  .grid { display: grid; gap: 10px; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
+  figure { margin: 0; background: #1b1b1e; padding: 6px; }
+  figure canvas { display: block; width: 100%; height: auto; }
+  figcaption { margin-top: 4px; color: #aaa; }
+  .err { color: #ff8080; white-space: pre-wrap; }
+</style></head>
+<body>
+<h1 id="h">loading</h1>
+<div class="grid" id="g"></div>
+<pre class="err" id="err"></pre>
+<script>
+/* Usage:
+   grid.html?base=<json recipe>&vary=<key>&vals=a,b,c           one row varying a recipe key
+   grid.html?concept=<id>                                        a concept across styles x palettes
+   grid.html?cols=3&w=320                                        cell count per row, css width per print
+   Every cell is a real print at 2x. Errors print below the grid. */
+window.onerror = function (m, s, l, c, e) { document.getElementById("err").textContent += (e && e.stack || m) + "\n"; };
+</script>
+<script src="loader.js"></script>
+<script>
+LAB_READY.then(function (LAB) {
+  var q = new URLSearchParams(location.search), g = document.getElementById("g");
+  var cols = +(q.get("cols") || 3), w = +(q.get("w") || 330);
+  g.style.setProperty("--cols", cols);
+  var base = q.get("base") ? JSON.parse(q.get("base")) : {};
+  var cells = [];
+  if (q.get("concept")) {
+    var styles = (q.get("styles") || "print,flat,line,stamp,sticker,woodcut").split(",");
+    var pals = (q.get("pals") || "printshop,vice,goldstandard").split(",");
+    base.concept = q.get("concept");
+    pals.forEach(function (p) { styles.forEach(function (s) { var r = Object.assign({}, base, { palette: p, iconStyle: s }); cells.push({ r: r, cap: p + " / " + s }); }); });
+    g.style.setProperty("--cols", styles.length > 3 ? 3 : styles.length);
+  } else if (q.get("vary")) {
+    var key = q.get("vary"), vals = q.get("vals") ? q.get("vals").split(",") : [];
+    if (!vals.length && key === "palette") vals = LAB.order.palettes;
+    if (!vals.length && key === "concept") vals = LAB.order.concepts;
+    if (!vals.length && key === "font") vals = LAB.order.fonts;
+    if (!vals.length && key === "layout") vals = LAB.order.layouts;
+    vals.forEach(function (v) { var r = Object.assign({}, base); var num = +v; r[key] = isNaN(num) || v === "" ? (v === "true" ? true : v === "false" ? false : v) : num; if (key === "adds") r.adds = v.split("+"); cells.push({ r: r, cap: key + " = " + v }); });
+  } else cells.push({ r: base, cap: JSON.stringify(base) });
+  document.getElementById("h").textContent = cells.length + " prints";
+  var chain = Promise.resolve();
+  cells.forEach(function (c) {
+    var fig = document.createElement("figure"), cv = document.createElement("canvas"), cap = document.createElement("figcaption");
+    cap.textContent = c.cap; fig.appendChild(cv); fig.appendChild(cap); g.appendChild(fig);
+    chain = chain.then(function () {
+      return LAB.print(c.r, { cssW: w, dpr: 2 }).then(function (pr) { cv.width = pr.w; cv.height = pr.h; pr.draw(cv.getContext("2d"), null, null); })
+        .catch(function (e) { cap.textContent += "  ERROR " + (e && e.message); cap.className = "err"; console.error(e); });
+    });
+  });
+  chain.then(function () { document.getElementById("h").textContent += " · done"; window.GRID_DONE = true; });
+});
+</script>
+</body></html>

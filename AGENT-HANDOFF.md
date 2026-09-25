@@ -10,6 +10,29 @@ Read this file before editing. It summarizes the current architecture, the recen
 
 ---
 
+## 0000. The Reprint Lab (design exploration for the next version; nothing shipped)
+
+2026-09-24/25, overnight: the owner asked for a "lab" (like the tennis Misprint Lab) to redesign the homepage
+masthead and the whole site system. It lives in `docs/reprint-lab/` (read its README). One self-contained page,
+`docs/reprint-lab/reprint-lab.html`, shows 17 complete looks and every toggle (palette, paper, wordmark type and
+depth, icon concept and style, layout, additions, button/card/chip styles, corners, texture, night or paper ground,
+fonts) on real snapshots of every screen except the retired Tribune. The site itself is untouched: no app.js,
+styles.css, engine or site_data.json change, no cache keys bumped.
+
+When the owner sends picks, they arrive as `T82-...` codes; decode with `LAB.decode` in the lab. The ship path
+(tokenized styles.css + one theme block + generated component CSS + an exported masthead) is in the README.
+
+Site bugs the capture agents found in passing (not fixed; owner's call):
+- Question share links under `/bonuses/<slug>` 404 because `_routes.json` does not route `/bonuses/*` to
+  `functions/bonuses/[slug].js` (already listed as a pending manual edit).
+- On the homepage poll card, `.tm-sharebar{display:block}` overrides the `hidden` attribute, so the Share Vote bar
+  still shows after the fifth answer.
+- `has-pick` stays on `<body>` after the draft ends (visible on the reel and results).
+- Searching the draft pool for a name with no match shows a blank pool with no message, and the MORE PLAYERS cue
+  still floats over it.
+
+---
+
 ## 000. V50: riso results + the tag ballot
 
 The results screen now prints on the reel's paper stock, and the five

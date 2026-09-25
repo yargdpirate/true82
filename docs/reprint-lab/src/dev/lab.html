@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TRUE 82 Reprint Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../app/lab.css">
+</head><body>
+<!--LAB-BODY-->
+<main class="lab">
+  <header class="lab-head">
+    <div>
+      <p class="eyebrow">TRUE 82 · masthead and site system</p>
+      <h1>Reprint Lab</h1>
+      <p class="lede">Every screen of the real game, reprinted on the riso drum. Pick a preset, flip through the screens, change anything. Star the looks you like, then copy their codes and send them to Claude.</p>
+    </div>
+  </header>
+  <section class="bed" id="bed" aria-label="Preview">
+    <nav class="views" id="views" role="tablist" aria-label="Screens"></nav>
+    <div class="states" id="states"></div>
+    <div class="stage" id="stage"></div>
+    <p class="caption" id="caption"></p>
+  </section>
+  <section class="console" id="console" aria-label="Controls"></section>
+</main>
+<button class="btn primary jump" id="jump" type="button">Controls / Preview</button>
+<div class="toast" id="toast" hidden></div>
+<!--/LAB-BODY-->
+<script src="loader.js"></script>
+<script>
+LAB_READY.then(function () {
+  return fetch("../app/", { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (h) {
+    var m, re = /href="(presets-[^"?#]+\.js)"/g, more = [];
+    while ((m = re.exec(h))) more.push("../app/" + m[1]);
+    return more.sort();
+  }).catch(function () { return []; });
+}).then(function (more) {
+  var files = ["../app/views.js"].concat(more, ["../app/presets.js", "../app/pages.js", "../app/console.js"]);
+  return files.reduce(function (p, f) { return p.then(function () { return new Promise(function (res) { var s = document.createElement("script"); s.src = f + "?t=" + Date.now(); s.onload = res; s.onerror = res; document.head.appendChild(s); }); }); }, Promise.resolve());
+}).then(function () { LAB.boot(); });
+</script>
+</body></html>

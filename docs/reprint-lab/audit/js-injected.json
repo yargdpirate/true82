@@ -1,0 +1,1439 @@
+{
+ "key": "js-injected",
+ "entries": [
+  {
+   "src": "app.js",
+   "line": 716,
+   "sel": "code comment above BTN3D_EXCLUDE (decorate3dButtons history, v47.9)",
+   "prop": "comment",
+   "value": "#2A1A05",
+   "role": "accent-ink",
+   "family": "other",
+   "note": "JS comment documenting button.presti-spin's label color; not rendered. Tokenizer should skip or only update prose."
+  },
+  {
+   "src": "app.js",
+   "line": 1418,
+   "sel": "bookIconSvg() SVG <path> (book cover), rendered in .mp-rules-btn .mp-book-wrap on the mode panel HOW TO PLAY keycap",
+   "prop": "svg fill attr",
+   "value": "#2A1A05",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Dark ink book cover drawn on the gold presti-spin keycap (source comment: 'Fixed colors on purpose: it always sits on the gold presti-spin slab'). Same hex as --spin-ink, so accent-ink keeps it matched to the keycap label under any theme. SVG presentation attribute: any CSS rule (e.g. .mp-book path{fill:var(--t-accent-ink)}) overrides it, but the CSS tokenizer won't see it."
+  },
+  {
+   "src": "app.js",
+   "line": 1419,
+   "sel": "bookIconSvg() SVG <path> (left page)",
+   "prop": "svg fill attr",
+   "value": "#FFF3D6",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Cream book page on the gold keycap. #FFF3D6 is a listed accent-hi value; pages read as the keycap's lightest sheen."
+  },
+  {
+   "src": "app.js",
+   "line": 1420,
+   "sel": "bookIconSvg() SVG <path> (right page)",
+   "prop": "svg fill attr",
+   "value": "#FFF3D6",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Cream book page (right)."
+  },
+  {
+   "src": "app.js",
+   "line": 1421,
+   "sel": "bookIconSvg() SVG <path> (text lines on pages, opacity .55)",
+   "prop": "svg stroke attr",
+   "value": "#2A1A05",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Faint ink text lines on the pages at 55% opacity."
+  },
+  {
+   "src": "app.js",
+   "line": 1963,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module",
+   "prop": "background (linear-gradient)",
+   "value": "#1a2129",
+   "role": "ground-3",
+   "family": "card",
+   "note": "Top stop of the module's dark card gradient (spec lists #1a2129 as ground-3). Cool blue-grey, not the site's warm #1A2027 tunnel. Homepage traits module (renderIntro), live once a vote session loads."
+  },
+  {
+   "src": "app.js",
+   "line": 1963,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module",
+   "prop": "background (linear-gradient)",
+   "value": "#141a21",
+   "role": "ground-2",
+   "family": "card",
+   "note": "Bottom stop of the card gradient (spec lists #141a21 as ground-2)."
+  },
+  {
+   "src": "app.js",
+   "line": 1963,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module",
+   "prop": "border",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "card",
+   "note": "2px solid amber border = --amber hard-coded. The module is the only card on the homepage with a full amber outline."
+  },
+  {
+   "src": "app.js",
+   "line": 1965,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.25)",
+   "role": "accent",
+   "family": "card",
+   "note": "1px amber outer ring at 25%."
+  },
+  {
+   "src": "app.js",
+   "line": 1965,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.16)",
+   "role": "accent",
+   "family": "card",
+   "note": "26px amber glow at 16%."
+  },
+  {
+   "src": "app.js",
+   "line": 1965,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.7)",
+   "role": "shadow",
+   "family": "card",
+   "note": "0 14px 34px -18px deep drop shadow."
+  },
+  {
+   "src": "app.js",
+   "line": 1968,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-eyebrow",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "eyebrow",
+   "note": "IBM Plex Mono 12.5px .2em amber eyebrow link 'HELP BALANCE THE GAME' (an <a> to /bonuses/)."
+  },
+  {
+   "src": "app.js",
+   "line": 1970,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-head:not([hidden])",
+   "prop": "color",
+   "value": "#f2ede4",
+   "role": "text",
+   "family": "heading",
+   "note": "Warm off-white #f2ede4 (brighter than chalk). DEAD: element exists in traitsModuleHtml markup but ships hidden and no code ever unhides it (only the markup line references its id)."
+  },
+  {
+   "src": "app.js",
+   "line": 1975,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-new",
+   "prop": "color",
+   "value": "#9fe870",
+   "role": "good",
+   "family": "badge",
+   "note": "Bright lime 'NEW' badge text. Lime #9fe870 is not the site's --ok #3FAE5A. DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/)."
+  },
+  {
+   "src": "app.js",
+   "line": 1975,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-new",
+   "prop": "border",
+   "value": "#4d7a35",
+   "role": "good",
+   "family": "badge",
+   "note": "Dark green 1px badge outline. No good-edge role; mapped to good. DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/)."
+  },
+  {
+   "src": "app.js",
+   "line": 1977,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-call",
+   "prop": "color",
+   "value": "#8b98a5",
+   "role": "text-2",
+   "family": "eyebrow",
+   "note": "Cool grey mono eyebrow (spec lists #8b98a5 as text-2). DEAD: element exists in traitsModuleHtml markup but ships hidden and no code ever unhides it (only the markup line references its id)."
+  },
+  {
+   "src": "app.js",
+   "line": 1981,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-q:active",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "heading",
+   "note": "The trait question (Barlow 25px uppercase, inherits text color) flashes amber when pressed."
+  },
+  {
+   "src": "app.js",
+   "line": 1982,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-def",
+   "prop": "color",
+   "value": "#8b98a5",
+   "role": "text-2",
+   "family": "body",
+   "note": "13px one-line definition under the question, cool grey."
+  },
+  {
+   "src": "app.js",
+   "line": 1992,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "YES vote keycap label (#1c1608 is a listed accent-ink value). Second keycap palette: the injected trait keycaps use FFC957->F2A81F face, #9a6a12 edge, #1c1608 ink, which differ from button.presti-spin's --spin-top/face/side/ink in styles.css. A theme needs both to point at the same --t-accent* vars."
+  },
+  {
+   "src": "app.js",
+   "line": 1993,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb",
+   "prop": "background (linear-gradient)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "YES keycap face top stop (#FFC957 listed accent-hi)."
+  },
+  {
+   "src": "app.js",
+   "line": 1993,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb",
+   "prop": "background (linear-gradient)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "YES keycap face bottom stop (#F2A81F: the body of the face, close to --amber)."
+  },
+  {
+   "src": "app.js",
+   "line": 1994,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.35)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "inset 1px white top-edge highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 1994,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "0 3px 0 solid extrusion (listed accent-edge #9a6a12)."
+  },
+  {
+   "src": "app.js",
+   "line": 1994,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "0 7px 14px -6px grounding drop shadow."
+  },
+  {
+   "src": "app.js",
+   "line": 1995,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no",
+   "prop": "color",
+   "value": "#2b0d09",
+   "role": "bad-ink",
+   "family": "button-danger",
+   "note": "NO vote label: deep maroon printed on the red keycap (listed bad-ink #2b0d09). NO is a vote, not a destructive action; button-danger is the family of the red keycap variant."
+  },
+  {
+   "src": "app.js",
+   "line": 1995,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no",
+   "prop": "background (linear-gradient)",
+   "value": "#F06A54",
+   "role": "bad",
+   "family": "button-danger",
+   "note": "Red keycap face top stop (lighter coral). No bad-hi role; mapped to bad. A theme setting only --t-bad flattens the gradient; proposal: add bad-hi."
+  },
+  {
+   "src": "app.js",
+   "line": 1995,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no",
+   "prop": "background (linear-gradient)",
+   "value": "#D9422D",
+   "role": "bad",
+   "family": "button-danger",
+   "note": "Red keycap face bottom stop (listed bad #D9422D)."
+  },
+  {
+   "src": "app.js",
+   "line": 1996,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.28)",
+   "role": "light",
+   "family": "button-danger",
+   "note": "inset white top highlight (slightly weaker, 28%)."
+  },
+  {
+   "src": "app.js",
+   "line": 1996,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no",
+   "prop": "box-shadow",
+   "value": "#8c2317",
+   "role": "bad-edge",
+   "family": "button-danger",
+   "note": "0 3px 0 red extrusion (listed bad-edge #8c2317)."
+  },
+  {
+   "src": "app.js",
+   "line": 1996,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-danger",
+   "note": "drop shadow."
+  },
+  {
+   "src": "app.js",
+   "line": 2000,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.idk",
+   "prop": "color",
+   "value": "#9fabb7",
+   "role": "text-2",
+   "family": "button-ghost",
+   "note": "IDK pass: flat dashed-outline ghost, cool grey label."
+  },
+  {
+   "src": "app.js",
+   "line": 2000,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.idk",
+   "prop": "border",
+   "value": "#4d5a67",
+   "role": "line",
+   "family": "button-ghost",
+   "note": "1.5px dashed cool slate outline."
+  },
+  {
+   "src": "app.js",
+   "line": 2002,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.idk:active, .traits-module .tm-vb.idk.pressed",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "button-ghost",
+   "note": "IDK label turns amber when pressed."
+  },
+  {
+   "src": "app.js",
+   "line": 2002,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.idk:active, .traits-module .tm-vb.idk.pressed",
+   "prop": "border-color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "button-ghost",
+   "note": "IDK dashed outline turns amber when pressed."
+  },
+  {
+   "src": "app.js",
+   "line": 2004,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb:active, .traits-module .tm-vb.pressed",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.25)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "Pressed keycap: weaker inset highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 2004,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb:active, .traits-module .tm-vb.pressed",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "Pressed keycap: extrusion collapses to 1px."
+  },
+  {
+   "src": "app.js",
+   "line": 2004,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb:active, .traits-module .tm-vb.pressed",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-primary",
+   "note": "Pressed keycap: tighter drop shadow."
+  },
+  {
+   "src": "app.js",
+   "line": 2005,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no:active, .traits-module .tm-vb.no.pressed",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.2)",
+   "role": "light",
+   "family": "button-danger",
+   "note": "Pressed red keycap: inset highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 2006,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no:active, .traits-module .tm-vb.no.pressed",
+   "prop": "box-shadow",
+   "value": "#8c2317",
+   "role": "bad-edge",
+   "family": "button-danger",
+   "note": "Pressed red keycap: 1px extrusion."
+  },
+  {
+   "src": "app.js",
+   "line": 2006,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-vb.no:active, .traits-module .tm-vb.no.pressed",
+   "prop": "box-shadow",
+   "value": "rgba(0,0,0,.6)",
+   "role": "shadow",
+   "family": "button-danger",
+   "note": "Pressed red keycap: tighter drop shadow."
+  },
+  {
+   "src": "app.js",
+   "line": 2011,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-res b",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "data",
+   "note": "Result line numbers '62% SAY YES' / 'N YES · N NO' in amber (Barlow 700 19px)."
+  },
+  {
+   "src": "app.js",
+   "line": 2012,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-res .neg",
+   "prop": "color",
+   "value": "#E5533C",
+   "role": "bad",
+   "family": "data",
+   "note": "'% SAY NO' result in red-orange #E5533C (near whistle #E2654E but not equal)."
+  },
+  {
+   "src": "app.js",
+   "line": 2014,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-eyeb",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "eyebrow",
+   "note": "Bold amber span inside the eyebrow link (redundant with .tm-eyebrow's amber)."
+  },
+  {
+   "src": "app.js",
+   "line": 2030,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-tag",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "chip",
+   "note": "Tag slot chip label (ink on gold) on the lead row opposite the eyebrow."
+  },
+  {
+   "src": "app.js",
+   "line": 2030,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-tag",
+   "prop": "background (linear-gradient)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "chip",
+   "note": "Gold chip face top."
+  },
+  {
+   "src": "app.js",
+   "line": 2030,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-tag",
+   "prop": "background (linear-gradient)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "chip",
+   "note": "Gold chip face bottom."
+  },
+  {
+   "src": "app.js",
+   "line": 2031,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-tag",
+   "prop": "border",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "chip",
+   "note": "1px gold-brown hairline in place of the chip's 3D lift."
+  },
+  {
+   "src": "app.js",
+   "line": 2035,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-sharebar",
+   "prop": "border",
+   "value": "#2c343d",
+   "role": "line",
+   "family": "button-ghost",
+   "note": "Thin 2D share bar, 1px cool dark border (excluded from the 3D decorator)."
+  },
+  {
+   "src": "app.js",
+   "line": 2036,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-sharebar",
+   "prop": "color",
+   "value": "#8b98a5",
+   "role": "text-2",
+   "family": "button-ghost",
+   "note": "Mono 9.5px cool grey label '(please don't vote brigade)'."
+  },
+  {
+   "src": "app.js",
+   "line": 2037,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-shlead",
+   "prop": "color",
+   "value": "#c9d2da",
+   "role": "text",
+   "family": "button-ghost",
+   "note": "Bold lead-in 'Share Vote': cool light grey, brighter than the rest of the bar but dimmer than chalk. Could be text-2 if the theme's text-2 is bright; text keeps the emphasis."
+  },
+  {
+   "src": "app.js",
+   "line": 2038,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-sharebar:active, .traits-module .tm-sharebar.flashed",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "button-ghost",
+   "note": "Flashes amber after copy."
+  },
+  {
+   "src": "app.js",
+   "line": 2038,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-sharebar:active, .traits-module .tm-sharebar.flashed",
+   "prop": "border-color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "button-ghost",
+   "note": "Border flashes amber."
+  },
+  {
+   "src": "app.js",
+   "line": 2039,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-sharebar:focus-visible",
+   "prop": "outline",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "button-ghost",
+   "note": "2px amber focus ring."
+  },
+  {
+   "src": "app.js",
+   "line": 2041,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-dot",
+   "prop": "border",
+   "value": "#4a5560",
+   "role": "line",
+   "family": "progress",
+   "note": "Empty progress dot outline (1.5px). DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/). Progress now uses .round-pips.tm-pips from styles.css."
+  },
+  {
+   "src": "app.js",
+   "line": 2042,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-dot.on",
+   "prop": "background",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "progress",
+   "note": "Filled progress dot. DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/)."
+  },
+  {
+   "src": "app.js",
+   "line": 2042,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-dot.on",
+   "prop": "border-color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "progress",
+   "note": "Filled progress dot outline. DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/)."
+  },
+  {
+   "src": "app.js",
+   "line": 2043,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-count",
+   "prop": "color",
+   "value": "#8b98a5",
+   "role": "text-2",
+   "family": "data",
+   "note": "Mono counter. DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/)."
+  },
+  {
+   "src": "app.js",
+   "line": 2044,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-why:not([hidden])",
+   "prop": "color",
+   "value": "#68737e",
+   "role": "text-2",
+   "family": "body",
+   "note": "Dimmest cool grey #68737e (a text-3 tier the vocabulary lacks). DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/)."
+  },
+  {
+   "src": "app.js",
+   "line": 2046,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-open",
+   "prop": "color",
+   "value": "#8b98a5",
+   "role": "text-2",
+   "family": "link",
+   "note": "Mono 11px 'FULL PAGE' corner link. DEAD: no markup anywhere in the repo renders this class (grep of app.js, all HTML, functions/)."
+  },
+  {
+   "src": "app.js",
+   "line": 2049,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-done .td-l",
+   "prop": "color",
+   "value": "#8b98a5",
+   "role": "text-2",
+   "family": "body",
+   "note": "Completion line 'Your votes helped set player bonuses.'"
+  },
+  {
+   "src": "app.js",
+   "line": 2052,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-again",
+   "prop": "background (linear-gradient)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "'VOTE ON 5 MORE' <a> styled as a gold keycap: face top."
+  },
+  {
+   "src": "app.js",
+   "line": 2052,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-again",
+   "prop": "background (linear-gradient)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "Keycap face bottom."
+  },
+  {
+   "src": "app.js",
+   "line": 2052,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-again",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Keycap label."
+  },
+  {
+   "src": "app.js",
+   "line": 2054,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-again",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.35)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "inset top highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 2054,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-module .tm-again",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "3px extrusion (no drop shadow on this one)."
+  },
+  {
+   "src": "app.js",
+   "line": 2056,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt",
+   "prop": "background (linear-gradient)",
+   "value": "#1a2129",
+   "role": "ground-3",
+   "family": "card",
+   "note": "Top stop, same card gradient as .traits-module. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2056,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt",
+   "prop": "background (linear-gradient)",
+   "value": "#141a21",
+   "role": "ground-2",
+   "family": "card",
+   "note": "Bottom stop. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2056,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt",
+   "prop": "border",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "card",
+   "note": "1.5px amber border. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2057,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.18)",
+   "role": "accent",
+   "family": "card",
+   "note": "amber ring 18%. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2057,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.1)",
+   "role": "accent",
+   "family": "card",
+   "note": "amber glow 10%. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2058,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt .tp-eyebrow",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "eyebrow",
+   "note": "Mono amber eyebrow. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2062,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt .tp-cta",
+   "prop": "background (linear-gradient)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "button-primary",
+   "note": "Keycap face top. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2062,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt .tp-cta",
+   "prop": "background (linear-gradient)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "button-primary",
+   "note": "Keycap face bottom. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2062,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt .tp-cta",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "button-primary",
+   "note": "Keycap label. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2064,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt .tp-cta",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.35)",
+   "role": "light",
+   "family": "button-primary",
+   "note": "inset highlight. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2064,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .traits-prompt .tp-cta",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-primary",
+   "note": "3px extrusion. DEAD: .traits-prompt/.tp-* are never rendered (no markup anywhere in the repo)."
+  },
+  {
+   "src": "app.js",
+   "line": 2077,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "chip",
+   "note": "Trait/engine chip label (ink on gold). Live on classic draft-pool player rows (engine 3PT/GRAVITY chips via chipsFor + community label chips via applyLabelChips) and Kaman results pick cards."
+  },
+  {
+   "src": "app.js",
+   "line": 2078,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip",
+   "prop": "background (linear-gradient)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "chip",
+   "note": "Gold chip face top."
+  },
+  {
+   "src": "app.js",
+   "line": 2078,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip",
+   "prop": "background (linear-gradient)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "chip",
+   "note": "Gold chip face bottom."
+  },
+  {
+   "src": "app.js",
+   "line": 2081,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.4)",
+   "role": "light",
+   "family": "chip",
+   "note": "inset top highlight 40%."
+  },
+  {
+   "src": "app.js",
+   "line": 2081,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "chip",
+   "note": "0 2px 0 extrusion."
+  },
+  {
+   "src": "app.js",
+   "line": 2081,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip",
+   "prop": "box-shadow",
+   "value": "#000",
+   "role": "shadow",
+   "family": "chip",
+   "note": "0 5px 10px -8px pure black drop shadow."
+  },
+  {
+   "src": "app.js",
+   "line": 2083,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip:active, .tchip.expanded",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.3)",
+   "role": "light",
+   "family": "chip",
+   "note": "Pressed/expanded chip inset highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 2083,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip:active, .tchip.expanded",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "chip",
+   "note": "0 0 0 collapsed extrusion (kept for the transition)."
+  },
+  {
+   "src": "app.js",
+   "line": 2084,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti",
+   "prop": "color",
+   "value": "#2b0d09",
+   "role": "bad-ink",
+   "family": "chip",
+   "note": "Anti-label chip label (maroon on red). DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2084,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti",
+   "prop": "background (linear-gradient)",
+   "value": "#F06A54",
+   "role": "bad",
+   "family": "chip",
+   "note": "Red chip face top (no bad-hi role). DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2084,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti",
+   "prop": "background (linear-gradient)",
+   "value": "#D9422D",
+   "role": "bad",
+   "family": "chip",
+   "note": "Red chip face bottom. DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2085,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.3)",
+   "role": "light",
+   "family": "chip",
+   "note": "inset highlight. DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2085,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti",
+   "prop": "box-shadow",
+   "value": "#8c2317",
+   "role": "bad-edge",
+   "family": "chip",
+   "note": "2px red extrusion. DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2085,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti",
+   "prop": "box-shadow",
+   "value": "#000",
+   "role": "shadow",
+   "family": "chip",
+   "note": "black drop. DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2086,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti:active, .tchip.anti.expanded",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.22)",
+   "role": "light",
+   "family": "chip",
+   "note": "pressed highlight. DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2086,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti:active, .tchip.anti.expanded",
+   "prop": "box-shadow",
+   "value": "#8c2317",
+   "role": "bad-edge",
+   "family": "chip",
+   "note": "collapsed extrusion. DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2088,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip.anti::after",
+   "prop": "background",
+   "value": "#2b0d09",
+   "role": "bad-ink",
+   "family": "chip",
+   "note": "2px strike-through line rotated -5deg across the anti chip. DEAD since v50: applyLabelChips filters out anti hits (`hits.filter(!hh.anti)`, app.js:2405) and traitLabelChipHtml is only called from there, so .tchip.anti never renders."
+  },
+  {
+   "src": "app.js",
+   "line": 2089,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .tchip:focus-visible",
+   "prop": "outline",
+   "value": "#E8E4D8",
+   "role": "text",
+   "family": "chip",
+   "note": "2px chalk focus ring (= --chalk #E8E4D8 hard-coded)."
+  },
+  {
+   "src": "app.js",
+   "line": 2094,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn",
+   "prop": "background (linear-gradient)",
+   "value": "#FFC957",
+   "role": "accent-hi",
+   "family": "button-icon",
+   "note": "27px round gold 'i' keycap: face top. Live as #poolTraitInfoBtn on the classic draft pool header (shown once any .tchip[data-full] is present)."
+  },
+  {
+   "src": "app.js",
+   "line": 2094,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn",
+   "prop": "background (linear-gradient)",
+   "value": "#F2A81F",
+   "role": "accent",
+   "family": "button-icon",
+   "note": "Face bottom."
+  },
+  {
+   "src": "app.js",
+   "line": 2094,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn",
+   "prop": "color",
+   "value": "#1c1608",
+   "role": "accent-ink",
+   "family": "button-icon",
+   "note": "Georgia serif 'i' glyph."
+  },
+  {
+   "src": "app.js",
+   "line": 2095,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.4)",
+   "role": "light",
+   "family": "button-icon",
+   "note": "inset highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 2095,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-icon",
+   "note": "2px extrusion."
+  },
+  {
+   "src": "app.js",
+   "line": 2095,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn",
+   "prop": "box-shadow",
+   "value": "#000",
+   "role": "shadow",
+   "family": "button-icon",
+   "note": "black drop."
+  },
+  {
+   "src": "app.js",
+   "line": 2098,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn:active, .trait-info-btn[aria-expanded=true]",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.25)",
+   "role": "light",
+   "family": "button-icon",
+   "note": "pressed highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 2098,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-info-btn:active, .trait-info-btn[aria-expanded=true]",
+   "prop": "box-shadow",
+   "value": "#9a6a12",
+   "role": "accent-edge",
+   "family": "button-icon",
+   "note": "collapsed extrusion (0 0 0)."
+  },
+  {
+   "src": "app.js",
+   "line": 2100,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-legend",
+   "prop": "border",
+   "value": "#46515c",
+   "role": "line",
+   "family": "panel",
+   "note": "1px cool slate border on the PLAYER LABELS legend (#poolTraitLegend, classic draft pool)."
+  },
+  {
+   "src": "app.js",
+   "line": 2100,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-legend",
+   "prop": "background",
+   "value": "#11171d",
+   "role": "ground-2",
+   "family": "panel",
+   "note": "Recessed legend well #11171d (almost the page ink; cool)."
+  },
+  {
+   "src": "app.js",
+   "line": 2101,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-legend",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.04)",
+   "role": "light",
+   "family": "panel",
+   "note": "inset 4% white top highlight."
+  },
+  {
+   "src": "app.js",
+   "line": 2102,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-legend-title",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "eyebrow",
+   "note": "Mono 10px .18em 'PLAYER LABELS' in amber."
+  },
+  {
+   "src": "app.js",
+   "line": 2105,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-legend-row",
+   "prop": "color",
+   "value": "#d9d5ce",
+   "role": "text",
+   "family": "body",
+   "note": "Legend rows (Barlow 13px) in warm light grey #d9d5ce, a shade under chalk."
+  },
+  {
+   "src": "app.js",
+   "line": 2106,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-legend-row b",
+   "prop": "color",
+   "value": "#FFB52E",
+   "role": "accent",
+   "family": "body",
+   "note": "Amber abbreviation key ('3PT', 'GRAVITY') at the start of each legend row."
+  },
+  {
+   "src": "app.js",
+   "line": 2108,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: .trait-legend-note",
+   "prop": "color",
+   "value": "#7f8b96",
+   "role": "text-2",
+   "family": "body",
+   "note": "Mono 9.5px footnote in dim cool grey."
+  },
+  {
+   "src": "app.js",
+   "line": 2110,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: @keyframes traitInfoPulse 0%,100%",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.12)",
+   "role": "light",
+   "family": "button-icon",
+   "note": "inset highlight at rest. DEAD: the .trait-card-cue class is only ever removed (stopTraitCardCue), never added, and v50's results roster no longer holds .tchip/.trait-info-btn, so traitInfoPulse never runs."
+  },
+  {
+   "src": "app.js",
+   "line": 2110,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: @keyframes traitInfoPulse 0%,100%",
+   "prop": "box-shadow",
+   "value": "#74500d",
+   "role": "accent-edge",
+   "family": "button-icon",
+   "note": "Darker 2px edge #74500d (deeper than the button's own #9a6a12). DEAD: the .trait-card-cue class is only ever removed (stopTraitCardCue), never added, and v50's results roster no longer holds .tchip/.trait-info-btn, so traitInfoPulse never runs."
+  },
+  {
+   "src": "app.js",
+   "line": 2110,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: @keyframes traitInfoPulse 0%,100%",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,0)",
+   "role": "accent",
+   "family": "button-icon",
+   "note": "Pulse ring at 0 alpha (start/end). DEAD: the .trait-card-cue class is only ever removed (stopTraitCardCue), never added, and v50's results roster no longer holds .tchip/.trait-info-btn, so traitInfoPulse never runs."
+  },
+  {
+   "src": "app.js",
+   "line": 2111,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: @keyframes traitInfoPulse 45%",
+   "prop": "box-shadow",
+   "value": "rgba(255,255,255,.16)",
+   "role": "light",
+   "family": "button-icon",
+   "note": "inset highlight at peak. DEAD: the .trait-card-cue class is only ever removed (stopTraitCardCue), never added, and v50's results roster no longer holds .tchip/.trait-info-btn, so traitInfoPulse never runs."
+  },
+  {
+   "src": "app.js",
+   "line": 2111,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: @keyframes traitInfoPulse 45%",
+   "prop": "box-shadow",
+   "value": "#74500d",
+   "role": "accent-edge",
+   "family": "button-icon",
+   "note": "edge at peak. DEAD: the .trait-card-cue class is only ever removed (stopTraitCardCue), never added, and v50's results roster no longer holds .tchip/.trait-info-btn, so traitInfoPulse never runs."
+  },
+  {
+   "src": "app.js",
+   "line": 2111,
+   "sel": "ensureTraitsCss injected <style id=TRAITS_CSS_ID>: @keyframes traitInfoPulse 45%",
+   "prop": "box-shadow",
+   "value": "rgba(255,181,46,.18)",
+   "role": "accent",
+   "family": "button-icon",
+   "note": "6px amber pulse ring at 18%. DEAD: the .trait-card-cue class is only ever removed (stopTraitCardCue), never added, and v50's results roster no longer holds .tchip/.trait-info-btn, so traitInfoPulse never runs."
+  },
+  {
+   "src": "app.js",
+   "line": 2887,
+   "sel": "ballotHintPlay() innerHTML of svg.bt-hand <path> (one-time glove coach-mark over the first .bt-card of the results tag ballot)",
+   "prop": "svg fill attr",
+   "value": "#FFFFFF",
+   "role": "paper",
+   "family": "other",
+   "note": "Pure white glove fill, sitting over the riso paper ballot. Mapped to paper (not light) so it always pairs with its ink stroke: a theme that darkens paper and lightens ink keeps the hand legible. Today it is #FFFFFF, a hair whiter than the #F4ECDD paper. Appended to <body>, position:fixed. SVG presentation attribute: a CSS rule .bt-hand path{fill:...} overrides it."
+  },
+  {
+   "src": "app.js",
+   "line": 2887,
+   "sel": "ballotHintPlay() innerHTML of svg.bt-hand <path>",
+   "prop": "svg stroke attr",
+   "value": "#232A4E",
+   "role": "ink",
+   "family": "other",
+   "note": "2.4px navy outline of the glove = riso navy #232A4E (paper-world ink)."
+  },
+  {
+   "src": "app.js",
+   "line": 4444,
+   "sel": "ballLeverHtml() SVG radialGradient#hhBg stop 0% (.hh-ball basketball)",
+   "prop": "svg stop-color attr",
+   "value": "#ffcb84",
+   "role": "fixed",
+   "family": "other",
+   "note": "Basketball leather highlight. Literal illustration of a real object, kept fixed to match css-b's call on the .hh-fire flames and .hh-lever.ignited glow. Closest themable role would be accent-hi. Rendered 3x: Heat Check overlay (hotHand), mid-season clutch overlay (hotHandMid), Daily gate (renderDailyGate)."
+  },
+  {
+   "src": "app.js",
+   "line": 4444,
+   "sel": "ballLeverHtml() SVG radialGradient#hhBg stop 48%",
+   "prop": "svg stop-color attr",
+   "value": "#e8802a",
+   "role": "fixed",
+   "family": "other",
+   "note": "Basketball orange body. Closest role would be accent."
+  },
+  {
+   "src": "app.js",
+   "line": 4444,
+   "sel": "ballLeverHtml() SVG radialGradient#hhBg stop 100%",
+   "prop": "svg stop-color attr",
+   "value": "#a64e10",
+   "role": "fixed",
+   "family": "other",
+   "note": "Basketball shadow side (burnt orange). Closest role would be accent-edge."
+  },
+  {
+   "src": "app.js",
+   "line": 4446,
+   "sel": "ballLeverHtml() SVG <circle> (ball outline)",
+   "prop": "svg stroke attr",
+   "value": "#6e3208",
+   "role": "fixed",
+   "family": "other",
+   "note": "Dark brown 1px ball outline. Closest role would be accent-ink."
+  },
+  {
+   "src": "app.js",
+   "line": 4447,
+   "sel": "ballLeverHtml() SVG <path> (ball seams)",
+   "prop": "svg stroke attr",
+   "value": "#6e3208",
+   "role": "fixed",
+   "family": "other",
+   "note": "Dark brown 1.5px seams. Closest role would be accent-ink."
+  },
+  {
+   "src": "app.js",
+   "line": 4452,
+   "sel": "ballLeverHtml() SVG <g> (.hh-hoop net strings, opacity .8)",
+   "prop": "svg stroke attr",
+   "value": "#e6e0d2",
+   "role": "fixed",
+   "family": "other",
+   "note": "Chalk-colored net line art (near --chalk #E8E4D8). Closest role would be text. Kept fixed with the rest of the hoop art."
+  },
+  {
+   "src": "app.js",
+   "line": 4456,
+   "sel": "ballLeverHtml() SVG <ellipse> (.hh-hoop rim)",
+   "prop": "svg stroke attr",
+   "value": "#e0531a",
+   "role": "fixed",
+   "family": "other",
+   "note": "4px orange-red rim. Same hex as the .hh-fire flame edge in styles.css (css-b marked that fixed as fire illustration); keep them together."
+  }
+ ],
+ "components": {
+  "card": [
+   {
+    "sel": ".traits-module",
+    "treatment": "Homepage 'HELP BALANCE THE GAME' vote card: cool dark vertical gradient #1a2129->#141a21, 2px solid amber border, 20px radius, 1px amber ring + 26px amber glow + deep drop shadow; 15px padding. The only amber-outlined card on the home page."
+   },
+   {
+    "sel": ".traits-prompt",
+    "treatment": "DEAD. Same card at 1.5px amber border, 16px radius, weaker glow."
+   }
+  ],
+  "eyebrow": [
+   {
+    "sel": ".traits-module .tm-eyebrow / .tm-eyeb",
+    "treatment": "IBM Plex Mono 12.5px (12px/.10em under 390px), .2em tracking, amber, bold span inside; an <a> to /bonuses/."
+   },
+   {
+    "sel": ".traits-module .tm-call",
+    "treatment": "DEAD (hidden forever). Mono 10.5px .22em cool grey."
+   },
+   {
+    "sel": ".traits-prompt .tp-eyebrow",
+    "treatment": "DEAD. Mono 12px .18em amber."
+   },
+   {
+    "sel": ".trait-legend-title",
+    "treatment": "Mono 10px .18em amber 'PLAYER LABELS'."
+   }
+  ],
+  "heading": [
+   {
+    "sel": ".traits-module .tm-q",
+    "treatment": "Barlow Condensed 700 25px uppercase, line-height 1.05, inherits text color, amber on :active."
+   },
+   {
+    "sel": ".traits-module .tm-head",
+    "treatment": "DEAD (hidden forever). Barlow Condensed 700 22px .08em centered #f2ede4."
+   },
+   {
+    "sel": ".traits-module .tm-done .td-h",
+    "treatment": "Barlow Condensed 700 23px .06em, no color (inherits). No markup renders .td-h today."
+   },
+   {
+    "sel": ".traits-prompt .tp-q",
+    "treatment": "DEAD. Barlow Condensed 700 22px uppercase."
+   }
+  ],
+  "body": [
+   {
+    "sel": ".traits-module .tm-def",
+    "treatment": "13px system font, cool grey #8b98a5, single line with ellipsis."
+   },
+   {
+    "sel": ".traits-module .tm-done .td-l",
+    "treatment": "14px cool grey."
+   },
+   {
+    "sel": ".traits-module .tm-why",
+    "treatment": "DEAD. 12px dimmest grey #68737e."
+   },
+   {
+    "sel": ".trait-legend-row / .trait-legend-row b",
+    "treatment": "Barlow Condensed 13px warm light grey #d9d5ce, amber bold abbreviation key; 2-column grid (1 column under 390px)."
+   },
+   {
+    "sel": ".trait-legend-note",
+    "treatment": "Mono 9.5px dim cool grey #7f8b96."
+   }
+  ],
+  "button-primary": [
+   {
+    "sel": ".traits-module .tm-vb (YES)",
+    "treatment": "Gold keycap: 52px tall, 13px radius, Barlow Condensed 700 21px .1em, face gradient #FFC957->#F2A81F, ink #1c1608, inset 1px white highlight, 3px solid #9a6a12 extrusion, 7px drop shadow; pressed = translateY(2px) with 1px edge. Grid 4fr:4fr:1fr with NO and IDK. A second keycap palette separate from button.presti-spin."
+   },
+   {
+    "sel": ".traits-module .tm-again",
+    "treatment": "<a> styled as the same gold keycap: 48px, 12px radius, Barlow 700 18px, 3px edge, no drop shadow."
+   },
+   {
+    "sel": ".traits-prompt .tp-cta",
+    "treatment": "DEAD. Same gold keycap, 46px, 12px radius."
+   },
+   {
+    "sel": "#app .mp-rules-btn .mp-book (bookIconSvg)",
+    "treatment": "24x20 SVG open book (ink cover #2A1A05, cream pages #FFF3D6, faint ink lines) drawn with fill/stroke attributes, sitting on the HOW TO PLAY presti-spin keycap."
+   }
+  ],
+  "button-danger": [
+   {
+    "sel": ".traits-module .tm-vb.no",
+    "treatment": "Red keycap twin of YES: face #F06A54->#D9422D, maroon ink #2b0d09, 3px #8c2317 extrusion. A 'NO' vote, not a destructive action."
+   }
+  ],
+  "button-ghost": [
+   {
+    "sel": ".traits-module .tm-vb.idk (.tm-flat)",
+    "treatment": "Flat 1fr IDK pass: no fill, 1.5px dashed #4d5a67 outline, 13px radius, 14px cool grey label; amber label+outline when pressed. Excluded from decorate3dButtons via .tm-flat."
+   },
+   {
+    "sel": ".traits-module .tm-sharebar / .tm-shlead",
+    "treatment": "Thin 2D full-width bar: 32px, 1px #2c343d border, 9px radius, Mono 9.5px .07em grey, bold light-grey lead-in; amber text+border when flashed, 2px amber focus outline. Excluded from the 3D decorator."
+   }
+  ],
+  "button-icon": [
+   {
+    "sel": ".trait-info-btn (#poolTraitInfoBtn)",
+    "treatment": "27px circular gold keycap, Georgia serif bold 'i' 16px in ink, 2px #9a6a12 extrusion + inset highlight + black drop; pressed/expanded sinks 2px. Pulse keyframes (#74500d edge, amber ring) exist but never run."
+   }
+  ],
+  "chip": [
+   {
+    "sel": ".tchip (.tchip.eng, community label chips)",
+    "treatment": "Gold slab chip: Barlow Condensed 700 12.5px .09em uppercase, ink #1c1608 on #FFC957->#F2A81F, 7px radius, min-height 24px, 2px #9a6a12 extrusion + inset highlight + black drop; tap sinks 2px and expands to the full label; 2px chalk focus ring. Excluded from decorate3dButtons."
+   },
+   {
+    "sel": ".tchip.anti / .tchip.anti::after",
+    "treatment": "DEAD since v50. Red slab with a 2px maroon strike line rotated -5deg."
+   },
+   {
+    "sel": ".traits-module .tm-tag",
+    "treatment": "Same gold chip face and ink, but a 1px #9a6a12 hairline border instead of the 3D lift; rides the lead row."
+   }
+  ],
+  "badge": [
+   {
+    "sel": ".traits-module .tm-new",
+    "treatment": "DEAD. Mono 10.5px lime #9fe870 text, 1px #4d7a35 border, 7px radius."
+   }
+  ],
+  "panel": [
+   {
+    "sel": ".trait-legend (#poolTraitLegend)",
+    "treatment": "Recessed legend well: #11171d fill, 1px #46515c border, 9px radius, 4% white inset top highlight."
+   }
+  ],
+  "data": [
+   {
+    "sel": ".traits-module .tm-res (b, .neg)",
+    "treatment": "Barlow Condensed 700 19px .05em result line; amber bold numbers, red-orange #E5533C for a NO majority."
+   },
+   {
+    "sel": ".traits-module .tm-count",
+    "treatment": "DEAD. Mono 12px grey."
+   }
+  ],
+  "progress": [
+   {
+    "sel": ".traits-module .tm-pips (.round-pips)",
+    "treatment": "13px pips (16px when done) sized here; colors come from .round-pips in styles.css (var(--maple)/var(--amber)), no literals in JS."
+   },
+   {
+    "sel": ".traits-module .tm-dot / .tm-dot.on",
+    "treatment": "DEAD. 9px circles, 1.5px #4a5560 outline, amber fill when on."
+   }
+  ],
+  "link": [
+   {
+    "sel": ".traits-module .tm-open",
+    "treatment": "DEAD. Mono 11px .12em grey corner link."
+   }
+  ],
+  "other": [
+   {
+    "sel": "svg.bt-hand (ballotHintPlay)",
+    "treatment": "44px fixed-position white glove coach-mark with 2.4px navy #232A4E outline and drop shadow (styles.css), taps the first tag of the results ballot once."
+   },
+   {
+    "sel": ".hh-ball / .hh-hoop SVG (ballLeverHtml)",
+    "treatment": "Pull-lever art: radial-gradient basketball (#ffcb84/#e8802a/#a64e10, #6e3208 outline+seams), chalk net #e6e0d2 at 80% opacity, 4px #e0531a rim. Used by the Heat Check overlay, the mid-season clutch overlay and the Daily gate."
+   },
+   {
+    "sel": "svg.du-brand (hoopMarkSvg)",
+    "treatment": "Draft utility bar hoop mark; already tokenized: fill/stroke use var(--amber) and var(--maple), no literals."
+   }
+  ]
+ },
+ "notes": [
+  "Literal count: grep -oE of #hex / rgb(a) / hsl(a) / %23hex finds 124 in app.js, 0 in challenges.js, 0 in daily-core.js. Entries: 124 (1:1, every (line, occurrence) mapped; the build script refuses unmapped or stale keys).",
+  "Named colors: none used as a real color. The only named values in these sources are resets (background:none/transparent on .tm-vb.idk/.tm-sharebar/.tm-dot, -webkit-tap-highlight-color:transparent, color:inherit), so none are entries.",
+  "challenges.js and daily-core.js contain no color at all (pure data/logic).",
+  "Where the 124 live: 1 JS comment (716); 4 SVG attrs in bookIconSvg (1418-1421); 110 in the ensureTraitsCss() injected <style> string (1963-2111); 2 SVG attrs in the ballot glove (2887); 7 SVG attrs in ballLeverHtml (4444-4456).",
+  "Runtime inline color styles: NONE. Every el.style.X / style=\"...\" in app.js is geometry or visibility: .mpb-fill width (1488), .bt-bar i width (2837), .tw-fill width (3818, 6600), .climb-pin/.climb-tag/.climb-you top and .climb-track height (3932-3960), bank meter fill width (1598), --tray-h on <html> (1519), tmRes/tmVotes/tmDone display (2194-2319), .bt-hand left/top/transform/transition (2891-2900), confetti glyph left/top/font-size/--dx/--dy/--rot/animation (3984-3991), Heat Check fill transform and bonus left/width (4152-4254), reel label/strip transform (4303-4328, 5841-5866), lever arm transform (4411-4432), error box display (4742), clipboard textarea offscreen (4750-4752), ticker display (5501), buzz switch cssText (702).",
+  "Runtime inline IMAGE styles a theme cannot reach from CSS: (a) #btSheet (.bt-sheet, the tag ballot bottom sheet) gets style.backgroundImage = url(T82PRINT.paper()) at app.js:2625; (b) <html> gets --rr-paper = url(T82PRINT.paper()) at app.js:6256 (consumed by the riso results CSS). T82PRINT.paper is paperDataURL() in results-riso.js: a canvas-drawn cream paper texture (PAPER #F4ECDD + #8b7f68 fibers + #776c5a/#ffffff specks) baked to a data URL. The inline backgroundImage on #btSheet beats any stylesheet background-image unless !important. To theme paper, results-riso.js must read the paper color from getComputedStyle(--t-paper) before drawing. results-riso.js (15 literals) and reel-riso.js (13 literals, canvas fillStyle/strokeStyle incl. #F4ECDD, #8b7f68, #776c5a, rgba(244,236,221,a), ink patterns) are NOT in this key; flag them for whoever owns them.",
+  "Canvas: app.js, challenges.js and daily-core.js draw nothing on canvas (no getContext/fillStyle/strokeStyle). All canvas color is in reel-riso.js and results-riso.js.",
+  "SVG presentation attributes (13 entries: book icon, glove, basketball/hoop) are NOT reachable by a CSS-file tokenizer, but they have zero specificity, so a plain stylesheet rule like `.mp-book path:nth-child(1){fill:var(--t-accent-ink,#2A1A05)}` or `.bt-hand path{fill:var(--t-paper,#FFFFFF);stroke:var(--t-ink,#232A4E)}` overrides them without !important. Cleaner fix: change the JS strings to fill=\"var(--t-...,#hex)\" (attributes do not resolve var(); use style=\"fill:var(...)\" or classes instead).",
+  "The injected <style> (TRAITS_CSS_ID) is appended to <head> at runtime, AFTER styles.css, so its rules win ties. It is ordinary CSS once injected, so the tokenizer can rewrite the JS string literals in place to var(--t-role, #hex) exactly like styles.css. It hard-codes values that already exist as tokens in styles.css: #FFB52E (= --amber, 16 uses) and #E8E4D8 (= --chalk). They should become var(--t-accent)/var(--t-text) too.",
+  "Second keycap palette: every gold control in the injected sheet (.tm-vb, .tm-tag, .tm-again, .tp-cta, .tchip, .trait-info-btn) uses #FFC957 -> #F2A81F with a #9a6a12 edge and #1c1608 ink, while button.presti-spin in styles.css uses its own --spin-top/--spin-face/--spin-side/--spin-ink. Both sets are mapped to accent-hi/accent/accent-edge/accent-ink so a theme repaints them together; today they are visibly different golds side by side on the draft pool (pool-row .tchip chips next to presti-spin keycaps).",
+  "Cool-grey text family unique to the injected sheet: #8b98a5 (x6), #9fabb7, #7f8b96, #68737e, #c9d2da, #d9d5ce. These are bluer than the site's warm --chalk-dim #9AA0A6. All mapped to text-2 (or text for the two brightest). #68737e is a de-facto text-3 the vocabulary lacks (only used by a dead rule).",
+  "Dark surfaces unique to the injected sheet: #1a2129/#141a21 (card gradient), #11171d (legend well), lines #2c343d/#4d5a67/#46515c/#4a5560. They are cooler than the site's warm #1A2027 tunnel / #232B34.",
+  "Red keycap (.tm-vb.no, .tchip.anti): #F06A54 top / #D9422D face / #8c2317 edge / #2b0d09 ink. The vocabulary has no bad-hi, so both face stops map to bad and a single-var theme flattens the gradient; proposal: add bad-hi (and good-hi/good-edge per css-a).",
+  "DEAD rules (never rendered; safe to delete in the redesign instead of tokenizing, 36 of the 124 literals): .tm-head (hidden forever), .tm-call (hidden forever), .tm-new, .tm-dot/.tm-dot.on, .tm-count, .tm-why, .tm-open (no markup), all of .traits-prompt/.tp-eyebrow/.tp-cta (no markup), .tchip.anti + ::after + pressed states (anti chips filtered out since v50), @keyframes traitInfoPulse (the trait-card-cue class is never added; v50 results ballot has no .tchip). Each dead entry says DEAD in its note.",
+  "Pages where these colors show: HOME (renderIntro) = .traits-module card with YES/NO/IDK keycaps, tag chip, share bar, completion keycap. DRAFT, classic mode = .tchip chips on pool player rows (engine 3PT/GRAVITY + community labels), .trait-info-btn and .trait-legend in the pool header; any mode = .mp-book icon on the mode panel's HOW TO PLAY keycap. KAMAN RESULTS = .tchip engine chips on pick cards (renderKamanResults). RESULTS (v50 tag ballot) = .bt-hand glove coach-mark. HEAT CHECK overlay, MID-SEASON CLUTCH overlay and DAILY GATE = basketball/hoop lever art. /bonuses/ page is separate HTML and does not load this injected sheet.",
+  "Owned elsewhere but referenced here: .round-pips colors (styles.css var(--maple)/var(--amber)), .bt-hand drop shadow and .hh-ball/.hh-hoop drop shadows + ignited glow + flames (styles.css, css-b marked the fire literals fixed), .mp-rules-btn .mp-book-wrap well rgba(42,26,5,.16) (styles.css)."
+ ]
+}
