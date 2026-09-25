@@ -43,6 +43,10 @@ code starts `T82-` and decodes (`LAB.decode(code)` in the lab's console) to the 
   scarlet that also means NO and bad traits (one meaning per color). "Today's site" keeps the scarlet.
 - Small type on paper (prices, badges, positions, run lines, green and blue values on the results paper) is deepened
   to at least 4.5:1 in every palette.
+- "Results tiles" (Site system) re-inks the v50 paper surfaces (results slips, the tag sheet, the season reel card)
+  for dark looks: Paper, Dim paper, Night, Tinted, Neon, Outline (`src/system/40-slips.js`). It also works with
+  "Today's site" colors. In the dark schemes the season print and the reel's loss layer print as negatives.
+  Heat Vice uses Neon.
 
 ## Shipping a look (the plan for the implementing version)
 

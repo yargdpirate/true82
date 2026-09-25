@@ -64,6 +64,7 @@
       { type: "seg", key: "ground", label: "Ground", options: function () { return opts(LAB.SYS.ground); } },
       { type: "seg", key: "btn", label: "Buttons", options: function () { return opts(LAB.SYS.btn); } },
       { type: "seg", key: "card", label: "Cards", options: function () { return opts(LAB.SYS.card); } },
+      { type: "seg", key: "slips", label: "Results tiles", options: function () { return opts(LAB.SYS.slips || [["paper", "Paper"]]); } },
       { type: "seg", key: "chip", label: "Chips", options: function () { return opts(LAB.SYS.chip); } },
       { type: "seg", key: "corners", label: "Corners", options: function () { return opts(LAB.SYS.corners); } },
       { type: "seg", key: "texture", label: "Texture", options: function () { return opts(LAB.SYS.texture); } },
@@ -297,7 +298,7 @@
     var st = (v.states || [])[stateIx[v.id] || 0];
     if (!st) return;
     var needMount = !currentDoc || stage.getAttribute("data-snap") !== st.snap || !stage.querySelector("iframe");
-    var rcView = todayOn ? LAB.recipe(Object.assign({}, rc, { sysPalette: "today" })) : rc;
+    var rcView = todayOn ? LAB.recipe(Object.assign({}, rc, { sysPalette: "today", slips: "paper" })) : rc;
     (todayOn ? logoBanner() : headerBanner(rc)).then(function (banner) {
       lastBanner = banner;
       if (needMount) {

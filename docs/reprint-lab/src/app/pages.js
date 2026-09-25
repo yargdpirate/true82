@@ -46,6 +46,10 @@
     } else {
       var c2 = doc.getElementById("lab-comp"); if (c2) c2.textContent = "";
     }
+    // results tiles: its own block, last in <head>, in both color modes
+    var slips = LAB.slipsCSS ? LAB.slipsCSS(rc) : "", sl = doc.getElementById("lab-slips");
+    if (slips) { html.setAttribute("data-slips", rc.slips); if (!sl) { sl = doc.createElement("style"); sl.id = "lab-slips"; } if (sl.textContent !== slips) sl.textContent = slips; doc.head.appendChild(sl); }
+    else { html.removeAttribute("data-slips"); if (sl) sl.textContent = ""; }
     (LAB.pageHooks || []).forEach(function (h) { try { h(doc, rc, banner); } catch (e) { console.error("[lab] page hook", e); } });
     // masthead
     if (banner) {
@@ -77,6 +81,11 @@
       var fonts = LAB.themeFontsCSS(rc), fl = fonts.length ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' + fonts.join("&family=") + '&display=swap">' : "";
       var css = LAB.componentCSS ? LAB.componentCSS(rc) : "";
       out = out.replace(/<\/head>/i, function () { return fl + "<style id=\"lab-vars\">html:root{" + decl + "}</style><style id=\"lab-comp\">" + css + "</style></head>"; });
+    }
+    var slips = LAB.slipsCSS ? LAB.slipsCSS(rc) : "";
+    if (slips) {
+      out = out.replace(/<html([^>]*)>/i, function (m, a) { return "<html" + a.replace(/\sdata-slips="[^"]*"/, "") + ' data-slips="' + rc.slips + '">'; });
+      out = out.replace(/<\/head>/i, function () { return "<style id=\"lab-slips\">" + slips + "</style></head>"; });
     }
     if (banner) {
       out = out.replace(/<img([^>]*class="brand-logo"[^>]*)>/g, function (m, a) {
