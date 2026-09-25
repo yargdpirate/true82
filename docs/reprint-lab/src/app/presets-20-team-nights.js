@@ -10,8 +10,8 @@
 (function () {
   window.LAB.presets = (window.LAB.presets || []).concat([
     { id: "team-nights-vice", name: "Heat Vice", line: "Neon script over a South Beach sunset.",
-      note: "Pink and aqua on midnight, like the Vice jerseys: a script over a neon grid, a ball rising through the net. Look at the glowing buttons and the solid pink tags. No white paper: the results tiles glow too.",
-      rc: { slips: "glow", neon: "more", palette: "vice", ground: "night", layout: "inline", font: "yellowtail", font82: "bigshoulders", ink82: "a",
+      note: "Pink and aqua on midnight, like the Vice jerseys: a script over a neon grid, a ball rising through the net. Glowing buttons stand on a stacked pink and aqua base; the season reel and the results print go pink for wins and aqua for losses (hot and cold).",
+      rc: { neon: "more", btnDepth: "stacked", wl: "pair", palette: "vice", ground: "night", layout: "inline", font: "yellowtail", font82: "bigshoulders", ink82: "a",
         depth: "stack", concept: "hoop-sunrise", iconStyle: "print", backdrop: "grid", adds: ["star"],
         btn: "neon", card: "outline", chip: "ink", corners: "round", texture: "none", disp: "kanit", body: "rubik", mono: "spacemono" } },
     // No rays behind the name: the pink 82 sat on pink-red rays and turned to a smudge at header size.

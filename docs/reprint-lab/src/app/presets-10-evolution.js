@@ -7,7 +7,7 @@
     { id: "evolution-gold-press", name: "Gold Press",
       line: "Today's site, pulled off the press.",
       note: "Your colors and keycaps, now printed: halftone gold keys with a pink edge, a letterpress logo with a gold 82 over court lines.",
-      rc: { palette: "goldstandard", sysPalette: "match", ground: "night", btn: "halftone", card: "tunnel", chip: "keycap", corners: "soft", texture: "grain", disp: "match",
+      rc: { palette: "goldstandard", sysPalette: "match", wl: "classic", ground: "night", btn: "halftone", card: "tunnel", chip: "keycap", corners: "soft", texture: "grain", disp: "match",
         layout: "inline", font: "barlow900", font82: "match", ink82: "a", shape: "straight", lines: "one", wordTex: "solid",
         depth: "extrude", depthDist: 0.7, depthAng: 60, concept: "hoop-star", iconStyle: "print", iconDepth: "match", iconScale: 1,
         backdrop: "court", adds: ["star", "pips"], reg: 1.2, starve: 0.2, grain: 0.5, motion: "print" } },

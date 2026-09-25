@@ -10,18 +10,19 @@
      tunnel   today's dark panels (only corners and texture change)
      paper    every card is a slip of textured paper with a soft drop, inked in
               navy: the v50 results look everywhere. Inside a slip the site's
-              night colors are re-pointed at the paper world (see PAPER_VARS).
+              night colors are re-pointed at the paper world (see paperVars).
      outline  transparent, a key-ink border and a small hard offset shadow
      ticket   the draft ticket: notched corners and a dashed perforation
      flat     one flat tint, no border, no shadow
-   The v50 paper slips (results, the tag sheet, the riso reel) stay paper in
-   every style; only their edge changes.
+   Since v51 the results tiles, the tag sheet, toasts and the season reel's
+   card are ordinary cards and sheets (the site builds them from .t-card,
+   .t-sheet, .t-toast), so they follow the card style like every surface.
 
    Colors come only from var(--t-<role>) (through color-mix). Corners come
    from --t-r-card. Every rule sits under :is(#lab-s#lab-s, ...), which lifts
    it to two ids so it beats the site's #app-armored rules without
-   !important. The v50 papers' grain is reprinted by 30-reprint.js.
-   The riso canvases and the Tribune (.np-*) are never touched here.
+   !important. The riso canvases are reprinted by 30-reprint.js (their stock is
+   the card they sit on); the Tribune (.np-*) is never touched here.
 
    Two page hooks write a little state on the snapshot:
      html[data-lab-mast="band|slip"] + --s-mast-band, html[data-lab-mast-ink="light|dark"]
@@ -41,8 +42,7 @@
   var DAY = 'html[data-card][data-ground="day"] ';
 
   function rolesFor(rc) {
-    var id = rc.sysPalette && rc.sysPalette !== "match" && rc.sysPalette !== "today" ? rc.sysPalette : rc.palette;
-    try { return LAB.roles(LAB.palettes[id], rc.ground || "night"); } catch (e) { return null; }
+    try { return LAB.rolesFor(rc); } catch (e) { return null; }
   }
   // the most of color c (mixed into `toward`) that still reads at `min` contrast on bg, in percent
   function deep(c, toward, bg, min) {
@@ -53,9 +53,9 @@
 
   /* ---------- selectors ---------- */
   var S = {
-    // content cards on the page
-    card: [".ticket", ".traits-module", ".board:not(.rr-board)", ".pick-card:not(.bt-card)", ".wrap .card", ".wrap .skel", ".error-box",
-      ".reel-overlay:not(.riso) .reel-card", ".trait-legend"],
+    // content cards on the page (since v51 the results tiles and the reel card are cards like any other)
+    card: [".ticket", ".traits-module", ".board", ".pick-card", ".t-card", ".wrap .card", ".wrap .skel", ".error-box",
+      ".reel-overlay .reel-card", ".trait-legend", ".rr .ledger", ".rr .twoway"],
     // the brass plaques: Daily tile, run strap, gate insert, mode panels, rules sheet, today's twist, daily card
     frame: [".plq-frame"],
     // cards that sit inside another card
@@ -63,12 +63,10 @@
     row: [".player-row"],
     tray: [".tray"],
     page: ["main.content-page"],
-    // the v50 paper: slips on the results table, the tag sheet, the riso reel
-    slip: [".rr .rr-board", ".rr .bt-card", ".rr .twoway", ".rr .rr-climb .climb", ".rr .ledger"],
-    sheet: [".bt-sheet"],
-    reel: [".reel-overlay.riso .reel-card"],
+    // bottom sheets (the tag ballot's, and any mode's .t-sheet)
+    sheet: [".bt-sheet", ".t-sheet"],
     heat: [".hh-card"],
-    toast: [".bt-toast", ".duel-toast"],
+    toast: [".bt-toast", ".duel-toast", ".t-toast"],
     // recessed wells inside cards (the site paints them in --ink)
     well: [".board-cell", ".rs-law", ".rs-ref", ".cap-tip", ".cap-bar", ".wrap .controls"]
   };
@@ -118,18 +116,52 @@
       pa = deep(r.accent, r.shadow, r.paper, 4.5); pm = deep(r.metal, r.shadow, r.paper, 4.5);
       pb = deep(r.bad, r.shadow, r.paper, 4.5); pg = deep(r.good, r.shadow, r.paper, 4.5);
     }
+    var ph = r ? deep(r.hot, r.shadow, r.paper, 3) : 70;
     return rule("html[data-card]",
       "--s-p-accent: " + mix("var(--t-accent)", pa, "var(--t-shadow)") + "; --s-p-metal: " + mix("var(--t-metal)", pm, "var(--t-shadow)") + ";" +
       "--s-p-bad: " + mix("var(--t-bad)", pb, "var(--t-shadow)") + "; --s-p-good: " + mix("var(--t-good)", pg, "var(--t-shadow)") + ";" +
+      "--s-p-hot: " + mix("var(--t-hot)", ph, "var(--t-shadow)") + ";" +
       "--s-p-line: " + mix("var(--t-ink)", 16, "var(--t-paper)") + "; --s-root-ink: var(--t-ground);");
   }
-  var PAPER_VARS =
-    "color: var(--t-ink);" +
-    "--ink: var(--t-paper-2); --tunnel: var(--t-paper); --tunnel-2: var(--s-p-line); --chalk: var(--t-ink); --chalk-dim: var(--t-ink-2);" +
-    "--maple: var(--s-p-metal); --maple-line: color-mix(in srgb, var(--t-line-paper) 26%, var(--t-paper)); --amber: var(--s-p-accent); --whistle: var(--s-p-bad); --ok: var(--s-p-good);" +
-    "--line: color-mix(in srgb, var(--t-line-paper) 26%, var(--t-paper)); --panel: var(--t-paper); --card: var(--t-paper); --ember: var(--s-p-bad); --plq-deep: var(--s-p-metal);" +
-    "--t-ground: var(--t-paper); --t-ground-2: var(--t-paper); --t-ground-3: var(--t-paper-2); --t-text: var(--t-ink); --t-text-2: var(--t-ink-2);" +
-    "--t-line: color-mix(in srgb, var(--t-line-paper) 26%, var(--t-paper)); --t-shadow: var(--t-ink);";
+  /* Inside a paper slip the site's tokens are re-pointed at the paper world: the ground is the paper, text is
+     the ink, hairlines and rules are ink-tinted, labels are deepened to read, shadows are ink. Since v51 the
+     site reads shades (text-3, good-soft, bad-soft...) and rgb twins (rgb(var(--t-text-rgb) / .5)) as well as
+     the roles, so the whole token set is recomputed with the site's own recipes (T82THEME.build) and every
+     token that changes is restated, twin included. The older aliases (--ink, --amber...) are restated too:
+     they resolve once on :root, so they would keep their night values. */
+  // the color families whose text is deepened inside a slip; controls get their true (night) values back
+  var DEEP = { accent: 4.5, hot: 4.5, good: 4.5, bad: 4.5, you: 3 };
+  function paperTokens(r) {
+    var T = window.T82THEME, C = LAB.color, p = {}, k;
+    for (k in r) p[k] = r[k];
+    p.ground = r.paper; p["ground-2"] = r.paper; p["ground-3"] = r["paper-2"];
+    p.text = r.ink; p["text-2"] = r["ink-2"];
+    p.line = C.mix(r.paper, r["line-paper"], 0.26); p.rule = C.mix(r.paper, r["line-paper"], 0.45);
+    p.label = C.ensure(r.label || r.metal, r.paper, 4.5, r.ink); p.shadow = r.ink;
+    for (k in DEEP) p[k] = C.ensure(r[k], r.paper, DEEP[k], r.ink);
+    return { night: T.build(r), paper: T.build(p) };
+  }
+  function declare(tok, keep) {
+    var T = window.T82THEME, out = "", k;
+    for (k in tok) if (keep(k)) out += "--t-" + k + ": " + tok[k] + "; --t-" + k + "-rgb: " + T.rgb(tok[k]).join(" ") + ";";
+    return out;
+  }
+  // a control inside a slip keeps its true colors (owner's call: a button looks the same on every surface);
+  // only what it prints straight onto the surface (outline labels, field text) follows the paper
+  function paperControlVars(r) {
+    if (!r || !window.T82THEME) return "";
+    var t = paperTokens(r), fam = /^(accent|bad|good|hot|you)(-|$)/;
+    return declare(t.night, function (k) { return fam.test(k) && t.night[k] !== t.paper[k]; });
+  }
+  function paperVars(r) {
+    var ali = "color: var(--t-ink);" +
+      "--ink: var(--t-paper-2); --tunnel: var(--t-paper); --tunnel-2: var(--s-p-line); --chalk: var(--t-ink); --chalk-dim: var(--t-ink-2);" +
+      "--maple: var(--s-p-metal); --maple-line: var(--t-rule); --amber: var(--s-p-accent); --whistle: var(--s-p-bad); --ok: var(--s-p-good);" +
+      "--line: var(--t-line); --panel: var(--t-paper); --card: var(--t-paper); --ember: var(--s-p-bad); --plq-deep: var(--s-p-metal);";
+    if (!r || !window.T82THEME) return ali + "--t-ground: var(--t-paper); --t-ground-2: var(--t-paper); --t-ground-3: var(--t-paper-2); --t-text: var(--t-ink); --t-text-2: var(--t-ink-2); --t-shadow: var(--t-ink);";
+    var t = paperTokens(r);
+    return ali + declare(t.paper, function (k) { return t.paper[k] !== t.night[k]; });
+  }
   // things inside a paper surface that were drawn for a dark ground: glows, black extrusions, white type
   function paperFx(P) {
     var s = "", I = function (l) { return P + IS(l); };
@@ -137,8 +169,9 @@
       ".gate-tipoff .gate-pull", ".hh-eyebrow", ".hh-lever-hint", ".cy-arrow"]), "text-shadow: none;");
     // type the site inks straight from the accent, bad and good roles: the deep, paper-safe versions
     s += rule(I([".traits-module .tm-eyebrow", ".traits-module .tm-eyeb", ".traits-module .tm-res b", ".traits-module .tm-q:active", ".trait-legend-title", ".trait-legend-row b"]), "color: var(--s-p-accent);");
-    s += rule(I([".traits-module .tm-res .neg", ".hot-pick .pr-name", ".hot-pick .pr-v .hot-bonus", ".board .big-label .net-bonus", ".mpb-delta.neg",
-      ".mp-bank.bank-mid .mpb-amt", ".mp-bank.bank-down .mpb-amt"]), "color: var(--s-p-bad);");
+    s += rule(I([".traits-module .tm-res .neg", ".mpb-delta.neg", ".mp-bank.bank-mid .mpb-amt", ".mp-bank.bank-down .mpb-amt"]), "color: var(--s-p-bad);");
+    // the hot pick and its bonus are fire gold (a gain), deepened to read on paper
+    s += rule(I([".hot-pick .pr-name", ".hot-pick .pr-v .hot-bonus", ".rr .bt-val .hot-bonus", ".board .big-label .net-bonus"]), "color: var(--s-p-hot);");
     s += rule(I([".traits-module .tm-new", ".mp-bank.bank-up .mpb-amt", ".mpb-delta.pos"]), "color: var(--s-p-good);");
     s += rule(I([".traits-module .tm-new"]), "border-color: var(--s-p-good);");
     s += rule(I([".mpb-lab"]), "color: var(--s-p-accent);");
@@ -189,7 +222,7 @@
   function tunnelCSS() {
     var P = K("tunnel"), s = "", I = function (l) { return P + IS(l); };
     s += rule(I(S.card.concat(S.frame)), "border-radius: var(--t-r-card);");
-    s += rule(I([".ticket", ".board:not(.rr-board)", ".pick-card:not(.bt-card)", ".error-box", ".reel-overlay:not(.riso) .reel-card", ".trait-legend"]),
+    s += rule(I([".ticket", ".board", ".pick-card", ".t-card", ".error-box", ".reel-overlay .reel-card", ".trait-legend"]),
       "background-image: var(--s-dots-card), var(--s-grain); background-size: var(--s-dots-size), " + TEX + "; background-blend-mode: normal, var(--s-grain-blend);");
     s += rule(I([".plq-frame", "#app button.daily-tile"]), "background-image: var(--s-dots-card), var(--s-grain), radial-gradient(140% 120% at 50% 0%, " + mix("var(--t-accent-hi)", 9) + ", transparent 55%);" +
       "background-size: var(--s-dots-size), " + TEX + ", auto; background-blend-mode: normal, var(--s-grain-blend), normal;");
@@ -209,13 +242,17 @@
   }
 
   /* ---------- 2. PAPER: every card a slip of paper ---------- */
-  function paperCSS() {
+  function paperCSS(r) {
     var P = K("paper"), s = "", I = function (l) { return P + IS(l); };
-    var SLIPS = S.card.concat(S.frame, S.row, S.tray, S.page, S.heat);
+    var SLIPS = S.card.concat(S.frame, S.row, S.tray, S.page, S.heat, S.sheet, S.toast);
     // (the kit's context wrappers, [data-kit-ghost], keep the night colors: they paint nothing)
     var GHOST = ":not([data-kit-ghost])";
-    s += rule(I(SLIPS) + GHOST, PAPER_VARS);
-    s += rule(I(S.card.concat(S.frame)), bg("var(--t-paper)", "paper") + "border: 0; border-radius: var(--t-r-card); box-shadow: " + DROP + ";");
+    s += rule(I(SLIPS) + GHOST, paperVars(r));
+    // buttons, chips and badges inside a slip keep their true faces (see paperControlVars)
+    var CTL = LAB.CTL ? LAB.CTL.FAM.pri.concat(LAB.CTL.FAM.yes, LAB.CTL.FAM.no, LAB.CTL.FAM.good || [], LAB.CTL.FAM.sec, LAB.CTL.FAM.icon) : [".t-btn"];
+    var keep = paperControlVars(r);
+    if (keep) s += rule(P + ":is(" + SLIPS.join(", ") + ")" + GHOST + " " + IS(CTL.concat([".t-chip", ".tchip", ".bt-tag", ".tm-tag", ".q-tag", ".slot-badge"])), keep);
+    s += rule(I(S.card.concat(S.frame, S.sheet)), bg("var(--t-paper)", "paper") + "border: 0; border-radius: var(--t-r-card); box-shadow: " + DROP + ";");
     // the plaque's inner hairline prints as a thin ink rule; the rivets go (clutter on paper)
     s += rule(I([".plq-frame"]) + "::before", "border-color: " + mix("var(--t-ink)", 26) + "; border-radius: calc(var(--t-r-card) * 0.5);");
     s += rule(I([".plq-frame"]) + "::after", "display: none;");
@@ -251,7 +288,7 @@
     // buttons that paint their face with the site's amber alias keep the true accent face and dark label
     s += rule(P + ":is(" + SLIPS.join(", ") + ")" + GHOST + " " + IS([".qx-btn.qx-play", ".act-next", ".rs-got:not(.rs-ref-btn)", ".reel-done", ".confirm-btn", ".btn-primary", ".dt-act-share", ".cap-info"]),
       "--amber: var(--t-accent); --ink: var(--s-root-ink);");
-    s += rule(I([".pick-card.hot-pick:not(.bt-card)"]), "box-shadow: 0 0 0 2px var(--t-bad), " + DROP + ";");
+    s += rule(I([".pick-card.hot-pick"]), "box-shadow: 0 0 0 2px var(--t-hot), " + DROP + ";");
     return s;
   }
 
@@ -265,7 +302,7 @@
     s += rule(I([".plq-frame"]) + "::after", "display: none;");
     s += rule(I(S.nested), "border-width: 1.5px; box-shadow: none;");
     // sheets over a scrim need a floor: the ground, not glass
-    s += rule(I([".rules-sheet", ".reel-overlay:not(.riso) .reel-card"]), "background-color: var(--t-ground);");
+    s += rule(I([".rules-sheet", ".reel-overlay .reel-card"]), "background-color: var(--t-ground);");
     s += rule(I(S.row), "background: transparent; border: 1.5px solid " + mix("var(--t-text)", 75) + "; border-left-width: 1.5px;" +
       "border-radius: calc(var(--t-r-card) * 0.6); box-shadow: " + OFF_SM + ";");
     s += rule(I(S.row) + ":active", "background-color: " + mix("var(--t-text)", 8) + ";");
@@ -317,7 +354,7 @@
     s += rule(I([".plq-frame"]) + "::before", "display: none;");
     s += rule(I([".plq-frame"]) + "::after", "display: none;");
     s += rule(I(S.nested), "background-color: " + TINT2 + ";");
-    s += rule(I([".rules-sheet", ".reel-overlay:not(.riso) .reel-card"]), "background-color: " + mix("var(--t-text)", 7, "var(--t-ground)") + ";");
+    s += rule(I([".rules-sheet", ".reel-overlay .reel-card"]), "background-color: " + mix("var(--t-text)", 7, "var(--t-ground)") + ";");
     s += rule(I(S.row), bg(TINT, "site") + "border: 0; border-left: 3px solid transparent; border-radius: calc(var(--t-r-card) * 0.6); box-shadow: none;");
     s += rule(I(S.row) + ":active", "background-color: " + TINT2 + ";");
     s += rule(I([".player-row.sel"]), "background-color: " + mix("var(--t-accent)", 14, "var(--t-ground)") + "; border-left-color: var(--t-accent);");
@@ -328,24 +365,20 @@
     return s;
   }
 
-  /* ---------- the v50 paper (results slips, tag sheet, riso reel) in every style ---------- */
-  function slipCSS() {
+  /* ---------- sheets in every style, and the hot pick's edge ---------- */
+  function sheetCSS() {
     var s = "", A = "html[data-card] ";
-    // (their paper grain is reprinted in the palette's stock by 30-reprint.js; only the edge is ours)
-    s += rule(A + IS(S.slip.concat(S.reel)), "border-radius: var(--t-r-card);");
     s += rule(A + IS(S.sheet), "border-radius: min(calc(var(--t-r-card) * 2), 22px) min(calc(var(--t-r-card) * 2), 22px) 0 0;");
-    // outline: an ink rule round each slip and a hard offset under it
-    s += rule(K("outline") + IS(S.slip.concat(S.reel)), "box-shadow: inset 0 0 0 2px var(--t-ink), " + OFF + ";");
-    s += rule(K("outline") + IS([".rr .bt-card.hot-pick"]), "box-shadow: inset 0 0 0 2px var(--t-bad), " + OFF + ";");
-    s += rule(K("outline") + IS(S.sheet), "box-shadow: inset 0 2px 0 var(--t-ink), 0 -4px 0 " + mix("var(--t-text)", 24) + ";");
-    // ticket: notches and a perforation
-    s += rule(K("ticket") + IS(S.slip.concat(S.reel)), notch(9) + "border-radius: 0; outline: 1.5px dashed " + mix("var(--t-ink)", 30) + "; outline-offset: -6px;");
-    s += rule(K("ticket") + IS([".rr .bt-card.hot-pick"]), "outline-color: var(--t-bad); outline-style: solid; outline-width: 2px;");
-    s += rule(K("ticket") + IS(S.sheet), perfTop(5, 14) + "border-radius: 0;");
-    // flat: the paper, lying flat
-    s += rule(K("flat") + IS(S.slip.concat(S.reel)), "box-shadow: none;");
-    s += rule(K("flat") + IS([".rr .bt-card.hot-pick"]), "box-shadow: inset 0 0 0 2px var(--t-bad);");
-    s += rule(K("flat") + IS(S.sheet), "box-shadow: 0 -1px 0 " + mix("var(--t-shadow)", 25) + ";");
+    // outline: the ground as its floor (a sheet over a scrim can't be glass), a key-ink rule and a hard offset upward
+    s += rule(K("outline") + IS(S.sheet), "background: var(--t-ground); border: 2px solid var(--t-text); border-bottom: 0; box-shadow: 0 -4px 0 " + mix("var(--t-text)", 24) + ";");
+    // ticket: torn off along the top
+    s += rule(K("ticket") + IS(S.sheet), bg("var(--t-ground-2)", "site") + perfTop(5, 14) + "border: 0; border-radius: 0;");
+    // flat: one tint, lying flat
+    s += rule(K("flat") + IS(S.sheet), bg(mix("var(--t-text)", 7, "var(--t-ground)"), "site") + "border: 0; box-shadow: 0 -1px 0 " + mix("var(--t-shadow)", 25) + ";");
+    // the hot pick keeps its fire-gold edge in the styles that paint their own edges
+    s += rule(K("outline") + IS([".pick-card.hot-pick"]), "border-color: var(--t-hot); box-shadow: inset 0 0 0 1px var(--t-hot), " + OFF + ";");
+    s += rule(K("ticket") + IS([".pick-card.hot-pick"]), "outline-color: var(--t-hot); outline-style: solid; outline-width: 2px;");
+    s += rule(K("flat") + IS([".pick-card.hot-pick"]), "box-shadow: inset 0 0 0 2px var(--t-hot);");
     return s;
   }
 
@@ -356,7 +389,7 @@
     s += paperFx(DAY);
     // today's panels on paper (the other card styles paint their own edges)
     var TUN = 'html[data-card="tunnel"][data-ground="day"] ';
-    s += rule(TUN + IS([".pick-card.hot-pick:not(.bt-card)"]), "box-shadow: 0 0 0 2px var(--t-bad);");
+    s += rule(TUN + IS([".pick-card.hot-pick"]), "box-shadow: 0 0 0 2px var(--t-hot);");
     s += rule(TUN + IS([".traits-module"]), "box-shadow: " + DROP + ";");
     s += rule(TUN + IS([".plq-frame", "#app button.daily-tile"]), "box-shadow: inset 0 0 0 1px " + mix("var(--t-paper)", 60) + ", inset 0 0 0 4px " + mix("var(--t-metal)", 16) + ", 0 3px 10px -6px " + mix("var(--t-shadow)", 40) + ";");
     s += rule(TUN + IS([".wrap .card"]), "border-top-color: var(--t-line);");
@@ -377,12 +410,10 @@
     // the v50 results table: the eyebrows were printed in paper color on the dark table
     s += rule(I([".rr .rr-eyebrow"]), "color: var(--t-text); text-shadow: 1px -1px 0 " + mix("var(--t-offset)", 45) + ";");
     s += rule(I([".rr .bref-credit"]), "color: var(--t-text-2);");
-    // slips on paper: a lighter lift (the outline, ticket and flat edges keep their own)
+    // the reel card and the sheets on paper: a lighter lift (the outline, ticket and flat edges keep their own)
     var LIFT = 'html[data-card][data-ground="day"]:is([data-card="tunnel"], [data-card="paper"]) ';
-    s += rule(LIFT + IS(S.slip), "box-shadow: 0 1px 0 " + mix("var(--t-shadow)", 18) + ", 0 12px 24px -16px " + mix("var(--t-shadow)", 55) + ";");
-    s += rule(LIFT + IS([".rr .bt-card.hot-pick"]), "box-shadow: 0 0 0 2px var(--t-bad), 0 12px 24px -16px " + mix("var(--t-shadow)", 55) + ";");
-    s += rule(LIFT + IS([".reel-overlay.riso .reel-card"]), "box-shadow: 0 1px 0 " + mix("var(--t-shadow)", 18) + ", 0 18px 44px -18px " + mix("var(--t-shadow)", 60) + ";");
-    s += rule(LIFT + IS([".bt-sheet"]), "box-shadow: 0 -1px 0 " + mix("var(--t-shadow)", 15) + ", 0 -14px 34px -10px " + mix("var(--t-shadow)", 35) + ";");
+    s += rule(LIFT + IS([".reel-overlay .reel-card"]), "box-shadow: 0 1px 0 " + mix("var(--t-shadow)", 18) + ", 0 18px 44px -18px " + mix("var(--t-shadow)", 60) + ";");
+    s += rule(LIFT + IS(S.sheet), "box-shadow: 0 -1px 0 " + mix("var(--t-shadow)", 15) + ", 0 -14px 34px -10px " + mix("var(--t-shadow)", 35) + ";");
     // the "more players" cue: a ground-colored pill (with chip "ink" it is a solid accent pill: leave it)
     s += rule('html[data-card][data-ground="day"]:not([data-chip="ink"]) ' + IS([".pool-cue"]), "background: " + mix("var(--t-ground)", 92) + ";");
     return s;
@@ -674,8 +705,8 @@
       var r = rolesFor(rc || {}), s = "";
       s += textureCSS();
       s += paperDeepCSS(r);
-      s += tunnelCSS() + paperCSS() + outlineCSS() + ticketCSS() + flatCSS();
-      s += slipCSS();
+      s += tunnelCSS() + paperCSS(r) + outlineCSS() + ticketCSS() + flatCSS();
+      s += sheetCSS();
       s += groundCSS();
       s += dayCSS();
       s += chromeCSS();

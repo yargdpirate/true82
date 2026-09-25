@@ -4,11 +4,11 @@
 (function () {
   window.LAB.VIEWS = [
     { id: "masthead", name: "Masthead", states: [], caption: "The masthead at full size, in the site header, as the app icon and as the link card." },
-    { id: "kit", name: "Every piece", states: [{ snap: "kit", name: "The kit" }], caption: "One of every basic element the site uses, on one page." },
+    { id: "kit", name: "Every piece", states: [{ snap: "kit", name: "Style guide" }], caption: "The site's living style guide: every shared piece (buttons, chips, cards, sheets, headers, type) and every color role, in this look." },
     { id: "home", name: "Home", caption: "The homepage.", states: [
       { snap: "home-intro", name: "At rest" }, { snap: "home-intro-fresh", name: "First visit" }, { snap: "home-poll-voted", name: "Poll answered" },
       { snap: "home-poll-done", name: "Poll finished" }, { snap: "home-poll-share-copied", name: "Vote link copied" }, { snap: "home-daily-challenge", name: "Challenge a friend" },
-      { snap: "home-daily-link-gate", name: "Arrived from a friend's link" }, { snap: "home-poll-idk-pressed", name: "Poll: I don't know" }, { snap: "home-legal-open", y: 1032, name: "Footer and legal" } ] },
+      { snap: "home-daily-link-gate", name: "Arrived from a friend's link" }, { snap: "home-poll-idk-pressed", name: "Poll: I don't know" }, { snap: "home-legal-open", y: 992, name: "Footer and legal" } ] },
     { id: "draft", name: "Draft", caption: "A Classic draft, round by round.", states: [
       { snap: "classic-round1", name: "Round 1" }, { snap: "classic-pick-selected", name: "Player picked" }, { snap: "classic-pick-single", name: "One open slot" },
       { snap: "classic-deal-spin", name: "Dealing the next ticket" }, { snap: "classic-sort", name: "Sorted" }, { snap: "classic-search-empty", name: "Search, no match" },
@@ -35,7 +35,7 @@
       { snap: "hot-check", name: "82-0 shot: offer" }, { snap: "hot-wheel", name: "82-0 shot: spinning" }, { snap: "hot-shot", name: "82-0 shot: in the air" },
       { snap: "hot-climb", name: "82-0 shot: climbing" }, { snap: "hot-result-miss", name: "82-0 shot: short" } ] },
     { id: "results", name: "Results", caption: "The results page and the tag ballot.", states: [
-      { snap: "results-top", name: "Top" }, { snap: "results-lower", y: 1380, name: "Further down" }, { snap: "results-top-alt", name: "A 57-25 year" }, { snap: "results-print-mid", name: "80-2" },
+      { snap: "results-top", name: "Top" }, { snap: "results-lower", y: 1380, name: "Further down" }, { snap: "results-top-alt", name: "A middling year" }, { snap: "results-print-mid", name: "80-2" },
       { snap: "presti-results-top", name: "Presti results" }, { snap: "results-toast", name: "Not saved toast" } ] },
     { id: "ballot", name: "Ballot sheets", caption: "The tag ballot's sheets.", states: [
       { snap: "sheet-tag", name: "A tag's question" }, { snap: "sheet-tag-voted", name: "After voting" }, { snap: "sheet-tag-neg", name: "A bad trait" }, { snap: "sheet-add-picker", name: "Add a tag" } ] },

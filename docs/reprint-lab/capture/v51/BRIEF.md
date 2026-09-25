@@ -11,7 +11,8 @@ captured again from the NEW site. You capture a group of screens.
 - http://localhost:8789  the real site with its API and a local database (wrangler pages dev).
   http://127.0.0.1:8789 is the SAME site on a different origin, so its localStorage is separate:
   use it (or clear localStorage) for "first-time player" states.
-- http://localhost:8093  the lab server. It serves snap.js and saves snapshots POSTed to it.
+- http://localhost:8095  the lab server (labserver.py in this folder, serving the capture scratch folder). It serves
+  snap.js and saves snapshots POSTed to it into snaps/.
 
 ## How to capture one state
 1. Browser: FIRST call mcp__Claude_Browser__tabs_create, then pass that tabId to EVERY call. Never touch other
@@ -20,7 +21,7 @@ captured again from the NEW site. You capture a group of screens.
 2. Bring the page to the state (see your list; the note describes the state as it was captured on the
    old site: the look has changed, the STATE is what matters).
 3. In the page (javascript_tool):
-     await fetch('http://localhost:8093/snap.js').then(r => r.text()).then(eval);
+     await fetch('http://localhost:8095/snap.js').then(r => r.text()).then(eval);
      await T82SNAP('<snap name>', '<one-line note: what is on screen>')
    The reply says "saved <name>.html N bytes". The snapshot is the live DOM (canvases become images),
    so wait for canvases and animations to settle unless the state is mid-animation.
@@ -37,7 +38,8 @@ captured again from the NEW site. You capture a group of screens.
   To draft a specific player, find his .player-row by text and click it, then click the confirm button
   for the slot you want (the tray shows GUARD / FORWARD / CENTER buttons).
 - After the 5th pick a Classic or Presti run plays THE SEASON reel (.reel-overlay). SKIP (#reelSkip)
-  jumps to the finale; "SEE THE FULL RESULTS" (#reelDone) closes it. Then the Tribune newspaper overlay
+  closes the whole reel at once (it does not stop at the finale); to capture the finale, let the reel play
+  out (every season ends at about 17s); "SEE THE FULL RESULTS" (#reelDone) closes it. Then the Tribune newspaper overlay
   (.np-overlay) appears: its "SKIP TO RESULTS" button closes it and shows the results page.
 - The Daily: the homepage plaque (THE DAILY #N) opens the gate; drag the ball down or tap PLAY IT.
 - URL flags: ?midhot=1 forces the Mid-Season Heat Check (Presti), ?clutch=1 forces the post-season

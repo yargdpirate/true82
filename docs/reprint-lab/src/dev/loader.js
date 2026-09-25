@@ -1,11 +1,15 @@
-/* Dev loader: loads the lab sources in order, then every file in the
-   registry folders (palettes/, concepts/, system/) found by directory
-   listing. Resolves window.LAB_READY when done. The built lab inlines the
-   same files in the same order. */
+/* Dev loader: loads the site's own theme and print engines (tools/theme-core.js,
+   results-riso.js, reel-riso.js, from the local site: window.LAB_SITE_BASE, default
+   http://localhost:8789/), then the lab sources in order, then every file in the
+   registry folders (palettes/, concepts/, system/) found by directory listing.
+   Resolves window.LAB_READY when done. The built lab inlines the same files in the
+   same order. */
 (function () {
   var base = new URL("../", document.currentScript.src).href;
+  var SITE_BASE = window.LAB_SITE_BASE || "http://localhost:8789/";
+  var SITE = ["tools/theme-core.js", "results-riso.js", "reel-riso.js"];
   var CORE = ["engine.js", "banner.js", "fonts.js", "layouts.js", "additions.js"];
-  var DIRS = ["vendor/", "palettes/", "concepts/", "system/"];
+  var DIRS = ["palettes/", "concepts/", "system/"];
   function load(src) {
     return new Promise(function (res, rej) {
       var s = document.createElement("script"); s.src = src + "?t=" + Date.now();
@@ -31,7 +35,8 @@
     }
     return Promise.all(waits);
   }
-  window.LAB_READY = CORE.reduce(function (p, f) { return p.then(function () { return load(base + f); }); }, Promise.resolve())
+  window.LAB_READY = SITE.map(function (f) { return SITE_BASE + f; }).concat(CORE.map(function (f) { return base + f; }))
+    .reduce(function (p, f) { return p.then(function () { return load(f); }); }, Promise.resolve())
     .then(function () { return Promise.all(DIRS.map(list)); })
     .then(function (lists) { var all = [].concat.apply([], lists); return all.reduce(function (p, f) { return p.then(function () { return load(base + f); }); }, Promise.resolve()); })
     .then(function () { return fontsLink(); }).then(function () { return window.LAB; });

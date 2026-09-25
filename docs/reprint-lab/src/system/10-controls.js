@@ -7,12 +7,16 @@
        chips, tags and the small badges
 
    How it is built (three layers of custom properties):
-     1. Context  --c-*  what surface a control sits on. The site (night or
-        day, from the roles) or a paper slip (results slips, the tag sheet,
-        the riso reel). Paper slips print the primary action in navy ink, the
-        way the v50 SHARE button does.
+     1. Context  --c-*  what surface a control sits on: the site (night or
+        day, from the roles) or a light surface on the night table (a paper
+        card, found by the page hook below). Since v51 the results tiles, the
+        tag sheet and the reel card are ordinary cards and sheets, so they
+        follow the card style like every other surface.
      2. Family   --k-* (buttons) and --q-* (chips): primary, yes, no (danger),
-        secondary, ghost, text, icon; for chips yes, bad, plain, on.
+        good, secondary, ghost, text, icon; for chips yes, bad, plain, on.
+        The v51 shared pieces are in every family: .t-btn (data-kind primary,
+        yes, no, good, quiet, text) and .t-chip (data-tone bad, plain, on), so a
+        new mode built from them is restyled by construction.
         One meaning per color: accent = the main action, sunflower = yes (YES
         votes, trait tags), bad = NO and bad traits, riso blue = your vote,
         paper slab = a secondary action, outline = a quiet one.
@@ -39,30 +43,32 @@
 
   /* ---------- selectors ---------- */
   // never shaped as buttons here: the Daily plaque, the Tribune, chips, tiles, and the text and icon families (styled on their own)
-  var NOT = ":not(.daily-tile, .np-read, .np-underbtn, .np-bundle, .tchip, .bt-tag, .sort-chip, .bt-tile, .gate-back, .du-exit, .hh-skip, .bt-change, .cv-link, .t-link, .cap-info, .trait-info-btn, .rs-close, .strap-info)";
+  var NOT = ":not(.daily-tile, .np-read, .np-underbtn, .np-bundle, .tchip, .bt-tag, .t-chip, .sort-chip, .bt-tile, .gate-back, .du-exit, .hh-skip, .bt-change, .cv-link, .t-link, .cap-info, .trait-info-btn, .rs-close, .strap-info, .t-btn[data-kind=\"text\"])";
   var FAM = {
     // the main action (also the default for every decorated button)
     pri: ["button.presti-spin", "a.btn", ".confirm-btn", ".hh-btn", ".gate-play-btn", ".rs-got", ".reel-done", ".bt-done",
-      ".act-next", ".qx-btn.qx-play", ".tm-again", ".dt-act-share", ".btn-primary", ".weekly-tile"],
+      ".act-next", ".qx-btn.qx-play", ".tm-again", ".dt-act-share", ".btn-primary", ".weekly-tile", ".t-btn:not([data-kind])", ".t-btn[data-kind=\"primary\"]"],
     // YES votes: sunflower everywhere, the ballot's yes
-    yes: [".tm-vb", ".vbtn.v-yes", ".bt-big.yes"],
+    yes: [".tm-vb", ".vbtn.v-yes", ".bt-big.yes", ".t-btn[data-kind=\"yes\"]"],
     // NO votes and the danger family
-    no: [".tm-vb.no", ".vbtn.v-no", ".bt-big.no"],
+    no: [".tm-vb.no", ".vbtn.v-no", ".bt-big.no", ".t-btn[data-kind=\"no\"]"],
+    // good news (the green keycap)
+    good: [".t-btn[data-kind=\"good\"]"],
     // secondary actions
     sec: [".skip-btn", ".mp-rules-btn", "button.more-modes", "#againBtn", ".startover-btn", ".donate-btn", ".v-unsure",
       "a.rs-ref-btn", ".btn-dark", ".arena-chip", ".arena-duelbtn"],
     // quiet outline buttons
     ghost: [".daily-strip", ".dt-act-ghost", ".hh-charity", ".reel-skip", ".hh-btn.hh-bref", ".tm-vb.idk", ".tm-sharebar",
-      ".bt-big.idk", ".qx-btn:not(.qx-play)", ".act-share", ".btn-ghost"],
+      ".bt-big.idk", ".qx-btn:not(.qx-play)", ".act-share", ".btn-ghost", ".t-btn[data-kind=\"quiet\"]"],
     // bare text buttons
-    text: [".gate-back", ".du-exit", ".hh-skip", ".bt-change", ".cv-link", ".t-link"],
+    text: [".gate-back", ".du-exit", ".hh-skip", ".bt-change", ".cv-link", ".t-link", ".t-btn[data-kind=\"text\"]"],
     // round icon buttons
     icon: [".cap-info", ".trait-info-btn", ".rs-close", ".strap-info"]
   };
-  var BTN = FAM.pri.concat(FAM.yes, FAM.no, FAM.sec, FAM.ghost);     // shaped buttons
+  var BTN = FAM.pri.concat(FAM.yes, FAM.no, FAM.good, FAM.sec, FAM.ghost);     // shaped buttons
   var PRESS = ":is(:active, .pressed, .flashed, .expanded)";            // pressed or chosen
-  // paper surfaces: the v50 slips, the tag sheet, the riso reel, plus any surface the page hook below finds printed light on the night table
-  var PAPER = ["[data-lab-paper]", ".rr .rr-board", ".rr .bt-card", ".rr .twoway", ".rr .ledger", ".rr .rr-climb .climb", ".bt-sheet", ".reel-overlay.riso .reel-card"];
+  // light surfaces: any surface the page hook below finds printed light on the night table (a paper card, say)
+  var PAPER = ["[data-lab-paper]"];
   // the same, plus the whole site printed on paper (for styles that change their make on paper, like neon)
   var PAPER_ALL = PAPER.concat(['html[data-ground="day"] body']);
   LAB.CTL = { FAM: FAM, NOT: NOT, PRESS: PRESS, PAPER: PAPER };        // shared with system/50-neon.js
@@ -77,8 +83,7 @@
   /* ---------- 1. context ---------- */
   // the recipe's roles, so a few choices can follow the palette (a clashing offset, the ink that reads on sunflower)
   function rolesFor(rc) {
-    var id = rc.sysPalette && rc.sysPalette !== "match" && rc.sysPalette !== "today" ? rc.sysPalette : rc.palette;
-    try { return LAB.roles(LAB.palettes[id], rc.ground || "night"); } catch (e) { return null; }
+    try { return LAB.rolesFor(rc); } catch (e) { return null; }
   }
   function dist(a, b) { var A = window.RISO.hexRGB(a), Bq = window.RISO.hexRGB(b); return Math.sqrt(Math.pow(A[0] - Bq[0], 2) + Math.pow(A[1] - Bq[1], 2) + Math.pow(A[2] - Bq[2], 2)); }
 
@@ -172,6 +177,7 @@
     s += rule(pre + F(FAM.yes), "--k-face: var(--c-yes); --k-hi: var(--c-yes-hi); --k-edge: var(--c-yes-edge); --k-ink: var(--c-yes-ink); --k-tone: var(--c-yes-tone); --k-neon: var(--c-neon-yes); --k-off: var(--c-off-yes);");
     var BAD = "--k-face: var(--c-bad); --k-hi: " + mix("var(--c-bad)", 78, "var(--t-light)") + "; --k-edge: var(--c-bad-edge); --k-ink: var(--c-bad-ink); --k-tone: var(--c-bad-tone); --k-neon: var(--c-neon-bad); --k-off: var(--c-off-bad);";
     s += rule(pre + F(FAM.no), BAD);
+    s += rule(pre + F(FAM.good), "--k-face: var(--t-good); --k-hi: " + mix("var(--t-good)", 80, "var(--t-light)") + "; --k-edge: var(--t-good-edge); --k-ink: var(--c-good-lab); --k-tone: var(--t-good); --k-neon: var(--t-good); --k-off: var(--c-off-pri);");
     s += rule(pre + F(FAM.sec), "--k-face: var(--c-sheet); --k-hi: " + mix("var(--c-sheet)", 80, "var(--t-light)") + "; --k-edge: var(--c-sheet-edge); --k-ink: var(--c-sheet-ink); --k-tone: var(--c-fg);" +
       "--k-neon: var(--c-plate-ink); --k-bd: var(--c-sheet-bd); --k-off: var(--c-off);");
     s += rule(pre + F(FAM.ghost), "--k-face: transparent; --k-hi: transparent; --k-edge: transparent; --k-ink: var(--c-fg); --k-tone: var(--c-fg2);" +
@@ -234,15 +240,13 @@
     s += rule(YESK + ":not(:disabled)" + PRESS, "transform: translateY(3px); box-shadow: inset 0 1px 0 " + mix("var(--t-light)", 25) + ", 0 1px 0 var(--k-edge), 0 3px 6px -4px " + mix("var(--t-shadow)", 60) + ";");
     // secondary keycaps (Skip team, Skip era, How to play, a price) print as a paper slab, so the accent keycap is the one next step.
     // Painted from --k-*, so the Presti refund and fire-sale flashes (famCSS) still recolor them. The results print keeps its own buttons.
-    var SEC = P + F(FAM.sec) + ":is(.presti-spin, .more-modes):not(.rr *):not(:disabled)";
+    var SEC = P + F(FAM.sec) + ":is(.presti-spin, .more-modes):not(:disabled)";
     s += rule(SEC, "background: linear-gradient(180deg, var(--k-hi) 0%, var(--k-face) 48%, var(--k-face) 100%); color: var(--k-ink);" +
       "box-shadow: inset 0 0 0 1.5px var(--k-bd), inset 0 1px 0 " + mix("var(--t-light)", 45) + ", 0 5px 0 0 var(--k-edge), 0 7px 9px -3px " + mix("var(--t-shadow)", 50) + ";");
     s += rule(SEC + PRESS, "transform: translateY(4px);" +
       "box-shadow: inset 0 0 0 1.5px var(--k-bd), inset 0 1px 0 " + mix("var(--t-light)", 35) + ", 0 1px 0 0 var(--k-edge), 0 2px 4px -2px " + mix("var(--t-shadow)", 45) + ";");
     // "Play TRUE 82" on the explainer pages printed its label in the ground color (cream on a light keycap by day)
     s += rule(P + F(["a.btn"]), "color: var(--spin-ink, var(--t-accent-ink));");
-    // the riso reel skip: the keycap gradient used to paint under navy type
-    s += rule(P + F([".reel-overlay.riso .reel-skip"]), "border-color: var(--t-ink); color: var(--t-ink);");
     s += disabledCSS("keycap");
     return s;
   };
@@ -394,22 +398,21 @@
     s += rule(P + F([".reel-done"]), "padding-left: 18px; padding-right: 18px;");
     // the Heat Check result buttons had the same problem (authored 26px sides)
     s += rule(P + F([".hh-btn"]), "padding-left: 20px; padding-right: 20px;");
-    // tag tiles in the Add a tag sheet: the label was tokenized as a paper hairline and printed nearly invisible
-    s += rule(P + IS([".bt-tile"]), "color: var(--t-ink); border-radius: calc(var(--t-r-btn) * 1.6);");
-    s += rule(P + IS([".bt-tile"]) + ":focus-visible", "outline: 3px solid var(--t-ink); outline-offset: 3px;");
+    // tag tiles in the Add a tag sheet (a site sheet since v51): the site's tile, in each style's shape and the surface's context
+    s += rule(P + IS([".bt-tile"]), "border-radius: calc(var(--t-r-btn) * 1.6);");
+    s += rule(P + IS([".bt-tile"]) + ":focus-visible", "outline: 3px solid var(--c-ring); outline-offset: 3px;");
     var T = P + IS([".bt-tile"]), TP = T + ":active";
     var body = {
-      offset: ["background: var(--t-paper); border: 1.5px solid var(--t-ink); box-shadow: 3px 3px 0 var(--t-offset);", "transform: translate(3px, 3px); box-shadow: 0 0 0 var(--t-offset); background: " + mix("var(--t-sun)", 30, "var(--t-paper)") + ";"],
-      stamp: ["background: transparent; border: 2px solid var(--t-ink); outline: 1px solid " + mix("var(--t-ink)", 55) + "; outline-offset: -5px;", "background: var(--t-ink); color: var(--t-paper); outline-color: " + mix("var(--t-paper)", 50) + ";"],
-      ticket: ["background: var(--t-paper-2); border: 1.5px dashed " + mix("var(--t-ink)", 50) + ";", "background: " + mix("var(--t-sun)", 30, "var(--t-paper-2)") + "; transform: translateY(1px);"],
-      sticker: ["background: var(--t-paper-2); border: 0; box-shadow: 0 0 0 3px " + mix("var(--t-paper)", 55, "var(--t-light)") + ", 0 4px 8px -2px " + mix("var(--t-shadow)", 40) + ";", "transform: translateY(1px); box-shadow: 0 0 0 3px " + mix("var(--t-paper)", 55, "var(--t-light)") + ", 0 1px 2px " + mix("var(--t-shadow)", 40) + ";"],
-      pill: ["background: " + mix("var(--t-ink)", 7) + "; border: 0; border-radius: 18px;", "background: " + mix("var(--t-sun)", 35) + "; transform: scale(0.98);"],
-      // the tag sheet is paper: neon prints its tiles as ink outlines there (see STYLES.neon)
-      neon: ["background: var(--t-paper); border: 1.5px solid var(--t-ink); box-shadow: none;", "transform: translateY(1px); background: " + mix("var(--t-sun)", 30, "var(--t-paper)") + ";"],
-      halftone: ["background: radial-gradient(circle, " + mix("var(--t-ink)", 16) + " 0 1px, transparent 1.4px) 0 0 / 4px 4px, var(--t-paper); border: 1.5px solid var(--t-ink); box-shadow: 3px 3px 0 var(--t-offset);", "transform: translate(3px, 3px); box-shadow: 0 0 0 var(--t-offset);"]
+      offset: ["background: var(--c-bg); border: 1.5px solid var(--c-fg); box-shadow: 3px 3px 0 var(--c-off);", "transform: translate(3px, 3px); box-shadow: 0 0 0 var(--c-off); background: " + mix("var(--c-pri)", 18, "var(--c-bg)") + ";"],
+      stamp: ["background: transparent; border: 2px solid var(--c-fg); outline: 1px solid " + mix("var(--c-fg)", 55) + "; outline-offset: -5px;", "background: var(--c-fg); outline-color: " + mix("var(--c-bg)", 50) + ";"],
+      ticket: ["background: var(--c-well); border: 1.5px dashed " + mix("var(--c-fg)", 45) + ";", "background: " + mix("var(--c-pri)", 18, "var(--c-well)") + "; transform: translateY(1px);"],
+      sticker: ["background: var(--c-well); border: 0; box-shadow: 0 0 0 3px " + mix("var(--t-paper)", 55, "var(--t-light)") + ", 0 4px 8px -2px " + mix("var(--t-shadow)", 40) + ";", "transform: translateY(1px); box-shadow: 0 0 0 3px " + mix("var(--t-paper)", 55, "var(--t-light)") + ", 0 1px 2px " + mix("var(--t-shadow)", 40) + ";"],
+      pill: ["background: var(--c-well); border: 0; border-radius: 18px;", "background: " + mix("var(--c-pri)", 22, "var(--c-well)") + "; transform: scale(0.98);"],
+      neon: ["background: var(--c-plate); border: 1.5px solid " + mix("var(--c-neon-pri)", 70) + "; box-shadow: 0 0 8px " + mix("var(--c-neon-pri)", 30) + ";", "transform: translateY(1px); box-shadow: 0 0 14px " + mix("var(--c-neon-pri)", 55) + ";"],
+      halftone: ["background: radial-gradient(circle, " + mix("var(--c-fg)", 16) + " 0 1px, transparent 1.4px) 0 0 / 4px 4px, var(--c-bg); border: 1.5px solid var(--c-fg); box-shadow: 3px 3px 0 var(--c-off);", "transform: translate(3px, 3px); box-shadow: 0 0 0 var(--c-off);"]
     }[st];
     if (body) { s += rule(T, body[0]); s += rule(TP, body[1]); }
-    if (st === "neon") s += rule(P + IS([".bt-tile.neg"]), "border: 2px solid var(--t-bad);");
+    if (st === "neon") s += rule(P + IS([".bt-tile.neg"]), "border: 2px solid var(--c-neon-bad);");
     return s;
   }
 
@@ -417,24 +420,29 @@
   function chipFamCSS() {
     var s = "", pre = "html[data-chip] ";
     // yes chips: accent on the site, sunflower on paper
-    s += rule(pre + IS([".bt-tag", ".tchip", ".tm-tag", ".q-tag"]), "--q-face: var(--c-yes); --q-hi: var(--c-yes-hi); --q-edge: var(--c-yes-edge); --q-ink: var(--c-yes-ink); --q-tone: var(--c-yes-ctone);");
+    s += rule(pre + IS([".bt-tag", ".tchip", ".tm-tag", ".q-tag", ".t-chip"]), "--q-face: var(--c-yes); --q-hi: var(--c-yes-hi); --q-edge: var(--c-yes-edge); --q-ink: var(--c-yes-ink); --q-tone: var(--c-yes-ctone);");
     // bad chips: the label is the one that reads on the bad fill (4.5:1), since every style prints them solid
-    s += rule(pre + IS([".bt-tag.neg", ".tchip.anti"]), "--q-face: var(--c-bad); --q-hi: var(--c-bad); --q-edge: var(--c-bad-edge); --q-ink: var(--c-bad-lab); --q-tone: var(--c-bad-ctone);");
-    s += rule(pre + IS([".sort-chip", ".five-chip", ".r-chip", ".cap-season", ".pool-cue", ".gate-drag", ".slot-badge", ".ds-pill", ".bt-pill", ".cap-row .cap-cost", ".sk-chip"]),
+    s += rule(pre + IS([".bt-tag.neg", ".tchip.anti", ".t-chip[data-tone=\"bad\"]"]), "--q-face: var(--c-bad); --q-hi: var(--c-bad); --q-edge: var(--c-bad-edge); --q-ink: var(--c-bad-lab); --q-tone: var(--c-bad-ctone);");
+    s += rule(pre + IS([".sort-chip", ".five-chip", ".r-chip", ".cap-season", ".pool-cue", ".gate-drag", ".slot-badge", ".ds-pill", ".bt-pill", ".cap-row .cap-cost", ".sk-chip", ".t-chip[data-tone=\"plain\"]"]),
       "--q-face: var(--c-well); --q-hi: var(--c-well); --q-edge: var(--c-line); --q-ink: var(--c-fg); --q-tone: var(--c-fg2);");
-    s += rule(pre + IS([".sort-chip.active", ".r-chip.chip-active", ".ds-pill.ds-off", ".ls-swap", ".ls-pos"]),
+    s += rule(pre + IS([".sort-chip.active", ".r-chip.chip-active", ".ds-pill.ds-off", ".ls-swap", ".ls-pos", ".t-chip[data-tone=\"on\"]"]),
       "--q-face: var(--c-pri); --q-hi: var(--c-pri-hi); --q-edge: var(--c-pri-edge); --q-ink: var(--c-pri-ink); --q-tone: var(--c-pri-tone);");
     s += rule(pre + IS([".r-chip.chip-none"]), "--q-face: var(--c-bad); --q-edge: var(--c-bad-edge); --q-ink: var(--c-bad-ink); --q-tone: var(--c-bad-tone);");
     s += rule(pre + IS([".slot-badge"]), "--q-face: var(--t-metal); --q-ink: var(--c-bg); --q-tone: var(--t-metal);");
-    s += rule(pre + IS([".rr .bt-card .slot-badge"]), "--q-face: var(--t-ink); --q-ink: var(--t-paper); --q-tone: var(--t-ink);");
-    s += rule(pre + IS([".hot-pick .slot-badge"]), "--q-face: var(--t-bad); --q-ink: var(--c-bad-lab); --q-tone: var(--c-bad-tone);");
+    // the hot pick is fire gold (a gain), never the NO red
+    s += rule(pre + IS([".hot-pick .slot-badge"]), "--q-face: var(--t-hot); --q-ink: var(--t-accent-ink); --q-tone: var(--t-hot);");
     s += rule(pre + IS([".sk-chip"]), "--q-face: " + mix("var(--t-accent-ink)", 82) + "; --q-ink: var(--t-accent-hi); --q-tone: currentColor;");
     s += rule(pre + IS([".bt-pill"]), "--q-tone: var(--c-fg);");
+    // since v51 the site paints every chip from --chip-top/face/edge/ink (the accent by default): feed them from
+    // the family, so the site's own chip (the keycap style) and every lab style print the same family colors
+    s += rule(pre + IS([".t-chip", ".tchip", ".bt-tag", ".tm-tag", ".q-tag"]), "--chip-top: var(--q-hi); --chip-face: var(--q-face); --chip-edge: var(--q-edge); --chip-ink: var(--q-ink);");
+    // the flat small chip (data-size="sm") is filled with the family's own color, not its highlight
+    s += rule(pre + IS(['.t-chip[data-size="sm"]']), "--chip-top: var(--q-face);");
     return s;
   }
   function chipStyle(st) {
     var P = C(st), s = "";
-    var ALLC = [".bt-tag", ".tchip", ".sort-chip", ".five-chip", ".r-chip", ".tm-tag", ".q-tag"];
+    var ALLC = [".bt-tag", ".tchip", ".sort-chip", ".five-chip", ".r-chip", ".tm-tag", ".q-tag", ".t-chip"];
     s += rule(P + IS(ALLC), "border-radius: var(--t-r-chip);");
     s += rule(P + IS([".bt-tag.mine"]) + "::after", "border-radius: calc(var(--t-r-chip) + 4px);");
     s += rule(P + IS([".bt-tag"]) + ":focus-visible", "outline: 3px solid var(--c-ring); outline-offset: 3px;");
@@ -442,9 +450,10 @@
     if (st === "keycap") {
       s += rule(P + IS([".bt-tag.add"]), "border-radius: var(--t-r-chip);");
       // trait chips print in the yes ink (sunflower), like the ballot's tags
-      s += rule(P + IS([".tchip:not(.anti)", ".tm-tag", ".q-tag"]), "background: linear-gradient(180deg, var(--q-hi), var(--q-face)); color: var(--q-ink); border-color: var(--q-edge);");
-      s += rule(P + IS([".tchip:not(.anti)"]), "box-shadow: inset 0 1px 0 " + mix("var(--t-light)", 40) + ", 0 2px 0 var(--q-edge), 0 5px 10px -8px var(--t-shadow);");
-      s += rule(P + IS([".tchip:not(.anti)"]) + PRESS, "box-shadow: inset 0 1px 0 " + mix("var(--t-light)", 30) + ", 0 0 0 var(--q-edge);");
+      s += rule(P + IS([".tchip:not(.anti):not([data-size=\"sm\"])", ".tm-tag", ".q-tag"]), "background: linear-gradient(180deg, var(--q-hi), var(--q-face)); color: var(--q-ink); border-color: var(--q-edge);");
+      // (the v51.1 flat small chip, data-size="sm", stays flat: read-only tags in dense lists)
+      s += rule(P + IS([".tchip:not(.anti):not([data-size=\"sm\"])"]), "box-shadow: inset 0 1px 0 " + mix("var(--t-light)", 40) + ", 0 2px 0 var(--q-edge), 0 5px 10px -8px var(--t-shadow);");
+      s += rule(P + IS([".tchip:not(.anti):not([data-size=\"sm\"])"]) + PRESS, "box-shadow: inset 0 1px 0 " + mix("var(--t-light)", 30) + ", 0 0 0 var(--q-edge);");
       return s + badgeStyle(st);
     }
     // everything flat unless the style says otherwise
@@ -602,8 +611,8 @@
      Card styles (another layer) can print panels on paper. A control sitting on
      a light surface on a dark ground switches to the paper context, so its ink
      reads (navy key, sunflower yes) instead of night colors on cream. */
-  var CONTROLS = "button, a.btn, a.qx-btn, a.act-share, a.tm-again, a.donate-btn, a.hh-btn, a.rs-got, input, select, textarea, " +
-    ".slot-badge, .q-tag, .tm-tag, .r-chip, .bt-pill, .ds-pill, .cap-cost, .cap-season, .year-face";
+  var CONTROLS = "button, a.btn, a.qx-btn, a.act-share, a.tm-again, a.donate-btn, a.hh-btn, a.rs-got, a.t-btn, input, select, textarea, " +
+    ".slot-badge, .q-tag, .tm-tag, .t-chip, .r-chip, .bt-pill, .ds-pill, .cap-cost, .cap-season, .year-face";
   function lumOf(css) {
     var m = /rgba?\(([^)]+)\)/.exec(css || ""); if (!m) return null;
     var p = m[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat);

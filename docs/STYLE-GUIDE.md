@@ -88,7 +88,7 @@ Restyle every results header at once by changing `HEADS.results`. A new mode add
 
 1. **Root**: render the mode into `#app` inside `<section class="t-mode">`.
 2. **Build from the pieces**: `.t-card` panels, `head("yourmode", ...)` headers (add a `HEADS` line), `.t-btn` actions, `.t-chip` tags, `.t-num` for the big number, `.t-sheet` for any pop-up, `.t-toast` for confirmations.
-3. **No colors or fonts of your own.** If the mode needs a color with a new meaning, add a role or a shade in `tools/theme-core.js` (with a one-line meaning), run `node tools/theme.js`, and use the token. Then tell the lab (add the role to `LAB.roles` in `docs/reprint-lab/src/system/00-theme.js`) so every look sets it.
+3. **No colors or fonts of your own.** If the mode needs a color with a new meaning, add a role or a shade in `tools/theme-core.js` (with a one-line meaning), run `node tools/theme.js`, and use the token. The Reprint Lab picks it up at once (it applies looks with the same file; a role a look does not set keeps today's value); to have every look set its own, derive it in `LAB.baseRoles` in `docs/reprint-lab/src/system/00-theme.js`.
 4. **Grafting code from elsewhere?** Run `node tools/stylefix.js mode.css --write` (or the page), then `node tools/style-law.js`. For JavaScript, move inline styles into classes and read tokens in canvas code.
 5. **Check**: `node test.js` must pass. Look at the mode at phone width (375 to 390px) and on a desktop.
 6. **Cache keys**: bump `styles.css?v=` (and your script's) in `index.html`.

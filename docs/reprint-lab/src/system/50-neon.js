@@ -14,8 +14,8 @@
   LAB.DEFAULT.neon = "accents";
 
   var X0 = ':is(#lab-n#lab-n#lab-n#lab-n#lab-n#lab-n, html)[data-btn="neon"]', X = X0 + " ";
-  var DARK_SLIPS = { night: 1, tint: 1, glow: 1, clear: 1 };
-  var TILES = [".rr .rr-board", ".rr .bt-card", ".rr .twoway", ".rr .ledger", ".rr .rr-climb .climb", ".bt-sheet", ".reel-overlay.riso .reel-card"];
+  // since v51 the results tiles, the tag sheet and the reel card are ordinary cards and sheets
+  var TILES = [".t-card", ".t-sheet", ".rr .rr-board", ".rr .bt-card", ".rr .twoway", ".rr .ledger", ".rr .rr-climb .climb", ".bt-sheet", ".reel-overlay.riso .reel-card"];
   function mix(a, pct, b) { return "color-mix(in srgb, " + a + " " + pct + "%, " + (b || "transparent") + ")"; }
   function rule(sel, body) { return sel + " { " + body + " }\n"; }
   function is(list) { return ":is(" + list.join(", ") + ")"; }
@@ -31,9 +31,9 @@
 
   LAB.component({ id: "neon-amount", css: function (rc) {
     if (rc.btn !== "neon" || !LAB.CTL) return "";
-    var C = LAB.color, r = LAB.roles(LAB.palettes[rc.sysPalette && rc.sysPalette !== "match" ? rc.sysPalette : rc.palette], rc.ground || "night");
+    var C = LAB.color, r = LAB.rolesFor(rc);
     var F = LAB.CTL.FAM, NOT = LAB.CTL.NOT, PRESS = LAB.CTL.PRESS, lvl = rc.neon || "accents", night = (rc.ground || "night") === "night";
-    var tilesDark = !!DARK_SLIPS[LAB.slipsMode ? LAB.slipsMode(rc) : rc.slips], s = "";
+    var tilesDark = rc.card !== "paper", s = "";
 
     // the second tube: the palette's other neon, far enough from the accent in hue to read as a second color
     var plate = C.mix(r.ground, r.shadow, 0.28), neon2 = r.text;
@@ -72,7 +72,7 @@
     s += rule(X + is(EDGES), "box-shadow: inset 0 0 0 1.5px " + mix("var(--t-accent)", 75, "var(--t-text)") + ", 0 0 18px " + mix("var(--t-accent)", 32) + ";");
     // meters and headings: glow in their own color
     s += rule(X + is([".mpb-fill", ".hh-fill", ".tw-fill"]), "box-shadow: 0 0 10px " + mix("var(--t-accent)", 60) + ";");
-    s += rule(X + is([".daily-tile .dt-title", ".gate-title", ".mp-id", ".hh-eyebrow", ".intro-title", ".ticket-fr", ".ticket-dec", ".rr-eyebrow"]), "text-shadow: 0 0 10px " + mix("currentColor", 55) + ", 0 0 22px " + mix("currentColor", 25) + ";");
+    s += rule(X + is([".daily-tile .dt-title", ".gate-title", ".mp-id", ".hh-eyebrow", ".intro-title", ".ticket-fr", ".ticket-dec", ".rr-eyebrow", ".t-head"]), "text-shadow: 0 0 10px " + mix("currentColor", 55) + ", 0 0 22px " + mix("currentColor", 25) + ";");
     // links: a soft glow under the text
     s += rule(X + is([".pr-bref", ".pr-team", ".cl-link", ".content-page a:not(.btn)", ".site-links a"]), "text-shadow: 0 0 6px " + mix("var(--lab-neon2)", 45) + ";");
     return s;

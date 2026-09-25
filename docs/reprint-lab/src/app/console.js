@@ -24,7 +24,7 @@
   function dev() { return DEVICES[device] || DEVICES.phone; }
   var todayOn = false;
   function logoBanner() {
-    var url = window.LAB_LOGO || "http://localhost:8788/logo.png";
+    var url = window.LAB_LOGO || (window.LAB_SITE_BASE || "http://localhost:8789/") + "logo.png";
     return Promise.resolve({ url: url, w: 800, h: 188, cssW: 232, headBg: "" });
   }
   function set(patch, why) {
@@ -64,8 +64,10 @@
       { type: "seg", key: "ground", label: "Ground", options: function () { return opts(LAB.SYS.ground); } },
       { type: "seg", key: "btn", label: "Buttons", options: function () { return opts(LAB.SYS.btn); } },
       { type: "seg", key: "neon", label: "Neon amount", options: function () { return opts(LAB.SYS.neon || [["accents", "Accents"]]); }, also: function (v) { return v !== "accents" ? { btn: "neon" } : {}; } },
+      { type: "seg", key: "btnDepth", label: "Button depth", options: function () { return opts(LAB.SYS.btnDepth || [["flat", "Flat"]]); } },
       { type: "seg", key: "card", label: "Cards", options: function () { return opts(LAB.SYS.card); } },
-      { type: "seg", key: "slips", label: "Results tiles", options: function () { return opts(LAB.SYS.slips || [["paper", "Paper"]]); } },
+      { type: "seg", key: "wl", label: "Wins and losses", options: function () { return opts(LAB.SYS.wl || [["pair", "Look pair"]]); } },
+      { type: "seg", key: "heads", label: "Section headers", options: function () { return opts(LAB.SYS.heads || [["built", "As built"]]); } },
       { type: "seg", key: "chip", label: "Chips", options: function () { return opts(LAB.SYS.chip); } },
       { type: "seg", key: "corners", label: "Corners", options: function () { return opts(LAB.SYS.corners); } },
       { type: "seg", key: "texture", label: "Texture", options: function () { return opts(LAB.SYS.texture); } },
@@ -299,7 +301,7 @@
     var st = (v.states || [])[stateIx[v.id] || 0];
     if (!st) return;
     var needMount = !currentDoc || stage.getAttribute("data-snap") !== st.snap || !stage.querySelector("iframe");
-    var rcView = todayOn ? LAB.recipe(Object.assign({}, rc, { sysPalette: "today", slips: "paper" })) : rc;
+    var rcView = todayOn ? LAB.recipe(Object.assign({}, rc, { sysPalette: "today", heads: "built" })) : rc;
     (todayOn ? logoBanner() : headerBanner(rc)).then(function (banner) {
       lastBanner = banner;
       if (needMount) {

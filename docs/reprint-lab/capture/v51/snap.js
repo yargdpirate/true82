@@ -1,12 +1,16 @@
 /* Snapshot helper for the TRUE 82 lab.
-   Load in a page on http://localhost:8788 with:
-     await fetch('http://localhost:8093/snap.js').then(r => r.text()).then(eval)
+   Load in a page on the local site (wrangler pages dev, e.g. http://localhost:8789) with:
+     await fetch('http://localhost:8095/snap.js').then(r => r.text()).then(eval)
    then:
-     await T82SNAP('03-draft-round1', 'Classic draft, round 1, pool scrolled to top')
-   Writes scratchpad/snaps/<name>.html and <name>.json through the lab server.
-   Canvases become <img> of their current pixels, scripts are dropped, form
-   values and scroll offsets are kept, and a <base> points at the local site. */
+     await T82SNAP('classic-round1', 'Classic draft, round 1, pool scrolled to top')
+   Writes <lab server root>/snaps/<name>.html and <name>.json through the lab server
+   (capture/labserver.py; set window.T82SNAP_LAB first if it is not on :8095).
+   Canvases become <img> of their current pixels and keep their data-* attributes (the
+   reel strips' data-games, data-streaks, data-gi0, data-cl0: the lab reprints from them),
+   scripts are dropped, form values and scroll offsets are kept, and a <base> points at the
+   local site. */
 window.T82SNAP = async function (name, note) {
+  var LABSRV = window.T82SNAP_LAB || "http://localhost:8095";
   if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) throw new Error("name must be kebab-case: " + name);
   var live = document.documentElement, doc = live.cloneNode(true);
   var lc = live.querySelectorAll("canvas"), cc = doc.querySelectorAll("canvas");
@@ -19,6 +23,9 @@ window.T82SNAP = async function (name, note) {
       img.setAttribute("style", (lc[i].getAttribute("style") || "") + ";width:" + r.width + "px;height:" + r.height + "px");
       img.setAttribute("data-snap-canvas", "1");
       if (lc[i].getAttribute("aria-hidden")) img.setAttribute("aria-hidden", lc[i].getAttribute("aria-hidden"));
+      Array.prototype.forEach.call(lc[i].attributes, function (a) { if (/^data-/.test(a.name)) img.setAttribute(a.name, a.value); });
+      // keep the canvas's data-* (v51: the reel strips carry data-games etc. so the lab can reprint them)
+      Array.prototype.forEach.call(lc[i].attributes, function (a) { if (/^data-/.test(a.name)) img.setAttribute(a.name, a.value); });
       img.alt = "";
       cc[i].replaceWith(img);
     } catch (e) { cc[i].setAttribute("data-snap-canvas-failed", String(e && e.message)); }
@@ -45,8 +52,8 @@ window.T82SNAP = async function (name, note) {
   };
   var html = "<!doctype html>\n" + doc.outerHTML;
   meta.bytes = html.length;
-  var a = await fetch("http://localhost:8093/snap/" + name + ".html", { method: "POST", body: html });
-  var b = await fetch("http://localhost:8093/snap/" + name + ".json", { method: "POST", body: JSON.stringify(meta, null, 1) });
+  var a = await fetch(LABSRV + "/snap/" + name + ".html", { method: "POST", body: html });
+  var b = await fetch(LABSRV + "/snap/" + name + ".json", { method: "POST", body: JSON.stringify(meta, null, 1) });
   return { html: await a.text(), meta: await b.text(), bytes: meta.bytes, canvases: lc.length };
 };
 "T82SNAP ready";

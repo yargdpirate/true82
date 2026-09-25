@@ -19,6 +19,8 @@ window.T82SNAP = async function (name, note) {
       img.setAttribute("style", (lc[i].getAttribute("style") || "") + ";width:" + r.width + "px;height:" + r.height + "px");
       img.setAttribute("data-snap-canvas", "1");
       if (lc[i].getAttribute("aria-hidden")) img.setAttribute("aria-hidden", lc[i].getAttribute("aria-hidden"));
+      // keep the canvas's data-* (v51: the reel strips carry data-games etc. so the lab can reprint them)
+      Array.prototype.forEach.call(lc[i].attributes, function (a) { if (/^data-/.test(a.name)) img.setAttribute(a.name, a.value); });
       img.alt = "";
       cc[i].replaceWith(img);
     } catch (e) { cc[i].setAttribute("data-snap-canvas-failed", String(e && e.message)); }

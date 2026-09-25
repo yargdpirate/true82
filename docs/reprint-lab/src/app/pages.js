@@ -1,21 +1,24 @@
 /* ---------- TRUE 82 Reprint Lab: the real pages ----------
    Every screen in the lab is a snapshot of the real site (captured from a
-   local copy with its API) re-skinned by the tokenized site CSS. The theme is
-   applied by setting --t-* variables and data-* switches on the snapshot's
-   <html>; with no theme set, the tokenized CSS falls back to today's exact
-   colors. The masthead image replaces the logo in the header.
+   local copy with its API, v51) wearing the site's own stylesheet. Since v51
+   the site's CSS reads every color, font and radius from --t-* tokens, so a
+   look is applied by setting those tokens (and the lab's data-* switches) on
+   the snapshot's <html>; with nothing set, the site's own theme block is
+   today's look. The masthead image replaces the logo in the header.
 
    Sources:
-     built lab: window.LAB_SNAPS = { name: html } (already tokenized, images inlined)
-     dev:       fetch("/snaps-tok/<name>.html"), falling back to "/snaps/<name>.html" */
+     built lab: window.LAB_SNAPS = { name: html } (the styles.css link swapped for
+                <link data-lab-site>, images deduplicated into LAB_ASSETS) and
+                window.LAB_SITE_CSS (the repo's styles.css)
+     dev:       fetch("/snaps/<name>.html"); the snapshot's <base> points at the local
+                site, so its styles.css is the working tree's */
 (function () {
   var LAB = window.LAB, PAGES = LAB.pages = {};
   var cache = {};
   PAGES.source = function (name) {
     if (window.LAB_SNAPS && window.LAB_SNAPS[name]) return Promise.resolve(window.LAB_SNAPS[name]);
     if (cache[name]) return cache[name];
-    cache[name] = fetch("/snaps/tok/" + name + ".html", { cache: "no-store" }).then(function (r) { if (!r.ok) throw 0; return r.text(); })
-      .catch(function () { return fetch("/snaps/" + name + ".html", { cache: "no-store" }).then(function (r) { return r.text(); }); });
+    cache[name] = fetch("/snaps/" + name + ".html", { cache: "no-store" }).then(function (r) { return r.text(); });
     return cache[name];
   };
 
@@ -46,10 +49,6 @@
     } else {
       var c2 = doc.getElementById("lab-comp"); if (c2) c2.textContent = "";
     }
-    // results tiles: its own block, last in <head>, in both color modes
-    var slips = LAB.slipsCSS ? LAB.slipsCSS(rc) : "", sl = doc.getElementById("lab-slips");
-    if (slips) { html.setAttribute("data-slips", rc.slips); if (!sl) { sl = doc.createElement("style"); sl.id = "lab-slips"; } if (sl.textContent !== slips) sl.textContent = slips; doc.head.appendChild(sl); }
-    else { html.removeAttribute("data-slips"); if (sl) sl.textContent = ""; }
     (LAB.pageHooks || []).forEach(function (h) { try { h(doc, rc, banner); } catch (e) { console.error("[lab] page hook", e); } });
     // masthead
     if (banner) {
@@ -82,11 +81,6 @@
       var css = LAB.componentCSS ? LAB.componentCSS(rc) : "";
       out = out.replace(/<\/head>/i, function () { return fl + "<style id=\"lab-vars\">html:root{" + decl + "}</style><style id=\"lab-comp\">" + css + "</style></head>"; });
     }
-    var slips = LAB.slipsCSS ? LAB.slipsCSS(rc) : "";
-    if (slips) {
-      out = out.replace(/<html([^>]*)>/i, function (m, a) { return "<html" + a.replace(/\sdata-slips="[^"]*"/, "") + ' data-slips="' + rc.slips + '">'; });
-      out = out.replace(/<\/head>/i, function () { return "<style id=\"lab-slips\">" + slips + "</style></head>"; });
-    }
     if (banner) {
       out = out.replace(/<img([^>]*class="brand-logo"[^>]*)>/g, function (m, a) {
         a = a.replace(/\ssrc="[^"]*"/, "").replace(/\swidth="[^"]*"/, "").replace(/\sheight="[^"]*"/, "");
@@ -101,7 +95,7 @@
   PAGES.mount = function (iframe, name, rc, banner, y) {
     return PAGES.source(name).then(function (src) {
       var dev = !window.LAB_SNAPS;
-      if (dev) src = src.replace(/<base href="[^"]*">/, '<base href="http://localhost:8788/">');
+      if (dev) src = src.replace(/<base href="[^"]*">/, '<base href="' + (window.LAB_SITE_BASE || "http://localhost:8789/") + '">');
       else {
         src = src.replace(/<base href="[^"]*">/, "");
         src = src.replace(/<link data-lab-site>/g, function () { return "<style data-lab-site>" + (window.LAB_SITE_CSS || "") + "</style>"; });
