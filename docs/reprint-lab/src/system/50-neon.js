@@ -40,6 +40,18 @@
     ["offset", "you", "sun"].some(function (k) { if (r[k] && apart(r[k], r.accent) && C.contrast(r[k], plate) >= 3.4) { neon2 = r[k]; return true; } return false; });
     s += rule(X0, "--lab-neon2: " + neon2 + ";");
 
+    // every neon amount: the position badges are accent tubes (the hot pick's stays fire gold), and the GOAT Climb
+    // runs in the second tube with you in the accent, so it reads as two colors instead of one solid ink
+    s += rule(X + ".slot-badge", "background: var(--t-accent); color: var(--t-accent-ink); border-color: var(--t-accent); box-shadow: 0 0 8px " + mix("var(--t-accent)", 55) + "; text-shadow: none;");
+    s += rule(X + ".hot-pick .slot-badge", "background: var(--t-hot); color: var(--t-accent-ink); border-color: var(--t-hot); box-shadow: 0 0 8px " + mix("var(--t-hot)", 55) + ";");
+    s += rule(X + ".rr-climb .fill-path", "stroke: var(--lab-neon2); filter: drop-shadow(0 0 4px " + mix("var(--lab-neon2)", 70) + ");");
+    s += rule(X + ".rr-climb .rail-path", "stroke: " + mix("var(--lab-neon2)", 18, "var(--t-ground)") + ";");
+    s += rule(X + ".rr-climb .climb-pin:not(.comp)", "background: var(--lab-neon2); box-shadow: 0 0 6px " + mix("var(--lab-neon2)", 60) + ";");
+    s += rule(X + ".rr-climb .climb-tag:not(.comp)", "color: " + mix("var(--lab-neon2)", 75, "var(--t-text)") + ";");
+    s += rule(X + ".rr-climb .climb-tag:not(.comp) b", "color: var(--lab-neon2);");
+    s += rule(X + ".rr-climb .climb-summit-cap", "color: var(--lab-neon2); text-shadow: 0 0 8px " + mix("var(--lab-neon2)", 60) + ";");
+    s += rule(X + ".rr-climb .cy-dot", "box-shadow: 0 0 0 3px " + mix("var(--t-accent)", 30) + ", 0 0 12px " + mix("var(--t-accent)", 70) + ";");
+
     if (lvl === "accents" || !night) return s;       // the paper ground keeps the built amount
 
     // MORE: secondaries fully lit in the second tube, quiet buttons as thin tubes

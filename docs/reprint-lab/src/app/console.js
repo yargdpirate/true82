@@ -67,6 +67,7 @@
       { type: "seg", key: "btnDepth", label: "Button depth", options: function () { return opts(LAB.SYS.btnDepth || [["flat", "Flat"]]); } },
       { type: "seg", key: "card", label: "Cards", options: function () { return opts(LAB.SYS.card); } },
       { type: "seg", key: "wl", label: "Wins and losses", options: function () { return opts(LAB.SYS.wl || [["pair", "Look pair"]]); } },
+      { type: "seg", key: "votes", label: "Votes and tags", options: function () { return opts(LAB.SYS.votes || [["classic", "Sunflower and red"]]); } },
       { type: "seg", key: "heads", label: "Section headers", options: function () { return opts(LAB.SYS.heads || [["built", "As built"]]); } },
       { type: "seg", key: "chip", label: "Chips", options: function () { return opts(LAB.SYS.chip); } },
       { type: "seg", key: "corners", label: "Corners", options: function () { return opts(LAB.SYS.corners); } },

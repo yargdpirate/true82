@@ -55,7 +55,7 @@
   var S = {
     // content cards on the page (since v51 the results tiles and the reel card are cards like any other)
     card: [".ticket", ".traits-module", ".board", ".pick-card", ".t-card", ".wrap .card", ".wrap .skel", ".error-box",
-      ".reel-overlay .reel-card", ".trait-legend", ".rr .ledger", ".rr .twoway"],
+      ".reel-overlay .reel-card", ".trait-legend", ".rr .ledger"],   // (the two-way profile sits inside the record card since v51.1: no card of its own)
     // the brass plaques: Daily tile, run strap, gate insert, mode panels, rules sheet, today's twist, daily card
     frame: [".plq-frame"],
     // cards that sit inside another card

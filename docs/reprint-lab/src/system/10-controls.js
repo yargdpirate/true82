@@ -36,6 +36,9 @@
 (function () {
   var LAB = window.LAB;
   var BOOST = "#lab-k#lab-k";
+  LAB.SYS.votes = [["classic", "Sunflower and red"], ["wl", "Wins and losses"]];
+  LAB.SYS_DEFAULT.votes = "classic";
+  LAB.DEFAULT.votes = "classic";
   function IS(list) { return ":is(" + [BOOST].concat(list).join(", ") + ")"; }
   function F(list) { return IS(list) + NOT; }                         // a shaped button
   function rule(sel, body) { return sel + " { " + body + " }\n"; }
@@ -166,6 +169,17 @@
     var paper = "--c-bg: var(--t-paper); --c-fg: var(--t-ink); --c-fg2: var(--t-ink-2); --c-line: color-mix(in srgb, var(--t-line-paper) 26%, var(--t-paper)); --c-well: var(--t-paper-2);" +
       paperTones + "--c-ring: var(--t-ink); --c-dis: var(--t-ink-2);";
     s += rule("html[data-btn] " + IS(PAPER), paper);
+    // "Votes and tags: Wins and losses": YES and the trait tags wear the win ink, NO and bad traits the loss ink,
+    // so a neon look never falls back to sunflower and red
+    if (rc.votes === "wl" && r) {
+      var W = r.win, L = r.loss, ink = function (c) { return K.contrast(c, "#000000") >= K.contrast(c, "#FFFFFF") ? K.mix(c, "#000000", 0.82) : "#FFFFFF"; };
+      s += rule("html[data-btn]",
+        "--c-yes: " + W + "; --c-yes-hi: " + K.mix(W, "#FFFFFF", 0.3) + "; --c-yes-edge: " + K.mix(W, "#000000", 0.45) + "; --c-yes-ink: " + ink(W) + ";" +
+        "--c-bad: " + L + "; --c-bad-edge: " + K.mix(L, "#000000", 0.45) + "; --c-bad-ink: " + ink(L) + "; --c-bad-lab: " + ink(L) + ";" +
+        "--c-yes-tone: " + readable("win", r.ground, night ? "light" : "shadow") + "; --c-bad-tone: " + readable("loss", r.ground, night ? "light" : "shadow") + ";" +
+        "--c-yes-ctone: " + readable("win", r.ground, night ? "light" : "shadow", 4.5) + "; --c-bad-ctone: " + readable("loss", r.ground, night ? "light" : "shadow", 4.5) + ";" +
+        "--c-neon-yes: " + W + "; --c-neon-bad: " + L + ";");
+    }
     return s;
   }
 

@@ -3480,7 +3480,9 @@ body.gating .gate-back {
 .rr .bt-ssn .pr-yr::after { content: " \00B7"; }
 .rr .bt-ssn .pr-team { color: inherit; }
 .rr .bt-val { flex: 0 0 auto; text-align: right; font-family: var(--t-disp); font-weight: 700; font-size: var(--t-fs-num); line-height: 0.86; letter-spacing: 0.01em; color: var(--t-accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rr .bt-val small { display: none; }
+.rr .bt-val small { font-family: var(--t-mono); font-weight: 400; font-size: var(--t-fs-data); letter-spacing: 0.04em; color: var(--t-text-2); margin-right: 3px; vertical-align: 0.95em; }   /* V: value over a replacement player */
+.rr .rr-twoway { margin: 12px 0 0; }
+.rr .rr-twoway .twoway { border: 0; padding: 2px 0 0; }                 /* the two-way profile inside the record card, above SHARE */
 .rr .bt-val .hot-bonus { display: block; font-family: var(--t-mono); font-weight: 600; font-size: var(--t-fs-data); line-height: 1.2; letter-spacing: 0; color: var(--t-hot-hi); margin-top: 4px; }
 .rr .bt-box { display: flex; flex-wrap: wrap; gap: 2px 8px; margin: 8px 0 10px; font-family: var(--t-mono); font-size: 11.5px; color: var(--t-text); }
 .rr .bt-box span { display: inline-flex; align-items: baseline; gap: 2px; white-space: nowrap; }

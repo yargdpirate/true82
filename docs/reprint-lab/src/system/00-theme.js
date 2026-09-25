@@ -193,8 +193,8 @@
   };
 
   /* ---- wins and losses ----
-     pair     the look's own two inks: the accent wins, the second ink (the offset, else "you", else bad) loses.
-              Heat Vice: pink wins, aqua losses ("hot and cold")
+     pair     the look's own two inks: the accent wins, the second ink (the offset, else "you", else bad) loses
+     swap     the same two inks the other way round (Heat Vice: aqua wins, pink losses, the owner's pick)
      red      the look's win, losses in a neon red (the bad role, lit up to glow on a dark card)
      classic  today's: sunflower wins, red losses
      A win is a bright, colorful ink: when the accent is a dark key ink or a neutral (a navy or black keycap
@@ -204,6 +204,7 @@
   LAB.winLoss = function (r, mode) {
     var night = lum(r.ground) < 0.35, win, loss;
     if (mode === "classic") return { win: r.sun, loss: r.bad };
+    if (mode === "swap") { var pr = LAB.winLoss(r, "pair"); return { win: pr.loss, loss: pr.win }; }   // the second ink wins, the accent loses
     win = winInk(r);
     if (mode === "red") {
       loss = night ? ensure(r.bad, r["ground-2"], 4, "#FFFFFF") : r.bad;
@@ -226,7 +227,7 @@
     chip: [["keycap", "Keycap"], ["ink", "Solid ink"], ["outline", "Outline"], ["stamp", "Stamp"]],
     corners: [["square", "Square"], ["soft", "Soft"], ["round", "Round"]],
     texture: [["none", "None"], ["grain", "Paper grain"], ["dots", "Halftone"]],
-    wl: [["pair", "Look pair"], ["red", "Red losses"], ["classic", "Gold and red"]],
+    wl: [["pair", "Look pair"], ["swap", "Pair, swapped"], ["red", "Red losses"], ["classic", "Gold and red"]],
     body: [["barlow", "Barlow"], ["plexsans", "IBM Plex Sans"], ["worksans", "Work Sans"], ["atkinson", "Atkinson Hyperlegible"], ["dmsans", "DM Sans"], ["rubik", "Rubik"], ["publicsans", "Public Sans"]],
     mono: [["plexmono", "IBM Plex Mono"], ["jetbrains", "JetBrains Mono"], ["spacemono", "Space Mono"], ["dmmono", "DM Mono"], ["courierprime", "Courier Prime"]]
   };

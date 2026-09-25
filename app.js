@@ -6366,7 +6366,7 @@ function renderResults(e, keepScroll) {
         '<div class="pr-name bt-name"><span class="slot-badge">' + p.slot + "</span>" +
           '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></div>" +
         '<div class="bt-ssn">' + prTeamHtml(row, p.fr) + "</div></div>" +
-        '<div class="pr-v bt-val t-num' + (valueOf(row) < 0 ? " is-neg" : "") + '">' + valueOf(row).toFixed(2) + "</div></div>" +
+        '<div class="pr-v bt-val t-num' + (valueOf(row) < 0 ? " is-neg" : "") + '"><small>V</small>' + valueOf(row).toFixed(2) + "</div></div>" +
       '<div class="bt-box">' + ballotBoxHtml(row) + "</div>" +
       '<div class="bt-tags" data-bt="' + i + '"></div></div>';
   }).join("");
@@ -6455,7 +6455,7 @@ function renderResults(e, keepScroll) {
   // record, which stays in the DOM for screen readers, the Heat Check's
   // rewrite and the no-canvas fallback. The roster moved up under the hero
   // (owner fact: about half of finishers never scroll to it, so the first
-  // ballot card has to sit above the fold); the two-way profile follows it.
+  // ballot card has to sit above the fold); the two-way profile sits in the record card.
   // The bottom "did we get it wrong" prompt is gone: the cards are the ballot.
   app().innerHTML = '<div class="rr">' +
     resultsTopBarHtml() +
@@ -6465,11 +6465,12 @@ function renderResults(e, keepScroll) {
       '<div class="big-label">net rating ' + signed1(e.net) + "</div>" +
       '<div class="res-comp">' + compHtml + '</div>' +
       dailyBoardHtml +
+      // the two-way profile sits inside the record card, just above SHARE (owner, v51.1)
+      '<div class="rr-twoway" data-result-section="two_way">' + twoWayHtml(e) + "</div>" +
       '<button class="btn btn-primary btn-block presti-spin rr-share' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section traits-roster" data-result-section="roster">' +
       head("results", "Your five", { cls: "rr-eyebrow" }) + picksHtml +
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
-    '<section class="section twoway-sec" data-result-section="two_way">' + head("results", "Two-way profile", { cls: "rr-eyebrow" }) + twoWayHtml(e) + "</section>" +
     '<section class="section rr-climb" data-result-section="goat_climb">' + head("results", "GOAT Climb", { cls: "rr-eyebrow" }) + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card">' + head("results", "Scoring Card", { cls: "rr-eyebrow" }) + ledger + "</section>" +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
@@ -6864,7 +6865,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v51.1";
+var BUILD_V = "v51.2";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

@@ -132,6 +132,15 @@ The lab (docs/reprint-lab, read its README) is now built on the site's own syste
   the pre-v51 lab; point the owner at the branch preview copy meanwhile.
 
 ### Owner's queued tweaks (2026-09-25, end of session; rough priority and logical order)
+DONE 2026-09-25 (v51.2, one pass, shown to the owner as a Heat Vice board): items 1-8.
+- Site: the "V" value label is back on the results cards (`<small>V</small>`, value over a replacement player;
+  the hot-pick code already wrote it); the two-way profile sits inside the record card above SHARE
+  (`.rr-twoway`, no border, the separate "Two-way profile" section is gone). Keys `20260925-fixes-v51-2`, BUILD_V "v51.2".
+- Lab (Heat Vice): display face Big Shoulders (upright; Kanit Black Italic made everything italic); Wins and
+  losses "Pair, swapped" (aqua wins, pink losses); new setting "Votes and tags: Wins and losses" (YES and trait
+  tags in the win ink, NO and bad traits in the loss ink: no more yellow and red); neon looks draw position
+  badges as pink tubes and the GOAT Climb in the second tube (aqua) with YOUR FIVE in pink.
+- Only results-top and results-lower were recaptured (the rest are still the v51 snapshots).
 Most are for the Heat Vice direction (neon). Do them after the lab recapture and artifact republish above.
 1. Player trait badges are still yellow: find a color that matches the scheme.
 2. The player value on results needs back the symbol it used to have (a Greek letter, an EV-style mark).
