@@ -19,9 +19,12 @@ const OG_CARDS = new Set([
 export async function onRequest(context) {
   const { request, env, params } = context;
   const slug = String(params.slug || "");
+  // Not a question slug (/bonuses/index.html, a stray file): the static site
+  // answers exactly as if this function did not exist.
+  if (!SLUG_RE.test(slug)) return context.next();
   const shellUrl = new URL("/bonuses/", request.url);
   const shell = await env.ASSETS.fetch(new Request(shellUrl, { headers: request.headers }));
-  if (!SLUG_RE.test(slug) || !env.DB) return shell;
+  if (!env.DB) return shell;
   let html;
   try { html = await shell.text(); } catch { return env.ASSETS.fetch(new Request(shellUrl)); }
   try {

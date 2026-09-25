@@ -725,8 +725,12 @@ var _buttonStyleObserver = null;
 // rendered as a stray amber slab floating mid-overlay on the left instead of
 // the quiet top-right text link it was written as.
 // v50: the tag ballot's keycaps, sheet buttons and tiles print their own ink.
+// v51: .gate-back joins as a BUG FIX, the same story as .hh-skip: the Daily
+// gate's bare "back" text button was painted as a gold keycap over the eyebrow;
+// .hh-charity too: I DON'T WANT YOUR CHARITY is the outline ghost it was written
+// as, not a full-width gold keycap louder than the ball lever.
 var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)" +
-  ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done)";
+  ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done):not(.gate-back):not(.hh-charity)";
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -852,8 +856,9 @@ function flashRefund() {
   }, 2500);
 }
 
-// FIRE SALE (7.5% per paid spin): the refund flash's evil twin — all three cost
-// buttons go red and read "FIRE SALE", with a ⬇️ burst. The -$2 board discount
+// FIRE SALE (7.5% per paid spin): the refund flash's twin. All three cost
+// buttons light in fire gold (the hot role: a gain, never the bad red, v51) and
+// read "FIRE SALE", with a ⬇️ burst. The -$2 board discount
 // itself is applied via effCost(); this is just the announcement.
 function flashFireSale() {
   var restores = [];
@@ -1330,7 +1335,7 @@ function statLine(row) {
 var TRAIT_ENG_FULL = { "3PT": "Floor Spacer", "GRAVITY": "Elite Gunner" };
 function engChipHtml(abbr, tab) {
   var full = TRAIT_ENG_FULL[abbr] || abbr;
-  return '<button type="button" class="tchip eng" data-full="' + full + '" data-abbr="' + abbr + '"' +
+  return '<button type="button" class="tchip t-chip eng" data-size="sm" data-full="' + full + '" data-abbr="' + abbr + '"' +
     (tab === -1 ? ' tabindex="-1"' : "") +
     ' aria-pressed="false" aria-label="' + full + ", the engine\u2019s shooting designation. Tap for full label.\"" +
     ' title="' + full + '">' + abbr + "</button>";
@@ -1364,12 +1369,12 @@ function fmtM(n) {
   var s = (r % 1 === 0) ? String(Math.round(r)) : r.toFixed(1);
   return (neg ? "\u2212" : "") + "$" + s + "M";
 }
-function mHtml(txt, tight) {
-  // Display layer only: a lighter trailing M everywhere; a thin space after
-  // the $ except where tight (the bank reads "$50M"). Underlying strings
-  // (share text, copy, reels' textContent) stay "$17M".
-  var t = String(txt).replace(/M$/, '<span class="m-lite">M</span>');
-  return tight ? t : t.replace("$", "$\u2009");
+function mHtml(txt) {
+  // Display layer only: a lighter trailing M. Money reads one way everywhere,
+  // "$16M" like the bank (v51: the thin space after the $ is gone; in the
+  // display face it read as "$ 16M" beside the bank's "$50M"). Underlying
+  // strings (share text, copy, reels' textContent) stay "$17M".
+  return String(txt).replace(/M$/, '<span class="m-lite">M</span>');
 }
 function fmtMCost(n) {              // a positive cost rendered as a deduction: 1 -> "−$1M"
   return "\u2212" + fmtM(Math.abs(Number(n) || 0));
@@ -1400,7 +1405,8 @@ function renderPips() {
 /* ---------- intro ---------- */
 
 function startOverBtnHtml() {
-  return '<button class="startover-btn" id="startOverBtn" type="button">\u2039 Start over</button>';
+  // v51: the shared small keycap, so it matches FEATURE REQUESTS beside it (was a flat square)
+  return '<button class="startover-btn t-btn" data-size="sm" id="startOverBtn" type="button">\u2039 Start over</button>';
 }
 function wireStartOver() {
   var b = el("startOverBtn");
@@ -1712,12 +1718,13 @@ var RULES_MODE = {
     "Player salaries vary greatly, with rip-offs, bargains, and bait choices included.",
     "Pay $1M to reroll decade, team, or player seasons within that combo. Unlimited rerolls, but every empty roster spot needs $1M held in reserve.",
     "Players are default sorted by salary; also sort by peak minutes played, A\u2013Z, or use the search box.",
-    "Occasional random perks when rerolling era/team/player: REFUND (green) gives your dollar back. FIRE SALE (red) drops the next roll's player salaries by $2M."
+    "Occasional random perks when rerolling era/team/player: REFUND (green) gives your dollar back. FIRE SALE (fire gold) drops the next roll's player salaries by $2M."
   ],
   daily: [
-    "One shared board per day. Everyone gets the same teams, the same players, the same prices.",
+    // the first line names prices only on a Presti board (rulesSheetHtml swaps in RULES_DAILY_CAP)
+    "One shared board per day. Everyone gets the same teams and the same players.",
     "Your first finished run is your official score. Replays are practice and can never overwrite it.",
-    "Today's rule appears below, and it beats the normal numbers wherever they disagree.",
+    "Today's rule appears above, and it beats the normal numbers wherever they disagree.",
     "Finish, then share: your link drops friends onto this exact board to beat your number."
   ],
   pro: [
@@ -1726,6 +1733,7 @@ var RULES_MODE = {
     "The engine grades your five with the real numbers at the end. Memory against the receipts."
   ]
 };
+var RULES_DAILY_CAP = "One shared board per day. Everyone gets the same teams, the same players, the same prices.";
 var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
@@ -1759,8 +1767,10 @@ function rulesSheetHtml() {
   // not the tutorial (owner directive, v45).
   var basicsBlock = head("rules", "Game basics", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
     RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+  var modeCopy = (RULES_MODE[isDaily ? "daily" : baseKey] || []).slice();
+  if (isDaily && baseKey === "cap") modeCopy[0] = RULES_DAILY_CAP;   // only a Presti board has prices to share
   var modeBlock = head("rules", "How to play this mode (" + (isDaily ? "THE DAILY" : baseName) + ")", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
-    (RULES_MODE[isDaily ? "daily" : baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+    modeCopy.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   if (isDaily) {
     modeBlock += head("rules", "Plus " + baseName + " mode rules", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
       (RULES_MODE[baseKey] || []).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
@@ -1800,7 +1810,7 @@ function rulesSheetHtml() {
     ((isDaily || ch) ? '<p class="rs-note">Today\u2019s rule wins any conflict with the normal numbers above.</p>' : "");
 
   h += '</div><div class="rs-foot">' +
-    '<a class="rs-got rs-ref-btn" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
+    '<a class="rs-ref-btn t-btn" data-kind="quiet" href="' + bbrefTag(BBREF_BPM_LEADERS, "howto") + '" target="_blank" rel="noopener">STATS REFRESHER \u2197</a>' +
     '<button class="rs-got" id="rulesGotIt" type="button">GOT IT</button>' +
   '</div>';
   return h;
@@ -1864,7 +1874,7 @@ function resultsTopBarHtml() {
   var msg = "Feature requests? Bugs?";
   return '<div class="results-topbar">' +
     startOverBtnHtml() +
-    '<a class="donate-btn" id="donateBtn" href="mailto:true82mailbox@gmail.com" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
+    '<a class="donate-btn t-btn" data-size="sm" id="donateBtn" href="mailto:true82mailbox@gmail.com" data-msg="' + esc(msg) + '">' + esc(msg) + '</a>' +
   '</div>';
 }
 /* ---------- PLAYER BONUSES (v46; internal traits_* names unchanged) ---------- */
@@ -1874,25 +1884,12 @@ function resultsTopBarHtml() {
 // prefers a question about a player this user just drafted.
 // Styling lives in styles.css ("the homepage vote card"); v51 folded in the
 // block this file used to inject, so every surface reads the one theme.
+// One spelling of every trait code, everywhere (owner, v51): the live traits
+// take their chip names from BALLOT_TRAITS (the results ballot's list), which
+// fills this map right after it is defined, so the draft pool, its legend and
+// the homepage vote card read the same codes as the ballot. Only the retired
+// v1 names are written here, so an old settled label stays readable.
 var TRAIT_CARD_ABBR = {
-  "Three-Point Shooter": "3PT",
-  "Super Three-Point Shooter": "GRAV",
-  "Iso Defender": "ISO-D",
-  "Team Defender": "TEAM-D",
-  "Rim Protector": "RIM-D",
-  "Playmaker": "PLAY",
-  "Clutch": "CLTCH",
-  "Rim Pressurer": "RIM+",
-  "Off-Ball Scorer": "OFF-B",
-  "Switchable Defender": "SWCH-D",
-  "Tough Shot Maker": "TSHOT",
-  "Off-Court Knucklehead": "OFC-R",
-  "Ball Stopper": "BSTOP",
-  "Foul Merchant": "FOUL$",
-  "Stat Padder": "STAT+",
-  "Championship #1": "CH#1",
-  "Ball Pounder": "BPOUND",
-  // Retired v1 names stay readable if an old settled label ever surfaces.
   "Wing Defender": "WING-D",
   "Primary Creator": "CREATE",
   "Help Defender": "HELP-D"
@@ -1932,7 +1929,7 @@ function buildTraitLegendInto(panel, scope) {
   // pool). Community labels list first; engine shooter designations follow
   // with an explicit "engine" marker so the two sources never blur.
   if (!panel || !scope) return;
-  var seen = {}, rows = [], engRows = [], hasEng = false;
+  var seen = {}, rows = [], engRows = [], eng = [];
   var chips = scope.querySelectorAll(".tchip[data-full]");
   for (var i = 0; i < chips.length; i++) {
     var full = chips[i].getAttribute("data-full") || "";
@@ -1940,14 +1937,19 @@ function buildTraitLegendInto(panel, scope) {
     seen[full] = 1;
     var abbr = chips[i].getAttribute("data-abbr") || traitCardAbbr(full);
     var isEng = chips[i].classList.contains("eng");
-    var line = '<div class="trait-legend-row"><b>' + esc(abbr) + '</b><span>' + esc(full) +
-      (isEng ? " \u00B7 engine" : "") + "</span></div>";
-    if (isEng) { engRows.push(line); hasEng = true; } else rows.push(line);
+    var tone = chips[i].getAttribute("data-tone");
+    var line = '<div class="trait-legend-row"><span class="t-chip" data-size="sm"' + (tone ? ' data-tone="' + esc(tone) + '"' : "") + ">" +
+      esc(abbr) + '</span><span>' + esc(full) + (isEng ? " \u00B7 engine" : "") + "</span></div>";
+    if (isEng) { engRows.push(line); eng.push(abbr); } else rows.push(line);
   }
+  // the engine note names only the engine codes this legend actually lists (v51)
+  eng.sort();   // "3PT" before "GRAVITY"
+  var engNote = !eng.length ? ""
+    : eng.length === 1 ? " " + eng[0] + " is the engine\u2019s own shooting math, not a vote."
+    : " " + eng.join(" and ") + " are the engine\u2019s own shooting math, not votes.";
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
     '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
-    '<div class="trait-legend-note">Community votes confirm or overturn these labels.' +
-    (hasEng ? " 3PT and GRAVITY are the engine\u2019s own shooting math, not votes." : "") + "</div>";
+    '<div class="trait-legend-note">Community votes confirm or overturn these labels.' + engNote + "</div>";
 }
 // One shared open/close for every label-legend (i) button.
 function traitInfoToggle(ib, legend) {
@@ -1957,6 +1959,7 @@ function traitInfoToggle(ib, legend) {
   ib.setAttribute("aria-expanded", opening ? "true" : "false");
   ib.setAttribute("aria-label", opening ? "Close player label legend" : "Explain player labels");
   ib.textContent = opening ? "\u00d7" : "i";
+  syncPoolCue();   // the open legend pushes the pool down; the cue would sit on its chips
 }
 // One document-level delegation for every trait chip everywhere (results
 // cards, classic draft pool, Kaman cards): tap expands in place, tap
@@ -2239,7 +2242,9 @@ function traitLabelChipHtml(hh, tab) {
   var full = String(hh.t || "");
   var abbr = traitCardAbbr(full);
   var aria = (hh.anti ? "Ruled out: " : "") + full + ". Tap for full label.";
-  return '<button type="button" class="tchip' + (hh.anti ? " anti" : "") + '"' +
+  // v51: the flat small chip (read-only, not a button to vote with); a bad trait takes the bad tone, as on the ballot
+  var bad = BALLOT_BY_NAME[full] && BALLOT_BY_NAME[full].neg;
+  return '<button type="button" class="tchip t-chip' + (hh.anti ? " anti" : "") + '" data-size="sm"' + (bad ? ' data-tone="bad"' : "") +
     (tab === -1 ? ' tabindex="-1"' : "") +
     ' data-full="' + esc(full) + '" data-abbr="' + esc(abbr) + '"' +
     ' aria-label="' + esc(aria) + '" aria-pressed="false" title="' + esc(full) + '">' +
@@ -2325,7 +2330,7 @@ var BALLOT_TRAITS = [
 ];
 var BALLOT_GROUPS = [["Offense", "off"], ["Defense", "def"], ["Reputation", "rep"]];
 var BALLOT_BY_NAME = {};
-BALLOT_TRAITS.forEach(function (T) { BALLOT_BY_NAME[T.name] = T; });
+BALLOT_TRAITS.forEach(function (T) { BALLOT_BY_NAME[T.name] = T; TRAIT_CARD_ABBR[T.name] = T.chip; });   // the one source of trait codes
 var BALLOT_ENG = { "3PT": "Three-Point Shooter", "GRAVITY": "Super Three-Point Shooter" };
 var BALLOT_HINT_KEY = "tb-hint";
 var BALLOT = { cards: [], rules: null, queue: [], busy: false, lastPost: 0, cur: null, toastT: 0, wired: false };
@@ -2401,9 +2406,11 @@ function ballotTagHtml(tag) {
     esc(T.chip) + (tag.state === "off" ? '<span class="bt-x" aria-hidden="true">✕</span>' : "") + "</button>";
 }
 function ballotTagsHtml(card) {
-  var model = ballotTagModel(card);
-  return model.tags.map(ballotTagHtml).join("") +
-    '<button type="button" class="bt-tag add t-chip t-chip-add" data-size="lg" data-add="1" aria-label="Add a tag for ' + esc(card.name) + '">+</button>';
+  var tags = ballotTagModel(card).tags.map(ballotTagHtml);
+  var plus = '<button type="button" class="bt-tag add t-chip t-chip-add" data-size="lg" data-add="1" aria-label="Add a tag for ' + esc(card.name) + '">+</button>';
+  // The "+" and the last tag wrap as one piece, so the "+" never sits alone on a row.
+  var last = tags.length ? tags.pop() : "";
+  return tags.join("") + '<span class="bt-tail">' + last + plus + "</span>";
 }
 function ballotBoxHtml(row) {
   function cell(v, lab) {
@@ -2520,8 +2527,12 @@ function ballotWho(card) {
   return card.name + " · " + shortSeason(card.season) + (fr ? " · " + fr : "");
 }
 function ballotQuestionHtml(card, T) {
-  return "Was " + esc(String(card.season)) + " " + esc(ballotSurname(card.name)) + " " +
-    '<mark class="' + (T.neg ? "neg" : "") + '">' + esc(T.q) + "</mark>?";
+  // Only the trait words are highlighted. The article stays outside the mark
+  // and is tied to the first trait word by a no-break space, so a line never
+  // ends on a lone underlined "A".
+  var m = /^(an?) (.+)$/.exec(T.q), art = m ? m[1] + "\u00A0" : "", words = m ? m[2] : T.q;
+  return "Was " + esc(String(card.season)) + " " + esc(ballotSurname(card.name)) + " " + art +
+    '<mark class="' + (T.neg ? "neg" : "") + '">' + esc(words) + "</mark>?";
 }
 function ballotOpenAsk(card, traitId) {
   var T = ballotTrait(traitId);
@@ -2597,7 +2608,7 @@ function ballotAnswer(card, T, resp) {
   buzz(12);
   var who = ballotSurname(card.name);
   ballotToast(resp === "yes" ? (wasShown ? "Noted: " + T.chip : T.chip + " added to " + who)
-    : resp === "no" ? "Noted: not " + T.chip.toLowerCase() : "Noted");
+    : resp === "no" ? "Noted: not " + T.chip : "Noted");
   el("btBtns").hidden = true;
   var res = el("btResult");
   res.hidden = false;
@@ -2802,7 +2813,10 @@ function applyPoolLabelPass(pool) {
 function refreshPoolTraitLegend() {
   var pool = el("pool"), btn = el("poolTraitInfoBtn"), legend = el("poolTraitLegend");
   if (!pool || !btn || !legend) return;
-  if (!pool.querySelector(".tchip[data-full]")) { btn.hidden = true; legend.hidden = true; return; }
+  if (!pool.querySelector(".tchip[data-full]")) {
+    if (!legend.hidden) traitInfoToggle(btn, legend);   // closes it and resets the (i), so it never reopens stuck on "x"
+    btn.hidden = true; return;
+  }
   btn.hidden = false;
   buildTraitLegendInto(legend, pool);
 }
@@ -2844,6 +2858,7 @@ function renderIntro() {
   if (window.T82DUI) T82DUI.stop();   // leaving a duel screen kills its poll
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
+  document.body.classList.remove("has-pick");   // EXIT RUN with a player selected
   renderPips();
   // THE DAILY takes the third slot (Pro's old spot) when daily-core.js +
   // challenges.js are on the page; without them the classic Pro button renders
@@ -2884,8 +2899,8 @@ function renderIntro() {
         '<span class="dt-result">\u2713 YOUR RUN ' + dailyOfficial.wins + '-' + (82 - dailyOfficial.wins) +
           ' \u00B7 Net ' + T82DAILY.signedNet(dailyOfficial.net) + '</span>' +
         '<span class="dt-actions">' +
-          '<button class="dt-act dt-act-share" id="dailyChallengeBtn" data-share-label="CHALLENGE A FRIEND">CHALLENGE A FRIEND</button>' +
-          '<button class="dt-act dt-act-ghost" id="dailyPracticeBtn">RUN IT BACK \u00B7 PRACTICE</button>' +
+          '<button class="dt-act dt-act-share t-btn" data-size="sm" id="dailyChallengeBtn" data-share-label="CHALLENGE A FRIEND">CHALLENGE A FRIEND</button>' +
+          '<button class="dt-act dt-act-ghost t-btn" data-kind="quiet" data-size="sm" id="dailyPracticeBtn">RUN IT BACK \u00B7 PRACTICE</button>' +
         '</span>' +
       '</div>';
   } else if (dailyBoard) {
@@ -3071,7 +3086,7 @@ function renderIntro() {
         });
         var staleNote = document.createElement("p");
         staleNote.className = "daily-stale mono";
-        staleNote.textContent = "That link was for Daily #" + T82DAILY.dayNum(dl.key) + ". Today's board is #" + dailyBoard.num + ".";
+        staleNote.textContent = "That link was for Daily\u00A0#" + T82DAILY.dayNum(dl.key) + ". Today's board is\u00A0#" + dailyBoard.num + ".";   // no-break spaces: a number never wraps alone
         dailyTile.parentNode.insertBefore(staleNote, dailyTile.nextSibling);
       }
     }
@@ -3301,7 +3316,9 @@ function bindLineupMoves() {
 function updateTray() {
   var inner = el("trayInner");
   if (!inner) return;
-  document.body.classList.toggle("has-pick", !!G.selected);
+  // only while drafting: a Presti pool scramble that settles after the last pick
+  // re-renders the tray under the reel, and used to put has-pick back (v51)
+  document.body.classList.toggle("has-pick", G.screen === "draft" && !!G.selected);
   inner.innerHTML = trayHtml() + confirmHtml();
   bindConfirm();
   bindLineupMoves();
@@ -3399,7 +3416,19 @@ function capRowHtml(bestRow) {
   '</div>';
 }
 
-function poolInnerHtml(rows) { return rows.map(poolRowHtml).join(""); }
+function poolInnerHtml(rows) {
+  // a search that matches nobody says so, instead of leaving a blank pool (v51)
+  var q = G && String(G.query || "").trim();
+  if (!rows.length && q) return '<p class="pool-empty">No player on this board matches \u201C' + esc(q) + '\u201D.</p>';
+  return rows.map(poolRowHtml).join("");
+}
+// The one-time MORE PLAYERS cue shows only while there really is more below and
+// nothing covers the pool: an empty search, or the open label legend, hides it (v51).
+function syncPoolCue() {
+  var cue = el("poolCue"), pool = el("pool"), legend = el("poolTraitLegend");
+  if (!cue || !pool) return;
+  cue.hidden = !!(legend && !legend.hidden) || pool.scrollHeight <= pool.clientHeight + 8;
+}
 
 function selectRow(node) {
   var pool = el("pool");
@@ -3425,6 +3454,7 @@ function refreshPool() {
   pool.innerHTML = poolInnerHtml(currentPoolRows());
   updateTray();
   wireDraftPoolLabels();      // classic only inside; re-applies from cache
+  syncPoolCue();
 }
 
 function renderDraft(anim) {
@@ -3492,7 +3522,7 @@ function renderDraft(anim) {
     }).join("");
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
-      '<input type="search" id="poolSearch" class="pool-search" placeholder="search player name..." autocomplete="off" spellcheck="false">' +
+      '<input type="search" id="poolSearch" class="pool-search" placeholder="search" aria-label="Search player names" autocomplete="off" spellcheck="false">' +
       (MODE === "classic"
         ? '<button class="trait-info-btn pool-trait-info" id="poolTraitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="poolTraitLegend" aria-expanded="false" title="Player label legend" hidden>i</button>'
         : "") +
@@ -3730,6 +3760,33 @@ function compEntryHref(entry, camp) {
   if (entry.bbP) return bbrefTag("https://www.basketball-reference.com/players/" + entry.bbP.charAt(0) + "/" + entry.bbP + ".html", camp);
   return null;
 }
+// The results comp line. Pure: realized wins in, HTML out (test.js pins it).
+// v51: a record more than one win below the lowest rung (under 61 wins) gets
+// no comp phrase: "almost as good as" a 62-win team is only true one win away
+// (a 3-79 run used to read "Almost as good as the Beautiful Game Spurs"). The
+// share text is untouched (SHARE FORMAT LAW; it already drops the comp below 63).
+function resultsCompHtml(wins) {
+  var compLadder = HISTORY_COMPS.slice().sort(function (a, b) { return a.wins - b.wins; });
+  var compAbove = null;
+  for (var ci = 0; ci < compLadder.length; ci++) {
+    if (compLadder[ci].wins > wins) { compAbove = compLadder[ci]; break; }
+  }
+  function compLinkHtml(prefix, entry) {
+    var h = compEntryHref(entry, "climb");
+    var lbl = compArticle(entry.label);
+    if (!h) return esc(prefix + lbl);
+    // the article word stays plain text; only the label itself is the anchor
+    var lead = lbl.slice(0, lbl.length - entry.label.length);
+    return esc(prefix + lead) + '<a class="cl-link" href="' + h + '" target="_blank" rel="noopener">' + esc(entry.label) + "</a>";
+  }
+  return wins >= CFG.GAMES_IN_SEASON
+    ? esc("Greatest of all GOATs")
+    : wins < compLadder[0].wins - 1
+      ? ""
+      : compAbove
+        ? compLinkHtml("Almost as good as ", compAbove)
+        : compLinkHtml("Better than ", compLadder[compLadder.length - 1]);
+}
 
 function climbHtml(e, winsOverride) {
   // Same-win teams share one pin and one combined tag ("Redeem Team · Prime
@@ -3754,8 +3811,11 @@ function climbHtml(e, winsOverride) {
   var G82 = CFG.GAMES_IN_SEASON;
   var FLOOR = 62, TOP = G82, TEAM_TOP = 73;     // 73 = highest real team ('16 Warriors)
   var LADDER_TOP = legends.reduce(function (m, L) { return Math.max(m, L.wins); }, TEAM_TOP);  // top pin sets the scale
-  var youWins = (typeof winsOverride === "number") ? winsOverride
-    : CFG.GAMES_IN_SEASON * T82.phi(null, e.net / T82.t.SC.NET_SD);   // v42: the pin rides NET (continuous quality wins); Hot Hand override still honored
+  // v51: the pin rides the REALIZED record, like the comp line under it (the
+  // v46.2 owner ruling: comps key on realized wins). It rode the pre-season net
+  // since v42, so a 64-18 team could sit below the Spurs while its comp line
+  // named the '16 Spurs. The Heat Check passes its boosted wins as the override.
+  var youWins = (typeof winsOverride === "number") ? winsOverride : e.winTally;
   var below = youWins < FLOOR;
 
   // Layout in pixels so per-win spacing in the cluster stays fixed (~18px/win) no matter how
@@ -4010,7 +4070,7 @@ function hotHand(e) {
     var fillEl = ov.querySelector("#hhFill"), bonusEl = ov.querySelector("#hhFillBonus");
     var baseFrac = Math.min(1, e.winTally / CFG.GAMES_IN_SEASON);   // wins you earned BEFORE the Hot Hand (gold, fixed)
     fillEl.style.transform = "scaleX(" + baseFrac.toFixed(4) + ")";
-    bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (red, glowing)
+    bonusEl.style.left = (baseFrac * 100).toFixed(2) + "%";         // the bonus grows out from the base mark (fire gold, glowing)
     bonusEl.style.width = "0%";
   }
   if (clutch) analyticsTrack("heatcheck_shown", Object.assign(analyticsRunSnapshot(), {
@@ -4059,7 +4119,13 @@ function hotHand(e) {
       if (rec) rec.textContent = G.hotWins + "\u2013" + (CFG.GAMES_IN_SEASON - G.hotWins);
       resultsPrintRecord(e, G.hotWins);                         // v50: the print and the share poster follow the save
       setEliteResultGlow(G.hotWins);
-      var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [bonus, hot-hand red]
+      var cmp = document.querySelector(".res-comp");             // v51: the comp line follows the save too, like the share text
+      if (cmp) {
+        var cmpHtml = resultsCompHtml(G.hotWins);
+        cmp.innerHTML = cmpHtml + (typeof G.sharePct === "number"
+          ? (cmpHtml ? ' <span class="comp-pct">\u2022 Top ' : '<span class="comp-pct">Top ') + G.sharePct + "%</span>" : "");
+      }
+      var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [bonus, hot-hand fire gold]
       if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
         '</span> <span class="net-bonus">+ ' + (newNet - e.net).toFixed(1) + "</span>";
       if (G.hotWins > e.winTally) {                              // boost moved the win total -> re-plot the GOAT Climb
@@ -4110,7 +4176,7 @@ function hotHand(e) {
       var val = start + (newNet - start) * k;                                 // net rating is what climbs on-screen now
       var w = hhWins(val);                                                    // wins tracked under the hood for the bar + verdict
       numEl.textContent = signed1(val);                                       // show NET RATING ticking; final record is revealed static at verdict
-      var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // bar still fills toward 82-0 in red
+      var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // bar still fills toward 82-0 in fire gold
       bonusEl.style.width = (bonusFrac * 100).toFixed(2) + "%";
       if (w >= CFG.GAMES_IN_SEASON) numEl.classList.add("over");
       if (t < 1) requestAnimationFrame(frame); else verdict();
@@ -4177,15 +4243,19 @@ function hotHand(e) {
 
   function reel() {
     ov.querySelector("#hhStep1").classList.add("on");
-    var strip = ov.querySelector("#hhStrip"), endY = -((targetFlat - 1) * ITEM);
+    var strip = ov.querySelector("#hhStrip"), endY = -((targetFlat - 1) * ITEM), landed = false;
     function land() {
       if (!ov.parentNode) return;
+      landed = true;
+      // v51: the glide starts on an animation frame but this lands on a timer; a
+      // throttled tab can run the timer first, so snap onto the chosen name here
+      strip.style.transition = "none"; strip.style.transform = "translateY(" + endY + "px)";
       var rows = strip.querySelectorAll(".hh-name");
       if (rows[targetFlat]) rows[targetFlat].classList.add("hot");
       buzz(18);
       setTimeout(heat, 470);
     }
-    function glide(to, dur, ease) { strip.style.transition = "transform " + dur + "s " + ease; strip.style.transform = "translateY(" + to + "px)"; }
+    function glide(to, dur, ease) { if (landed) return; strip.style.transition = "transform " + dur + "s " + ease; strip.style.transform = "translateY(" + to + "px)"; }
     var variant = Math.floor(Math.random() * 3);   // 0 normal, 1 overshoot-back, 2 stall-creep (all ~50% longer)
     if (variant === 1) {
       // Mario Party: blow past your guy by one name, hang, then tick BACK onto him
@@ -4583,8 +4653,10 @@ function flashShareBtn(msg, button) {
   var b = button || el("shareTeamBtn");
   if (!b) return;
   var reset = shareButtonLabel(b);
+  // hold the button's width while it reads COPIED!, so its row never jumps (v51)
+  if (!b.style.minWidth && b.getBoundingClientRect) b.style.minWidth = Math.ceil(b.getBoundingClientRect().width) + "px";
   b.textContent = msg;
-  setTimeout(function () { if (b && b.isConnected !== false) b.textContent = reset; }, 1600);
+  setTimeout(function () { if (b && b.isConnected !== false) { b.textContent = reset; b.style.minWidth = ""; } }, 1600);
 }
 function revealShareText(txt, button) {
   var box = el("shareTextOut");
@@ -5398,6 +5470,7 @@ function setEliteResultGlow(wins) {
 
 function showResults() {
   G.screen = "results";
+  document.body.classList.remove("has-pick");   // the draft is over: nothing is selected (the reel and results never carry it)
   if (MODE === "kaman") {
     renderKamanResults();
     var kp = Object.assign(analyticsRunSnapshot(), { mode: "kaman", wins: CFG.GAMES_IN_SEASON, undefeated: 1, surface: "results" });
@@ -5680,7 +5753,8 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
     var v = ov.querySelector("#hhmVerdict");
     if (qualifies) {
       ov.classList.add("won");
-      v.innerHTML = '<div class="hh-stamp">' + esc(shareSurname(G.picks[hotIdx].row[IDX.name]).toUpperCase()) + " CATCHES FIRE</div>" +
+      // v51: the name and CATCHES FIRE each hold together, so a long name wraps cleanly into two lines
+      v.innerHTML = '<div class="hh-stamp"><span class="hh-nw">' + esc(shareSurname(G.picks[hotIdx].row[IDX.name]).toUpperCase()) + '</span> <span class="hh-nw">CATCHES FIRE</span></div>' +
         '<div class="hh-netcap">' + esc(seg.label) + " \u00B7 VALUE \u00D7" + seg.m + " \u00B7 NET " + signed1(e.net) + " \u2192 " + signed1(newNet) + "</div>";
       buzz(45);
       var fw = ov.querySelector("#hhmFw"); if (fw && !reducedMotion()) fireGoats(fw);
@@ -5746,15 +5820,18 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
 
   function reelSpin() {
     ov.querySelector("#hhmStep1").classList.add("on");
-    var strip = ov.querySelector("#hhmStrip"), endY = -((targetFlat - 1) * ITEM);
+    var strip = ov.querySelector("#hhmStrip"), endY = -((targetFlat - 1) * ITEM), landed = false;
     function land() {
       if (!ov.parentNode) return;
+      landed = true;
+      // v51: snap onto the chosen name (the glide's frame can run after this timer in a throttled tab)
+      strip.style.transition = "none"; strip.style.transform = "translateY(" + endY + "px)";
       var rows = strip.querySelectorAll(".hh-name");
       if (rows[targetFlat]) rows[targetFlat].classList.add("hot");
       buzz(18);
       setTimeout(heat, 470);
     }
-    function glide(to, dur, ease) { strip.style.transition = "transform " + dur + "s " + ease; strip.style.transform = "translateY(" + to + "px)"; }
+    function glide(to, dur, ease) { if (landed) return; strip.style.transition = "transform " + dur + "s " + ease; strip.style.transform = "translateY(" + to + "px)"; }
     var variant = Math.floor(Math.random() * 3);
     if (variant === 1) {
       requestAnimationFrame(function () { glide(endY - ITEM, 2.3, "cubic-bezier(.1,.72,.18,1)"); });
@@ -6134,6 +6211,7 @@ function upgradeBbrefLinks() {
    the share poster, baked quietly after the page settles so the share tap
    never waits on it. Everything fails soft to the typographic record. */
 var RESULTS_PRINT = null, RESULTS_POSTER = null, RESULTS_PRINT_SPEC = null, RESULTS_PRINT_OFF = false;
+var RESULTS_PRINT_HOLDS = null, RESULTS_PRINT_SHOWN = false;   // v51: the spec the on-page print holds; has it printed in yet
 function printCall(fn) {
   if (RESULTS_PRINT_OFF) return null;
   try { return fn(); } catch (err) {
@@ -6174,6 +6252,7 @@ function mountResultsPrint(e, daily) {
   host.setAttribute("data-spec", JSON.stringify(RESULTS_PRINT_SPEC));   // the print's recipe rides the page (the Reprint Lab reprints it in any look)
   RESULTS_PRINT = printCall(function () { return window.T82PRINT ? T82PRINT.mount(host, RESULTS_PRINT_SPEC, { defer: canWatch }) : null; });
   if (!RESULTS_PRINT) return;
+  RESULTS_PRINT_HOLDS = RESULTS_PRINT_SPEC; RESULTS_PRINT_SHOWN = false;
   var board = host.closest ? host.closest(".rr-board") : null;
   if (board) board.classList.add("printed");                 // the print carries the mode line; the eyebrow steps aside
   host.setAttribute("role", "img");
@@ -6186,15 +6265,31 @@ function mountResultsPrint(e, daily) {
       if (!ents[0] || !ents[0].isIntersecting) return;
       poll = setInterval(function () {
         if (!document.body.contains(host)) { clearInterval(poll); io.disconnect(); return; }
-        if (ballotOverlayUp()) return;
+        if (resultsPrintCovered()) return;
         clearInterval(poll); io.disconnect();
-        printCall(function () { RESULTS_PRINT && RESULTS_PRINT.play(); return null; });
+        playResultsPrint();
       }, 300);
     }, { threshold: 0.5 });
     io.observe(host);
-  } else printCall(function () { RESULTS_PRINT.play(); return null; });
+  } else playResultsPrint();
   // Daily practice runs share the OFFICIAL numbers, so their poster would lie.
   if (!daily || daily.isOfficial) setTimeout(function () { bakeResultsPoster(); }, 1800);
+}
+// v51: something sits over the print, or the Tribune is about to open over it (it
+// opens 700ms after the post-season Heat Check closes). The print never reveals then.
+function resultsPrintCovered() {
+  return ballotOverlayUp() || !!(G && G.screen === "results" && G.recapPayload && !G.recapAuto);
+}
+// The reveal prints the LATEST season: a Heat Check save that landed while the page
+// was covered prints in with the rescued game, instead of re-printing unseen.
+function playResultsPrint() {
+  RESULTS_PRINT_SHOWN = true;
+  printCall(function () {
+    if (!RESULTS_PRINT) return null;
+    if (RESULTS_PRINT_HOLDS !== RESULTS_PRINT_SPEC) { RESULTS_PRINT_HOLDS = RESULTS_PRINT_SPEC; RESULTS_PRINT.update(RESULTS_PRINT_SPEC); }
+    else RESULTS_PRINT.play();
+    return null;
+  });
 }
 function bakeResultsPoster() {
   var spec = RESULTS_PRINT_SPEC;
@@ -6216,7 +6311,16 @@ function resultsPrintRecord(e, wins) {
   RESULTS_POSTER = null;
   var host = el("rrPrint");
   if (host) { host.setAttribute("aria-label", wins + " and " + (CFG.GAMES_IN_SEASON - wins) + ". The shape of the season."); host.setAttribute("data-spec", JSON.stringify(RESULTS_PRINT_SPEC)); }
-  printCall(function () { if (RESULTS_PRINT) RESULTS_PRINT.update(RESULTS_PRINT_SPEC); return null; });
+  // v51: never re-print under the Heat Check (v50 invariant 2: the print never reveals
+  // under an overlay). Before the first reveal, the pending reveal prints the saved
+  // season; after it, the re-print waits for a clear page. The poster bakes now.
+  if (RESULTS_PRINT_SHOWN) {
+    var wait = setInterval(function () {
+      if (!host || !document.body.contains(host)) { clearInterval(wait); return; }
+      if (resultsPrintCovered()) return;
+      clearInterval(wait); playResultsPrint();
+    }, 300);
+  }
   setTimeout(function () { bakeResultsPoster(); }, 900);
 }
 function resultsShareFiles() {
@@ -6262,7 +6366,7 @@ function renderResults(e, keepScroll) {
         '<div class="pr-name bt-name"><span class="slot-badge">' + p.slot + "</span>" +
           '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></div>" +
         '<div class="bt-ssn">' + prTeamHtml(row, p.fr) + "</div></div>" +
-        '<div class="pr-v bt-val t-num">' + valueOf(row).toFixed(2) + "</div></div>" +
+        '<div class="pr-v bt-val t-num' + (valueOf(row) < 0 ? " is-neg" : "") + '">' + valueOf(row).toFixed(2) + "</div></div>" +
       '<div class="bt-box">' + ballotBoxHtml(row) + "</div>" +
       '<div class="bt-tags" data-bt="' + i + '"></div></div>';
   }).join("");
@@ -6340,24 +6444,7 @@ function renderResults(e, keepScroll) {
         : "PRACTICE RUN" + dhlDot + "OFFICIAL " + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins)) +
     '</div>';
   }
-  var compLadder = HISTORY_COMPS.slice().sort(function (a, b) { return a.wins - b.wins; });
-  var compAbove = null;
-  for (var ci = 0; ci < compLadder.length; ci++) {
-    if (compLadder[ci].wins > e.winTally) { compAbove = compLadder[ci]; break; }
-  }
-  function compLinkHtml(prefix, entry) {
-    var h = compEntryHref(entry, "climb");
-    var lbl = compArticle(entry.label);
-    if (!h) return esc(prefix + lbl);
-    // the article word stays plain text; only the label itself is the anchor
-    var lead = lbl.slice(0, lbl.length - entry.label.length);
-    return esc(prefix + lead) + '<a class="cl-link" href="' + h + '" target="_blank" rel="noopener">' + esc(entry.label) + "</a>";
-  }
-  var compHtml = e.winTally >= CFG.GAMES_IN_SEASON
-    ? esc("Greatest of all GOATs")
-    : compAbove
-      ? compLinkHtml("Almost as good as ", compAbove)
-      : compLinkHtml("Better than ", compLadder[compLadder.length - 1]);
+  var compHtml = resultsCompHtml(e.winTally);
   var shareLabel = !daily ? "SHARE YOUR TEAM"
     : daily.isOfficial ? "SHARE THE DAILY"
     : "SHARE OFFICIAL (" + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) + ")";
@@ -6651,7 +6738,7 @@ function renderDailyGate(board, target, variantTag) {
         '<div class="cap-tip" id="gateTip" hidden>' + esc(tip) + '</div>' +
         (target
           ? '<p class="gate-target mono">Their five went ' + target.w + '-' + (CFG.GAMES_IN_SEASON - target.w) +
-            ' (Net ' + T82DAILY.signedNet(target.n) + '). Beat it.</p>'
+            ' (Net ' + T82DAILY.signedNet(target.n) + '). Beat\u00A0it.</p>'
           : '') +
       '</div>' +
       '<div class="gate-tipoff" id="gateTipoff">' +
@@ -6777,7 +6864,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v51";
+var BUILD_V = "v51.1";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -6845,7 +6932,10 @@ function scheduleSharePct(e) {
         if (g === G) {
           var rc = document.querySelector(".res-comp");
           if (rc && !rc.querySelector(".comp-pct")) {
-            rc.insertAdjacentHTML("beforeend", ' <span class="comp-pct">\u2022 Top ' + d.pct + "%</span>");
+            // no comp phrase (a record under the ladder): the line is just "Top X%", no leading bullet
+            rc.insertAdjacentHTML("beforeend", rc.textContent.trim()
+              ? ' <span class="comp-pct">\u2022 Top ' + d.pct + "%</span>"
+              : '<span class="comp-pct">Top ' + d.pct + "%</span>");
           }
         }
         analyticsTrack("percentile_result", Object.assign(analyticsRunSnapshot(), {

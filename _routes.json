@@ -4,6 +4,7 @@
     "/api/*",
     "/avocado",
     "/r/*",
+    "/bonuses/*",
     "/",
     "/faq",
     "/faq/",

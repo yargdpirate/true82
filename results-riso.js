@@ -559,7 +559,18 @@
     if (spec.roster && spec.roster.length) return spec.roster;
     return (spec.names || []).map(function (n) { return { name: n }; });
   }
-  // L.roster: { x, y (first baseline), lh (line height), size, slot } in scene units
+  // L.roster: { x, y (first baseline), lh (line height), size, slot } in scene units.
+  // The slot letter (sun ink) and the 'yy (light ink) print at about three
+  // quarters of the name's size, at full strength, each on a dark keyline, so
+  // they still read at phone size over the busiest part of the picture.
+  var ROSTER_SLOT = 0.76, ROSTER_YR = 0.72;
+  function keyline(g, TH, text, x, y, size) {
+    g.save();
+    g.lineJoin = "round"; g.lineWidth = size * 0.16; g.strokeStyle = cssColor(TH.shadow, 0.85);
+    g.shadowColor = cssColor(TH.shadow, 0.8); g.shadowBlur = size * 0.5; g.shadowOffsetX = 0; g.shadowOffsetY = 0;
+    g.strokeText(text, x, y);
+    g.restore();
+  }
   function drawRoster(g, TH, k, spec, L, alpha) {
     var list = rosterOf(spec), R = L.roster;
     if (!list.length || !R) return;
@@ -567,24 +578,27 @@
     g.setTransform(k, 0, 0, k, 0, 0);
     g.globalAlpha = alpha == null ? 1 : alpha;
     g.textBaseline = "alphabetic"; g.textAlign = "left";
-    var nameW = R.w - (R.slot ? R.size * 0.95 : 0);
+    var nameW = R.w - (R.slot ? R.size * 0.95 : 0), ss = R.size * ROSTER_SLOT, ys = R.size * ROSTER_YR;
     list.forEach(function (r, i) {
       var y = R.y + i * R.lh, x = R.x, name = String(r.name || "").toUpperCase();
       if (R.slot && r.slot) {
-        g.font = "600 " + (R.size * 0.5) + "px " + TH.mono;
-        g.shadowColor = cssColor(TH.shadow, 0.7); g.shadowBlur = R.size * 0.3; g.shadowOffsetX = 0; g.shadowOffsetY = 0;
-        g.fillStyle = cssColor(TH.light, 0.78); g.fillText(r.slot, x, y - R.size * 0.1);
+        g.font = "600 " + ss + "px " + TH.mono;
+        keyline(g, TH, r.slot, x, y - R.size * 0.06, ss);
+        g.shadowColor = "transparent";
+        g.fillStyle = cssColor(TH.rgb.sun); g.fillText(r.slot, x, y - R.size * 0.06);
         x += R.size * 0.95;
       }
-      var size = fitFont(g, name, "700", TH.cond, nameW - (r.yr ? R.size * 1.6 : 0), R.size);
+      var size = fitFont(g, name, "700", TH.cond, nameW - (r.yr ? R.size * 1.95 : 0), R.size);
       g.shadowColor = "transparent";
       g.fillStyle = cssColor(TH.pop, 0.8); g.fillText(name, x + size * 0.07, y + size * 0.06);   // the misregistered pop ink under the white
       g.shadowColor = cssColor(TH.shadow, 0.75); g.shadowBlur = size * 0.35;
       g.fillStyle = cssColor(TH.light); g.fillText(name, x, y);
       if (r.yr) {
-        var nw = g.measureText(name).width;
-        g.font = "600 " + (R.size * 0.44) + "px " + TH.mono;
-        g.fillStyle = cssColor(TH.light, 0.8); g.fillText(r.yr, x + nw + R.size * 0.3, y);
+        var yx = x + g.measureText(name).width + R.size * 0.28;
+        g.font = "600 " + ys + "px " + TH.mono;
+        keyline(g, TH, r.yr, yx, y, ys);
+        g.shadowColor = "transparent";
+        g.fillStyle = cssColor(TH.light); g.fillText(r.yr, yx, y);
       }
     });
     g.restore();

@@ -402,9 +402,11 @@
       var p = e - 0.07, s = p < 0.14 ? 1 + 0.45 * Math.pow(1 - p / 0.14, 3) : 1;
       var drain = clamp((p - 0.22) / Math.max(0.2, D - 0.5), 0, 1), lvl = Math.min(bigL.scarlet.length - 1, Math.floor(drain * bigL.scarlet.length));
       var fade = e > D - 0.2 ? clamp((D - e) / 0.2, 0, 1) : 1;
-      // The L and its caption take whichever open span is larger, above or below
-      // the wound, sized to fit it, so they never print over the row that just lost.
-      var gap = 34, above = E.y - gap - top, below = h - (E.y + gap), useAbove = above >= below;
+      // The L and its caption take an open span above or below the wound, sized to
+      // fit it, so they never print over the row that just lost. v51: below wins
+      // whenever it has room: the games after this one are not printed yet, so it
+      // is empty, while above holds the earlier months' coins.
+      var gap = 34, above = E.y - gap - top, below = h - (E.y + gap), useAbove = below < 150 && above > below;
       var span = useAbove ? above : below, spanTop = useAbove ? top : E.y + gap;
       if (span < 150) { span = h - top; spanTop = top; }        // no room either side: the L takes the whole page
       var Lh = Math.max(70, Math.min((h - top) * 0.6, w * 0.95, (span - 62) / 0.76)), sc = Lh / bigL.h;
@@ -420,6 +422,15 @@
       fx.globalAlpha = fade; fx.globalCompositeOperation = TH.blend; fx.textAlign = "center";
       if ("letterSpacing" in fx) fx.letterSpacing = "2px";
       var ty = cy + sink + 0.36 * Lh + 26;                    // just under the L's baseline
+      // v51: a plate of the card's own stock under the caption, so it reads even when
+      // it has to land across a month's coins (invisible over empty stock)
+      fx.font = "700 " + (E.first ? 14 : 12.5) + "px " + MONO;
+      var tw = fx.measureText(E.sub).width;
+      if (E.sub2) { fx.font = "500 11px " + MONO; tw = Math.max(tw, fx.measureText(E.sub2).width); }
+      fx.globalCompositeOperation = "source-over";
+      fx.fillStyle = "rgba(" + TH.stock.join(",") + ",0.88)";
+      fx.fillRect(cx - tw / 2 - 10, ty - 17, tw + 20, E.sub2 ? 44 : 25);
+      fx.globalCompositeOperation = TH.blend;
       fx.font = "700 " + (E.first ? 14 : 12.5) + "px " + MONO; fx.fillStyle = inkPattern(fx, "scarlet", PITCH * d, 0.97, RGB.scarlet);
       fx.fillText(E.sub, cx, ty);
       if (E.sub2) { fx.font = "500 11px " + MONO; fx.fillStyle = inkPattern(fx, "scarlet", PITCH * d, 0.85, RGB.scarlet); fx.fillText(E.sub2, cx, ty + 18); }

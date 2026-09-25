@@ -38,7 +38,7 @@
   --t-bad: #F55A41;             /* NO, a bad trait, danger */
   --t-bad-edge: #8C2317;        /* keycap edge under a bad face */
   --t-bad-ink: #2B0D09;         /* text printed on a bad face */
-  --t-hot: #FF4133;             /* fire: the hot pick, bonuses, the fire sale glow */
+  --t-hot: #FFD54A;             /* fire gold, a gain: the hot pick, bonuses, the Heat Check boost, the fire sale */
   --t-good: #68EE8E;            /* good news, money coming in */
   --t-you: #0078BF;             /* you: your vote, your marker */
   --t-offset: #FF48B0;          /* the second ink: misregistered offsets and highlights */
@@ -71,8 +71,8 @@
   --t-bad-face: #CE4631;        /* bad 63% + bad-edge: red keycap face */
   --t-bad-hi: #F88A78;          /* bad 71% + light: light red: money going out */
   --t-warn: #FC9B34;            /* bad 29% + accent: orange: money running low */
-  --t-hot-hi: #FF584B;          /* hot 88% + light: the hot pick's name and bonus */
-  --t-hot-glow: #FE7A60;        /* hot 67% + accent-hi: the fire bonus meter */
+  --t-hot-hi: #FFDA60;          /* hot 88% + light: the hot pick's name and bonus */
+  --t-hot-glow: #FEDD6F;        /* hot 67% + accent-hi: the fire bonus meter */
   --t-text-3: #555C64;          /* text-2 42% + ground-3: the dimmest text: disabled */
   --t-off-face: #3B352B;        /* rule 39% + ground-2: a disabled keycap */
   --t-off-edge: #494032;        /* rule 51% + ground-3: a disabled keycap's rim */
@@ -89,7 +89,7 @@
   --t-line-paper-rgb: 35 42 78; --t-text-rgb: 232 228 216; --t-text-2-rgb: 154 160 166; --t-label-rgb: 185 138 79;
   --t-ink-rgb: 35 42 78; --t-ink-2-rgb: 91 94 115; --t-accent-rgb: 255 181 46; --t-accent-hi-rgb: 252 238 187;
   --t-accent-edge-rgb: 158 90 15; --t-accent-ink-rgb: 42 26 5; --t-metal-rgb: 185 138 79; --t-bad-rgb: 245 90 65;
-  --t-bad-edge-rgb: 140 35 23; --t-bad-ink-rgb: 43 13 9; --t-hot-rgb: 255 65 51; --t-good-rgb: 104 238 142;
+  --t-bad-edge-rgb: 140 35 23; --t-bad-ink-rgb: 43 13 9; --t-hot-rgb: 255 213 74; --t-good-rgb: 104 238 142;
   --t-you-rgb: 0 120 191; --t-offset-rgb: 255 72 176; --t-sun-rgb: 255 181 17; --t-sun-edge-rgb: 199 135 10;
   --t-sun-ink-rgb: 138 93 0; --t-win-rgb: 255 181 17; --t-loss-rgb: 245 90 65; --t-print-paper-rgb: 26 32 39;
   --t-print-key-rgb: 0 120 191; --t-print-pop-rgb: 255 72 176; --t-print-sun-rgb: 255 181 17;
@@ -97,7 +97,7 @@
   --t-accent-face-rgb: 228 156 37; --t-accent-glow-rgb: 253 214 128; --t-good-soft-rgb: 138 186 158;
   --t-good-top-rgb: 86 194 118; --t-good-face-rgb: 73 167 99; --t-good-edge-rgb: 48 109 65; --t-good-ink-rgb: 19 43 26;
   --t-bad-soft-rgb: 230 101 81; --t-bad-top-rgb: 246 105 82; --t-bad-face-rgb: 206 70 49; --t-bad-hi-rgb: 248 138 120;
-  --t-warn-rgb: 252 155 52; --t-hot-hi-rgb: 255 88 75; --t-hot-glow-rgb: 254 122 96; --t-text-3-rgb: 85 92 100;
+  --t-warn-rgb: 252 155 52; --t-hot-hi-rgb: 255 218 96; --t-hot-glow-rgb: 254 221 111; --t-text-3-rgb: 85 92 100;
   --t-off-face-rgb: 59 53 43; --t-off-edge-rgb: 73 64 50; --t-off-ink-rgb: 119 100 72; --t-overlay-warm-rgb: 31 25 15;
   --t-metal-deep-rgb: 106 83 53; --t-metal-dark-rgb: 74 55 32; --t-news-ink-rgb: 27 24 19;
   --t-news-ink-2-rgb: 74 64 51; --t-news-red-rgb: 167 49 34;
@@ -168,7 +168,8 @@ button:focus-visible, summary:focus-visible {
    docs/STYLE-GUIDE.md shows each one. Colors and fonts come only
    from the theme; a look from the Reprint Lab restyles all of them.
      buttons   .t-btn  data-kind= primary (default) | yes | no | good | quiet | text
-     chips     .t-chip data-tone= yes (default) | bad | plain | on,  data-size="lg",
+     chips     .t-chip data-tone= yes (default) | bad | plain | on,  data-size="lg" (a tag
+               you tap to vote) | "sm" (flat, for read-only lists),
                states .is-q .is-off .is-mine, and .t-chip-add ("+")
      cards     .t-card  (data-tone="feature" for a hero card)
      sheets    .t-backdrop + .t-sheet (.on opens), .t-grab handle
@@ -183,7 +184,7 @@ button:focus-visible, summary:focus-visible {
 .t-btn[data-kind="no"] { --spin-top: var(--t-bad-top); --spin-face: var(--t-bad-face); --spin-side: var(--t-bad-edge); --spin-ink: var(--t-bad-ink); }
 .t-btn[data-kind="good"] { --spin-top: var(--t-good-top); --spin-face: var(--t-good-face); --spin-side: var(--t-good-edge); --spin-ink: var(--t-good-ink); }
 .t-btn[data-kind="quiet"], .t-btn[data-kind="text"] { background: transparent; box-shadow: none; transform: none; }
-.t-btn[data-kind="quiet"] { color: var(--t-text-2); border: 1.5px solid var(--t-line); border-radius: var(--t-r-btn); font-weight: 600; }
+.t-btn[data-kind="quiet"] { color: var(--t-text-2); border: 1.5px solid var(--t-rule); border-radius: var(--t-r-btn); font-weight: 600; }   /* v51: the bronze rule (the hairline --t-line vanished on cards) */
 .t-btn[data-kind="quiet"]:not(:disabled):active, .t-btn[data-kind="quiet"].pressed, .t-btn[data-kind="quiet"].flashed { color: var(--t-accent); border-color: var(--t-accent); background: transparent; box-shadow: none; transform: none; }
 .t-btn[data-kind="text"] { min-height: 40px; padding: 8px 2px; color: var(--t-text-2); font-family: var(--t-mono); font-weight: 400; font-size: var(--t-fs-data);
   letter-spacing: 0.1em; text-decoration: underline; text-underline-offset: 4px; border: 0; }
@@ -209,6 +210,11 @@ button.t-chip, button.tchip, .bt-tag { cursor: pointer; user-select: none; -webk
 .t-chip[data-tone="on"] { color: var(--t-accent-ink); background: var(--t-accent); box-shadow: none; }
 .t-chip[data-size="lg"], .bt-tag { min-height: 34px; padding: 0 10px; font-size: 14px; letter-spacing: 0.06em; line-height: 1;
   box-shadow: inset 0 1px 0 rgb(var(--t-light-rgb) / .45), 0 4px 0 var(--chip-edge); }
+/* the flat small chip: read-only tags in dense lists (the draft pool, legends). Same tones,
+   no keycap edge, and it never sinks when tapped open; the raised chip stays for tags you vote with. */
+.t-chip[data-size="sm"] { min-height: 19px; padding: 2px 6px 1px; font-size: 11.5px; letter-spacing: 0.07em;
+  background: var(--chip-top); box-shadow: none; }
+.t-chip[data-size="sm"]:active, .t-chip[data-size="sm"].expanded, .t-chip[data-size="sm"].pressed { transform: none; box-shadow: none; }
 button.t-chip:active, button.tchip:active, .tchip.expanded, .t-chip.pressed, .bt-tag:active, .bt-tag.pressed {
   transform: translateY(2px); box-shadow: inset 0 1px 0 rgb(var(--t-light-rgb) / .3), 0 0 0 var(--chip-edge); }
 .t-chip.is-q::before, .bt-tag.q::before {
@@ -346,7 +352,7 @@ body.drafting .site-foot { display: none; }
   display: inline-flex;
   align-items: center;
   padding: 4px 0;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--t-text-2);
@@ -361,7 +367,7 @@ body.drafting .site-foot { display: none; }
   transition: transform 0.15s ease;
 }
 .site-foot details.legal[open] summary::before { transform: rotate(90deg); }
-.site-foot details.legal p { margin: 8px 0 0; }
+.site-foot details.legal p { margin: 8px 0 0; font-size: var(--t-fs-data); line-height: 1.5; }   /* v51: readable (it inherited the footer's 9px) */
 .site-foot a { color: var(--t-text); text-decoration: underline; }
 
 .loading-state { padding: 48px 0; text-align: center; }
@@ -554,14 +560,14 @@ button.more-modes:disabled,
 .skip-btn.presti-spin.refunded::after,
 .skip-btn.presti-spin.firesale::after  { background-position: 5px 5px; animation: bulbsB 0.26s steps(1, end) infinite; }
 
-/* FIRE SALE: the refund flash's evil twin — same extrusion, same marquee bulbs,
-   but the panic-red palette. Every price on the board is -$2 until the next
-   reroll or pick. */
+/* FIRE SALE: the refund flash's twin, same extrusion, same marquee bulbs. Every
+   price on the board is -$2 until the next reroll or pick: a gain, so it lights
+   in the hot role's fire gold (v51, owner: red means bad; it was the bad red). */
 .skip-btn.presti-spin.firesale {
-  --spin-face: var(--t-bad-face);
-  --spin-top:  var(--t-bad-top);
-  --spin-side: var(--t-bad-edge);
-  color: var(--t-bad-ink);
+  --spin-face: var(--t-hot);
+  --spin-top:  var(--t-hot-hi);
+  --spin-side: var(--t-accent-edge);
+  color: var(--t-accent-ink);
   font-weight: 700;
   animation: spinRefund 500ms ease;
 }
@@ -606,6 +612,16 @@ button.more-modes:disabled,
 }
 .pool-search::placeholder { color: var(--t-text-2); }
 .pool-search:focus { outline: none; border-color: var(--t-metal); }
+/* the clear (x) in the theme, not the browser's blue: a token-colored cross drawn by a mask (v51) */
+.pool-search::-webkit-search-cancel-button {
+  -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-left: 6px; cursor: pointer;
+  background: var(--t-text-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2L2 12' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.pool-search::-webkit-search-cancel-button:hover { background: var(--t-accent); }
+/* a search that matches nobody says so (v51) */
+.pool-empty { margin: 14px 4px; font-family: var(--t-mono); font-size: var(--t-fs-small); line-height: 1.45; color: var(--t-text-2); text-align: center; }
 /* iPhone Safari zooms the page on focusing any input whose font-size computes
    under 16px. Touch devices get the search box at exactly 16px (vertical
    padding trimmed so the tools row barely grows); desktop keeps 13px. User
@@ -1011,8 +1027,8 @@ button.more-modes:disabled,
   border-color: var(--t-hot);
   box-shadow: 0 0 0 1px var(--t-hot), 0 0 16px rgb(var(--t-hot-rgb) / .55), inset 0 0 18px rgb(var(--t-hot-rgb) / .12);
 }
-.hot-pick .pr-name { color: var(--t-hot-hi); }/* hot player's name in the bonus red */                          
-.hot-pick .pr-v .hot-bonus { color: var(--t-hot-hi); text-shadow: 0 0 10px rgb(var(--t-hot-rgb) / .6); }/* base value stays gold; only the bonus is red */   
+.hot-pick .pr-name { color: var(--t-hot-hi); }/* hot player's name in the bonus fire gold */
+.hot-pick .pr-v .hot-bonus { color: var(--t-hot-hi); text-shadow: 0 0 10px rgb(var(--t-hot-rgb) / .6); }/* base value stays the accent gold; only the bonus is fire gold */
 .hot-pick .slot-badge {
   color: var(--t-hot-hi);
   text-shadow: 0 0 10px rgb(var(--t-hot-rgb) / .6);
@@ -1167,14 +1183,8 @@ button.more-modes:disabled,
 @keyframes youIn { from { opacity: 0; transform: translateY(-50%) translateX(-6px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
 
 .actions { display: flex; gap: 8px; margin: 18px 0 6px; }
-.startover-btn {
-  align-self: flex-start;
-  font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase;
-  color: var(--t-accent-ink); background: var(--t-accent);
-  border: 1px solid var(--t-accent);
-  padding: 5px 11px; margin-bottom: 12px; cursor: pointer;
-}
-.startover-btn:active { background: var(--t-metal); border-color: var(--t-metal); }
+/* v51: START OVER is the shared small keycap (.t-btn data-size="sm"); only its place is set here */
+.startover-btn { align-self: flex-start; margin-bottom: 12px; }
 
 .results-topbar {
   display: flex;
@@ -1184,33 +1194,9 @@ button.more-modes:disabled,
   margin-bottom: 12px;
 }
 .results-topbar .startover-btn { margin-bottom: 0; }
-.donate-btn {
-  --spin-face: var(--t-accent-face);   /* same goldenrod bevel as button.presti-spin */
-  --spin-top:  var(--t-accent);
-  --spin-side: var(--t-accent-edge);
-  --spin-ink:  var(--t-accent-ink);
-  font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase;
-  color: var(--spin-ink); font-weight: 600;
-  border: 0; border-radius: 9px;
-  padding: 6px 12px 7px; cursor: pointer;
-  text-decoration: none; display: inline-block;
-  max-width: 62%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  background: linear-gradient(180deg, var(--spin-top) 0%, var(--spin-face) 48%, var(--spin-face) 100%);
-  box-shadow:
-    inset 0 1px 0 rgb(var(--t-light-rgb) / .45),
-    0 5px 0 0 var(--spin-side),
-    0 7px 9px -3px rgb(var(--t-shadow-rgb) / .5);
-  transform: translateY(0);
-  transition: transform 70ms ease, box-shadow 70ms ease;
-  -webkit-user-select: none; user-select: none;
-}
-.donate-btn:active {
-  transform: translateY(4px);
-  box-shadow:
-    inset 0 1px 0 rgb(var(--t-light-rgb) / .35),
-    0 1px 0 0 var(--spin-side),
-    0 2px 4px -2px rgb(var(--t-shadow-rgb) / .45);
-}
+/* v51: FEATURE REQUESTS is the shared small keycap (.t-btn data-size="sm"), like START OVER
+   beside it, so the pair matches; only its width cap and the ellipsis are set here */
+.donate-btn { display: inline-block; max-width: 62%; line-height: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn {
   flex: 1;
   font-family: var(--t-disp);
@@ -1381,10 +1367,12 @@ button.more-modes:disabled,
 .cap-note { flex: 1; min-width: 0; font-family: var(--t-mono); font-weight: 700; font-size: 10.5px; letter-spacing: 0.01em; line-height: 1.2; color: var(--t-accent); }
 
 /* ---------- Presti "Hot Hand": the 82-0 shot overlay ---------- */
+/* v51: a solid scrim. At .93/.97 the results page (the gold SHARE slab) showed through
+   the post-season Heat Check, and the reel's record and SKIP through the mid-season one. */
 .hh-overlay {
   position: fixed; inset: 0; z-index: 90;
   display: flex; align-items: center; justify-content: center; padding: 24px;
-  background: radial-gradient(120% 90% at 50% 32%, rgb(var(--t-overlay-warm-rgb) / .93), rgb(var(--t-overlay-rgb) / .97));
+  background: radial-gradient(120% 90% at 50% 32%, var(--t-overlay-warm), var(--t-overlay));
   opacity: 0; transition: opacity 0.45s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1477,14 +1465,18 @@ button.more-modes:disabled,
 
 /* heat meter — intensity is brightness on one gold, not new hues */
 .hh-heat { display: flex; gap: 6px; width: 100%; max-width: 320px; }
-.hh-seg { flex: 1; height: 18px; border-radius: 3px; background: rgb(var(--t-metal-rgb) / .14); transition: background 0.12s, box-shadow 0.12s, transform 0.12s; }
-.hh-seg.fill.lvl0 { background: rgb(var(--t-metal-rgb) / .3); }
-.hh-seg.fill.lvl1 { background: rgb(var(--t-metal-rgb) / .55); }
-.hh-seg.fill.lvl2 { background: rgb(var(--t-accent-rgb) / .7); }
-.hh-seg.fill.lvl3 { background: rgb(var(--t-accent-glow-rgb) / .9); }
-.hh-seg.fill.lvl4 { background: var(--t-accent-hi); }
-.hh-seg.lit { background: var(--t-accent); transform: scaleY(1.28); box-shadow: 0 0 14px rgb(var(--t-accent-rgb) / .75); }
-.hh-seg.result { box-shadow: 0 0 22px rgb(var(--t-accent-hi-rgb) / .95); }
+/* v51: an empty slot is a faint outlined well, a filled one is solid, and the result
+   lights (the fill rules used to outrank .lit, so a WARM miss read as one faint bar) */
+.hh-seg { flex: 1; height: 18px; border-radius: 3px; background: rgb(var(--t-metal-rgb) / .1); box-shadow: inset 0 0 0 1px rgb(var(--t-metal-rgb) / .32);
+  transition: background 0.12s, box-shadow 0.12s, transform 0.12s; }
+.hh-seg.fill.lvl0 { background: rgb(var(--t-metal-rgb) / .6); box-shadow: none; }
+.hh-seg.fill.lvl1 { background: var(--t-metal); box-shadow: none; }
+.hh-seg.fill.lvl2 { background: rgb(var(--t-accent-rgb) / .85); box-shadow: none; }
+.hh-seg.fill.lvl3 { background: var(--t-accent-glow); box-shadow: none; }
+.hh-seg.fill.lvl4 { background: var(--t-accent-hi); box-shadow: none; }
+.hh-heat .hh-seg.lit { background: var(--t-accent); transform: scaleY(1.28); box-shadow: 0 0 14px rgb(var(--t-accent-rgb) / .75); }
+.hh-heat .hh-seg.lit.lvl4 { background: var(--t-accent-hi); }
+.hh-heat .hh-seg.result { box-shadow: 0 0 22px rgb(var(--t-accent-hi-rgb) / .95); }
 .hh-heatlabel { min-height: 28px; font-family: var(--t-disp); font-weight: 700; font-size: 24px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--t-label); transition: transform 0.2s ease; }
 .hh-heatlabel.lvl0 { color: var(--t-text-2); }
 .hh-heatlabel.lvl1 { color: var(--t-label); }
@@ -1506,6 +1498,8 @@ button.more-modes:disabled,
 .hh-verdict.on { opacity: 1; transform: none; }
 .hh-stamp { font-family: var(--t-disp); font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: 0.03em; color: var(--t-accent); font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgb(var(--t-accent-glow-rgb) / .7); }
 .hh-stamp.miss { color: var(--t-text-2); text-shadow: none; }
+.hh-stamp .hh-nw { white-space: nowrap; }   /* v51: "D. ARMSTRONG / CATCHES FIRE", never a lone FIRE */
+.hh-stamp + .hh-netcap { margin-top: 9px; }   /* the caption no longer crowds the stamp */
 .hh-netcap + .hh-bar { margin-top: 0; }
 .hh-vsub { margin-top: 5px; font-family: var(--t-mono); font-size: 12px; color: var(--t-text-2); letter-spacing: 0.02em; }
 .hh-actions { display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; }
@@ -1697,7 +1691,10 @@ button.more-modes:disabled,
 }
 
 /* content pages (/how-it-works/ etc.) — same 560px column as #app */
-a.brand-link { display: block; }
+/* v51: the link takes the logo's size so the logo centers (the image's 68% cap used to
+   resolve against a 232px link, leaving a 158px logo hard left in it, ~37px off center) */
+a.brand-link { display: block; width: 232px; max-width: 68%; }
+a.brand-link .brand-logo { width: 100%; max-width: none; }
 main.content-page {
   max-width: 560px;
   margin: 0 auto;
@@ -2432,21 +2429,17 @@ main.content-page {
 .daily-tile .dt-result { display: block; font-family: var(--t-mono); font-size: 0.78rem;
   letter-spacing: 0.06em; color: var(--t-good-soft); margin: 5px 0 9px; }
 .daily-tile .dt-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.dt-act { font-family: var(--t-mono); font-size: 0.66rem; letter-spacing: 0.1em;
-  text-transform: uppercase; padding: 7px 11px 8px; border-radius: 2px; cursor: pointer; }
-.dt-act:active { transform: translateY(1px); }
+/* v51: the two actions are the shared small keycaps (.t-btn data-size="sm"): CHALLENGE A
+   FRIEND the primary, RUN IT BACK · PRACTICE the quiet one (the decorator had painted both gold) */
 .dt-act:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
-.dt-act-share { background: var(--t-accent); color: var(--t-accent-ink); border: 1px solid var(--t-accent); font-weight: 700; }
-@media (hover: hover) { .dt-act-share:hover { filter: brightness(1.08); } }
-.dt-act-ghost { background: transparent; color: var(--t-text-2); border: 1px dashed var(--t-rule); }
-@media (hover: hover) { .dt-act-ghost:hover { color: var(--t-text); border-color: var(--t-text-2); } }
+@media (hover: hover) { .dt-act-share:hover { filter: brightness(1.08); } .dt-act-ghost:hover { color: var(--t-text); } }
 .daily-tile .dt-tomorrow { display: block; font-size: 0.6rem; letter-spacing: 0.12em;
   color: var(--t-accent); border-top: 1px solid var(--t-rule); margin-top: 10px; padding-top: 7px; }
 @media (prefers-reduced-motion: reduce) {
   .player-row.deny, .tray.deny, #trayInner.deny { animation: none; }
   .daily-tile:active, .dt-act:active { transform: none; }
 }
-.daily-stale { font-size: .72rem; color: var(--t-text-2); margin: -8px 0 12px; }
+.daily-stale, .intro p.daily-stale { font-size: .72rem; color: var(--t-text-2); margin: -8px 0 12px; }   /* v51: .intro p outranked it (15px) */
 
 /* the run strap: the slim plaque. Identity + stakes + (i) on row one, the
    short cryptic line on row two. Same height as before; ornate now. */
@@ -2946,6 +2939,9 @@ body.rules-open { overflow: hidden; }
   border: 1px solid rgb(var(--t-shadow-rgb) / .45);
 }
 #app .ta-cap .skip-btn:disabled .sk-chip { opacity: 0.5; }
+/* REFUND! / FIRE SALE: the flash replaces the label and the price chip with one word,
+   so it centers, in the display face like the labels it stands in for (v51) */
+#app .ta-cap .skip-btn.refunded, #app .ta-cap .skip-btn.firesale { justify-content: center; font-family: var(--t-disp); font-size: 15px; letter-spacing: 0.08em; }
 @media (max-width: 379px) {
   #app .ta-cap { grid-template-columns: 1fr 1fr; }
   #app .ta-cap #rerollYears { grid-column: 1 / -1; }
@@ -3309,14 +3305,9 @@ body.gating .gate-back {
   padding: 11px 8px 12px; box-shadow: 0 2px 0 var(--t-metal);
 }
 .rules-overlay .rs-got:active { background: var(--t-metal); border-color: var(--t-metal); color: var(--t-text); box-shadow: none; }
-/* v47.12: the refresher is a real button in the foot now - an anchor wearing
-   the rs-got slab as the secondary (dark) variant beside the amber GOT IT. */
-.rules-overlay a.rs-got { display: flex; align-items: center; justify-content: center; text-align: center; text-decoration: none; }
-.rules-overlay a.rs-ref-btn {
-  background: var(--t-ground-2); color: var(--t-accent); border-color: var(--t-rule); box-shadow: 0 2px 0 var(--t-ground-3);
-  flex: 0 1 auto; min-width: 0; white-space: nowrap; font-size: 14px; letter-spacing: 0.06em; padding: 12px 12px 13px;
-}
-.rules-overlay a.rs-ref-btn:active { background: var(--t-metal); border-color: var(--t-metal); color: var(--t-text); box-shadow: none; }
+/* v47.12: the refresher is a real button in the foot. v51: it is the shared quiet
+   button (.t-btn data-kind="quiet") beside the raised GOT IT; only its size is set here. */
+.rules-overlay a.rs-ref-btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; font-size: 14px; letter-spacing: 0.06em; padding: 12px 12px 13px; }
 @media (max-width: 340px) {
 /* v47.12: the foot holds two buttons now (the engine-math link is gone), so
      an SE fits them side by side; wrap stays on only as a safety valve. */  
@@ -3347,7 +3338,7 @@ body.gating .gate-back {
 .traits-module .tm-q:active { color: var(--t-accent); }
 .traits-module .tm-def { display: block; font-size: 13px; color: var(--t-text-2); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* v47.21: IDK is exactly two thirds of its v47.19 width: YES and NO split what it gave up (4:4:1) */
-.traits-module .tm-votes { display: grid; grid-template-columns: 4fr 4fr 1fr; gap: 11px; margin-top: 11px; }
+.traits-module .tm-votes { display: grid; grid-template-columns: 4fr 4fr minmax(44px, 1fr); gap: 11px; margin-top: 11px; }   /* v51: IDK keeps a real tap size (it was 31px) */
 .traits-module .tm-vb { height: 52px; min-height: 0; padding: 0; border-radius: 13px; font-size: 21px; letter-spacing: 0.1em; }
 .traits-module .tm-vb.idk { font-size: 14px; letter-spacing: 0.02em; padding: 0 2px; border-style: dashed; }
 .traits-module.tm-locked .tm-vb { pointer-events: none; opacity: 0.55; }
@@ -3362,6 +3353,7 @@ body.gating .gate-back {
 /* v47.19: sharing is a thin, quiet 2D bar under the pips (kept off the 3D decorator on purpose) */
 .traits-module .tm-sharebar { display: block; width: 100%; height: 32px; margin-top: 9px; appearance: none; -webkit-appearance: none; background: none;
   border: 1px solid var(--t-line); border-radius: 9px; cursor: pointer; font-family: var(--t-mono); font-size: 9.5px; letter-spacing: 0.07em; color: var(--t-text-2); line-height: 1; }
+.traits-module .tm-sharebar[hidden] { display: none; }   /* the display:block above beat [hidden]: the bar outlived the fifth answer */
 .traits-module .tm-shlead { font-weight: 700; color: var(--t-text); }
 .traits-module .tm-sharebar:active, .traits-module .tm-sharebar.flashed { color: var(--t-accent); border-color: var(--t-accent); }
 .traits-module .tm-sharebar:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
@@ -3381,14 +3373,16 @@ body.gating .gate-back {
 .trait-info-btn[hidden] { display: none; }
 .trait-info-btn:active, .trait-info-btn[aria-expanded="true"] { transform: translateY(2px); box-shadow: inset 0 1px 0 rgb(var(--t-light-rgb) / .25), 0 0 0 var(--t-accent-edge); }
 .pool-trait-info { margin-left: 2px; }
-.trait-legend { margin: 0 0 8px; padding: 10px 11px; border: 1px solid var(--t-line); border-radius: 9px; background: var(--t-ground); box-shadow: inset 0 1px 0 rgb(var(--t-light-rgb) / .04); }
-.trait-legend-title { font-family: var(--t-mono); font-size: 10px; letter-spacing: 0.18em; color: var(--t-accent); margin-bottom: 7px; }
-.trait-legend-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 12px; }
-.trait-legend-row { display: flex; align-items: baseline; gap: 7px; min-width: 0; font-family: var(--t-disp); font-size: 13px; line-height: 1.15; color: var(--t-text); }
-.trait-legend-row b { flex: 0 0 auto; color: var(--t-accent); letter-spacing: 0.06em; }
-.trait-legend-row span { min-width: 0; }
-.trait-legend-note { margin-top: 8px; font-family: var(--t-mono); font-size: 9.5px; line-height: 1.3; color: var(--t-text-2); }
-@media (max-width: 390px) { .trait-legend-grid { grid-template-columns: 1fr; } }
+/* v51: tighter, so the pool still shows under it at phone size: two columns down to 340px,
+   and each code is the flat small chip it explains */
+.trait-legend { margin: 0 0 6px; padding: 8px 10px; border: 1px solid var(--t-line); border-radius: 9px; background: var(--t-ground); box-shadow: inset 0 1px 0 rgb(var(--t-light-rgb) / .04); }
+.trait-legend-title { font-family: var(--t-mono); font-size: 10px; letter-spacing: 0.18em; color: var(--t-accent); margin-bottom: 6px; }
+.trait-legend-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 10px; }
+.trait-legend-row { display: flex; align-items: center; gap: 6px; min-width: 0; font-family: var(--t-disp); font-size: 13px; line-height: 1.15; color: var(--t-text); }
+.trait-legend-row .t-chip { flex: 0 0 auto; }
+.trait-legend-row span:last-child { min-width: 0; }
+.trait-legend-note { margin-top: 6px; font-family: var(--t-mono); font-size: 9.5px; line-height: 1.3; color: var(--t-text-2); }
+@media (max-width: 340px) { .trait-legend-grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .tchip { transition: none; } }
 
 /* ============ THE SEASON REEL (v42 cursor, v48 stamps, v51 on the shared pieces) ============
@@ -3415,7 +3409,11 @@ body.gating .gate-back {
 .reel-run { grid-column: 2; grid-row: 1 / span 2; display: inline-block; font-family: var(--t-disp); font-weight: 700; font-size: 30px; line-height: 1; letter-spacing: 0.02em; color: var(--t-text); }
 .reel-run i, .reel-final-rec i { font-style: normal; color: var(--t-loss); }
 .reel-skip { grid-column: 3; grid-row: 1 / span 2; }
-.reel-acts { flex: 1 1 auto; overflow-y: auto; padding: 6px 14px 14px; }
+.reel-acts { flex: 1 1 auto; overflow-y: auto; padding: 6px 14px 14px;
+  scrollbar-width: thin; scrollbar-color: var(--t-rule) transparent; }   /* v51: the finale ledger's scrollbar in the theme (it was the browser's light bar on desktop) */
+.reel-acts::-webkit-scrollbar { width: 8px; }
+.reel-acts::-webkit-scrollbar-track { background: transparent; }
+.reel-acts::-webkit-scrollbar-thumb { background: var(--t-rule); border-radius: 4px; border: 2px solid var(--t-ground-2); }
 .reel-act { padding: 10px 0 2px; border-bottom: 1px dashed var(--t-line); animation: reelIn 0.45s ease-out; }
 .reel-mo-line { display: flex; align-items: center; gap: 10px; }
 .reel-mo { font-family: var(--t-disp); font-weight: 700; font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--t-text); }
@@ -3475,6 +3473,7 @@ body.gating .gate-back {
 .rr .bt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .rr .bt-who { min-width: 0; }
 .rr .bt-name { display: flex; align-items: center; min-width: 0; font-family: var(--t-body); font-weight: 600; font-size: var(--t-fs-name); line-height: 1.15; color: var(--t-text); }
+.rr .hot-pick .bt-name { color: var(--t-hot-hi); }                /* the hot pick's name in fire gold (outranks .rr .bt-name) */
 .rr .bt-name .pr-bref { color: inherit; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration-color: rgb(var(--t-text-rgb) / .3); }
 .rr .bt-card .slot-badge { flex: 0 0 auto; margin-right: 7px; vertical-align: 0; }
 .rr .bt-ssn { font-family: var(--t-mono); font-size: var(--t-fs-data); color: var(--t-text-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3489,6 +3488,9 @@ body.gating .gate-back {
 .rr .bt-box small { font-size: 8px; letter-spacing: 0.04em; color: var(--t-text-2); }
 @media (min-width: 400px) { .rr .bt-box { font-size: 12.5px; gap: 2px 11px; } .rr .bt-box small { font-size: 9px; letter-spacing: 0.08em; } }
 .rr .bt-tags { display: flex; flex-wrap: wrap; gap: 8px 6px; min-height: 38px; }
+.rr .bt-tail { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }   /* the last tag and "+" wrap together: "+" is never alone on a row */
+.rr .bt-val.is-neg { color: var(--t-bad-soft); }   /* a player worth less than a replacement scrub */
+.rr .res-comp:empty { display: none; }   /* a record under the comp ladder has no comp phrase */
 .bt-x { font-size: 12px; font-weight: 700; }
 .rr .bref-credit { font-family: var(--t-mono); font-size: 11px; color: var(--t-text-2); margin: 10px 2px 0; }
 .rr .bref-credit a { color: inherit; }
@@ -3522,6 +3524,7 @@ body.bt-open { overflow: hidden; }
 .bt-tile small { font-size: 12.5px; line-height: 1.3; color: var(--t-text-2); }
 .bt-tile:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
 .bt-sub { color: var(--t-text-2); font-size: 15px; margin: 0 0 6px; }
+.bt-grp { margin: 14px 0 7px; }   /* the picker's group headers (the shared .t-head carries no top margin) */
 .bt-foot { font-family: var(--t-mono); font-size: 11px; color: var(--t-text-2); text-align: center; margin: 16px 0 0; }
 .bt-foot a { color: inherit; }
 body.bt-open .t-toast { top: calc(16px + env(safe-area-inset-top)); bottom: auto; transform: translate(-50%, -20px); }

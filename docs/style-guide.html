@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/styles.css?v=20260925-style-system-v51">
+<link rel="stylesheet" href="/styles.css?v=20260925-fixes-v51-1">
 <style>
 /* This page is the living style guide: it wears styles.css and shows every
    token and shared piece. Layout only here; the law applies to this block too. */
@@ -77,6 +77,11 @@
       <button class="t-chip" data-tone="bad" data-size="lg" type="button">Ball stopper</button>
       <button class="t-chip t-chip-add" data-size="lg" type="button" aria-label="Add">+</button>
     </div>
+    <p class="sg-note" style="margin-top: 14px">Flat small chips (data-size="sm") for read-only tags in dense lists: the draft pool, the label legend. Same tones, no keycap edge, and they never sink when tapped open. Tags you vote with stay raised (data-size="lg").</p>
+    <div class="t-chips">
+      <span class="t-chip" data-size="sm">RIM+</span><span class="t-chip" data-size="sm">OFF-B</span><span class="t-chip" data-size="sm">CLUTCH</span><span class="t-chip" data-size="sm">3PT</span><span class="t-chip" data-size="sm" data-tone="bad">KNUCK</span>
+    </div>
+    <div class="sg-code">&lt;span class="t-chip" data-size="sm"&gt;RIM+&lt;/span&gt;</div>
   </section>
 
   <section class="sg-sec">

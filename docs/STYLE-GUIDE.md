@@ -29,7 +29,7 @@ A finding always names the nearest token. `node tools/stylefix.js <file> --write
 | `accent`, `accent-hi`, `accent-edge`, `accent-ink` | gold family | the main action and the brand: face, highlight, keycap edge, text on it |
 | `metal` | bronze | ornament: frames, pips, rails |
 | `bad`, `bad-edge`, `bad-ink` | vivid red | NO, a bad trait, danger |
-| `hot` | fire red | the hot pick, bonuses (the lab's looks make it fire gold) |
+| `hot` | fire gold | a gain: the hot pick, bonuses, the Heat Check boost, the fire sale. Never red: red means bad (the owner's rule) |
 | `good` | mint | good news, money coming in |
 | `you` | riso blue | your vote, your marker |
 | `offset` | fluorescent pink | the second ink: misregistered offsets |
@@ -61,7 +61,7 @@ Markup for each is on `docs/style-guide.html`.
 | Piece | Markup | Notes |
 |---|---|---|
 | Button | `<button class="t-btn">Play</button>` | the extruded keycap. `data-kind="yes"` (same gold), `"no"` (red keycap), `"good"` (green keycap), `"quiet"` (outline), `"text"` (underlined link button). `data-size="lg"` for a big vote key, `"sm"` for a small one. Any plain `<button>` on the game screens already gets the keycap (app.js decorates them). |
-| Chip | `<span class="t-chip">3PT</span>` | the gold slab. `data-tone="bad"` red, `"plain"` outline, `"on"` filled accent. `data-size="lg"` for tappable tags. States: `.is-q` ("?" badge), `.is-off` (hollow), `.is-mine` (your ring). `.t-chip-add` is the dashed "+". Wrap a row in `.t-chips`. |
+| Chip | `<span class="t-chip">3PT</span>` | the gold slab. `data-tone="bad"` red, `"plain"` outline, `"on"` filled accent. `data-size="lg"` for tags you tap to vote (the raised keycap); `data-size="sm"` is the flat small chip for read-only tags in dense lists (the draft pool, the label legend): same tones, no keycap edge, never sinks when tapped open. States: `.is-q` ("?" badge), `.is-off` (hollow), `.is-mine` (your ring). `.t-chip-add` is the dashed "+". Wrap a row in `.t-chips`. |
 | Card | `<div class="t-card">…</div>` | a panel on the ground. `data-tone="feature"` adds the bronze rule and the metal top edge (a hero card). |
 | Sheet | `.t-backdrop` + `.t-sheet` (add `.on` to open), `.t-grab` handle | slides up from the bottom. |
 | Toast | `<div class="t-toast" role="status">` (add `.on`) | |

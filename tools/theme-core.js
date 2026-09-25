@@ -51,7 +51,7 @@
     ["bad", "#F55A41", "NO, a bad trait, danger"],
     ["bad-edge", "#8C2317", "keycap edge under a bad face"],
     ["bad-ink", "#2B0D09", "text printed on a bad face"],
-    ["hot", "#FF4133", "fire: the hot pick, bonuses, the fire sale glow"],
+    ["hot", "#FFD54A", "fire gold, a gain: the hot pick, bonuses, the Heat Check boost, the fire sale"],
     ["good", "#68EE8E", "good news, money coming in"],
     ["you", "#0078BF", "you: your vote, your marker"],
     ["offset", "#FF48B0", "the second ink: misregistered offsets and highlights"],

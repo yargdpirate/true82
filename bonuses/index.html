@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script id="t82BonusPreload"></script>
-<link rel="stylesheet" href="/styles.css?v=20260925-style-system-v51">
+<link rel="stylesheet" href="/styles.css?v=20260925-fixes-v51-1">
 <style>
 /* Player Bonuses (v51): this page wears the site's theme (styles.css: the
    theme block and the shared pieces). Only its layout lives here, and every
@@ -31,12 +31,17 @@ body{min-height:100svh;display:flex;flex-direction:column;align-items:center;pad
 .brand{font-family:var(--t-mono);font-size:13px;letter-spacing:.28em;color:var(--t-text-2)}
 .brand a{color:inherit;text-decoration:none}
 /* v47.21: the title row carries the trait chip - it sits right of the
-   wordmark and clear of the absolutely positioned hoop mark. */
-h1{font-family:var(--t-disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--t-text-2);margin:4px 0 18px;display:flex;align-items:center;gap:11px;padding-right:36px;min-height:26px}
+   wordmark and clear of the absolutely positioned hoop mark. v51: the
+   wordmark never breaks; on the narrowest phones a long code (FOUL-MERCH)
+   drops under it instead. */
+h1{font-family:var(--t-disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--t-text-2);margin:4px 0 18px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 11px;white-space:nowrap;padding-right:36px;min-height:26px}
 .card{background:linear-gradient(180deg,var(--t-ground-2),var(--t-ground));border:1px solid var(--t-line);border-top-color:rgb(var(--t-text-rgb) / .13);border-radius:23px;padding:26px 24px;position:relative;box-shadow:0 18px 44px -22px rgb(var(--t-shadow-rgb) / .65)}
 .toprow{display:flex;justify-content:space-between;font-family:var(--t-mono);font-size:12px;letter-spacing:.22em;color:var(--t-text-2);margin-bottom:14px}
 .q-tag[hidden]{display:none}
-.q{font-family:var(--t-disp);font-weight:700;font-size:clamp(36px,10vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--t-text);margin-bottom:10px}
+/* v51: the question wears the shared .t-title role (display face, caps,
+   balanced lines), the same voice as the ballot sheet and the homepage poll;
+   only its size is this page's own. */
+.q{font-size:clamp(29px,8.8vw,38px);line-height:1.04;margin:0 0 10px}
 .meta{font-size:14px;color:var(--t-text-2);margin-bottom:8px}
 .qx{display:flex;flex-direction:column;gap:11px;margin-top:11px}
 /* v47.19-r3: the share button carries two sizes on one line - the lead
@@ -135,23 +140,29 @@ a.qx-btn[hidden]{display:none}
   var pathSlug = (location.pathname.match(/^\/bonuses\/([a-z0-9][a-z0-9-]{2,78})\/?$/) || [])[1] || "";
   var pinnedRef = pathSlug || (function (v) { return /^[a-z0-9][a-z0-9-]{2,78}$/.test(v || "") ? v : ""; })(params.get("q"));
   var preload = window.__T82_BONUS__ || null;
+  // v51: one spelling of every trait code, the results ballot's (BALLOT_TRAITS
+  // in app.js). Wing Defender, Primary Creator and Help Defender are retired
+  // traits that old questions can still carry.
   var TAG_ABBR = {
-    "Three-Point Shooter": "3PT", "Super Three-Point Shooter": "GRAV", "Iso Defender": "ISO-D",
-    "Team Defender": "TEAM-D", "Rim Protector": "RIM-D", "Playmaker": "PLAY", "Clutch": "CLTCH",
-    "Rim Pressurer": "RIM+", "Off-Ball Scorer": "OFF-B", "Switchable Defender": "SWCH-D",
-    "Tough Shot Maker": "TSHOT", "Off-Court Knucklehead": "OFC-R", "Ball Stopper": "BSTOP",
-    "Foul Merchant": "FOUL$", "Stat Padder": "STAT+", "Championship #1": "CH#1",
-    "Ball Pounder": "BPOUND", "Wing Defender": "WING-D", "Primary Creator": "CREATE",
-    "Help Defender": "HELP-D"
+    "Three-Point Shooter": "3PT", "Super Three-Point Shooter": "GRAVITY", "Rim Pressurer": "RIM+",
+    "Off-Ball Scorer": "OFF-B", "Tough Shot Maker": "TSHOT", "Playmaker": "PLAY",
+    "Iso Defender": "ISO-D", "Team Defender": "TEAM-D", "Switchable Defender": "SWITCH",
+    "Rim Protector": "RIM-P", "Clutch": "CLUTCH", "Championship #1": "TITLE #1",
+    "Hunted": "HUNTED", "Ball Stopper": "BALL-STOP", "Ball Pounder": "BALL-POUND",
+    "Foul Merchant": "FOUL-MERCH", "Stat Padder": "STAT-PAD", "Off-Court Knucklehead": "KNUCK",
+    "Wing Defender": "WING-D", "Primary Creator": "CREATE", "Help Defender": "HELP-D"
   };
+  // The bad traits wear the bad chip, as on the results ballot.
+  var TAG_BAD = { "Hunted": 1, "Ball Stopper": 1, "Ball Pounder": 1, "Foul Merchant": 1, "Stat Padder": 1, "Off-Court Knucklehead": 1 };
   // v47.21: the chip lives in the page title, so it is set per question
   // rather than built into the question markup, and cleared whenever the
   // card is not showing a question.
   function setTitleTag(q) {
     var t = document.getElementById("titleTag");
     if (!t) return;
-    var a = TAG_ABBR[String((q && q.trait_name) || "")] || "";
+    var name = String((q && q.trait_name) || ""), a = TAG_ABBR[name] || "";
     t.textContent = a;
+    if (TAG_BAD[name]) t.setAttribute("data-tone", "bad"); else t.removeAttribute("data-tone");
     t.hidden = !a;
   }
   var Q = [], idx = 0, doneIds = [], sessionOpen = false, completedOnce = false, lastAnswered = null;
@@ -314,7 +325,7 @@ a.qx-btn[hidden]{display:none}
     setTitleTag(null);
     stage.innerHTML =
       '<section class="card"><div class="toprow"><span>PLAYER BONUS</span></div>' +
-      '<p class="q" style="font-size:30px">THE QUESTION FEED DID NOT ANSWER.</p>' +
+      '<p class="q t-title" style="font-size:30px">THE QUESTION FEED DID NOT ANSWER.</p>' +
       '<button class="act-next t-btn" id="retryFeed">TRY AGAIN</button>' +
       '<a class="act-share t-btn" data-kind="quiet" href="/?src=bonuses">BACK TO TRUE 82</a></section>';
     track("traits_session", { surface: "traits", action: "feed_error", source: entrySource, outcome: String(reason || "unknown").slice(0, 40) });
@@ -332,7 +343,8 @@ a.qx-btn[hidden]{display:none}
     var wc = q.what_counts || q.definition || "";
     stage.innerHTML =
       '<section class="card" id="qcard">' +
-        '<p class="q">' + esc(questionText(q)) + "</p>" +
+        // a no-break space keeps "a", "an" and "the" with the next word, so no line ends on one
+        '<p class="q t-title">' + esc(questionText(q)).replace(/\b(a|an|the) /gi, "$1 ") + "</p>" +
         (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
         (wc ? '<p class="q-def">' + esc(wc) + "</p>" : "") +
         '<div class="controls" id="controls">' +
@@ -342,13 +354,14 @@ a.qx-btn[hidden]{display:none}
           "</div>" +
           '<button class="v-unsure t-btn" data-kind="quiet" data-v="unsure">UNSURE</button>' +
         "</div>" +
+        // right under the vote buttons, so a failed vote's TRY AGAIN sits by them
+        '<div id="resultZone" aria-live="polite"></div>' +
         '<div class="qx" id="qx">' +
           '<a class="qx-btn t-btn" data-kind="quiet" id="qRef" hidden target="_blank" rel="noopener">Stats Refresher \u2197</a>' +
           '<button class="qx-btn qx-share t-btn" data-kind="quiet" id="qShare" type="button">' +
             '<span class="qx-lead">Share Vote</span><span class="qx-sub">(please don\u2019t vote brigade)</span></button>' +
           '<a class="qx-btn qx-play t-btn" href="/?src=bonuses">PLAY THE GAME</a>' +
         "</div>" +
-        '<div id="resultZone" aria-live="polite"></div>' +
       "</section>";
     setTitleTag(q);
     track("traits_question", { surface: "traits", action: "view", ordinal: n, challenge: q.id, source: entrySource });
@@ -376,6 +389,11 @@ a.qx-btn[hidden]{display:none}
     }
   }
 
+  // The server turns away a second vote from the same voter inside 1.2s
+  // (rate_limited). Like the results ballot, votes go out at least 1.3s
+  // apart, counted from the last reply, and a rate_limited reply waits and
+  // sends again (twice at most) instead of failing a quick second vote.
+  var VOTE_GAP_MS = 1300, lastVoteAt = 0;
   function castVote(q, resp, btn, isRetry) {
     var controls = document.getElementById("controls");
     var card = document.getElementById("qcard");
@@ -383,25 +401,41 @@ a.qx-btn[hidden]{display:none}
     if (controls.classList.contains("locked") && !isRetry) return;
     controls.classList.add("locked");
     btn.classList.add("pressed");
-    var started = Date.now();
-    var slow = setTimeout(function () { btn.dataset.label = btn.textContent; btn.textContent = "\u2026"; }, 400);
+    var started = Date.now(), tries = 0;
+    // A slow reply swaps only the label's text for "\u2026" (like COPIED), so the
+    // button's haptic switch and its listeners stay in place.
+    var label = null, saved = null;
+    for (var n = btn.firstChild; n && !label; n = n.nextSibling) if (n.nodeType === 3 && n.nodeValue.trim()) label = n;
+    var slow = setTimeout(function () { if (label) { saved = label.nodeValue; label.nodeValue = "\u2026"; } }, 400);
     var minH = controls.offsetHeight;
-    fetch("/api/traits", {
-      method: "POST", credentials: "same-origin",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: entrySource, sid: sid })
-    }).then(function (r) { return r.json(); }).then(function (x) {
+    function settle() {
+      lastVoteAt = Date.now();
       clearTimeout(slow);
-      if (btn.dataset.label) btn.textContent = btn.dataset.label;
-      if (!x || !x.ok || !x.display) return voteFailed(q, resp, btn, x && x.reason);
-      lastAnswered = q;
-      track("traits_vote", { surface: "traits", action: resp, ordinal: idx + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - started, source: entrySource });
-      showResult(q, resp, x.display, false, minH);
-    }).catch(function () {
-      clearTimeout(slow);
-      if (btn.dataset.label) btn.textContent = btn.dataset.label;
-      voteFailed(q, resp, btn, "network");
-    });
+      if (label && saved != null) { label.nodeValue = saved; saved = null; }
+    }
+    function send() {
+      var wait = lastVoteAt + VOTE_GAP_MS - Date.now();
+      if (wait > 0) { setTimeout(send, wait); return; }
+      lastVoteAt = Date.now();
+      if (!tries) started = lastVoteAt;         // the vote's time, not the deliberate spacing wait
+      fetch("/api/traits", {
+        method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: entrySource, sid: sid })
+      }).then(function (r) { return r.json(); }).then(function (x) {
+        lastVoteAt = Date.now();
+        if (x && !x.ok && x.reason === "rate_limited" && tries < 2) { tries++; send(); return; }
+        settle();
+        if (!x || !x.ok || !x.display) return voteFailed(q, resp, btn, x && x.reason);
+        lastAnswered = q;
+        track("traits_vote", { surface: "traits", action: resp, ordinal: idx + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - started, source: entrySource });
+        showResult(q, resp, x.display, false, minH);
+      }).catch(function () {
+        settle();
+        voteFailed(q, resp, btn, "network");
+      });
+    }
+    send();
   }
 
   function voteFailed(q, resp, btn, reason) {
@@ -424,8 +458,13 @@ a.qx-btn[hidden]{display:none}
     if (early) { big = d.yes + " YES \u00b7 " + d.no + " NO"; cls = "early"; }
     else if ((d.yes_pct || 0) >= 50) { big = d.yes_pct + "% YES"; cls = "yes"; }
     else { big = (100 - d.yes_pct) + "% NO"; cls = "no"; }
-    var you = "You voted " + resp.toUpperCase() + (d.agree_pct != null ? " \u00b7 " + d.agree_pct + "% agree" : "");
-    var elig = (d.yes || 0) + (d.no || 0);
+    var elig = (d.yes || 0) + (d.no || 0), total = elig + (d.unsure || 0);
+    // The tally counts this vote too, so "% agree" needs at least one other
+    // voter in its count (yes and no for a yes or no, everyone for UNSURE).
+    // Alone, it would be "100% agree" with nobody else there.
+    var pool = resp === "unsure" ? total : elig;
+    var you = "You voted " + resp.toUpperCase() +
+      (d.agree_pct != null && pool > 1 ? " \u00b7 " + d.agree_pct + "% agree" : total <= 1 ? " \u00b7 first vote" : "");
     var barHtml = elig > 0
       ? '<div class="bar" aria-hidden="true"><span class="y" style="width:' + Math.round(100 * d.yes / elig) + '%"></span><span class="n" style="flex:1"></span></div>' : "";
     var changeHtml = '<button class="cv-link t-btn" data-kind="text" id="cvBtn">CHANGE VOTE</button>';
@@ -519,7 +558,10 @@ a.qx-btn[hidden]{display:none}
     var url = location.origin + "/bonuses/" + (q.slug || ("?q=" + encodeURIComponent(q.id))) + (q.slug ? "?src=s" : "&src=s");
     var text;
     var pq = questionText(q);
-    if (!d) text = "Vote on this one: " + pq;
+    // No yes or no votes yet (only an UNSURE), or a percent with nobody else
+    // behind it: no tally to brag about, so just invite the vote.
+    var elig = d ? (d.yes || 0) + (d.no || 0) : 0;
+    if (!d || !elig || (d.mode !== "counts" && (d.yes_pct == null || elig < 2))) text = "Vote on this one: " + pq;
     else if (d.mode === "counts") text = "Early vote is " + d.yes + "\u2013" + d.no + ": " + pq;
     else if (resp === "yes") text = "I voted yes: " + pq + " " + d.yes_pct + "% currently say yes.";
     else if (resp === "no") text = "I voted no, and " + (100 - d.yes_pct) + "% agree: " + pq;
@@ -533,10 +575,21 @@ a.qx-btn[hidden]{display:none}
         var f = document.getElementById("flash");
         if (f) f.textContent = "LINK COPIED";
         else if (btn) {
-          if (!btn.dataset.shareLabel) btn.dataset.shareLabel = btn.innerHTML;
-          btn.textContent = "COPIED";
+          // COPIED takes the lead's place (and its 21px size); the small
+          // part steps out. The button's haptic switch stays untouched.
+          var lead = btn.querySelector(".qx-lead"), sub = btn.querySelector(".qx-sub");
+          if (lead) {
+            if (!btn.dataset.shareLabel) btn.dataset.shareLabel = lead.textContent;
+            lead.textContent = "COPIED";
+            if (sub) sub.hidden = true;
+          }
           btn.classList.add("flashed");
-          setTimeout(function () { btn.innerHTML = btn.dataset.shareLabel; btn.classList.remove("flashed"); }, 1400);
+          clearTimeout(btn._copiedT);
+          btn._copiedT = setTimeout(function () {
+            if (lead) lead.textContent = btn.dataset.shareLabel;
+            if (sub) sub.hidden = false;
+            btn.classList.remove("flashed");
+          }, 1400);
         }
         track("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: entrySource });
       }).catch(function () {});

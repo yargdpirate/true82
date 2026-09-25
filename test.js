@@ -4,11 +4,14 @@
 // effCost fire-sale floor, capRoll bargain decay (monotonic, rip-offs invariant),
 // lineup swap legality + doLineupMove/doLineupSwap state, FORCE_CLUTCH/prefersReduce
 // flags, and the crest load-race regression. Run this BEFORE and AFTER any change
-// to game logic in app.js. 61 checks (six pin the riso reel's pacing, flash
+// to game logic in app.js. 66 checks (six pin the riso reel's pacing, flash
 // limit and copy rules, including the v51 one-end-time pacing; ten pin the
-// v50 tag ballot's card logic, vote ids and tally words; the last four are the
-// v51 style law: no color or font outside the theme block, the shared pieces
-// exist, and the section header component);
+// v50 tag ballot's card logic, vote ids and tally words; five pin v51 fix-list
+// rules: one spelling of trait codes (app.js and the Bonuses page), the ballot
+// question's highlight, the results comp line and the GOAT Climb marker on
+// realized wins; the last four
+// are the v51 style law: no color or font outside the theme block, the shared
+// pieces exist, and the section header component);
 // exits nonzero on any failure.
 
 const fs = require("fs");
@@ -231,6 +234,26 @@ eq("ballot: tally words, pill, and no big percent off one vote",
     "812 people have voted \u00B7 54% say yes \u00B7 you said no", "Disputed \u00B7 flips at 62%"]);
 const ballotCopy = [].concat(...ctx.BALLOT_TRAITS.map(T => [T.chip, T.q, T.d || ""]), [t1.line, t1.pill, t2.line, t2.pill]);
 eq("ballot: trait copy and tally words have zero em-dashes (copy law)", ballotCopy.some(l => l.includes(EM)), false);
+// v51 fix list: one spelling of the trait codes, the ballot question, the comp line, the climb.
+eq("trait codes: one spelling everywhere (the pool and legend read the ballot's chips; retired names stay readable)",
+  [ctx.BALLOT_TRAITS.every(T => ctx.traitCardAbbr(T.name) === T.chip), ctx.traitCardAbbr("Clutch"), ctx.traitCardAbbr("Wing Defender")],
+  [true, "CLUTCH", "WING-D"]);
+// the Bonuses page keeps its own copy of the codes (it does not load app.js): it must match the ballot too
+const tagAbbrSrc = (fs.readFileSync("bonuses/index.html", "utf8").match(/var TAG_ABBR = (\{[\s\S]*?\});/) || [])[1];
+const bonusAbbr = tagAbbrSrc ? vm.runInNewContext("(" + tagAbbrSrc + ")") : {};
+eq("trait codes: the Bonuses page spells every live trait exactly like the ballot",
+  ctx.BALLOT_TRAITS.filter(T => bonusAbbr[T.name] !== T.chip).map(T => T.name), []);
+const qOf = id => ctx.ballotQuestionHtml({ season: 2016, name: "Pedro Huertas" }, ctx.BALLOT_TRAITS.find(T => T.id === id));
+eq("ballot: the question highlights only the trait words; the article sits outside, tied by a no-break space",
+  [qOf("off-ball-scorer"), qOf("hunted")],
+  ['Was 2016 Huertas an\u00A0<mark class="">off-ball scorer</mark>?', 'Was 2016 Huertas <mark class="neg">hunted on defense</mark>?']);
+const compText = w => ctx.resultsCompHtml(w).replace(/<[^>]+>/g, "");
+eq("results comp: no phrase more than one win below the ladder (3-79, 41-41, 60-22); the rungs read true above it",
+  [3, 41, 60, 61, 62, 70, 82].map(compText),
+  ["", "", "", "Almost as good as the Beautiful Game Spurs", "Almost as good as the Bad Boy Pistons", "Almost as good as the Lob City Lineup", "Greatest of all GOATs"]);
+eq("GOAT Climb: the marker rides the realized record, like the comp line (not the pre-season net)",
+  [/climb-you below/.test(ctx.climbHtml({ winTally: 64, net: 0 })), /climb-you below/.test(ctx.climbHtml({ winTally: 50, net: 25 }))],
+  [false, true]);
 
 // ---------- v51 THE STYLE LAW: one theme, enforced (tools/style-law.js, docs/STYLE-GUIDE.md) ----------
 // Colors and fonts are written only in styles.css's generated theme block; every
