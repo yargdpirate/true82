@@ -279,6 +279,28 @@ eq("section headers: head() builds one component with the context's variant",
   ['<h2 class="t-head" data-head="' + ctx.HEADS.results + '">Your five</h2>', '<h2 class="t-head bt-h" data-head="' + ctx.HEADS.sheet + '">Add a tag</h2>',
     '<h3 class="t-head" data-head="eyebrow">X</h3>']);
 
+// ---------- v56 THE DAILY ARCHIVE: history is pinned, and a replay never claims the day ----------
+// The archive replays every past board from its date. POOL is a per-day hash and POOL2 a rotation modulo its
+// length, so editing either (or SEED_NS, or EPOCH) would silently rewrite old boards: this pin fails first.
+// New boards go in a POOL3 with its own start date.
+{
+  const dctx = { Math, Date, console, JSON, URLSearchParams };
+  vm.createContext(dctx);
+  vm.runInContext(fs.readFileSync("challenges.js", "utf8"), dctx);
+  vm.runInContext(fs.readFileSync("daily-core.js", "utf8"), dctx);
+  const D = dctx.T82DAILY, hist = [];
+  for (let k = D.EPOCH; k <= "2026-09-26"; k = D.shiftKey(k, 1)) { const b = D.boardFor(k); hist.push(b.num + ":" + (b.ch ? b.ch.id : b.base) + ":" + b.seed); }
+  eq("daily archive: boards #1 to #77 rebuild exactly as dealt (POOL, POOL2, SEED_NS and EPOCH are history)",
+    [hist.length, D.hash32(hist.join("|")), hist[76]], [77, 3976625062, "77:heliocentric:1893317855"]);
+  let mem = null;
+  D._setStore({ get: () => mem, set: (o) => { mem = JSON.parse(JSON.stringify(o)); return true; } });
+  D.recordArchive("2026-09-20", 71, 60, 5.2);
+  D.recordArchive("2026-09-20", 71, 55, 3.1);
+  D.recordArchive("2026-09-20", 71, 58, 4, false);
+  eq("daily archive: a replay keeps the best record and counts runs, never touching official or the streak",
+    [D.archiveFor("2026-09-20"), D.officialFor("2026-09-20"), D.streakFor("2026-09-21")], [{ num: 71, wins: 60, net: 5.2, runs: 2 }, null, 0]);
+}
+
 // ---------- v55 THE REDRAFTED on the real player data (skipped when site_data.json is absent) ----------
 // The owner's "redraftables", ported from the accounts-test archive: every class derives from the data,
 // every board can field three legal teams in both difficulties, and a full computer draft always finishes.

@@ -3,10 +3,41 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v55`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v55"`, cache keys `20260926-redrafted-v55`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, then v55. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v55, THE REDRAFTED (the owner's list item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000d, 00000c and 00000b first.
+**Build:** `v56`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v56"`, cache keys `20260926-archive-v56`, daily-core.js too). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, then v56. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v56, THE DAILY ARCHIVE (the owner's list item 16); v55 THE REDRAFTED (item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000e to 00000b first. Only item 17 (accounts, "later") is left on the owner's list.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000e. V56: THE DAILY ARCHIVE, play or view past Dailies (the owner's item 16, 2026-09-26)
+
+Every past Daily rebuilds exactly from its date (daily-core `boardFor` is deterministic and client-side; no
+server), so the archive needs no data of its own:
+- **Past Dailies** (`renderDailyArchive`): a text link under THE DAILY tile on the home page opens a list from
+  yesterday back to #1: number, date, board name, base mode, and your official that day (the device now keeps 400
+  days, `KEEP_DAYS`) or your best replay or "not played". A row opens that board's gate.
+- **The past board's gate** (`renderDailyGate(board, target, tag, { archive: true })`): the board's own date, "A past
+  Daily", the law "A replay is practice: official days and your streak stay as they are", THAT DAY'S VARIATION; back
+  returns to the list.
+- **The replay** (`startDailyRun(..., { archive: true })`): variant `daily-practice:N` (so it stays out of the Daily's
+  percentile pool), surface `daily_archive`, `G.social.archive = 1`. Results never claim the day
+  (`renderResults` skips `recordOfficial`; the Heat Check and percentile amends need the run's nonce, which a replay
+  never gets); instead `T82DAILY.recordArchive(key, num, wins, net, newRun)` keeps your best replay apart (a re-render
+  after a Heat Check updates it without counting a run). The head line reads PAST BOARD with your official that day
+  or REPLAY; RUN IT BACK replays the same past board; a "Past Dailies" link returns to the list.
+- **Sharing a replay:** with an official that day it shares the official, like any practice run. With none, it
+  shares as a team ("SHARE YOUR TEAM", the regular share and its poster): the locked SHARE FORMAT LAW is untouched.
+  A "#N replay" line would change that law, so it is the owner's call (asked in the v56 summary).
+- **Links:** a challenge link to a past board (`?d=` older than today) now opens that board's gate with the friend's
+  number pinned (it used to be a note with no way to play, and the note vanished when today was already played); a
+  link from a time zone already on tomorrow says it opens at midnight here.
+- **History is pinned:** test.js rebuilds boards #1 to #77 (through 2026-09-26) and pins them, so an edit to POOL,
+  POOL2 (a rotation modulo its length), SEED_NS or EPOCH that would rewrite old boards fails the tests. New boards
+  go in a POOL3 with its own start date (daily-core.js says so; its "bump SEED_NS" comment was wrong and is fixed).
+  74 tests.
+- Not done: re-scoring an old official (scoring changed early in July without a version bump, so a stored five from
+  #1 to about #9 would score differently today; the archive never re-scores, it shows what was recorded).
 
 ---
 
@@ -141,8 +172,8 @@ Calls made (the owner may overrule):
   GAME BASICS lines are reused as they are.
 - The glossary door is a text button, not an (i), so it says what it does.
 
-Next on the owner's list (in order): 10 (done in v54, section 00000c), 15 (done in v55, section 00000d), 16 (a
-Daily archive: play or view past Dailies), 17 (later: leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
+Next on the owner's list (in order): 10 (done in v54, section 00000c), 15 (done in v55, section 00000d), 16 (done
+in v56, section 00000e), 17 (later: leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
 runs about 14% taller than Barlow in tight spots), and the lab's 93-state recapture and artifact republish.
 
 ---

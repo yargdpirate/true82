@@ -26,12 +26,13 @@
    plays, share still copies) · zero-cron · replay law untouched (engine and
    hooks unmodified) · manifest law (pool references ids; missing id -> vanilla
    board) · no em-dashes in any user-facing string in this file.
-   Tests: test.js §15 vm-loads this file and pins seeds, tiers, codec, storage. */
+   Tests: test.js vm-loads this file and pins every past board (#1 through
+   #77, 2026-09-26) and the archive's storage (v56). */
 (function (g) {
   "use strict";
 
   var EPOCH = "2026-07-12";            // Daily #1
-  var SEED_NS = "t82d1|";              // bump to reseed all future boards
+  var SEED_NS = "t82d1|";              // never bump: seedFor has no date cutoff, so a new namespace reseeds EVERY board, past ones too (v56: the archive replays them)
   var GAMES = 82;
 
   /* ---------- day math (all local-time, string keys) ---------- */
@@ -46,6 +47,8 @@
     return new Date(+p[0], +p[1] - 1, +p[2], 12, 0, 0, 0);
   }
   function validKey(key) { return /^\d{4}-\d{2}-\d{2}$/.test(String(key)); }
+  // v56: the key n days from key (negative: back), for the archive's list.
+  function shiftKey(key, n) { return dayKey(keyToNoon(key).getTime() + n * 86400000); }
   function dayNum(key) {
     if (!validKey(key)) return 0;
     var diff = Math.round((keyToNoon(key) - keyToNoon(EPOCH)) / 86400000);
@@ -110,7 +113,10 @@
      healthy pools and center supply). The audit retired the modes that
      bricked (escalator: 61% dead), starved (two_way: 4-player boards), or
      filled slots only through same-name data collisions (short_kings,
-     small_ball_apoc). Retired ids stay live in the manifest for replays. */
+     small_ball_apoc). Retired ids stay live in the manifest for replays.
+     v56: THE DAILY ARCHIVE replays every past board from its date, and
+     test.js pins them: never edit POOL2 (the rotation is modulo its length);
+     new boards go in a POOL3 with its own start date. */
   var START2 = "2026-07-19";
   var OVERRIDES = {
     // 2026-07-18 shipped small_ball_apoc, whose C slot was fillable only via
@@ -438,11 +444,14 @@
        official: { [dayKey]: { num, wins, net, five, chId, nonce, hot, cap, pct } },
        streak: { count, lastKey }
      }
-     Kept tiny: only the last 14 day-entries survive a write (pruned oldest-
-     first) so the blob never grows unbounded. Fail-soft: no storage -> every
-     call still returns sane values and the mode plays normally. */
+     Kept small: the last 400 day-entries survive a write (pruned oldest-first;
+     about 150 bytes a day), so the archive can show a year of your officials.
+     v56: archive: { [dayKey]: { num, wins, net, runs } } holds your best replay
+     of a past board (the archive's practice runs), apart from official, so a
+     replay can never claim a day or move the streak. Fail-soft: no storage ->
+     every call still returns sane values and the mode plays normally. */
   var LS_KEY = "t82_daily1";
-  var KEEP_DAYS = 14;
+  var KEEP_DAYS = 400;
   var store = {
     get: function () {
       try { return JSON.parse((g.localStorage && g.localStorage.getItem(LS_KEY)) || "null"); }
@@ -454,11 +463,12 @@
     }
   };
   function _setStore(s) { store = s; }   // test hook: inject a fake storage
-  function blank() { return { official: {}, streak: { count: 0, lastKey: "" } }; }
+  function blank() { return { official: {}, archive: {}, streak: { count: 0, lastKey: "" } }; }
   function getState() {
     var s = store.get();
     if (!s || typeof s !== "object") return blank();
     if (!s.official || typeof s.official !== "object") s.official = {};
+    if (!s.archive || typeof s.archive !== "object") s.archive = {};
     if (!s.streak || typeof s.streak !== "object") s.streak = { count: 0, lastKey: "" };
     return s;
   }
@@ -498,6 +508,24 @@
     store.set(s);
     return s.official[key];
   }
+  // v56: a replay of a past board (the archive) keeps your best record for that day and counts the runs.
+  // It never touches official or the streak.
+  // newRun: count this run (false when the same run re-renders, e.g. after a Heat Check lands).
+  function recordArchive(key, num, wins, net, newRun) {
+    if (!validKey(key)) return null;
+    var s = getState(), cur = s.archive[key], add = newRun === false ? 0 : 1;
+    var better = !cur || wins > cur.wins || (wins === cur.wins && net > cur.net);
+    s.archive[key] = better
+      ? { num: num, wins: wins, net: Math.round(net * 10) / 10, runs: (cur ? cur.runs : 0) + add }
+      : { num: cur.num, wins: cur.wins, net: cur.net, runs: cur.runs + add };
+    prune(s.archive);
+    store.set(s);
+    return s.archive[key];
+  }
+  function archiveFor(key) {
+    var a = getState().archive[key];
+    return a && typeof a.wins === "number" ? a : null;
+  }
   // Streak as of `key`: yesterday's streak survives until today is missed.
   function streakFor(key) {
     var s = getState().streak;
@@ -510,11 +538,11 @@
   var API = {
     EPOCH: EPOCH, GAMES: GAMES, POOL: POOL,
     DAILY_COPY: DAILY_COPY, MODE_TIP: MODE_TIP,
-    dayKey: dayKey, dayNum: dayNum, validKey: validKey,
+    dayKey: dayKey, dayNum: dayNum, validKey: validKey, shiftKey: shiftKey,
     hash32: hash32, seedFor: seedFor, boardFor: boardFor,
     verdict: verdict, signedNet: signedNet,
     shareTextDaily: shareTextDaily, beatLink: beatLink, parseLink: parseLink,
-    officialFor: officialFor, recordOfficial: recordOfficial,
+    officialFor: officialFor, recordOfficial: recordOfficial, recordArchive: recordArchive, archiveFor: archiveFor,
     streakFor: streakFor, getState: getState, _setStore: _setStore
   };
   g.T82DAILY = API;

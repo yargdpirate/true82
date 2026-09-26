@@ -731,7 +731,7 @@ var _buttonStyleObserver = null;
 // as, not a full-width gold keycap louder than the ball lever.
 var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)" +
   ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done):not(.gate-back):not(.hh-charity)" +
-  ":not(.t-chip):not(.rd-diff)";   // v55: a chip is never a keycap; the Redrafted's difficulty cards are cards
+  ":not(.t-chip):not(.rd-diff):not(.da-row)";   // v55: a chip is never a keycap; the Redrafted's difficulty cards and the Daily archive's rows are cards
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -1262,7 +1262,8 @@ var HEADS = {
   results: "eyebrow",   // YOUR FIVE, TWO-WAY PROFILE, GOAT CLIMB, SCORING CARD
   sheet: "title",       // a bottom sheet's title
   group: "eyebrow",     // a group label inside a sheet or a list
-  redraft: "eyebrow"    // THE REDRAFTED's gate, difficulty and podium (v55)
+  redraft: "eyebrow",   // THE REDRAFTED's gate, difficulty and podium (v55)
+  daily: "eyebrow"      // THE DAILY's archive (v56)
 };
 var HEADS_FORCE = (function () {
   var m = typeof location !== "undefined" && /[?&]heads=(eyebrow|rule|bar|title|banner|tab)(&|$)/.exec(location.search || "");
@@ -3032,6 +3033,7 @@ function renderIntro() {
         '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
         '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
       thirdSlotHtml +
+      (dailyBoard && dailyBoard.num > 1 ? '<button class="t-btn daily-past" data-kind="text" data-size="sm" id="dailyArchiveBtn" type="button">Past Dailies</button>' : "") +
       '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redrafted \u00B7 redraft an NBA class</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
@@ -3081,6 +3083,10 @@ function renderIntro() {
   }
   el("homeRulesBtn").addEventListener("click", function () { openRulesSheet({ home: true }); });
   el("startRedraft").addEventListener("click", function () { openRedrafted("home"); });
+  if (el("dailyArchiveBtn")) el("dailyArchiveBtn").addEventListener("click", function () {
+    analyticsTrack("feature_select", { surface: "home", action: "daily_archive" });
+    renderDailyArchive();
+  });
   el("startClassic").addEventListener("click", function () { start("classic"); });
   var proBtn = el("startPro");   // absent when THE DAILY holds the third slot
   if (proBtn) proBtn.addEventListener("click", function () { start("pro"); });
@@ -3186,15 +3192,27 @@ function renderIntro() {
         // replaces #app, and the header egg still needs its listener). The
         // receiver then reads what they were challenged to while data loads.
         DAILY_GATE_PENDING = { board: dailyBoard, tgt: tgt, tag: "daily-link:" + dailyBoard.num };
-      } else if (dailyTile && dailyTile.parentNode) {
+      } else if (dl.key < dailyBoard.key && T82DAILY.dayNum(dl.key) >= 1) {
+        // v56: a link to a past board opens that board (the archive's gate), their number pinned
+        var ptgt = (dl.w != null && dl.n != null) ? { w: dl.w, n: dl.n } : null;
+        analyticsTrack("referral_open", {
+          mode: dailyBoard.base, surface: "landing", action: "daily_link", outcome: "past",
+          daily_num: T82DAILY.dayNum(dl.key), target_wins: ptgt ? ptgt.w : null, target_net: ptgt ? ptgt.n : null
+        });
+        DAILY_GATE_PENDING = { board: T82DAILY.boardFor(dl.key), tgt: ptgt, tag: "daily-practice:" + T82DAILY.dayNum(dl.key), archive: true };
+      } else {
+        // a link from a time zone already on tomorrow's board
+        var dTile = document.querySelector(".daily-tile");
         analyticsTrack("referral_open", {
           mode: dailyBoard.base, surface: "landing", action: "daily_link", outcome: "stale",
           daily_num: T82DAILY.dayNum(dl.key)
         });
-        var staleNote = document.createElement("p");
-        staleNote.className = "daily-stale mono";
-        staleNote.textContent = "That link was for Daily\u00A0#" + T82DAILY.dayNum(dl.key) + ". Today's board is\u00A0#" + dailyBoard.num + ".";   // no-break spaces: a number never wraps alone
-        dailyTile.parentNode.insertBefore(staleNote, dailyTile.nextSibling);
+        if (dTile && dTile.parentNode) {
+          var staleNote = document.createElement("p");
+          staleNote.className = "daily-stale mono";
+          staleNote.textContent = "That link is for Daily\u00A0#" + T82DAILY.dayNum(dl.key) + ", which opens at midnight here. Today's board is\u00A0#" + dailyBoard.num + ".";   // no-break spaces: a number never wraps alone
+          dTile.parentNode.insertBefore(staleNote, dTile.nextSibling);
+        }
       }
     }
   }
@@ -3259,7 +3277,7 @@ function renderIntro() {
   if (DAILY_GATE_PENDING) {
     var dgp = DAILY_GATE_PENDING;
     DAILY_GATE_PENDING = null;
-    renderDailyGate(dgp.board, dgp.tgt, dgp.tag);
+    renderDailyGate(dgp.board, dgp.tgt, dgp.tag, { archive: !!dgp.archive });
   }
 }
 
@@ -7434,8 +7452,9 @@ function mountResultsPrint(e, daily) {
     }, { threshold: 0.5 });
     io.observe(host);
   } else playResultsPrint();
-  // Daily practice runs share the OFFICIAL numbers, so their poster would lie.
-  if (!daily || daily.isOfficial) setTimeout(function () { bakeResultsPoster(); }, 1800);
+  // Daily practice runs share the OFFICIAL numbers, so their poster would lie. A replay of a past board
+  // with no official that day shares itself (v56), so it gets its poster.
+  if (!daily || daily.isOfficial || (daily.archive && !daily.official)) setTimeout(function () { bakeResultsPoster(); }, 1800);
 }
 // v51: something sits over the print, or the Tribune is about to open over it (it
 // opens 700ms after the post-season Heat Check closes). The print never reveals then.
@@ -7568,7 +7587,12 @@ function renderResults(e, keepScroll) {
   if (G.social && window.T82DAILY) {
     var dres = dailyResFromG(e);
     var dOfficial = T82DAILY.officialFor(G.social.key);
-    if (!dOfficial) {
+    if (G.social.archive) {
+      // v56: a replay of a past board (the archive) never claims the day and never moves the streak: it
+      // keeps your best replay apart (a re-render after a Heat Check updates it without counting a run)
+      T82DAILY.recordArchive(G.social.key, G.social.num, dres.wins, dres.net, !G.social.archived);
+      G.social.archived = 1;
+    } else if (!dOfficial) {
       if (!G.social.nonce) G.social.nonce = String(Date.now()) + "-" + Math.floor(Math.random() * 1e6);
       dOfficial = T82DAILY.recordOfficial(G.social.key, G.social.num, dres, G.social.nonce) || dres;
     }
@@ -7582,7 +7606,7 @@ function renderResults(e, keepScroll) {
         tw + "-" + (CFG.GAMES_IN_SEASON - tw) + " (Net " + T82DAILY.signedNet(tn) + ") \u00B7 " +
         (beat ? "You take the board." : tied ? "Dead heat. Run it back." : "They hold the board.") + "</div>";
     }
-    daily = { res: dres, official: dOfficial, isOfficial: dIsOfficial, targetHtml: dTargetHtml };
+    daily = { res: dres, official: dOfficial, isOfficial: dIsOfficial, targetHtml: dTargetHtml, archive: !!G.social.archive };
     var postDailyProfile = analyticsDailyProfile();
     if (postDailyProfile) analyticsTrack("return_profile", Object.assign(postDailyProfile, {
       mode: G.social.base || MODE, surface: "results", action: "post_daily_finish",
@@ -7601,15 +7625,20 @@ function renderResults(e, keepScroll) {
     var dhlDot = ' <b class="dhl-dot">\u25CF</b> ';
     dailyHeadHtml = '<div class="daily-head-line">' +
       "THE DAILY #" + G.social.num + dhlDot +
-      (daily.isOfficial
+      (daily.archive
+        ? "PAST BOARD" + dhlDot + (daily.official ? "OFFICIAL " + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) : "REPLAY")
+        : daily.isOfficial
         ? "OFFICIAL RUN" + dhlDot + "LOCKED"
         : "PRACTICE RUN" + dhlDot + "OFFICIAL " + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins)) +
     '</div>';
   }
+  // v56: a replay of a past board you never played shares as a team (the regular share); with an official
+  // that day it shares the official, like any practice run. The Daily's own share text is untouched.
+  var dailyShare = daily && daily.official ? daily : null;
   var compHtml = resultsCompHtml(e.winTally);
-  var shareLabel = !daily ? "SHARE YOUR TEAM"
-    : daily.isOfficial ? "SHARE THE DAILY"
-    : "SHARE OFFICIAL (" + daily.official.wins + "-" + (CFG.GAMES_IN_SEASON - daily.official.wins) + ")";
+  var shareLabel = !dailyShare ? "SHARE YOUR TEAM"
+    : dailyShare.isOfficial ? "SHARE THE DAILY"
+    : "SHARE OFFICIAL (" + dailyShare.official.wins + "-" + (CFG.GAMES_IN_SEASON - dailyShare.official.wins) + ")";
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
   // v50 RISO RESULTS: the page prints on the same paper stock as the reel.
@@ -7637,7 +7666,8 @@ function renderResults(e, keepScroll) {
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section rr-climb" data-result-section="goat_climb">' + head("results", "GOAT Climb", { cls: "rr-eyebrow" }) + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card">' + head("results", "Scoring Card", { cls: "rr-eyebrow" }) + ledger + "</section>" +
-    '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button></div>' +
+    '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button>' +
+      (daily && daily.archive ? '<button class="t-btn" data-kind="text" id="pastDailiesBtn" type="button">Past Dailies</button>' : "") + '</div>' +
     '<p class="run-status" id="runStatus"></p></div>';
 
   trackResultSections();
@@ -7652,16 +7682,17 @@ function renderResults(e, keepScroll) {
       // fresh random game. boardFor is deterministic, so a rerun after local
       // midnight still rebuilds the board this run was played on.
       var rb = T82DAILY.boardFor(G.social.key);
-      startDailyRun(rb, G.social.target || null, "daily-practice:" + rb.num);
+      startDailyRun(rb, G.social.target || null, "daily-practice:" + rb.num, { archive: daily.archive });
       return;
     }
     newGame();
   });
+  if (el("pastDailiesBtn")) el("pastDailiesBtn").addEventListener("click", function () { renderDailyArchive(); });
   wireStartOver();
   wireDonate();
   el("shareTeamBtn").addEventListener("click", function () {
     var e2 = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
-    if (daily) {
+    if (dailyShare) {
       // THE DAILY share: always the official run, data-first (grade + five +
       // beat link, no Tribune slug, no nickname). The 5-square grade and the
       // named five are the payload; the AI layer stays in-session.
@@ -7868,7 +7899,63 @@ function dailyResFromG(e) {
    collapses to instant under prefers-reduced-motion. The read happens while
    site data loads in the background, so the gate costs zero wall-clock time
    on a cold visit. Practice reruns skip the gate; they have read it. */
-function renderDailyGate(board, target, variantTag) {
+/* ---------- THE DAILY ARCHIVE (v56; the owner: "add daily archive retrieval, play or view past Dailies") ----------
+   Every past board rebuilds exactly from its date (daily-core boardFor is deterministic and the schedule is
+   pinned in test.js), so the archive is a list from yesterday back to #1: the board, its base mode, your
+   official that day (the device keeps a year) and your best replay. Tap one for its gate, then a practice run
+   on that board that never claims the day or moves the streak (startDailyRun with { archive: true }). A
+   past-dated challenge link opens that board's gate with the friend's number pinned. */
+function dailyDayLabel(key) {
+  try {
+    var p = String(key).split("-"), d = new Date(+p[0], +p[1] - 1, +p[2], 12);
+    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }).toUpperCase();
+  } catch (e) { return ""; }
+}
+function renderDailyArchive() {
+  if (!window.T82DAILY) { renderIntro(); return; }
+  G = null;
+  if (window.T82DUI) T82DUI.stop();
+  document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
+  renderPips();
+  var today = T82DAILY.dayKey(), key = T82DAILY.shiftKey(today, -1), rows = "", guard = 0;
+  var BASE = { cap: "Presti", classic: "Classic", pro: "Pro" };
+  while (T82DAILY.dayNum(key) >= 1 && guard++ < 1000) {
+    var b = T82DAILY.boardFor(key), off = T82DAILY.officialFor(key), arc = T82DAILY.archiveFor(key);
+    var res = off ? '<b>' + off.wins + "-" + (CFG.GAMES_IN_SEASON - off.wins) + "</b><i>official</i>"
+      : arc ? '<b>' + arc.wins + "-" + (CFG.GAMES_IN_SEASON - arc.wins) + "</b><i>best replay</i>"
+      : "<i>not played</i>";
+    rows += '<button type="button" class="da-row t-card" data-key="' + key + '" aria-label="Daily ' + b.num + ", " + esc(b.name) + '">' +
+      '<span class="da-num t-num">' + b.num + "</span>" +
+      '<span class="da-main"><span class="t-meta">' + dailyDayLabel(key) + "</span>" +
+        '<span class="da-name">' + esc(b.name) + "</span>" +
+        '<span class="t-chip" data-size="sm" data-tone="plain">' + (BASE[b.base] || "Presti") + "</span></span>" +
+      '<span class="da-res' + (off ? " is-official" : arc ? " is-replay" : "") + '">' + res + "</span>" +
+    "</button>";
+    key = T82DAILY.shiftKey(key, -1);
+  }
+  app().innerHTML =
+    '<section class="t-mode da">' +
+      '<div class="da-top"><button class="t-btn" data-kind="text" data-size="sm" id="daBack" type="button">\u2039 Back</button></div>' +
+      head("daily", "\uD83D\uDCC5 The Daily") +
+      '<h1 class="t-title">Past Dailies</h1>' +
+      '<p class="t-small da-lede">Every board replays exactly as it was dealt. A replay is practice: your official days and your streak stay as they are.</p>' +
+      (rows ? '<div class="da-list" id="daList">' + rows + "</div>" : '<p class="t-small">No past boards yet. Come back tomorrow.</p>') +
+    "</section>";
+  analyticsTrack("mode_impression", { surface: "daily_archive", action: "archive_list", daily_num: T82DAILY.dayNum(today) });
+  el("daBack").addEventListener("click", function () { renderIntro(); });
+  var list = el("daList");
+  if (list) list.addEventListener("click", function (ev) {
+    var row = ev.target.closest(".da-row");
+    if (!row) return;
+    var k = row.getAttribute("data-key"), b = T82DAILY.boardFor(k);
+    analyticsTrack("mode_select", { mode: b.base, surface: "daily_archive", action: "daily_archive", daily_num: b.num, practice: 1 });
+    renderDailyGate(b, null, "daily-practice:" + b.num, { archive: true });
+  });
+}
+function renderDailyGate(board, target, variantTag, opts) {
+  opts = opts || {};
+  var archive = !!opts.archive;   // v56: a past board from the archive (or a past-dated challenge link)
   G = null;
   // Top of the daily funnel: the player tapped THE DAILY and is now looking at
   // the instructions gate. mode carries the base so daily can be split out of
@@ -7884,20 +7971,22 @@ function renderDailyGate(board, target, variantTag) {
   renderPips();
   var baseName = board.base === "cap" ? "Presti" : board.base === "pro" ? "Pro" : "Classic";
   var tip = (window.T82DAILY && T82DAILY.MODE_TIP && T82DAILY.MODE_TIP[board.base]) || "";
-  var dateStr = "";
-  try { dateStr = new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }).toUpperCase(); } catch (e) {}
+  var dateStr = dailyDayLabel(board.key);   // the board's own day (a past board shows its date, not today's)
   app().innerHTML =
-    '<section class="gate">' +
-      '<button class="gate-back" id="gateBack" aria-label="Back to menu">\u2190 back</button>' +
+    '<section class="gate' + (archive ? " gate-archive" : "") + '">' +
+      '<button class="gate-back" id="gateBack" aria-label="' + (archive ? "Back to past Dailies" : "Back to menu") + '">\u2190 back</button>' +
       '<p class="gate-eyebrow mono">\uD83D\uDCC5 THE DAILY #' + board.num + (dateStr ? ' \u00B7 ' + dateStr : '') + '</p>' +
-      '<h2 class="gate-title">The Daily</h2>' +
+      '<h2 class="gate-title">' + (archive ? "A past Daily" : "The Daily") + '</h2>' +
       '<div class="gate-law">' +
-        '<p>One attempt.</p>' +
-        '<p>Everyone gets the same rolls.</p>' +
-        '<p>Compare with friends to see who knows ball.</p>' +
+        (archive
+          ? '<p>The same rolls everyone got that day.</p>' +
+            '<p>A replay is practice: official days and your streak stay as they are.</p>'
+          : '<p>One attempt.</p>' +
+            '<p>Everyone gets the same rolls.</p>' +
+            '<p>Compare with friends to see who knows ball.</p>') +
       '</div>' +
       '<div class="gate-var plq-frame plq-slim">' +
-        '<p class="gate-var-label mono">TODAY\u2019S VARIATION \u00B7 ' + baseName.toUpperCase() + ' MODE' +
+        '<p class="gate-var-label mono">' + (archive ? "THAT DAY\u2019S VARIATION" : "TODAY\u2019S VARIATION") + ' \u00B7 ' + baseName.toUpperCase() + ' MODE' +
           ' <button class="cap-info" id="gateInfo" aria-expanded="false" aria-label="How ' + baseName + ' Mode works">i</button></p>' +
         '<p class="gate-var-name">' + esc(board.name) + '</p>' +
         '<p class="gate-var-body">' + esc(board.gate || board.blurb || "") + '</p>' +
@@ -7915,8 +8004,8 @@ function renderDailyGate(board, target, variantTag) {
       '</div>' +
     '</section>';
   el("gateBack").addEventListener("click", function () {
-    analyticsTrack("daily_gate_exit", { mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num, action: "back" });
-    renderIntro();
+    analyticsTrack("daily_gate_exit", { mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num, action: archive ? "archive_back" : "back" });
+    if (archive) renderDailyArchive(); else renderIntro();
   });
   var gTip = el("gateTip");
   if (gTip) {
@@ -7949,7 +8038,7 @@ function renderDailyGate(board, target, variantTag) {
       action: method || "unknown", target_wins: target ? target.w : null, target_net: target ? target.n : null
     });
     setTimeout(function () {
-      queue(function () { startDailyRun(board, target, variantTag); }, btn || null);
+      queue(function () { startDailyRun(board, target, variantTag, { archive: archive }); }, btn || null);
     }, delay || 0);
   }
   var gLever = el("gateLever"), gArm = el("gateArm");
@@ -7964,20 +8053,23 @@ function renderDailyGate(board, target, variantTag) {
     if (btn) { btn.disabled = true; }
   }
 }
-function startDailyRun(board, target, variantTag) {
+function startDailyRun(board, target, variantTag, opts) {
+  var archive = !!(opts && opts.archive);
+  if (archive) variantTag = "daily-practice:" + board.num;   // v56: a replay of a past board is practice (it stays out of the Daily's percentile pool)
   var explicitPractice = /^daily-practice:/.test(variantTag || "");
   var alreadyOfficial = false;
   try { alreadyOfficial = !!(window.T82DAILY && T82DAILY.officialFor(board.key)); } catch (e) {}
   var isPractice = explicitPractice || alreadyOfficial;
   newGame(board.base, board.seed, board.ch, {
     variant: variantTag,
-    surface: /^daily-link:/.test(variantTag || "") ? "daily_referral" : explicitPractice ? "daily_practice" : "daily_gate",
+    surface: archive ? "daily_archive" : /^daily-link:/.test(variantTag || "") ? "daily_referral" : explicitPractice ? "daily_practice" : "daily_gate",
     practice: isPractice ? 1 : 0,
     official: isPractice ? 0 : 1,
     social: { key: board.key, num: board.num, name: board.name,
               short: board.short || board.blurb || "", gate: board.gate || board.blurb || "",
               base: board.base, chId: board.ch ? board.ch.id : null,
-              shareEmoji: (board.ch && board.ch.shareEmoji) || null, target: target || null }
+              shareEmoji: (board.ch && board.ch.shareEmoji) || null, target: target || null,
+              archive: archive ? 1 : 0 }
   });
 }
 
@@ -8030,7 +8122,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v55";
+var BUILD_V = "v56";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

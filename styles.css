@@ -2822,6 +2822,23 @@ body.rules-open { overflow: hidden; }
 .rd-share { width: 100%; margin: 12px 0 0; }
 .rd-results .t-btn[data-kind="text"] { display: block; margin: 8px auto 0; }
 
+/* ---------- THE DAILY ARCHIVE (v56): the Past Dailies list and its home link ---------- */
+.daily-past { display: block; margin: 6px auto 0; }
+.da-top { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; }
+.da-lede { margin: 0 0 14px; }
+.da-list { display: grid; gap: 8px; }
+.da-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
+  text-align: left; cursor: pointer; font: inherit; color: var(--t-text); -webkit-tap-highlight-color: transparent; }
+.da-row:active { transform: translateY(1px); border-color: var(--t-accent); }
+.da-row:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
+.da-num { font-size: 28px; text-align: center; }
+.da-main { display: grid; gap: 3px; min-width: 0; justify-items: start; }
+.da-name { font-family: var(--t-disp); font-weight: 700; font-size: 17px; letter-spacing: 0.03em; text-transform: uppercase; line-height: 1.1; }
+.da-res { display: grid; justify-items: end; gap: 1px; text-align: right; }
+.da-res b { font-family: var(--t-disp); font-weight: 700; font-size: 19px; color: var(--t-text); }
+.da-res.is-official b { color: var(--t-accent); }
+.da-res i { font-style: normal; font-family: var(--t-mono); font-size: var(--t-fs-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--t-text-2); }
+
 /* ---------- HOW TO PLAY: the demo (v53) ----------
    A 16s loop on a mini draft screen (howToDemoHtml in app.js): the ticket deals a team and a decade,
    the glove taps a player and then DRAFT, the five slots fill, the season plays, GO 82-0. Six scenes,
