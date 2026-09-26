@@ -3,10 +3,42 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v53`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v53"`, cache keys `20260926-htp-v53`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, then v53. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v53, the owner's list items 9, 11, 12, 13 and 14. See section 00000b first.
+**Build:** `v54`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v54"`, cache keys `20260926-neon-mast-v54`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, then v54. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v54, the neon masthead (the owner's list item 10); v53 did items 9, 11, 12, 13 and 14. See sections 00000c and 00000b first.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000c. V54: the neon masthead, a tight icon, the new link card (2026-09-26)
+
+The owner's item 10, in his words: "love the comet icon as config'd but cut out the blank space around it so it's a
+tight crop; current true82 title text needs to be more neon less riso/handdrawn as now - to match closer to the ball
+icon we're using". Done through the Reprint Lab (the masthead's source), so every look can use it:
+- **The lab's composer has a neon wordmark.** `wordTex` "neon" (Neon tubes) and "glow" (Neon glow) are not printed:
+  `drawNeonWord` (banner.js) lights the word over the composed print (a glow in the ink, the tube, a pale core; no
+  halftone, no misregistration, no depth). New recipe key `neonInk`: "print" (the word's inks) or "icon" (the icon's
+  body and line inks: for Vice a pink TRUE and an aqua 82, the ball's and the hoop's colors). The console lists both.
+- **Heat Vice (app/presets-20-team-nights.js) now carries** `wordTex: "neon", neonInk: "icon", tooth: 0`: the
+  Yellowtail TRUE and the Big Shoulders 82 as neon tubes; the icon (hoop-sunrise, the star, its print style and its
+  stacked depth) is exactly as it was. `masthead.png` is re-exported from it (`LAB.image(rc, 300, 3)`, 900x252).
+- **The tight crop.** The masthead image already runs edge to edge, so the reading taken: (1) the header hugs it
+  (`.site-head` padding 10/12/8, the empty `.round-pips` row gone off the draft, the logo 336px / 92% wide, set in
+  ship-look.js's glue); (2) the icon alone is cropped tight: `LAB.appIcon(rc, px)` prints the mark, trims it to its
+  ink and centers it on the stock with a 5% margin (the lab's APP ICON tile uses it). Exported as the site's first
+  real icons: `icon-32.png`, `icon-48.png` (favicons) and `icon-180.png` (home screen), wired into index, 404, the
+  four info pages and Bonuses in place of the old gold-diamond data URI; `theme-color` is the Vice ground #16122B.
+- **The link card** (`og-image.png`, 1200x630, used by every share and the Functions' pages) was still the v47 gold
+  card: it is now the neon masthead, as large as the card allows. The JSON-LD logo is icon-180.png.
+- The lab file is rebuilt (the same 93 snapshots; the artifact copy is not republished).
+- The owner may mean something else by "the comet icon" or "tight crop" (the lab also has a Comet concept, used by
+  Purple Sunburst): the question is in the v54 summary to him. Other finishes are one lab toggle away: Neon glow,
+  a block TRUE (Face: Big Shoulders), or the grid backdrop off.
+
+To re-export after a lab change (the lab dev page runs from a static server on the scratchpad's `lab/src` symlink,
+`labserver.py`, with `window.LAB_SITE_BASE` pointing at the local site): `LAB.image(rc, 300, 3)` for masthead.png,
+`LAB.appIcon(rc, 180 | 48 | 32)` for the icons, and the link card as the masthead scaled into 1200x630 on the
+stock's printed color (sample a corner of the print: the stock prints darker than its nominal hex).
 
 ---
 
@@ -65,10 +97,9 @@ Calls made (the owner may overrule):
   GAME BASICS lines are reused as they are.
 - The glossary door is a text button, not an (i), so it says what it does.
 
-Next on the owner's list (in order): 10 (the masthead: a more neon, less hand-drawn TRUE 82, closer to the ball
-icon; the "comet" icon cropped tight), 15 (import The Redrafted from the accounts-test archive and review the other
-deltas: a helper's full port plan is summarized in 00000c when it starts), 16 (a Daily archive: play or view past
-Dailies), 17 (later: leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
+Next on the owner's list (in order): 10 (done in v54, section 00000c), 15 (import The Redrafted from the
+accounts-test archive and review the other deltas), 16 (a Daily archive: play or view past Dailies), 17 (later:
+leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
 runs about 14% taller than Barlow in tight spots), and the lab's 93-state recapture and artifact republish.
 
 ---

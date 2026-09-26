@@ -84,6 +84,7 @@
       { type: "slider", key: "depthDist", label: "Depth", min: 0, max: 1, step: 0.05, fmt: function (v) { return Math.round(v * 100) + "%"; } },
       { type: "slider", key: "depthAng", label: "Angle", min: 0, max: 355, step: 5, fmt: function (v) { return v + "°"; } },
       { type: "seg", key: "wordTex", label: "Surface", options: function () { return opts(LAB.OPTIONS.wordTex); } },
+      { type: "seg", key: "neonInk", label: "Neon ink", options: opts([["print", "As printed"], ["icon", "Icon's colors"]]) },
       { type: "seg", key: "shape", label: "Shape", options: function () { return opts(LAB.OPTIONS.shape); } },
       { type: "seg", key: "lines", label: "Lines", options: opts([["one", "One line"], ["two", "TRUE over 82"]]) },
       { type: "slider", key: "track", label: "Tracking", min: -0.06, max: 0.3, step: 0.01, fmt: function (v) { return (v * 1000 | 0) / 1000 + "em"; } }
@@ -350,9 +351,7 @@
         try { var sh = doc && doc.querySelector && doc.querySelector(".site-head"); if (sh) head.style.height = Math.round((sh.getBoundingClientRect().bottom + 6) * HS) + "px"; } catch (e) {}
       });
     });
-    var mk = Object.assign({}, rc, { layout: "mark", adds: rc.adds.filter(function (a) { return a === "star" || a === "sparkle"; }), motion: "none" });
-    if (rc.concept === "none") mk.concept = "hoop-star";
-    LAB.image(mk, 64, 3).then(function (im) { fav.width = im.w; fav.height = im.h; fav.getContext("2d").drawImage(im.canvas, 0, 0); });
+    LAB.appIcon(rc, 192).then(function (im) { fav.width = im.w; fav.height = im.h; fav.getContext("2d").drawImage(im.canvas, 0, 0); });   // v53: a tight crop
     LAB.image(Object.assign({}, rc, { motion: "none" }), 900, 1).then(function (im) {
       og.width = 1200; og.height = 630; var x = og.getContext("2d"), st = R.STOCKS[rc.stock === "auto" ? (LAB.palettes[rc.palette].stock || "cream") : rc.stock] || R.STOCKS.cream;
       x.fillStyle = im.paper || st.paper; x.fillRect(0, 0, 1200, 630);

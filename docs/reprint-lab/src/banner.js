@@ -49,8 +49,13 @@
                 arch      letters on a curve, turned to follow it     vertical  jersey arch: upright letters on a curve
                 bridge    flat baseline, tops rising to the middle   rise      letters grow left to right
      lines    one | two   (two: the name over a big 82, both lines the same width)
-     wordTex  solid | ramp | inline | bulbs | pinstripe | lines | shine | distress
+     wordTex  solid | ramp | inline | bulbs | pinstripe | lines | shine | distress | neon | glow
                 inline    a paper hairline inside every letter       shine     two paper glints across the face (a light ink on dark stock)
+                neon      (v53) not printed: the letters are lit glass tubes along their outlines, drawn over the print
+                          after it is composed (a glow in the ink, the tube, a pale core), no screen, no depth
+                glow      (v53) not printed: solid lit letters, a pale core in the ink with the ink's glow around it
+     neonInk  print | icon   (v53, neon words only) print: the word's and the 82's inks; icon: the icon's body and line
+                inks (the ball and the hoop), so the sign matches the mark
      ink82    word | a | b | outline
      iconDepth match | none | offset | block | extrude | shadow   (match: the word's depth, as close as the icon allows)
      tooth    0..2, the paper's fibres (was "texture", which is now the site's texture; a number there still works)
@@ -92,7 +97,7 @@
   /* ---- the default recipe ---- */
   LAB.DEFAULT = {
     palette: "printshop", stock: "auto", darkMode: "auto",
-    layout: "inline", font: "barlow", font82: "match", ink82: "word", word: "TRUE 82", track: 0.04, shape: "straight", lines: "one", wordTex: "solid",
+    layout: "inline", font: "barlow", font82: "match", ink82: "word", word: "TRUE 82", track: 0.04, shape: "straight", lines: "one", wordTex: "solid", neonInk: "print",
     depth: "offset", depthDist: 0.5, depthAng: 35,
     concept: "hoop-star", iconStyle: "print", iconDepth: "match", iconScale: 1,
     backdrop: "none", adds: ["star"], tagline: "THE 82-0 CHASE",
@@ -110,7 +115,8 @@
   LAB.OPTIONS = {
     depth: [["flat", "Flat"], ["offset", "Offset"], ["block", "Block"], ["extrude", "Extrude"], ["3d-shade", "Lit 3D"], ["fade", "Fade"], ["shadow", "Soft shadow"],
       ["echo", "Echo"], ["stack", "Stack"], ["outline", "Outline"], ["split", "Split ink"], ["chrome", "Chrome"]],
-    wordTex: [["solid", "Solid"], ["ramp", "Halftone ramp"], ["inline", "Inline"], ["bulbs", "Bulbs"], ["pinstripe", "Pinstripe"], ["lines", "Racing lines"], ["shine", "Shine"], ["distress", "Worn"]],
+    wordTex: [["solid", "Solid"], ["ramp", "Halftone ramp"], ["inline", "Inline"], ["bulbs", "Bulbs"], ["pinstripe", "Pinstripe"], ["lines", "Racing lines"], ["shine", "Shine"], ["distress", "Worn"],
+      ["neon", "Neon tubes"], ["glow", "Neon glow"]],
     shape: [["straight", "Straight"], ["slant", "Slant"], ["arch", "Arch"], ["vertical", "Jersey arch"], ["bridge", "Bridge"], ["rise", "Rise"], ["wave", "Wave"]],
     iconDepth: [["match", "Match word"], ["none", "None"], ["offset", "Offset"], ["block", "Block"], ["extrude", "Extrude"], ["shadow", "Soft shadow"]]
   };
@@ -867,7 +873,18 @@
       }
       runConcept(job, concept, ib, "print");
     }
-    // the wordmark
+    // the wordmark. v53: a neon word ("Neon tubes" / "Neon glow") is not printed at all; LAB.print lights it
+    // over the composed print (drawNeonWord), in the inks its roles map to
+    var neon = null;
+    if (W && (W.tex === "neon" || W.tex === "glow")) {
+      var nFace = boxes.wordRole || "word", nHas82 = W.glyphs.some(function (gl) { return gl.is82; }), nTrue = W.glyphs.some(function (gl) { return !gl.is82; });
+      var n82 = rc.ink82 === "a" ? "glow" : rc.ink82 === "b" ? "body" : rc.ink82 === "word" || rc.ink82 === "outline" || !rc.ink82 ? nFace : "word82";
+      if (rc.neonInk === "icon") { nFace = "body"; n82 = "line"; }   // the sign in the icon's own two inks (Vice: a pink TRUE, an aqua 82)
+      neon = { style: W.tex, parts: nHas82 && nTrue && n82 !== nFace
+        ? [{ which: "true", rgb: R.inkRGB(pal.inks[job.slotOf(nFace)]) }, { which: "82", rgb: R.inkRGB(pal.inks[job.slotOf(n82)]) }]
+        : [{ which: "all", rgb: R.inkRGB(pal.inks[job.slotOf(nFace)]) }] };
+      W = null;                                   // nothing below prints it
+    }
     if (W) {
       // paper letters (the layout knocks them out); on dark stock paper is dark, so they print in the key ink instead
       var tex = W.tex, faceRole = boxes.wordRole || "word", paper = !!boxes.wordPaper && !stock.dark, b = W.bounds;
@@ -947,10 +964,44 @@
         });
       });
     }
+    if (neon) W = A.word;                         // the word is still the layout's (additions and after() read it)
     rc.adds.forEach(function (id) { var dd = LAB.additions[id]; if (dd && dd.when !== "back") dd.draw(A); });
     if (lay.after) lay.after(A);
-    return { rc: rc, pal: pal, job: job, stock: stock, vh: boxes.vh, boxes: boxes, word: W };
+    return { rc: rc, pal: pal, job: job, stock: stock, vh: boxes.vh, boxes: boxes, word: W, neon: neon };
   };
+
+  /* ---- a neon word, lit over the composed print (v53) ----
+     "neon": glass tubes along each letter's outline: a wide soft glow in the ink, the tube, a pale core.
+     "glow": solid lit letters: the ink's glow, the letter in the ink, a pale core inset. No halftone, no
+     misregistration: a sign, not a print. k is device pixels per scene unit (shadows ignore the transform). */
+  function drawNeonWord(ctx, B, k) {
+    var W = B.word, N = B.neon;
+    if (!W || !N) return;
+    ctx.save();
+    ctx.setTransform(k, 0, 0, k, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    N.parts.forEach(function (part) {
+      var c = part.rgb, rgba = function (a) { return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; };
+      var core = "rgb(" + c.map(function (v) { return Math.round(v + (255 - v) * 0.72); }).join(",") + ")";
+      var s = W.size;
+      if (N.style === "glow") {
+        ctx.shadowColor = rgba(0.9); ctx.shadowBlur = s * 0.26 * k; ctx.fillStyle = rgba(1);
+        drawWord(ctx, W, 0, 0, "fill", part.which);
+        ctx.shadowBlur = s * 0.09 * k; drawWord(ctx, W, 0, 0, "fill", part.which);
+        ctx.shadowBlur = 0; ctx.fillStyle = core;
+        isolate(ctx, function (x) {                // the pale core, inset from the letter's edge by the ink
+          x.fillStyle = core; drawWord(x, W, 0, 0, "fill", part.which);
+          x.globalCompositeOperation = "destination-out"; x.strokeStyle = "#000"; drawWord(x, W, 0, 0, "stroke", part.which, s * 0.07);
+        });
+      } else {
+        ctx.fillStyle = rgba(0.1); drawWord(ctx, W, 0, 0, "fill", part.which);                       // the glass inside
+        ctx.shadowColor = rgba(0.95); ctx.shadowBlur = s * 0.34 * k; ctx.strokeStyle = rgba(0.75);
+        drawWord(ctx, W, 0, 0, "stroke", part.which, s * 0.07);
+        ctx.shadowBlur = s * 0.1 * k; ctx.strokeStyle = rgba(1); drawWord(ctx, W, 0, 0, "stroke", part.which, s * 0.05);
+        ctx.shadowBlur = 0; ctx.strokeStyle = core; drawWord(ctx, W, 0, 0, "stroke", part.which, s * 0.017);
+      }
+    });
+    ctx.restore();
+  }
 
   /* ---- print it ---- */
   function fontsFor(rc) {
@@ -997,6 +1048,7 @@
           clips = layers.map(function (L, i) { var p = R.clamp((reveal - i * 0.22) / 0.55, 0, 1); p = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; return p <= 0 ? 0 : [0, 0, Math.ceil(P.W * p), P.H]; });
         }
         R.compose(ctx, P, layers, rr, clips, darkMode);
+        if (B.neon && (reveal == null || reveal >= 0.55 + 0.22 * layers.length)) drawNeonWord(ctx, B, P.W / 1000);   // the sign lights once the print is down
       };
       return out;
     });
@@ -1030,6 +1082,35 @@
     return LAB.print(rcIn, { cssW: cssW, dpr: dpr || 2 }).then(function (pr) {
       var c = R.cv(pr.w, pr.h); pr.draw(c.getContext("2d"), null, null);
       return { url: c.toDataURL(type || "image/png"), w: pr.w, h: pr.h, canvas: c, dark: pr.P.stock.dark, paper: pr.P.stock.paper };
+    });
+  };
+
+  // The app icon (v53; the owner: "love the comet icon as config'd but cut out the blank space around it so it's a
+  // tight crop"): the recipe's icon alone (its star or sparkle kept, no backdrop), printed large, trimmed to its ink
+  // and centered on a square of the stock with a thin margin. px: the square's side in pixels.
+  LAB.appIcon = function (rcIn, px, margin) {
+    var rc = LAB.recipe(rcIn), m = margin == null ? 0.05 : margin;
+    var mk = Object.assign({}, rc, { layout: "mark", backdrop: "none", adds: rc.adds.filter(function (a) { return a === "star" || a === "sparkle"; }), motion: "none" });
+    if (!mk.concept || mk.concept === "none") mk.concept = "hoop-star";
+    return LAB.print(mk, { cssW: 420, dpr: 2 }).then(function (pr) {
+      var c = R.cv(pr.w, pr.h), x = c.getContext("2d", { willReadFrequently: true });
+      pr.draw(x, null, null);
+      var d = x.getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height;
+      var paper = [d[(W + 1) * 4], d[(W + 1) * 4 + 1], d[(W + 1) * 4 + 2]];   // the stock as it printed (a corner), not its nominal hex
+      var x0 = W, y0 = H, x1 = -1, y1 = -1;
+      for (var yy = 0; yy < H; yy++) for (var xx = 0; xx < W; xx++) {
+        var i = (yy * W + xx) * 4;
+        if (Math.max(Math.abs(d[i] - paper[0]), Math.abs(d[i + 1] - paper[1]), Math.abs(d[i + 2] - paper[2])) > 48) {
+          if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy;
+        }
+      }
+      if (x1 < 0) { x0 = 0; y0 = 0; x1 = W - 1; y1 = H - 1; }
+      var bw = x1 - x0 + 1, bh = y1 - y0 + 1, side = Math.max(bw, bh) / (1 - 2 * m);
+      var out = R.cv(px, px), o = out.getContext("2d"), k = px / side;
+      o.fillStyle = "rgb(" + paper.join(",") + ")"; o.fillRect(0, 0, px, px);
+      o.imageSmoothingEnabled = true; o.imageSmoothingQuality = "high";
+      o.drawImage(c, x0, y0, bw, bh, (px - bw * k) / 2, (px - bh * k) / 2, bw * k, bh * k);
+      return { url: out.toDataURL("image/png"), w: px, h: px, canvas: out, paper: "rgb(" + paper.join(",") + ")" };
     });
   };
 

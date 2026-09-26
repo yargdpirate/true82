@@ -305,7 +305,7 @@ button.t-chip:active, button.tchip:active, .tchip.expanded, .t-chip.pressed, .bt
 .site-head {
   max-width: 560px;
   margin: 0 auto;
-  padding: 16px 16px 12px;
+  padding: 10px 12px 8px;   /* v53: tight around the masthead (the owner: "a tight crop") */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -314,6 +314,7 @@ button.t-chip:active, button.tchip:active, .tchip.expanded, .t-chip.pressed, .bt
 }
 .brand-logo { display: block; width: 232px; max-width: 68%; height: auto; }
 .round-pips { display: flex; gap: 6px; }
+.round-pips:empty { display: none; }   /* no empty row (and no flex gap) under the masthead off the draft */
 .round-pips span {
   width: 9px; height: 9px;
   border: 1px solid var(--t-metal);
