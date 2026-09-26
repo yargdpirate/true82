@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<!-- The Reprint Lab export page (v54). Renders Heat Vice (+ window.VARIANTS) with the dev lab; export-masthead.js drives it.
+     Needs: the lab server (labserver.py serving a folder whose lab/src links to docs/reprint-lab/src) on :8095, and the
+     site (wrangler pages dev) at LAB_SITE_BASE. -->
+<style>
+  body { margin: 0; background: #16122B; color: #F7F3FF; font: 13px/1.4 monospace; padding: 18px; }
+  .g { display: grid; grid-template-columns: repeat(2, 420px); gap: 18px 16px; }
+  figure { margin: 0; } canvas { width: 420px; height: auto; display: block; }
+  figcaption { color: #FF88CC; margin-top: 4px; }
+</style></head><body><div class="g" id="g"></div>
+<script>window.LAB_SITE_BASE = "http://localhost:8790/";</script>
+<script src="http://localhost:8095/lab/src/dev/loader.js"></script>
+<script>
+(function () {
+  function load(f) { return new Promise(function (res) { var s = document.createElement("script"); s.src = f + "?t=" + Date.now(); s.onload = res; s.onerror = res; document.head.appendChild(s); }); }
+  var CODE = "SHIPPED";
+  LAB_READY.then(function () {
+    return ["presets-10-evolution.js", "presets-20-team-nights.js", "presets-30-paper.js", "presets-40-wild.js", "presets.js"].reduce(function (p, f) { return p.then(function () { return load("http://localhost:8095/lab/src/app/" + f); }); }, Promise.resolve());
+  }).then(function () {
+    var vice = LAB.presets.filter(function (p) { return p.id === "team-nights-vice"; })[0].rc;
+    var base = Object.assign({}, vice, { motion: "none" });
+    var V = window.VARIANTS || [["today (shipped)", {}]];
+    var g = document.getElementById("g"), chain = Promise.resolve();
+    V.forEach(function (v) {
+      var f = document.createElement("figure"), c = document.createElement("canvas"), cap = document.createElement("figcaption");
+      cap.textContent = v[0]; f.appendChild(c); f.appendChild(cap); g.appendChild(f);
+      chain = chain.then(function () { return LAB.print(LAB.recipe(Object.assign({}, base, v[1])), { cssW: 420, dpr: 2 }).then(function (pr) { c.width = pr.w; c.height = pr.h; pr.draw(c.getContext("2d"), null, null); }); });
+    });
+    return chain;
+  }).then(function () { window.DONE = true; }, function (e) { console.error(e); window.DONE = true; });
+})();
+</script></body></html>
