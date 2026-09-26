@@ -3,10 +3,54 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v54`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v54"`, cache keys `20260926-neon-mast-v54`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, then v54. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v54, the neon masthead (the owner's list item 10); v53 did items 9, 11, 12, 13 and 14. See sections 00000c and 00000b first.
+**Build:** `v55`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v55"`, cache keys `20260926-redrafted-v55`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, then v55. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v55, THE REDRAFTED (the owner's list item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000d, 00000c and 00000b first.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000d. V55: THE REDRAFTED is in (the owner's item 15), and the archive's other deltas (2026-09-26)
+
+The owner: "import redraftables from test archive and review other deltas". The source is
+`origin/accounts-test:true82-allclasses2-on-v49.14/app.js` (v49.14 plus "every class, derived", key
+20260905-allclasses2-v49; its docs are DEPLOY-ALLCLASSES.txt and RETURN-HANDOFF-ALLCLASSES.md in that folder).
+- **What it is:** a snake draft against two computer GMs (MERCER takes the best player alive, QUINCY drafts the
+  team) over one shared, exhaustible pool: a real NBA draft class, five a team, every pick exclusive, any season of
+  a player's career; then the engine projects all three teams and a podium. 52 classes (the 9 hand-picked ones plus
+  every other year from 1974 to 2025, derived from the data), PICKUP (the headliners at their peaks) or PRO (the
+  whole class, seasons randomized), a Hall's-condition strand guard so no team is ever stranded. No accounts, no
+  server, no replay or leaderboard; state is in memory (a reload costs the draft).
+- **How it was ported:** the logic block is the archive's, unchanged except the content fixes (the Pavlovic
+  spelling; the 1976 blurb named Erving and Gervin, who are in the dropped 1974 floor cohort; the console message for
+  names with no 785-minute season). The screens are rebuilt on the style system: `.t-mode` roots, `head("redraft")`
+  (new HEADS line), `.t-card` panels, `.t-btn` actions, `.t-chip` class picks (plain / on), the draft's own `.pool`,
+  `.player-row` and `.tray`, and a styles.css section "THE REDRAFTED" (layout, plus the two difficulty courts' art in
+  tokens). The archive's injected CSS (`ensureShowdownCss`, about 120 literals) and its Dynasty skin are gone. The
+  draft screen shows the three teams side by side above the board. Entry: a home door under THE DAILY
+  (`#startRedraft`) and the deep links `?redraft=1` / `?redraft=YEAR` (`openRedrafted`). Function names keep the
+  archive's (`sd*`, `renderShowdown*`) so a later archive change maps one to one; CSS classes are `rd-*`.
+- **Also fixed on the way:** `.t-mode`'s plain-element defaults are now `:where(.t-mode) h2` and so on (element
+  weight), so a `head()` header or a type role (`.t-small`) inside a mode root is no longer overridden. A `.t-chip`
+  and `.rd-diff` are never keycaps (BTN3D_EXCLUDE). The desktop wheel forwarder scrolls the Redrafted's board too.
+- **Server:** `functions/api/event.js` accepts `showdown_state` and `difficulty_select` and the mode `showdown` (the
+  archive's analytics never reached /avocado). The podium share reports `share_click` (surface `redraft`).
+- **Tests:** test.js runs the Redrafted on the real site_data.json (5 checks: the classes and the 1984 offset smoke
+  test, redshirts and spellings, every class fieldable in both difficulties, full computer drafts finish legally,
+  the copy law). 72 tests.
+
+The archive's other deltas (reviewed by a helper; the owner decides what comes next):
+- **Dynasty** (v48/48.1, localStorage `t82Dynasty`): browser-only, but it hooks newGame, showResults and the results
+  page, which v50 rebuilt: a port is a rework, not a paste.
+- **Classic difficulty** (v49.10/v49.12: PICKUP/PRO for Classic, remembered) and **blind Classic PRO** (v49.13): browser
+  only; the screen code is already here (`renderDifficultyScreen` is generic). Note the naming clash with the existing
+  Pro mode.
+- **Share labels "shareblind"** (v49.14): touches the locked SHARE FORMAT LAW text; needs the owner.
+- **Superseded, not to port:** the v49.4 season scoreboard (the riso reel replaced it), the v49.5 to 49.9 card vote
+  strips and celebration (the v50 tag ballot replaced them), op=engq (dropped in v50).
+- **Migration 0025** (24 homepage polls) exists only on accounts-test: D1 content, could ride the next deploy.
+- **Accounts, duel, league, arena, weekly, leaderboards:** the accounts stack at the accounts-test root (the owner's
+  item 17, "later").
 
 ---
 
@@ -97,9 +141,8 @@ Calls made (the owner may overrule):
   GAME BASICS lines are reused as they are.
 - The glossary door is a text button, not an (i), so it says what it does.
 
-Next on the owner's list (in order): 10 (done in v54, section 00000c), 15 (import The Redrafted from the
-accounts-test archive and review the other deltas), 16 (a Daily archive: play or view past Dailies), 17 (later:
-leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
+Next on the owner's list (in order): 10 (done in v54, section 00000c), 15 (done in v55, section 00000d), 16 (a
+Daily archive: play or view past Dailies), 17 (later: leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
 runs about 14% taller than Barlow in tight spots), and the lab's 93-state recapture and artifact republish.
 
 ---

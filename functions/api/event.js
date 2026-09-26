@@ -16,9 +16,10 @@ const NAMES = new Set([
   "heatcheck_shown", "heatcheck_action", "heatcheck_declined", "heatcheck_result",
   "traits_session", "traits_question", "traits_vote",
   "donate_click", "feedback_click", "recap_presented", "recap_shown", "recap_read", "recap_full_read",
-  "recap_action", "recap_skip", "recap_unwrap", "recap_results", "recap_generation", "recap_publish"
+  "recap_action", "recap_skip", "recap_unwrap", "recap_results", "recap_generation", "recap_publish",
+  "showdown_state", "difficulty_select"   // v55: THE REDRAFTED's draft states and its difficulty screen
 ]);
-const MODES = new Set(["classic", "pro", "cap", "kaman"]);
+const MODES = new Set(["classic", "pro", "cap", "kaman", "showdown"]);
 const VIEWPORTS = new Set(["sm", "md", "lg"]);
 const DEVICES = new Set(["mobile", "tablet", "desktop"]);
 const ABANDON_REASONS = new Set(["start_over", "page_exit"]);

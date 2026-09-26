@@ -279,5 +279,42 @@ eq("section headers: head() builds one component with the context's variant",
   ['<h2 class="t-head" data-head="' + ctx.HEADS.results + '">Your five</h2>', '<h2 class="t-head bt-h" data-head="' + ctx.HEADS.sheet + '">Add a tag</h2>',
     '<h3 class="t-head" data-head="eyebrow">X</h3>']);
 
+// ---------- v55 THE REDRAFTED on the real player data (skipped when site_data.json is absent) ----------
+// The owner's "redraftables", ported from the accounts-test archive: every class derives from the data,
+// every board can field three legal teams in both difficulties, and a full computer draft always finishes.
+if (fs.existsSync("site_data.json")) {
+  const rctx = { window: {}, navigator: {}, location: { search: "" }, document: ctx.document, performance: ctx.performance,
+    setTimeout: () => 0, requestAnimationFrame: () => 0, Math, console: { log() {}, info() {}, warn() {}, error() {} } };
+  vm.createContext(rctx);
+  vm.runInContext(core, rctx);
+  vm.runInContext(code, rctx);
+  rctx.initDataInput = JSON.parse(fs.readFileSync("site_data.json", "utf8"));
+  vm.runInContext("initData(initDataInput); DATA_READY = true; sdDeriveClasses();", rctx);
+  const R = vm.runInContext(`(function () {
+    var ids = sdOrderAll(), top = function (id) { SD_CLASS_ID = id; SD_DIFF = "pickup"; SD = null; return sdBoardOrder(sdBuildPool().list).map(function (p) { return p.name; }); };
+    var names = function (id) { SD_CLASS_ID = id; SD_DIFF = "pro"; SD = null; return sdBuildPool().list.map(function (p) { return p.name; }); };
+    var bad = [];
+    ids.forEach(function (id) { ["pickup", "pro"].forEach(function (d) {
+      SD_CLASS_ID = id; SD_DIFF = d; SD = null; var pool = sdBuildPool();
+      if (pool.list.length < SD_CFG.rosterSize * 3 || sdClassViable(pool)) bad.push(id + ":" + d);
+    }); });
+    var drafts = ["1984", "2003", "1976", "2016", "2021"].map(function (id) {
+      SD_CLASS_ID = id; SD_DIFF = "pro"; SD = null; SD = sdFresh();
+      while (SD.at < SD.seq.length) { var gi = SD.seq[SD.at], c = sdAiChoose(gi); if (!c) break; sdApplyPick(gi, c.name, c.row, c.b); SD.at++; }
+      return SD.rosters.every(function (r) { var n = { G: 0, F: 0, C: 0 }; r.forEach(function (p) { n[p.slot]++; }); return r.length === 5 && n.G === 2 && n.F === 2 && n.C === 1; });
+    });
+    var copy = ids.map(function (id) { return SD_CLASSES[id].label + " " + SD_CLASSES[id].blurb; }).join(" ");
+    return { n: ids.length, lo: ids[ids.length - 1], hi: ids[0], c84: top("1984").slice(0, 6), bird: names("1978").indexOf("Larry Bird") >= 0,
+      jokic: names("2014").indexOf("Nikola Joki\\u0107") >= 0, pav: names("2003").indexOf("Sasha Pavlovi\\u0107") >= 0, bad: bad, drafts: drafts,
+      em: copy.indexOf("\\u2014") >= 0 };
+  })()`, rctx);
+  eq("redrafted: every class derives from the data (1974 to 2025, 50+ classes); the 1984 offset smoke test holds",
+    [R.n >= 50, R.lo, R.hi, ["Michael Jordan", "Hakeem Olajuwon", "Charles Barkley", "John Stockton"].every(n => R.c84.indexOf(n) >= 0)], [true, "1974", "2025", true]);
+  eq("redrafted: redshirts and spellings land (Bird in 1978, Jokic in 2014, Pavlovic in 2003)", [R.bird, R.jokic, R.pav], [true, true, true]);
+  eq("redrafted: every class fields three legal teams in both difficulties", R.bad, []);
+  eq("redrafted: a full computer draft always finishes with 2 G, 2 F, 1 C a team", R.drafts, [true, true, true, true, true]);
+  eq("redrafted: class labels and blurbs have zero em-dashes (copy law)", R.em, false);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

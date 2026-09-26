@@ -730,7 +730,8 @@ var _buttonStyleObserver = null;
 // .hh-charity too: I DON'T WANT YOUR CHARITY is the outline ghost it was written
 // as, not a full-width gold keycap louder than the ball lever.
 var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)" +
-  ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done):not(.gate-back):not(.hh-charity)";
+  ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done):not(.gate-back):not(.hh-charity)" +
+  ":not(.t-chip):not(.rd-diff)";   // v55: a chip is never a keycap; the Redrafted's difficulty cards are cards
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -774,7 +775,7 @@ function wireDraftWheel() {
     if (body.classList.contains("rules-open") || body.classList.contains("gating")) return;
     if (ev.ctrlKey) return;                                   // trackpad pinch-zoom rides wheel+ctrl
     if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;    // horizontal swipe is not ours
-    var pool = el("pool");
+    var pool = el("pool") || el("rdPool");   // v55: the Redrafted's board too
     if (!pool || pool.classList.contains("scrambling")) return;
     if (pool.scrollHeight <= pool.clientHeight + 1) return;   // nothing to scroll
     var t = ev.target;
@@ -1260,7 +1261,8 @@ var HEADS = {
   reel: "eyebrow",      // THE SEASON, GAME BY GAME
   results: "eyebrow",   // YOUR FIVE, TWO-WAY PROFILE, GOAT CLIMB, SCORING CARD
   sheet: "title",       // a bottom sheet's title
-  group: "eyebrow"      // a group label inside a sheet or a list
+  group: "eyebrow",     // a group label inside a sheet or a list
+  redraft: "eyebrow"    // THE REDRAFTED's gate, difficulty and podium (v55)
 };
 var HEADS_FORCE = (function () {
   var m = typeof location !== "undefined" && /[?&]heads=(eyebrow|rule|bar|title|banner|tab)(&|$)/.exec(location.search || "");
@@ -3030,6 +3032,7 @@ function renderIntro() {
         '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
         '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
       thirdSlotHtml +
+      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redrafted \u00B7 redraft an NBA class</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
@@ -3044,7 +3047,7 @@ function renderIntro() {
     var specs = [
       ["startClassic", "classic"], ["startCap", "cap"], ["startPro", "pro"],
       ["startDaily", "daily"], ["dailyChallengeBtn", "daily_share"], ["dailyPracticeBtn", "daily_practice"],
-      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"]
+      ["startDuel", "duel"], ["startLeague", "league"], ["arenaChip", "arena"], ["startWeekly", "weekly"], ["startRedraft", "redraft"]
     ];
     var seen = {};
     function mark(node, key) {
@@ -3077,6 +3080,7 @@ function renderIntro() {
     if (btn) btn.disabled = true;
   }
   el("homeRulesBtn").addEventListener("click", function () { openRulesSheet({ home: true }); });
+  el("startRedraft").addEventListener("click", function () { openRedrafted("home"); });
   el("startClassic").addEventListener("click", function () { start("classic"); });
   var proBtn = el("startPro");   // absent when THE DAILY holds the third slot
   if (proBtn) proBtn.addEventListener("click", function () { start("pro"); });
@@ -5578,6 +5582,1053 @@ function setEliteResultGlow(wins) {
   if (share) share.classList.toggle("elite-result", wins === 81 || wins === 82);
 }
 
+/* ---------- THE REDRAFTED (v55, ported from the accounts-test archive) ----------
+   "Class of 2016. Three GMs. One board." A snake draft against two computer
+   GMs (MERCER takes the best player alive, QUINCY drafts the team) over one
+   shared, exhaustible pool: a real NBA draft class, five players a team, every
+   pick exclusive, then the engine projects all three seasons and a podium.
+   The owner's to-do: "import redraftables from test archive". Source:
+   origin/accounts-test, true82-allclasses2-on-v49.14/app.js (v49.14 plus
+   "every class, derived"), the logic unchanged: 9 hand-picked classes plus
+   every other year derived from the data (52 in all, 1974 to 2025), PICKUP
+   and PRO difficulty, the Hall's-condition strand guard, the rival GMs, the
+   verdict on throwaway classic states (no per-game season, no replay, no
+   leaderboard). Ported: the screens are rebuilt on the style system (the
+   archive's injected CSS and Dynasty's panel skin are gone), the archive's
+   Classic difficulty and Dynasty are not ported, and the content fixes: the
+   Pavlovic spelling, the 1976 blurb. State is in-memory only; a mid-draft
+   reload costs the draft. The engine and the other modes never see it.
+   QA: ?redraft=1 opens the gate, ?redraft=2003 opens on that class. */
+var SD_CFG = { rosterSize: 5, caps: { G: 2, F: 2, C: 1 } };
+var SD_CLASSES = {
+  /* Entries may carry alternate spellings after a pipe: "Luka Doncic|Luka Dončić".
+     The pool builder accepts ANY variant and displays the data's own name, so a
+     diacritic or a Jr. suffix mismatch degrades to nothing instead of a hole. */
+  "2016": {
+    label: "CLASS OF 2016",
+    blurb: "Simmons, Ingram, and the late-round heist.",
+    names: [
+      "Ben Simmons", "Brandon Ingram", "Jaylen Brown", "Pascal Siakam",
+      "Domantas Sabonis", "Jamal Murray", "Dejounte Murray", "Malcolm Brogdon",
+      "Fred VanVleet", "Buddy Hield", "Caris LeVert", "Jakob Poeltl",
+      "Ivica Zubac", "Alex Caruso", "Dorian Finney-Smith", "Malik Beasley",
+      "Gary Payton II", "Derrick Jones Jr.|Derrick Jones", "Marquese Chriss", "Taurean Prince"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Ben Simmons": 1, "Brandon Ingram": 2, "Jaylen Brown": 3, "Buddy Hield": 6, "Jamal Murray": 7, "Marquese Chriss": 8, "Jakob Poeltl": 9, "Domantas Sabonis": 11, "Taurean Prince": 12, "Malik Beasley": 19, "Caris LeVert": 20, "Pascal Siakam": 27, "Dejounte Murray": 29, "Ivica Zubac": 32, "Malcolm Brogdon": 36 , "Dragan Bender": 4, "Kris Dunn": 5, "Thon Maker": 10, "Denzel Valentine": 14, "Juancho Hernangomez": 15, "Guerschon Yabusele": 16, "DeAndre' Bembry": 21, "Timothe Luwawu-Cabarrot": 24, "Furkan Korkmaz": 26, "Skal Labissiere": 28, "Damian Jones": 30, "Cheick Diallo": 33, "Tyler Ulis": 34, "Patrick McCaw": 38, "Isaiah Whitehead": 42, "Jake Layman": 47, "Georges Niang": 50, "Abdel Nader": 58 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Dragan Bender", "Kris Dunn", "Thon Maker", "Denzel Valentine", "Juancho Hernangomez|Juancho Hernangómez", "Guerschon Yabusele", "DeAndre' Bembry", "Timothe Luwawu-Cabarrot|Timothé Luwawu-Cabarrot", "Furkan Korkmaz", "Skal Labissiere|Skal Labissière", "Damian Jones", "Cheick Diallo", "Tyler Ulis", "Patrick McCaw", "Isaiah Whitehead", "Jake Layman", "Georges Niang", "Abdel Nader", "Yogi Ferrell", "Danuel House Jr.|Danuel House", "David Nwaba"]
+  },
+  "2017": {
+    label: "CLASS OF 2017",
+    blurb: "Two-way wings as far as the board sees.",
+    names: [
+      "Jayson Tatum", "Donovan Mitchell", "De'Aaron Fox", "Bam Adebayo",
+      "Jarrett Allen", "Lauri Markkanen", "OG Anunoby", "John Collins",
+      "Kyle Kuzma", "Derrick White", "Lonzo Ball", "Josh Hart",
+      "Dillon Brooks", "Malik Monk", "Luke Kennard", "Jonathan Isaac",
+      "Zach Collins", "Thomas Bryant", "Monte Morris"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Lonzo Ball": 2, "Jayson Tatum": 3, "De'Aaron Fox": 5, "Jonathan Isaac": 6, "Lauri Markkanen": 7, "Zach Collins": 10, "Malik Monk": 11, "Luke Kennard": 12, "Donovan Mitchell": 13, "Bam Adebayo": 14, "John Collins": 19, "Jarrett Allen": 22, "OG Anunoby": 23, "Kyle Kuzma": 27, "Derrick White": 29, "Josh Hart": 30, "Thomas Bryant": 42, "Dillon Brooks": 45, "Monte Morris": 51 , "Markelle Fultz": 1, "Josh Jackson": 4, "Frank Ntilikina": 8, "Dennis Smith Jr.": 9, "Justin Jackson": 15, "Harry Giles": 20, "Terrance Ferguson": 21, "Frank Jackson": 31, "Semi Ojeleye": 37, "Jordan Bell": 38, "Sterling Brown": 46, "Sindarius Thornwell": 48 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Markelle Fultz", "Josh Jackson", "Frank Ntilikina", "Dennis Smith Jr.", "Justin Jackson", "Harry Giles|Harry Giles III", "Terrance Ferguson", "Frank Jackson", "Semi Ojeleye", "Jordan Bell", "Sterling Brown", "Sindarius Thornwell", "Milos Teodosic|Miloš Teodosić"]
+  },
+  "2018": {
+    label: "CLASS OF 2018",
+    blurb: "Three franchise guards and one ball. Good luck.",
+    names: [
+      "Luka Doncic|Luka Don\u010di\u0107", "Shai Gilgeous-Alexander", "Trae Young",
+      "Jaren Jackson Jr.|Jaren Jackson", "Jalen Brunson", "Mikal Bridges",
+      "Deandre Ayton", "Wendell Carter Jr.|Wendell Carter", "Marvin Bagley III|Marvin Bagley",
+      "Michael Porter Jr.|Michael Porter", "Miles Bridges", "Kevin Huerter",
+      "De'Anthony Melton", "Robert Williams", "Mitchell Robinson", "Collin Sexton",
+      "Anfernee Simons", "Bruce Brown", "Gary Trent Jr.|Gary Trent",
+      "Grayson Allen", "Donte DiVincenzo"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Deandre Ayton": 1, "Marvin Bagley III": 2, "Luka Doncic": 3, "Jaren Jackson Jr.": 4, "Trae Young": 5, "Wendell Carter Jr.": 7, "Collin Sexton": 8, "Mikal Bridges": 10, "Shai Gilgeous-Alexander": 11, "Miles Bridges": 12, "Michael Porter Jr.": 14, "Donte DiVincenzo": 17, "Kevin Huerter": 19, "Grayson Allen": 21, "Anfernee Simons": 24, "Robert Williams": 27, "Jalen Brunson": 33, "Mitchell Robinson": 36, "Gary Trent Jr.": 37, "Bruce Brown": 42, "De'Anthony Melton": 46 , "Mo Bamba": 6, "Kevin Knox": 9, "Troy Brown Jr.": 15, "Lonnie Walker IV": 18, "Josh Okogie": 20, "Chandler Hutchison": 22, "Landry Shamet": 26, "Omari Spellman": 30, "Jevon Carter": 32, "Devonte' Graham": 34, "Rodions Kurucs": 40, "Hamidou Diallo": 45, "Svi Mykhailiuk": 47, "Keita Bates-Diop": 48, "Shake Milton": 54 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Mo Bamba|Mohamed Bamba", "Kevin Knox|Kevin Knox II", "Troy Brown Jr.", "Lonnie Walker IV|Lonnie Walker", "Josh Okogie", "Chandler Hutchison", "Landry Shamet", "Omari Spellman", "Jevon Carter", "Devonte' Graham", "Rodions Kurucs", "Hamidou Diallo", "Svi Mykhailiuk", "Keita Bates-Diop", "Shake Milton", "Duncan Robinson", "Kenrich Williams", "Yuta Watanabe", "Allonzo Trier"]
+  },
+  "2019": {
+    label: "CLASS OF 2019",
+    blurb: "Stars with asterisks, benches full of famous role players.",
+    names: [
+      "Ja Morant", "Zion Williamson", "Darius Garland", "Tyler Herro",
+      "RJ Barrett", "De'Andre Hunter", "Cam Johnson|Cameron Johnson", "Brandon Clarke",
+      "Grant Williams", "PJ Washington|P.J. Washington", "Keldon Johnson", "Nic Claxton|Nicolas Claxton",
+      "Daniel Gafford", "Coby White", "Jordan Poole", "Naz Reid",
+      "Terance Mann", "Matisse Thybulle", "Rui Hachimura", "Jaxson Hayes",
+      "Nickeil Alexander-Walker"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Zion Williamson": 1, "Ja Morant": 2, "RJ Barrett": 3, "De'Andre Hunter": 4, "Darius Garland": 5, "Coby White": 7, "Jaxson Hayes": 8, "Rui Hachimura": 9, "Cam Johnson": 11, "PJ Washington": 12, "Tyler Herro": 13, "Nickeil Alexander-Walker": 17, "Matisse Thybulle": 20, "Brandon Clarke": 21, "Grant Williams": 22, "Jordan Poole": 28, "Keldon Johnson": 29, "Nic Claxton": 31, "Daniel Gafford": 38, "Terance Mann": 48 , "Cam Reddish": 10, "Romeo Langford": 14, "Sekou Doumbouya": 15, "Chuma Okeke": 16, "Goga Bitadze": 18, "Darius Bazley": 23, "Ty Jerome": 24, "Kevin Porter Jr.": 30, "Cody Martin": 36, "Eric Paschall": 41, "Jaylen Nowell": 43, "Bol Bol": 44, "Talen Horton-Tucker": 46 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Cam Reddish", "Romeo Langford", "Sekou Doumbouya", "Chuma Okeke", "Goga Bitadze", "Darius Bazley", "Ty Jerome", "Kevin Porter Jr.", "Cody Martin", "Eric Paschall", "Jaylen Nowell", "Bol Bol", "Talen Horton-Tucker", "Caleb Martin", "Terence Davis"]
+  },
+  "2020": {
+    label: "CLASS OF 2020",
+    blurb: "Guards everywhere. Centers, four. Count them.",
+    names: [
+      "Anthony Edwards", "Tyrese Haliburton", "LaMelo Ball", "Desmond Bane",
+      "Tyrese Maxey", "Immanuel Quickley", "Onyeka Okongwu", "Isaiah Stewart",
+      "Precious Achiuwa", "Payton Pritchard", "Saddiq Bey", "Devin Vassell",
+      "Aaron Nesmith", "Jaden McDaniels", "Cole Anthony", "Isaac Okoro",
+      "Obi Toppin", "Deni Avdija", "James Wiseman", "Naji Marshall"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Anthony Edwards": 1, "James Wiseman": 2, "LaMelo Ball": 3, "Isaac Okoro": 5, "Onyeka Okongwu": 6, "Obi Toppin": 8, "Deni Avdija": 9, "Devin Vassell": 11, "Tyrese Haliburton": 12, "Aaron Nesmith": 14, "Cole Anthony": 15, "Isaiah Stewart": 16, "Saddiq Bey": 19, "Precious Achiuwa": 20, "Tyrese Maxey": 21, "Immanuel Quickley": 25, "Payton Pritchard": 26, "Jaden McDaniels": 28, "Desmond Bane": 30 , "Patrick Williams": 4, "Killian Hayes": 7, "Kira Lewis Jr.": 13, "Aleksej Pokusevski": 17, "Josh Green": 18, "Zeke Nnaji": 22, "Malachi Flynn": 29, "Theo Maledon": 34, "Xavier Tillman": 35, "Nick Richards": 42, "Jordan Nwora": 45, "Isaiah Joe": 49, "Paul Reed": 58 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Patrick Williams", "Killian Hayes", "Kira Lewis Jr.|Kira Lewis", "Aleksej Pokusevski", "Josh Green", "Zeke Nnaji", "Malachi Flynn", "Theo Maledon|Théo Maledon", "Xavier Tillman|Xavier Tillman Sr.", "Nick Richards", "Jordan Nwora", "Isaiah Joe", "Paul Reed"]
+  },
+  "2021": {
+    label: "CLASS OF 2021",
+    blurb: "The playmaking bigs. And Reaves went undrafted.",
+    names: [
+      "Cade Cunningham", "Evan Mobley", "Scottie Barnes", "Franz Wagner",
+      "Josh Giddey", "Alperen Sengun|Alperen \u015eeng\u00fcn", "Jalen Green", "Jonathan Kuminga",
+      "Trey Murphy III|Trey Murphy", "Herbert Jones|Herb Jones", "Ayo Dosunmu", "Jalen Suggs",
+      "Moses Moody", "Jalen Johnson", "Cam Thomas", "Bones Hyland|Nah'Shon Hyland",
+      "Isaiah Jackson", "Quentin Grimes", "Austin Reaves", "Day'Ron Sharpe",
+      "Davion Mitchell"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Cade Cunningham": 1, "Jalen Green": 2, "Evan Mobley": 3, "Scottie Barnes": 4, "Jalen Suggs": 5, "Josh Giddey": 6, "Jonathan Kuminga": 7, "Franz Wagner": 8, "Davion Mitchell": 9, "Moses Moody": 14, "Alperen Sengun": 16, "Trey Murphy III": 17, "Jalen Johnson": 20, "Isaiah Jackson": 22, "Quentin Grimes": 25, "Bones Hyland": 26, "Cam Thomas": 27, "Day'Ron Sharpe": 29, "Herbert Jones": 35, "Ayo Dosunmu": 38 , "Ziaire Williams": 10, "James Bouknight": 11, "Chris Duarte": 13, "Corey Kispert": 15, "Tre Mann": 18, "Keon Johnson": 21, "Josh Christopher": 24, "JT Thor": 37, "Neemias Queta": 39, "Aaron Wiggins": 55 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Ziaire Williams", "James Bouknight", "Chris Duarte", "Corey Kispert", "Tre Mann", "Keon Johnson", "Josh Christopher", "JT Thor", "Neemias Queta", "Aaron Wiggins", "Jose Alvarado|José Alvarado", "Sam Hauser"]
+  },
+  "1996": {
+    label: "CLASS OF 1996",
+    blurb: "Kobe, Iverson, Nash, and the best undrafted player ever.",
+    names: [
+      "Kobe Bryant", "Allen Iverson", "Ray Allen", "Steve Nash",
+      "Marcus Camby", "Stephon Marbury", "Antoine Walker", "Peja Stojakovic|Peja Stojakovi\u0107",
+      "Jermaine O'Neal", "Zydrunas Ilgauskas|\u017dydr\u016bnas Ilgauskas", "Ben Wallace", "Derek Fisher",
+      "Shareef Abdur-Rahim", "Kerry Kittles", "Erick Dampier", "Malik Rose"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Allen Iverson": 1, "Marcus Camby": 2, "Shareef Abdur-Rahim": 3, "Stephon Marbury": 4, "Ray Allen": 5, "Antoine Walker": 6, "Kerry Kittles": 8, "Erick Dampier": 10, "Kobe Bryant": 13, "Peja Stojakovic": 14, "Steve Nash": 15, "Jermaine O'Neal": 17, "Zydrunas Ilgauskas": 20, "Derek Fisher": 24, "Malik Rose": 44 , "Lorenzen Wright": 7, "Samaki Walker": 9, "Vitaly Potapenko": 12, "Tony Delk": 16, "Walter McCarty": 19, "Jerome Williams": 26, "Travis Knight": 29, "Othella Harrington": 30, "Jeff McInnis": 37, "Shandon Anderson": 54 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Lorenzen Wright", "Samaki Walker", "Vitaly Potapenko", "Tony Delk", "Walter McCarty", "Jerome Williams", "Travis Knight", "Othella Harrington", "Jeff McInnis", "Shandon Anderson", "Moochie Norris", "Chucky Atkins"]
+  },
+  "2003": {
+    label: "CLASS OF 2003",
+    blurb: "Four Hall of Famers at the top. Chris Kaman in the middle.",
+    names: [
+      "LeBron James", "Dwyane Wade", "Carmelo Anthony", "Chris Bosh",
+      "David West", "Josh Howard", "Boris Diaw", "Kyle Korver",
+      "Mo Williams|Maurice Williams", "Kirk Hinrich", "Chris Kaman", "Nick Collison",
+      "Kendrick Perkins", "Zaza Pachulia", "Leandro Barbosa", "Udonis Haslem",
+      "Matt Bonner", "Steve Blake", "T.J. Ford|TJ Ford"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "LeBron James": 1, "Carmelo Anthony": 3, "Chris Bosh": 4, "Dwyane Wade": 5, "Chris Kaman": 6, "Kirk Hinrich": 7, "T.J. Ford": 8, "Nick Collison": 12, "David West": 18, "Boris Diaw": 21, "Kendrick Perkins": 27, "Leandro Barbosa": 28, "Josh Howard": 29, "Steve Blake": 38, "Zaza Pachulia": 42, "Matt Bonner": 45, "Mo Williams": 47, "Kyle Korver": 51 , "Darko Milicic": 2, "Mike Sweetney": 9, "Jarvis Hayes": 10, "Mickael Pietrus": 11, "Marcus Banks": 13, "Luke Ridnour": 14, "Sasha Pavlovic": 19, "Dahntay Jones": 20, "Travis Outlaw": 23, "Brian Cook": 24, "Carlos Delfino": 25, "Jason Kapono": 31, "Luke Walton": 32, "Willie Green": 41, "Keith Bogans": 43 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Darko Milicic|Darko Miličić", "Mike Sweetney", "Jarvis Hayes", "Mickael Pietrus|Mickaël Piétrus", "Marcus Banks", "Luke Ridnour", "Sasha Pavlovic|Sasha Pavlovi\u0107", "Dahntay Jones", "Travis Outlaw", "Brian Cook", "Carlos Delfino", "Jason Kapono", "Luke Walton", "Willie Green", "Keith Bogans", "Marquis Daniels"]
+  },
+  "2009": {
+    label: "CLASS OF 2009",
+    blurb: "Curry and Harden at the top. One real center if you squint.",
+    names: [
+      "Stephen Curry", "James Harden", "Blake Griffin", "DeMar DeRozan",
+      "Jrue Holiday", "Ty Lawson", "Jeff Teague", "Darren Collison",
+      "Brandon Jennings", "Tyreke Evans", "Ricky Rubio", "Taj Gibson",
+      "DeMarre Carroll", "Danny Green", "Patrick Beverley", "Wesley Matthews",
+      "Patty Mills|Patrick Mills", "DeJuan Blair", "Jordan Hill", "Jodie Meeks"
+    ],
+    /* Real draft position, undrafted names simply absent. Board order only;
+       the engine never reads this. */
+    picks: { "Blake Griffin": 1, "James Harden": 3, "Tyreke Evans": 4, "Ricky Rubio": 5, "Stephen Curry": 7, "Jordan Hill": 8, "DeMar DeRozan": 9, "Brandon Jennings": 10, "Jrue Holiday": 17, "Ty Lawson": 18, "Jeff Teague": 19, "Darren Collison": 21, "Taj Gibson": 26, "DeMarre Carroll": 27, "DeJuan Blair": 37, "Jodie Meeks": 41, "Patrick Beverley": 42, "Danny Green": 46, "Patty Mills": 55 , "Hasheem Thabeet": 2, "Jonny Flynn": 6, "Terrence Williams": 11, "Gerald Henderson": 12, "Tyler Hansbrough": 13, "Earl Clark": 14, "Austin Daye": 15, "James Johnson": 16, "Omri Casspi": 23, "Byron Mullens": 24, "Rodrigue Beaubois": 25, "Wayne Ellington": 28, "Toney Douglas": 29, "Sam Young": 36, "Jonas Jerebko": 39, "Marcus Thornton": 43, "Chase Budinger": 44, "A.J. Price": 52 },
+    /* PRO ONLY: the rest of the class that logged a real season. The 785
+       floor does the viability filtering at runtime; a name with no viable
+       season simply never appears on the board. */
+    deep: ["Hasheem Thabeet", "Jonny Flynn", "Terrence Williams", "Gerald Henderson", "Tyler Hansbrough", "Earl Clark", "Austin Daye", "James Johnson", "Omri Casspi", "Byron Mullens|B.J. Mullens", "Rodrigue Beaubois", "Wayne Ellington", "Toney Douglas", "Sam Young", "Jonas Jerebko", "Marcus Thornton", "Chase Budinger", "A.J. Price", "Garrett Temple"]
+  }
+};
+var SD_CLASS_ORDER = ["2016", "2017", "2018", "2019", "2020", "2021", "1996", "2003", "2009"];
+
+/* ---------- every class, derived from the data itself (ported 2026-09-05) ----
+   A player's class is the year before his FIRST season in the dataset
+   (seasons are end-years: a June-Y draftee debuts in season Y+1). Cohorts
+   are ranked by best eligible season and capped to a compact board. The
+   hand-curated classes above stay authoritative for their years, and any
+   name in a curated class (short board OR deep tier) is excluded from every
+   auto cohort. Derived classes carry no picks map, so the board falls to
+   the undrafted peakMp order. PRO extends to the whole eligible cohort
+   (capped by SD_PRO_CAP), derived from the data, no authoring needed. */
+var SD_ENTRY_OFFSET = 1;
+/* SMOKE TEST for the offset: open CLASS OF 1984 and confirm Jordan, Hakeem,
+   Barkley, and Stockton headline it. If they sit under 1983 or 1985, the
+   season ints are not end-years: adjust this one constant. */
+var SD_MIN_COHORT = SD_CFG.rosterSize * 3;   // smaller cohorts never materialize
+var SD_COHORT_CAP = 21;                      // compact PICKUP board, per the brief
+var SD_PRO_CAP = 50;                         // ceiling on the full PRO board, pathology guard only
+/* Famous draft-and-stash and redshirt cases, mapped to their real class.
+   Keys are data spellings; diacritic names carry both. A name mapped into a
+   hand-curated year is dropped unless that curated list names him. */
+var SD_REDSHIRTS = {
+  "Larry Bird": 1978,
+  "Drazen Petrovic": 1986, "Dra\u017een Petrovi\u0107": 1986,
+  "Arvydas Sabonis": 1986,
+  "Sarunas Marciulionis": 1987, "\u0160ar\u016bnas Mar\u010diulionis": 1987,
+  "Dino Radja": 1989, "Dino Ra\u0111a": 1989,
+  "Toni Kukoc": 1990, "Toni Kuko\u010d": 1990,
+  "Manu Ginobili": 1999, "Manu Gin\u00f3bili": 1999,
+  "Luis Scola": 2002,
+  "Tiago Splitter": 2007,
+  "Nikola Mirotic": 2011, "Nikola Miroti\u0107": 2011,
+  "Joel Embiid": 2014,
+  "Nikola Jokic": 2014, "Nikola Joki\u0107": 2014,
+  "Dario Saric": 2014, "Dario \u0160ari\u0107": 2014,
+  "Bogdan Bogdanovic": 2016, "Bogdan Bogdanovi\u0107": 2016
+};
+/* Years that deserve a mark on the chip and their own words. */
+var SD_SPECIAL = {
+  // v55: Erving and Gervin sit in the dropped 1974 floor cohort (the ABA rows start in 1974), so the blurb names who is on this board
+  "1976": { cue: "\u2726", blurb: "The merger class. The ABA folds in: Moses Malone and Artis Gilmore arrive with Parish and Dantley." }
+};
+var SD_DERIVED = 0;
+function sdCohortPick(ranked) {
+  // Top of the cohort by best season, GROWN (never swapped) until it can
+  // field three legal teams; null when the whole cohort cannot.
+  var take = ranked.slice(0, Math.min(SD_COHORT_CAP, ranked.length));
+  var need = {};
+  Object.keys(SD_CFG.caps).forEach(function (b) { need[b] = SD_CFG.caps[b] * 3; });
+  for (var g = 0; g <= 4; g++) {
+    var S = sdHall(need, take.map(function (p) { return p.buckets; }));
+    if (!S) return take;
+    var added = null;
+    for (var i = take.length; i < ranked.length; i++) {
+      var cand = ranked[i], hit = false, inTake = false, j;
+      for (j = 0; j < take.length; j++) if (take[j] === cand) { inTake = true; break; }
+      if (inTake) continue;
+      for (j = 0; j < S.length; j++) if (cand.buckets.indexOf(S[j]) !== -1) { hit = true; break; }
+      if (hit) { added = cand; break; }
+    }
+    if (!added) return null;
+    take.push(added);
+  }
+  return null;
+}
+function sdDeriveClasses() {
+  if (SD_DERIVED || !DATA_READY) return;
+  SD_DERIVED = 1;
+  var curatedNames = {};
+  SD_CLASS_ORDER.forEach(function (id) {
+    var c = SD_CLASSES[id];
+    (c.names.concat(c.deep || [])).forEach(function (e) {
+      e.split("|").forEach(function (v) { curatedNames[v] = 1; });
+    });
+  });
+  var info = {}, floor = Infinity;
+  POOL_YEARS.forEach(function (cell) {
+    cell.forEach(function (rows, name) {
+      var rec = info[name];
+      if (!rec) { rec = { min: Infinity, best: -Infinity, bk: {} }; info[name] = rec; }
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i], sn = r[IDX.season];
+        if (sn < rec.min) rec.min = sn;      // RAW minimum: a 300-minute rookie year still marks entry
+        if (sn < floor) floor = sn;
+        if (r[IDX.mp] < 785) continue;
+        var v = valueOf(r);
+        if (v > rec.best) rec.best = v;
+        sdRowBuckets(r).forEach(function (b) { rec.bk[b] = 1; });
+      }
+    });
+  });
+  var cohorts = {};
+  Object.keys(info).forEach(function (name) {
+    if (curatedNames[name]) return;          // curated membership wins everywhere
+    var rec = info[name];
+    if (rec.best === -Infinity) return;      // never an eligible season anywhere
+    var y = SD_REDSHIRTS[name] != null ? SD_REDSHIRTS[name] : rec.min - SD_ENTRY_OFFSET;
+    if (y <= floor - SD_ENTRY_OFFSET) return; // the floor cohort is "already in the league", not a class
+    var yk = String(y);
+    if (SD_CLASSES[yk] && !SD_CLASSES[yk].auto) return;   // year is hand-curated and authoritative
+    if (!cohorts[yk]) cohorts[yk] = [];
+    cohorts[yk].push({ name: name, best: rec.best, buckets: Object.keys(rec.bk) });
+  });
+  Object.keys(cohorts).forEach(function (yk) {
+    var c = cohorts[yk];
+    if (c.length < SD_MIN_COHORT) return;
+    c.sort(function (a, b) { return b.best - a.best; });
+    var picked = sdCohortPick(c);
+    if (!picked) return;                     // the whole cohort cannot field the board
+    var sp = SD_SPECIAL[yk];
+    SD_CLASSES[yk] = {
+      label: "CLASS OF " + yk, auto: 1,
+      blurb: sp && sp.blurb ? sp.blurb : "Headlined by " + picked[0].name + ", " + picked[1].name + ", and " + picked[2].name + ".",
+      names: picked.map(function (p) { return p.name; })
+    };
+    /* PRO gets the WHOLE eligible cohort: everyone who entered this year and
+       ever logged a 785-minute season, the same bar the authored deep tiers
+       used. Rides the existing deep merge in sdBuildPool unchanged. */
+    var extras = [];
+    for (var x = 0; x < c.length && picked.length + extras.length < SD_PRO_CAP; x++) {
+      if (picked.indexOf(c[x]) === -1) extras.push(c[x].name);
+    }
+    if (extras.length) SD_CLASSES[yk].deep = extras;
+  });
+}
+function sdOrderAll() {
+  var ys = Object.keys(SD_CLASSES);
+  ys.sort(function (a, b) { return (+b) - (+a); });
+  return ys;
+}
+/* v49.10 DIFFICULTY (owner spec, 2026-08-07). PICKUP: the curated short
+   board, peak seasons pre-set as the default. PRO: the whole class (deep
+   lists join the board), seasons randomized. The intro asks on every entry;
+   the draft snapshots its difficulty at sdFresh like it does the class, so
+   a mid-flight switch never mutates a live draft. */
+var SD_DIFF = null;
+/* v49.12 HARDENED DIFFICULTY MEMORY. Two mediums, self-healing: every read
+   checks localStorage first, falls back to a one-year cookie, and repairs
+   whichever medium is missing the value. Every write hits both and then
+   READS BACK, so diffRemember reports whether anything actually stuck
+   (private modes and corporate lockdowns fail silently otherwise). Keys are
+   per mode; only pickup/pro ever round-trip, anything else reads as null. */
+var DIFF_KEYS = { showdown: "t82_redraft_diff_v1" };   // v55: the Redrafted's own (the archive's Classic difficulty was not ported)
+function diffCookieRead(key) {
+  try { var m = document.cookie.match(new RegExp("(?:^|; )" + key + "=(pickup|pro)")); return m ? m[1] : null; } catch (e) { return null; }
+}
+function diffCookieWrite(key, val) {
+  try { document.cookie = key + "=" + (val || "x") + ";path=/;max-age=" + (val ? 31536000 : 0) + ";SameSite=Lax"; } catch (e) {}
+}
+function diffLsRead(key) {
+  try { var v = localStorage.getItem(key); return (v === "pickup" || v === "pro") ? v : null; } catch (e) { return null; }
+}
+function diffRemembered(mode) {
+  var key = DIFF_KEYS[mode];
+  if (!key) return null;
+  var ls = diffLsRead(key), ck = diffCookieRead(key);
+  var v = ls || ck;
+  if (v && !ls) { try { localStorage.setItem(key, v); } catch (e) {} }   // heal LS from the cookie
+  if (v && !ck) diffCookieWrite(key, v);                                 // heal the cookie from LS
+  return v;
+}
+function diffRemember(mode, diff, on) {
+  var key = DIFF_KEYS[mode];
+  if (!key) return false;
+  try { if (on && diff) localStorage.setItem(key, diff); else localStorage.removeItem(key); } catch (e) {}
+  diffCookieWrite(key, on ? diff : null);
+  return on ? diffRemembered(mode) === diff : diffRemembered(mode) === null;
+}
+function diffStoreUsable() {
+  try { localStorage.setItem("t82_probe", "1"); var ok = localStorage.getItem("t82_probe") === "1"; localStorage.removeItem("t82_probe"); if (ok) return true; } catch (e) {}
+  diffCookieWrite("t82_probe", "pickup");
+  var ck = diffCookieRead("t82_probe") === "pickup";
+  diffCookieWrite("t82_probe", null);
+  return ck;
+}
+function sdDiffRemembered() { return diffRemembered("showdown"); }
+function sdDiffRemember(diff, on) { return diffRemember("showdown", diff, on); }
+var SD_CLASS_ID = "2016";
+/* The two rival GMs. needW weights how hard roster need pulls against raw
+   value; scW rewards grabbing a scarce position before it dries up; jitter
+   is the tie-band within which the pick randomizes so games differ. These
+   three numbers are the whole personality system, on purpose. */
+var SD_GMS = [
+  { name: "YOU", ai: 0 },
+  { name: "MERCER", ai: 1, tag: "best player alive, every pick", needW: 0.2, scW: 0.25, jitter: 0.6 },
+  { name: "QUINCY", ai: 1, tag: "drafts the team, not the name", needW: 1.5, scW: 0.9, jitter: 0.25 }
+];
+function sdParseQa(search) {
+  try {
+    var v = new URLSearchParams(search).get("redraft");
+    if (!v) return {};
+    return { open: 1, cls: /^\d{4}$/.test(v) ? v : null };   // ?redraft=1 opens; ?redraft=2018 opens ON that class
+  } catch (e) { return {}; }
+}
+var SD_QA = sdParseQa(location.search);
+var SD_POOLS = {};     // classId -> built pool, so switching classes never serves a stale board
+var SD = null;         // the draft in flight; in-memory only
+var SD_TIMER = 0;      // pending AI beat, so back-out can cancel it
+
+function sdBuildPool() {
+  var id = SD_CLASS_ID;
+  var diff = (SD && SD.diff) || SD_DIFF || "pro";
+  var key = id + "|" + diff;
+  if (SD_POOLS[key]) return SD_POOLS[key];
+  var entries = diff === "pro" && SD_CLASSES[id].deep
+    ? SD_CLASSES[id].names.concat(SD_CLASSES[id].deep)
+    : SD_CLASSES[id].names;
+  var variantOf = {}, i, j;
+  for (i = 0; i < entries.length; i++) {
+    var vs = entries[i].split("|");
+    for (j = 0; j < vs.length; j++) variantOf[vs[j]] = i;
+  }
+  var recs = {};   // entry index -> rec, displayed under the DATA's own spelling
+  POOL_YEARS.forEach(function (cell) {
+    cell.forEach(function (rows, name) {
+      var ei = variantOf[name];
+      if (ei === undefined) return;
+      var rec = recs[ei];
+      if (!rec) { rec = { name: name, seasons: [], seen: {} }; recs[ei] = rec; }
+      for (var k = 0; k < rows.length; k++) {
+        var r = rows[k];
+        if (r[IDX.mp] < 785) continue;   // the same eligibility floor as everywhere else
+        var key = r[IDX.season] + "|" + r[IDX.team];
+        if (rec.seen[key]) continue;
+        rec.seen[key] = 1;
+        rec.seasons.push(r);
+      }
+    });
+  });
+  var list = [], missing = [], byName = new Map();
+  for (i = 0; i < entries.length; i++) {
+    var rec2 = recs[i];
+    if (!rec2 || !rec2.seasons.length) { missing.push(entries[i].split("|")[0]); continue; }
+    rec2.seasons.sort(function (a, b) { return (a[IDX.season] - b[IDX.season]) || cmpName(a, b); });
+    var best = rec2.seasons[0], bset = {};
+    rec2.seasons.forEach(function (r) {
+      if (valueOf(r) > valueOf(best)) best = r;
+      sdRowBuckets(r).forEach(function (b) { bset[b] = 1; });
+    });
+    rec2.best = best;
+    rec2.buckets = Object.keys(bset);
+    var pm = 0;
+    rec2.seasons.forEach(function (r) { if ((r[IDX.mp] || 0) > pm) pm = r[IDX.mp] || 0; });
+    rec2.peakMp = pm;
+    rec2.pick = (SD_CLASSES[id].picks && SD_CLASSES[id].picks[entries[i].split("|")[0]]) || null;
+    delete rec2.seen;
+    list.push(rec2);
+    byName.set(rec2.name, rec2);
+  }
+  if (missing.length) try { console.info("[redraft] " + SD_CLASSES[id].label + " names with no 785-minute season in the data, dropped:", missing.join(", ")); } catch (e) {}
+  SD_POOLS[key] = { list: list, byName: byName, missing: missing };
+  return SD_POOLS[key];
+}
+function sdShuffle(a) {
+  a = a.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+function sdFresh() {
+  var seats = sdShuffle([0, 1, 2]);   // seats[k] = which GM drafts k-th in round 1
+  var seq = [], r, k;
+  for (r = 0; r < SD_CFG.rosterSize; r++) {
+    for (k = 0; k < seats.length; k++) seq.push(seats[r % 2 ? seats.length - 1 - k : k]);
+  }
+  return {
+    cls: SD_CLASS_ID, seats: seats, seq: seq, at: 0,
+    rosters: [[], [], []],          // per GM: [{row, slot}]
+    diff: SD_DIFF || "pro",         // difficulty snapshot, like cls: a live draft never changes rules
+    taken: {},                      // name -> gm index
+    yearByName: {},                 // the human's season choices
+    randByName: {},                 // the human's random default season per player, stable per draft
+    selected: null, log: [], done: 0, verdict: null
+  };
+}
+function sdRosterOpen(gi) {
+  var used = { G: 0, F: 0, C: 0 };
+  SD.rosters[gi].forEach(function (p) { used[p.slot]++; });
+  var open = [];
+  Object.keys(SD_CFG.caps).forEach(function (b) { if (used[b] < SD_CFG.caps[b]) open.push(b); });
+  return open;
+}
+function sdOpenCount(gi, b) {
+  var used = 0;
+  SD.rosters[gi].forEach(function (p) { if (p.slot === b) used++; });
+  return SD_CFG.caps[b] - used;
+}
+function sdAvailable() {
+  return sdBuildPool().list.filter(function (p) { return SD.taken[p.name] == null; });
+}
+/* THE REDRAFTED slots by PRIMARY position of the selected season only
+   (owner ruling, 2026-08-07): a 23-24 SG-SF is a guard here, full stop.
+   Parsed from the row's own position text (bbref lists primary first);
+   anything unparseable falls back to the engine's full bucket read, so a
+   data oddity widens eligibility instead of stranding a player. This is
+   also the app-side half of the slot-laundering fix from the 77-5 case. */
+function sdRowBuckets(row) {
+  var pv = String((IDX.pos !== undefined ? row[IDX.pos] : (IDX.position !== undefined ? row[IDX.position] : "")) || "");
+  var t = pv.split("-")[0].trim().toUpperCase();
+  if (t === "PG" || t === "SG" || t.charAt(0) === "G") return ["G"];
+  if (t === "SF" || t === "PF" || t.charAt(0) === "F") return ["F"];
+  if (t.charAt(0) === "C") return ["C"];
+  return rowBuckets(row);
+}
+function sdPosTag(row) { return sdRowBuckets(row).join("/"); }
+/* Board order is basketball, not the answer key: real draft position first,
+   undrafted after them by their biggest season of minutes, names as the tie
+   break. Ordering by valueOf leaked the engine's own board to the human
+   (owner ruling 2026-08-05). The rival GMs never read this order. */
+function sdBoardOrder(list) {
+  return list.slice().sort(function (a, b) {
+    var ap = a.pick != null, bp = b.pick != null;
+    if (ap && bp && a.pick !== b.pick) return a.pick - b.pick;
+    if (ap !== bp) return ap ? -1 : 1;
+    if (!ap && !bp && a.peakMp !== b.peakMp) return (b.peakMp || 0) - (a.peakMp || 0);
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+  });
+}
+/* The human's DEFAULT season is a random eligible year, stable for the whole
+   draft, not the engine's favorite year. Knowing which season was the peak is
+   the skill this mode tests; best-by-value as the default was an answer key
+   (owner ruling 2026-08-05). Explicit dropdown choices still win, and the
+   rival GMs still pick their own best rows through sdBestRowFor. */
+function sdDefaultRow(rec) {
+  if (!SD || !SD.randByName) return rec.best;
+  var key = SD.randByName[rec.name];
+  if (key == null) {
+    var r0 = rec.seasons[Math.floor(Math.random() * rec.seasons.length)];
+    key = r0[IDX.season] + "|" + r0[IDX.team];
+    SD.randByName[rec.name] = key;
+  }
+  for (var i = 0; i < rec.seasons.length; i++) {
+    var r = rec.seasons[i];
+    if (r[IDX.season] + "|" + r[IDX.team] === key) return r;
+  }
+  return rec.best;   // belt: a stored key that stopped resolving against the pool
+}
+function sdChosenRow(name) {
+  var rec = sdBuildPool().byName.get(name);
+  if (!rec) return null;
+  var want = SD.yearByName[name];
+  if (want != null) for (var i = 0; i < rec.seasons.length; i++) {
+    if (rec.seasons[i][IDX.season] === want) return rec.seasons[i];
+  }
+  return (SD && SD.diff === "pickup") ? rec.best : sdDefaultRow(rec);
+}
+/* Best season of a player that qualifies at bucket b: the row an AI drafts
+   with, and the row the strand-guard credits him for. */
+function sdBestRowFor(name, b) {
+  var rec = sdBuildPool().byName.get(name);
+  if (!rec) return null;
+  var best = null;
+  rec.seasons.forEach(function (r) {
+    if (sdRowBuckets(r).indexOf(b) === -1) return;
+    if (!best || valueOf(r) > valueOf(best)) best = r;
+  });
+  return best;
+}
+/* THE STRAND GUARD. Hypothetically give `name` to team gi at bucket b, then
+   ask: can every team still finish? Needs are counted per bucket across all
+   three teams; supply is every remaining player, credited at the UNION of
+   buckets his eligible seasons reach (any season can be chosen, so the union
+   is the honest capacity). Hall's condition over the 7 non-empty subsets of
+   {G,F,C} is exact for this shape: feasible iff for every subset S,
+   need(S) <= players who qualify somewhere in S. */
+function sdHall(need, supplies) {
+  // Hall's condition over the three bucket types. need = open-slot counts;
+  // supplies = one bucket-array per available player. Returns the offending
+  // subset when infeasible, null when a full legal assignment still exists.
+  var subsets = [["G"], ["F"], ["C"], ["G", "F"], ["G", "C"], ["F", "C"], ["G", "F", "C"]];
+  for (var s = 0; s < subsets.length; s++) {
+    var S = subsets[s], nd = 0, sp = 0;
+    S.forEach(function (bk) { nd += need[bk]; });
+    supplies.forEach(function (bs) {
+      for (var i = 0; i < S.length; i++) if (bs.indexOf(S[i]) !== -1) { sp++; return; }
+    });
+    if (nd > sp) return S;
+  }
+  return null;
+}
+function sdFeasibleAfter(name, gi, b) {
+  var need = { G: 0, F: 0, C: 0 };
+  for (var t = 0; t < 3; t++) {
+    Object.keys(SD_CFG.caps).forEach(function (bk) {
+      need[bk] += sdOpenCount(t, bk) - (t === gi && bk === b ? 1 : 0);
+    });
+  }
+  var supplies = [];
+  sdAvailable().forEach(function (p) { if (p.name !== name) supplies.push(p.buckets); });
+  return sdHall(need, supplies);
+}
+/* Can this class field three complete legal teams at all? Run before any
+   draft starts, so a center-starved class refuses at the gate with a reason
+   instead of finishing a three-man draft. */
+function sdClassViable(pool) {
+  var need = {};
+  Object.keys(SD_CFG.caps).forEach(function (b) { need[b] = SD_CFG.caps[b] * 3; });
+  return sdHall(need, pool.list.map(function (p) { return p.buckets; }));
+}
+function sdStrandWhy(S) {
+  var names = { G: "guard", F: "forward", C: "center" };
+  return "That strands the board at " + S.map(function (b) { return names[b]; }).join(" and ") + ". Somebody could not finish.";
+}
+/* Card-level legality for the CURRENT drafter: null = pickable somewhere. */
+function sdPickBlock(name, gi) {
+  if (SD.taken[name] != null) return { tag: "taken", why: "Already drafted." };
+  var open = sdRosterOpen(gi), okBucket = null, strand = null;
+  for (var i = 0; i < open.length; i++) {
+    var b = open[i];
+    if (!sdBestRowFor(name, b)) continue;         // no season qualifies here
+    var S = sdFeasibleAfter(name, gi, b);
+    if (!S) { okBucket = b; break; }
+    strand = S;
+  }
+  if (okBucket) return null;
+  if (strand) return { tag: "strand", why: sdStrandWhy(strand) };
+  return { tag: "full", why: "No open slot fits him." };
+}
+function sdApplyPick(gi, name, row, bucket) {
+  SD.rosters[gi].push({ row: row, slot: bucket });
+  SD.taken[name] = gi;
+  SD.log.push({ gi: gi, name: name, s: row[IDX.season], slot: bucket, at: SD.at });
+}
+/* The rival GM. Score every legal (player, bucket) pair:
+   value of his best qualifying season, plus how much this GM's roster needs
+   the bucket, plus how scarce the bucket's remaining supply is against the
+   whole board's remaining need. Randomize inside the persona's tie band. */
+function sdAiChoose(gi) {
+  // Robust to a persona-less seat (the human), so this doubles as an
+  // autopick: missing weights read as zero and the tie band collapses.
+  var gm = SD_GMS[gi] || {}, open = sdRosterOpen(gi), avail = sdAvailable();
+  var needW = gm.needW || 0, scW = gm.scW || 0, jit = gm.jitter || 0;
+  var need = { G: 0, F: 0, C: 0 }, t, cands = [];
+  for (t = 0; t < 3; t++) Object.keys(need).forEach(function (b) { need[b] += sdOpenCount(t, b); });
+  var supply = { G: 0, F: 0, C: 0 };
+  avail.forEach(function (p) { p.buckets.forEach(function (b) { supply[b]++; }); });
+  avail.forEach(function (p) {
+    open.forEach(function (b) {
+      var row = sdBestRowFor(p.name, b);
+      if (!row) return;
+      if (sdFeasibleAfter(p.name, gi, b)) return;   // the guard binds the AI exactly as it binds you
+      var v = valueOf(row);
+      var needScore = sdOpenCount(gi, b) / SD_CFG.caps[b];                     // 1 when the slot is wide open
+      var scScore = need[b] > 0 ? Math.max(0, 1 - (supply[b] - need[b]) / 6) : 0;  // rises as slack drains
+      cands.push({ name: p.name, row: row, b: b, score: v + needW * needScore + scW * scScore });
+    });
+  });
+  if (!cands.length) return null;   // unreachable while the guard holds; belt for a corrupt state
+  cands.sort(function (a, b) { return b.score - a.score; });
+  var band = cands.filter(function (c) { return cands[0].score - c.score <= jit; });
+  return band[Math.floor(Math.random() * band.length)] || cands[0];
+}
+function sdCurrentGm() { return SD.done ? -1 : SD.seq[SD.at]; }
+function sdAdvance() {
+  if (SD.at >= SD.seq.length) { sdFinish(); return; }
+  var gi = SD.seq[SD.at];
+  if (!SD_GMS[gi].ai) { SD.selected = null; renderShowdownDraft(); return; }
+  renderShowdownDraft();   // show the board waiting on the rival
+  SD_TIMER = setTimeout(function () {
+    SD_TIMER = 0;
+    if (!SD || SD.done) return;
+    var c = sdAiChoose(gi);
+    if (!c) { SD.at = SD.seq.length; sdFinish(); return; }
+    var stolen = SD.watch === c.name;
+    sdApplyPick(gi, c.name, c.row, c.b);
+    analyticsTrack("showdown_state", {
+      surface: "redraft", action: stolen ? "steal" : "ai_pick", mode: "showdown",
+      player: c.name, season: c.row[IDX.season], slot: c.b, ordinal: SD.at + 1, source: SD_GMS[gi].name
+    });
+    SD.at++;
+    SD.flash = { gi: gi, name: c.name, s: c.row[IDX.season], stolen: stolen };
+    sdAdvance();
+  }, 850);
+}
+function sdHumanPick(bucket) {
+  var gi = sdCurrentGm();
+  if (gi === -1 || SD_GMS[gi].ai || !SD.selected) return;
+  var row = sdChosenRow(SD.selected);
+  if (!row) return;
+  if (sdRowBuckets(row).indexOf(bucket) === -1) { denyTraySd("His " + shortSeason(row[IDX.season]) + " season does not qualify at " + bucket + "."); return; }
+  if (sdOpenCount(gi, bucket) <= 0) { denyTraySd("That slot is full."); return; }
+  var S = sdFeasibleAfter(SD.selected, gi, bucket);
+  if (S) { denyTraySd(sdStrandWhy(S)); return; }
+  sdApplyPick(gi, SD.selected, row, bucket);
+  analyticsTrack("showdown_state", {
+    surface: "redraft", action: "pick", mode: "showdown",
+    player: SD.selected, season: row[IDX.season], slot: bucket, ordinal: SD.at + 1
+  });
+  // watch = the last player you seriously considered. If you took him, the
+  // threat is over; if you took someone ELSE, he stays watched, and a rival
+  // grabbing him before your next turn is the steal the mode is built around.
+  if (SD.watch === SD.selected) SD.watch = null;
+  SD.selected = null; SD.flash = null;
+  SD.at++;
+  sdAdvance();
+}
+function denyTraySd(msg) {
+  var inner = el("rdTray");
+  if (!inner) return;
+  var note = inner.querySelector(".tray-deny");
+  if (!note) { note = document.createElement("div"); note.className = "tray-deny"; inner.appendChild(note); }
+  note.textContent = msg;
+  denyRow(inner, null);
+  clearTimeout(denyTraySd._t);
+  denyTraySd._t = setTimeout(function () { if (note.parentNode) note.parentNode.removeChild(note); }, 1800);
+}
+/* ---------- the verdict: three throwaway classic runs ---------- */
+function sdFinish() {
+  SD.done = 1;
+  try { if (window.T82 && T82.t && T82.t.SC) T82.t.SC.PG_CAP = 0.991; } catch (e) {}   // classic ceiling, in case Presti ran last
+  var teams = SD.rosters.map(function (roster, gi) {
+    var rows = roster.map(function (p) { return p.row; });
+    var slots = roster.map(function (p) { return p.slot; });
+    var g = T82.newState("classic", (Date.now() + gi * 7919) % 2147483647, null);
+    var e = T82.engine(g, rows, slots);
+    var wins = e.winTally, realized = 0;   // records project straight from net; no per-game realization in this mode (owner ruling 2026-08-05, the luck spread was reading as verdict)
+    return { gi: gi, name: SD_GMS[gi].name, roster: roster, e: e, net: Math.round(e.net * 10) / 10, wins: wins, losses: CFG.GAMES_IN_SEASON - wins, realized: realized };
+  });
+  teams.sort(function (a, b) { return (b.wins - a.wins) || (b.net - a.net) || (a.gi - b.gi); });
+  SD.verdict = teams;
+  analyticsTrack("showdown_state", {
+    surface: "redraft", action: "complete", mode: "showdown", season: +SD.cls,
+    outcome: teams[0].gi === 0 ? "win" : "loss", wins: teams[0].wins,
+    value: teams.map(function (t) { return t.name + ":" + t.wins; }).join(" "),
+    ordinal: teams.map(function (t) { return t.gi; }).indexOf(0) + 1
+  });
+  renderShowdownResults();
+}
+function sdShare() {
+  var v = SD && SD.verdict;
+  if (!v) return;
+  var lines = v.map(function (t, i) { return (i + 1) + ". " + (t.gi === 0 ? "ME" : t.name) + " " + t.wins + " and " + t.losses; });
+  var mine = v.map(function (t) { return t.gi; }).indexOf(0);
+  var txt = "TRUE 82 \u00B7 THE REDRAFTED \u00B7 " + SD_CLASSES[SD.cls].label + "\n" +
+    lines.join("\n") + "\n" +
+    (mine === 0 ? "I won the board." : "I want that draft back.") + "\n" +
+    "https://true82.net/";
+  analyticsTrack("share_click", { surface: "redraft", action: "podium", mode: "showdown", value: v[0].wins });
+  var btn = el("rdShare");
+  if (navigator.share) { navigator.share({ text: txt }).catch(function () {}); return; }
+  try {
+    navigator.clipboard.writeText(txt).then(function () {
+      if (btn) { var t = btn.textContent; btn.textContent = "COPIED"; setTimeout(function () { btn.textContent = t; }, 1400); }
+    });
+  } catch (e) {}
+}
+/* ---------- rendering (v55: on the style system) ----------
+   The archive injected its own CSS (ensureShowdownCss, about 120 color
+   literals) and borrowed Dynasty's panel skin. Here every screen is a
+   .t-mode root built from the shared pieces: .t-card panels, head("redraft")
+   headers, .t-btn actions, .t-chip class picks, the draft's own .pool and
+   .player-row, and the fixed .tray. Its layout lives in styles.css under
+   "THE REDRAFTED". */
+function sdReceiptsHtml(e) {
+  if (!e || e.sumSp === undefined) return "";
+  var req = (typeof SC !== "undefined" && SC && SC.SPACERS_REQ) || 3;
+  var bits = ["shooters " + fmt1(e.sumSp) + " of " + req];
+  if (e.spacingBonus > 0) bits.push("spacing +" + fmt1(e.spacingBonus));
+  else if (e.spacingTax > 0) bits.push("spacing -" + fmt1(e.spacingTax));
+  var dTax = (e.backDefTax || 0) + (e.wingDefTax || 0) + (e.rimDefTax || 0);
+  if (dTax > 0) bits.push("defense -" + fmt1(dTax));
+  if (e.usageTax > 0) bits.push("usage -" + fmt1(e.usageTax));
+  return '<span class="rd-receipts t-meta">' + bits.join(" \u00B7 ") + "</span>";
+}
+// One team's column on the draft board: the GM, then five slots (G G F F C).
+function sdRosterCardHtml(gi) {
+  var gm = SD_GMS[gi], mine = !gm.ai, onClock = sdCurrentGm() === gi && !SD.done;
+  var byBucket = { G: [], F: [], C: [] }, fill = { G: 0, F: 0, C: 0 }, slots = "";
+  SD.rosters[gi].forEach(function (p) { byBucket[p.slot].push(p); });
+  Object.keys(SD_CFG.caps).forEach(function (b) {
+    for (var i = 0; i < SD_CFG.caps[b]; i++) {
+      var p = byBucket[b][fill[b]++];
+      slots += '<span class="rd-slot' + (p ? " is-filled" : "") + '"><b>' + b + "</b>" +
+        (p ? '<span class="rd-slot-name">' + esc(bbrefLastName(p.row[IDX.name]) || p.row[IDX.name]) + "</span><i>" + shortSeason(p.row[IDX.season]) + "</i>" : '<span class="rd-slot-name">\u00B7\u00B7\u00B7</span>') +
+        "</span>";
+    }
+  });
+  return '<div class="rd-team t-card' + (mine ? " is-you" : "") + (onClock ? " is-clock" : "") + '">' +
+    '<span class="rd-gm">' + (mine ? "YOU" : gm.name) + "</span>" +
+    '<span class="rd-otc">' + (onClock ? "ON THE CLOCK" : "") + "</span>" + slots + "</div>";
+}
+function sdOrderStripHtml() {
+  var total = SD.seq.length, pos = Math.min(SD.at + 1, total), round = Math.floor(Math.min(SD.at, total - 1) / 3) + 1;
+  var names = SD.seats.map(function (gi) { return SD_GMS[gi].ai ? SD_GMS[gi].name : "YOU"; }).join(" \u2192 ");
+  return '<div class="rd-strip t-meta"><span>PICK ' + pos + " OF " + total + " \u00B7 ROUND " + round + (round % 2 === 0 ? " \u21A9" : "") + "</span>" +
+    "<span>" + names + " \u00B7 snake</span></div>";
+}
+function sdBoardRowHtml(p) {
+  var gi = sdCurrentGm(), takenBy = SD.taken[p.name];
+  if (takenBy != null) {
+    var pk = null;
+    for (var i = 0; i < SD.log.length; i++) if (SD.log[i].name === p.name) pk = SD.log[i];
+    return '<div class="player-row off rd-taken"><span class="pr-top"><span class="pr-name">' + esc(p.name) + "</span>" +
+      '<span class="pr-pos">TAKEN \u00B7 ' + (SD_GMS[takenBy].ai ? SD_GMS[takenBy].name : "YOU") + "</span></span>" +
+      '<span class="pr-sub">' + (pk ? shortSeason(pk.s) + " at " + pk.slot : "") + "</span></div>";
+  }
+  var row = sdChosenRow(p.name), humanTurn = gi !== -1 && !SD_GMS[gi].ai;
+  var block = humanTurn ? sdPickBlock(p.name, gi) : null, open = humanTurn && !block;
+  var sel = SD.selected === p.name && open;
+  return '<div class="player-row' + (sel ? " sel" : "") + (open ? "" : " off") + '" role="button" tabindex="0" data-name="' + esc(p.name) + '" aria-pressed="' + sel + '"' +
+    (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
+    '<span class="pr-top"><span class="pr-name">' + esc(p.name) + "</span>" +
+    '<span class="pr-pos">' + sdPosTag(row) + (block ? " \u00B7 " + block.tag : "") + "</span></span>" +
+    '<span class="pr-sub">' + sdYearControlHtml(p, row) + "</span></div>";
+}
+function sdYearControlHtml(p, row) {
+  var curTxt = shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]);
+  if (p.seasons.length <= 1) return '<span class="year-face year-fixed">' + curTxt + "</span>";
+  var cur = row[IDX.season];
+  var opts = p.seasons.map(function (r) {
+    var s = r[IDX.season];
+    return '<option value="' + s + '"' + (s === cur ? " selected" : "") + ">" + shortSeason(s) + " " + esc(r[IDX.team]) + "</option>";
+  }).join("");
+  return '<span class="year-wrap"><span class="year-face">' + curTxt + ' <b class="yf-caret">\u25BE</b></span>' +
+    '<select class="year-sel" data-name="' + esc(p.name) + '" aria-label="Season for ' + esc(p.name) + '">' + opts + "</select></span>";
+}
+function sdLastPickHtml() {
+  var f = SD.flash;
+  return f ? '<span class="rd-last">' + (SD_GMS[f.gi].ai ? SD_GMS[f.gi].name : "YOU") + " took " + esc(f.name) + " " + shortSeason(f.s) +
+    (f.stolen ? ' <b class="t-chip" data-size="sm" data-tone="bad">YOUR GUY</b>' : "") + "</span>" : "";
+}
+function sdTrayHtml() {
+  var gi = sdCurrentGm();
+  if (gi === -1) return "";
+  if (SD_GMS[gi].ai) return '<div class="rd-wait t-meta">' + SD_GMS[gi].name + " is on the clock\u2026" + sdLastPickHtml() + "</div>";
+  if (!SD.selected) return '<div class="rd-wait t-meta">Your pick. Tap a player.' + sdLastPickHtml() + "</div>";
+  var row = sdChosenRow(SD.selected);
+  var btns = Object.keys(SD_CFG.caps).map(function (b) {
+    var ok = sdRowBuckets(row).indexOf(b) !== -1 && sdOpenCount(gi, b) > 0 && !sdFeasibleAfter(SD.selected, gi, b);
+    return '<button class="t-btn rd-slotbtn" data-slot="' + b + '" type="button"' + (ok ? "" : " disabled") + ' aria-label="Draft him at ' + ({ G: "guard", F: "forward", C: "center" })[b] + '">' + b + "</button>";
+  }).join("");
+  return '<div class="rd-confirm"><span class="rd-cname t-name">' + esc(SD.selected) + " <i>" + shortSeason(row[IDX.season]) + "</i></span>" +
+    '<span class="rd-slotrow">' + btns + "</span></div>";
+}
+function renderShowdownDraft() {
+  document.body.classList.add("drafting");
+  document.body.classList.remove("gating");
+  var pool = sdBuildPool();
+  var avail = sdBoardOrder(pool.list.filter(function (p) { return SD.taken[p.name] == null; }));
+  var takenList = SD.log.map(function (l) { return pool.byName.get(l.name); });
+  var keepTop = el("rdPool") ? el("rdPool").scrollTop : 0;   // re-renders keep the board where the thumb left it
+  app().innerHTML =
+    '<div class="rd-head t-card"><div class="rd-headrow">' +
+      '<button class="t-btn" data-kind="text" data-size="sm" id="rdExit" type="button">\u2039 Exit</button>' +
+      '<span class="rd-mark">\uD83D\uDD01 ' + esc(SD_CLASSES[SD.cls].label) + ' <span class="t-meta">' + (SD.diff === "pickup" ? "PICKUP" : "PRO") + "</span></span></div>" +
+      sdOrderStripHtml() +
+    "</div>" +
+    '<div class="rd-board">' + [0, 1, 2].map(function (k) { return sdRosterCardHtml(SD.seats[k]); }).join("") + "</div>" +
+    '<div class="pool rd-pool" id="rdPool">' + avail.map(sdBoardRowHtml).join("") + takenList.map(sdBoardRowHtml).join("") + "</div>" +
+    '<div class="tray"><div class="tray-inner" id="rdTray">' + sdTrayHtml() + "</div></div>";
+  var poolEl = el("rdPool");
+  poolEl.scrollTop = keepTop;
+  setTrayVar();
+  poolEl.addEventListener("click", function (ev) {
+    if (ev.target.closest(".year-sel")) return;
+    var btn = ev.target.closest(".player-row");
+    if (!btn) return;
+    var name = btn.getAttribute("data-name");
+    if (btn.classList.contains("off")) {
+      analyticsTrack("showdown_state", { surface: "redraft", action: "pick_denied", mode: "showdown", player: name || "", source: btn.getAttribute("title") || "taken" });
+      denyRow(btn, btn.getAttribute("title") || "");
+      return;
+    }
+    SD.selected = name;
+    SD.watch = name;   // if a rival takes this before you do, that is a steal
+    renderShowdownDraft();
+  });
+  poolEl.addEventListener("change", function (ev) {
+    var s = ev.target;
+    if (!s.classList || !s.classList.contains("year-sel")) return;
+    var season = parseInt(s.value, 10);
+    if (isNaN(season)) return;
+    SD.yearByName[s.getAttribute("data-name")] = season;
+    analyticsTrack("year_change", { surface: "redraft", player: s.getAttribute("data-name"), season: season, action: "season_menu" });
+    renderShowdownDraft();   // the board keeps its scroll (owner, 2026-08-07)
+  });
+  el("rdTray").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".rd-slotbtn");
+    if (b && !b.disabled) sdHumanPick(b.getAttribute("data-slot"));
+  });
+  el("rdExit").addEventListener("click", function () {
+    if (SD_TIMER) { clearTimeout(SD_TIMER); SD_TIMER = 0; }
+    analyticsTrack("showdown_state", { surface: "redraft", action: "abandon", mode: "showdown", ordinal: SD ? SD.at + 1 : 0 });
+    SD = null;
+    document.body.classList.remove("drafting");
+    renderIntro();
+  });
+}
+function renderShowdownResults() {
+  document.body.classList.remove("drafting");
+  var v = SD.verdict, mine = v.map(function (t) { return t.gi; }).indexOf(0);
+  var podium = v.map(function (t, i) {
+    var five = t.roster.map(function (p) {
+      return '<span class="rd-five-name"><b>' + esc(p.row[IDX.name]) + "</b> <i>" + shortSeason(p.row[IDX.season]) + " " + p.slot + "</i></span>";
+    }).join("");
+    return '<div class="rd-podium-row t-card' + (t.gi === 0 ? " is-you" : "") + '">' +
+      '<span class="rd-rank t-num">' + (i + 1) + "</span>" +
+      '<span class="rd-podium-main"><span class="rd-podium-head"><b>' + (t.gi === 0 ? "YOU" : t.name) + "</b> " + t.wins + "\u2013" + t.losses +
+        ' <span class="t-meta">net ' + (t.net > 0 ? "+" : "") + t.net + "</span></span>" +
+      sdReceiptsHtml(t.e) + '<span class="rd-five">' + five + "</span></span></div>";
+  }).join("");
+  app().innerHTML =
+    '<section class="t-mode rd-results" data-result-section="showdown_verdict">' +
+      head("redraft", "\uD83D\uDD01 The Redrafted \u00B7 " + SD_CLASSES[SD.cls].label.toLowerCase()) +
+      '<h1 class="t-title rd-stamp' + (mine === 0 ? " is-win" : "") + '">' + (mine === 0 ? "You win the Redrafted" : v[0].name + " wins the Redrafted") + "</h1>" +
+      '<p class="t-small rd-line">' + (v[0].realized ? "Three seasons, played out." : "Three seasons, projected by the engine.") + "</p>" +
+      '<div class="rd-podium">' + podium + "</div>" +
+      '<button class="t-btn rd-again" data-size="lg" id="rdAgain" type="button">Run it back \u00B7 new seats</button>' +
+      '<button class="t-btn rd-share" data-kind="quiet" id="rdShare" type="button">Share the podium</button>' +
+      '<button class="t-btn" data-kind="text" id="rdHome" type="button">\u2039 Back</button>' +
+    "</section>";
+  el("rdAgain").addEventListener("click", function () {
+    analyticsTrack("showdown_state", { surface: "redraft", action: "rematch", mode: "showdown" });
+    sdStart();
+  });
+  el("rdShare").addEventListener("click", sdShare);
+  el("rdHome").addEventListener("click", function () { SD = null; renderIntro(); });
+}
+/* ---------- the difficulty screen (v49.10): two courts, one choice ----------
+   PICKUP is the blacktop at golden hour, PRO the arena tunnel on draft night.
+   The cards carry the theme (styles.css: .rd-diff[data-diff]), so the copy
+   stays short. The choice can be remembered (localStorage + a cookie). */
+function renderDifficultyScreen(cfg) {
+  document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
+  var remembered = diffRemembered(cfg.mode), usable = diffStoreUsable();
+  function card(k) {
+    var c = cfg[k];
+    return '<button type="button" class="rd-diff t-card" data-diff="' + k + '">' +
+      '<span class="rd-diff-name">' + (k === "pickup" ? "PICKUP" : "PRO") + "</span>" +
+      '<span class="rd-diff-sub">' + c.sub + "</span>" +
+      '<span class="rd-diff-fine">' + c.fine + "</span>" +
+      '<span class="t-chips">' + c.chips.map(function (x) { return '<span class="t-chip" data-size="sm" data-tone="plain">' + x + "</span>"; }).join("") + "</span>" +
+    "</button>";
+  }
+  app().innerHTML =
+    '<section class="t-mode rd-diffs">' +
+      '<div class="rd-top"><button class="t-btn" data-kind="text" data-size="sm" id="rdBack" type="button">\u2039 Back</button></div>' +
+      head("redraft", cfg.eyebrow) +
+      '<h1 class="t-title">Difficulty?</h1>' +
+      card("pickup") + card("pro") +
+      '<label class="rd-remember' + (usable ? "" : " is-off") + '" for="rdRemember">' +
+        '<input type="checkbox" id="rdRemember"' + (remembered === null ? "" : " checked") + (usable ? "" : " disabled") + ">" +
+        '<span class="rd-box" aria-hidden="true"></span>' +
+        '<span class="rd-remember-txt">Remember my choice' + (usable ? "" : ' <i class="t-small">Not available in this browser</i>') + "</span>" +
+      "</label>" +
+      '<p class="t-small rd-foot">' + cfg.foot + "</p>" +
+    "</section>";
+  app().querySelectorAll(".rd-diff").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var diff = b.getAttribute("data-diff"), box = el("rdRemember"), wanted = !!(box && box.checked);
+      var stuck = diffRemember(cfg.mode, diff, wanted);
+      analyticsTrack("difficulty_select", { surface: cfg.surface, mode: cfg.mode, action: "select",
+        outcome: diff, value: wanted ? 1 : 0, source: wanted ? (stuck ? "stored" : "store_failed") : "session" });
+      buzz(10);
+      cfg.onPick(diff);
+    });
+  });
+  el("rdBack").addEventListener("click", cfg.onBack);
+}
+function renderShowdownDifficulty() {
+  renderDifficultyScreen({
+    mode: "showdown", surface: "redraft_gate",
+    eyebrow: "\uD83D\uDD01 The Redrafted",
+    pickup: { sub: "Peak seasons of the best players.",
+              fine: "Roll up. Everyone arrives in their prime. The short board.",
+              chips: ["The headliners", "Peaks pre-set"] },
+    pro: { sub: "Pick the season. Draft the whole class.",
+           fine: "Second rounders. Undrafteds. Seasons come randomized. Prove you know.",
+           chips: ["Full class", "Seasons randomized"] },
+    foot: "Change it any time from the class gate.",
+    onPick: function (diff) { SD_DIFF = diff; renderShowdownGate(); },
+    onBack: function () { renderIntro(); }
+  });
+}
+/* ---------- the class gate: pick a class, read the stakes, draft ---------- */
+function renderShowdownGate(silent) {
+  if (SD_DIFF == null) { renderShowdownDifficulty(); return; }
+  document.body.classList.remove("drafting");
+  document.body.classList.remove("gating");
+  sdDeriveClasses();
+  if (SD_QA.cls && !SD_QA.used && SD_CLASSES[SD_QA.cls]) { SD_CLASS_ID = SD_QA.cls; SD_QA.used = 1; }
+  var cls = SD_CLASSES[SD_CLASS_ID];
+  var ready = DATA_READY ? sdBuildPool() : null;
+  var thin = ready && ready.list.length < SD_CFG.rosterSize * 3;
+  var stuck = ready && !thin ? sdClassViable(ready) : null;
+  var order = SD_DERIVED ? sdOrderAll() : SD_CLASS_ORDER.slice();
+  var decades = [], byDec = {};
+  order.forEach(function (id) {
+    var d = Math.floor((+id) / 10) * 10;
+    if (!byDec[d]) { byDec[d] = []; decades.push(d); }
+    byDec[d].push(id);
+  });
+  decades.sort(function (a, b) { return b - a; });
+  var chips = decades.map(function (d) {
+    var row = byDec[d].sort(function (a, b) { return (+b) - (+a); }).map(function (id) {
+      var sp = SD_SPECIAL[id];
+      return '<button class="t-chip rd-cls" data-tone="' + (id === SD_CLASS_ID ? "on" : "plain") + '" data-cls="' + id + '" type="button" aria-pressed="' + (id === SD_CLASS_ID) + '">\u2019' + id.slice(2) +
+        (sp && sp.cue ? '<i class="rd-cue">' + sp.cue + "</i>" : "") + "</button>";
+    }).join("");
+    return '<div class="rd-decade"><span class="t-label">' + d + 's</span><div class="t-chips">' + row + "</div></div>";
+  }).join("");
+  var posNames = { G: "guards", F: "forwards", C: "centers" }, tail;
+  if (thin) tail = '<p class="t-small rd-warn">This class came up short against the data (' + ready.list.length + " players). Pick another class.</p>";
+  else if (stuck) tail = '<p class="t-small rd-warn">This class cannot field three legal teams: the data is short on ' + stuck.map(function (b) { return posNames[b]; }).join(" and ") + ". Pick another class.</p>";
+  else tail = '<p class="t-meta rd-resolved">' + (ready ? ready.list.length + " players on the board" : "More classes arrive with the player data\u2026") + "</p>" +
+    '<button class="t-btn rd-go" data-size="lg" id="rdGo" type="button">Draft the class</button>';
+  app().innerHTML =
+    '<section class="t-mode rd-gate">' +
+      '<div class="rd-top"><button class="t-btn" data-kind="text" data-size="sm" id="rdBack" type="button">\u2039 Back</button>' +
+        '<button class="t-btn" data-kind="quiet" data-size="sm" id="rdDiffPill" type="button">' + (SD_DIFF === "pickup" ? "Pickup" : "Pro") + " \u00B7 change</button></div>" +
+      '<div class="t-card rd-card">' +
+        head("redraft", "\uD83D\uDD01 The Redrafted \u00B7 alpha") +
+        '<h1 class="t-title rd-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + ". Three GMs. One board.</h1>" +
+        '<p class="t-body rd-blurb"><b>' + esc(cls.blurb) + "</b></p>" +
+        tail +
+        '<p class="t-small rd-how">A snake draft against two rival GMs over one shared pool. Five each, any season of their careers, every pick exclusive. MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine scores all three and settles it.</p>' +
+      "</div>" +
+      '<div class="t-card rd-card rd-picker">' + head("redraft", "Pick a class") + '<div id="rdChips" class="rd-decades">' + chips + "</div></div>" +
+    "</section>";
+  if (!silent) analyticsTrack("mode_impression", { surface: "redraft_gate", action: thin ? "thin_pool" : (stuck ? "unfieldable" : "fresh"), mode: "showdown", season: +SD_CLASS_ID });
+  // when the data lands, refresh the picker with the derived classes, but only if this gate is still on screen
+  if (!DATA_READY) PENDING_FN = function () { if (el("rdChips")) renderShowdownGate(true); };
+  el("rdDiffPill").addEventListener("click", function () { SD_DIFF = null; renderShowdownGate(); });
+  el("rdChips").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".rd-cls");
+    if (!b) return;
+    var id = b.getAttribute("data-cls");
+    if (!SD_CLASSES[id] || id === SD_CLASS_ID) return;
+    SD_CLASS_ID = id;
+    analyticsTrack("showdown_state", { surface: "redraft_gate", action: "class_select", mode: "showdown", season: +id });
+    renderShowdownGate(true);
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }   // the new class and DRAFT sit at the top
+  });
+  var go = el("rdGo");
+  if (go) go.addEventListener("click", function () {
+    if (DATA_READY) { sdStart(); return; }
+    PENDING_FN = sdStart;   // the same queue contract as the Daily's launch
+    go.disabled = true; go.textContent = "Loading players\u2026";
+  });
+  el("rdBack").addEventListener("click", function () { renderIntro(); });
+}
+function sdStart() {
+  sdDeriveClasses();
+  var pool = sdBuildPool();
+  if (pool.list.length < SD_CFG.rosterSize * 3 || sdClassViable(pool)) { renderShowdownGate(); return; }
+  SD = sdFresh();
+  analyticsTrack("showdown_state", {
+    surface: "redraft", action: "start", mode: "showdown", season: +SD.cls,
+    source: SD.seats.map(function (gi) { return SD_GMS[gi].name; }).join(">"), amount: pool.list.length
+  });
+  sdAdvance();
+}
+// The home door and the deep link (?redraft=1, or ?redraft=YEAR to open on that class) both land here.
+function openRedrafted(via) {
+  analyticsTrack("mode_select", { mode: "showdown", surface: via || "home", action: "redraft" });
+  SD_DIFF = sdDiffRemembered();
+  renderShowdownGate();
+}
+
 function showResults() {
   G.screen = "results";
   document.body.classList.remove("has-pick");   // the draft is over: nothing is selected (the reel and results never carry it)
@@ -6979,7 +8030,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v54";
+var BUILD_V = "v55";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -7097,6 +8148,7 @@ function boot() {
     app().innerHTML = '<section class="ticket league"><p class="duel-wait">Opening the league office\u2026</p></section>';
     ensureLeagueUI().then(function (ok) { if (ok) T82LGUI.route(lgi); else showError("Couldn\u2019t load the league screen. Reload and try again."); });
   }
+  else if (SD_QA.open) openRedrafted("deep_link");   // ?redraft=1 / ?redraft=YEAR (v55)
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
