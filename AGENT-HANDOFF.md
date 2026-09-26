@@ -110,10 +110,12 @@ icon we're using". Done through the Reprint Lab (the masthead's source), so ever
   Purple Sunburst): the question is in the v54 summary to him. Other finishes are one lab toggle away: Neon glow,
   a block TRUE (Face: Big Shoulders), or the grid backdrop off.
 
-To re-export after a lab change (the lab dev page runs from a static server on the scratchpad's `lab/src` symlink,
-`labserver.py`, with `window.LAB_SITE_BASE` pointing at the local site): `LAB.image(rc, 300, 3)` for masthead.png,
-`LAB.appIcon(rc, 180 | 48 | 32)` for the icons, and the link card as the masthead scaled into 1200x630 on the
-stock's printed color (sample a corner of the print: the stock prints darker than its nominal hex).
+To re-export after a lab change: `node docs/reprint-lab/export/export-masthead.js <outdir> ['<json overrides>']`
+writes masthead.png, icon-32/48/180.png and og-image.png from the Heat Vice preset (it reproduces the shipped files
+pixel for pixel). It drives `docs/reprint-lab/export/render.html` with Playwright (the tennis project's copy) and needs
+the lab server on :8095 (a static folder whose `lab/src` links to `docs/reprint-lab/src`, served by the capture
+folder's labserver.py) and the local site at `window.LAB_SITE_BASE` (render.html says :8790). The link card sits on
+the stock's printed color (a corner of the print), which prints darker than the stock's nominal hex.
 
 ---
 
@@ -173,8 +175,10 @@ Calls made (the owner may overrule):
 - The glossary door is a text button, not an (i), so it says what it does.
 
 Next on the owner's list (in order): 10 (done in v54, section 00000c), 15 (done in v55, section 00000d), 16 (done
-in v56, section 00000e), 17 (later: leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
-runs about 14% taller than Barlow in tight spots), and the lab's 93-state recapture and artifact republish.
+in v56, section 00000e), 17 (later: leaderboards and accounts). From v52: the display face's size fitting is checked
+(an overflow scan of home, Classic, Presti, results, the gate and the Redrafted at 360px found nothing visible;
+Presti's bank, skips and price tags fit). Still open: the lab's 93-state recapture (its snapshots are v51-era, so it
+shows none of v53-v56's markup) and the artifact republish.
 
 ---
 
