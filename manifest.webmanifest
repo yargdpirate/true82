@@ -1,0 +1,14 @@
+{
+  "name": "TRUE 82",
+  "short_name": "TRUE 82",
+  "description": "Draft five NBA players. Real advanced stats play the season. Go 82-0.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#16122B",
+  "theme_color": "#16122B",
+  "icons": [
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icon-mask.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}

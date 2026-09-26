@@ -3,10 +3,36 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v56`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v56"`, cache keys `20260926-archive-v56`, daily-core.js too). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, then v56. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v56, THE DAILY ARCHIVE (the owner's list item 16); v55 THE REDRAFTED (item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000e to 00000b first. Only item 17 (accounts, "later") is left on the owner's list.
+**Build:** `v57`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v57"`, cache keys `20260926-icons-v57`; daily-core.js `20260926-archive-v56`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, then v57. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v57, the app icon redrawn for favicon scale (section 00000f); v56, THE DAILY ARCHIVE (the owner's list item 16); v55 THE REDRAFTED (item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000e to 00000b first. Only item 17 (accounts, "later") is left on the owner's list.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000f. V57: the app icon, redrawn for favicon scale (2026-09-26)
+
+The owner, after v54: "the app icon needs a rework to be at favicon scale - more featuring of the ball and blockier
+emphasis lines etc - follow best practices, it can deviate from the banner logo as long as it's in the spirit". The
+v54 icons were the banner's riso icon trimmed tight (LAB.appIcon): at 16px they were a fuzzy blob.
+- **`tools/icons.js`** (`node tools/icons.js`) is the one source: three drawings in the theme's inks (tools/theme-core
+  roles ground, accent, offset; a light core mixed from the offset), written as SVGs to `docs/icons/` and `icon.svg`,
+  then rasterized with Playwright (the tennis project's copy, or `PLAYWRIGHT=<path>`):
+  - **small** (16, 32, the SVG favicon): on a 16px grid, a 12px ball, the two cross seams 2px thick, the rim 2px across
+    the ball's foot. Nothing thinner than a pixel.
+  - **medium** (48): the side seams join, the rim gets its bright core.
+  - **large** (180, 192, 512): the ball threaded through the hoop (the back arc behind it, the front arc in front),
+    four blocky rays and the banner's star, a soft neon glow on the ball.
+- **The files (the current best-practice set):** `favicon.ico` (16, 32, 48 as PNG entries; browsers still ask for
+  /favicon.ico), `icon.svg`, `apple-touch-icon.png` (180, opaque full bleed: iOS draws its own corners),
+  `icon-192.png` and `icon-512.png` (rounded tile, the manifest's "any"), `icon-mask.png` (512, maskable: full bleed,
+  everything inside the 80% safe circle), `manifest.webmanifest` (name, the icons, theme and background #16122B,
+  display "browser" so a home-screen shortcut still opens in the browser; `_headers` serves it as
+  application/manifest+json). Every page (index, 404, the four info pages, Bonuses) links favicon.ico, icon.svg,
+  apple-touch-icon.png and the manifest. The JSON-LD logo is icon-512.png. The v54 icon-32/48/180.png are gone.
+- The lab's export script now makes only masthead.png and og-image.png; LAB.appIcon stays the lab's quick preview.
+- Calls (the owner may overrule): the hoop stays (a rim) even at 16px, as the one aqua accent; the star only at
+  180 and up; `display: "browser"` (an app-style standalone launch would drop the address bar and share flows).
 
 ---
 

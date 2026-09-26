@@ -14,3 +14,7 @@
 # canonical (the preferred URL; ?duel=/?league= deep links share this page).
 /
   Link: <https://true82.net/llms.txt>; rel="describedby"; type="text/markdown", <https://true82.net/how-it-works/>; rel="help", <https://true82.net/>; rel="canonical"
+
+# The web app manifest (v57): the right type for every browser that asks for it.
+/manifest.webmanifest
+  Content-Type: application/manifest+json

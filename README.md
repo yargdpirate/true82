@@ -19,7 +19,8 @@ Cloudflare Pages (static hosting + auto-deploy) · Pages Functions (`functions/`
 | `styles.css` | All styling. The generated THEME block at the top is the only place colors and fonts are written; then the shared pieces (`.t-btn`, `.t-chip`, `.t-card`, `.t-sheet`, `.t-head`...). Read `docs/STYLE-GUIDE.md` |
 | `site_data.json` | 21,525 player-season rows + `meta` (cols, scoring constants). Crests/aliases deliberately NOT in here |
 | `crests.json` | Team-era crest images (base64 WebP), fetched in background, never blocks play |
-| `logo.png` | 9.8 KB quantized logo (replaced a 140 KB inline base64) |
+| `logo.png` | 9.8 KB quantized logo (replaced a 140 KB inline base64; the header shows `masthead.png` since v52) |
+| `favicon.ico`, `icon.svg`, `apple-touch-icon.png`, `icon-192/512.png`, `icon-mask.png`, `manifest.webmanifest` | The app icons (v57), drawn for favicon scale by `node tools/icons.js` from the theme's inks |
 | `analytics.js` | Cookieless client tracker → `/api/event` |
 | `test.js` | Headless logic harness — `node test.js`, 61 checks (incl. the style law and reel pacing). Run before changing game logic or styles |
 | `tools/` | `theme-core.js` (the theme's one source), `theme.js` (writes the theme block), `style-law.js` (the enforced style rules), `stylefix.js` (puts a graft on the theme) |
