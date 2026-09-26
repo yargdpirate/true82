@@ -4,9 +4,28 @@
 
 **Date:** 2026-09-26
 **Build:** `v57`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v57"`, cache keys `20260926-icons-v57`; daily-core.js `20260926-archive-v56`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, then v57. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v57, the app icon redrawn for favicon scale (section 00000f); v56, THE DAILY ARCHIVE (the owner's list item 16); v55 THE REDRAFTED (item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000e to 00000b first. Only item 17 (accounts, "later") is left on the owner's list.
+**Most recent change:** v57, the app icon redrawn for favicon scale (section 00000f; the owner wants a big rework of it next, see 00000g); v56, THE DAILY ARCHIVE (the owner's list item 16); v55 THE REDRAFTED (item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000e to 00000b first. Only item 17 (accounts, "later") is left on the owner's list.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000g. OWNER CALLS AT THE END OF THE 2026-09-26 SESSION (read first)
+
+- **The favicon (v57) stays for now, but it needs a big rework by the next agent.** Start from `tools/icons.js`
+  (section 00000f): it is the one source, draws small/medium/large versions in the theme's inks and writes every
+  icon file. Show the owner options at real sizes (tab 16/32px, home screen 180px) before shipping; he picks visuals
+  by comparing them, ideally in a lab (memory: owner-design-labs).
+- **Dynasty is killed off for now.** Do not port it from origin/accounts-test. It may come back far later under an
+  "experimental mode" button on the home page; not now.
+- Still open with the owner (asked, unanswered): which masthead finish (neon tubes script shipped; glow and block
+  letters are one lab toggle away), what "comet icon ... tight crop" meant, a "#N replay" line in the Daily share text
+  for past-Daily replays (touches the locked SHARE FORMAT LAW), Classic difficulty from the archive (yes/no), and when
+  to merge c-code-clean to main (main auto-deploys; migrations 0026 and 0027 must be applied with it).
+- Item 17 (leaderboards, accounts) stays "later".
+- Local dev used this session (scratchpad, wiped on reboot): site with API and D1 on :8790 (`site-api2` in
+  .claude/launch.json), lab server on :8095 (`lab3`). QA scripts lived in the session scratchpad; the reusable
+  exporters are in the repo (tools/icons.js, docs/reprint-lab/export/).
 
 ---
 
@@ -97,8 +116,8 @@ The owner: "import redraftables from test archive and review other deltas". The 
   the copy law). 72 tests.
 
 The archive's other deltas (reviewed by a helper; the owner decides what comes next):
-- **Dynasty** (v48/48.1, localStorage `t82Dynasty`): browser-only, but it hooks newGame, showResults and the results
-  page, which v50 rebuilt: a port is a rework, not a paste.
+- **Dynasty** (v48/48.1, localStorage `t82Dynasty`): KILLED FOR NOW by the owner (2026-09-26); maybe later behind an
+  "experimental mode" home button. Do not port.
 - **Classic difficulty** (v49.10/v49.12: PICKUP/PRO for Classic, remembered) and **blind Classic PRO** (v49.13): browser
   only; the screen code is already here (`renderDifficultyScreen` is generic). Note the naming clash with the existing
   Pro mode.
