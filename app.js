@@ -1751,7 +1751,49 @@ function rulesRefresherHtml() {
     '" target="_blank" rel="noopener">Basketball Reference</a> and Basketball Reference\u2019s Stathead for deeper dives. ' +
     'No affiliation, I just use them all the time, including the stats behind this site.</p>';
 }
-function rulesSheetHtml() {
+/* ---------- HOW TO PLAY: the demo (v53) ----------
+   Owner: HOW TO PLAY must be dead simple, "a css clicky finger that can do a
+   short video demo". A 16s loop in pure CSS (styles.css, "HOW TO PLAY demo")
+   on a mini draft screen: a ticket deals a team and a decade, the white glove
+   taps a player and then DRAFT, the five slots fill, the season plays, GO 82-0.
+   Each step's caption lights as it plays. The demo is aria-hidden; the same
+   steps read as text in the sheet. It mirrors the real draft flow (tap a row,
+   then DRAFT YOUR PLAYER), so change it with that flow. */
+var HOWTO_STEPS = ["A random team and decade", "Tap a player from it", "Draft him into a slot",
+  "2 guards, 2 forwards, a center", "Real stats play all 82 games", "Go 82\u20130"];
+function howToDemoHtml() {
+  var caps = "", dots = "", slots = "", coins = "", i;
+  HOWTO_STEPS.forEach(function (t, k) {
+    caps += '<p class="htp-cap c' + (k + 1) + '"><b>' + (k + 1) + "</b>" + esc(t) + "</p>";
+    dots += '<i class="d' + (k + 1) + '"></i>';
+  });
+  ["G", "G", "F", "F", "C"].forEach(function (p, k) {
+    slots += '<span class="htp-slot s' + (k + 1) + '"><em>' + p + "</em><b>" + ["MJ", "SC", "LJ", "KD", "SO"][k] + "</b></span>";
+  });
+  for (i = 0; i < 82; i++) coins += '<i' + ([9, 22, 31, 44, 50, 61, 70, 77].indexOf(i) >= 0 ? ' class="l"' : "") + "></i>";   // 74-8
+  return '<div class="htp" aria-hidden="true"><div class="htp-screen">' +
+      // one round each: '90s Bulls (MJ), '10s Warriors (SC), '10s Cavs (LJ), '20s Suns (KD), '00s Lakers (SO)
+      '<div class="htp-ticket"><span class="htp-reel htp-dec">' + ["80s", "70s", "90s", "10s", "10s", "20s", "00s"].map(function (d) { return "<span>\u2019" + d + "</span>"; }).join("") + "</span>" +
+        '<span class="htp-reel">' + ["SPURS", "KNICKS", "BULLS", "WARRIORS", "CAVS", "SUNS", "LAKERS"].map(function (t) { return "<span>" + t + "</span>"; }).join("") + "</span></div>" +
+      '<div class="htp-rows">' +
+        '<div class="htp-row r1"><b>Michael Jordan</b><i>G</i></div>' +
+        '<div class="htp-row r2"><b>Scottie Pippen</b><i>F</i></div>' +
+        '<div class="htp-row r3"><b>Dennis Rodman</b><i>F</i></div>' +
+      "</div>" +
+      '<div class="htp-draft">Draft your player</div>' +
+      '<div class="htp-season"><div class="htp-coins">' + coins + '</div><div class="htp-rec">74\u20138</div></div>' +
+      '<div class="htp-goal">Go 82\u20130</div>' +
+      '<div class="htp-slots">' + slots + "</div>" +
+      '<svg class="htp-hand" viewBox="0 0 48 48">' + GLOVE_PATH + "</svg>" +
+    '</div><div class="htp-caps">' + caps + '</div><div class="htp-dots">' + dots + "</div></div>";
+}
+// The steps as text: what the demo shows, for readers and screen readers.
+function howToStepsHtml() {
+  return '<ol class="htp-steps">' + HOWTO_STEPS.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ol>";
+}
+function rulesSheetHtml(opts) {
+  opts = opts || {};
+  if (opts.home) return rulesHomeHtml();
   var isDaily = !!(G && G.social);
   var ch = G && G.ch;
   var baseKey = MODE === "cap" ? "cap" : MODE === "pro" ? "pro" : "classic";
@@ -1765,7 +1807,7 @@ function rulesSheetHtml() {
   // daily-specific material (today's rule, then the Daily's own rules) leads
   // and GAME BASICS follows: a Daily player opening the sheet wants today,
   // not the tutorial (owner directive, v45).
-  var basicsBlock = head("rules", "Game basics", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
+  var basicsBlock = howToDemoHtml() + head("rules", "Game basics", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
     RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   var modeCopy = (RULES_MODE[isDaily ? "daily" : baseKey] || []).slice();
   if (isDaily && baseKey === "cap") modeCopy[0] = RULES_DAILY_CAP;   // only a Presti board has prices to share
@@ -1815,6 +1857,24 @@ function rulesSheetHtml() {
   '</div>';
   return h;
 }
+// The homepage's HOW TO PLAY (v53): the demo, the basics and one line per
+// mode. The mode rules and the engine's numbers stay on the draft screens.
+var RULES_HOME_MODES = [
+  ["CLASSIC", "Full stats on every card. Skip a team or an era once."],
+  ["PRESTI", "A $50M salary cap. Every player has a price."],
+  ["THE DAILY", "One board a day for everyone. Your first run counts."]
+];
+function rulesHomeHtml() {
+  return '<div class="rs-head">' + head("sheet", "How to play", { cls: "rs-title" }) +
+    '<button class="rs-close" id="rulesClose" type="button" aria-label="Close how to play">\u2715</button></div>' +
+    '<div class="rs-scroll">' + howToDemoHtml() + '<div class="sr-only">' + howToStepsHtml() + "</div>" +
+      head("rules", "Game basics", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
+      RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>" +
+      head("rules", "The modes", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list rs-engine">' +
+      RULES_HOME_MODES.map(function (m) { return "<li><strong>" + m[0] + ":</strong> " + m[1] + "</li>"; }).join("") + "</ul>" +
+      '<p class="rs-note">Every draft screen has its own HOW TO PLAY with the full rules and scoring.</p>' +
+    '</div><div class="rs-foot"><button class="rs-got" id="rulesGotIt" type="button">GOT IT</button></div>';
+}
 var RULES_PREV_FOCUS = null;
 function rulesEscListener(ev) { if (ev.key === "Escape") closeRulesSheet("escape"); }
 function closeRulesSheet(method) {
@@ -1831,7 +1891,7 @@ function closeRulesSheet(method) {
   RULES_PREV_FOCUS = null;
   ANALYTICS_RULES_OPEN_TS = 0;
 }
-function openRulesSheet() {
+function openRulesSheet(opts) {
   if (el("rulesOverlay")) return;
   RULES_PREV_FOCUS = document.activeElement;
   var ov = document.createElement("div");
@@ -1840,7 +1900,7 @@ function openRulesSheet() {
   ov.setAttribute("role", "dialog");
   ov.setAttribute("aria-modal", "true");
   ov.setAttribute("aria-label", "How to play");
-  ov.innerHTML = '<div class="rules-sheet plq-frame" id="rulesSheet">' + rulesSheetHtml() + '</div>';
+  ov.innerHTML = '<div class="rules-sheet plq-frame" id="rulesSheet">' + rulesSheetHtml(opts) + '</div>';
   document.body.appendChild(ov);
   document.body.classList.add("rules-open");
   ov.addEventListener("click", function (ev2) { if (ev2.target === ov) closeRulesSheet("backdrop"); });
@@ -1849,7 +1909,7 @@ function openRulesSheet() {
   document.addEventListener("keydown", rulesEscListener);
   try { el("rulesClose").focus(); } catch (e) {}
   ANALYTICS_RULES_OPEN_TS = Date.now();
-  analyticsTrack("rules_open", Object.assign(analyticsRunSnapshot(), { action: "how_to_play" }));
+  analyticsTrack("rules_open", Object.assign(analyticsRunSnapshot(), { action: opts && opts.home ? "how_to_play_home" : "how_to_play" }));
 }
 
 /* ---------- donate ---------- */
@@ -1938,8 +1998,10 @@ function buildTraitLegendInto(panel, scope) {
     var abbr = chips[i].getAttribute("data-abbr") || traitCardAbbr(full);
     var isEng = chips[i].classList.contains("eng");
     var tone = chips[i].getAttribute("data-tone");
+    var def = (BALLOT_BY_NAME[full] && BALLOT_BY_NAME[full].d) || "";   // v53: the definitions are back
     var line = '<div class="trait-legend-row"><span class="t-chip" data-size="sm"' + (tone ? ' data-tone="' + esc(tone) + '"' : "") + ">" +
-      esc(abbr) + '</span><span>' + esc(full) + (isEng ? " \u00B7 engine" : "") + "</span></div>";
+      esc(abbr) + '</span><span class="tl-txt"><b>' + esc(full) + (isEng ? " \u00B7 engine" : "") + "</b>" +
+      (def ? "<small>" + esc(def) + "</small>" : "") + "</span></div>";
     if (isEng) { engRows.push(line); eng.push(abbr); } else rows.push(line);
   }
   // the engine note names only the engine codes this legend actually lists (v51)
@@ -2287,8 +2349,12 @@ function applyLabelChips(container, hits, tab) {
    it asks that trait's own question: YES / NO / NOT SURE. "+" adds any
    trait. A "?" badge marks a tag that is still unsettled (the scout called
    it close, or the crowd is split). One meaning per color: sun = the site's
-   yes, scarlet = a bad trait, the blue ring = you weighed in. No legends, no
-   instructions; a white glove shows the two taps once per browser.
+   yes, scarlet = a bad trait, the blue ring = you weighed in. No legend on
+   the cards; a white glove shows the two taps once per browser. Every trait
+   carries its one-line definition (d, owner-written, v53: "ADD DEFINITIONS
+   TO TRAITS"): the question sheet, the picker's tiles, the tag glossary
+   (the (i) by YOUR FIVE, and the picker's foot) and the draft pool legend
+   all read it.
    Reads op=labels (mine=1 for the rings), writes one op=vote per answer
    (source "card"; player + season ride along so a brand-new tag can create
    its question on first vote). The engine's own 3PT / GRAVITY designation
@@ -2300,21 +2366,28 @@ var BALLOT_TRAITS = [
   // pick = offered by "+" (the owner's set: 12 core + three bad traits).
   // The other three core traits show when a ruling says so and vote like
   // any tag, but are not offered as adds (owner's four-negative ceiling).
-  { id: "three-point-shooter", name: "Three-Point Shooter", chip: "3PT", q: "a 3PT shooter", g: "off", pick: 1 },
+  { id: "three-point-shooter", name: "Three-Point Shooter", chip: "3PT", q: "a 3PT shooter", g: "off", pick: 1,
+    d: "Defenses had to guard him past the arc." },
   { id: "super-three-point-shooter", name: "Super Three-Point Shooter", chip: "GRAVITY", q: "a gravity shooter", g: "off", pick: 1,
     d: "So feared from deep that he warps the whole defense." },
   { id: "rim-pressurer", name: "Rim Pressurer", chip: "RIM+", q: "a rim pressurer", g: "off", pick: 1,
     d: "Lives at the rim and the foul line." },
   { id: "off-ball-scorer", name: "Off-Ball Scorer", chip: "OFF-B", q: "an off-ball scorer", g: "off", pick: 1,
     d: "Scores without the ball in his hands: cuts, screens, relocations." },
-  { id: "tough-shot-maker", name: "Tough Shot Maker", chip: "TSHOT", q: "a tough shot maker", g: "off", pick: 1 },
-  { id: "playmaker", name: "Playmaker", chip: "PLAY", q: "a playmaker", g: "off", pick: 1 },
-  { id: "iso-defender", name: "Iso Defender", chip: "ISO-D", q: "an iso defender", g: "def", pick: 1 },
-  { id: "team-defender", name: "Team Defender", chip: "TEAM-D", q: "a team defender", g: "def", pick: 1 },
+  { id: "tough-shot-maker", name: "Tough Shot Maker", chip: "TSHOT", q: "a tough shot maker", g: "off", pick: 1,
+    d: "Makes contested, late-clock shots nobody should take." },
+  { id: "playmaker", name: "Playmaker", chip: "PLAY", q: "a playmaker", g: "off", pick: 1,
+    d: "Runs the offense and makes teammates better." },
+  { id: "iso-defender", name: "Iso Defender", chip: "ISO-D", q: "an iso defender", g: "def", pick: 1,
+    d: "You put him on their best scorer, one on one." },
+  { id: "team-defender", name: "Team Defender", chip: "TEAM-D", q: "a team defender", g: "def", pick: 1,
+    d: "Rotations, help, hands in passing lanes." },
   { id: "switchable-defender", name: "Switchable Defender", chip: "SWITCH", q: "switchable on defense", g: "def", pick: 1,
     d: "Guards guards and bigs alike." },
-  { id: "rim-protector", name: "Rim Protector", chip: "RIM-P", q: "a rim protector", g: "def", pick: 1 },
-  { id: "clutch", name: "Clutch", chip: "CLUTCH", q: "clutch", g: "rep", pick: 1 },
+  { id: "rim-protector", name: "Rim Protector", chip: "RIM-P", q: "a rim protector", g: "def", pick: 1,
+    d: "Shots at the rim change because he is there." },
+  { id: "clutch", name: "Clutch", chip: "CLUTCH", q: "clutch", g: "rep", pick: 1,
+    d: "You want the last shot in his hands. So does he." },
   { id: "championship-number-one", name: "Championship #1", chip: "TITLE #1", q: "a title team’s number one", g: "rep",
     d: "The best player on a team that could win it all." },
   { id: "hunted", name: "Hunted", chip: "HUNTED", q: "hunted on defense", g: "rep", neg: 1, pick: 1,
@@ -2325,8 +2398,10 @@ var BALLOT_TRAITS = [
     d: "Needs a lot of dribbles before anything happens." },
   { id: "foul-merchant", name: "Foul Merchant", chip: "FOUL-MERCH", q: "a foul merchant", g: "rep", neg: 1,
     d: "Hunts whistles for cheap free throws." },
-  { id: "stat-padder", name: "Stat Padder", chip: "STAT-PAD", q: "a stat padder", g: "rep", neg: 1, pick: 1 },
-  { id: "off-court-knucklehead", name: "Off-Court Knucklehead", chip: "KNUCK", q: "an off-court knucklehead", g: "rep", neg: 1, pick: 1 }
+  { id: "stat-padder", name: "Stat Padder", chip: "STAT-PAD", q: "a stat padder", g: "rep", neg: 1, pick: 1,
+    d: "Numbers that do not add up to winning." },
+  { id: "off-court-knucklehead", name: "Off-Court Knucklehead", chip: "KNUCK", q: "an off-court knucklehead", g: "rep", neg: 1, pick: 1,
+    d: "Suspensions, arrests, feuds. Trouble the team has to manage." }
 ];
 var BALLOT_GROUPS = [["Offense", "off"], ["Defense", "def"], ["Reputation", "rep"]];
 var BALLOT_BY_NAME = {};
@@ -2570,11 +2645,35 @@ function ballotOpenPicker(card) {
     var items = model.offer.filter(function (T) { return T.g === gp[1]; });
     if (items.length) h += head("group", gp[0], { tag: "h3", cls: "bt-grp" }) + '<div class="bt-grid">' + items.map(tile).join("") + "</div>";
   });
-  h += '<p class="bt-foot">Every tag, spelled out: <a href="/traits/">Player Traits</a></p>';
+  h += '<p class="bt-foot"><button type="button" class="bt-gloss-open t-btn" data-kind="text" data-size="sm">Every tag, spelled out</button></p>';
   var s = ballotSheetEls();
   s.inn.innerHTML = h;
   ballotShow("Add a tag for " + card.name);
   analyticsTrack("traits_question", { surface: "results_card", action: "add_open", source: "card", sid: ballotSid() });
+}
+// The tag glossary: every trait's code and its one-line definition, in the
+// ballot's groups. names (optional) limits it to those traits (the pool legend).
+function traitGlossaryHtml(names) {
+  var h = "";
+  BALLOT_GROUPS.forEach(function (gp) {
+    var items = BALLOT_TRAITS.filter(function (T) { return T.g === gp[1] && (!names || names[T.name]); });
+    if (!items.length) return;
+    h += head("group", gp[0], { tag: "h3", cls: "bt-grp" }) + '<div class="tg-list">' + items.map(function (T) {
+      return '<div class="tg-row"><span class="t-chip" data-size="sm"' + (T.neg ? ' data-tone="bad"' : "") + ">" + esc(T.chip) + "</span>" +
+        '<span class="tg-txt"><b class="t-name">' + esc(T.name) + '</b><span class="t-small">' + esc(T.d || "") + "</span></span></div>";
+    }).join("") + "</div>";
+  });
+  return h;
+}
+function ballotOpenGlossary(from) {
+  var s = ballotSheetEls();
+  BALLOT.cur = null;
+  s.inn.innerHTML = head("sheet", "What the tags mean", { cls: "bt-h" }) +
+    '<p class="bt-sub">Tap a tag on a card to vote on it. 3PT and GRAVITY are the engine\u2019s own shooting math; the rest are the crowd\u2019s call.</p>' +
+    traitGlossaryHtml(null) +
+    '<button type="button" class="bt-done t-btn" data-kind="primary">Done</button>';
+  ballotShow("What the tags mean");
+  analyticsTrack("traits_question", { surface: "results_card", action: "glossary_open", variant: from || "", source: "card", sid: ballotSid() });
 }
 function ballotSheetClick(ev) {
   var t = ev.target.closest ? ev.target : null;
@@ -2589,6 +2688,7 @@ function ballotSheetClick(ev) {
     var f = el("btBtns").querySelector(".bt-big"); if (f) f.focus();
     return;
   }
+  if (t.closest(".bt-gloss-open")) { ballotOpenGlossary("picker"); return; }
   if (t.closest(".bt-done")) ballotClose();
 }
 function ballotToast(msg) {
@@ -2714,6 +2814,8 @@ function ballotShowResult(card, T, resp, d, c) {
 }
 
 /* ---- the one-time glove ---- */
+// The white glove, one drawing: this hint and the HOW TO PLAY demo both use it.
+var GLOVE_PATH = '<path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" stroke-width="2.4" stroke-linejoin="round"/>';
 var BALLOT_HINT = null;
 function ballotHintSeen() { try { return localStorage.getItem(BALLOT_HINT_KEY) === "1"; } catch (e) { return true; } }
 function ballotHintStop() {
@@ -2756,7 +2858,7 @@ function ballotHintPlay(cardEl) {
   var hand = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   hand.setAttribute("viewBox", "0 0 48 48"); hand.setAttribute("aria-hidden", "true");
   hand.setAttribute("class", "bt-hand");
-  hand.innerHTML = '<path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" stroke-width="2.4" stroke-linejoin="round"/>';
+  hand.innerHTML = GLOVE_PATH;
   document.body.appendChild(hand);
   var H = BALLOT_HINT = { hand: hand, timers: [] };
   function later(fn, ms) { H.timers.push(setTimeout(function () { if (BALLOT_HINT === H) fn(); }, ms)); }
@@ -2915,8 +3017,12 @@ function renderIntro() {
   app().innerHTML =
     '<section class="ticket intro">' +
       '<div class="intro-toprow"><button class="arena-chip" id="arenaChip" type="button">\uD83C\uDFDF Arena</button></div>' +
-      '<h1 class="intro-title" id="introTitle">Go 82\u20130</h1>' +
-      '<p class="intro-lead">An \u201C82\u20130\u201D-style game, but driven by advanced metrics instead of just adding up counting stats. Pick a team that would actually win IRL. Try to go undefeated.</p>' +
+      // v53 (owner): a one-liner and a HOW TO PLAY button replace the old paragraph and the
+      // DRAFT / WINNING text that sat under the vote card; the button opens the demo sheet.
+      '<div class="intro-head"><h1 class="intro-title" id="introTitle">Go 82\u20130</h1>' +
+        '<button class="mp-rules-btn intro-rules-btn" id="homeRulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: a short demo and the basics">' +
+          '<span class="mp-book-wrap">' + bookIconSvg() + '</span><span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span></span></button></div>' +
+      '<p class="intro-lead">Draft five NBA players. Real advanced stats play the season.</p>' +
       '<button class="daily-strip" id="dailyStrip" hidden></button>' +
       '<button class="btn btn-primary btn-block presti-spin" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
       '<button class="btn btn-primary btn-block presti-spin" id="startCap">\uD83D\uDC10 Presti Mode \u00B7 Salary Cap &amp; Random</button>' +
@@ -2927,10 +3033,6 @@ function renderIntro() {
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
-      head("home", "Draft") +
-      "<p>Five rounds. Each one deals a random NBA franchise and decade; draft one player who suited up for that team in that era, any season of his career. Fill 2 guards, 2 forwards, and a center. In Classic you can skip the team once and the era once.</p>" +
-      head("home", "Winning") +
-      "<p>The engine grades your five on advanced impact (BPM), then converts net rating into an 82-game record. It rewards real stars, wants about <strong>3 shooters</strong>, and punishes ball-hog pileups and bad-defense pairs. Every draft screen has a <strong>HOW TO PLAY</strong> button with the full rules and the day's twist.</p>" +
     "</section>";
   analyticsTrack("home_view", {
     surface: "home", action: ANALYTICS_HOME_N === 1 ? "landing" : "return_to_menu",
@@ -2974,6 +3076,7 @@ function renderIntro() {
     PENDING_FN = fn;
     if (btn) btn.disabled = true;
   }
+  el("homeRulesBtn").addEventListener("click", function () { openRulesSheet({ home: true }); });
   el("startClassic").addEventListener("click", function () { start("classic"); });
   var proBtn = el("startPro");   // absent when THE DAILY holds the third slot
   if (proBtn) proBtn.addEventListener("click", function () { start("pro"); });
@@ -4364,26 +4467,33 @@ function wireBallPull(lever, arm, onFire) {
   return { fired: function () { return fired; } };
 }
 // The lever's art, one source: basketball (behind), rim + net (in front),
-// flames (hidden until ignition), and the bouncing PULL DOWN hint.
+// flames (hidden until ignition), and the bouncing PULL DOWN hint. v53 (owner:
+// "a Vice neon makeover"): the ball and the hoop are neon tubes in the look's
+// inks (the ball in the accent, the rim and net in the second ink, each with a
+// bright core), painted from tokens in styles.css; the ball catches fire gold
+// (hot) at ignition. The Heat Check and THE DAILY gate share it.
 function ballLeverHtml(leverId, armId, ariaLabel) {
+  var gid = "hhBg" + leverId;
   return '<div class="hh-lever" id="' + leverId + '" role="button" tabindex="0" aria-label="' + esc(ariaLabel) + '">' +
     '<span class="hh-fire" aria-hidden="true"><i></i><i></i><i></i></span>' +
     '<span class="hh-ball" id="' + armId + '">' +
       '<svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">' +
-        '<defs><radialGradient id="hhBg" cx="38%" cy="30%" r="78%">' +
-          '<stop offset="0%" style="stop-color:var(--fx-ball-hi)"/><stop offset="48%" style="stop-color:var(--fx-ball)"/><stop offset="100%" style="stop-color:var(--fx-ball-lo)"/>' +
+        '<defs><radialGradient id="' + gid + '" cx="50%" cy="40%" r="64%">' +
+          '<stop offset="0%" class="hh-ball-in"/><stop offset="100%" class="hh-ball-out"/>' +
         '</radialGradient></defs>' +
-        '<circle cx="24" cy="24" r="22" fill="url(#hhBg)" style="stroke:var(--fx-ball-seam)" stroke-width="1"/>' +
-        '<path d="M2 24H46M24 2V46M8 7Q24 24 8 41M40 7Q24 24 40 41" fill="none" style="stroke:var(--fx-ball-seam)" stroke-width="1.5" stroke-linecap="round"/>' +
+        '<circle class="hh-ball-body" cx="24" cy="24" r="21.5" fill="url(#' + gid + ')"/>' +
+        '<path class="hh-ball-seams" d="M2.5 24H45.5M24 2.5V45.5M8.5 7.5Q24 24 8.5 40.5M39.5 7.5Q24 24 39.5 40.5"/>' +
+        '<circle class="hh-ball-core" cx="24" cy="24" r="21.5"/>' +
       '</svg>' +
     '</span>' +
     '<span class="hh-hoop" aria-hidden="true">' +
       '<svg viewBox="0 0 96 76" width="96" height="76">' +
-        '<g fill="none" style="stroke:var(--fx-ball-net)" stroke-width="1" opacity="0.8">' +
+        '<g class="hh-net">' +
           '<path d="M16 20 L36 62"/><path d="M32 20 L42 62"/><path d="M48 20 L48 62"/><path d="M64 20 L54 62"/><path d="M80 20 L60 62"/>' +
           '<path d="M24 36 Q48 40 72 36"/><path d="M31 50 Q48 54 65 50"/>' +
         '</g>' +
-        '<ellipse cx="48" cy="16" rx="35" ry="9" fill="none" style="stroke:var(--fx-ball-rim)" stroke-width="4"/>' +
+        '<ellipse class="hh-rim" cx="48" cy="16" rx="35" ry="9"/>' +
+        '<ellipse class="hh-rim-core" cx="48" cy="16" rx="35" ry="9"/>' +
       '</svg>' +
     '</span>' +
     '<span class="hh-lever-hint">PULL DOWN<b>\u2193</b></span>' +
@@ -6257,7 +6367,8 @@ function mountResultsPrint(e, daily) {
   if (board) board.classList.add("printed");                 // the print carries the mode line; the eyebrow steps aside
   host.setAttribute("role", "img");
   host.setAttribute("aria-label", RESULTS_PRINT_SPEC.wins + " and " + (CFG.GAMES_IN_SEASON - RESULTS_PRINT_SPEC.wins) +
-    ". The shape of the season: " + (RESULTS_PRINT_SPEC.games ? "every win lifts the ridge, every loss drops it." : "the projected climb."));
+    ". The shape of the season: " + (RESULTS_PRINT_SPEC.games ? "every win lifts the ridge, every loss drops it" : "the projected climb") +
+    ", and the color fills the picture to the win rate.");
   // Reveal only when the print is on screen and nothing sits over it.
   if (canWatch) {
     var poll = 0, io = new IntersectionObserver(function (ents) {
@@ -6469,7 +6580,9 @@ function renderResults(e, keepScroll) {
       '<div class="rr-twoway" data-result-section="two_way">' + twoWayHtml(e) + "</div>" +
       '<button class="btn btn-primary btn-block presti-spin rr-share' + ((e.winTally === 81 || e.winTally === 82) ? ' elite-result' : '') + '" id="shareTeamBtn" data-share-label="' + shareLabel + '">' + shareLabel + '</button></section>' +
     '<section class="section traits-roster" data-result-section="roster">' +
-      head("results", "Your five", { cls: "rr-eyebrow" }) + picksHtml +
+      head("results", "Your five", { cls: "rr-eyebrow",
+        aside: '<button type="button" class="rr-tags-info t-btn" data-kind="text" data-size="sm" id="tagGlossBtn">What the tags mean</button>' }) +
+      picksHtml +
       '<p class="bref-credit">Tap a name for the career, the team for that season \u00B7 <a href="https://www.basketball-reference.com/?utm_source=true82.net&utm_campaign=results_credit" target="_blank" rel="noopener">Basketball-Reference</a></p></section>' +
     '<section class="section rr-climb" data-result-section="goat_climb">' + head("results", "GOAT Climb", { cls: "rr-eyebrow" }) + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card">' + head("results", "Scoring Card", { cls: "rr-eyebrow" }) + ledger + "</section>" +
@@ -6479,6 +6592,7 @@ function renderResults(e, keepScroll) {
   trackResultSections();
   wireBallot(picksInSlotOrder());
   mountResultsPrint(e, daily);
+  el("tagGlossBtn").addEventListener("click", function () { ballotOpenGlossary("results"); });
 
   el("againBtn").addEventListener("click", function () {
     analyticsTrack("replay", Object.assign(analyticsRunSnapshot(), { surface: "results", action: daily ? "daily_practice" : "same_mode" }));
@@ -6865,7 +6979,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v52";
+var BUILD_V = "v53";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

@@ -645,7 +645,7 @@ button.more-modes:disabled,
 }
 .sort-chip.active { background: var(--t-accent); border-color: var(--t-accent); color: var(--t-accent-ink); font-weight: 600; }
 .pro-hint { font-family: var(--t-mono); font-size: 11px; line-height: 1.4; color: var(--t-label); margin: 8px 0 2px; }
-.pro-hint em { font-style: italic; color: var(--t-accent); }
+.pro-hint em { font-style: normal; color: var(--t-accent); }
 .info-i {
   display: inline-flex; align-items: center; justify-content: center;
   width: 13px; height: 13px;
@@ -805,7 +805,7 @@ button.more-modes:disabled,
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-family: var(--t-body); font-size: 11px; color: var(--t-text); text-align: center;
 }
-.ls-name.ls-open { color: var(--t-text-2); font-style: italic; }
+.ls-name.ls-open { color: var(--t-text-2); }
 
 /* ---------- lineup position moves / swaps ----------
    Every drafted player with a legal position change wears a "SWAP" pill above his
@@ -1230,6 +1230,9 @@ button.more-modes:disabled,
    report it (Settings > Accessibility > Animation effects off) and it was killing
    the entire game experience there. See prefersReduce() in app.js. */
 
+/* text for screen readers only */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* ---------- intro ---------- */
 
 .intro p { margin: 10px 0; font-size: 15px; }
@@ -1243,6 +1246,14 @@ button.more-modes:disabled,
   color: var(--t-text);
 }
 .intro-lead { margin: 0 0 4px; color: var(--t-text); }
+/* v53: the title shares its row with HOW TO PLAY (the draft screen's button, a size down) */
+.intro-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 8px; }
+.intro-head .intro-title { margin: 0; }
+#app .intro-rules-btn { min-height: 46px; min-width: 0; max-width: none; padding: 7px 12px 9px; gap: 8px; }
+#app .intro-rules-btn .mp-book-wrap { width: 26px; height: 26px; border-radius: 8px; }
+#app .intro-rules-btn .mp-book { width: 19px; height: 16px; }
+#app .intro-rules-btn .mp-rules-main { font-size: 15px; }
+.intro p.intro-lead { font-size: 16px; line-height: 1.4; }
 .intro .eyebrow { margin-top: 20px; font-weight: 600; }
 .btn-block { display: block; width: 100%; margin-top: 16px; }
 
@@ -1405,12 +1416,28 @@ button.more-modes:disabled,
 .hh-ball, .hh-hoop, .hh-fire, .hh-lever-hint { pointer-events: none; }/* the container handles all pointers */   
 .hh-ball {                                        /* the basketball — the ONLY moving part, sent to BACK */
   position: absolute; left: 50%; top: 2px; margin-left: -24px; width: 48px; height: 48px;
-  z-index: 1; will-change: transform; filter: drop-shadow(0 3px 5px rgb(var(--t-shadow-rgb) / .5));
+  z-index: 1; will-change: transform;
 }
 .hh-hoop {                                        /* rim + net, in FRONT and dropped DOWN so the ball starts above it */
   position: absolute; left: 50%; top: 44px; margin-left: -48px; width: 96px; height: 76px; z-index: 3;
-  filter: drop-shadow(0 2px 4px rgb(var(--t-shadow-rgb) / .55));
 }
+/* v53, the neon makeover (owner): ball and hoop are tubes in the look's inks with a bright core; the
+   ball in the accent, rim and net in the second ink (offset); at ignition the ball burns fire gold (hot) */
+.hh-ball svg, .hh-hoop svg { display: block; overflow: visible; }
+.hh-ball svg { filter: drop-shadow(0 0 1.5px rgb(var(--t-accent-rgb) / .95)) drop-shadow(0 0 8px rgb(var(--t-accent-rgb) / .6)); transition: filter 0.2s ease; }
+.hh-ball-in { stop-color: var(--t-accent); stop-opacity: .34; }
+.hh-ball-out { stop-color: var(--t-ground); stop-opacity: .9; }
+.hh-ball-body { stroke: var(--t-accent); stroke-width: 2.6; transition: stroke 0.2s ease; }
+.hh-ball-seams { fill: none; stroke: var(--t-accent); stroke-width: 1.8; stroke-linecap: round; transition: stroke 0.2s ease; }
+.hh-ball-core { fill: none; stroke: var(--t-light); stroke-opacity: .6; stroke-width: 0.9; }
+.hh-lever.ignited .hh-ball svg { filter: drop-shadow(0 0 1.5px rgb(var(--t-hot-rgb) / .95)) drop-shadow(0 0 8px rgb(var(--t-hot-rgb) / .7)); }
+.hh-lever.ignited .hh-ball-in { stop-color: var(--t-hot); }
+.hh-lever.ignited .hh-ball-body, .hh-lever.ignited .hh-ball-seams { stroke: var(--t-hot); }
+.hh-hoop svg { filter: drop-shadow(0 0 1.5px rgb(var(--t-offset-rgb) / .95)) drop-shadow(0 0 7px rgb(var(--t-offset-rgb) / .55)); transition: filter 0.2s ease; }
+.hh-net path { fill: none; stroke: var(--t-offset); stroke-width: 1.4; stroke-opacity: .85; stroke-linecap: round; }
+.hh-rim { fill: none; stroke: var(--t-offset); stroke-width: 4.4; }
+.hh-rim-core { fill: none; stroke: var(--t-light); stroke-opacity: .75; stroke-width: 1.3; }
+.hh-lever.ignited .hh-hoop svg { filter: drop-shadow(0 0 2px rgb(var(--t-offset-rgb) / 1)) drop-shadow(0 0 14px rgb(var(--t-offset-rgb) / .8)); }
 .hh-fire {                                         /* flames at the bottom, hidden until ignition */
   position: absolute; left: 50%; bottom: 14px; margin-left: -34px; width: 68px; height: 86px;
   z-index: 2; opacity: 0; transition: opacity 0.18s ease;
@@ -2422,7 +2449,7 @@ main.content-page {
   color: var(--t-text-2); margin: 4px 0 9px; }
 .daily-tile .dt-board { display: block; font-family: var(--t-disp); font-size: 1.14rem;
   letter-spacing: 0.05em; text-transform: uppercase; color: var(--t-text); }
-.daily-tile .dt-sub { display: block; font-size: 0.75rem; font-style: italic;
+.daily-tile .dt-sub { display: block; font-size: 0.75rem;
   color: var(--t-text-2); margin-top: 3px; }
 .daily-tile.is-played { cursor: default; }
 .daily-tile.is-played .dt-title { opacity: 0.85; }
@@ -2450,7 +2477,7 @@ main.content-page {
 .daily-strap .ds-target { color: var(--t-bad-soft); margin-left: auto; font-size: .72rem; }
 .daily-strap .ds-target { margin-left: auto; }/* target hugs the right... */              
 .daily-strap .ds-row:not(:has(.ds-target)) .strap-info { margin-left: auto; }/* ...else the (i) does */  
-.daily-strap .ds-rule { margin-top: 5px; font-size: .74rem; font-style: italic; color: var(--t-text-2); line-height: 1.35; }
+.daily-strap .ds-rule { margin-top: 5px; font-size: .74rem; color: var(--t-text-2); line-height: 1.35; }
 .strap-tip { margin-top: 8px; }
 .ds-pill { font-family: var(--t-mono); font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
   padding: 2px 7px 3px; border-radius: 2px; }
@@ -2568,7 +2595,7 @@ body.drafting .site-head { display: none; }
 #app .du-exit {
   justify-self: start; display: inline-flex; align-items: center; gap: 3px;
   -webkit-appearance: none; appearance: none;
-  font-family: var(--t-disp); font-style: italic; font-weight: 600; font-size: 15px;
+  font-family: var(--t-disp); font-weight: 600; font-size: 15px;
   letter-spacing: 0.05em; text-transform: uppercase; color: var(--t-text);
   background: none; border: 0; box-shadow: none; padding: 8px 8px 8px 0;
 }
@@ -2683,7 +2710,7 @@ body.rules-open { overflow: hidden; }
 .rs-list li { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
 .rs-list li::marker { color: var(--t-label); }
 .rs-engine li strong { color: var(--t-accent); font-weight: 600; letter-spacing: 0.03em; }
-.rs-note { margin: 10px 0 0; font-family: var(--t-mono); font-style: italic; font-size: 10.5px; color: var(--t-text-2); }
+.rs-note { margin: 10px 0 0; font-family: var(--t-mono); font-size: 10.5px; color: var(--t-text-2); }
 .rs-foot {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 14px calc(11px + env(safe-area-inset-bottom));
@@ -2692,6 +2719,116 @@ body.rules-open { overflow: hidden; }
 .rs-link { flex: none; font-size: 10.5px; letter-spacing: 0.04em; color: var(--t-accent); text-decoration: none; }
 .rs-link:active { color: var(--t-text); }
 .rules-overlay .rs-got { flex: 1; font-family: var(--t-disp); font-weight: 700; font-size: 16px; letter-spacing: 0.07em; padding: 10px 8px 11px; }
+
+/* ---------- HOW TO PLAY: the demo (v53) ----------
+   A 16s loop on a mini draft screen (howToDemoHtml in app.js): the ticket deals a team and a decade,
+   the glove taps a player and then DRAFT, the five slots fill, the season plays, GO 82-0. Six scenes,
+   each with its caption and dot: 0-14%, 14-32%, 32-50%, 50-64%, 64-84%, 84-100%. Pieces mirror the
+   real draft screen's tokens (rows on ground-2, the lineup tokens in metal on the accent). */
+.htp { --htp-t: 16s; margin: 2px 0 4px; }
+.htp-screen { position: relative; height: 244px; overflow: hidden; border: 1px solid var(--t-line); border-radius: var(--t-r-card);
+  background: var(--t-ground); }
+.htp-screen * { animation-duration: var(--htp-t); animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.htp-ticket { position: absolute; top: 12px; left: 12px; right: 12px; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+  border: 1px solid var(--t-line); border-radius: var(--t-r-chip); background: var(--t-ground-2);
+  font-family: var(--t-disp); font-weight: 700; font-size: 26px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--t-text);
+  animation-name: htpTicket; }
+.htp-reel.htp-dec { color: var(--t-accent); flex: 0 0 auto; }
+.htp-reel { position: relative; display: block; height: 30px; line-height: 30px; overflow: hidden; }
+.htp-reel span { display: block; animation-name: htpReel; }
+.htp-rows { position: absolute; top: 64px; left: 12px; right: 12px; display: grid; gap: 5px; animation-name: htpRows; }
+.htp-row { display: flex; align-items: center; justify-content: space-between; height: 26px; padding: 0 10px;
+  border: 1px solid var(--t-line); border-radius: 8px; background: var(--t-ground-2); }
+.htp-row b { font-family: var(--t-body); font-weight: 600; font-size: 13px; color: var(--t-text); }
+.htp-row i { font-style: normal; font-family: var(--t-mono); font-size: 11px; color: var(--t-label); }
+.htp-row.r1 { animation-name: htpPick; }
+.htp-draft { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); white-space: nowrap; padding: 7px 18px 8px;
+  border: 1.5px solid var(--t-accent); border-radius: var(--t-r-btn); background: var(--t-ground-2); color: var(--t-accent);
+  font-family: var(--t-disp); font-weight: 700; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase;
+  box-shadow: 0 0 12px rgb(var(--t-accent-rgb) / .45); opacity: 0; animation-name: htpDraft; }
+.htp-slots { position: absolute; left: 12px; right: 12px; bottom: 10px; display: flex; justify-content: space-between; }
+.htp-slot { position: relative; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%;
+  border: 2px dashed var(--t-line); font-family: var(--t-mono); font-size: 12px; font-weight: 600; color: var(--t-text-2); }
+.htp-slot em, .htp-slot b { grid-area: 1 / 1; font-style: normal; }
+.htp-slot b { font-family: var(--t-disp); font-weight: 700; font-size: 14px; color: var(--t-accent-ink); opacity: 0; }
+.htp-slot.s1 { animation-name: htpFill1; } .htp-slot.s1 em { animation-name: htpOpen1; } .htp-slot.s1 b { animation-name: htpShow1; }
+.htp-slot.s2 { animation-name: htpFill2; } .htp-slot.s2 em { animation-name: htpOpen2; } .htp-slot.s2 b { animation-name: htpShow2; }
+.htp-slot.s3 { animation-name: htpFill3; } .htp-slot.s3 em { animation-name: htpOpen3; } .htp-slot.s3 b { animation-name: htpShow3; }
+.htp-slot.s4 { animation-name: htpFill4; } .htp-slot.s4 em { animation-name: htpOpen4; } .htp-slot.s4 b { animation-name: htpShow4; }
+.htp-slot.s5 { animation-name: htpFill5; } .htp-slot.s5 em { animation-name: htpOpen5; } .htp-slot.s5 b { animation-name: htpShow5; }
+.htp-season { position: absolute; top: 30px; left: 14px; right: 14px; opacity: 0; animation-name: htpSeason; }
+.htp-coins { display: grid; grid-template-columns: repeat(41, 1fr); gap: 3px 2px; animation-name: htpCoins; animation-timing-function: linear; }
+.htp-coins i { display: block; height: 10px; border-radius: 2px; background: var(--t-win); box-shadow: 0 0 5px rgb(var(--t-win-rgb) / .5); }
+.htp-coins i.l { background: var(--t-loss); box-shadow: 0 0 5px rgb(var(--t-loss-rgb) / .6); }
+.htp-rec { margin-top: 10px; text-align: center; font-family: var(--t-disp); font-weight: 800; font-size: 60px; line-height: 1; letter-spacing: 0.02em;
+  color: var(--t-accent); text-shadow: 0 0 16px rgb(var(--t-accent-rgb) / .45); opacity: 0; animation-name: htpRec; }
+.htp-goal { position: absolute; left: 0; right: 0; top: 44px; text-align: center; font-family: var(--t-disp); font-weight: 900; font-size: 66px; line-height: 1;
+  letter-spacing: 0.03em; text-transform: uppercase; color: var(--t-hot); text-shadow: 0 0 18px rgb(var(--t-hot-rgb) / .6), 0 0 42px rgb(var(--t-hot-rgb) / .35);
+  opacity: 0; animation-name: htpGoal; }
+.htp-hand { position: absolute; left: 110%; top: 92%; width: 38px; height: 38px; opacity: 0; pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgb(var(--t-shadow-rgb) / .55)); animation-name: htpHand; animation-timing-function: ease-in-out; }
+.htp-hand path { fill: var(--t-light); stroke: var(--t-ground); }
+.htp-caps { position: relative; height: 26px; margin-top: 9px; }
+.htp-cap { position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; opacity: 0;
+  font-family: var(--t-disp); font-weight: 700; font-size: 18px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--t-text);
+  animation-duration: var(--htp-t); animation-iteration-count: infinite; }
+.htp-cap b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--t-accent); color: var(--t-accent-ink); font-size: 14px; }
+.htp-dots { display: flex; justify-content: center; gap: 7px; margin-top: 7px; }
+.htp-dots i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--t-line); }
+.htp-dots i::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--t-accent); opacity: 0;
+  animation-duration: var(--htp-t); animation-iteration-count: infinite; }
+.htp-cap.c1, .htp-dots .d1::after { animation-name: htpC1; }
+.htp-cap.c2, .htp-dots .d2::after { animation-name: htpC2; }
+.htp-cap.c3, .htp-dots .d3::after { animation-name: htpC3; }
+.htp-cap.c4, .htp-dots .d4::after { animation-name: htpC4; }
+.htp-cap.c5, .htp-dots .d5::after { animation-name: htpC5; }
+.htp-cap.c6, .htp-dots .d6::after { animation-name: htpC6; }
+.htp-steps { margin: 0; padding-left: 20px; }
+@keyframes htpC1 { 0%, 13.5% { opacity: 1; } 14%, 99.5% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes htpC2 { 0%, 14% { opacity: 0; } 14.5%, 31.5% { opacity: 1; } 32%, 100% { opacity: 0; } }
+@keyframes htpC3 { 0%, 32% { opacity: 0; } 32.5%, 49.5% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes htpC4 { 0%, 50% { opacity: 0; } 50.5%, 63.5% { opacity: 1; } 64%, 100% { opacity: 0; } }
+@keyframes htpC5 { 0%, 64% { opacity: 0; } 64.5%, 83.5% { opacity: 1; } 84%, 100% { opacity: 0; } }
+@keyframes htpC6 { 0%, 84% { opacity: 0; } 84.5%, 99.5% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes htpTicket { 0% { opacity: 0; transform: translateY(-6px); } 2%, 62.5% { opacity: 1; transform: none; } 64.5%, 100% { opacity: 0; transform: none; } }
+@keyframes htpReel { 0%, 2% { transform: translateY(0); } 4% { transform: translateY(-30px); } 6% { transform: translateY(-60px); }
+  7% { transform: translateY(-66px); } 8.5%, 50.6% { transform: translateY(-60px); } 51.8%, 53.6% { transform: translateY(-90px); }
+  54.8%, 56.6% { transform: translateY(-120px); } 57.8%, 59.6% { transform: translateY(-150px); } 60.8%, 100% { transform: translateY(-180px); } }
+@keyframes htpRows { 0%, 10% { opacity: 0; transform: translateY(10px); } 14%, 45% { opacity: 1; transform: none; } 48%, 100% { opacity: 0; transform: none; } }
+@keyframes htpPick { 0%, 23.5% { border-color: var(--t-line); box-shadow: none; background: var(--t-ground-2); }
+  24.5%, 100% { border-color: var(--t-accent); box-shadow: inset 4px 0 0 var(--t-accent), 0 0 10px rgb(var(--t-accent-rgb) / .35); background: rgb(var(--t-accent-rgb) / .12); } }
+@keyframes htpDraft { 0%, 29% { opacity: 0; transform: translate(-50%, 12px); } 32%, 39.5% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  40.5% { opacity: 1; transform: translate(-50%, 2px) scale(0.95); } 42% { opacity: 1; transform: translate(-50%, 0) scale(1); } 45%, 100% { opacity: 0; transform: translate(-50%, 0); } }
+@keyframes htpHand { 0%, 14% { left: 108%; top: 94%; opacity: 0; transform: none; }
+  16% { left: 82%; top: 80%; opacity: 1; transform: none; }
+  21% { left: calc(34% - 15px); top: 74px; transform: none; } 23% { left: calc(34% - 15px); top: 74px; transform: scale(0.84); }
+  25% { left: calc(34% - 15px); top: 74px; transform: none; } 30% { left: calc(34% - 15px); top: 84px; transform: none; }
+  37% { left: calc(50% - 15px); top: 169px; transform: none; } 39.5% { left: calc(50% - 15px); top: 169px; transform: scale(0.84); }
+  41.5% { left: calc(50% - 15px); top: 169px; transform: none; opacity: 1; } 47%, 100% { left: 104%; top: 100%; opacity: 0; transform: none; } }
+@keyframes htpFill1 { 0%, 41.5% { background: transparent; border-color: var(--t-line); border-style: dashed; opacity: 1; transform: none; }
+  42.5% { transform: scale(1.22); } 44%, 100% { background: var(--t-metal); border-color: var(--t-accent); border-style: solid; opacity: 1; transform: none; } }
+@keyframes htpOpen1 { 0%, 41.5% { opacity: 1; } 42.5%, 100% { opacity: 0; } }
+@keyframes htpShow1 { 0%, 41.5% { opacity: 0; } 42.5%, 100% { opacity: 1; } }
+@keyframes htpFill2 { 0%, 52.5% { background: transparent; border-color: var(--t-line); border-style: dashed; opacity: 1; transform: none; }
+  53.5% { transform: scale(1.22); } 55%, 100% { background: var(--t-metal); border-color: var(--t-accent); border-style: solid; opacity: 1; transform: none; } }
+@keyframes htpOpen2 { 0%, 52.5% { opacity: 1; } 53.5%, 100% { opacity: 0; } }
+@keyframes htpShow2 { 0%, 52.5% { opacity: 0; } 53.5%, 100% { opacity: 1; } }
+@keyframes htpFill3 { 0%, 55.5% { background: transparent; border-color: var(--t-line); border-style: dashed; opacity: 1; transform: none; }
+  56.5% { transform: scale(1.22); } 58%, 100% { background: var(--t-metal); border-color: var(--t-accent); border-style: solid; opacity: 1; transform: none; } }
+@keyframes htpOpen3 { 0%, 55.5% { opacity: 1; } 56.5%, 100% { opacity: 0; } }
+@keyframes htpShow3 { 0%, 55.5% { opacity: 0; } 56.5%, 100% { opacity: 1; } }
+@keyframes htpFill4 { 0%, 58.5% { background: transparent; border-color: var(--t-line); border-style: dashed; opacity: 1; transform: none; }
+  59.5% { transform: scale(1.22); } 61%, 100% { background: var(--t-metal); border-color: var(--t-accent); border-style: solid; opacity: 1; transform: none; } }
+@keyframes htpOpen4 { 0%, 58.5% { opacity: 1; } 59.5%, 100% { opacity: 0; } }
+@keyframes htpShow4 { 0%, 58.5% { opacity: 0; } 59.5%, 100% { opacity: 1; } }
+@keyframes htpFill5 { 0%, 61.5% { background: transparent; border-color: var(--t-line); border-style: dashed; opacity: 1; transform: none; }
+  62.5% { transform: scale(1.22); } 64%, 100% { background: var(--t-metal); border-color: var(--t-accent); border-style: solid; opacity: 1; transform: none; } }
+@keyframes htpOpen5 { 0%, 61.5% { opacity: 1; } 62.5%, 100% { opacity: 0; } }
+@keyframes htpShow5 { 0%, 61.5% { opacity: 0; } 62.5%, 100% { opacity: 1; } }
+@keyframes htpSeason { 0%, 64% { opacity: 0; } 65.5%, 83% { opacity: 1; } 85%, 100% { opacity: 0; } }
+@keyframes htpCoins { 0%, 65% { clip-path: inset(0 100% 0 0); } 77%, 100% { clip-path: inset(0 0 0 0); } }
+@keyframes htpRec { 0%, 76.5% { opacity: 0; transform: scale(0.6); } 78.5% { opacity: 1; transform: scale(1.12); } 80%, 100% { opacity: 1; transform: none; } }
+@keyframes htpGoal { 0%, 84% { opacity: 0; transform: scale(0.8); } 86.5% { opacity: 1; transform: scale(1.08); } 88.5%, 97% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
 
 /* ============ SALARY-CAP MONEY UI + DRAFT VIEWPORT (2026-07-17, v12) ============
    Millions everywhere, the bank as the panel's loudest value with a tick
@@ -3063,7 +3200,7 @@ body.gating .site-head, body.gating .site-foot { display: none; }
 body.gating #app { padding-top: 6px; }
 body.gating .gate { padding-top: 2px; }
 body.gating .gate-back {
-  font-family: var(--t-disp); font-style: italic; font-weight: 600;
+  font-family: var(--t-disp); font-weight: 600;
   letter-spacing: 0.05em; text-transform: uppercase;
 }
 
@@ -3336,7 +3473,7 @@ body.gating .gate-back {
 .traits-module .tm-tag[hidden] { display: none; }
 .traits-module .tm-q { display: block; font-family: var(--t-disp); font-weight: 700; font-size: 25px; line-height: 1.05; margin-top: 4px; text-transform: uppercase; color: inherit; text-decoration: none; }
 .traits-module .tm-q:active { color: var(--t-accent); }
-.traits-module .tm-def { display: block; font-size: 13px; color: var(--t-text-2); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.traits-module .tm-def { display: block; font-size: 13px; line-height: 1.35; color: var(--t-text-2); margin-top: 5px; }   /* v53: the whole definition, never cut off */
 /* v47.21: IDK is exactly two thirds of its v47.19 width: YES and NO split what it gave up (4:4:1) */
 .traits-module .tm-votes { display: grid; grid-template-columns: 4fr 4fr minmax(44px, 1fr); gap: 11px; margin-top: 11px; }   /* v51: IDK keeps a real tap size (it was 31px) */
 .traits-module .tm-vb { height: 52px; min-height: 0; padding: 0; border-radius: 13px; font-size: 21px; letter-spacing: 0.1em; }
@@ -3377,12 +3514,13 @@ body.gating .gate-back {
    and each code is the flat small chip it explains */
 .trait-legend { margin: 0 0 6px; padding: 8px 10px; border: 1px solid var(--t-line); border-radius: 9px; background: var(--t-ground); box-shadow: inset 0 1px 0 rgb(var(--t-light-rgb) / .04); }
 .trait-legend-title { font-family: var(--t-mono); font-size: 10px; letter-spacing: 0.18em; color: var(--t-accent); margin-bottom: 6px; }
-.trait-legend-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 10px; }
-.trait-legend-row { display: flex; align-items: center; gap: 6px; min-width: 0; font-family: var(--t-disp); font-size: 13px; line-height: 1.15; color: var(--t-text); }
-.trait-legend-row .t-chip { flex: 0 0 auto; }
-.trait-legend-row span:last-child { min-width: 0; }
-.trait-legend-note { margin-top: 6px; font-family: var(--t-mono); font-size: 9.5px; line-height: 1.3; color: var(--t-text-2); }
-@media (max-width: 340px) { .trait-legend-grid { grid-template-columns: 1fr; } }
+/* v53: one column, each code with its name and its definition (the owner: "ADD DEFINITIONS TO TRAITS") */
+.trait-legend-grid { display: grid; grid-template-columns: 1fr; gap: 9px; }
+.trait-legend-row, .tg-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 3px 8px; min-width: 0; color: var(--t-text); }
+.trait-legend-row .tl-txt, .tg-row .tg-txt { display: contents; }   /* the code and the name share a line; the definition runs under both */
+.trait-legend-row .tl-txt b { font-family: var(--t-disp); font-weight: 700; font-size: 14px; line-height: 1.15; letter-spacing: 0.03em; }
+.trait-legend-row .tl-txt small, .tg-row .tg-txt .t-small { grid-column: 1 / -1; font-size: 12.5px; line-height: 1.35; color: var(--t-text-2); }
+.trait-legend-note { margin-top: 7px; font-family: var(--t-mono); font-size: 9.5px; line-height: 1.3; color: var(--t-text-2); }
 @media (prefers-reduced-motion: reduce) { .tchip { transition: none; } }
 
 /* ============ THE SEASON REEL (v42 cursor, v48 stamps, v51 on the shared pieces) ============
@@ -3528,7 +3666,11 @@ body.bt-open { overflow: hidden; }
 .bt-sub { color: var(--t-text-2); font-size: 15px; margin: 0 0 6px; }
 .bt-grp { margin: 14px 0 7px; }   /* the picker's group headers (the shared .t-head carries no top margin) */
 .bt-foot { font-family: var(--t-mono); font-size: 11px; color: var(--t-text-2); text-align: center; margin: 16px 0 0; }
-.bt-foot a { color: inherit; }
+/* v53: the tag glossary (the sheet's third view: the (i) by YOUR FIVE and the picker's foot) */
+.tg-list { display: grid; gap: 12px; }
+.tg-row .t-name { font-size: 15px; }
+.tg-row .tg-txt .t-small { font-size: var(--t-fs-small); }
+.bt-sheet .bt-done { display: flex; width: 100%; justify-content: center; margin-top: 18px; }
 body.bt-open .t-toast { top: calc(16px + env(safe-area-inset-top)); bottom: auto; transform: translate(-50%, -20px); }
 body.bt-open .t-toast.on { transform: translate(-50%, 0); }
 .bt-hand { position: fixed; z-index: 890; width: 44px; height: 44px; pointer-events: none; opacity: 0; filter: drop-shadow(0 4px 6px rgb(var(--t-shadow-rgb) / .5));

@@ -356,6 +356,12 @@
       if (x <= L.X1) return WL - SC * cr((x - L.X0) / (L.X1 - L.X0) * 82) + rough(x) * smoothstep(L.X0, L.X0 + 32, x);
       return lerp(yEnd, WL + 26 * vs, smoothstep(L.X1, L.X1 + 90, x)) + rough(x);
     }
+    // v53, the owner's gauge: the land and water fill with color only up to the win rate. The level
+    // sits wins/82 of the way from the foot of the frame to the ridge's highest point (82-0 fills it to
+    // the summit, 41-41 half way); above it the mountain is an empty outline and the lake runs dry.
+    var top = WL;
+    for (i = L.X0; i <= L.X1; i += 2) top = Math.min(top, front(i));
+    var fillY = L.FY1 - wp * (L.FY1 - top);
     function U(x) { return clamp((x - L.X0) / (L.X1 - L.X0) * 82, 0, 82); }
     function far1(x) { return Math.min(WL - 10 * vs, WL - 64 * vs - 0.5 * SC * Math.max(0, avg(U(x), 7)) - 38 * vs * (1 - Math.abs(fbm(n2, x * 0.006, 4)))); }
     function far2(x) { return Math.min(WL - 30 * vs, WL - 118 * vs - 0.3 * SC * Math.max(0, avg(U(x), 14)) - 86 * vs * (1 - Math.abs(fbm(n3, x * 0.0045, 4)))); }
@@ -378,7 +384,8 @@
     for (i = 0; i < L.rip; i++) { var ry = WL + 5 + Math.pow(r(), 0.85) * (L.FY1 - WL); ripples.push({ x: L.FX0 + r() * (L.FX1 - L.FX0), y: ry, rx: 8 + r() * 50 * (0.35 + (ry - WL) / 310), ry: (0.7 + r() * 1.2) * Math.max(0.7, vs), a: 0.4 + r() * 0.5 }); }
     for (var s = 1; s <= 7; s++) strata.push({ off: s * 21 * vs, n: noise1D(seed + 40 + s) });
     return { spec: spec, games: games, m: m, w: w, l: 82 - w, wp: wp, X: X, front: front, far1: far1, far2: far2, pal: pal,
-      sr: sr, sx: sx, sy: sy, moon: moon, losses: losses, stars: stars, glints: glints, ripples: ripples, strata: strata };
+      sr: sr, sx: sx, sy: sy, moon: moon, losses: losses, stars: stars, glints: glints, ripples: ripples, strata: strata,
+      top: top, fillY: fillY };
   }
 
   function bake(P, D, L) { return bakeSteps(P, D, L).map(function (f) { return f(); }); }
@@ -444,7 +451,10 @@
         g2.restore();
       });
     }
-    function land(ink, fn) { return bakeLayer(P, ink, function (g) { g.save(); frameClip(g); fn(g); g.restore(); strip(g, ink === LI ? "light" : ink); marks(g, 0.8); }); }
+    // The land and water only print below the level (D.fillY: the win rate); the reveal clips these
+    // layers from the foot of the frame up, so the color rises into the outline the season just drew.
+    function levelClip(g) { g.beginPath(); g.rect(L.FX0 - 10, D.fillY, L.FX1 - L.FX0 + 20, L.FY1 - D.fillY + 10); g.clip(); }
+    function land(ink, fn) { return bakeLayer(P, ink, function (g) { g.save(); frameClip(g); levelClip(g); fn(g); g.restore(); strip(g, ink === LI ? "light" : ink); marks(g, 0.8); }); }
 
     var skyLight = function () { return sky(LI, function (g) {
       if (pal.key !== "night") {
@@ -502,7 +512,7 @@
       ripplesKnock(g, 0.6);
       g.fillStyle = tone(pal.ridgeP); ridgeFill(g, D.front, WL); g.fill();
       strata(g);
-      beads(g, true); beads(g, false);
+      beads(g, true);
     }); };
     var landBlue = function () { return land("blue", function (g) {
       water(g, pal.waterB);
@@ -514,7 +524,30 @@
       strata(g);
       beads(g, true);
     }); };
-    return [skyLight, skyPink, skyBlue, landLight, landPink, landBlue];
+    // The season's line and its loss beads, in the pop ink, never clipped by the level: they print with
+    // the season, so the empty part of the picture still shows the shape the fill is climbing.
+    function sunkLine(g) { var on = false; for (var x = L.X0; x <= L.FX1 + 10; x += 2) { var y = D.front(x); if (y > WL + 1) { if (!on) { g.moveTo(x, y); on = true; } else g.lineTo(x, y); } else on = false; } }
+    var shell = function () { return bakeLayer(P, "pink", function (g) {
+      g.save(); frameClip(g);
+      g.lineJoin = "round"; g.lineCap = "round";
+      g.strokeStyle = tone(1); g.lineWidth = 5.4 * Math.max(0.72, L.rs); g.beginPath(); ridgeLine(g, D.front); g.stroke();
+      g.strokeStyle = tone(0.5); g.lineWidth = 2.2 * Math.max(0.72, L.rs); g.beginPath(); sunkLine(g); g.stroke();
+      beads(g, false);
+      g.restore();
+    }); };
+    return [skyLight, skyPink, skyBlue, landLight, landPink, landBlue, shell];
+  }
+
+  // The fill's surface: a thin line of the light ink across the land and water at level y (scene units).
+  function drawLevel(ctx, P, D, L, y) {
+    if (D.wp >= 1 || !(y < L.FY1 - 0.5)) return;
+    inkLive(ctx, P, D.pal.light, [L.FX0, y - 8, L.FX1, y + 8], function (g) {
+      g.beginPath(); g.moveTo(L.FX0 - 10, L.FY1 + 10);
+      for (var x = L.FX0 - 10; x <= L.FX1 + 10; x += 2) g.lineTo(x, Math.min(D.front(x), L.WL));
+      g.lineTo(L.FX1 + 10, L.FY1 + 10); g.closePath(); g.clip();
+      var h = 4 * Math.max(0.75, L.rs);
+      g.fillStyle = tone(1); g.fillRect(L.FX0, y - h / 2, L.FX1 - L.FX0, h);
+    });
   }
 
   /* ---- type ---- */
@@ -695,6 +728,7 @@
       P.print = cv(P.W, P.H);
       var pc = P.print.getContext("2d");
       composeTo(pc, P, layers, null);
+      drawLevel(pc, P, D, BANNER, D.fillY);
       drawBannerTitle(pc, P, D, D.w, D.l);
     }
     function roster(alpha) {
@@ -702,7 +736,10 @@
       if (alpha > 0) drawRoster(nctx, TH, P.k, cur, BANNER, alpha);
     }
     function still() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = "source-over"; ctx.drawImage(P.print, 0, 0); roster(1); }
-    function rest() { if (reveal) return; if (defer && !played) { composeTo(ctx, P, layers, [0, 0, 0, 0, 0, 0]); roster(0); } else still(); }
+    function rest() { if (reveal) return; if (defer && !played) { composeTo(ctx, P, layers, layers.map(function () { return 0; })); roster(0); } else still(); }
+    // The reveal: the sky prints down, the season prints across (its line, its loss beads and the strip),
+    // then the color fills the land and water up to the win rate, then the names land.
+    var T_SEASON = 0.62 + 82 * 0.018, T_FILL = 0.85;
     function frame() {
       if (!alive) return;
       raf = 0;
@@ -712,14 +749,19 @@
       var e = t - reveal.t0, clips = [], i;
       for (i = 0; i < 3; i++) { var p = easeInOut((e - i * 0.16) / 0.42); clips.push(p <= 0 ? 0 : [0, 0, P.W, Math.ceil(P.H * p)]); }
       var gCount = clamp((e - 0.62) / 0.018, 0, 82), xr = gCount >= 82 ? P.W : Math.ceil(D.X(gCount) * P.k) + 1;
-      for (i = 0; i < 3; i++) clips.push(e < 0.62 ? 0 : [0, 0, xr, P.H]);
+      var fp = 1 - Math.pow(1 - clamp((e - T_SEASON - 0.08) / T_FILL, 0, 1), 3);
+      var lvl = lerp(BANNER.FY1, D.fillY, fp), ly = Math.max(0, Math.floor(lvl * P.k));
+      for (i = 0; i < 3; i++) clips.push(e < 0.62 ? 0 : [0, ly, xr, P.H - ly]);   // the land and water fill up; the strip prints across
+      clips.push(e < 0.62 ? 0 : [0, 0, xr, P.H]);                          // the season's line and its beads
       composeTo(ctx, P, layers, clips);
+      if (fp > 0) drawLevel(ctx, P, D, BANNER, lvl);
       var n = Math.floor(gCount), w = 0;
       if (D.games) { for (i = 0; i < n; i++) w += D.games[i] ? 1 : 0; }
       else w = Math.round(D.w * n / 82);
       drawBannerTitle(ctx, P, D, w, n - w);
-      roster(clamp((e - (0.62 + 82 * 0.018)) / 0.35, 0, 1));     // the names land as the season finishes
-      if (e > 0.62 + 82 * 0.018 + 0.36) { reveal = null; still(); return; }
+      var tNames = T_SEASON + 0.08 + T_FILL * 0.7;
+      roster(clamp((e - tNames) / 0.35, 0, 1));                            // the names land as the fill settles
+      if (e > T_SEASON + 0.08 + T_FILL + 0.05 && e > tNames + 0.36) { reveal = null; still(); return; }
       raf = requestAnimationFrame(frame);
     }
     function play() {
@@ -778,6 +820,7 @@
         try {
           var out = cv(P.W, P.H), x = out.getContext("2d");
           composeTo(x, P, layers, null);
+          drawLevel(x, P, D, POSTER, D.fillY);
           drawPosterTitle(x, P, D, D.w, D.l);
           drawPosterFoot(x, P, spec);
           filterPixels(x, P.W, P.H, TH.filter);                       // the look's print filter (a negative on dark cards)
@@ -798,6 +841,7 @@
     var P = makePlate(W, BANNER.VW, BANNER.VH, spec.seed || 7, 2.35 * d, d, TH), D = derive(spec, BANNER), layers = bake(P, D, BANNER);
     var out = cv(P.W, P.H), g = out.getContext("2d");
     composeTo(g, P, layers, null);
+    drawLevel(g, P, D, BANNER, D.fillY);
     drawBannerTitle(g, P, D, D.w, D.l);
     var names = cv(P.W, P.H);
     drawRoster(names.getContext("2d"), TH, P.k, spec, BANNER, 1);

@@ -234,6 +234,12 @@ eq("ballot: tally words, pill, and no big percent off one vote",
     "812 people have voted \u00B7 54% say yes \u00B7 you said no", "Disputed \u00B7 flips at 62%"]);
 const ballotCopy = [].concat(...ctx.BALLOT_TRAITS.map(T => [T.chip, T.q, T.d || ""]), [t1.line, t1.pill, t2.line, t2.pill]);
 eq("ballot: trait copy and tally words have zero em-dashes (copy law)", ballotCopy.some(l => l.includes(EM)), false);
+// v53 (owner: "ADD DEFINITIONS TO TRAITS"): every trait carries its one-line definition, and the
+// glossary and the pool legend print it
+eq("trait definitions: every trait has one, and the glossary and the pool legend show it",
+  [ctx.BALLOT_TRAITS.filter(T => !(T.d && T.d.length > 12)).map(T => T.chip),
+    ctx.BALLOT_TRAITS.every(T => ctx.traitGlossaryHtml(null).includes(ctx.esc(T.d)))],
+  [[], true]);
 // v51 fix list: one spelling of the trait codes, the ballot question, the comp line, the climb.
 eq("trait codes: one spelling everywhere (the pool and legend read the ballot's chips; retired names stay readable)",
   [ctx.BALLOT_TRAITS.every(T => ctx.traitCardAbbr(T.name) === T.chip), ctx.traitCardAbbr("Clutch"), ctx.traitCardAbbr("Wing Defender")],

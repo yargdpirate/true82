@@ -1,12 +1,75 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. The v48 through v52 work lives on branch `c-code-clean` until it is merged to `main`.
+**Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
-**Date:** 2026-09-25
-**Build:** `v52`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v52"`, cache keys `20260925-heat-vice-v52`). The site now WEARS the Heat Vice look. Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, then v52. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v52, Heat Vice shipped to the branch. See section 00000 first.
+**Date:** 2026-09-26
+**Build:** `v53`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v53"`, cache keys `20260926-htp-v53`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, then v53. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v53, the owner's list items 9, 11, 12, 13 and 14. See section 00000b first.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000b. V53: the owner's list, items 9, 11, 12, 13, 14 (2026-09-26)
+
+The owner's queued tweaks (section 00000, "Owner's queued tweaks"; items 1-8 were v51.2). His exact words for
+the list are in the 2026-09-25 session "xtrue82 project handoff". Done in v53, each checked at 390px on the
+local site (wrangler + D1 on :8790) and on desktop:
+- **9. The season print fills to the win rate** (results-riso.js). The owner: "the mountain should only be
+  filling up partially with color in response to % wins out of 82". On a phone the lake below the ridge reads as
+  part of the same lavender mass, so the gauge is the whole land and water: `D.fillY` sits wins/82 of the way from
+  the frame's foot to the ridge's highest point (82-0 fills to the summit, 41-41 half way). The three land layers
+  print only below the level (`levelClip`); above it the mountain is an empty outline and the lake runs dry. A new
+  `shell` layer (the pop ink, never clipped) carries the season's line, the sunken line and the loss beads.
+  `drawLevel` draws the fill's surface in the light ink. The reveal is now: sky down, the season across (line,
+  beads, strip), then the color fills up from the foot (`T_FILL` 0.85s, ease-out), then the names. Poster and
+  `T82PRINT.print` (the lab) print the same. aria-label adds "the color fills the picture to the win rate".
+- **11. The dunk gets a Vice neon makeover.** `ballLeverHtml` (shared by the Daily gate and the Heat Check) is
+  neon tubes painted from tokens in styles.css: the ball in `--t-accent` with a bright `--t-light` core and a glow,
+  the rim and net in `--t-offset`, and at ignition the ball burns `--t-hot`. `--fx-ball*` stay in the theme only
+  for the lab's frozen snapshots (STYLE-GUIDE.md updated).
+- **12. Homepage:** the paragraph is a one-liner ("Draft five NBA players. Real advanced stats play the season.")
+  under "Go 82-0", which now shares its row with a HOW TO PLAY button (the draft screen's `.mp-rules-btn`, a size
+  down: `.intro-rules-btn`). The DRAFT and WINNING text under the vote card is gone. The static index.html
+  fallback (SEO copy) is unchanged.
+- **13. HOW TO PLAY is dead simple, with a demo.** `howToDemoHtml()`: a 16s pure-CSS loop on a mini draft screen
+  (styles.css "HOW TO PLAY: the demo"): a ticket deals '90s BULLS, the white glove (`GLOVE_PATH`, shared with the
+  ballot hint) taps Michael Jordan, then DRAFT YOUR PLAYER, MJ fills the G slot, the ticket rolls through four more
+  rounds as the slots fill, 82 coins play the season to 74-8, GO 82-0. Six captions and dots light as it plays.
+  The homepage button opens `rulesHomeHtml()` (the demo, GAME BASICS, one line per mode, GOT IT); the draft
+  screen's sheet has the demo on top of its GAME BASICS (the rest of the owner's rules copy is unchanged).
+  `openRulesSheet({ home: true })`; analytics action `how_to_play_home`.
+- **14. Trait definitions are back.** They had disappeared with v50 (the old results vote card showed each
+  question's definition; the ballot defined only 9 of 18 tags, per the ballot brief's "plain" call). Now every
+  `BALLOT_TRAITS` entry has `d` (the 9 new ones are the owner's own lines from docs/ballot/tag_ballot.html), so the
+  question sheet and the "+" tiles always show it; a "What the tags mean" text button in the YOUR FIVE header (and
+  "Every tag, spelled out" at the picker's foot, which linked to a dead /traits/ page) opens the tag glossary in the
+  same sheet (`ballotOpenGlossary`, `traitGlossaryHtml`); the draft pool legend (the (i)) lists each code with its
+  name and definition; the homepage vote card's definition wraps instead of being cut off. test.js pins that every
+  trait has a definition and the glossary prints it (67 tests).
+- Also: the leftover italic labels are upright (EXIT RUN, the gate's BACK, a few small notes; the owner dislikes
+  italics). Only the (i) glyphs and the Tribune stay italic.
+- v52 known limit 1, done: look.css's 122 color-mix() uses each sit in a rule now followed by an
+  `@supports not (color: color-mix(...))` copy with every mix replaced by its larger part (a see-through mix under
+  70% by transparent), so phones before iOS 16.2 keep the neon borders and stacks and lose only the soft glows
+  (simulated in Chromium: close to the real look). A fallback declaration in front would not have worked: every
+  one of these values contains var(), which browsers only check when used. `ship-look.js` now does this on every
+  export; `node docs/reprint-lab/src/ship-look.js --fallbacks` added them to the current look.css once.
+
+Calls made (the owner may overrule):
+- The gauge measures the whole land and water mass, not just the land above the waterline (at phone size the
+  land-only cap was about 5px for a 74-8 season). So a middling season's lake runs partly dry (a dark band under
+  the horizon) and a losing season is mostly empty. Measuring from the waterline instead is one line
+  (`fillY = WL - wp * (WL - top)`).
+- The one-liner, the demo's players and captions, and the modes' one-line summaries are new copy; the owner-written
+  GAME BASICS lines are reused as they are.
+- The glossary door is a text button, not an (i), so it says what it does.
+
+Next on the owner's list (in order): 10 (the masthead: a more neon, less hand-drawn TRUE 82, closer to the ball
+icon; the "comet" icon cropped tight), 15 (import The Redrafted from the accounts-test archive and review the other
+deltas: a helper's full port plan is summarized in 00000c when it starts), 16 (a Daily archive: play or view past
+Dailies), 17 (later: leaderboards and accounts). Still open from v52: the display face's size fitting (Big Shoulders
+runs about 14% taller than Barlow in tight spots), and the lab's 93-state recapture and artifact republish.
 
 ---
 

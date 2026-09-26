@@ -51,7 +51,7 @@ A shade is `[name, role, percent, partner]` in `SHADES` in `tools/theme-core.js`
 - Type scale: `--t-fs-hero` (64, the record), `--t-fs-num` (40, a card's hero number), `--t-fs-title` (27), `--t-fs-head` (17), `--t-fs-name` (17), `--t-fs-body` (16), `--t-fs-small` (13), `--t-fs-data` (12), `--t-fs-label` (10.5).
 - Corners: `--t-r-btn`, `--t-r-card`, `--t-r-chip`.
 - The season print: `--t-print-blend` (`screen`: inks glow on a dark stock; `multiply`: ink on paper), `--t-print-filter`.
-- Fixed effects that never theme: `--fx-fire-*` (fire is fire), `--fx-ball*` (a basketball is orange), `--fx-mask`.
+- Fixed effects that never theme: `--fx-fire-*` (fire is fire) and `--fx-mask`. Since v53 the ball in the dunk (the Daily gate, the Heat Check) is neon tubes in the look's own inks (`--t-accent` ball, `--t-offset` rim and net, `--t-hot` once it catches fire); `--fx-ball*` stays only for the Reprint Lab's frozen snapshots.
 - Old names (`--amber`, `--chalk`, `--ink` ...) still work and read the roles, so older code themes too. New code uses `--t-*`.
 
 ## Shared pieces
