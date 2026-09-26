@@ -14,6 +14,8 @@
                 site, so its styles.css is the working tree's */
 (function () {
   var LAB = window.LAB, PAGES = LAB.pages = {};
+  // the look the site ships (v52: Heat Vice), as the switches on every page's <html>
+  LAB.SHIPPED = { btn: "neon", card: "outline", chip: "ink", corners: "round", texture: "none", ground: "night", mastInk: "dark" };
   var cache = {};
   PAGES.source = function (name) {
     if (window.LAB_SNAPS && window.LAB_SNAPS[name]) return Promise.resolve(window.LAB_SNAPS[name]);
@@ -29,7 +31,20 @@
     var html = doc.documentElement, st = html.style, today = rc.sysPalette === "today";
     // clear previous theme vars
     for (var i = st.length - 1; i >= 0; i--) { var p = st[i]; if (p.indexOf("--t-") === 0 || p === "--disp" || p === "--body" || p === "--mono") st.removeProperty(p); }
-    ["data-btn", "data-card", "data-chip", "data-corners", "data-texture", "data-ground"].forEach(function (a) { html.removeAttribute(a); });
+    ["data-btn", "data-card", "data-chip", "data-corners", "data-texture", "data-ground", "data-lab-mast-ink"].forEach(function (a) { html.removeAttribute(a); });
+    // the site's shipped look (look.css, the component layer ship-look.js wrote): on for "Today's site", with the
+    // switches every page carries on <html>; off under a lab look, whose own component layer replaces it
+    doc.querySelectorAll('link[href*="look.css"]').forEach(function (l) { l.setAttribute("data-lab-look", ""); });
+    var lk = doc.querySelector("[data-lab-look]");
+    if (!lk) {
+      var site = doc.querySelector("[data-lab-site], link[href*='styles.css']");
+      if (window.LAB_LOOK_CSS != null) { lk = doc.createElement("style"); lk.textContent = window.LAB_LOOK_CSS; }
+      else { lk = doc.createElement("link"); lk.rel = "stylesheet"; lk.href = (window.LAB_SITE_BASE || "http://localhost:8789/") + "look.css"; }
+      lk.setAttribute("data-lab-look", "");
+      if (site && site.parentNode) site.parentNode.insertBefore(lk, site.nextSibling); else doc.head.appendChild(lk);
+    }
+    lk.media = today ? "all" : "not all";
+    if (today) { var sh = LAB.SHIPPED || {}; for (var ak in sh) html.setAttribute(ak === "mastInk" ? "data-lab-mast-ink" : "data-" + ak, sh[ak]); }
     if (!today) {
       var v = LAB.themeVars(rc), k;
       for (k in v) st.setProperty(k, v[k]);

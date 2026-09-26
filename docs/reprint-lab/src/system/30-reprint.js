@@ -20,7 +20,7 @@
 
    Work runs in small tasks off the apply call (one plate per task), newest first, and every result
    is cached by the look's print tokens and the frozen image, so flipping back to a look is instant.
-   "Today's site" puts every original back. */
+   "Today's site" reprints too, in the site's own tokens. */
 (function () {
   "use strict";
   var LAB = window.LAB;
@@ -67,7 +67,8 @@
     return fontLinks[css];
   }
   function fontsFor(rc) {
-    var waits = [ensureFontCSS("Barlow+Condensed:wght@400;600;700"), ensureFontCSS("IBM+Plex+Mono:wght@400;500;600;700")];
+    var waits = [ensureFontCSS("Barlow+Condensed:wght@400;600;700"), ensureFontCSS("IBM+Plex+Mono:wght@400;500;600;700"),
+      ensureFontCSS("Big+Shoulders+Display:wght@700;800;900"), ensureFontCSS("Space+Mono:wght@400;700")];   // the shipped site's faces (v52)
     if (rc && rc.sysPalette !== "today") {
       var df = LAB.displayFace ? LAB.displayFace(rc) : null, mf = LAB.MONO && LAB.MONO[rc.mono || "plexmono"];
       if (df && df.css) waits.push(ensureFontCSS(df.css));
@@ -264,11 +265,12 @@
   }
   function hook(doc, rc) {
     if (!doc || !doc.documentElement) return;
-    var today = !rc || rc.sysPalette === "today", tk = today ? null : themeKey(doc);
+    // every look reprints, "Today's site" too: the snapshots were frozen in earlier inks, and today's tokens are the
+    // site's own (the theme block the snapshot wears)
+    var tk = themeKey(doc);
     doc.querySelectorAll("img[data-snap-canvas]").forEach(function (img) {
       if (img.__labOrig == null) img.__labOrig = img.getAttribute("src") || "";
       if (!img.__labOrig || !/^data:/.test(img.__labOrig)) return;
-      if (today) { restore(img); return; }
       var cls = img.classList;
       if (cls.contains("rr-print-canvas")) reprintResults(img, doc, rc, tk);
       else if (cls.contains("riso-strip")) reprintStrip(img, doc, rc, tk);

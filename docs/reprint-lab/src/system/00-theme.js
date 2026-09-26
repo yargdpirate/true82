@@ -40,10 +40,12 @@
   function hueDist(a, b) { var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
   LAB.color = { mix: mix, lum: lum, contrast: contrast, inkOn: inkOn, ensure: ensure, hsv: hsv, hueDist: hueDist };
 
-  // Today's site, as base colors. Night is the live site itself (tools/theme-core.js), so Gold Standard is
-  // exactly today; day is the lab's own paper version of it (the site has no day ground).
-  var SITE = T.today();
-  LAB.SITE = SITE;
+  // LAB.SITE is the site as it ships (tools/theme-core.js: Heat Vice since v52). SITE here is the v51 gold look,
+  // frozen so Gold Standard, Gold Press and Print Shop keep meaning the gold site (day is the lab's own paper
+  // version of it; the site has no day ground).
+  LAB.SITE = T.today();
+  var SITE = {"ground": "#101418", "ground-2": "#1A2027", "ground-3": "#232B34", "overlay": "#06080B", "paper": "#F4ECDD", "paper-2": "#E4D9C2", "line": "#232B34", "rule": "#6E5530", "line-paper": "#232A4E", "text": "#E8E4D8", "text-2": "#9AA0A6", "label": "#B98A4F", "ink": "#232A4E", "ink-2": "#5B5E73", "accent": "#FFB52E", "accent-hi": "#FCEEBB", "accent-edge": "#9E5A0F", "accent-ink": "#2A1A05", "metal": "#B98A4F", "bad": "#F55A41", "bad-edge": "#8C2317", "bad-ink": "#2B0D09", "hot": "#FFD54A", "good": "#68EE8E", "you": "#0078BF", "offset": "#FF48B0", "sun": "#FFB511", "sun-edge": "#C7870A", "sun-ink": "#8A5D00", "win": "#FFB511", "loss": "#F55A41", "print-paper": "#1A2027", "print-key": "#0078BF", "print-pop": "#FF48B0", "print-sun": "#FFB511", "print-dusk": "#FF6C2F", "print-night": "#00838A", "shadow": "#000000", "light": "#FFFFFF"};
+  LAB.GOLD = SITE;
   var TODAY = {
     night: { ground: SITE.ground, ground2: SITE["ground-2"], ground3: SITE["ground-3"], overlay: SITE.overlay, hair: SITE.line, line: SITE.rule,
       text: SITE.text, text2: SITE["text-2"], label: SITE.label, accent: SITE.accent, accentEdge: SITE["accent-edge"], accentHi: SITE["accent-hi"],
@@ -289,7 +291,7 @@
     return r["ground-2"];
   };
   LAB.rolesFor = function (rc) {
-    if (rc.sysPalette === "today") { var o = {}, k; for (k in SITE) o[k] = SITE[k]; return o; }
+    if (rc.sysPalette === "today") { var o = {}, k; for (k in LAB.SITE) o[k] = LAB.SITE[k]; return o; }
     var r = LAB.roles(LAB.palettes[LAB.palIdOf(rc)], rc.ground || "night");
     var wl = LAB.winLoss(r, rc.wl || "pair");
     r.win = wl.win; r.loss = wl.loss;

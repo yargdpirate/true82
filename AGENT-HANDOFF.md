@@ -1,12 +1,46 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. The v48 through v51.1 work lives on branch `c-code-clean` until it is merged to `main`.
+**Current source of truth:** the GitHub repo. The v48 through v52 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-25
-**Build:** `v51.1`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v51.1"`, cache keys `20260925-fixes-v51-1`). Commits: `e857b6a` v51 (the style system), `0f49b40` v51.1 (the fix batch). main and true82.net are untouched: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v51.1 fixes and the Reprint Lab moved onto the v51 system. See section 00000 first.
+**Build:** `v52`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v52"`, cache keys `20260925-heat-vice-v52`). The site now WEARS the Heat Vice look. Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, then v52. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v52, Heat Vice shipped to the branch. See section 00000 first.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000a. V52: Heat Vice is the site's look (2026-09-25, end of the afternoon session)
+
+The owner: "let's slap it on c-code-clean". The Reprint Lab's Heat Vice look (with his v51.2 tweaks) is now the
+site's real look on the branch preview (not on true82.net). How it was shipped (repeat for any future look):
+1. In the lab (browser), export the recipe: `LAB.rolesFor`, `LAB.themeVars` (fonts, corners, print blend) and
+   `LAB.componentCSS` into export.json / export.css, and `LAB.image(rc, 300, 3)` into `masthead.png` (900x252).
+   The exact snippet is in the header of `docs/reprint-lab/src/ship-look.js`.
+2. `node docs/reprint-lab/src/ship-look.js export.json export.css` writes the roles, fonts (Big Shoulders Display,
+   Rubik, Space Mono), corners (14/18/999px) into `tools/theme-core.js` (keeping the owner's hot `#FFD54A`) and
+   generates `look.css` (the component layer; simple see-through mixes converted to `rgb(var(--t-x-rgb) / a)`).
+   Then `node tools/theme.js`.
+3. Every page (index, 404, the four info pages, bonuses, traits, docs/style-guide.html) got the look's switches on
+   `<html>` (`data-btn="neon" data-card="outline" data-chip="ink" data-corners="round" data-texture="none"
+   data-ground="night" data-lab-mast-ink="dark"`), a `look.css` link right after `styles.css`, the new Google Fonts
+   link, and the header `<img class="brand-logo">` now shows `masthead.png` (the JSON-LD still names logo.png).
+Checked at 390px on the local site: home (neon buttons on stacked pink/aqua bases, aqua YES, pink NO, aqua tags),
+results (the print in Vice inks with the roster, the two-way box in the record card, pink position badges, the V
+value). `node test.js`: 66 passed; style law clean (look.css is generated and outside the law, see STYLE-GUIDE.md).
+
+Known limits of the first ship (next session):
+- `look.css` still has 122 `color-mix()` uses (mixes of the lab's per-button variables): phones before iOS 16.2 /
+  Chrome 111 skip those declarations and see plainer buttons. Convert them (per-family rgb twins) to finish.
+- The lab's display-face fitting (a page hook that scales display type by the face's metrics) is not on the site:
+  Big Shoulders runs at the sizes set for Barlow Condensed (its caps are about 14% taller). Check tight spots
+  (badges, the bank, buttons) on a phone.
+- The lab: LAB.SITE is now Heat Vice ("Today's site" shows it, with the site's look.css and switches); the v51 gold
+  is frozen in `src/system/00-theme.js` (LAB.GOLD) so Gold Standard, Gold Press and Print Shop keep the gold.
+  "Today's site" now reprints the frozen canvases in the site's inks too. The lab file was rebuilt; the artifact
+  still is not republished and the 93-state recapture is still pending (see below).
+- Masthead: the owner's tweak list wants the TRUE 82 title more neon and the comet crop tight (item 10); the
+  shipped masthead is the Heat Vice script one. Swap by exporting a new masthead.png.
 
 ---
 

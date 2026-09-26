@@ -39,6 +39,7 @@ for (const n of names) {
   h = h.replace(/<base href="[^"]*">/, "");
   const before = h;
   h = h.replace(/<link rel="stylesheet" href="\/?styles\.css(\?[^"]*)?"[^>]*>/g, "<link data-lab-site>");
+  h = h.replace(/\n?<link rel="stylesheet" href="\/?look\.css(\?[^"]*)?"[^>]*>/g, "");   // the shipped look is inlined once (LAB_LOOK_CSS)
   if (h === before) noLink.push(n);
   h = h.replace(/(<img[^>]*class="brand-logo"[^>]*\ssrc=")[^"]*(")/g, "$1" + GIF + "$2");
   h = h.replace(/(<img[^>]*\ssrc=")\/?logo\.png(")/g, "$1" + GIF + "$2");
@@ -71,6 +72,7 @@ for (const n of names) {
   if (ids.size) console.log("season prints as JPEG:", ids.size, "saved", Math.round(saved / 1024) + "KB");
 })();
 const siteCSS = read(path.join(REPO, "styles.css"));
+const lookCSS = fs.existsSync(path.join(REPO, "look.css")) ? read(path.join(REPO, "look.css")) : "";
 const esc = s => JSON.stringify(s).replace(/<\//g, "<\\/").replace(new RegExp(" ", "g"), "\\u2028").replace(new RegExp(" ", "g"), "\\u2029");
 
 // fonts: the lab's own + every masthead face
@@ -87,7 +89,7 @@ const script = (f, label) => "<script>/* " + label + " */\n" + read(f).replace(/
 const scripts = siteFiles.map(f => script(f, "site: " + path.relative(REPO, f)))
   .concat(jsFiles.concat(appFiles).map(f => script(f, path.relative(SRC, f)))).join("\n");
 const logo = "data:image/png;base64," + fs.readFileSync(path.join(REPO, "logo.png")).toString("base64");
-const data = "<script>window.LAB_LOGO = " + esc(logo) + ";\nwindow.LAB_SITE_CSS = " + esc(siteCSS) + ";\nwindow.LAB_ASSETS = " + esc(assets) + ";\nwindow.LAB_SNAPS = " + esc(snaps) + ";\n</script>";
+const data = "<script>window.LAB_LOGO = " + esc(logo) + ";\nwindow.LAB_SITE_CSS = " + esc(siteCSS) + ";\nwindow.LAB_LOOK_CSS = " + esc(lookCSS) + ";\nwindow.LAB_ASSETS = " + esc(assets) + ";\nwindow.LAB_SNAPS = " + esc(snaps) + ";\n</script>";
 const boot = "<script>document.fonts && document.fonts.ready; (function start() { if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', start); return; } LAB.boot(); })();</script>";
 const head = '<title>TRUE 82 Reprint Lab</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' + labFonts + "\n" + fontLinks.join("\n") + "\n<style>\n" + css + "\n</style>";
 const artifact = head + "\n" + body + "\n" + data + "\n" + scripts + "\n" + boot + "\n";
