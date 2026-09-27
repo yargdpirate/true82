@@ -3,7 +3,7 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v58.2`, pushed on branch `c-code-clean` (`BUILD_V = "v58.2"`; styles.css and app.js at `20260926-pickshow-v58-2`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`; daily-core.js and challenges.js keys move with the new Dailies, see 00000h). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Build:** `v58.3`, pushed on branch `c-code-clean` (`BUILD_V = "v58.3"`; styles.css and app.js at `20260926-jingle-v58-3`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`; daily-core.js and challenges.js keys move with the new Dailies, see 00000h). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
 **Most recent change:** v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
@@ -85,9 +85,14 @@ difficulty doors reading as panels among neon buttons. Scoped to `html[data-btn=
   re-render replays the punch once). A snake double lands its first half quietly and plays one show for both
   (`SD.pendingShow`). A rival's pick flashes its slot (`SD.flash.until`). Flash safety: one soft full-room
   flash; the flashbulbs are small and staggered.
-- The chime (`sdShowSound`): Web Audio synthesis, our own notes (three FM bells A5, D6, A6), riser, boom and
-  crash, neon hum, whoosh, knock. Ambient audio session; mute button in the draft header (`t82_sound`).
-  `node tools/draft-chime.js out.wav [double]` renders the exact code to a WAV (Playwright, the tennis copy).
+- The chime (`SD_CHIME`, `sdShowSound`; v58.3 after the owner: "the same number of beats and general ...
+  lyricality (like jingle vibe) as the famous nba draft pick chime? Rn it's like a text message notification
+  tone"): the broadcast chime (ESPN's, 2006, ten notes on an electric piano) in our own notes: TEN notes, three
+  phrases (D6 B5 G5 / E6 C6 A5 / F#5 A5 D6 G6: I, vi, V to I), a DX7-style FM electric piano (1:1 body, 14:1
+  tine), a soft G chord under the last note, a hall. The chime plays first and the name slams down on its last
+  note (about 1.3s in), then a soft boom and crash, a neon hum, a whoosh, a knock. Ambient audio session; mute
+  button in the draft header (`t82_sound`). `node tools/draft-chime.js out.wav [double]` renders the exact code
+  to a WAV (Playwright, the tennis copy).
 
 **3. The 200 new Dailies (POOL3).** IN FLIGHT at the time of writing: a helper agent is designing,
 implementing and bot-auditing them in a worktree (`.claude/worktrees/agent-...`); the merge, the key bumps

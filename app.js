@@ -6477,12 +6477,23 @@ function sdHumanPick(bucket) {
 var SD_SHOW = null;
 function sdOrdinal(n) { var t = ["th", "st", "nd", "rd"], v = n % 100; return n + (t[(v - 20) % 10] || t[v] || t[0]); }
 /* THE DRAFT CHIME (the owner: "a recognizably 'store brand' version of the nba draft chime ... very reminiscent
-   while still being distinct"). Draft night in our own notes, synthesized with Web Audio (no files, nothing
-   borrowed): three bright FM bells climbing (A5, D6, A6, the last one ringing into a hall) as THE PICK IS IN
-   lands, a riser into the slam, a low boom with a crash on it, a faint neon hum while the name catches, a whoosh
-   as it flies and a knock when it lands. Only ever after the player's own tap; mixed with their music where the
-   browser allows (audio session "ambient", which also stays quiet on a silenced phone); one tap mutes it
-   (remembered, t82_sound). A skip ramps the rest out and plays the knock. */
+   while still being distinct", then "the same number of beats and general ... lyricality (like jingle vibe)").
+   The broadcast chime (ESPN's, 2006; the NFL, NBA and WNBA drafts) is ten notes on an electric piano, bright,
+   crisp, a clean decay. Ours keeps that shape in our own notes: TEN notes in a singable jingle, three phrases
+   (da-da-da, da-da-da, da-da-da-DAAAH: a falling G major arpeggio, its answer a step up on the IV, then a climb
+   through the V that lands on the high G), on a DX7-style FM electric piano (a 1:1 body and a 14:1 tine for the
+   crack), a soft chord under the last note, a hall. Like the broadcast, the chime comes first and the name
+   slams down on its last note, with a soft boom and a crash; then a faint neon hum, a whoosh as the name flies,
+   a knock when it lands. Synthesized with Web Audio (no files, nothing borrowed); only ever after the player's
+   own tap; mixed with their music where the browser allows (audio session "ambient", which also stays quiet on
+   a silenced phone); one tap mutes it (remembered, t82_sound). A skip ramps the rest out and plays the knock. */
+var SD_CHIME = [   // [beat, note] in eighths at 0.115s; G5 = 784 Hz. Our notes, the broadcast's ten-note length.
+  [0, 1174.66], [1, 987.77], [2, 783.99],          // D6 B5 G5   (da-da-da)
+  [4, 1318.51], [5, 1046.50], [6, 880.00],          // E6 C6 A5   (da-da-da)
+  [8, 739.99], [9, 880.00], [10, 1174.66], [11, 1567.98]   // F#5 A5 D6 G6 (da-da-da-DAAAH)
+];
+var SD_CHIME_STEP = 0.115;
+var SD_CHIME_LEN = 11 * SD_CHIME_STEP;   // from the first note to the last (the hit lands here)
 var SD_AUDIO = null;
 function sdSoundOn() { try { return localStorage.getItem("t82_sound") !== "off"; } catch (e) { return true; } }
 function sdAudio() {
@@ -6520,56 +6531,67 @@ function sdNoise(ctx, secs) {
   for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
   var src = ctx.createBufferSource(); src.buffer = buf; return src;
 }
-// Schedules the show's sound from now; returns { skip } to cut it and knock. (ctx: an OfflineAudioContext for
-// tools/draft-chime.js, which renders this exact code to a WAV.)
-function sdShowSound(slamAt, flyAt, landAt, ctx) {
+// Schedules the show's sound from now: the chime ends on the first hit (hits[0], seconds), a boom on every hit,
+// the flight at flyAt, the knock at landAt. Returns { skip } to cut it and knock. (ctx: an OfflineAudioContext
+// for tools/draft-chime.js, which renders this exact code to a WAV.)
+function sdShowSound(hits, flyAt, landAt, ctx) {
   ctx = ctx || sdAudio();
   if (!ctx) return null;
   try {
     var t0 = ctx.currentTime + 0.03, master = ctx.createGain(), comp = ctx.createDynamicsCompressor();
-    master.gain.value = 0.55; master.connect(comp); comp.connect(ctx.destination);
-    // the hall: one feedback echo through a lowpass, so the last bell rings like an arena
+    master.gain.value = 0.6; master.connect(comp); comp.connect(ctx.destination);
+    // the hall: one feedback echo through a lowpass, so the last note rings like an arena
     var send = ctx.createGain(), dl = ctx.createDelay(0.6), fb = ctx.createGain(), lp = ctx.createBiquadFilter();
-    send.gain.value = 0.38; dl.delayTime.value = 0.13; fb.gain.value = 0.36; lp.type = "lowpass"; lp.frequency.value = 3400;
+    send.gain.value = 0.3; dl.delayTime.value = 0.14; fb.gain.value = 0.34; lp.type = "lowpass"; lp.frequency.value = 3600;
     send.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(master);
     var env = function (g, t, peak, a, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); };
-    var bell = function (f, t, dur, vel) {
-      var car = ctx.createOscillator(), mod = ctx.createOscillator(), mg = ctx.createGain(), g = ctx.createGain();
-      car.frequency.value = f; mod.frequency.value = f * 2.005;             // near-harmonic FM: a glassy chime
-      mg.gain.setValueAtTime(f * 2.4, t); mg.gain.exponentialRampToValueAtTime(f * 0.06, t + dur * 0.75);
-      env(g, t, vel, 0.005, dur);
-      mod.connect(mg); mg.connect(car.frequency); car.connect(g); g.connect(master); g.connect(send);
-      car.start(t); mod.start(t); car.stop(t + dur + 0.1); mod.stop(t + dur + 0.1);
-      var sh = ctx.createOscillator(), sg = ctx.createGain();                // the sparkle a twelfth up
-      sh.frequency.value = f * 3.01; env(sg, t, vel * 0.16, 0.004, dur * 0.45);
-      sh.connect(sg); sg.connect(master); sg.connect(send); sh.start(t); sh.stop(t + dur);
+    // one electric piano note: a 1:1 FM body (the Rhodes bark fading to a sine) and a 14:1 tine (the crack)
+    var epiano = function (f, t, dur, vel, wet) {
+      var nodes = [];
+      [[1, 1.8, dur], [1.003, 1.2, dur * 0.8]].forEach(function (b) {     // two slightly detuned bodies: a chorus
+        var c = ctx.createOscillator(), m = ctx.createOscillator(), mg = ctx.createGain(), g = ctx.createGain();
+        c.frequency.value = f * b[0]; m.frequency.value = f * b[0];
+        mg.gain.setValueAtTime(f * b[1], t); mg.gain.exponentialRampToValueAtTime(f * 0.12, t + Math.min(0.9, b[2]));
+        env(g, t, vel * (b[0] === 1 ? 1 : 0.5), 0.004, b[2]);
+        m.connect(mg); mg.connect(c.frequency); c.connect(g); g.connect(master); if (wet) g.connect(send);
+        nodes.push(c, m);
+      });
+      var tc = ctx.createOscillator(), tm = ctx.createOscillator(), tmg = ctx.createGain(), tg = ctx.createGain();
+      tc.frequency.value = f; tm.frequency.value = f * 14;
+      tmg.gain.setValueAtTime(f * 3.2, t); tmg.gain.exponentialRampToValueAtTime(f * 0.05, t + 0.06);
+      env(tg, t, vel * 0.45, 0.002, 0.12);
+      tm.connect(tmg); tmg.connect(tc.frequency); tc.connect(tg); tg.connect(master); if (wet) tg.connect(send);
+      nodes.push(tc, tm);
+      nodes.forEach(function (o) { o.start(t); o.stop(t + dur + 0.1); });
     };
-    bell(880, t0, 0.55, 0.3); bell(1174.7, t0 + 0.12, 0.55, 0.3); bell(1760, t0 + 0.24, 1.9, 0.36);
-    var ts = t0 + slamAt;
-    // the riser into the slam
-    var rz = sdNoise(ctx, 0.5), rf = ctx.createBiquadFilter(), rg = ctx.createGain();
-    rf.type = "bandpass"; rf.Q.value = 1.4; rf.frequency.setValueAtTime(350, ts - 0.34); rf.frequency.exponentialRampToValueAtTime(3800, ts);
-    rg.gain.setValueAtTime(0.0001, ts - 0.34); rg.gain.exponentialRampToValueAtTime(0.16, ts - 0.02); rg.gain.exponentialRampToValueAtTime(0.0001, ts + 0.03);
-    rz.connect(rf); rf.connect(rg); rg.connect(master); rz.start(ts - 0.34); rz.stop(ts + 0.05);
-    // the slam: a boom that drops, and a short crash
-    var bo = ctx.createOscillator(), bg = ctx.createGain();
-    bo.frequency.setValueAtTime(120, ts); bo.frequency.exponentialRampToValueAtTime(38, ts + 0.32);
-    env(bg, ts, 0.9, 0.004, 0.5); bo.connect(bg); bg.connect(master); bo.start(ts); bo.stop(ts + 0.6);
-    var cz = sdNoise(ctx, 0.5), cf = ctx.createBiquadFilter(), cg = ctx.createGain();
-    cf.type = "highpass"; cf.frequency.value = 4200; env(cg, ts, 0.22, 0.003, 0.38);
-    cz.connect(cf); cf.connect(cg); cg.connect(master); cg.connect(send); cz.start(ts); cz.stop(ts + 0.45);
+    var start = t0 + hits[0] - SD_CHIME_LEN;          // the chime's last note IS the first hit
+    SD_CHIME.forEach(function (n, i) {
+      var last = i === SD_CHIME.length - 1, phraseEnd = i === 2 || i === 5;
+      epiano(n[1], start + n[0] * SD_CHIME_STEP, last ? 2.2 : phraseEnd ? 0.5 : 0.32, last ? 0.34 : phraseEnd ? 0.27 : 0.24, true);
+    });
+    var tl = start + SD_CHIME_LEN;
+    [392.0, 493.88, 587.33].forEach(function (f) { epiano(f, tl, 1.9, 0.07, true); });   // G major under the last note
+    hits.forEach(function (th, k) {
+      var ts = t0 + th;
+      // a soft boom that drops, and a short crash: weight under the name, not a bang over the chime
+      var bo = ctx.createOscillator(), bg = ctx.createGain();
+      bo.frequency.setValueAtTime(110, ts); bo.frequency.exponentialRampToValueAtTime(40, ts + 0.3);
+      env(bg, ts, k ? 0.45 : 0.6, 0.004, 0.45); bo.connect(bg); bg.connect(master); bo.start(ts); bo.stop(ts + 0.55);
+      var cz = sdNoise(ctx, 0.45), cf = ctx.createBiquadFilter(), cg = ctx.createGain();
+      cf.type = "highpass"; cf.frequency.value = 5200; env(cg, ts, k ? 0.1 : 0.14, 0.003, 0.34);
+      cz.connect(cf); cf.connect(cg); cg.connect(master); cg.connect(send); cz.start(ts); cz.stop(ts + 0.42);
+    });
     // the neon catching: a faint hum that stutters with the sign
-    var hm = ctx.createOscillator(), hf = ctx.createBiquadFilter(), hg = ctx.createGain();
+    var hm = ctx.createOscillator(), hf = ctx.createBiquadFilter(), hg = ctx.createGain(), h = t0 + hits[hits.length - 1] + 0.02;
     hm.type = "sawtooth"; hm.frequency.value = 120; hf.type = "lowpass"; hf.frequency.value = 900;
-    var h = ts + 0.02;
-    hg.gain.setValueAtTime(0.0001, h); hg.gain.linearRampToValueAtTime(0.045, h + 0.02); hg.gain.setValueAtTime(0.008, h + 0.07);
-    hg.gain.setValueAtTime(0.04, h + 0.1); hg.gain.setValueAtTime(0.01, h + 0.17); hg.gain.setValueAtTime(0.035, h + 0.2);
+    hg.gain.setValueAtTime(0.0001, h); hg.gain.linearRampToValueAtTime(0.035, h + 0.02); hg.gain.setValueAtTime(0.006, h + 0.07);
+    hg.gain.setValueAtTime(0.03, h + 0.1); hg.gain.setValueAtTime(0.008, h + 0.17); hg.gain.setValueAtTime(0.026, h + 0.2);
     hg.gain.linearRampToValueAtTime(0.0001, h + 0.55);
     hm.connect(hf); hf.connect(hg); hg.connect(master); hm.start(h); hm.stop(h + 0.6);
     // the flight and the landing
     var tf = t0 + flyAt, wz = sdNoise(ctx, 0.45), wf = ctx.createBiquadFilter(), wg = ctx.createGain();
     wf.type = "bandpass"; wf.Q.value = 1.1; wf.frequency.setValueAtTime(2600, tf); wf.frequency.exponentialRampToValueAtTime(420, tf + 0.36);
-    env(wg, tf, 0.24, 0.05, 0.32); wz.connect(wf); wf.connect(wg); wg.connect(master); wz.start(tf); wz.stop(tf + 0.42);
+    env(wg, tf, 0.2, 0.05, 0.32); wz.connect(wf); wf.connect(wg); wg.connect(master); wz.start(tf); wz.stop(tf + 0.42);
     var knock = function (t) {
       var ko = ctx.createOscillator(), kg = ctx.createGain(), out = ctx.createGain();
       out.gain.value = 0.55; out.connect(comp);
@@ -6592,7 +6614,11 @@ function sdShowSound(slamAt, flyAt, landAt, ctx) {
 function sdPickShow(picks, done) {
   if (SD_SHOW) sdPickShowEnd();   // never two at once
   var two = picks.length > 1, last = picks[picks.length - 1];
-  var T = two ? { s1: 280, s2: 640, hit: 960, fly: 1980, end: 2400 } : { s1: 280, s2: 0, hit: 600, fly: 1560, end: 1960 };
+  // the chime (about 1.3s) plays first; the name slams down on its last note, like the broadcast (a double's
+  // second name lands half a second later, with the confetti)
+  var land1 = Math.round((SD_CHIME_LEN + 0.03) * 1000);
+  var T = two ? { s1: land1 - 320, hit1: land1, s2: land1 + 180, hit: land1 + 500, fly: land1 + 1480, end: land1 + 1880 }
+              : { s1: land1 - 320, hit1: land1, s2: 0, hit: land1, fly: land1 + 1000, end: land1 + 1400 };
   var conf = "", bulbs = "", i;
   for (i = 0; i < 30; i++) {
     var a = (i / 30) * Math.PI * 2 + Math.random() * 0.35, r = 95 + Math.random() * 125;
@@ -6632,9 +6658,10 @@ function sdPickShow(picks, done) {
   void ov.offsetWidth;                  // commit the undarkened first frame so the room visibly goes dark
   ov.classList.add("on");
   if (reducedMotion()) { at(1100, sdPickShowEnd); return; }
-  S.sound = sdShowSound(T.hit / 1000, T.fly / 1000, T.end / 1000);   // the boom lands with the (last) name
+  S.sound = sdShowSound(two ? [T.hit1 / 1000, T.hit / 1000] : [T.hit / 1000], T.fly / 1000, T.end / 1000);
   at(T.s1, function () { ov.classList.add("s1"); });
   if (two) at(T.s2, function () { ov.classList.add("s2"); });
+  if (two) at(T.hit1, function () { buzz(20); });
   at(T.hit, function () { ov.classList.add("hit"); buzz(35); });
   at(T.fly, function () { sdPickShowFly(S); });
   at(T.end, sdPickShowEnd);
@@ -8590,7 +8617,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v58.2";
+var BUILD_V = "v58.3";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

@@ -7,6 +7,12 @@ const PW = process.env.PLAYWRIGHT || "/Users/ggz/tennis-puzzle-prototypes/backdr
 const { chromium } = require(PW);
 const out = process.argv[2] || "draft-chime.wav", double = process.argv[3] === "double";
 const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+function grabVar(name) {                    // one top-level var statement (the chime's notes and timing)
+  const a = app.indexOf("var " + name + " ");
+  if (a < 0) throw new Error("no " + name);
+  const end = app[app.indexOf("=", a) + 2] === "[" ? app.indexOf("];", a) + 2 : app.indexOf(";", a) + 1;   // an array runs to "];"
+  return app.slice(a, end);
+}
 function grab(name) {                       // one top-level function's source, by brace matching
   const a = app.indexOf("function " + name + "(");
   if (a < 0) throw new Error("no " + name);
@@ -18,10 +24,11 @@ function grab(name) {                       // one top-level function's source, 
   const browser = await chromium.launch();
   const page = await browser.newPage();
   const b64 = await page.evaluate(async ({ src, double }) => {
-    eval(src + "; window.sdNoise = sdNoise; window.sdShowSound = sdShowSound;");
-    const T = double ? { hit: 0.96, fly: 1.98, end: 2.4 } : { hit: 0.6, fly: 1.56, end: 1.96 };
+    eval(src + "; window.sdNoise = sdNoise; window.sdShowSound = sdShowSound; window.SD_CHIME_LEN = SD_CHIME_LEN;");
+    const l = window.SD_CHIME_LEN + 0.03;   // the same timeline sdPickShow runs
+    const T = double ? { hits: [l, l + 0.5], fly: l + 1.48, end: l + 1.88 } : { hits: [l], fly: l + 1.0, end: l + 1.4 };
     const rate = 44100, ctx = new OfflineAudioContext(1, Math.ceil(rate * (T.end + 1.4)), rate);
-    window.sdShowSound(T.hit, T.fly, T.end, ctx);
+    window.sdShowSound(T.hits, T.fly, T.end, ctx);
     const buf = await ctx.startRendering(), d = buf.getChannelData(0);
     let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
     const n = d.length, bytes = new Uint8Array(44 + n * 2), v = new DataView(bytes.buffer);
@@ -32,7 +39,7 @@ function grab(name) {                       // one top-level function's source, 
     for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
     let s = ""; for (let i = 0; i < bytes.length; i += 32768) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
     return JSON.stringify({ wav: btoa(s), peak: peak, secs: n / rate });
-  }, { src: grab("sdNoise") + "\n" + grab("sdShowSound"), double });
+  }, { src: [grabVar("SD_CHIME"), grabVar("SD_CHIME_STEP"), grabVar("SD_CHIME_LEN"), grab("sdNoise"), grab("sdShowSound")].join("\n"), double });
   await browser.close();
   const r = JSON.parse(b64);
   fs.writeFileSync(out, Buffer.from(r.wav, "base64"));
