@@ -124,7 +124,22 @@ Alley-oop (Football Catch), Joy (Joyful Jump); Mixamo has no jump shot or dunk. 
 did not respond in the app's browser pane, so the files came through Mixamo's own export API from the page, under
 the owner's signed-in personal Adobe ID (the pane's CKeller Law LLC Adobe for Teams login is refused by Mixamo).
 Goalie Throw hit Mixamo's rate limit. A private gallery artifact ("Draft Night Moves", https://claude.ai/artifact/XMPeniEFZARAtwz7QsPRSJ; its source and clips were built in the session scratchpad, so rebuild with tools/artbot) shows all 30 clips with
-stars and a copyable `ART-BOT PICKS v1` block; waiting on his picks.
+stars and a copyable `ART-BOT PICKS v1` block.
+
+**2d. THE ART BOT, round 2 (same night).** The owner on reel 1: "we're going to use the RISO for all of them" (then
+"retain neon too" and "keep chrono style too pls"); the dribble "facing head-on" like Mixamo, adapted to crossovers
+and between the legs for the guard; the slam "pretty darn close", needs a hoop and "slightly at the end when
+they're dunking, change the arms"; the block's "body is good", needs the ball and the hoop and "someone attacking
+the rim"; the alley-oop "pretty close too"; "Joy is stupid. Not on theme."; and "we have to put these characters
+in basketball clothes because right now they look like fembots" ("a lot of creative license ... a starting point
+as opposed to like the ground truth"). Done, all in `tools/artbot/` (README: how each piece works): generated
+uniforms on the X Bot (jersey with piping and 82, baggy shorts with a hem stripe, socks, high-tops, headband,
+wristbands; the rival in road white), squared shoulders; the crossover as the capture blended with its own mirror
+image (a seamless 2.8 s loop, head-on); a hoop with a net that reacts; the slam's gather, throw-down, rim hang and
+landing flex; the block's defender aimed out from under the hoop at a rival going up for a tomahawk; the oop's lob,
+one-hand catch and flush. Riso, neon and chrono, 720 px. Published as version 2 of the same gallery (reel 1 folded
+underneath); his stars copy out as an `ART-BOT PICKS v2` block. Waiting on his picks; next, wiring the chosen
+clips behind the ceremony (key beats are at about 1.1 to 1.3 s, where the chime's last note lands).
 
 **3. The 200 new Dailies (POOL3), merged (`1ea7813`, merge `3d6e519`), then v58.4.** 200 boards, one a day from
 Monday 2026-09-28 (#79) through Thursday 2027-04-15 (#278), then looping (day index modulo 200). #1 to #77 stay
