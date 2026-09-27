@@ -3034,7 +3034,7 @@ function renderIntro() {
         '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
       thirdSlotHtml +
       (dailyBoard && dailyBoard.num > 1 ? '<button class="t-btn daily-past" data-kind="text" data-size="sm" id="dailyArchiveBtn" type="button">Past Dailies</button>' : "") +
-      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 Redrafted \u00B7 Redo real life drafts</button>' +
+      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 Redrafted \u00B7 Redo\u00A0real\u00A0life\u00A0drafts</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
