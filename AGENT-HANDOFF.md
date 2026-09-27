@@ -3,10 +3,100 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v57`, committed and pushed on branch `c-code-clean` (`BUILD_V = "v57"`, cache keys `20260926-icons-v57`; daily-core.js `20260926-archive-v56`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, then v57. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v57, the app icon redrawn for favicon scale (section 00000f; the owner wants a big rework of it next, see 00000g); v56, THE DAILY ARCHIVE (the owner's list item 16); v55 THE REDRAFTED (item 15); v54 the neon masthead (item 10); v53 items 9, 11, 12, 13, 14. See sections 00000e to 00000b first. Only item 17 (accounts, "later") is left on the owner's list.
+**Build:** `v58`, committed on branch `c-code-clean` (`BUILD_V = "v58"`; styles.css and app.js at `20260926-realdraft-v58`, redraft-drafts.json at the same key via `REDRAFT_DATA_V`; daily-core.js and challenges.js keys move with the new Dailies, see 00000h). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
+
+---
+
+## 00000h. V58: THE REDRAFTED's real drafts, Heat Vice on the Daily and the Redrafted, 200 new Dailies (2026-09-26, evening)
+
+**The owner's words this session.** He pasted a long reconciled brief ("TRUE 82: CLAUDE CODE HANDOFF (Sept 26,
+2026)", June to Sept decisions). The agent compared it item by item with the code and this file and asked
+which to adopt; his answer: "for now just integrate the current redrafteds into the ccode clean version, but
+with the full real life draft propagation into pro mode as discussed we'll tackle the rest later. with of
+course the miami vice full style /color update. and give me the copy pastes for the database migrations at
+the end of it. make sure the dailies have the vice style too on the main page button and internal to the
+mode. style update may take some judgment calls, use your best judgment to one shot it. also an archive link
+for all past dailies ... and also we need all the new dailies made and deployed for all the days forward".
+The rest of the brief is deferred ("later"); its open items are listed at the end of this section.
+
+**1. THE REDRAFTED: PRO is the real draft** (the brief's R2, verbatim: "the full real first round in real
+draft order, plus productive second-rounders and undrafted players chosen by AI judgment. Show real pick
+numbers. Take draft order from a public draft-history dataset, not from recall. First-rounders with no
+eligible season can sit greyed out in their slot so the order reads true. PICKUP unchanged.")
+- Data: `redraft-drafts.json` (37 KB): per class, `r1` = the real first round in pick order, `x` = the
+  productive later picks and undrafted players (pick 0). Built by `tools/redraft-drafts.py` (its header says
+  how, and how to rebuild next June) from Basketball-Reference's draft history in
+  sumitrodatta/bball-reference-datasets ("Draft Pick History.csv", the same public CC BY-SA source as
+  site_data.json; downloaded to the session scratchpad, not committed). Matching is by Basketball-Reference
+  id through bbref-map.json, so a draftee who shares a name with another player never borrows his seasons;
+  the 21 shared names are split by listed height. A player drafted twice counts in the draft that stuck.
+- Judgment calls (the owner may overrule): "productive" = best qualifying season at least the class's median
+  first-rounder's (never under V 1.5), or 8+ qualifying seasons at V 1.0+, at most 15 a class. Undrafted
+  players land in the draft they went undrafted in; where the debut misleads (G League or overseas first) a
+  judgment table (`UND` in the script: Caruso 2016, Haslem 2002, Ingles 2009, Covington 2013, Armstrong
+  1991...) fixes it. Every board must field three legal teams, so 1999 (Todd MacCulloch) and 2025 (Dylan
+  Cardwell) grow a center.
+- App (`app.js`, "v58 THE REAL DRAFT"): `sdLoadDrafts` fetches the file when the Redrafted opens;
+  `sdBuildRealPool` builds the board (only seasons after the draft, the usual 785-minute floor, the height
+  for shared names); a live draft keeps the board it started on (`SD.real`); the board shows each drafted
+  player's pick number (`.rd-pk`), a "First round" divider, the greyed slots (`.rd-ghost`, "no playable
+  season", tap says why), a "Later picks and undrafted" divider (undrafted rows say so), then "Taken". PRO
+  waits for the file ("Loading the draft..."); a failed fetch falls back to the v55 whole-class board.
+  PICKUP is untouched. The difficulty screen's PRO copy says what PRO is now ("The real draft, pick by pick.").
+- Home door copy is the owner's: "Redrafted · Redo real life drafts".
+- test.js: five new checks (1984 in pick order with Stockton at 16, every class's whole first round incl.
+  greyed slots and only post-draft seasons, Len Bias greyed at 1986 #2, Jokic #41 and Ben Wallace undrafted
+  join, PICKUP unchanged and the fallback works). 79 checks at the v58 checkpoint.
+
+**2. Heat Vice on the Daily and the Redrafted** (styles.css; each block says why). look.css paints every
+`.plq-frame` and `.t-card` as an outline card, which left THE DAILY's home tile and the Redrafted's
+difficulty doors reading as panels among neon buttons. Scoped to `html[data-btn="neon"]` and written with
+`#app#app` to outrank look.css's doubled-id selectors (the lab's other looks keep their plaque):
+- THE DAILY home tile: the neon buttons' stacked recipe at card size (pink tube, dark plate, pink then aqua
+  slab, the same glows), an aqua inner tube, the title lit. Its played state keeps the frame.
+- The Redrafted: PICKUP an aqua door, PRO a pink door (the court art kept), the team on the clock and your
+  podium row light up.
+- The Tribune's SKIP TO RESULTS / RUN IT BACK (site buttons under the paper; look.css skips the Tribune)
+  are the pink and aqua tubes.
+- Checked at 375px: the Daily gate, draft, results were already on the look (outline cards, neon buttons).
+- The archive: the home link (v56) stays; the Daily gate gets a quiet second door under PLAY IT
+  (`#gatePastBtn`, today's board only).
+
+**3. The 200 new Dailies (POOL3).** IN FLIGHT at the time of writing: a helper agent is designing,
+implementing and bot-auditing them in a worktree (`.claude/worktrees/agent-...`); the merge, the key bumps
+for challenges.js and daily-core.js, and this paragraph's final text come next. POOL3 starts Monday
+2026-09-28 (#79) so #78 (Sunday) stays a POOL2 day, and must never start before the go-live date (see
+docs/GO-LIVE.md).
+
+**4. Going live** (the owner asked for "copy pastes for the database migrations"): `docs/GO-LIVE.md`. 0026 is
+7.6 MB (too big for the console), so it runs through wrangler (`npx --yes wrangler@4 login`, `d1 list`,
+`d1 execute DBNAME --remote --yes --file=...`); 0027 is one statement and can also be pasted. No new migration
+this session (the real drafts and the Dailies are client-side). Then the owner says "merge to main".
+
+**The brief's items deferred by the owner ("we'll tackle the rest later")**, with what the comparison found:
+- Tags: preview deploys may share the production D1 (a dashboard setting; give previews their own DB first);
+  "+" should count as a YES with no second popup, the picker needs a clear close button, the glove should be
+  pinned to the "+" (it is `position: fixed`); the ballot questions for gravity and rim pressure should read
+  "Did {YEAR} {PLAYER} have gravity?" / "...attack the rim?" (traits.js already does); the brief's "final"
+  definitions differ from the shipped ones on 16 of 17 tags and drop Ball Pounder (owner to confirm); one
+  shared "settled" rule (live D1: 62/38 with a 25-vote floor; brief: 60% with hysteresis) that also
+  unfeatures settled homepage questions; the top-up scout run for Ball Stopper, Stat Padder, Hunted (the raw
+  Sept backfill CSV is not on the Mac; only migration 0026 survives); desktop hover text on tags; "The
+  Record" rater page.
+- Classic and Presti: the halo position rule and Presti's top price $23 to $27 (each its own reset); GOAT
+  Climb placement (brief: net rating; the July 26 ruling and v51.1: realized wins; ask); cut the "Go 82-0"
+  lead-in (conflicts with v53; ask); retire the Tribune (still on, its AI edition costs API calls on tap);
+  make the season stand out on player cards; Classic PICKUP/PRO and blind Classic PRO from the archive;
+  migration 0025 (24 homepage polls, accounts-test).
+- Percentiles: the 14-day window and rank of the field never landed on any branch; the "4th of 11 today"
+  line is unbuilt. Also: a logo permission check (crests.json has no recorded source), traded-player stats,
+  load speed and a code review, a Daily star rating, a "start the season" bell, accounts (item 17), TrueW
+  frozen. Laws adopted: test at 320 and 375px; no em dashes in any shipped copy (a few remain: the Scoring
+  Card, a draft hint, two page titles, the credits); one engine-value change per reset; migrations through
+  wrangler, preview first.
 
 ---
 
