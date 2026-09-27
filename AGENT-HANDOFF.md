@@ -3,7 +3,7 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v58`, committed on branch `c-code-clean` (`BUILD_V = "v58"`; styles.css and app.js at `20260926-realdraft-v58`, redraft-drafts.json at the same key via `REDRAFT_DATA_V`; daily-core.js and challenges.js keys move with the new Dailies, see 00000h). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Build:** `v58.2`, pushed on branch `c-code-clean` (`BUILD_V = "v58.2"`; styles.css and app.js at `20260926-pickshow-v58-2`, redraft-drafts.json at the same key via `REDRAFT_DATA_V`; daily-core.js and challenges.js keys move with the new Dailies, see 00000h). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
 **Most recent change:** v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
@@ -64,6 +64,30 @@ difficulty doors reading as panels among neon buttons. Scoped to `html[data-btn=
 - Checked at 375px: the Daily gate, draft, results were already on the look (outline cards, neon buttons).
 - The archive: the home link (v56) stays; the Daily gate gets a quiet second door under PLAY IT
   (`#gatePastBtn`, today's board only).
+
+**2b. Later the same evening (v58.1, v58.2), the owner's follow-ups:**
+- "For pickup mode we need to feature the most fun drafts up top": a Most fun drafts shelf over the decades
+  (`SD_PICKUP_FEATURED`: '84, '96, '03, '09, '11, '18, '98, '14 with their headliners, pinned by test.js to
+  that class's PICKUP board; picked by the sum of the headliners' peaks plus judgment, skipping classes whose
+  debut-year cohort files a star under the wrong year, like David Robinson in 1989). PICKUP opens on '84.
+- "For pro mode we need a featured draft of the day, plus a reason why it's intriguing": `SD_DOTD_ORDER` (all
+  52 classes, 1984 on 2026-09-26, famous ones spread out; device-local date), preselected with a gold
+  "Draft of the day" tag until the player picks (`SD_CLASS_PICKED`; a ?redraft=YEAR link counts as a pick).
+  Every PRO class shows its real draft's story line (`SD_DRAFT_WHY`, 52 hand-written, real history only,
+  never the engine's grades) instead of the derived "Headlined by" line.
+- The home archive link "sucks so much front page space": Past Dailies is now a quiet line under the last
+  mode button.
+- "Did we do the thing where the mountain ... fills up on a % of your wins out of 82?": yes, since v53
+  (results-riso.js `fillY`, `levelClip`, `T_FILL`); re-checked this session.
+- THE PICK IS IN (`sdPickShow`, styles.css "THE PICK IS IN"): your pick's draft-night moment, about two
+  seconds, tap to skip; the pick is applied first and only the rival's clock waits (`sdHumanPick` renders the
+  board under the show so each name can fly into its slot; `SD.landing` marks the slot for 0.7s so the
+  re-render replays the punch once). A snake double lands its first half quietly and plays one show for both
+  (`SD.pendingShow`). A rival's pick flashes its slot (`SD.flash.until`). Flash safety: one soft full-room
+  flash; the flashbulbs are small and staggered.
+- The chime (`sdShowSound`): Web Audio synthesis, our own notes (three FM bells A5, D6, A6), riser, boom and
+  crash, neon hum, whoosh, knock. Ambient audio session; mute button in the draft header (`t82_sound`).
+  `node tools/draft-chime.js out.wav [double]` renders the exact code to a WAV (Playwright, the tennis copy).
 
 **3. The 200 new Dailies (POOL3).** IN FLIGHT at the time of writing: a helper agent is designing,
 implementing and bot-auditing them in a worktree (`.claude/worktrees/agent-...`); the merge, the key bumps
