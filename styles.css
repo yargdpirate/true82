@@ -4038,38 +4038,44 @@ button.hm-mode:disabled { cursor: progress; }
   .hm-dia { gap: 5px; }
 }
 
-/* ---- the diamonds: five, one per call. Empty is a thin outline; filled is a two-plate riso print: the
-   pink key with its halftone screen showing, the aqua plate a hair off register under it ---- */
-.hm-dia { position: relative; display: flex; align-items: center; gap: 9px; flex-shrink: 0; padding: 2px 3px 2px 4px; }
-.hm-dia i { position: relative; display: block; width: 9px; height: 9px; transform: rotate(45deg); border-radius: 1.5px;
-  border: 1.5px solid rgb(var(--t-accent-rgb) / .5); transition: border-color .2s ease; }
-.hm-dia i::before, .hm-dia i::after { content: ""; position: absolute; inset: -1.5px; border-radius: 1.5px; opacity: 0; }
-.hm-dia i::before { background: var(--t-offset); transform: translate(2.2px, 0); }   /* in the diamond's turned frame: down and right on screen */
-.hm-dia i::after { background: radial-gradient(circle, var(--t-accent-hi) .7px, transparent 1.05px) 0 0 / 2.4px 2.4px, var(--t-accent); }
-.hm-dia i.on { border-color: transparent; transform: rotate(45deg) scale(1.15); filter: drop-shadow(0 0 3px rgb(var(--t-accent-rgb) / .75)); }
-.hm-dia i.on::before, .hm-dia i.on::after { opacity: 1; }
+/* ---- THE INK DIAMONDS: one per call on the home card (v59), one per pick in the draft's bar (v59.1).
+   Empty is a thin outline; filled is a two-plate riso print: the pink key with its halftone screen showing,
+   the aqua plate a hair off register under it. The draft's current pick has its outline lit. ---- */
+.ink-dias { position: relative; display: flex; align-items: center; gap: 9px; }
+.ink-dias > i, .ink-dias > span { position: relative; display: block; width: 9px; height: 9px; transform: rotate(45deg);
+  border-radius: 1.5px; border: 1.5px solid rgb(var(--t-accent-rgb) / .5); background: none; transition: border-color .2s ease; }
+.ink-dias > i::before, .ink-dias > i::after, .ink-dias > span::before, .ink-dias > span::after {
+  content: ""; position: absolute; inset: -1.5px; border-radius: 1.5px; opacity: 0; }
+.ink-dias > i::before, .ink-dias > span::before { background: var(--t-offset); transform: translate(2.2px, 0); }   /* in the diamond's turned frame: down and right on screen */
+.ink-dias > i::after, .ink-dias > span::after {
+  background: radial-gradient(circle, var(--t-accent-hi) .7px, transparent 1.05px) 0 0 / 2.4px 2.4px, var(--t-accent); }
+.ink-dias > i.on, .ink-dias > span.done { border-color: transparent; background: none; transform: rotate(45deg) scale(1.15);
+  filter: drop-shadow(0 0 3px rgb(var(--t-accent-rgb) / .75)); }
+.ink-dias > i.on::before, .ink-dias > i.on::after, .ink-dias > span.done::before, .ink-dias > span.done::after { opacity: 1; }
+.ink-dias > span.now { border-color: var(--t-accent); background: none; box-shadow: 0 0 7px rgb(var(--t-accent-rgb) / .75); }
+.hm-dia { flex-shrink: 0; padding: 2px 3px 2px 4px; }
+.du-pips.ink-dias > span { width: 11px; height: 11px; }
 
-/* ---- the reward, on every vote (app.js tmPrint): the key plate stamps down, the aqua plate lands off
-   register and snaps in, a ring of halftone dots rolls out in both inks, and the tally bar rolls in like
-   an ink roller, wet dots drying to solid. The set's last diamond is the big one: the row re-inks left
-   to right, the ring doubles, and the card's title splits into its two inks and snaps back. Under a
-   second; nothing flashes; nothing holds the NEXT tap. ---- */
-.hm-dia i.is-new::after { animation: hm-key .46s cubic-bezier(.2, .9, .3, 1.2) both; }
-.hm-dia i.is-new::before { animation: hm-plate .62s cubic-bezier(.25, .9, .3, 1) both; }
-@keyframes hm-key { 0% { opacity: 0; transform: scale(2.6); } 40% { opacity: 1; transform: scale(.82); } 70% { transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
-@keyframes hm-plate { 0%, 25% { opacity: 0; transform: translate(9px, -4px); } 55% { opacity: 1; transform: translate(-1.5px, 1px); }
+/* ---- THE INK PRINT (app.js inkPrint): the reward on every vote (v59) and every pick (v59.1). The key plate
+   stamps down, the aqua plate lands off register and snaps in, a ring of halftone dots rolls out in both
+   inks and six drops fly. A set's last mark is the big one: the row re-inks left to right and the ring
+   rings the whole row. Under a second; nothing flashes; nothing holds a tap. ---- */
+.ink-dias > .is-new::after { animation: ink-key .46s cubic-bezier(.2, .9, .3, 1.2) both; }
+.ink-dias > .is-new::before { animation: ink-plate .62s cubic-bezier(.25, .9, .3, 1) both; }
+@keyframes ink-key { 0% { opacity: 0; transform: scale(2.6); } 40% { opacity: 1; transform: scale(.82); } 70% { transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+@keyframes ink-plate { 0%, 25% { opacity: 0; transform: translate(9px, -4px); } 55% { opacity: 1; transform: translate(-1.5px, 1px); }
   78% { transform: translate(3.4px, 0); } 100% { opacity: 1; transform: translate(2.2px, 0); } }
-.hm-burst { position: absolute; z-index: 1; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; pointer-events: none;
+.ink-burst { position: absolute; z-index: 3; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; pointer-events: none;
   background-image: radial-gradient(circle, var(--t-accent) 1.45px, transparent 1.9px); background-size: 4px 4px;
   -webkit-mask-image: radial-gradient(circle closest-side, transparent 42%, var(--fx-mask) 52%, var(--fx-mask) 80%, transparent 100%);
   mask-image: radial-gradient(circle closest-side, transparent 42%, var(--fx-mask) 52%, var(--fx-mask) 80%, transparent 100%);
-  animation: hm-ring .74s cubic-bezier(.15, .8, .3, 1) both; }
+  animation: ink-ring .74s cubic-bezier(.15, .8, .3, 1) both; }
 /* the second ink's ring lands a beat late and a hair off register */
-.hm-burst::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
+.ink-burst::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
   background-image: radial-gradient(circle, var(--t-offset) 1.45px, transparent 1.9px); background-size: 4px 4px;
-  animation: hm-ring2 .74s cubic-bezier(.15, .8, .3, 1) .05s both; }
+  animation: ink-ring2 .74s cubic-bezier(.15, .8, .3, 1) .05s both; }
 /* the spray: six fat drops of both inks flung out on a slow turn (unmasked by the ring) */
-.hm-spray { position: absolute; z-index: 1; width: 58px; height: 58px; margin: -29px 0 0 -29px; pointer-events: none;
+.ink-spray { position: absolute; z-index: 3; width: 58px; height: 58px; margin: -29px 0 0 -29px; pointer-events: none;
   background:
     radial-gradient(circle, var(--t-accent) 2.4px, transparent 2.9px) 50% 0 / 8px 8px no-repeat,
     radial-gradient(circle, var(--t-offset) 2px, transparent 2.5px) 96% 30% / 8px 8px no-repeat,
@@ -4077,21 +4083,28 @@ button.hm-mode:disabled { cursor: progress; }
     radial-gradient(circle, var(--t-offset) 2.4px, transparent 2.9px) 30% 98% / 8px 8px no-repeat,
     radial-gradient(circle, var(--t-accent) 2px, transparent 2.5px) 2% 62% / 8px 8px no-repeat,
     radial-gradient(circle, var(--t-light) 1.6px, transparent 2.1px) 14% 10% / 8px 8px no-repeat;
-  animation: hm-spray .7s cubic-bezier(.12, .7, .3, 1) both; }
-.hm-burst.is-big { width: 88px; height: 88px; margin: -44px 0 0 -44px; background-size: 5px 5px; animation-duration: .92s; }
-.hm-burst.is-big::after { background-size: 5px 5px; animation-duration: .92s; }
-.hm-spray.is-big { width: 100px; height: 100px; margin: -50px 0 0 -50px; animation-duration: .9s; }
-@keyframes hm-ring { 0% { opacity: 1; transform: scale(.25); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.1); } }
-@keyframes hm-ring2 { 0% { opacity: 0; transform: translate(0, 0) scale(.85); } 30% { opacity: 1; transform: translate(3px, 3px) scale(.95); }
+  animation: ink-spray .7s cubic-bezier(.12, .7, .3, 1) both; }
+.ink-burst.is-big { width: 88px; height: 88px; margin: -44px 0 0 -44px; background-size: 5px 5px; animation-duration: .92s; }
+.ink-burst.is-big::after { background-size: 5px 5px; animation-duration: .92s; }
+.ink-spray.is-big { width: 100px; height: 100px; margin: -50px 0 0 -50px; animation-duration: .9s; }
+/* a drafted token's ring (v59.1): coin-sized */
+.ink-burst.is-token { width: 96px; height: 96px; margin: -48px 0 0 -48px; background-size: 5px 5px; }
+.ink-burst.is-token::after { background-size: 5px 5px; }
+.ink-spray.is-token { width: 100px; height: 100px; margin: -50px 0 0 -50px; }
+@keyframes ink-ring { 0% { opacity: 1; transform: scale(.25); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.1); } }
+@keyframes ink-ring2 { 0% { opacity: 0; transform: translate(0, 0) scale(.85); } 30% { opacity: 1; transform: translate(3px, 3px) scale(.95); }
   100% { opacity: 0; transform: translate(1px, 1px) scale(1.04); } }
-@keyframes hm-spray { 0% { opacity: 0; transform: scale(.25) rotate(0); } 18% { opacity: 1; } 65% { opacity: 1; }
+@keyframes ink-spray { 0% { opacity: 0; transform: scale(.25) rotate(0); } 18% { opacity: 1; } 65% { opacity: 1; }
   100% { opacity: 0; transform: scale(1.3) rotate(28deg); } }
-.hm-dia.is-full i.on { animation: hm-wave .5s cubic-bezier(.3, 1.5, .5, 1) both; }
-.hm-dia.is-full i:nth-child(2) { animation-delay: .06s; }
-.hm-dia.is-full i:nth-child(3) { animation-delay: .12s; }
-.hm-dia.is-full i:nth-child(4) { animation-delay: .18s; }
-.hm-dia.is-full i:nth-child(5) { animation-delay: .24s; }
-@keyframes hm-wave { 0% { transform: rotate(45deg) scale(1.15); } 45% { transform: rotate(45deg) scale(1.65); } 100% { transform: rotate(45deg) scale(1.15); } }
+.ink-dias.is-full > .on, .ink-dias.is-full > .done { animation: ink-wave .5s cubic-bezier(.3, 1.5, .5, 1) both; }
+.ink-dias.is-full > :nth-child(2) { animation-delay: .06s; }
+.ink-dias.is-full > :nth-child(3) { animation-delay: .12s; }
+.ink-dias.is-full > :nth-child(4) { animation-delay: .18s; }
+.ink-dias.is-full > :nth-child(5) { animation-delay: .24s; }
+@keyframes ink-wave { 0% { transform: rotate(45deg) scale(1.15); } 45% { transform: rotate(45deg) scale(1.65); } 100% { transform: rotate(45deg) scale(1.15); } }
+/* the draft bar's row sits right over its count line, so its wave pops a size smaller */
+.du-pips.ink-dias.is-full > .done { animation-name: ink-wave-sm; }
+@keyframes ink-wave-sm { 0% { transform: rotate(45deg) scale(1.15); } 45% { transform: rotate(45deg) scale(1.38); } 100% { transform: rotate(45deg) scale(1.15); } }
 .hm-poll-title.is-lit { animation: hm-chroma .62s cubic-bezier(.2, .8, .3, 1) .12s both; }
 @keyframes hm-chroma { 0% { text-shadow: -3px 0 0 rgb(var(--t-offset-rgb) / .9), 3px 1px 0 rgb(var(--t-accent-rgb) / .9); }
   100% { text-shadow: 0 0 0 rgb(var(--t-offset-rgb) / 0), 0 0 0 rgb(var(--t-accent-rgb) / 0); } }
@@ -4110,3 +4123,44 @@ button.hm-mode:disabled { cursor: progress; }
 @media (prefers-reduced-motion: reduce) {
   .hm *, .hm *::before, .hm *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- v59.1 THE PICK PRINTS (the owner: bring the home diamonds' energy to the draft) ----------
+   A drafted player's token is a riso coin: the pink key plate with its halftone screen over the aqua
+   plate a hair off register, like the diamonds and the game-by-game reel's coins. Each pick prints its
+   coin in the tray and its diamond in the bar (app.js draftInk: the key stamps, the aqua plate lands off
+   register and snaps in, the ink ring and drops roll out). The fifth pick is the big one (draftFinale):
+   the five coins re-ink left to right and the bar's diamonds ring as a row, then the season plays.
+   #app#app outranks look.css's doubled-id token rule. */
+.lineup-rail { position: relative; }
+#app#app .lineup-slot.filled .ls-token { color: var(--t-accent-ink); border: 2px solid var(--t-accent);
+  background: radial-gradient(circle, rgb(var(--t-accent-hi-rgb) / .6) .9px, transparent 1.35px) 0 0 / 3.5px 3.5px, var(--t-accent);
+  box-shadow: 3px 3px 0 0 var(--t-offset), 0 0 12px rgb(var(--t-accent-rgb) / .4); }
+#app#app .lineup-slot.filled.moving .ls-token { border-color: var(--t-light);
+  box-shadow: 0 0 0 3px rgb(var(--t-accent-rgb) / .35), 3px 3px 0 0 var(--t-offset), 0 7px 12px -5px rgb(var(--t-shadow-rgb) / .65); }
+#app#app .lineup-slot.filled.swap-target .ls-token { border: 2px dashed var(--t-light); animation: swapPulseInk .9s ease-in-out infinite; }
+@keyframes swapPulseInk {
+  0%, 100% { box-shadow: 3px 3px 0 0 var(--t-offset), 0 0 0 0 rgb(var(--t-accent-rgb) / .55); }
+  50% { box-shadow: 3px 3px 0 0 var(--t-offset), 0 0 0 6px rgb(var(--t-accent-rgb) / .12); }
+}
+/* the stamp: the key plate lands big and settles; the aqua plate (the offset shadow) swings in off register */
+#app#app .lineup-slot.filled .ls-token.is-new { animation: ink-coin .58s cubic-bezier(.2, .9, .3, 1.15) both; }
+@keyframes ink-coin {
+  0% { opacity: 0; transform: scale(1.9); box-shadow: 14px -6px 0 0 rgb(var(--t-offset-rgb) / 0), 0 0 0 rgb(var(--t-accent-rgb) / 0); }
+  30% { opacity: 1; transform: scale(.86); box-shadow: 9px -3px 0 0 var(--t-offset), 0 0 18px rgb(var(--t-accent-rgb) / .7); }
+  55% { transform: scale(1.07); box-shadow: -2px 2px 0 0 var(--t-offset), 0 0 16px rgb(var(--t-accent-rgb) / .6); }
+  78% { transform: scale(.98); box-shadow: 4px 4px 0 0 var(--t-offset), 0 0 13px rgb(var(--t-accent-rgb) / .45); }
+  100% { opacity: 1; transform: none; box-shadow: 3px 3px 0 0 var(--t-offset), 0 0 12px rgb(var(--t-accent-rgb) / .4); }
+}
+/* the lineup is set: the five coins re-ink left to right */
+#app#app .lineup-rail.is-full .lineup-slot.filled .ls-token { animation: ink-coin-wave .52s cubic-bezier(.3, 1.4, .5, 1) both; }
+#app#app .lineup-rail.is-full .lineup-slot:nth-child(2) .ls-token { animation-delay: .07s; }
+#app#app .lineup-rail.is-full .lineup-slot:nth-child(3) .ls-token { animation-delay: .14s; }
+#app#app .lineup-rail.is-full .lineup-slot:nth-child(4) .ls-token { animation-delay: .21s; }
+#app#app .lineup-rail.is-full .lineup-slot:nth-child(5) .ls-token { animation-delay: .28s; }
+@keyframes ink-coin-wave {
+  0% { transform: none; box-shadow: 3px 3px 0 0 var(--t-offset), 0 0 12px rgb(var(--t-accent-rgb) / .4); }
+  40% { transform: translateY(-5px) scale(1.18); box-shadow: 7px 6px 0 0 var(--t-offset), 0 0 20px rgb(var(--t-accent-rgb) / .75); }
+  100% { transform: none; box-shadow: 3px 3px 0 0 var(--t-offset), 0 0 12px rgb(var(--t-accent-rgb) / .4); }
+}
+/* while the lineup sets (under a second), the board under it takes no taps */
+body.ink-finale #pool, body.ink-finale .pool-head { pointer-events: none; }

@@ -625,12 +625,52 @@ function confirmPick(bucket) {
     p.player = row[IDX.name]; p.season = season; p.slot = bucket;
     p.ordinal = G.picks.length; p.value = cost; p.source = G.cur && G.cur.fr;
     analyticsTrack("draft_pick", p);
-    trackRunState(); nextRound(true); return;
+    trackRunState();
+    if (G.picks.length >= CFG.ROUNDS && G.screen === "draft") { draftFinale(); return; }
+    G.inked = G.picks.length;   // v59.1: renderDraft prints this pick's diamond and coin
+    nextRound(true); return;
   }
   analyticsTrack("pick_denied", Object.assign(analyticsRunSnapshot(), {
     action: "rule_block", player: row[IDX.name], season: season, slot: bucket
   }));
   denyTray(chBlockWhy());
+}
+// v59.1 THE PICK PRINTS (the owner: the home diamonds' energy in the draft). The round's diamond prints in
+// the bar and the player's coin prints in the tray, the same ink print as a home-card vote.
+function draftInk() {
+  var n = G && G.inked;
+  if (!n) return;
+  G.inked = 0;
+  var pips = el("drPips");
+  if (pips && pips.children[n - 1]) inkPrint(pips, pips.children[n - 1], "");
+  var rail = document.querySelector("#trayInner .lineup-rail");
+  var coin = rail && rail.querySelector('.lineup-slot[data-pick="' + (n - 1) + '"] .ls-token');
+  if (coin) inkPrint(rail, coin, "token");
+}
+// The fifth pick sets the lineup: the fifth coin prints, all five re-ink left to right, the bar's five
+// diamonds ring as a row, and the season plays under a second later. EXIT RUN in that beat wins (the
+// timer checks it is still this game on the draft screen).
+function draftFinale() {
+  var g = G, n = G.picks.length;
+  G.selected = null;
+  updateTray();
+  var rail = document.querySelector("#trayInner .lineup-rail");
+  var coin = rail && rail.querySelector('.lineup-slot[data-pick="' + (n - 1) + '"] .ls-token');
+  if (coin) inkPrint(rail, coin, "token");
+  if (rail) setTimeout(function () { if (rail.isConnected) rail.classList.add("is-full"); }, 260);
+  var pips = el("drPips"), count = el("drPickCount");
+  if (pips) {
+    for (var k = 0; k < pips.children.length; k++) pips.children[k].className = "done";
+    pips.classList.add("is-full");
+    inkPrint(pips, pips.children[pips.children.length - 1], "big");
+  }
+  if (count) count.textContent = "LINEUP SET";
+  buzz([10, 60, 14]);
+  document.body.classList.add("ink-finale");
+  setTimeout(function () {
+    document.body.classList.remove("ink-finale");
+    if (G === g && G.screen === "draft") nextRound(true);
+  }, 950);
 }
 function doLineupMove(pickIdx, bucket) {
   var p0 = G.picks[pickIdx], from = p0 && p0.slot, name = p0 && p0.row && p0.row[IDX.name];
@@ -1460,7 +1500,7 @@ function draftUtilityHtml() {
   return '<div class="draft-utility" id="draftUtility">' +
     '<button class="du-exit" id="startOverBtn" type="button">\u2039 EXIT RUN</button>' +
     '<div class="du-mid">' +
-      '<div class="round-pips du-pips" id="drPips" aria-hidden="true"></div>' +
+      '<div class="round-pips du-pips ink-dias" id="drPips" aria-hidden="true"></div>' +
       '<span class="du-count mono" id="drPickCount" aria-live="polite"></span>' +
     '</div>' +
     '<span class="du-brandbox">' + hoopMarkSvg() + '</span>' +
@@ -2059,7 +2099,7 @@ function traitsModuleHtml() {
     '<section class="hm-card" aria-labelledby="tmTitle">' +
       '<div class="hm-poll-head">' +
         '<h2 class="hm-poll-title" id="tmTitle">Help balance the game</h2>' +
-        '<div class="hm-dia" id="tmDots" role="img" aria-label="0 of 5 votes this round">' + dia + "</div>" +
+        '<div class="hm-dia ink-dias" id="tmDots" role="img" aria-label="0 of 5 votes this round">' + dia + "</div>" +
       "</div>" +
       '<div class="hm-q" id="tmQBlock">' +
         '<div class="hm-who"><div class="hm-name" id="tmName"></div><div class="hm-season" id="tmSeason"></div></div>' +
@@ -2183,18 +2223,28 @@ function tmDots(fresh) {
 function tmPrint(row, mark, last) {
   if (!row || !mark || tmCalm()) return;
   row.classList.remove("is-full");
+  if (last) { void row.offsetWidth; row.classList.add("is-full"); tmReplay(el("tmTitle"), "is-lit"); }
+  inkPrint(row, mark, last ? "big" : "");
+}
+// THE INK PRINT (v59.1: shared by the home card's diamonds and the draft's pick diamonds and coins). The
+// mark takes .is-new (its stamp in CSS), and a halftone ring and a spray of drops roll out from its center
+// inside host (a positioned box). variant "big" rings the whole row (centered on host, so it stays on the
+// card); "token" is coin-sized. The pieces clean themselves up after a second.
+function inkPrint(host, mark, variant) {
+  if (!host || !mark) return;
+  mark.classList.remove("is-new");
   void mark.offsetWidth;
   mark.classList.add("is-new");
-  if (last) { row.classList.add("is-full"); tmReplay(el("tmTitle"), "is-lit"); }
-  // the set's big moment rings the whole row (centered on it, so it stays on the card); a single vote rings its diamond
-  var x = (last ? row.offsetWidth / 2 : mark.offsetLeft + mark.offsetWidth / 2) + "px", y = (mark.offsetTop + mark.offsetHeight / 2) + "px";
-  var bits = ["hm-burst", "hm-spray"].map(function (cls) {
-    var b = document.createElement("span");
-    b.className = cls + (last ? " is-big" : "");
+  var hb = host.getBoundingClientRect(), mb = mark.getBoundingClientRect();
+  var x = (variant === "big" ? hb.width / 2 : mb.left - hb.left + mb.width / 2) + "px";
+  var y = (mb.top - hb.top + mb.height / 2) + "px";
+  var bits = ["ink-burst", "ink-spray"].map(function (cls) {
+    var b = document.createElement("b");   // a <b>, so a diamond row's own rules (> i, > span) never style it
+    b.className = cls + (variant ? " is-" + variant : "");
     b.setAttribute("aria-hidden", "true");
     b.style.left = x;
     b.style.top = y;
-    row.appendChild(b);
+    host.appendChild(b);
     return b;
   });
   setTimeout(function () {
@@ -3835,6 +3885,7 @@ function renderDraft(anim) {
 
   updateTray();
   renderPips();   // the utility bar's pips + PICK N OF 5 live inside the fresh markup
+  draftInk();     // v59.1: the pick just made prints its diamond and its coin
 
   wireStartOver();
   var rulesBtn = el("rulesBtn");
@@ -8804,7 +8855,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v59";
+var BUILD_V = "v59.1";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
