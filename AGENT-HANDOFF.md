@@ -39,6 +39,12 @@ missing from the migrations, including "the mass addition of player labels i gen
 - The branch preview and true82.net read the same D1 (identical tallies).
 - 0001 to 0003 (accounts, leagues) belong to accounts-test and item 17; 0021 and 0022 were code-only deploys.
 
+**DONE the same afternoon:** the owner ran 0026, 0027 and 0028 on the production D1, which is named **`true82`**
+(id c3c2ac73-9128-41d9-b37b-3cc8ec28d2e8; wrangler is signed in on his Mac). The check read scout_yes 12770,
+scout_unsure 16451, hunted 1, unaccented 0, homepage 104 (0014 was in). Every migration through 0028 is live. The
+preview's op=labels now serves scout tags (Kawhi 2019: 3PT, Tough Shot, Team D, Switch, Clutch) and Jokić 2023's
+crowd and desk rulings. Left before go-live: the UI tweaks, then "merge to main".
+
 **Found, not fixed (code, not a migration).** functions/api/traits.js op=labels compares SQLite `lower()` (ASCII
 only) with JavaScript's `toLowerCase()`, so a name with a non-ASCII capital never matches: 17 players, 69 of the
 0026 rows (Alperen Şengün, Ersan İlyasova, Šarūnas Marčiulionis, Dario Šarić, Álex Abrines). A small server fix

@@ -2,7 +2,13 @@
 
 Two parts. Part 1 is yours (the database, one sitting, about ten minutes). Part 2 is one sentence to Claude.
 
-## Where the database stands (checked 2026-09-27)
+## Where the database stands
+
+**DONE 2026-09-27:** the owner ran 0026, 0027 and 0028 on `true82`; the check read scout_yes 12770,
+scout_unsure 16451, hunted 1, unaccented 0, homepage 104 (so 0014 was in too). Every migration through 0028 is
+live. What follows is kept as the record and for rebuilding a database.
+
+### Before the run (checked 2026-09-27)
 
 Everything through **0025** is already in the live database. Each migration from 0010 to 0025 was checked
 against true82.net itself; 0025 is the 24 homepage polls from the accounts-test line. Three are left, in this
@@ -31,32 +37,28 @@ finish before the next one.
    ```bash
    npx --yes wrangler@4 login
    ```
-3. List your databases. Note the name in the **name** column (the TRUE 82 one). Below, type that name
-   where it says `DBNAME`:
-   ```bash
-   npx --yes wrangler@4 d1 list
-   ```
+3. (The database is named **true82**; `npx --yes wrangler@4 d1 list` shows it if you ever need to check.)
 4. Your player labels (takes up to a minute):
    ```bash
-   npx --yes wrangler@4 d1 execute DBNAME --remote --yes --file=migrations/0026_scout_claims_v1.sql
+   npx --yes wrangler@4 d1 execute true82 --remote --yes --file=migrations/0026_scout_claims_v1.sql
    ```
 5. The Hunted trait:
    ```bash
-   npx --yes wrangler@4 d1 execute DBNAME --remote --yes --file=migrations/0027_hunted_trait_v1.sql
+   npx --yes wrangler@4 d1 execute true82 --remote --yes --file=migrations/0027_hunted_trait_v1.sql
    ```
 6. The accent fix:
    ```bash
-   npx --yes wrangler@4 d1 execute DBNAME --remote --yes --file=migrations/0028_accent_names_v1.sql
+   npx --yes wrangler@4 d1 execute true82 --remote --yes --file=migrations/0028_accent_names_v1.sql
    ```
 7. Check everything at once:
    ```bash
-   npx --yes wrangler@4 d1 execute DBNAME --remote --command "SELECT (SELECT COUNT(*) FROM trait_scout_v1 WHERE verdict='yes') AS scout_yes, (SELECT COUNT(*) FROM trait_scout_v1 WHERE verdict='unsure') AS scout_unsure, (SELECT COUNT(*) FROM traits_v1 WHERE id='hunted') AS hunted, (SELECT COUNT(*) FROM trait_questions_v1 WHERE player_name IN ('Nikola Jokic','Luka Doncic','Toni Kukoc','Manu Ginobili','Peja Stojakovic')) AS unaccented, (SELECT COUNT(*) FROM trait_question_meta_v1 WHERE homepage_eligible = 1) AS homepage"
+   npx --yes wrangler@4 d1 execute true82 --remote --command "SELECT (SELECT COUNT(*) FROM trait_scout_v1 WHERE verdict='yes') AS scout_yes, (SELECT COUNT(*) FROM trait_scout_v1 WHERE verdict='unsure') AS scout_unsure, (SELECT COUNT(*) FROM traits_v1 WHERE id='hunted') AS hunted, (SELECT COUNT(*) FROM trait_questions_v1 WHERE player_name IN ('Nikola Jokic','Luka Doncic','Toni Kukoc','Manu Ginobili','Peja Stojakovic')) AS unaccented, (SELECT COUNT(*) FROM trait_question_meta_v1 WHERE homepage_eligible = 1) AS homepage"
    ```
    Expect **scout_yes 12770, scout_unsure 16451, hunted 1, unaccented 0, homepage 104**.
    - homepage **84** instead of 104 means one old July step (0014, the homepage poll flags) never landed.
      Run it, then run step 7 again:
      ```bash
-     npx --yes wrangler@4 d1 execute DBNAME --remote --yes --file=migrations/0014_homepage_rotation_v1.sql
+     npx --yes wrangler@4 d1 execute true82 --remote --yes --file=migrations/0014_homepage_rotation_v1.sql
      ```
    - Any other number: send it to Claude before merging.
 
