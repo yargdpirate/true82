@@ -3,14 +3,51 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-27
-**Build:** `v59.2`, pushed on branch `c-code-clean` (`BUILD_V = "v59.2"`; app.js and styles.css at `20260927-pickink-v59-2`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** section 00000m (read it first): v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v59.3`, pushed on branch `c-code-clean` (`BUILD_V = "v59.3"`; app.js, styles.css and reel-riso.js at `20260927-tribune-v59-3`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** section 00000n (read it first): v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000m. START HERE (2026-09-27, night): V59.1 and V59.2, the ink print in the drafts
+## 00000n. START HERE (2026-09-27, late): V59.3, a steady Do-Over board, new month captions, the Tribune's one door
+
+**The owner's words** (a voice note, "don't necessarily take it word for word"): (1) in redraft mode the board must
+not "abruptly jump" when you select a player or change his year: "no menu abruptly jumping until a player's fully
+selected off the board"; in the game-by-game screen, keep the gap under each month's W/L dots but make its text
+bigger, drop "the flavor about them doing well", and put either the sweep stamp or "the reason you lost ... one of
+the reasons assigned to a player" there. (2) "keep the tribune but just put it at the very bottom result screen under
+run it back ... see the tribune article ... its own like special color button", one tap and the paper unfolds right
+away and works as normal; the "mandatory trivia" (read as: the mandatory Tribune) only through that button; "not
+offered in any other modes, as a global setting (undoing where we have it in many modes right now)" (read as: never
+a gate anywhere).
+
+**What changed:**
+- The Do-Over board (`sdRepaintRows`, `sdViewAnchors`, `sdKeepAnchors`): a tap on a player or a season change
+  repaints only that row (and the previous selection) and the tray; the board element, its scroll and an open season
+  menu are never rebuilt. The jump did not reproduce headless (positions were identical), so the cause is likely the
+  iPhone rebuilding a focused native menu; not rebuilding removes it either way. A full re-render (a pick, a rival's
+  clock) now re-pins the rows in view by name instead of restoring a raw scrollTop: a player leaving the board above
+  you moves your view 0 to 1 px (it was a full row).
+- The reel (`closeMonth` in app.js, `reel-riso.js` `closeMonth`): the month's note is the SWEPT stamp on a sweep (it
+  moved from the month's header line into the gap; reel-riso only slams it) or `reelBlameHtml` (one of the losses
+  pinned on one of your five, the name in the loss ink), 15.5 px, the gap a fixed 26 px so nothing shifts when it
+  fills. `reelLine` (the mood lines, the "zero died in" line) and `firstLossNow` are deleted.
+- The Tribune: never a gate. `showResults` stages the payload only (no model call); a drafted 82-0's W/L burst fires
+  on its own (it used to wait for the paper); the post-Heat-Check auto-paper (`maybeShowRecap`) is gone; the results
+  end with `#tribuneBtn` "See the Tribune article" under RUN IT BACK (Classic, Presti, Pro, the Daily; not Kaman or
+  the Do-Over, which never had it), a newsprint button (paper stock, the masthead's double rules, the Tribune's serif,
+  a stack of papers under it). `openTribune()` opens `showNewspaper(true)`, which unwraps at once (the tap is still
+  the deliberate act that requests the AI edition and publishes the link); the paper's under-buttons read BACK TO
+  RESULTS and RUN IT BACK, and the door stays for a reopen (the printed edition shows straight away). The print's
+  cover check is just "an overlay is up" (`resultsPrintCovered`). The `.np-gate` styles are deleted.
+
+**Checked:** the board in Chromium and WebKit (select, year change, a simulated rival pick above the view); a full
+Classic season through the reel (captions: blame lines and SWEPT stamps) into results (no paper), the door, the
+unfold, back to results; test.js 98, style law clean. Keys: styles.css, app.js and reel-riso.js at
+`20260927-tribune-v59-3`, `BUILD_V = "v59.3"`.
+
+## 00000m. (2026-09-27, night) V59.1 and V59.2, the ink print in the drafts
 
 **The owner's words.** On v59: "Omfg LOVE LOVE the new 'diamonds' to fill on the start screen widget. Can we bring
 that energy and style to the draft animation so it strongly matches that and the game by game screens energy?", then

@@ -4466,9 +4466,8 @@ function hotHand(e) {
   }));
 
   function dismiss() {
-    if (!G.recapPayload) prepareRecap(e, e.winTally, e.net, null);   // ceremony skipped before verdict -> stage the payload so the bundle can pop (no model call yet)
+    if (!G.recapPayload) prepareRecap(e, e.winTally, e.net, null);   // ceremony skipped before verdict -> stage the payload for the Tribune's door (no model call yet)
     if (ov.parentNode) ov.parentNode.removeChild(ov);
-    setTimeout(maybeShowRecap, 700);
   }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
@@ -5250,7 +5249,7 @@ function localArticle(p) {
 // so skipping the wrapped edition costs nothing. First writer wins, ensuring the
 // Heat Check verdict's post-boost totals beat the ceremony-skip fallback.
 function prepareRecap(e, finalWins, finalNet, hh) {
-  if (G.recapPayload) return;
+  if (G.recapPayload) return;   // first writer wins (a Heat Check's post-boost totals beat the plain verdict)
   G.recapPayload = buildRecapPayload(e, finalWins, finalNet, hh);
   G.recapWins = finalWins;
 }
@@ -5450,13 +5449,18 @@ function requestEdition() {
   }
 }
 
-// Post-Heat-Check path only: the spin ceremony already revealed the results, so
-// the paper follows it once, non-gated.
-function maybeShowRecap() {
-  if (!G.recapPayload || G.recapAuto || G.screen !== "results") return;
-  if (document.querySelector(".hh-overlay") || document.querySelector(".np-overlay")) return;
-  G.recapAuto = 1;
-  showNewspaper(false);
+// v59.3 (the owner: keep the Tribune, but only at the very bottom of the results, under RUN IT BACK; never a
+// gate, in any mode). One tap: the paper unfolds right away and works as always. Opening it is still the deliberate
+// act that requests the AI edition and publishes the article link.
+function openTribune() {
+  if (!G || G.screen !== "results" || MODE === "kaman") return;
+  if (!G.recapPayload) {
+    var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+    var hot = typeof G.hotNewNet === "number";
+    prepareRecap(e, hot ? G.hotWins : e.winTally, hot ? G.hotNewNet : e.net, null);
+  }
+  analyticsTrack("feature_select", Object.assign(analyticsRunSnapshot(), { surface: "results", action: "tribune" }));
+  showNewspaper(true);
 }
 
 function recapChip() {}   // removed: the newspaper is one-and-done now — no reopen chip after dismissal
@@ -5464,13 +5468,13 @@ function recapChip() {}   // removed: the newspaper is one-and-done now — no r
 var NP_TICK_HEAD = ["HOT OFF THE PRESS", "STOP THE PRESSES", "SETTING TYPE", "INK STILL DRYING"];
 var NP_TICK_ART = ["REWRITING THE LEDE", "CALLING THE COPY DESK", "TELETYPE INCOMING", "HOLDING PAGE ONE"];
 
-function showNewspaper(gate) {
+function showNewspaper(unfold) {
   if (!G.recapPayload) return;
   var chip = document.getElementById("npChip"); if (chip) chip.remove();
   if (document.querySelector(".np-overlay")) return;
   var wins = G.recapWins, losses = CFG.GAMES_IN_SEASON - wins;
 
-  var ov = document.createElement("div"); ov.className = "np-overlay" + (gate ? " np-gate" : "");
+  var ov = document.createElement("div"); ov.className = "np-overlay";
   var stage = document.createElement("div"); stage.className = "np-stage";
   var paper = document.createElement("div"); paper.className = "np-paper";
   paper.setAttribute("role", "dialog"); paper.setAttribute("aria-label", "Season recap");
@@ -5498,7 +5502,7 @@ function showNewspaper(gate) {
   paper.appendChild(acts);
 
   var under = div("np-under");
-  var skip = document.createElement("button"); skip.type = "button"; skip.className = "presti-spin np-underbtn"; skip.textContent = "SKIP TO RESULTS";
+  var skip = document.createElement("button"); skip.type = "button"; skip.className = "presti-spin np-underbtn"; skip.textContent = "BACK TO RESULTS";
   var again = document.createElement("button"); again.type = "button"; again.className = "presti-spin np-underbtn"; again.textContent = "RUN IT BACK";
   under.appendChild(skip); under.appendChild(again);
 
@@ -5602,14 +5606,13 @@ function showNewspaper(gate) {
     for (var i = 0; i < statusTimers.length; i++) clearTimeout(statusTimers[i]);
     statusTimers.length = 0;
   }
-  function close(fireworksOk) {
+  function close() {
     clearInterval(tickTimer);
     clearTimeout(autoT);
     clearTimeout(openingT);
     clearTimeout(fullReadTimer);
     clearStatusTimers();
     if (ov.parentNode) ov.parentNode.removeChild(ov);
-    if (fireworksOk && G.recapGateFw) { G.recapGateFw = 0; setTimeout(fireWL, 260); }
   }
   function setPressStatus(txt) {
     pressStatus.textContent = txt;
@@ -5724,6 +5727,7 @@ function showNewspaper(gate) {
     // bundle (or the READ STORY action). The old auto-unwrap at 82 wins was
     // removed here; no win count auto-opens or auto-publishes anymore.
   }
+  if (unfold && bundle) unwrap(false);   // v59.3: the door at the bottom of the results is the tap; the paper unfolds at once
 
   skip.addEventListener("click", function () {
     if (stage.classList.contains("np-opening")) return;
@@ -7149,7 +7153,9 @@ function renderShowdownDraft() {
   var pool = sdBuildPool();
   var avail = sdBoardOrder(pool.list.filter(function (p) { return SD.taken[p.name] == null; }));
   var takenList = SD.log.map(function (l) { return pool.byName.get(l.name); });
-  var keepTop = el("rdPool") ? el("rdPool").scrollTop : 0;   // re-renders keep the board where the thumb left it
+  // re-renders keep the board where the thumb left it; v59.3: pinned to the rows in view, so a player leaving the
+  // board above them (a rival's pick, yours) never shifts what you are reading
+  var oldPool = el("rdPool"), keepTop = oldPool ? oldPool.scrollTop : 0, anchors = oldPool && keepTop > 0 ? sdViewAnchors(oldPool) : [];
   app().innerHTML =
     '<div class="rd-head t-card"><div class="rd-headrow"><span class="rd-headl">' +
       '<button class="t-btn" data-kind="text" data-size="sm" id="rdExit" type="button">\u2039 Exit</button>' + sdSoundBtnHtml() + "</span>" +
@@ -7161,8 +7167,9 @@ function renderShowdownDraft() {
       (pool.real && takenList.length ? '<div class="rd-divider t-label">Taken</div>' : "") + takenList.map(sdBoardRowHtml).join("") + "</div>" +
     '<div class="tray"><div class="tray-inner" id="rdTray">' + sdTrayHtml() + "</div></div>";
   var poolEl = el("rdPool");
-  poolEl.scrollTop = keepTop;
   setTrayVar();
+  poolEl.scrollTop = keepTop;
+  if (anchors.length) sdKeepAnchors(poolEl, anchors);
   poolEl.addEventListener("click", function (ev) {
     if (ev.target.closest(".year-sel")) return;
     var btn = ev.target.closest(".player-row");
@@ -7174,9 +7181,10 @@ function renderShowdownDraft() {
       denyRow(btn, btn.getAttribute("title") || "");
       return;
     }
+    var prev = SD.selected;
     SD.selected = name;
     SD.watch = name;   // if a rival takes this before you do, that is a steal
-    renderShowdownDraft();
+    sdRepaintRows([prev, name]);   // v59.3: only the rows it touches, never the board
   });
   poolEl.addEventListener("change", function (ev) {
     var s = ev.target;
@@ -7185,7 +7193,7 @@ function renderShowdownDraft() {
     if (isNaN(season)) return;
     SD.yearByName[s.getAttribute("data-name")] = season;
     analyticsTrack("year_change", { surface: "redraft", player: s.getAttribute("data-name"), season: season, action: "season_menu" });
-    renderShowdownDraft();   // the board keeps its scroll (owner, 2026-08-07)
+    sdRepaintRows([s.getAttribute("data-name")]);   // v59.3: that row and the tray only; the board stays put
   });
   el("rdTray").addEventListener("click", function (ev) {
     var b = ev.target.closest(".rd-slotbtn");
@@ -7199,6 +7207,38 @@ function renderShowdownDraft() {
     document.body.classList.remove("drafting");
     renderIntro();
   });
+}
+/* v59.3 (the owner: "no menu abruptly jumping until a player's fully selected off the board"). Choosing a player or
+   his season repaints only the rows it touches and the tray: the board element, its scroll and an open season menu
+   stay exactly where they were. A full re-render (a pick takes a player off the board) re-pins the rows in view. */
+function sdRepaintRows(names) {
+  var pool = el("rdPool"), tray = el("rdTray");
+  if (!pool || !tray) { renderShowdownDraft(); return; }
+  var byName = sdBuildPool().byName, rows = pool.querySelectorAll(".player-row[data-name]");
+  for (var i = 0; i < rows.length; i++) {
+    var n = rows[i].getAttribute("data-name"), rec = names.indexOf(n) >= 0 ? byName.get(n) : null;
+    if (rec && SD.taken[n] == null) rows[i].outerHTML = sdBoardRowHtml(rec);
+  }
+  tray.innerHTML = sdTrayHtml();
+  setTrayVar();
+}
+function sdViewAnchors(pool) {   // the first few rows in view, and where each sat
+  var top = pool.getBoundingClientRect().top, rows = pool.querySelectorAll(".player-row[data-name]"), out = [];
+  for (var i = 0; i < rows.length && out.length < 4; i++) {
+    var b = rows[i].getBoundingClientRect();
+    if (b.bottom > top + 1) out.push({ name: rows[i].getAttribute("data-name"), dy: b.top - top });
+  }
+  return out;
+}
+function sdKeepAnchors(pool, anchors) {   // the first anchor still on the board goes back where it sat
+  var top = pool.getBoundingClientRect().top, rows = pool.querySelectorAll(".player-row[data-name]");
+  for (var a = 0; a < anchors.length; a++) {
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute("data-name") !== anchors[a].name) continue;
+      pool.scrollTop += (rows[i].getBoundingClientRect().top - top) - anchors[a].dy;
+      return;
+    }
+  }
 }
 function renderShowdownResults() {
   document.body.classList.remove("drafting");
@@ -7549,38 +7589,6 @@ function reelHash(str) {
 function reelCity(gameIdx) {
   return REEL_CITIES[reelHash(String(G.seed || "x") + "|" + gameIdx) % REEL_CITIES.length];
 }
-function reelLine(mi, mw, ml, runW, runL, firstLossIdx, monthStart) {
-  var mo = REEL_MONTHS[mi][0];
-  if (runL === 0) {
-    return ["Perfect through " + mo + ". " + runW + " and 0. History is watching.",
-      "Not a blemish yet. " + runW + " straight.",
-      "Still zero in the loss column. The building holds its breath.",
-      runW + " and 0. Vegas quietly pulls the line.",
-      "Undefeated through " + mo + ". Opposing coaches are burning film at 3am.",
-      "Zero losses. The beat writers are drafting history columns.",
-      runW + " straight. Every arena is a road playoff game now."][mi % 7];
-  }
-  if (firstLossIdx !== null && firstLossIdx >= monthStart && firstLossIdx < monthStart + mw + ml) {
-    return "The zero died in " + reelCity(firstLossIdx) + ", " + reelDate(firstLossIdx) + ".";
-  }
-  if (ml === 0) return ["A spotless " + mw + " and 0 month steadies the run.",
-    "Swept the month. " + mw + " and 0.",
-    mw + " and 0. The rotation is humming and everybody eats.",
-    "A perfect month. The film session is a highlight reel."][mi % 4];
-  if (ml >= 5) return [mw + " and " + ml + ". The schedule bit back.",
-    mw + " and " + ml + ". Somebody call a players-only meeting.",
-    mw + " and " + ml + ". The trainer's room is standing room only.",
-    mw + " and " + ml + ". Talk radio smells blood."][mi % 4];
-  if (ml >= 3) return [mw + " and " + ml + ". Heavy legs, short rotations, long month.",
-    mw + " and " + ml + ". Three time zones in nine nights will do that.",
-    mw + " and " + ml + ". The bench got exposed.",
-    mw + " and " + ml + ". Winnable ones got away late."][mi % 4];
-  return [mw + " and " + ml + ". The engine hums.",
-    mw + " and " + ml + ". Business handled, mostly.",
-    mw + " and " + ml + ". A professional month.",
-    mw + " and " + ml + ". Took care of the ones that mattered.",
-    mw + " and " + ml + ". One clunker, otherwise clean."][mi % 5];
-}
 function reelBlame(mi) {
   var pk = G.picks[reelHash(String(G.seed || "x") + "b" + mi) % G.picks.length];
   var nm = bbrefLastName(pk.row[IDX.name]) || pk.row[IDX.name];
@@ -7592,7 +7600,11 @@ function reelBlame(mi) {
     "threw the inbound to the wrong jersey", "forced a heat check down two",
     "lost his man on the last possession", "ate a poster and never recovered",
     "played matador defense in crunch time", "goaltended the dagger"];
-  return nm + " " + T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] + ".";
+  return { who: nm, what: T[reelHash(String(G.seed || "x") + "t" + mi) % T.length] };
+}
+function reelBlameHtml(mi) {
+  var b = reelBlame(mi);
+  return '<b class="reel-blame">' + esc(b.who) + "</b> " + esc(b.what) + ".";
 }
 /* v47.17 GATE FIX: arm the mid-season trigger from transparent checks only.
    The v47.15 gate ANDed the engine's hhEligible(G, e), whose semantics are
@@ -7872,7 +7884,6 @@ function showSeasonReel(season, e, done, midTrigger) {
   var midDone = (triggerIdx < 0);
 
   function schedule(fn, ms) { timers.push(setTimeout(fn, ms)); }
-  function firstLossNow() { for (var i = 0; i < season.games.length; i++) { if (!season.games[i]) return i; } return null; }
 
   function finishReel() {
     if (finished) return;
@@ -7905,7 +7916,9 @@ function showSeasonReel(season, e, done, midTrigger) {
     if (!row || row.__closed) return;
     row.__closed = true;
     var note = row.querySelector(".reel-note");
-    note.textContent = reelLine(mi, monthW, monthL, cw, clx, firstLossNow(), monthStart) + (monthL > 0 ? " " + reelBlame(mi) : "");
+    // v59.3 (the owner): the gap under the month's games carries the SWEPT stamp on a sweep, or one of the losses
+    // pinned on one of your five; the mood lines are gone
+    note.innerHTML = monthL === 0 && monthW > 0 ? '<span class="riso-swept mono">SWEPT</span>' : reelBlameHtml(mi);
     note.classList.remove("reel-note-pending");
     risoCall(function () { return riso.closeMonth(row, mi, monthW, monthL); });
     acts.scrollTop = acts.scrollHeight;
@@ -8215,10 +8228,10 @@ function mountResultsPrint(e, daily) {
   // with no official that day shares itself (v56), so it gets its poster.
   if (!daily || daily.isOfficial || (daily.archive && !daily.official)) setTimeout(function () { bakeResultsPoster(); }, 1800);
 }
-// v51: something sits over the print, or the Tribune is about to open over it (it
-// opens 700ms after the post-season Heat Check closes). The print never reveals then.
+// v51: something sits over the print (v59.3: the Tribune only ever opens from its door, so an open overlay is
+// the whole test). The print never reveals then.
 function resultsPrintCovered() {
-  return ballotOverlayUp() || !!(G && G.screen === "results" && G.recapPayload && !G.recapAuto);
+  return ballotOverlayUp();
 }
 // The reveal prints the LATEST season: a Heat Check save that landed while the page
 // was covered prints in with the rescued game, instead of re-printing unseen.
@@ -8403,6 +8416,7 @@ function renderResults(e, keepScroll) {
     '<section class="section" data-result-section="scoring_card">' + head("results", "Scoring Card", { cls: "rr-eyebrow" }) + ledger + "</section>" +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button>' +
       (daily && daily.archive ? '<button class="t-btn" data-kind="text" id="pastDailiesBtn" type="button">Daily archive</button>' : "") + '</div>' +
+    (MODE !== "kaman" ? '<div class="np-door-wrap"><button class="np-door tm-flat" id="tribuneBtn" type="button">See the Tribune article</button></div>' : "") +
     '<p class="run-status" id="runStatus"></p></div>';
 
   trackResultSections();
@@ -8423,6 +8437,7 @@ function renderResults(e, keepScroll) {
     newGame();
   });
   if (el("pastDailiesBtn")) el("pastDailiesBtn").addEventListener("click", function () { renderDailyArchive(); });
+  if (el("tribuneBtn")) el("tribuneBtn").addEventListener("click", openTribune);
   wireStartOver();
   wireDonate();
   el("shareTeamBtn").addEventListener("click", function () {
@@ -8467,10 +8482,8 @@ function renderResults(e, keepScroll) {
     shareOrCopy(shareText(e2), null, sTrack, resultsShareFiles());
   });
   setupGoatFireworks(e.winTally >= CFG.GAMES_IN_SEASON);
-  // The Tribune is now the season-end ceremony. The Heat Check lever survives ONLY
-  // when a real spin is pending (exactly 81 wins in Presti, or the QA flag) — its
-  // old non-clutch "reveal my results" role is the paper's job now. For gated
-  // papers the drafted-82-0 W/L burst waits for the paper to close.
+  // The Heat Check lever survives ONLY when a real spin is pending (exactly 81 wins in Presti, or the QA flag).
+  // v59.3: the Tribune is never a gate; its payload is staged here (no model call) for the door at the bottom.
   var clutchPending = hhEligible(e) && !G.hhMidUsed && (FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1);
   if (clutchPending) {
     hotHand(e);                       // recap request fires from verdict() with post-boost totals
@@ -8478,9 +8491,7 @@ function renderResults(e, keepScroll) {
     prepareRecap(e, e.winTally,
       G.hotMid ? G.hotNewNet : e.net,
       G.hotMid ? { player: shareSurname(G.picks[G.hotMid.hotIdx].row[IDX.name]), tier: G.hotMid.seg.label } : null);   // payload only; the model call fires on unwrap
-    G.recapAuto = 1;
-    G.recapGateFw = e.winTally >= CFG.GAMES_IN_SEASON ? 1 : 0;
-    showNewspaper(true);
+    if (e.winTally >= CFG.GAMES_IN_SEASON) setTimeout(fireWL, 700);   // a drafted 82-0's W/L burst (it used to wait for the paper)
   }
   window.scrollTo(0, scrollY);
 }
@@ -8863,7 +8874,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v59.2";
+var BUILD_V = "v59.3";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

@@ -1566,11 +1566,6 @@ button.more-modes:disabled,
   animation: np-dim 0.5s ease forwards;
 }
 @keyframes np-dim { to { background: rgb(var(--t-overlay-rgb) / .82); } }
-/* Gate papers cover unrevealed results: opaque from frame one, like hh-reveal. */
-.np-overlay.np-gate {
-  animation: none;
-  background: radial-gradient(120% 90% at 50% 32%, var(--t-overlay-warm), var(--t-overlay));
-}
 
 .np-paper {
   --np-ink: var(--t-news-ink);
@@ -3774,6 +3769,12 @@ body.gating .gate-back {
 .reel-mo-rec { font-family: var(--t-mono); font-size: 13px; color: var(--t-text-2); }
 .reel-note { margin: 3px 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--t-text-2); }
 .reel-note-pending { min-height: 18px; }
+/* v59.3 (the owner): the gap under each month's games holds a SWEPT stamp or one loss pinned on one of your five,
+   in a bigger face; the pending gap is the same height, so nothing shifts when it fills */
+.reel-act .reel-note { min-height: 26px; margin: 5px 0 10px; font-size: 15.5px; line-height: 1.35; color: var(--t-text-2); }
+.reel-act .reel-note-pending { min-height: 26px; }
+.reel-blame { font-weight: 700; color: var(--t-loss); }
+.reel-note .riso-swept { margin: 2px 0 0 2px; padding: 3px 10px 2px; border-width: 2.5px; font-size: 15px; letter-spacing: 0.16em; }
 .reel-final { padding: 14px 0 4px; text-align: center; animation: reelIn 0.45s ease-out; }
 .reel-final-rec { display: inline-block; font-family: var(--t-disp); font-weight: 700; font-size: 44px; letter-spacing: 0.04em; line-height: 1; color: var(--t-text); }
 .reel-final .reel-note { text-align: center; margin-top: 6px; }
@@ -4194,3 +4195,16 @@ button.hm-mode:disabled { cursor: progress; }
 }
 /* while the lineup sets (under a second), the board under it takes no taps */
 body.ink-finale #pool, body.ink-finale .pool-head { pointer-events: none; }
+
+/* ---------- v59.3 THE TRIBUNE'S DOOR (the owner: keep the Tribune, but only here, at the very bottom of the
+   results under RUN IT BACK, in its own color; never a gate in any mode). The paper's own stock and ink: newsprint
+   with the masthead's double rules, a stack of papers under it. One tap and the paper unfolds (app.js openTribune). */
+.np-door-wrap { display: flex; justify-content: center; margin: 22px 0 8px; }
+.np-door { appearance: none; -webkit-appearance: none; cursor: pointer; margin: 0; padding: 10px 22px 11px; border: 0; border-radius: 3px;
+  border-top: 4px double var(--t-news-ink); border-bottom: 4px double var(--t-news-ink);
+  background: var(--t-paper); color: var(--t-news-ink); font-family: var(--t-serif); font-size: 18px; font-weight: 700; letter-spacing: 0.01em;
+  box-shadow: 3px 3px 0 0 var(--t-paper-2), 6px 6px 0 0 var(--t-news-ink-2);
+  -webkit-tap-highlight-color: transparent; transition: transform 0.1s ease, box-shadow 0.1s ease; }
+.np-door:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 0 var(--t-paper-2), 3px 3px 0 0 var(--t-news-ink-2); }
+.np-door:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 4px; }
+@media (hover: hover) { .np-door:hover { filter: brightness(1.04); } }

@@ -573,11 +573,9 @@
       var S = row.__riso;
       if (S) S.canvas.setAttribute("aria-label", (MONTH_NAMES[mi] || "Month") + ": " + w + (w === 1 ? " win, " : " wins, ") + l + (l === 1 ? " loss" : " losses"));
       if (l === 0 && w > 0) {
-        var line = row.querySelector(".reel-mo-line");
-        if (!line) return;
-        var st = document.createElement("span");
-        st.className = "riso-swept mono"; st.textContent = "SWEPT";
-        line.appendChild(st);
+        // v59.3: app.js sets the stamp in the gap under the month's games; the reel only slams it down
+        var st = row.querySelector(".reel-note .riso-swept");
+        if (!st) return;
         jolt(st, [{ transform: "rotate(-9deg) scale(2.3)", opacity: 0 }, { transform: "rotate(-9deg) scale(1)", opacity: 1 }], { duration: 240 * SLOW, easing: "cubic-bezier(.2,1.4,.4,1)" });
       }
     }
