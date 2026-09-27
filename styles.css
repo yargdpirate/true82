@@ -2464,6 +2464,38 @@ main.content-page {
 @media (hover: hover) { .dt-act-share:hover { filter: brightness(1.08); } .dt-act-ghost:hover { color: var(--t-text); } }
 .daily-tile .dt-tomorrow { display: block; font-size: 0.6rem; letter-spacing: 0.12em;
   color: var(--t-accent); border-top: 1px solid var(--t-rule); margin-top: 10px; padding-top: 7px; }
+/* v58 THE DAILY in Heat Vice (owner: "make sure the dailies have the vice style too on the main page
+   button"). look.css paints every plaque as an outline card, so on the home page the day's hero read as a
+   plain box among neon buttons. Here it becomes the marquee: the neon buttons' own recipe (a pink tube on a
+   dark plate, standing on a pink then an aqua slab, the same glows) at card size, an aqua inner tube for the
+   double frame, the title lit like the buttons' type. Scoped to the neon look (the lab's other looks keep
+   their plaque); #app#app outranks look.css's doubled-id selectors. The draft strap, the variation insert
+   and the results card stay outline cards like every other card. */
+html[data-btn="neon"] #app#app .daily-tile.plq-frame {
+  border: 1.5px solid var(--t-accent); border-radius: var(--t-r-card); margin: 16px 0 18px;
+  background: radial-gradient(120% 95% at 50% 0%, rgb(var(--t-accent-rgb) / .16), transparent 62%),
+    linear-gradient(rgb(var(--t-overlay-rgb) / .5), rgb(var(--t-overlay-rgb) / .5)), var(--t-ground);
+  box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-offset),
+    0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 10px rgb(var(--t-accent-rgb) / .6), 0 0 26px -2px rgb(var(--t-accent-rgb) / .45),
+    inset 0 0 14px rgb(var(--t-accent-rgb) / .3);
+}
+html[data-btn="neon"] #app#app .daily-tile.plq-frame::before {
+  display: block; inset: 6px; border: 1px solid rgb(var(--t-offset-rgb) / .6); border-radius: calc(var(--t-r-card) - 6px);
+  box-shadow: 0 0 6px rgb(var(--t-offset-rgb) / .35), inset 0 0 6px rgb(var(--t-offset-rgb) / .2);
+}
+html[data-btn="neon"] #app#app .daily-tile.plq-frame::after { display: none; }
+html[data-btn="neon"] #app .daily-tile .dt-title { color: var(--t-accent-hi);
+  text-shadow: 0 0 6px rgb(var(--t-accent-rgb) / .85), 0 0 16px rgb(var(--t-accent-rgb) / .5); }
+html[data-btn="neon"] #app .daily-tile .dt-board { color: var(--t-text); text-shadow: 0 0 10px rgb(var(--t-offset-rgb) / .55); }
+html[data-btn="neon"] #app#app button.daily-tile.plq-frame:not(:disabled):active { transform: translateY(3px);
+  box-shadow: 0 0 0 0 var(--t-accent), 0 3px 0 0 var(--t-offset), 0 0 0 1px rgb(var(--t-accent-rgb) / .35),
+    0 0 12px rgb(var(--t-accent-rgb) / .7), 0 0 26px -2px rgb(var(--t-accent-rgb) / .5), inset 0 0 16px rgb(var(--t-accent-rgb) / .38); }
+@media (hover: hover) {
+  html[data-btn="neon"] #app#app button.daily-tile.plq-frame:hover { border-color: var(--t-accent-hi);
+    box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-offset), 0 0 0 1px rgb(var(--t-accent-rgb) / .4),
+      0 0 14px rgb(var(--t-accent-rgb) / .75), 0 0 32px -2px rgb(var(--t-accent-rgb) / .55), inset 0 0 16px rgb(var(--t-accent-rgb) / .38); }
+}
+@media (prefers-reduced-motion: reduce) { html[data-btn="neon"] #app#app button.daily-tile.plq-frame:not(:disabled):active { transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .player-row.deny, .tray.deny, #trayInner.deny { animation: none; }
   .daily-tile:active, .dt-act:active { transform: none; }
@@ -2568,6 +2600,7 @@ main.content-page {
   text-transform: uppercase;
 }
 .gate-play-btn:focus-visible { outline: 2px solid rgb(var(--t-accent-glow-rgb) / .95); outline-offset: 4px; }
+.gate-past { display: block; margin: 14px auto 0; }   /* v58: the archive's quiet second door, under PLAY IT */
 .gate .hh-lever { cursor: grab; }
 .gate .hh-lever-hint { display: none; }/* the caption above replaces it */   
 .gate .hh-lever:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 4px; border-radius: 8px; }
@@ -2806,6 +2839,40 @@ body.rules-open { overflow: hidden; }
 .rd-cname i { font-style: normal; color: var(--t-text-2); font-size: 14px; }
 .rd-slotrow { display: flex; gap: 8px; flex: 0 0 auto; }
 .rd-slotbtn { min-width: 52px; min-height: 44px; font-family: var(--t-disp); font-weight: 700; font-size: 19px; }
+/* v58 the real draft (PRO): each drafted player's real pick number, the greyed slots of picks who never
+   logged a playable season, and the dividers that make the board read like the night it happened */
+.rd-pk { flex: 0 0 auto; min-width: 22px; font-family: var(--t-mono); font-size: 12px; font-weight: 700; line-height: 1; text-align: right;
+  color: var(--t-offset); text-shadow: 0 0 8px rgb(var(--t-offset-rgb) / .45); }
+.pr-top .rd-pk + .pr-name { margin-right: auto; }
+.rd-ghost { opacity: 0.55; cursor: default; background: transparent; border-style: dashed; }
+.rd-ghost .pr-name { color: var(--t-text-2); }
+.rd-ghost .rd-pk { color: var(--t-text-3); text-shadow: none; }
+.rd-ghost .pr-pos { font-weight: 400; color: var(--t-text-3); }
+.rd-divider { padding: 12px 4px 5px; color: var(--t-label); }
+.rd-divider:first-child { padding-top: 2px; }
+/* v58 THE REDRAFTED in Heat Vice. look.css paints .t-card as an outline card, which left the two difficulty
+   doors reading as panels and the clock with no light. The doors take the neon buttons' recipe (a tube on a
+   dark plate over two slabs): PICKUP in the second tube (aqua), PRO in the main one (pink), the court art kept
+   underneath. The team on the clock lights its tube. #app#app outranks look.css's doubled-id selectors. */
+html[data-btn="neon"] #app#app .rd-diff[data-diff] { border: 1.5px solid var(--t-accent); border-radius: var(--t-r-card); margin-top: 14px;
+  box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-offset), 0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 10px rgb(var(--t-accent-rgb) / .55),
+    0 0 24px -2px rgb(var(--t-accent-rgb) / .4), inset 0 0 12px rgb(var(--t-accent-rgb) / .28); }
+html[data-btn="neon"] #app#app .rd-diff[data-diff]:active { transform: translateY(3px);
+  box-shadow: 0 0 0 0 var(--t-accent), 0 3px 0 0 var(--t-offset), 0 0 0 1px rgb(var(--t-accent-rgb) / .35), 0 0 12px rgb(var(--t-accent-rgb) / .65), inset 0 0 14px rgb(var(--t-accent-rgb) / .34); }
+html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"] { border-color: var(--t-offset);
+  background: radial-gradient(78% 120% at 6% -18%, rgb(var(--t-offset-rgb) / .3), rgb(var(--t-offset-rgb) / .06) 44%, transparent 70%), var(--t-ground);
+  box-shadow: 0 3px 0 0 var(--t-offset), 0 6px 0 0 var(--t-accent), 0 0 0 1px rgb(var(--t-offset-rgb) / .3), 0 0 10px rgb(var(--t-offset-rgb) / .55),
+    0 0 24px -2px rgb(var(--t-offset-rgb) / .4), inset 0 0 12px rgb(var(--t-offset-rgb) / .28); }
+html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"]:active {
+  box-shadow: 0 0 0 0 var(--t-offset), 0 3px 0 0 var(--t-accent), 0 0 0 1px rgb(var(--t-offset-rgb) / .35), 0 0 12px rgb(var(--t-offset-rgb) / .65), inset 0 0 14px rgb(var(--t-offset-rgb) / .34); }
+html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"] .rd-diff-name { color: var(--t-offset); text-shadow: 0 0 8px rgb(var(--t-offset-rgb) / .8), 0 0 22px rgb(var(--t-offset-rgb) / .4); }
+html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"]::before { border-color: rgb(var(--t-offset-rgb) / .28); }
+html[data-btn="neon"] #app#app .rd-team.is-clock { border-color: var(--t-accent);
+  box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .35), 0 0 10px rgb(var(--t-accent-rgb) / .6), 0 0 22px -2px rgb(var(--t-accent-rgb) / .4), inset 0 0 10px rgb(var(--t-accent-rgb) / .25); }
+html[data-btn="neon"] #app#app .rd-podium-row.is-you { border-color: var(--t-accent);
+  box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .35), 0 0 10px rgb(var(--t-accent-rgb) / .55), 0 0 22px -2px rgb(var(--t-accent-rgb) / .4), inset 0 0 10px rgb(var(--t-accent-rgb) / .22); }
+html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent-hi); text-shadow: 0 0 6px rgb(var(--t-accent-rgb) / .8); }
+@media (prefers-reduced-motion: reduce) { html[data-btn="neon"] #app#app .rd-diff[data-diff]:active { transform: none; } }
 /* the podium */
 .rd-stamp { margin: 6px 0 4px; }
 .rd-stamp.is-win { color: var(--t-hot); text-shadow: 0 0 18px rgb(var(--t-hot-rgb) / .45); }

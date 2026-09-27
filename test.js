@@ -312,6 +312,9 @@ if (fs.existsSync("site_data.json")) {
   vm.runInContext(code, rctx);
   rctx.initDataInput = JSON.parse(fs.readFileSync("site_data.json", "utf8"));
   vm.runInContext("initData(initDataInput); DATA_READY = true; sdDeriveClasses();", rctx);
+  // v58: PRO boards are the real drafts (redraft-drafts.json), as the browser loads them
+  rctx.draftsInput = JSON.parse(fs.readFileSync("redraft-drafts.json", "utf8")).c;
+  vm.runInContext("SD_DRAFTS = draftsInput;", rctx);
   const R = vm.runInContext(`(function () {
     var ids = sdOrderAll(), top = function (id) { SD_CLASS_ID = id; SD_DIFF = "pickup"; SD = null; return sdBoardOrder(sdBuildPool().list).map(function (p) { return p.name; }); };
     var names = function (id) { SD_CLASS_ID = id; SD_DIFF = "pro"; SD = null; return sdBuildPool().list.map(function (p) { return p.name; }); };
@@ -336,6 +339,37 @@ if (fs.existsSync("site_data.json")) {
   eq("redrafted: every class fields three legal teams in both difficulties", R.bad, []);
   eq("redrafted: a full computer draft always finishes with 2 G, 2 F, 1 C a team", R.drafts, [true, true, true, true, true]);
   eq("redrafted: class labels and blurbs have zero em-dashes (copy law)", R.em, false);
+  // v58 THE REAL DRAFT on PRO: the real first round in pick order (a pick with no playable season keeps its slot,
+  // greyed), then the productive later picks and the undrafted; PICKUP untouched; a failed fetch falls back.
+  const RD = vm.runInContext(`(function () {
+    function pro(id) { SD_CLASS_ID = id; SD_DIFF = "pro"; SD = null; return sdBuildPool(); }
+    function order(id) { return sdBoardOrder(pro(id).list).map(function (p) { return p.pick + ":" + p.name; }); }
+    var p84 = pro("1984"), p86 = pro("1986"), p14 = pro("2014"), p96 = pro("1996");
+    var sizes = sdOrderAll().every(function (id) {
+      var pool = pro(id), r1 = SD_DRAFTS[id].r1.length;
+      var inR1 = pool.list.filter(function (p) { return p.r1; }).length + pool.ghosts.length;
+      return pool.real === 1 && inR1 === r1 && pool.r1max === SD_DRAFTS[id].r1[r1 - 1][0];
+    });
+    var seasonsAfter = sdOrderAll().every(function (id) {
+      return pro(id).list.every(function (p) { return p.seasons.every(function (r) { return r[IDX.season] >= +id + 1 && r[IDX.mp] >= 785; }); });
+    });
+    var jok = p14.byName.get("Nikola Joki\\u0107"), ben = p96.byName.get("Ben Wallace");
+    SD_CLASS_ID = "2016"; SD_DIFF = "pickup"; SD = null; var pick16 = sdBuildPool();
+    var saved = SD_DRAFTS; SD_DRAFTS = false; SD_POOLS = {};
+    var fb = pro("1984"), fbOk = !fb.real && fb.list.length >= 15 && !sdClassViable(fb);
+    SD_DRAFTS = saved; SD_POOLS = {};
+    return { top84: order("1984").slice(0, 5), stockton: p84.byName.get("John Stockton") && p84.byName.get("John Stockton").pick,
+      bias: p86.ghosts.some(function (g) { return g.pick === 2 && g.name === "Len Bias"; }) && !p86.byName.has("Len Bias"),
+      jokic: jok ? [jok.pick, jok.r1] : null, ben: ben ? [ben.pick, ben.r1] : null, sizes: sizes, after: seasonsAfter,
+      pickup: !pick16.real && pick16.list.length === SD_CLASSES["2016"].names.length, fallback: fbOk };
+  })()`, rctx);
+  eq("redrafted PRO: the real 1984 draft in pick order (Olajuwon, Bowie, Jordan, Perkins, Barkley; Stockton at 16)",
+    [RD.top84, RD.stockton], [["1:Hakeem Olajuwon", "2:Sam Bowie", "3:Michael Jordan", "4:Sam Perkins", "5:Charles Barkley"], 16]);
+  eq("redrafted PRO: every class carries its whole real first round (greyed slots included), seasons only after the draft",
+    [RD.sizes, RD.after], [true, true]);
+  eq("redrafted PRO: a pick with no playable season keeps his slot greyed (Len Bias, 1986 #2)", RD.bias, true);
+  eq("redrafted PRO: the steals and the undrafted join (Jokic 2014 #41, Ben Wallace 1996 undrafted)", [RD.jokic, RD.ben], [[41, 0], [null, 0]]);
+  eq("redrafted PRO: PICKUP is unchanged, and a failed draft fetch falls back to the whole-class board", [RD.pickup, RD.fallback], [true, true]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

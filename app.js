@@ -3034,7 +3034,7 @@ function renderIntro() {
         '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
       thirdSlotHtml +
       (dailyBoard && dailyBoard.num > 1 ? '<button class="t-btn daily-past" data-kind="text" data-size="sm" id="dailyArchiveBtn" type="button">Past Dailies</button>' : "") +
-      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 The Redrafted \u00B7 redraft an NBA class</button>' +
+      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 Redrafted \u00B7 Redo real life drafts</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
       traitsModuleHtml() +
@@ -5987,11 +5987,90 @@ var SD_POOLS = {};     // classId -> built pool, so switching classes never serv
 var SD = null;         // the draft in flight; in-memory only
 var SD_TIMER = 0;      // pending AI beat, so back-out can cancel it
 
+/* v58 THE REAL DRAFT (PRO). The owner's brief: "PRO board: the full real
+   first round in real draft order, plus productive second-rounders and
+   undrafted players chosen by AI judgment. Show real pick numbers. ...
+   First-rounders with no eligible season can sit greyed out in their slot so
+   the order reads true. PICKUP unchanged." redraft-drafts.json holds, per
+   class, the real first round in pick order (r1) and the productive later
+   picks and undrafted players (x; pick 0 = undrafted). tools/redraft-drafts.py
+   builds it from Basketball-Reference's draft history, matched to the player
+   data by Basketball-Reference id, so a name two players share never crosses
+   (a third number is the height that picks the right one; -1 marks a pick
+   with no playable season). Only drafted seasons count: a class-Y board
+   offers seasons from Y+1 on. Loaded when the Redrafted opens; if it never
+   arrives, PRO falls back to the v55 whole-class board, so a failed fetch
+   never kills the mode. */
+var REDRAFT_DATA_V = "20260926-realdraft-v58";
+var SD_DRAFTS = null;      // { "1984": { r1: [...], x: [...] } } once loaded; false when the fetch failed
+var SD_DRAFTS_P = null;
+function sdLoadDrafts() {
+  if (SD_DRAFTS_P) return SD_DRAFTS_P;
+  if (typeof fetch !== "function") { SD_DRAFTS = false; SD_DRAFTS_P = Promise.resolve(); return SD_DRAFTS_P; }
+  SD_DRAFTS_P = fetch("/redraft-drafts.json?v=" + REDRAFT_DATA_V)
+    .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+    .then(function (d) { SD_DRAFTS = (d && d.c) ? d.c : false; })
+    .catch(function () {
+      SD_DRAFTS = false;
+      try { console.info("[redraft] the real draft data did not load; PRO uses the whole-class board"); } catch (e) {}
+    });
+  return SD_DRAFTS_P;
+}
+function sdRealDraft(id, diff) {
+  return diff === "pro" && SD_DRAFTS && SD_DRAFTS[id] ? SD_DRAFTS[id] : null;
+}
+function sdBuildRealPool(id, real) {
+  var Y = +id, want = {}, r1max = 0;
+  var entries = real.r1.map(function (a) { return { pick: a[0], name: a[1], ht: a[2], r1: 1 }; })
+    .concat(real.x.map(function (a) { return { pick: a[0] || null, name: a[1], ht: a[2], r1: 0 }; }));
+  entries.forEach(function (en) {
+    if (en.r1) r1max = Math.max(r1max, en.pick);
+    en.seasons = []; en.seen = {};
+    if (en.ht !== -1) (want[en.name] = want[en.name] || []).push(en);
+  });
+  POOL_YEARS.forEach(function (cell) {
+    cell.forEach(function (rows, name) {
+      var ens = want[name];
+      if (!ens) return;
+      for (var k = 0; k < rows.length; k++) {
+        var r = rows[k];
+        if (r[IDX.mp] < 785 || r[IDX.season] < Y + 1) continue;   // the usual floor, and only seasons after this draft
+        for (var e = 0; e < ens.length; e++) {
+          var en = ens[e], sk = r[IDX.season] + "|" + r[IDX.team];
+          if (en.ht != null && r[IDX.ht] !== en.ht) continue;      // two players, one name: the height says which
+          if (en.seen[sk]) continue;
+          en.seen[sk] = 1;
+          en.seasons.push(r);
+        }
+      }
+    });
+  });
+  var list = [], ghosts = [], byName = new Map();
+  entries.forEach(function (en) {
+    if (!en.seasons.length || byName.has(en.name)) {
+      if (en.r1) ghosts.push({ pick: en.pick, name: en.name });   // the slot stays, greyed, so the order reads true
+      return;
+    }
+    en.seasons.sort(function (a, b) { return (a[IDX.season] - b[IDX.season]) || cmpName(a, b); });
+    var best = en.seasons[0], bset = {}, pm = 0;
+    en.seasons.forEach(function (r) {
+      if (valueOf(r) > valueOf(best)) best = r;
+      sdRowBuckets(r).forEach(function (b) { bset[b] = 1; });
+      if ((r[IDX.mp] || 0) > pm) pm = r[IDX.mp] || 0;
+    });
+    var rec = { name: en.name, seasons: en.seasons, best: best, buckets: Object.keys(bset), peakMp: pm, pick: en.pick, r1: en.r1 };
+    list.push(rec);
+    byName.set(rec.name, rec);
+  });
+  return { list: list, byName: byName, missing: [], ghosts: ghosts, real: 1, r1max: r1max };
+}
 function sdBuildPool() {
   var id = SD_CLASS_ID;
   var diff = (SD && SD.diff) || SD_DIFF || "pro";
-  var key = id + "|" + diff;
+  var real = (SD && SD.real === 0) ? null : sdRealDraft(id, diff);   // a live draft keeps the board it started on
+  var key = id + "|" + diff + (real ? "|real" : "");
   if (SD_POOLS[key]) return SD_POOLS[key];
+  if (real) return (SD_POOLS[key] = sdBuildRealPool(id, real));
   var entries = diff === "pro" && SD_CLASSES[id].deep
     ? SD_CLASSES[id].names.concat(SD_CLASSES[id].deep)
     : SD_CLASSES[id].names;
@@ -6056,6 +6135,7 @@ function sdFresh() {
     cls: SD_CLASS_ID, seats: seats, seq: seq, at: 0,
     rosters: [[], [], []],          // per GM: [{row, slot}]
     diff: SD_DIFF || "pro",         // difficulty snapshot, like cls: a live draft never changes rules
+    real: sdRealDraft(SD_CLASS_ID, SD_DIFF || "pro") ? 1 : 0,   // v58: which PRO board it started on (the real draft, or the fallback)
     taken: {},                      // name -> gm index
     yearByName: {},                 // the human's season choices
     randByName: {},                 // the human's random default season per player, stable per draft
@@ -6374,12 +6454,17 @@ function sdOrderStripHtml() {
   return '<div class="rd-strip t-meta"><span>PICK ' + pos + " OF " + total + " \u00B7 ROUND " + round + (round % 2 === 0 ? " \u21A9" : "") + "</span>" +
     "<span>" + names + " \u00B7 snake</span></div>";
 }
+// v58: on the real-draft board every drafted player wears his real pick number.
+function sdPickBadgeHtml(p) {
+  return p && p.pick != null && sdBuildPool().real ? '<span class="rd-pk t-num" aria-label="Pick ' + p.pick + '">' + p.pick + "</span>" : "";
+}
+function sdUndraftedTag(p) { return p && p.pick == null && sdBuildPool().real ? " \u00B7 undrafted" : ""; }
 function sdBoardRowHtml(p) {
   var gi = sdCurrentGm(), takenBy = SD.taken[p.name];
   if (takenBy != null) {
     var pk = null;
     for (var i = 0; i < SD.log.length; i++) if (SD.log[i].name === p.name) pk = SD.log[i];
-    return '<div class="player-row off rd-taken"><span class="pr-top"><span class="pr-name">' + esc(p.name) + "</span>" +
+    return '<div class="player-row off rd-taken"><span class="pr-top">' + sdPickBadgeHtml(p) + '<span class="pr-name">' + esc(p.name) + "</span>" +
       '<span class="pr-pos">TAKEN \u00B7 ' + (SD_GMS[takenBy].ai ? SD_GMS[takenBy].name : "YOU") + "</span></span>" +
       '<span class="pr-sub">' + (pk ? shortSeason(pk.s) + " at " + pk.slot : "") + "</span></div>";
   }
@@ -6388,9 +6473,38 @@ function sdBoardRowHtml(p) {
   var sel = SD.selected === p.name && open;
   return '<div class="player-row' + (sel ? " sel" : "") + (open ? "" : " off") + '" role="button" tabindex="0" data-name="' + esc(p.name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
-    '<span class="pr-top"><span class="pr-name">' + esc(p.name) + "</span>" +
-    '<span class="pr-pos">' + sdPosTag(row) + (block ? " \u00B7 " + block.tag : "") + "</span></span>" +
+    '<span class="pr-top">' + sdPickBadgeHtml(p) + '<span class="pr-name">' + esc(p.name) + "</span>" +
+    '<span class="pr-pos">' + sdPosTag(row) + sdUndraftedTag(p) + (block ? " \u00B7 " + block.tag : "") + "</span></span>" +
     '<span class="pr-sub">' + sdYearControlHtml(p, row) + "</span></div>";
+}
+// A first-round pick with no playable season keeps his slot, greyed, so the order reads true.
+var SD_GHOST_WHY = "He never logged a season of 785 minutes, the bar every mode uses, so he cannot be drafted here.";
+function sdGhostRowHtml(g) {
+  return '<div class="player-row off rd-ghost" aria-disabled="true" title="' + esc(SD_GHOST_WHY) + '">' +
+    '<span class="pr-top"><span class="rd-pk t-num" aria-label="Pick ' + g.pick + '">' + g.pick + '</span><span class="pr-name">' + esc(g.name) + "</span>" +
+    '<span class="pr-pos">no playable season</span></span></div>';
+}
+/* The board as rows. PICKUP and the fallback board: the player rows in board
+   order. The real draft: the first round in pick order with its greyed slots
+   in place, then a divider, then the later picks by pick and the undrafted. */
+function sdBoardRowsHtml(pool, avail) {
+  if (!pool.real) return avail.map(sdBoardRowHtml).join("");
+  var items = avail.map(function (p) { return { p: p, pick: p.pick }; });
+  (pool.ghosts || []).forEach(function (g) { items.push({ g: g, pick: g.pick }); });
+  items.sort(function (a, b) {
+    if (a.pick != null && b.pick != null) return a.pick - b.pick;
+    if ((a.pick != null) !== (b.pick != null)) return a.pick != null ? -1 : 1;
+    return avail.indexOf(a.p) - avail.indexOf(b.p);     // the undrafted keep the board order (minutes, then name)
+  });
+  var h = '<div class="rd-divider t-label">First round</div>', later = false;
+  items.forEach(function (it) {
+    if (!later && (it.pick == null || it.pick > pool.r1max)) {
+      later = true;
+      h += '<div class="rd-divider t-label">Later picks and undrafted</div>';
+    }
+    h += it.g ? sdGhostRowHtml(it.g) : sdBoardRowHtml(it.p);
+  });
+  return h;
 }
 function sdYearControlHtml(p, row) {
   var curTxt = shortSeason(row[IDX.season]) + " " + esc(row[IDX.team]);
@@ -6435,7 +6549,8 @@ function renderShowdownDraft() {
       sdOrderStripHtml() +
     "</div>" +
     '<div class="rd-board">' + [0, 1, 2].map(function (k) { return sdRosterCardHtml(SD.seats[k]); }).join("") + "</div>" +
-    '<div class="pool rd-pool" id="rdPool">' + avail.map(sdBoardRowHtml).join("") + takenList.map(sdBoardRowHtml).join("") + "</div>" +
+    '<div class="pool rd-pool" id="rdPool">' + sdBoardRowsHtml(pool, avail) +
+      (pool.real && takenList.length ? '<div class="rd-divider t-label">Taken</div>' : "") + takenList.map(sdBoardRowHtml).join("") + "</div>" +
     '<div class="tray"><div class="tray-inner" id="rdTray">' + sdTrayHtml() + "</div></div>";
   var poolEl = el("rdPool");
   poolEl.scrollTop = keepTop;
@@ -6444,6 +6559,7 @@ function renderShowdownDraft() {
     if (ev.target.closest(".year-sel")) return;
     var btn = ev.target.closest(".player-row");
     if (!btn) return;
+    if (btn.classList.contains("rd-ghost")) { denyRow(btn, SD_GHOST_WHY); return; }   // a greyed slot: say why, nothing to pick
     var name = btn.getAttribute("data-name");
     if (btn.classList.contains("off")) {
       analyticsTrack("showdown_state", { surface: "redraft", action: "pick_denied", mode: "showdown", player: name || "", source: btn.getAttribute("title") || "taken" });
@@ -6554,9 +6670,9 @@ function renderShowdownDifficulty() {
     pickup: { sub: "Peak seasons of the best players.",
               fine: "Roll up. Everyone arrives in their prime. The short board.",
               chips: ["The headliners", "Peaks pre-set"] },
-    pro: { sub: "Pick the season. Draft the whole class.",
-           fine: "Second rounders. Undrafteds. Seasons come randomized. Prove you know.",
-           chips: ["Full class", "Seasons randomized"] },
+    pro: { sub: "The real draft, pick by pick.",
+           fine: "The whole first round in its real order, busts included, then the steals from later rounds and the undrafted. Seasons come randomized. Prove you know.",
+           chips: ["Real draft order", "Seasons randomized"] },
     foot: "Change it any time from the class gate.",
     onPick: function (diff) { SD_DIFF = diff; renderShowdownGate(); },
     onBack: function () { renderIntro(); }
@@ -6630,6 +6746,12 @@ function renderShowdownGate(silent) {
   el("rdBack").addEventListener("click", function () { renderIntro(); });
 }
 function sdStart() {
+  if ((SD_DIFF || "pro") === "pro" && SD_DRAFTS === null) {   // v58: the real draft is still on its way; wait (a failed fetch falls back)
+    var go = el("rdGo");
+    if (go) { go.disabled = true; go.textContent = "Loading the draft\u2026"; }
+    sdLoadDrafts().then(function () { if (el("rdGo")) sdStart(); });
+    return;
+  }
   sdDeriveClasses();
   var pool = sdBuildPool();
   if (pool.list.length < SD_CFG.rosterSize * 3 || sdClassViable(pool)) { renderShowdownGate(); return; }
@@ -6645,6 +6767,8 @@ function openRedrafted(via) {
   analyticsTrack("mode_select", { mode: "showdown", surface: via || "home", action: "redraft" });
   SD_DIFF = sdDiffRemembered();
   renderShowdownGate();
+  // v58: fetch the real draft now; when it lands, a PRO gate still on screen recounts its board
+  sdLoadDrafts().then(function () { if (el("rdChips") && SD_DIFF === "pro" && !SD) renderShowdownGate(true); });
 }
 
 function showResults() {
@@ -8002,10 +8126,16 @@ function renderDailyGate(board, target, variantTag, opts) {
         ballLeverHtml("gateLever", "gateArm", "Drag the basketball down through the hoop to start The Daily") +
         '<button class="gate-play-btn presti-spin" id="gatePlayBtn" type="button" aria-label="Start The Daily without using the dunk interaction">PLAY IT</button>' +
       '</div>' +
+      // v58: the archive's second door, quiet, under today's start (the home page keeps the first)
+      (!archive && board.num > 1 ? '<button class="t-btn gate-past" data-kind="text" data-size="sm" id="gatePastBtn" type="button">Past Dailies</button>' : "") +
     '</section>';
   el("gateBack").addEventListener("click", function () {
     analyticsTrack("daily_gate_exit", { mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num, action: archive ? "archive_back" : "back" });
     if (archive) renderDailyArchive(); else renderIntro();
+  });
+  if (el("gatePastBtn")) el("gatePastBtn").addEventListener("click", function () {
+    analyticsTrack("feature_select", { surface: "daily_gate", action: "daily_archive" });
+    renderDailyArchive();
   });
   var gTip = el("gateTip");
   if (gTip) {
@@ -8122,7 +8252,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v57";
+var BUILD_V = "v58";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
