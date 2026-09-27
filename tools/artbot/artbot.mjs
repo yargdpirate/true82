@@ -33,6 +33,7 @@ await page.exposeFunction("__saveFrame", async (id, style, i, dataUrl) => {
   fs.writeFileSync(path.join(dir, "f" + String(i).padStart(4, "0") + ".png"), Buffer.from(dataUrl.split(",")[1], "base64"));
 });
 await page.goto(base + "artbot.html");
+if (process.env.DEBUG_HEAD) await page.evaluate(() => (window.DEBUG_HEAD = true));
 await page.waitForFunction(() => window.ARTBOT_READY, null, { timeout: 60000 }).catch(() => { console.log(errs.join("\n")); process.exit(1); });
 if (!ids.length) ids = await page.evaluate(() => window.ARTBOT.SCENES);
 const gallery = fs.existsSync(path.join(here, "out", "gallery.json")) ? JSON.parse(fs.readFileSync(path.join(here, "out", "gallery.json"), "utf8")) : [];

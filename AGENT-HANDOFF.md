@@ -138,8 +138,22 @@ wristbands; the rival in road white), squared shoulders; the crossover as the ca
 image (a seamless 2.8 s loop, head-on); a hoop with a net that reacts; the slam's gather, throw-down, rim hang and
 landing flex; the block's defender aimed out from under the hoop at a rival going up for a tomahawk; the oop's lob,
 one-hand catch and flush. Riso, neon and chrono, 720 px. Published as version 2 of the same gallery (reel 1 folded
-underneath); his stars copy out as an `ART-BOT PICKS v2` block. Waiting on his picks; next, wiring the chosen
-clips behind the ceremony (key beats are at about 1.1 to 1.3 s, where the chime's last note lands).
+underneath); his stars copy out as an `ART-BOT PICKS v2` block.
+
+**2e. THE ART BOT, round 3 (2026-09-27).** His notes on reel 2 (full quotes in tools/artbot/README.md, "Round 3"):
+the crossover's body holds still with a fast combo (in front, between the legs, behind both legs) on the fingertips
+with a teal trail; the slam's hoop moved so the arm is extended at the apex; hands drop to the sides on landing; a
+celebration for every move; big stylized impacts; the block's shooter shorter and a quiet outline, the blocker
+leaping in from off the right of the frame; the oop two-handed (grab, then shove down); the collarbone "bowtie"
+smoothed; no numbers on jerseys; and "look at nba blocks and slam reference photos ... look up tomahawk". Done:
+reference photos studied (Kyrie combos, LeBron and Ja Morant tomahawks, blocks at the rim, his Butler/Giannis/Luka
+celebration photos); four Mixamo celebrations downloaded with his OK (Roar, No, Shrugging, Taunt Flexing; into
+~/true82-moves-raw/); the slam is a one-hand tomahawk ending in the Roar; the block ends in Mutombo's finger wag;
+the crossover in the Jordan shrug; the oop in the Luka jump (Joyful Jump). Every dunk and block gets slow motion,
+camera shake, a bending rim, a flash, a comic starburst, shockwaves, focus lines, sparks (lightning in neon). An
+engine bug found on the way: three.js's mixer skips unchanged joints, so changes on held poses accumulated; clips
+are now sampled by hand (`applyPlan`). Published as version 3 of the same gallery (reels 2 and 1 folded under);
+picks come back as `ART-BOT PICKS v3`. Next: his picks, then wiring the chosen clips behind the ceremony.
 
 **3. The 200 new Dailies (POOL3), merged (`1ea7813`, merge `3d6e519`), then v58.4.** 200 boards, one a day from
 Monday 2026-09-28 (#79) through Thursday 2027-04-15 (#278), then looping (day index modulo 200). #1 to #77 stay

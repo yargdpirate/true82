@@ -25,12 +25,12 @@ theme"); and "we have to put these characters in basketball clothes because righ
 - **The hoop** (`makeHoop`): rim, neck, glass (drawn as glass: it never hides what is behind it), its edge and the
   shooter's square, and a net of 12 cords that opens around the ball, drags down as it goes through and snaps back.
 - **The ball**: seams (an ID texture) and spin from its travel; flights are gravity (`lob`, `loose` with bounces).
-- **The scenes** (`SCENES`): `crossover` (dribble.fbx: four dribbles a loop, right, crossover, left, between the
-  legs; loops seamlessly), `slam` (jump-attack.fbx: gather at the chest, cock back, throw down, hang, land flexing),
-  `block` (defender.fbx and a rival on jump-attack.fbx with the jump cut down; the defender's leap aimed at the rival
-  out from under the hoop, his left hand onto the ball), `oop` (football-catch.fbx, the jump stretched: the lob,
-  one hand, the flush, the hang). Each has a key time (the big beat, about 1.1 to 1.3 s: where the draft chime's
-  last note lands) and a camera that follows the play.
+- **The scenes** (`SCENES`, round 3): `crossover` (dribble.fbx held at its low point, squared to the camera; both
+  arms driven through a combo, the finger pads on the ball: `handOn`; then the shrug), `slam` (jump-attack.fbx, a
+  one-hand tomahawk; the rim placed off the shoulder at the apex; then the Roar), `block` (defender.fbx flown in from
+  off the frame, straight up at the ball; a quiet shooter on jump-attack.fbx at 90%; then the wag), `oop`
+  (football-catch.fbx, the jump stretched: the two-hand grab and shove; then the Luka jump). Each has a key time and
+  a camera that follows the play and then frames the celebration.
 - **The passes**: an ID pass at twice the size without antialiasing (16 layers: skin, kit, shorts, trim and number
   per player, the ball and its seams, rim, net, glass, marks), averaged down to per-layer coverage, plus a lit
   shade pass.
@@ -38,6 +38,36 @@ theme"); and "we have to put these characters in basketball clothes because righ
   misregistration, drawn on twos, a spotlight of dots on the floor, a starburst on the key beat), `neon` (every
   layer's outline a tube in its ink, trails behind whatever moves), `chrono` (a chronophotograph: every third moment
   stays on the plate, the current one printed opaque in pure inks, the ball's dotted gold path).
+
+## Round 3 (2026-09-27): the owner's notes on reel 2, and what changed
+His words: the crossover "should probably not rotate. his body hold still and have him dribble between his legs,
+behind both his legs, and in front of his legs ... rapidly with a stylized teal trail", the ball "on his
+fingertips"; the slam's hoop "shifted right" with the "arms extended at the apex", hands dropping "to his sides then
+... a celebration", and "crazy stylized visual flair" when the ball goes in; the blocked player "shorter and
+deemphasized ... only a quiet outline", the blocker leaping in "from out of the right side of the frame"; the
+alley-oop with "two hands ... grab the ball briefly and shove it downwards and in"; "unique post-move celebration
+animations for each"; the collarbone "bowtie" smoothed; "don't include typography on the jerseys"; and "look at nba
+blocks and slam reference photos ... look up tomahawk". He sent Butler, Giannis and Luka celebration photos.
+- **References used** (viewed, not saved): Kyrie Irving combos and behind-the-back drills (a wide low stance, head
+  up, the hand on top of a low pound, the off arm out); LeBron's and Ja Morant's tomahawks (cocked high behind the
+  head on an extended arm at the top of the jump, chopped over the front of the rim, the arm extended over the
+  cylinder; the rim in front of the shoulder, a little under it); NBA blocks at the rim (at or above rim height, a
+  foot or two in front of it, the blocker straight up).
+- **Celebrations from Mixamo** (downloaded with the owner's OK, animation only, into `~/true82-moves-raw/`):
+  Shrugging (the crossover, the Jordan shrug), Roar (the slam), No (the block, raised to Mutombo's finger wag beside
+  the head), Taunt: Flexing Muscles (a spare); the alley-oop uses Joyful Jump (the Luka, arms spread).
+  `thenCelebrate` hands the move to its celebration: a crossfade, the clip moved to where he landed and turned to
+  face the camera (`rebase`).
+- **Clips are sampled by hand** (`bindClip`, `applyPlan`): three.js's mixer skips a joint whose value did not change,
+  so changes laid on a held pose piled up from frame to frame (the frozen dribble stance sank). Now every joint is
+  written every frame, and several clips blend joint by joint.
+- **Impacts** (`sc.impacts`, `sc.slowmo`): slow motion (0.3x for a fifth of a second), a camera shake, the rim
+  bending down and shuddering (it hinges at the back, `hoop.rimG`), and in each style a flash, a comic starburst,
+  two shockwaves, manga focus lines and sparks (lightning in neon; the moment burned into the chrono plate). Effects
+  age in real time, so they hit at full speed while the picture runs slow.
+- **The trail**: the ball's last tenth of a second as a tapered teal ribbon, in the speed moments only
+  (`sc.trailWin`; always on the crossover).
+- **Quiet figures** (`fig.quiet`): the block's shooter prints as a thin outline in every style.
 
 ## Run it
 ```
@@ -53,11 +83,12 @@ override them). All four scenes in three styles take about 3 minutes at 720 px.
 ## Sources
 Adobe Mixamo motion capture: royalty-free for personal, commercial and non-profit projects per Adobe's Mixamo FAQ,
 no credit required. The raw FBX files may not be redistributed, so they live in `~/true82-moves-raw/` (dribble,
-defender, jump-attack, football-catch, joyful-jump). Mixamo needs a personal Adobe ID (company-managed ones are
+defender, jump-attack, football-catch, joyful-jump; round 3 added roar, no-finger-wag, shrugging, taunt-flexing). Mixamo needs a personal Adobe ID (company-managed ones are
 refused); in the app's browser pane its Download button does nothing, so exports went through Mixamo's own export
 API from the signed-in page. Mixamo has no jump shot or dunk.
 
 ## The reels
-Both live in the private gallery "Draft Night Moves" (https://claude.ai/artifact/XMPeniEFZARAtwz7QsPRSJ): reel 2
-first (four moves, three styles, stars that copy out as an `ART-BOT PICKS v2` block), reel 1 folded underneath
-for comparison. Reel 1's engine (six styles on the bare mannequin, `moves.json`) is in git history before round 2.
+All live in the private gallery "Draft Night Moves" (https://claude.ai/artifact/XMPeniEFZARAtwz7QsPRSJ): reel 3
+first (four moves, three styles, stars that copy out as an `ART-BOT PICKS v3` block), reels 2 and 1 folded
+underneath for comparison. Reel 1's engine (six styles on the bare mannequin, `moves.json`) and reel 2's are in git
+history.
