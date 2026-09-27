@@ -6408,7 +6408,7 @@ function sdAiChoose(gi) {
   var band = cands.filter(function (c) { return cands[0].score - c.score <= jit; });
   return band[Math.floor(Math.random() * band.length)] || cands[0];
 }
-function sdCurrentGm() { return SD.done ? -1 : SD.seq[SD.at]; }
+function sdCurrentGm() { return SD.done || SD.at >= SD.seq.length ? -1 : SD.seq[SD.at]; }
 function sdAdvance() {
   if (SD.at >= SD.seq.length) { sdFinish(); return; }
   var gi = SD.seq[SD.at];
@@ -6426,7 +6426,7 @@ function sdAdvance() {
       player: c.name, season: c.row[IDX.season], slot: c.b, ordinal: SD.at + 1, source: SD_GMS[gi].name
     });
     SD.at++;
-    SD.flash = { gi: gi, name: c.name, s: c.row[IDX.season], stolen: stolen };
+    SD.flash = { gi: gi, name: c.name, s: c.row[IDX.season], stolen: stolen, until: Date.now() + 650 };
     sdAdvance();
   }, 850);
 }
@@ -6448,9 +6448,228 @@ function sdHumanPick(bucket) {
   // threat is over; if you took someone ELSE, he stays watched, and a rival
   // grabbing him before your next turn is the steal the mode is built around.
   if (SD.watch === SD.selected) SD.watch = null;
+  var name = SD.selected, rec = sdBuildPool().byName.get(name), pool = sdBuildPool();
+  var info = { gi: gi, name: name, season: row[IDX.season], team: row[IDX.team], slot: bucket, ordinal: SD.at + 1, total: SD.seq.length,
+    label: SD_CLASSES[SD.cls].label.charAt(0) + SD_CLASSES[SD.cls].label.slice(1).toLowerCase(),
+    real: !!pool.real || (rec && rec.pick != null), pick: rec ? rec.pick : null };
   SD.selected = null; SD.flash = null;
   SD.at++;
-  sdAdvance();
+  if (SD.at < SD.seq.length && SD.seq[SD.at] === gi) {   // the first half of a snake double: land quietly, the show waits for the second
+    SD.pendingShow = info;
+    SD.landing = { gi: gi, names: [name], until: Date.now() + 700 };
+    buzz(15);
+    sdAdvance();
+    return;
+  }
+  var picks = SD.pendingShow ? [SD.pendingShow, info] : [info];
+  SD.pendingShow = null;
+  renderShowdownDraft();   // v58: the board under the show already holds them, so each name has a slot to fly into
+  sdPickShow(picks, function () { if (SD && !SD.done) sdAdvance(); });
+}
+/* ---------- v58 THE PICK IS IN (the owner: "I want when the player lands in your roster, or when you click
+   the button, it's like exciting, it's momentous") ----------
+   Your pick is draft night, about two seconds, tap anywhere to skip to the landing: the room goes dark over
+   a moving neon grid, two spotlights sweep, THE PICK IS IN, then the name slams down and lights like a neon
+   sign (a shockwave ring, flashbulbs, pink, aqua and gold confetti, one buzz), the season and the slot, and
+   where he really went when the board knows; then the name flies into your roster and the slot punches in.
+   Cosmetic only: the pick is applied before the show starts, and only the rival's clock waits for it. A
+   rival's pick flashes its slot instead (no overlay), so the board stays quick. */
+var SD_SHOW = null;
+function sdOrdinal(n) { var t = ["th", "st", "nd", "rd"], v = n % 100; return n + (t[(v - 20) % 10] || t[v] || t[0]); }
+/* THE DRAFT CHIME (the owner: "a recognizably 'store brand' version of the nba draft chime ... very reminiscent
+   while still being distinct"). Draft night in our own notes, synthesized with Web Audio (no files, nothing
+   borrowed): three bright FM bells climbing (A5, D6, A6, the last one ringing into a hall) as THE PICK IS IN
+   lands, a riser into the slam, a low boom with a crash on it, a faint neon hum while the name catches, a whoosh
+   as it flies and a knock when it lands. Only ever after the player's own tap; mixed with their music where the
+   browser allows (audio session "ambient", which also stays quiet on a silenced phone); one tap mutes it
+   (remembered, t82_sound). A skip ramps the rest out and plays the knock. */
+var SD_AUDIO = null;
+function sdSoundOn() { try { return localStorage.getItem("t82_sound") !== "off"; } catch (e) { return true; } }
+function sdAudio() {
+  if (!sdSoundOn()) return null;
+  try { if (navigator.audioSession && navigator.audioSession.type !== "ambient") navigator.audioSession.type = "ambient"; } catch (e) {}
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (!SD_AUDIO) { try { SD_AUDIO = new AC(); } catch (e) { return null; } }
+  if (SD_AUDIO.state === "suspended") { try { SD_AUDIO.resume(); } catch (e) {} }
+  return SD_AUDIO;
+}
+// The draft header's mute: one tap, remembered; turning it on rings one soft bell so you know it works.
+function sdSoundBtnHtml() {
+  var on = sdSoundOn();
+  return '<button class="t-btn rd-sound" data-kind="text" data-size="sm" id="rdSound" type="button" aria-pressed="' + on + '" aria-label="Draft chime ' +
+    (on ? "on" : "off") + '">' + (on ? "\uD83D\uDD0A" : "\uD83D\uDD07") + "</button>";
+}
+function sdSoundToggle(btn) {
+  var on = !sdSoundOn();
+  try { localStorage.setItem("t82_sound", on ? "on" : "off"); } catch (e) {}
+  if (btn) { btn.outerHTML = sdSoundBtnHtml(); var b2 = el("rdSound"); if (b2) b2.addEventListener("click", function () { sdSoundToggle(this); }); }
+  analyticsTrack("showdown_state", { surface: "redraft", action: on ? "sound_on" : "sound_off", mode: "showdown" });
+  if (on) {
+    var ctx = sdAudio();
+    if (ctx) try {
+      var t = ctx.currentTime + 0.02, o = ctx.createOscillator(), m = ctx.createOscillator(), mg = ctx.createGain(), g = ctx.createGain();
+      o.frequency.value = 1760; m.frequency.value = 3529; mg.gain.setValueAtTime(3000, t); mg.gain.exponentialRampToValueAtTime(90, t + 0.5);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      m.connect(mg); mg.connect(o.frequency); o.connect(g); g.connect(ctx.destination); o.start(t); m.start(t); o.stop(t + 0.75); m.stop(t + 0.75);
+    } catch (e) {}
+  }
+}
+function sdNoise(ctx, secs) {
+  var n = Math.floor(ctx.sampleRate * secs), buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+  for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  var src = ctx.createBufferSource(); src.buffer = buf; return src;
+}
+// Schedules the show's sound from now; returns { skip } to cut it and knock. (ctx: an OfflineAudioContext for
+// tools/draft-chime.js, which renders this exact code to a WAV.)
+function sdShowSound(slamAt, flyAt, landAt, ctx) {
+  ctx = ctx || sdAudio();
+  if (!ctx) return null;
+  try {
+    var t0 = ctx.currentTime + 0.03, master = ctx.createGain(), comp = ctx.createDynamicsCompressor();
+    master.gain.value = 0.55; master.connect(comp); comp.connect(ctx.destination);
+    // the hall: one feedback echo through a lowpass, so the last bell rings like an arena
+    var send = ctx.createGain(), dl = ctx.createDelay(0.6), fb = ctx.createGain(), lp = ctx.createBiquadFilter();
+    send.gain.value = 0.38; dl.delayTime.value = 0.13; fb.gain.value = 0.36; lp.type = "lowpass"; lp.frequency.value = 3400;
+    send.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(master);
+    var env = function (g, t, peak, a, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); };
+    var bell = function (f, t, dur, vel) {
+      var car = ctx.createOscillator(), mod = ctx.createOscillator(), mg = ctx.createGain(), g = ctx.createGain();
+      car.frequency.value = f; mod.frequency.value = f * 2.005;             // near-harmonic FM: a glassy chime
+      mg.gain.setValueAtTime(f * 2.4, t); mg.gain.exponentialRampToValueAtTime(f * 0.06, t + dur * 0.75);
+      env(g, t, vel, 0.005, dur);
+      mod.connect(mg); mg.connect(car.frequency); car.connect(g); g.connect(master); g.connect(send);
+      car.start(t); mod.start(t); car.stop(t + dur + 0.1); mod.stop(t + dur + 0.1);
+      var sh = ctx.createOscillator(), sg = ctx.createGain();                // the sparkle a twelfth up
+      sh.frequency.value = f * 3.01; env(sg, t, vel * 0.16, 0.004, dur * 0.45);
+      sh.connect(sg); sg.connect(master); sg.connect(send); sh.start(t); sh.stop(t + dur);
+    };
+    bell(880, t0, 0.55, 0.3); bell(1174.7, t0 + 0.12, 0.55, 0.3); bell(1760, t0 + 0.24, 1.9, 0.36);
+    var ts = t0 + slamAt;
+    // the riser into the slam
+    var rz = sdNoise(ctx, 0.5), rf = ctx.createBiquadFilter(), rg = ctx.createGain();
+    rf.type = "bandpass"; rf.Q.value = 1.4; rf.frequency.setValueAtTime(350, ts - 0.34); rf.frequency.exponentialRampToValueAtTime(3800, ts);
+    rg.gain.setValueAtTime(0.0001, ts - 0.34); rg.gain.exponentialRampToValueAtTime(0.16, ts - 0.02); rg.gain.exponentialRampToValueAtTime(0.0001, ts + 0.03);
+    rz.connect(rf); rf.connect(rg); rg.connect(master); rz.start(ts - 0.34); rz.stop(ts + 0.05);
+    // the slam: a boom that drops, and a short crash
+    var bo = ctx.createOscillator(), bg = ctx.createGain();
+    bo.frequency.setValueAtTime(120, ts); bo.frequency.exponentialRampToValueAtTime(38, ts + 0.32);
+    env(bg, ts, 0.9, 0.004, 0.5); bo.connect(bg); bg.connect(master); bo.start(ts); bo.stop(ts + 0.6);
+    var cz = sdNoise(ctx, 0.5), cf = ctx.createBiquadFilter(), cg = ctx.createGain();
+    cf.type = "highpass"; cf.frequency.value = 4200; env(cg, ts, 0.22, 0.003, 0.38);
+    cz.connect(cf); cf.connect(cg); cg.connect(master); cg.connect(send); cz.start(ts); cz.stop(ts + 0.45);
+    // the neon catching: a faint hum that stutters with the sign
+    var hm = ctx.createOscillator(), hf = ctx.createBiquadFilter(), hg = ctx.createGain();
+    hm.type = "sawtooth"; hm.frequency.value = 120; hf.type = "lowpass"; hf.frequency.value = 900;
+    var h = ts + 0.02;
+    hg.gain.setValueAtTime(0.0001, h); hg.gain.linearRampToValueAtTime(0.045, h + 0.02); hg.gain.setValueAtTime(0.008, h + 0.07);
+    hg.gain.setValueAtTime(0.04, h + 0.1); hg.gain.setValueAtTime(0.01, h + 0.17); hg.gain.setValueAtTime(0.035, h + 0.2);
+    hg.gain.linearRampToValueAtTime(0.0001, h + 0.55);
+    hm.connect(hf); hf.connect(hg); hg.connect(master); hm.start(h); hm.stop(h + 0.6);
+    // the flight and the landing
+    var tf = t0 + flyAt, wz = sdNoise(ctx, 0.45), wf = ctx.createBiquadFilter(), wg = ctx.createGain();
+    wf.type = "bandpass"; wf.Q.value = 1.1; wf.frequency.setValueAtTime(2600, tf); wf.frequency.exponentialRampToValueAtTime(420, tf + 0.36);
+    env(wg, tf, 0.24, 0.05, 0.32); wz.connect(wf); wf.connect(wg); wg.connect(master); wz.start(tf); wz.stop(tf + 0.42);
+    var knock = function (t) {
+      var ko = ctx.createOscillator(), kg = ctx.createGain(), out = ctx.createGain();
+      out.gain.value = 0.55; out.connect(comp);
+      ko.frequency.setValueAtTime(190, t); ko.frequency.exponentialRampToValueAtTime(85, t + 0.12);
+      env(kg, t, 0.8, 0.003, 0.16); ko.connect(kg); kg.connect(out); ko.start(t); ko.stop(t + 0.22);
+    };
+    knock(t0 + landAt);
+    return { skip: function () {
+      try {
+        var n = ctx.currentTime;
+        master.gain.cancelScheduledValues(n); master.gain.setValueAtTime(master.gain.value, n); master.gain.linearRampToValueAtTime(0.0001, n + 0.08);
+        if (n < t0 + landAt - 0.05) knock(n + 0.02);
+      } catch (e) {}
+    } };
+  } catch (e) { return null; }
+}
+/* The show. picks: one pick, or both halves of a snake double (the owner: "for double picks at the end of the
+   snake draft, do the ceremony animation sound just once after the second player"): THE PICKS ARE IN, both
+   names slam in turn, both fly home. */
+function sdPickShow(picks, done) {
+  if (SD_SHOW) sdPickShowEnd();   // never two at once
+  var two = picks.length > 1, last = picks[picks.length - 1];
+  var T = two ? { s1: 280, s2: 640, hit: 960, fly: 1980, end: 2400 } : { s1: 280, s2: 0, hit: 600, fly: 1560, end: 1960 };
+  var conf = "", bulbs = "", i;
+  for (i = 0; i < 30; i++) {
+    var a = (i / 30) * Math.PI * 2 + Math.random() * 0.35, r = 95 + Math.random() * 125;
+    conf += '<i class="c' + (i % 4) + '" style="--dx:' + Math.round(Math.cos(a) * r) + "px;--dy:" + Math.round(Math.sin(a) * r * 0.75 - 30) +
+      "px;--rot:" + Math.round(Math.random() * 720 - 360) + "deg;--dl:" + (Math.random() * 0.09).toFixed(2) + 's"></i>';
+  }
+  for (i = 0; i < 7; i++) {   // small and spread out: a press row, never a strobe
+    bulbs += '<i style="--fx:' + Math.round(8 + Math.random() * 84) + "%;--fy:" + Math.round(7 + Math.random() * 34) + "%;--fd:" + (0.03 + i * 0.12).toFixed(2) + 's"></i>';
+  }
+  var pickHtml = function (info, k) {
+    var slotWord = { G: "guard", F: "forward", C: "center" }[info.slot] || info.slot;
+    var real = info.real ? (info.pick ? "Real draft: " + sdOrdinal(info.pick) + " pick" : "Real draft: undrafted") : "";
+    return '<div class="rdp-pick p' + k + '"><div class="rdp-hit"><h2 class="rdp-name">' + esc(info.name) + "</h2></div>" +
+      '<p class="rdp-meta">' + esc(shortSeason(info.season) + " " + info.team) + " \u00B7 " + slotWord + "</p>" +
+      (real ? '<p class="rdp-real">' + esc(real) + "</p>" : "") + "</div>";
+  };
+  var ov = document.createElement("div");
+  ov.className = "rdp" + (two ? " two" : "");
+  ov.setAttribute("role", "status");
+  ov.setAttribute("aria-live", "assertive");
+  ov.innerHTML =
+    '<div class="rdp-floor" aria-hidden="true"></div>' +
+    '<div class="rdp-beams" aria-hidden="true"><i class="rdp-beam b1"></i><i class="rdp-beam b2"></i></div>' +
+    '<div class="rdp-bulbs" aria-hidden="true">' + bulbs + "</div>" +
+    '<div class="rdp-card">' +
+      '<p class="rdp-kick">' + (two ? "The picks are in" : "The pick is in") + "</p>" +
+      '<p class="rdp-with">' + (two ? "With the " + sdOrdinal(picks[0].ordinal) + " and " + sdOrdinal(last.ordinal) + " picks"
+        : "With the " + sdOrdinal(last.ordinal) + " pick of " + last.total) + " \u00B7 " + esc(last.label) + "</p>" +
+      '<div class="rdp-stage"><span class="rdp-ring" aria-hidden="true"></span><span class="rdp-conf" aria-hidden="true">' + conf + "</span>" +
+        picks.map(function (p, k) { return pickHtml(p, k + 1); }).join("") + "</div>" +
+      '<p class="rdp-skip">Tap to skip</p>' +
+    "</div>";
+  document.body.appendChild(ov);
+  var S = SD_SHOW = { ov: ov, timers: [], done: done, picks: picks, sound: null };
+  function at(ms, fn) { S.timers.push(setTimeout(function () { if (SD_SHOW === S) fn(); }, ms)); }
+  ov.addEventListener("click", function () { if (SD_SHOW === S) sdPickShowEnd(); });
+  void ov.offsetWidth;                  // commit the undarkened first frame so the room visibly goes dark
+  ov.classList.add("on");
+  if (reducedMotion()) { at(1100, sdPickShowEnd); return; }
+  S.sound = sdShowSound(T.hit / 1000, T.fly / 1000, T.end / 1000);   // the boom lands with the (last) name
+  at(T.s1, function () { ov.classList.add("s1"); });
+  if (two) at(T.s2, function () { ov.classList.add("s2"); });
+  at(T.hit, function () { ov.classList.add("hit"); buzz(35); });
+  at(T.fly, function () { sdPickShowFly(S); });
+  at(T.end, sdPickShowEnd);
+}
+// Each name (with its meta dropping away) flies from center stage into his slot on your roster card.
+function sdPickShowFly(S) {
+  S.ov.classList.add("fly");
+  var hits = S.ov.querySelectorAll(".rdp-hit");
+  S.picks.forEach(function (info, k) {
+    var hit = hits[k], name = hit && hit.querySelector(".rdp-name"), slot = sdLandingSlot(info);
+    if (!hit || !name || !slot) return;
+    var a = name.getBoundingClientRect(), b = slot.getBoundingClientRect();
+    var dx = (b.left + b.width / 2) - (a.left + a.width / 2), dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+    var sc = Math.max(0.1, Math.min(0.45, b.width / Math.max(1, a.width)));
+    hit.style.transform = "translate(" + Math.round(dx) + "px," + Math.round(dy) + "px) scale(" + sc.toFixed(3) + ")";
+  });
+}
+function sdLandingSlot(info) {
+  var slots = document.querySelectorAll('.rd-team[data-gi="' + info.gi + '"] .rd-slot[data-name]');
+  for (var i = 0; i < slots.length; i++) if (slots[i].getAttribute("data-name") === info.name) return slots[i];
+  return null;
+}
+// The landing: the show clears, the slot (or both) punches in (sdRosterCardHtml reads SD.landing), the rival's clock starts.
+function sdPickShowEnd() {
+  var S = SD_SHOW;
+  if (!S) return;
+  SD_SHOW = null;
+  S.timers.forEach(clearTimeout);
+  if (S.sound) S.sound.skip();
+  if (S.ov.parentNode) S.ov.parentNode.removeChild(S.ov);
+  if (SD && !SD.done) {
+    SD.landing = { gi: S.picks[0].gi, names: S.picks.map(function (p) { return p.name; }), until: Date.now() + 700 };
+    buzz(20);
+  }
+  if (S.done) S.done();
 }
 function denyTraySd(msg) {
   var inner = el("rdTray");
@@ -6525,15 +6744,18 @@ function sdRosterCardHtml(gi) {
   var gm = SD_GMS[gi], mine = !gm.ai, onClock = sdCurrentGm() === gi && !SD.done;
   var byBucket = { G: [], F: [], C: [] }, fill = { G: 0, F: 0, C: 0 }, slots = "";
   SD.rosters[gi].forEach(function (p) { byBucket[p.slot].push(p); });
+  var now = Date.now(), land = SD.landing && SD.landing.gi === gi && now < SD.landing.until ? SD.landing.names : null;
+  var fresh = SD.flash && SD.flash.gi === gi && now < (SD.flash.until || 0) ? SD.flash : null;
   Object.keys(SD_CFG.caps).forEach(function (b) {
     for (var i = 0; i < SD_CFG.caps[b]; i++) {
-      var p = byBucket[b][fill[b]++];
-      slots += '<span class="rd-slot' + (p ? " is-filled" : "") + '"><b>' + b + "</b>" +
+      var p = byBucket[b][fill[b]++], pn = p ? p.row[IDX.name] : null;
+      var fx = !p ? "" : land && land.indexOf(pn) >= 0 ? " is-landing" : fresh && pn === fresh.name ? " is-new" + (fresh.stolen ? " is-stolen" : "") : "";
+      slots += '<span class="rd-slot' + (p ? " is-filled" : "") + fx + '"' + (p ? ' data-name="' + esc(pn) + '"' : "") + "><b>" + b + "</b>" +
         (p ? '<span class="rd-slot-name">' + esc(bbrefLastName(p.row[IDX.name]) || p.row[IDX.name]) + "</span><i>" + shortSeason(p.row[IDX.season]) + "</i>" : '<span class="rd-slot-name">\u00B7\u00B7\u00B7</span>') +
         "</span>";
     }
   });
-  return '<div class="rd-team t-card' + (mine ? " is-you" : "") + (onClock ? " is-clock" : "") + '">' +
+  return '<div class="rd-team t-card' + (mine ? " is-you" : "") + (onClock ? " is-clock" : "") + (land ? " is-landed" : "") + '" data-gi="' + gi + '">' +
     '<span class="rd-gm">' + (mine ? "YOU" : gm.name) + "</span>" +
     '<span class="rd-otc">' + (onClock ? "ON THE CLOCK" : "") + "</span>" + slots + "</div>";
 }
@@ -6632,8 +6854,8 @@ function renderShowdownDraft() {
   var takenList = SD.log.map(function (l) { return pool.byName.get(l.name); });
   var keepTop = el("rdPool") ? el("rdPool").scrollTop : 0;   // re-renders keep the board where the thumb left it
   app().innerHTML =
-    '<div class="rd-head t-card"><div class="rd-headrow">' +
-      '<button class="t-btn" data-kind="text" data-size="sm" id="rdExit" type="button">\u2039 Exit</button>' +
+    '<div class="rd-head t-card"><div class="rd-headrow"><span class="rd-headl">' +
+      '<button class="t-btn" data-kind="text" data-size="sm" id="rdExit" type="button">\u2039 Exit</button>' + sdSoundBtnHtml() + "</span>" +
       '<span class="rd-mark">\uD83D\uDD01 ' + esc(SD_CLASSES[SD.cls].label) + ' <span class="t-meta">' + (SD.diff === "pickup" ? "PICKUP" : "PRO") + "</span></span></div>" +
       sdOrderStripHtml() +
     "</div>" +
@@ -6672,6 +6894,7 @@ function renderShowdownDraft() {
     var b = ev.target.closest(".rd-slotbtn");
     if (b && !b.disabled) sdHumanPick(b.getAttribute("data-slot"));
   });
+  el("rdSound").addEventListener("click", function () { sdSoundToggle(this); });
   el("rdExit").addEventListener("click", function () {
     if (SD_TIMER) { clearTimeout(SD_TIMER); SD_TIMER = 0; }
     analyticsTrack("showdown_state", { surface: "redraft", action: "abandon", mode: "showdown", ordinal: SD ? SD.at + 1 : 0 });
@@ -8367,7 +8590,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v58.1";
+var BUILD_V = "v58.2";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

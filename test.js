@@ -393,6 +393,19 @@ if (fs.existsSync("site_data.json")) {
     [FR.perm, FR.days], [true, ["1984", "2014", "1984", "2025"]]);
   eq("redrafted gate: every PRO class has a story line (no em dashes, one breath)", FR.whys, true);
   eq("redrafted gate: PICKUP's most fun drafts name only headliners on those boards", [FR.feats, FR.heads, FR.featEm], [8, true, false]);
+  // v58 THE PICK IS IN: the show's words, and the roster card's landing marks (the show itself is browser-only)
+  const PS = vm.runInContext(`(function () {
+    SD_CLASS_ID = "1984"; SD_DIFF = "pro"; SD = sdFresh();
+    var pool = sdBuildPool(), a = pool.byName.get("Michael Jordan"), b = pool.byName.get("John Stockton");
+    sdApplyPick(0, a.name, a.best, "G"); sdApplyPick(0, b.name, b.best, "G");
+    SD.landing = { gi: 0, names: [a.name, b.name], until: Date.now() + 5000 };
+    var card = sdRosterCardHtml(0), marks = (card.match(/is-landing/g) || []).length;
+    SD.landing = null;
+    return { ords: [1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 41, 57, 60, 112].map(sdOrdinal).join(" "), marks: marks,
+      named: card.indexOf('data-name="Michael Jordan"') >= 0 && card.indexOf('data-gi="0"') >= 0, quiet: sdRosterCardHtml(0).indexOf("is-landing") < 0 };
+  })()`, rctx);
+  eq("redrafted show: ordinals read right (the pick of 15, the real draft's pick)", PS.ords, "1st 2nd 3rd 4th 11th 12th 13th 21st 22nd 23rd 41st 57th 60th 112th");
+  eq("redrafted show: both halves of a snake double land together, once, in named slots", [PS.marks, PS.named, PS.quiet], [2, true, true]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
