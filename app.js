@@ -731,7 +731,7 @@ var _buttonStyleObserver = null;
 // as, not a full-width gold keycap louder than the ball lever.
 var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)" +
   ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done):not(.gate-back):not(.hh-charity)" +
-  ":not(.t-chip):not(.rd-diff):not(.da-row)";   // v55: a chip is never a keycap; the Redrafted's difficulty cards and the Daily archive's rows are cards
+  ":not(.t-chip):not(.rd-diff):not(.da-row):not(.rd-feat)";   // v55: a chip is never a keycap; the Redrafted's difficulty cards, its featured rows (v58) and the Daily archive's rows are cards
 function decorate3dButtons(root) {
   if (!root) return;
   function add(node) {
@@ -3033,10 +3033,12 @@ function renderIntro() {
         '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
         '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
       thirdSlotHtml +
-      (dailyBoard && dailyBoard.num > 1 ? '<button class="t-btn daily-past" data-kind="text" data-size="sm" id="dailyArchiveBtn" type="button">Past Dailies</button>' : "") +
       '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 Redrafted \u00B7 Redo\u00A0real\u00A0life\u00A0drafts</button>' +
       '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
       '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
+      // v58 (owner: the archive link "sucks so much front page space, gotta go below all the main mode
+      // buttons"): Past Dailies is the quiet line under the last mode, not a gap between the Daily and the Redrafted
+      (dailyBoard && dailyBoard.num > 1 ? '<button class="t-btn daily-past" data-kind="text" data-size="sm" id="dailyArchiveBtn" type="button">Past Dailies</button>' : "") +
       traitsModuleHtml() +
     "</section>";
   analyticsTrack("home_view", {
@@ -5830,6 +5832,93 @@ var SD_SPECIAL = {
   // v55: Erving and Gervin sit in the dropped 1974 floor cohort (the ABA rows start in 1974), so the blurb names who is on this board
   "1976": { cue: "\u2726", blurb: "The merger class. The ABA folds in: Moses Malone and Artis Gilmore arrive with Parish and Dantley." }
 };
+/* v58 THE FRONT OF THE GATE (owner, 2026-09-26: "For pickup mode we need to feature the most fun drafts up
+   top" and "For pro mode we need a featured draft of the day, plus a reason why it's intriguing").
+   PICKUP: a shelf of the most fun classes (judgment over the data: the sum of the headliners' peaks, legends
+   first, no class whose data files a star under the wrong year), each with its headliners, all on that
+   class's PICKUP board (test.js pins it). PRO: one class a day in a fixed rotation from 2026-09-26 (1984 first,
+   the famous ones spread out), preselected with its tag; every PRO class shows its real draft's story line
+   (SD_DRAFT_WHY) instead of the derived "Headlined by" line, which comes from debut years and can name a
+   player the real draft put in another class. The lines are real-life history, never the engine's grades:
+   knowing who grades best is the skill PRO tests. Zero em dashes (test.js). */
+var SD_PICKUP_FEATURED = [
+  { id: "1984", who: "Jordan, Hakeem, Barkley, Stockton" },
+  { id: "1996", who: "Kobe, Iverson, Nash, Ray Allen" },
+  { id: "2003", who: "LeBron, Wade, Melo, Bosh" },
+  { id: "2009", who: "Curry, Harden, Griffin, DeRozan" },
+  { id: "2011", who: "Kawhi, Kyrie, Klay, Butler" },
+  { id: "2018", who: "Luka, SGA, Trae, Brunson" },
+  { id: "1998", who: "Dirk, Vince, Pierce, Rashard" },
+  { id: "2014", who: "Jokić, Embiid, LaVine, Smart" }
+];
+var SD_DOTD_START = "2026-09-26";
+var SD_DOTD_ORDER = ["1984", "2014", "1996", "2011", "2003", "1998", "1987", "2018", "1985", "2009", "1979", "1997", "2012",
+  "1986", "2008", "1995", "2013", "1992", "2005", "1978", "2016", "1993", "2001", "1999", "2007", "1990", "2017", "1983",
+  "2006", "1994", "2020", "1981", "2002", "1976", "2010", "1989", "2015", "1982", "2004", "1988", "2019", "1977", "2021",
+  "1991", "2000", "1980", "2022", "1975", "2023", "1974", "2024", "2025"];
+var SD_DRAFT_WHY = {
+  "1974": "Bill Walton went first and Marvin Barnes second. Bobby Jones, the best defender of his era, went fifth.",
+  "1975": "David Thompson went first, then chose the ABA. Gus Williams lasted to 20 and Dan Roundfield to 28.",
+  "1976": "The merger year. Alex English went 23rd, Dennis Johnson 29th, and Moses Malone arrives from the ABA with no pick at all.",
+  "1977": "Kent Benson went first. Bernard King went seventh and Jack Sikma eighth.",
+  "1978": "Boston took Larry Bird sixth, a year before he could play. Mo Cheeks lasted to 36 and Michael Cooper to 60.",
+  "1979": "Magic went first and Sidney Moncrief fifth. Bill Laimbeer waited until the 65th pick.",
+  "1980": "Boston traded the first pick for Robert Parish and the third, which became Kevin McHale. Joe Barry Carroll went first.",
+  "1981": "Mark Aguirre went first and Isiah Thomas second. Larry Nance lasted to 20 and Danny Ainge to 31.",
+  "1982": "James Worthy went first and Dominique Wilkins third. Mark Eaton was the 72nd pick.",
+  "1983": "Ralph Sampson went first. Clyde Drexler went 14th and Doc Rivers 31st.",
+  "1984": "Houston took Hakeem, then Portland took Sam Bowie. Jordan went third, Barkley fifth, Stockton 16th.",
+  "1985": "The Knicks won the first lottery and took Patrick Ewing. Karl Malone lasted to 13 and Joe Dumars to 18.",
+  "1986": "Len Bias went second and never played. Sabonis went 24th, Mark Price 25th, Dennis Rodman 27th.",
+  "1987": "David Robinson went first and served two years in the Navy. Pippen went fifth and Reggie Miller 11th.",
+  "1988": "Danny Manning went first and Mitch Richmond fifth. John Starks was never drafted.",
+  "1989": "Pervis Ellison went first. Tim Hardaway went 14th, Shawn Kemp 17th, Vlade Divac 26th.",
+  "1990": "Derrick Coleman went first and Gary Payton second. Toni Kukoč went 29th and waited three years to come over.",
+  "1991": "Larry Johnson went first and Dikembe Mutombo fourth. Darrell Armstrong went undrafted.",
+  "1992": "Shaq went first and Alonzo Mourning second. Christian Laettner, the Dream Team's college kid, went third.",
+  "1993": "Orlando took Chris Webber first and traded him that night for Penny Hardaway, the third pick.",
+  "1994": "Glenn Robinson went first. Jason Kidd and Grant Hill went second and third and shared Rookie of the Year.",
+  "1995": "Joe Smith went first. Kevin Garnett went fifth, the first player straight from high school in 20 years.",
+  "1996": "Allen Iverson went first. Kobe went 13th, Steve Nash 15th, and Ben Wallace went undrafted.",
+  "1997": "Tim Duncan went first. Tracy McGrady went ninth, straight out of high school.",
+  "1998": "Michael Olowokandi went first. Vince Carter went fifth, Dirk ninth, Paul Pierce tenth.",
+  "1999": "Elton Brand went first. Andrei Kirilenko went 24th and Manu Ginóbili 57th, the second-to-last pick.",
+  "2000": "Kenyon Martin went first in a famously thin class. Michael Redd lasted to 43.",
+  "2001": "Kwame Brown was the first high schooler taken first. Pau went third, Tony Parker 28th, Gilbert Arenas 31st.",
+  "2002": "Yao Ming went first and Amar'e Stoudemire ninth. Carlos Boozer lasted to 35.",
+  "2003": "LeBron went first. Detroit took Darko second, ahead of Carmelo, Bosh and Wade.",
+  "2004": "Dwight Howard went first, straight from high school. Josh Smith went 17th and Tony Allen 25th.",
+  "2005": "Andrew Bogut went first and Chris Paul fourth. Monta Ellis and Lou Williams went in the second round.",
+  "2006": "Andrea Bargnani went first and Adam Morrison third. Rondo went 21st, Lowry 24th, Millsap 47th.",
+  "2007": "Portland took Greg Oden first. Kevin Durant went second. Marc Gasol went 48th.",
+  "2008": "Derrick Rose went first and became the youngest MVP. Westbrook went fourth, Love fifth, DeAndre Jordan 35th.",
+  "2009": "Blake Griffin went first and Hasheem Thabeet second. Minnesota took two point guards before Curry went seventh.",
+  "2010": "John Wall went first. Paul George went tenth and Hassan Whiteside 33rd.",
+  "2011": "Kyrie went first. Kawhi went 15th, Jimmy Butler 30th, and Isaiah Thomas 60th, the very last pick.",
+  "2012": "Anthony Davis went first and Damian Lillard sixth. Draymond Green lasted to 35 and Khris Middleton to 39.",
+  "2013": "Anthony Bennett went first. Giannis went 15th and Rudy Gobert 27th.",
+  "2014": "Andrew Wiggins went first. Joel Embiid went third on a broken foot. Nikola Jokić went 41st.",
+  "2015": "Karl-Anthony Towns went first. Kristaps Porziņģis went fourth to boos. Devin Booker went 13th.",
+  "2016": "Ben Simmons went first. Domantas Sabonis went 11th. Fred VanVleet and Alex Caruso went undrafted.",
+  "2017": "Philadelphia traded up for Markelle Fultz at one. Jayson Tatum went third, Donovan Mitchell 13th, Bam Adebayo 14th.",
+  "2018": "Deandre Ayton went first. Luka went third and was traded for Trae Young, the fifth pick. SGA went 11th.",
+  "2019": "Zion went first and Ja Morant second. Tyler Herro went 13th.",
+  "2020": "Anthony Edwards went first. Tyrese Haliburton went 12th and Tyrese Maxey 21st.",
+  "2021": "Cade Cunningham went first and Evan Mobley third. Alperen Şengün went 16th.",
+  "2022": "Paolo Banchero went first and Chet Holmgren second. Jalen Williams went 12th and Jalen Duren 13th.",
+  "2023": "Victor Wembanyama went first. The Thompson twins went fourth and fifth.",
+  "2024": "A French one-two: Zaccharie Risacher first, Alex Sarr second. Stephon Castle went fourth.",
+  "2025": "Dallas won the lottery at 1.8 percent and took Cooper Flagg. One season each: pure scouting."
+};
+// Today's class (device-local date, like the Daily): the rotation's day, modulo its length.
+function sdDraftOfDay(key) {
+  var k = key || ((window.T82DAILY && T82DAILY.dayKey) ? T82DAILY.dayKey() : null);
+  if (!k) { var d = new Date(); k = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  function noon(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2], 12).getTime(); }
+  var n = Math.round((noon(k) - noon(SD_DOTD_START)) / 86400000), L = SD_DOTD_ORDER.length;
+  return SD_DOTD_ORDER[((n % L) + L) % L];
+}
+var SD_CLASS_PICKED = 0;   // the player (or a ?redraft=YEAR link) chose a class: the featured defaults stop steering
 var SD_DERIVED = 0;
 function sdCohortPick(ranked) {
   // Top of the cohort by best season, GROWN (never swapped) until it can
@@ -6678,14 +6767,29 @@ function renderShowdownDifficulty() {
     onBack: function () { renderIntro(); }
   });
 }
+// v58: one featured row: the class's year, then its headliners (PICKUP) or its story (PRO's draft of the day)
+function sdFeatRowHtml(id, line) {
+  var on = id === SD_CLASS_ID;
+  return '<button class="rd-feat' + (on ? " is-on" : "") + '" data-cls="' + id + '" type="button" aria-pressed="' + on + '">' +
+    '<b class="rd-feat-yr">\u2019' + id.slice(2) + '</b><span class="rd-feat-line">' + esc(line) + "</span></button>";
+}
 /* ---------- the class gate: pick a class, read the stakes, draft ---------- */
 function renderShowdownGate(silent) {
   if (SD_DIFF == null) { renderShowdownDifficulty(); return; }
   document.body.classList.remove("drafting");
   document.body.classList.remove("gating");
   sdDeriveClasses();
-  if (SD_QA.cls && !SD_QA.used && SD_CLASSES[SD_QA.cls]) { SD_CLASS_ID = SD_QA.cls; SD_QA.used = 1; }
+  if (SD_QA.cls && !SD_QA.used && SD_CLASSES[SD_QA.cls]) { SD_CLASS_ID = SD_QA.cls; SD_QA.used = 1; SD_CLASS_PICKED = 1; }
+  // v58: until the player picks, PRO opens on the draft of the day and PICKUP on the most fun draft
+  var isPro = SD_DIFF === "pro", dotd = sdDraftOfDay();
+  if (!SD_CLASS_PICKED) {
+    var want = isPro ? dotd : SD_PICKUP_FEATURED[0].id;
+    if (SD_CLASSES[want]) SD_CLASS_ID = want;
+  }
   var cls = SD_CLASSES[SD_CLASS_ID];
+  var why = isPro ? SD_DRAFT_WHY[SD_CLASS_ID] : "";   // PRO tells the real draft's story (the derived blurb reads debut years)
+  var dayTag = isPro && SD_CLASS_ID === dotd
+    ? '<p class="rd-dotd t-label">\u2605 Draft of the day' + (window.T82DAILY ? " \u00B7 " + esc(dailyDayLabel(T82DAILY.dayKey())) : "") + "</p>" : "";
   var ready = DATA_READY ? sdBuildPool() : null;
   var thin = ready && ready.list.length < SD_CFG.rosterSize * 3;
   var stuck = ready && !thin ? sdClassViable(ready) : null;
@@ -6705,6 +6809,14 @@ function renderShowdownGate(silent) {
     }).join("");
     return '<div class="rd-decade"><span class="t-label">' + d + 's</span><div class="t-chips">' + row + "</div></div>";
   }).join("");
+  var feats;
+  if (isPro) {
+    feats = SD_CLASSES[dotd] ? '<div class="rd-feats">' + '<span class="t-label rd-feats-h">\u2605 Draft of the day</span>' +
+      sdFeatRowHtml(dotd, SD_DRAFT_WHY[dotd] || SD_CLASSES[dotd].blurb) + "</div>" : "";
+  } else {
+    feats = '<div class="rd-feats"><span class="t-label rd-feats-h">Most fun drafts</span>' +
+      SD_PICKUP_FEATURED.filter(function (f) { return SD_CLASSES[f.id]; }).map(function (f) { return sdFeatRowHtml(f.id, f.who); }).join("") + "</div>";
+  }
   var posNames = { G: "guards", F: "forwards", C: "centers" }, tail;
   if (thin) tail = '<p class="t-small rd-warn">This class came up short against the data (' + ready.list.length + " players). Pick another class.</p>";
   else if (stuck) tail = '<p class="t-small rd-warn">This class cannot field three legal teams: the data is short on ' + stuck.map(function (b) { return posNames[b]; }).join(" and ") + ". Pick another class.</p>";
@@ -6715,25 +6827,28 @@ function renderShowdownGate(silent) {
       '<div class="rd-top"><button class="t-btn" data-kind="text" data-size="sm" id="rdBack" type="button">\u2039 Back</button>' +
         '<button class="t-btn" data-kind="quiet" data-size="sm" id="rdDiffPill" type="button">' + (SD_DIFF === "pickup" ? "Pickup" : "Pro") + " \u00B7 change</button></div>" +
       '<div class="t-card rd-card">' +
-        head("redraft", "\uD83D\uDD01 The Redrafted \u00B7 alpha") +
+        head("redraft", "\uD83D\uDD01 The Redrafted \u00B7 alpha") + dayTag +
         '<h1 class="t-title rd-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + ". Three GMs. One board.</h1>" +
-        '<p class="t-body rd-blurb"><b>' + esc(cls.blurb) + "</b></p>" +
+        '<p class="t-body rd-blurb"><b>' + esc(why || cls.blurb) + "</b></p>" +
         tail +
         '<p class="t-small rd-how">A snake draft against two rival GMs over one shared pool. Five each, any season of their careers, every pick exclusive. MERCER drafts the best player alive, every pick. QUINCY drafts the team. Then the engine scores all three and settles it.</p>' +
       "</div>" +
-      '<div class="t-card rd-card rd-picker">' + head("redraft", "Pick a class") + '<div id="rdChips" class="rd-decades">' + chips + "</div></div>" +
+      '<div class="t-card rd-card rd-picker" id="rdPicker">' + head("redraft", "Pick a class") + feats + '<div id="rdChips" class="rd-decades">' + chips + "</div></div>" +
     "</section>";
   if (!silent) analyticsTrack("mode_impression", { surface: "redraft_gate", action: thin ? "thin_pool" : (stuck ? "unfieldable" : "fresh"), mode: "showdown", season: +SD_CLASS_ID });
   // when the data lands, refresh the picker with the derived classes, but only if this gate is still on screen
   if (!DATA_READY) PENDING_FN = function () { if (el("rdChips")) renderShowdownGate(true); };
   el("rdDiffPill").addEventListener("click", function () { SD_DIFF = null; renderShowdownGate(); });
-  el("rdChips").addEventListener("click", function (ev) {
-    var b = ev.target.closest(".rd-cls");
+  el("rdPicker").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".rd-cls, .rd-feat");
     if (!b) return;
     var id = b.getAttribute("data-cls");
-    if (!SD_CLASSES[id] || id === SD_CLASS_ID) return;
+    if (!SD_CLASSES[id]) return;
+    SD_CLASS_PICKED = 1;
+    if (id === SD_CLASS_ID) { try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); } return; }
     SD_CLASS_ID = id;
-    analyticsTrack("showdown_state", { surface: "redraft_gate", action: "class_select", mode: "showdown", season: +id });
+    analyticsTrack("showdown_state", { surface: "redraft_gate", action: "class_select", mode: "showdown", season: +id,
+      source: b.classList.contains("rd-feat") ? (isPro ? "draft_of_day" : "featured") : "chip" });
     renderShowdownGate(true);
     try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }   // the new class and DRAFT sit at the top
   });

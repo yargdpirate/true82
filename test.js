@@ -370,6 +370,29 @@ if (fs.existsSync("site_data.json")) {
   eq("redrafted PRO: a pick with no playable season keeps his slot greyed (Len Bias, 1986 #2)", RD.bias, true);
   eq("redrafted PRO: the steals and the undrafted join (Jokic 2014 #41, Ben Wallace 1996 undrafted)", [RD.jokic, RD.ben], [[41, 0], [null, 0]]);
   eq("redrafted PRO: PICKUP is unchanged, and a failed draft fetch falls back to the whole-class board", [RD.pickup, RD.fallback], [true, true]);
+  // v58 the gate's front: PRO's draft of the day (a fixed rotation over every class, one story line each) and
+  // PICKUP's most fun drafts (every named headliner is on that class's PICKUP board)
+  const HEAD = { "1984": ["Michael Jordan", "Hakeem Olajuwon", "Charles Barkley", "John Stockton"], "1996": ["Kobe Bryant", "Allen Iverson", "Steve Nash", "Ray Allen"],
+    "2003": ["LeBron James", "Dwyane Wade", "Carmelo Anthony", "Chris Bosh"], "2009": ["Stephen Curry", "James Harden", "Blake Griffin", "DeMar DeRozan"],
+    "2011": ["Kawhi Leonard", "Kyrie Irving", "Klay Thompson", "Jimmy Butler"], "2018": ["Luka Don\u010di\u0107", "Shai Gilgeous-Alexander", "Trae Young", "Jalen Brunson"],
+    "1998": ["Dirk Nowitzki", "Vince Carter", "Paul Pierce", "Rashard Lewis"], "2014": ["Nikola Joki\u0107", "Joel Embiid", "Zach LaVine", "Marcus Smart"] };
+  rctx.HEAD = HEAD;
+  const FR = vm.runInContext(`(function () {
+    var ids = sdOrderAll().slice().sort(), rot = SD_DOTD_ORDER.slice().sort();
+    var whys = ids.map(function (id) { return SD_DRAFT_WHY[id] || ""; });
+    var heads = SD_PICKUP_FEATURED.map(function (f) {
+      SD_CLASS_ID = f.id; SD_DIFF = "pickup"; SD = null;
+      var names = sdBuildPool().list.map(function (p) { return p.name; });
+      return (HEAD[f.id] || []).length === 4 && HEAD[f.id].every(function (n) { return names.indexOf(n) >= 0; });
+    });
+    return { perm: JSON.stringify(ids) === JSON.stringify(rot), days: [sdDraftOfDay("2026-09-26"), sdDraftOfDay("2026-09-27"), sdDraftOfDay("2026-11-17"), sdDraftOfDay("2026-09-25")],
+      whys: whys.every(function (w) { return w.length > 20 && w.length <= 130 && w.indexOf("\\u2014") < 0 && w.indexOf("\\u2013") < 0; }),
+      feats: SD_PICKUP_FEATURED.length, heads: heads.every(Boolean), featEm: SD_PICKUP_FEATURED.some(function (f) { return f.who.indexOf("\\u2014") >= 0; }) };
+  })()`, rctx);
+  eq("redrafted gate: the draft of the day rotates over every class once (1984 on 2026-09-26, 2014 next, back to 1984 after 52 days)",
+    [FR.perm, FR.days], [true, ["1984", "2014", "1984", "2025"]]);
+  eq("redrafted gate: every PRO class has a story line (no em dashes, one breath)", FR.whys, true);
+  eq("redrafted gate: PICKUP's most fun drafts name only headliners on those boards", [FR.feats, FR.heads, FR.featEm], [8, true, false]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

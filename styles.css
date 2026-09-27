@@ -2860,6 +2860,23 @@ body.rules-open { overflow: hidden; }
 .rd-ghost .pr-name { color: var(--t-text-2); }
 .rd-ghost .rd-pk { color: var(--t-text-3); text-shadow: none; }
 .rd-ghost .pr-pos { font-weight: 400; color: var(--t-text-3); }
+/* v58 the gate's front: the draft of the day's tag (PRO), and the featured shelf over the decades (PICKUP's most
+   fun drafts with their headliners; PRO's draft of the day with its story) */
+.rd-dotd { margin: 2px 0 4px; color: var(--t-hot); text-shadow: 0 0 8px rgb(var(--t-hot-rgb) / .45); }
+.rd-feats { display: grid; gap: 7px; margin: 0 0 16px; }
+.rd-feats-h { display: block; margin: 0 0 1px; }
+.rd-feat { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 7px 12px;
+  text-align: left; cursor: pointer; font: inherit; color: var(--t-text); background: var(--t-ground-2); border: 1.5px solid var(--t-line);
+  border-radius: 12px; -webkit-tap-highlight-color: transparent; }
+.rd-feat-yr { font-family: var(--t-disp); font-weight: 700; font-size: 23px; line-height: 1; letter-spacing: 0.03em; color: var(--t-offset);
+  text-shadow: 0 0 8px rgb(var(--t-offset-rgb) / .4); }
+.rd-feat-line { min-width: 0; font-size: 13.5px; line-height: 1.32; color: var(--t-text-2);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.rd-feat.is-on { border-color: var(--t-accent); box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 12px rgb(var(--t-accent-rgb) / .4); }
+.rd-feat.is-on .rd-feat-yr { color: var(--t-accent); text-shadow: 0 0 8px rgb(var(--t-accent-rgb) / .55); }
+.rd-feat.is-on .rd-feat-line { color: var(--t-text); }
+.rd-feat:active { transform: translateY(1px); }
+.rd-feat:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
 .rd-divider { padding: 12px 4px 5px; color: var(--t-label); }
 .rd-divider:first-child { padding-top: 2px; }
 /* v58 THE REDRAFTED in Heat Vice. look.css paints .t-card as an outline card, which left the two difficulty
@@ -2902,7 +2919,7 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
 .rd-results .t-btn[data-kind="text"] { display: block; margin: 8px auto 0; }
 
 /* ---------- THE DAILY ARCHIVE (v56): the Past Dailies list and its home link ---------- */
-.daily-past { display: block; margin: 6px auto 0; }
+.daily-past { display: block; margin: 14px auto 0; }   /* v58: the quiet line under the last mode button (it sat between THE DAILY and the Redrafted) */
 .da-top { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; }
 .da-lede { margin: 0 0 14px; }
 .da-list { display: grid; gap: 8px; }
