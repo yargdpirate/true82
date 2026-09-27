@@ -1248,13 +1248,6 @@ button.more-modes:disabled,
   color: var(--t-text);
 }
 .intro-lead { margin: 0 0 4px; color: var(--t-text); }
-/* v53: the title shares its row with HOW TO PLAY (the draft screen's button, a size down) */
-.intro-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 8px; }
-.intro-head .intro-title { margin: 0; }
-#app .intro-rules-btn { min-height: 46px; min-width: 0; max-width: none; padding: 7px 12px 9px; gap: 8px; }
-#app .intro-rules-btn .mp-book-wrap { width: 26px; height: 26px; border-radius: 8px; }
-#app .intro-rules-btn .mp-book { width: 19px; height: 16px; }
-#app .intro-rules-btn .mp-rules-main { font-size: 15px; }
 .intro p.intro-lead { font-size: 16px; line-height: 1.4; }
 .intro .eyebrow { margin-top: 20px; font-weight: 600; }
 .btn-block { display: block; width: 100%; margin-top: 16px; }
@@ -1829,7 +1822,6 @@ main.content-page {
 .duel-toast.on { opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* ---------- Arena (Phase D2b) ---------- */
-.intro-toprow { display:flex; justify-content:flex-end; margin-bottom:-6px; }
 .arena-chip { border:1px solid var(--line,var(--t-rule)); background:transparent; color:inherit; border-radius:14px;
   padding:4px 12px; font-size:.8rem; cursor:pointer; }
 .arena-banner { padding:6px 0 10px; }
@@ -2431,86 +2423,8 @@ main.content-page {
   background-position: left 7px top 7px, right 7px top 7px, left 7px bottom 7px, right 7px bottom 7px;
 }
 
-/* THE DAILY plaque: the one gold-framed object on the menu. The two primary
-   modes above are solid amber slabs; this is their inversion, a dark brass
-   plate with a double frame and corner rivets, so it reads as a different
-   SPECIES of button, not a third sibling. #app-prefixed selectors are
-   deliberate specificity armor: no global button rule can repaint it, and the
-   stylesheet link is now version-pinned in index.html so stale CSS cannot
-   strand fresh markup again. */
-#app .daily-tile {
-  --plq-gold: var(--t-accent);
-  -webkit-appearance: none; appearance: none;   /* iOS was painting the gold button default over the plate */
-  display: block; width: 100%; text-align: center; cursor: pointer; position: relative;
-  margin: 14px 0 12px; padding: 15px 16px 13px;
-  color: var(--t-text); font: inherit; -webkit-tap-highlight-color: transparent;
-}
-/* the frame's dark plate must win over any UA button background */
-#app button.daily-tile { background:
-  radial-gradient(140% 120% at 50% 0%, rgb(var(--t-accent-rgb) / .09), transparent 55%),
-  var(--t-ground-2); }
-#app button.daily-tile:not(:disabled):active { transform: translateY(1px); }
-#app .daily-tile:disabled { opacity: 0.6; cursor: default; }
-@media (hover: hover) {
-  #app .daily-tile:hover { border-color: var(--plq-gold); }
-  #app .daily-tile:hover::before { border-color: rgb(var(--t-accent-rgb) / .7); }
-}
-#app .daily-tile:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 3px; }
-.daily-tile .dt-title { display: block; font-family: var(--t-disp); font-size: 1.9rem; line-height: 1;
-  letter-spacing: 0.06em; text-transform: uppercase; color: var(--plq-gold);
-  text-shadow: 0 1px 0 rgb(var(--t-shadow-rgb) / .7); }
-.daily-tile .dt-date { display: block; font-size: 0.64rem; letter-spacing: 0.24em;
-  color: var(--t-text-2); margin: 4px 0 9px; }
-.daily-tile .dt-board { display: block; font-family: var(--t-disp); font-size: 1.14rem;
-  letter-spacing: 0.05em; text-transform: uppercase; color: var(--t-text); }
-.daily-tile .dt-sub { display: block; font-size: 0.75rem;
-  color: var(--t-text-2); margin-top: 3px; }
-.daily-tile.is-played { cursor: default; }
-.daily-tile.is-played .dt-title { opacity: 0.85; }
-.daily-tile .dt-result { display: block; font-family: var(--t-mono); font-size: 0.78rem;
-  letter-spacing: 0.06em; color: var(--t-good-soft); margin: 5px 0 9px; }
-.daily-tile .dt-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-/* v51: the two actions are the shared small keycaps (.t-btn data-size="sm"): CHALLENGE A
-   FRIEND the primary, RUN IT BACK · PRACTICE the quiet one (the decorator had painted both gold) */
-.dt-act:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
-@media (hover: hover) { .dt-act-share:hover { filter: brightness(1.08); } .dt-act-ghost:hover { color: var(--t-text); } }
-.daily-tile .dt-tomorrow { display: block; font-size: 0.6rem; letter-spacing: 0.12em;
-  color: var(--t-accent); border-top: 1px solid var(--t-rule); margin-top: 10px; padding-top: 7px; }
-/* v58 THE DAILY in Heat Vice (owner: "make sure the dailies have the vice style too on the main page
-   button"). look.css paints every plaque as an outline card, so on the home page the day's hero read as a
-   plain box among neon buttons. Here it becomes the marquee: the neon buttons' own recipe (a pink tube on a
-   dark plate, standing on a pink slab over a white one (v58.5), the same glows) at card size, an aqua inner tube for the
-   double frame, the title lit like the buttons' type. Scoped to the neon look (the lab's other looks keep
-   their plaque); #app#app outranks look.css's doubled-id selectors. The draft strap, the variation insert
-   and the results card stay outline cards like every other card. */
-html[data-btn="neon"] #app#app .daily-tile.plq-frame {
-  border: 1.5px solid var(--t-accent); border-radius: var(--t-r-card); margin: 16px 0 18px;
-  background: radial-gradient(120% 95% at 50% 0%, rgb(var(--t-accent-rgb) / .16), transparent 62%),
-    linear-gradient(rgb(var(--t-overlay-rgb) / .5), rgb(var(--t-overlay-rgb) / .5)), var(--t-ground);
-  box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-light),
-    0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 10px rgb(var(--t-accent-rgb) / .6), 0 0 26px -2px rgb(var(--t-accent-rgb) / .45),
-    inset 0 0 14px rgb(var(--t-accent-rgb) / .3);
-}
-html[data-btn="neon"] #app#app .daily-tile.plq-frame::before {
-  display: block; inset: 6px; border: 1px solid rgb(var(--t-offset-rgb) / .6); border-radius: calc(var(--t-r-card) - 6px);
-  box-shadow: 0 0 6px rgb(var(--t-offset-rgb) / .35), inset 0 0 6px rgb(var(--t-offset-rgb) / .2);
-}
-html[data-btn="neon"] #app#app .daily-tile.plq-frame::after { display: none; }
-html[data-btn="neon"] #app .daily-tile .dt-title { color: var(--t-accent-hi);
-  text-shadow: 0 0 6px rgb(var(--t-accent-rgb) / .85), 0 0 16px rgb(var(--t-accent-rgb) / .5); }
-html[data-btn="neon"] #app .daily-tile .dt-board { color: var(--t-text); text-shadow: 0 0 10px rgb(var(--t-offset-rgb) / .55); }
-html[data-btn="neon"] #app#app button.daily-tile.plq-frame:not(:disabled):active { transform: translateY(3px);
-  box-shadow: 0 0 0 0 var(--t-accent), 0 3px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-accent-rgb) / .35),
-    0 0 12px rgb(var(--t-accent-rgb) / .7), 0 0 26px -2px rgb(var(--t-accent-rgb) / .5), inset 0 0 16px rgb(var(--t-accent-rgb) / .38); }
-@media (hover: hover) {
-  html[data-btn="neon"] #app#app button.daily-tile.plq-frame:hover { border-color: var(--t-accent-hi);
-    box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-accent-rgb) / .4),
-      0 0 14px rgb(var(--t-accent-rgb) / .75), 0 0 32px -2px rgb(var(--t-accent-rgb) / .55), inset 0 0 16px rgb(var(--t-accent-rgb) / .38); }
-}
-@media (prefers-reduced-motion: reduce) { html[data-btn="neon"] #app#app button.daily-tile.plq-frame:not(:disabled):active { transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .player-row.deny, .tray.deny, #trayInner.deny { animation: none; }
-  .daily-tile:active, .dt-act:active { transform: none; }
 }
 .daily-stale, .intro p.daily-stale { font-size: .72rem; color: var(--t-text-2); margin: -8px 0 12px; }   /* v51: .intro p outranked it (15px) */
 
@@ -3020,7 +2934,6 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
 @keyframes rdStolen { 0% { background: rgb(var(--t-accent-rgb) / .5); box-shadow: 0 0 14px rgb(var(--t-accent-rgb) / .85); } 100% { background: transparent; box-shadow: none; } }
 
 /* ---------- THE DAILY ARCHIVE (v56): the Past Dailies list and its home link ---------- */
-.daily-past { display: block; margin: 14px auto 0; }   /* v58: the quiet line under the last mode button (it sat between THE DAILY and the Redrafted) */
 .da-top { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; }
 .da-lede { margin: 0 0 14px; }
 .da-list { display: grid; gap: 8px; }
@@ -3769,51 +3682,11 @@ body.gating .gate-back {
   .rules-overlay a.rs-ref-btn { flex: 0 1 auto; font-size: 12.5px; padding: 12px 9px 13px; }
 }
 
-/* ============ THE HOMEPAGE VOTE CARD + TRAIT CHIPS (v51: folded in from app.js) ============
-   The Player Bonuses doorway on the homepage: a feature card ringed in the
-   accent (the one live vote on the page). Its lead is the shared header,
-   YES and NO are the shared keycaps (NO in the bad keycap), IDK is the quiet
-   button, and its tag is the shared chip. The draft pool's trait chips are
-   the shared chip too; the (i) button and the legend panel sit beside them. */
-.traits-module { display: block; text-align: left; color: inherit; position: relative;
-  background: linear-gradient(180deg, var(--t-ground-2), var(--t-ground)); border: 2px solid var(--t-accent); border-radius: 20px;
-  padding: 15px 15px 13px; margin: 12px 0;
-  box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .25), 0 0 26px rgb(var(--t-accent-rgb) / .16), 0 14px 34px -18px rgb(var(--t-shadow-rgb) / .7); }
-.traits-module .tm-head[hidden], .traits-module .tm-call[hidden] { display: none; }
-.traits-module .tm-lead { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; }
-.traits-module .tm-lede { margin: 0; }
-.traits-module .tm-lede[data-head="eyebrow"] { color: var(--t-accent); font-size: 12.5px; letter-spacing: 0.2em; }   /* the card's lead reads in its accent */
-.traits-module .tm-eyebrow { color: inherit; text-decoration: none; display: inline-block; }
-.traits-module .tm-eyeb { font-weight: 700; }
-@media (max-width: 389px) { .traits-module .tm-lede[data-head="eyebrow"] { font-size: 12px; letter-spacing: 0.1em; } }
-.traits-module .tm-tag[hidden] { display: none; }
-.traits-module .tm-q { display: block; font-family: var(--t-disp); font-weight: 700; font-size: 25px; line-height: 1.05; margin-top: 4px; text-transform: uppercase; color: inherit; text-decoration: none; }
-.traits-module .tm-q:active { color: var(--t-accent); }
-.traits-module .tm-def { display: block; font-size: 13px; line-height: 1.35; color: var(--t-text-2); margin-top: 5px; }   /* v53: the whole definition, never cut off */
+/* ============ TRAIT CHIPS (v51: folded in from app.js) ============
+   The draft pool's trait chips are the shared chip; the (i) button and the legend panel sit beside
+   them. (The homepage vote card that used to open this section is v59's .hm-poll, in THE HOME below.) */
 /* v47.21: IDK is exactly two thirds of its v47.19 width: YES and NO split what it gave up (4:4:1) */
-.traits-module .tm-votes { display: grid; grid-template-columns: 4fr 4fr minmax(44px, 1fr); gap: 11px; margin-top: 11px; }   /* v51: IDK keeps a real tap size (it was 31px) */
-.traits-module .tm-vb { height: 52px; min-height: 0; padding: 0; border-radius: 13px; font-size: 21px; letter-spacing: 0.1em; }
-.traits-module .tm-vb.idk { font-size: 14px; letter-spacing: 0.02em; padding: 0 2px; border-style: dashed; }
-.traits-module.tm-locked .tm-vb { pointer-events: none; opacity: 0.55; }
-.traits-module.tm-locked .tm-vb.pressed { opacity: 1; }
-.traits-module .tm-res { display: none; margin-top: 12px; font-family: var(--t-disp); font-weight: 700; font-size: 19px; letter-spacing: 0.05em; }
-.traits-module .tm-res b { color: var(--t-accent); }
-.traits-module .tm-res .neg { color: var(--t-bad-soft); }
-.traits-module .tm-foot { display: flex; align-items: center; margin-top: 12px; justify-content: center; }
-.traits-module .tm-pips { align-items: center; gap: 9px; }
-.traits-module .tm-pips span { width: 13px; height: 13px; }
-.traits-module .tm-pips span.done { width: 16px; height: 16px; }
 /* v47.19: sharing is a thin, quiet 2D bar under the pips (kept off the 3D decorator on purpose) */
-.traits-module .tm-sharebar { display: block; width: 100%; height: 32px; margin-top: 9px; appearance: none; -webkit-appearance: none; background: none;
-  border: 1px solid var(--t-line); border-radius: 9px; cursor: pointer; font-family: var(--t-mono); font-size: 9.5px; letter-spacing: 0.07em; color: var(--t-text-2); line-height: 1; }
-.traits-module .tm-sharebar[hidden] { display: none; }   /* the display:block above beat [hidden]: the bar outlived the fifth answer */
-.traits-module .tm-shlead { font-weight: 700; color: var(--t-text); }
-.traits-module .tm-sharebar:active, .traits-module .tm-sharebar.flashed { color: var(--t-accent); border-color: var(--t-accent); }
-.traits-module .tm-sharebar:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
-.traits-module .tm-done { display: none; margin-top: 13px; }
-.traits-module .tm-done .td-h { font-family: var(--t-disp); font-weight: 700; font-size: 23px; letter-spacing: 0.06em; }
-.traits-module .tm-done .td-l { font-size: 14px; color: var(--t-text-2); margin-top: 3px; }
-.traits-module .tm-again { margin-top: 11px; height: 48px; font-size: 18px; letter-spacing: 0.1em; }
 
 /* the draft pool's trait chips (the shared chip) and their legend */
 .tchips { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 5px; }
@@ -3996,4 +3869,244 @@ body.bt-open .t-toast.on { transform: translate(-50%, 0); }
 .bt-hand path { fill: var(--t-light); stroke: var(--t-ground); }
 @media (prefers-reduced-motion: reduce) {
   .t-sheet, .t-toast, .t-backdrop, .t-chip, .bt-tag, .bt-hand { transition: none; }
+}
+
+/* ---------- v59 THE HOME: Halftone v2 (the owner's redesign; AGENT-HANDOFF section 00000l) ----------
+   "Draft what wins" over three brightness tiers of two-line doors, each standing on a dotted halftone
+   offset shadow (the riso print's dot, not a glow or a keycap lip), then the vote card, which votes in
+   place. Pink is the core game (Classic, Presti), aqua the side modes; Classic is the only thing that
+   glows. Every button here is custom-skinned: each carries .tm-flat so the 3D decorator leaves it
+   alone, and look.css targets none of these classes. */
+.hm { max-width: 440px; margin: 0 auto; overflow-x: clip; }
+.hm [hidden] { display: none !important; }
+/* the masthead on the home screen: the same art, the mock's size, no rule under it */
+/* (#app#app outranks look.css's doubled-id masthead rule; a browser without :has() keeps today's masthead) */
+body:has(#app#app > .hm) .site-head { border-bottom-color: transparent; padding-bottom: 0; }
+body:has(#app#app > .hm) .brand-logo { width: min(300px, 80%); max-width: none; }
+
+/* "Draft what wins": cream type over a pink halftone copy of itself, a hair off register */
+.hm-mast { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; }
+.hm-tag { position: relative; margin: 0; font-family: var(--t-disp); font-weight: 800; font-size: min(47px, 11.4vw);
+  line-height: .9; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.hm-tag span { display: block; }
+.hm-tag-ink { position: relative; color: var(--t-text); }
+.hm-tag-dots { position: absolute; left: 4px; top: 4px; color: transparent;
+  background-image: radial-gradient(circle, var(--t-accent) 1px, transparent 1.45px); background-size: 3px 3px;
+  -webkit-background-clip: text; background-clip: text; }
+.hm-howto { appearance: none; -webkit-appearance: none; margin: 8px 0 0; padding: 6px 10px; border: 0; background: none;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 7px; color: rgb(var(--t-offset-rgb) / .9);
+  font: 500 15px/1.2 var(--t-body); -webkit-tap-highlight-color: transparent; }
+.hm-howto span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px;
+  text-decoration-color: rgb(var(--t-offset-rgb) / .55); }
+.hm-howto:active { color: var(--t-offset); }
+.hm-howto:focus-visible { outline: 2px solid var(--t-offset); outline-offset: 2px; border-radius: 8px; }
+
+/* the stack: its right side is 6px roomier than its left so the offset dots never touch the edge */
+.hm-stack { display: flex; flex-direction: column; gap: 18px; padding: 10px 10px 0 4px; }
+@media (max-width: 380px) { .hm-stack { padding: 8px 6px 0 0; gap: 16px; } }
+
+/* the halftone offset shadow: the wrapper prints a block of dots down and right of its door */
+.hm-ht { position: relative; --off: 5px; --r: var(--t-r-btn); --dot: rgb(var(--t-accent-rgb) / .6); }
+.hm-ht::before { content: ""; position: absolute; left: var(--off); top: var(--off);
+  right: calc(var(--off) * -1); bottom: calc(var(--off) * -1); border-radius: var(--r); pointer-events: none;
+  background-image: radial-gradient(circle, var(--dot) 1.3px, transparent 1.75px); background-size: 5px 5px; }
+
+/* a door: the mode's name in the display face, a plain line under it */
+.hm-mode { position: relative; appearance: none; -webkit-appearance: none; margin: 0; width: 100%; min-height: var(--h, 60px);
+  padding: 4px 12px 5px; border: var(--bw, 2px) solid var(--c); border-radius: var(--r); overflow: hidden;
+  background: linear-gradient(rgb(var(--t-overlay-rgb) / .38), rgb(var(--t-overlay-rgb) / .38)), var(--t-ground);
+  color: var(--ct); font: inherit; text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  -webkit-tap-highlight-color: transparent; transition: transform .12s ease, filter .2s ease; }
+/* the door's own ink: dots rising from its bottom edge */
+.hm-mode::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, var(--fill, transparent) 1.2px, transparent 1.65px); background-size: 5px 5px;
+  -webkit-mask-image: linear-gradient(to top, var(--fx-mask), transparent var(--fade, 65%));
+  mask-image: linear-gradient(to top, var(--fx-mask), transparent var(--fade, 65%)); }
+.hm-t { position: relative; font-family: var(--t-disp); font-weight: 800; line-height: 1; letter-spacing: .07em; text-transform: uppercase; }
+.hm-s { position: relative; font: 500 12.5px/1.25 var(--t-body); color: rgb(var(--t-text-rgb) / .74); }
+button.hm-mode:active { transform: translate(3px, 3px); }   /* a press sinks the door into its own dots */
+button.hm-mode:disabled { cursor: progress; }
+.hm-mode:focus-visible { outline: 2px solid var(--t-text); outline-offset: 3px; }
+@media (hover: hover) { button.hm-mode:hover { filter: brightness(1.12); } }
+
+/* tier 1, Classic: the hook, and the only thing that glows (a slow neon breath) */
+.hm-hero { --off: 6px; --r: 16px; --dot: rgb(var(--t-accent-rgb) / .8); }
+.hm-hero .hm-mode { --h: 72px; --bw: 2.5px; --c: var(--t-accent); --ct: var(--t-text); --fill: rgb(var(--t-accent-rgb) / .5); --fade: 88%;
+  background: radial-gradient(120% 90% at 50% 0%, rgb(var(--t-accent-rgb) / .14), transparent 70%),
+    linear-gradient(rgb(var(--t-overlay-rgb) / .3), rgb(var(--t-overlay-rgb) / .3)), var(--t-ground);
+  box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .25), 0 0 18px rgb(var(--t-accent-rgb) / .42), inset 0 0 14px rgb(var(--t-accent-rgb) / .2);
+  animation: hm-breathe 5.5s ease-in-out 1.2s infinite; }
+.hm-hero .hm-t { font-size: 38px; letter-spacing: .085em;
+  text-shadow: 0 0 3px rgb(var(--t-accent-rgb) / 1), 0 0 10px rgb(var(--t-accent-rgb) / .75), 0 0 22px rgb(var(--t-accent-rgb) / .45); }
+.hm-hero .hm-s { font-size: 13px; color: rgb(var(--t-text-rgb) / .9); }
+@keyframes hm-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .25), 0 0 18px rgb(var(--t-accent-rgb) / .42), inset 0 0 14px rgb(var(--t-accent-rgb) / .2); }
+  50% { box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .35), 0 0 26px rgb(var(--t-accent-rgb) / .55), inset 0 0 18px rgb(var(--t-accent-rgb) / .28); }
+}
+/* tier 2: Presti (pink) and the Daily (aqua) */
+.hm-mid .hm-mode { --h: 58px; --bw: 2px; }
+.hm-mid .hm-t { font-size: 27px; }
+.hm-mid.is-pink { --dot: rgb(var(--t-accent-rgb) / .58); }
+.hm-mid.is-pink .hm-mode { --c: var(--t-accent); --ct: var(--t-accent); --fill: rgb(var(--t-accent-rgb) / .3); }
+.hm-mid.is-cyan { --dot: rgb(var(--t-offset-rgb) / .45); }
+.hm-mid.is-cyan .hm-mode { --c: var(--t-offset); --ct: var(--t-offset); --fill: rgb(var(--t-offset-rgb) / .3); }
+/* tier 3, Draft Night Do-Over: quiet */
+.hm-quiet { --off: 4px; --dot: rgb(var(--t-offset-rgb) / .26); }
+.hm-quiet .hm-mode { --h: 54px; --bw: 1.5px; --c: rgb(var(--t-offset-rgb) / .5); --ct: rgb(var(--t-offset-rgb) / .86); }
+.hm-quiet .hm-t { font-size: 24px; }
+.hm-quiet .hm-s { font-size: 12px; color: rgb(var(--t-text-rgb) / .58); }
+/* the Daily once today is played: the record, CHALLENGE A FRIEND first, the practice run second */
+.hm-played { cursor: default; gap: 5px; }
+.hm-rec { font-family: var(--t-mono); font-weight: 700; font-size: 13px; letter-spacing: .02em; color: var(--t-text); vertical-align: 4px; margin-left: 4px; }
+.hm-acts { position: relative; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px 8px; }
+.hm-act { appearance: none; -webkit-appearance: none; margin: 0; padding: 3px 2px; border: 0; background: none; cursor: pointer;
+  font: 600 13px/1.2 var(--t-body); color: var(--t-offset); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.hm-act.is-quiet { font-weight: 500; color: rgb(var(--t-text-rgb) / .7); }
+.hm-act:focus-visible { outline: 2px solid var(--t-offset); outline-offset: 2px; border-radius: 4px; }
+.hm-sep { color: rgb(var(--t-text-rgb) / .4); font-size: 13px; }
+.hm .daily-stale { margin: -8px 0 0; }
+
+/* ---- the vote card ---- */
+.hm-poll { --off: 6px; --r: 18px; --dot: rgb(var(--t-text-2-rgb) / .22); }
+.hm-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px;
+  border: 1.5px solid rgb(var(--t-text-rgb) / .16); border-radius: 18px;
+  background: linear-gradient(rgb(var(--t-ground-2-rgb) / .42), rgb(var(--t-ground-2-rgb) / .42)), var(--t-ground); }
+.hm-poll-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 18px; }
+.hm-poll-title { margin: 0; font: 600 14.5px/1.2 var(--t-body); color: var(--t-accent-glow); }
+.hm-q { display: flex; flex-direction: column; gap: 6px; }
+.hm-name { font: 600 16px/1.2 var(--t-body); color: var(--t-text); overflow-wrap: anywhere; }
+.hm-season { margin-top: 1px; font: 500 12.5px/1.25 var(--t-body); color: var(--t-text-2); }
+.hm-trait { font: 600 19px/1.2 var(--t-body); color: var(--t-text); overflow-wrap: anywhere; }
+.hm-votes { display: flex; gap: 12px; margin-top: 4px; }
+.hm-votes .hm-ht { --off: 4px; --r: 12px; flex: 1 1 0; min-width: 0; }
+.hm-votes .is-idk { flex: 0 0 56px; }
+.hm-vb, .hm-next { position: relative; appearance: none; -webkit-appearance: none; margin: 0; padding: 0; width: 100%; height: 46px;
+  border: 2px solid var(--c); border-radius: 12px; cursor: pointer; color: var(--c);
+  background: linear-gradient(rgb(var(--t-overlay-rgb) / .38), rgb(var(--t-overlay-rgb) / .38)), var(--t-ground);
+  font-family: var(--t-disp); font-weight: 800; font-size: 26px; letter-spacing: .07em; text-transform: uppercase;
+  -webkit-tap-highlight-color: transparent; transition: transform .1s ease, opacity .15s ease; }
+.hm-votes .is-yes, .hm .is-next { --c: var(--t-offset); --dot: rgb(var(--t-offset-rgb) / .45); }
+.hm-votes .is-no { --c: var(--t-accent); --dot: rgb(var(--t-accent-rgb) / .58); }
+.hm-votes .is-idk { --c: rgb(var(--t-text-2-rgb) / .85); --dot: rgb(var(--t-text-2-rgb) / .22); }
+.hm-votes .is-idk .hm-vb { font-size: 18px; letter-spacing: .04em; }
+.hm-vb:active, .hm-vb.pressed, .hm-next:not(:disabled):active { transform: translate(3px, 3px); }
+.is-yes .hm-vb.pressed { background: linear-gradient(rgb(var(--t-offset-rgb) / .22), rgb(var(--t-offset-rgb) / .22)), var(--t-ground); }
+.is-no .hm-vb.pressed { background: linear-gradient(rgb(var(--t-accent-rgb) / .22), rgb(var(--t-accent-rgb) / .22)), var(--t-ground); }
+.is-idk .hm-vb.pressed { background: linear-gradient(rgb(var(--t-text-2-rgb) / .16), rgb(var(--t-text-2-rgb) / .16)), var(--t-ground); }
+.hm-poll.tm-locked .hm-vb { pointer-events: none; }
+.hm-poll.tm-locked .hm-vb:not(.pressed) { opacity: .45; }
+.hm-vb:focus-visible, .hm-next:focus-visible { outline: 2px solid var(--t-text); outline-offset: 3px; }
+.hm .is-next { --off: 4px; --r: 12px; margin-top: 2px; }
+.hm-next { font-size: 25px; }
+.hm-next:disabled { opacity: .6; cursor: progress; }
+/* the tally: the bar in both inks (aqua yes from the left, pink no), the call, what you said */
+.hm-res, .hm-done { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.hm-bar { position: relative; height: 10px; border-radius: 5px; overflow: hidden;
+  background: linear-gradient(rgb(var(--t-accent-rgb) / .3), rgb(var(--t-accent-rgb) / .3)), var(--t-ground-3); }
+.hm-bar b { position: relative; display: block; height: 100%; width: 0; border-radius: 5px; background: var(--t-offset);
+  box-shadow: 0 0 8px rgb(var(--t-offset-rgb) / .5); }
+.hm-bar b::before { content: ""; position: absolute; inset: 0; border-radius: inherit; opacity: 0;
+  background-image: radial-gradient(circle, rgb(var(--t-light-rgb) / .9) .8px, transparent 1.2px); background-size: 3px 3px; }
+.hm-bar b::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 5px; border-radius: 3px; opacity: 0;
+  background: var(--t-light); box-shadow: 0 0 8px rgb(var(--t-light-rgb) / .8); }
+.hm-tally { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px;
+  font: 500 13.5px/1.3 var(--t-body); color: var(--t-text); }
+.hm-pct { font-family: var(--t-disp); font-weight: 800; font-size: 20px; letter-spacing: .02em; color: var(--t-offset);
+  font-variant-numeric: tabular-nums; }
+.hm-pct.is-no { color: var(--t-accent); }
+.hm-you { color: var(--t-text-2); }
+.hm-link { appearance: none; -webkit-appearance: none; margin: 0; padding: 6px 10px; border: 0; background: none; cursor: pointer;
+  font: 500 13px/1.3 var(--t-body); color: var(--t-text-2); text-decoration: underline; text-decoration-thickness: 1px;
+  text-underline-offset: 3px; -webkit-tap-highlight-color: transparent; }
+.hm-link:active { color: var(--t-text); }
+.hm-link:focus-visible { outline: 2px solid var(--t-text); outline-offset: 2px; border-radius: 6px; }
+.hm-share { align-self: center; margin-top: 2px; }
+.hm-err { margin: 2px 0 0; font: 500 13px/1.3 var(--t-body); color: var(--t-accent-glow); }
+.hm-done-t { margin: 0; font: 600 20px/1.25 var(--t-body); color: var(--t-text); }
+.hm-done-s { margin: 0; font: 500 13.5px/1.35 var(--t-body); color: var(--t-text-2); }
+.hm-archive { display: flex; justify-content: center; padding: 18px 0 0; }
+.hm-archive .hm-link { font-size: 14px; }
+/* the narrowest phones (320): each door's line and the card's title stay on one line */
+@media (max-width: 359px) {
+  .hm-mode { padding-left: 8px; padding-right: 8px; }
+  .hm-s { font-size: 11.5px; }
+  .hm-hero .hm-s { font-size: 12.5px; }
+  .hm-poll-head { gap: 8px; }
+  .hm-poll-title { font-size: 13.5px; }
+  .hm-dia { gap: 5px; }
+}
+
+/* ---- the diamonds: five, one per call. Empty is a thin outline; filled is a two-plate riso print: the
+   pink key with its halftone screen showing, the aqua plate a hair off register under it ---- */
+.hm-dia { position: relative; display: flex; align-items: center; gap: 9px; flex-shrink: 0; padding: 2px 3px 2px 4px; }
+.hm-dia i { position: relative; display: block; width: 9px; height: 9px; transform: rotate(45deg); border-radius: 1.5px;
+  border: 1.5px solid rgb(var(--t-accent-rgb) / .5); transition: border-color .2s ease; }
+.hm-dia i::before, .hm-dia i::after { content: ""; position: absolute; inset: -1.5px; border-radius: 1.5px; opacity: 0; }
+.hm-dia i::before { background: var(--t-offset); transform: translate(2.2px, 0); }   /* in the diamond's turned frame: down and right on screen */
+.hm-dia i::after { background: radial-gradient(circle, var(--t-accent-hi) .7px, transparent 1.05px) 0 0 / 2.4px 2.4px, var(--t-accent); }
+.hm-dia i.on { border-color: transparent; transform: rotate(45deg) scale(1.15); filter: drop-shadow(0 0 3px rgb(var(--t-accent-rgb) / .75)); }
+.hm-dia i.on::before, .hm-dia i.on::after { opacity: 1; }
+
+/* ---- the reward, on every vote (app.js tmPrint): the key plate stamps down, the aqua plate lands off
+   register and snaps in, a ring of halftone dots rolls out in both inks, and the tally bar rolls in like
+   an ink roller, wet dots drying to solid. The set's last diamond is the big one: the row re-inks left
+   to right, the ring doubles, and the card's title splits into its two inks and snaps back. Under a
+   second; nothing flashes; nothing holds the NEXT tap. ---- */
+.hm-dia i.is-new::after { animation: hm-key .46s cubic-bezier(.2, .9, .3, 1.2) both; }
+.hm-dia i.is-new::before { animation: hm-plate .62s cubic-bezier(.25, .9, .3, 1) both; }
+@keyframes hm-key { 0% { opacity: 0; transform: scale(2.6); } 40% { opacity: 1; transform: scale(.82); } 70% { transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+@keyframes hm-plate { 0%, 25% { opacity: 0; transform: translate(9px, -4px); } 55% { opacity: 1; transform: translate(-1.5px, 1px); }
+  78% { transform: translate(3.4px, 0); } 100% { opacity: 1; transform: translate(2.2px, 0); } }
+.hm-burst { position: absolute; z-index: 1; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; pointer-events: none;
+  background-image: radial-gradient(circle, var(--t-accent) 1.45px, transparent 1.9px); background-size: 4px 4px;
+  -webkit-mask-image: radial-gradient(circle closest-side, transparent 42%, var(--fx-mask) 52%, var(--fx-mask) 80%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, transparent 42%, var(--fx-mask) 52%, var(--fx-mask) 80%, transparent 100%);
+  animation: hm-ring .74s cubic-bezier(.15, .8, .3, 1) both; }
+/* the second ink's ring lands a beat late and a hair off register */
+.hm-burst::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background-image: radial-gradient(circle, var(--t-offset) 1.45px, transparent 1.9px); background-size: 4px 4px;
+  animation: hm-ring2 .74s cubic-bezier(.15, .8, .3, 1) .05s both; }
+/* the spray: six fat drops of both inks flung out on a slow turn (unmasked by the ring) */
+.hm-spray { position: absolute; z-index: 1; width: 58px; height: 58px; margin: -29px 0 0 -29px; pointer-events: none;
+  background:
+    radial-gradient(circle, var(--t-accent) 2.4px, transparent 2.9px) 50% 0 / 8px 8px no-repeat,
+    radial-gradient(circle, var(--t-offset) 2px, transparent 2.5px) 96% 30% / 8px 8px no-repeat,
+    radial-gradient(circle, var(--t-accent) 2px, transparent 2.5px) 86% 88% / 8px 8px no-repeat,
+    radial-gradient(circle, var(--t-offset) 2.4px, transparent 2.9px) 30% 98% / 8px 8px no-repeat,
+    radial-gradient(circle, var(--t-accent) 2px, transparent 2.5px) 2% 62% / 8px 8px no-repeat,
+    radial-gradient(circle, var(--t-light) 1.6px, transparent 2.1px) 14% 10% / 8px 8px no-repeat;
+  animation: hm-spray .7s cubic-bezier(.12, .7, .3, 1) both; }
+.hm-burst.is-big { width: 88px; height: 88px; margin: -44px 0 0 -44px; background-size: 5px 5px; animation-duration: .92s; }
+.hm-burst.is-big::after { background-size: 5px 5px; animation-duration: .92s; }
+.hm-spray.is-big { width: 100px; height: 100px; margin: -50px 0 0 -50px; animation-duration: .9s; }
+@keyframes hm-ring { 0% { opacity: 1; transform: scale(.25); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.1); } }
+@keyframes hm-ring2 { 0% { opacity: 0; transform: translate(0, 0) scale(.85); } 30% { opacity: 1; transform: translate(3px, 3px) scale(.95); }
+  100% { opacity: 0; transform: translate(1px, 1px) scale(1.04); } }
+@keyframes hm-spray { 0% { opacity: 0; transform: scale(.25) rotate(0); } 18% { opacity: 1; } 65% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.3) rotate(28deg); } }
+.hm-dia.is-full i.on { animation: hm-wave .5s cubic-bezier(.3, 1.5, .5, 1) both; }
+.hm-dia.is-full i:nth-child(2) { animation-delay: .06s; }
+.hm-dia.is-full i:nth-child(3) { animation-delay: .12s; }
+.hm-dia.is-full i:nth-child(4) { animation-delay: .18s; }
+.hm-dia.is-full i:nth-child(5) { animation-delay: .24s; }
+@keyframes hm-wave { 0% { transform: rotate(45deg) scale(1.15); } 45% { transform: rotate(45deg) scale(1.65); } 100% { transform: rotate(45deg) scale(1.15); } }
+.hm-poll-title.is-lit { animation: hm-chroma .62s cubic-bezier(.2, .8, .3, 1) .12s both; }
+@keyframes hm-chroma { 0% { text-shadow: -3px 0 0 rgb(var(--t-offset-rgb) / .9), 3px 1px 0 rgb(var(--t-accent-rgb) / .9); }
+  100% { text-shadow: 0 0 0 rgb(var(--t-offset-rgb) / 0), 0 0 0 rgb(var(--t-accent-rgb) / 0); } }
+.hm-bar.is-rolling b { animation: hm-roll .7s cubic-bezier(.2, .85, .25, 1) both; }
+.hm-bar.is-rolling b::before { animation: hm-dry .95s ease-out both; }
+.hm-bar.is-rolling b::after { animation: hm-roller .75s ease-out both; }
+@keyframes hm-roll { from { width: 0; } }
+@keyframes hm-dry { 0% { opacity: .6; } 100% { opacity: 0; } }
+@keyframes hm-roller { 0% { opacity: .95; } 75% { opacity: .7; } 100% { opacity: 0; } }
+/* arrivals: the card rises in once its first call is dealt; each next call and the tally slide in */
+.hm-poll.is-in { animation: hm-rise .4s cubic-bezier(.2, .8, .3, 1) both; }
+.hm-q.is-in .hm-who, .hm-q.is-in .hm-trait { animation: hm-rise .3s ease-out both; }
+.hm-q.is-in .hm-trait { animation-delay: .05s; }
+.hm-res.is-in, .hm-done.is-in { animation: hm-rise .28s ease-out both; }
+@keyframes hm-rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .hm *, .hm *::before, .hm *::after { animation: none !important; transition: none !important; }
 }

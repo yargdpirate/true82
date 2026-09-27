@@ -3,14 +3,75 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-27
-**Build:** `v58.5`, pushed on branch `c-code-clean` (`BUILD_V = "v58.5"`; app.js, styles.css and look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** section 00000k (read it first): the database audit for go-live (0010 to 0025 are live; 0026, 0027 and the new 0028 are left) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that, 00000j: the owner's plan for the art bot's clips in the pick ceremony. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v59`, pushed on branch `c-code-clean` (`BUILD_V = "v59"`; app.js and styles.css at `20260927-home-v59`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** section 00000l (read it first): v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000k. START HERE (2026-09-27, afternoon): ship the base game today; the database audit
+## 00000l. START HERE (2026-09-27, evening): V59, the new home screen ("Halftone v2")
+
+**The owner's words.** He sent a redesign package (`~/Downloads/true82-home-handoff.zip`: HOMESCREEN_HANDOFF.md,
+three PNGs, a reference HTML) and: "as always, don't follow spec strictly, make the artsitic and creative choice
+nessecary for it to look amazing artistically and stlyistically but not migrane-inducing overly busy". Built on
+c-code-clean as v59; NOT on main (he says "merge to main"; merging today keeps `START3`).
+
+**What the home is now** (app.js `renderIntro`, styles.css "v59 THE HOME"):
+- The masthead art unchanged but at the mock's size on the home only (`body:has(#app#app > .hm)`: min(300px, 80%),
+  no rule under it; a browser without `:has()` keeps today's masthead). Then "Draft what wins" (the display face,
+  cream, over a pink halftone copy of itself 4px off register; replaces "Go 82-0" and the paragraph; five taps on it
+  still start Kaman), then "How to play" as a small underlined link with a book icon (opens the same sheet).
+- Four two-line doors (name in `--t-disp`, a plain line under it), each on a dotted halftone offset shadow (a
+  wrapper `.hm-ht::before`), no emoji, in three tiers: Classic (pink, the only glow, a slow 5.5 s neon breath),
+  Presti mode and The Daily #N (pink, aqua), Draft Night Do-Over (quiet aqua). Copy is the mock's. The Daily's line
+  is the board's name, plus " · N-day streak" at 2+; once played the door reads "THE DAILY #N ✓ 64-18" with
+  Challenge a friend · Run it back (share first, as before).
+- The vote card (`traitsModuleHtml` and the TM block): ask (name, "2023–24 · Pacers", the trait as a short
+  question), then in the same card the tally bar (two inks: aqua yes from the left over a pink no track), the call
+  ("41% say yes · Still disputed", "NN% say yes/no · Settled" at the server's real 62%/38% and 25-vote floor, and
+  under the floor the majority side with "N more to settle"), "You said yes/no" / "You passed", NEXT QUESTION (FINISH
+  on the last), the share link; then "That's five. Thanks for balancing the game." and KEEP GOING, which deals a
+  fresh set in place. Nothing auto-advances and nothing navigates (the old VOTE ON 5 MORE and the error fallback
+  both left for /bonuses/; a failed vote now stays with "That vote didn't save. Tap it again.").
+- Diamonds and the reward (owner: heavy riso fill, a fun dopamine beat per vote, the fifth bigger): a filled diamond
+  is a two-plate print (the pink key with its halftone screen, the aqua plate a hair off register). Each vote: the
+  key plate stamps down, the aqua plate lands off register and snaps in, a ring of halftone dots rolls out in both
+  inks with six ink drops, the % counts up and the bar rolls in like an ink roller (wet dots drying). The fifth:
+  the row re-inks in a wave, a bigger ring around the whole row, the card title splits into its two inks and snaps
+  back. Under 1 s, no flashing, NEXT never held. `prefers-reduced-motion` gives the end state at once (the home
+  only; the game still ignores the OS flag on purpose, see `prefersReduce`).
+- "Daily archive" (was Past Dailies) is a quiet link under the card; the archive's title and the gate's and
+  results' buttons say Daily archive too.
+- The rename: THE REDRAFTED is Draft Night Do-Over on the home door, the gate and mode headers, the share text
+  ("TRUE 82 · DRAFT NIGHT DO-OVER · 1984") and the podium ("You win the Do-Over"). Ids, classes, analytics names
+  and `?redraft=` links are unchanged.
+
+**Calls made (owner may overrule):** the site's own faces (Big Shoulders Display, Rubik) instead of the mock's Bebas
+Neue and Outfit, as the handoff allowed; every color a theme token (the mock's palette already was the theme);
+three trait questions read in the ballot's words ("Gravity shooter?", "The #1 on a title team?", "Hunted on
+defense?"), the rest are the trait's name ("Team defender?"); the desk's longer sentences no longer show on the
+home card (they still ride the share text); IDK stays a pass (nothing written) but shows the standing tally
+read-only and fills a diamond; the team comes from the desk's metadata line or, for the other 470 of 565 curated
+calls, the game's own data once site_data.json lands (`tmTeamFor`, `tmDataReady`), never a guess; KEEP GOING never
+re-pins the day's featured call once this browser has answered it (a pin overrides the server's answer ceiling);
+the card's title is no longer a link to /bonuses/ (the footer's Player Traits link remains).
+
+**iPhone SE.** At 375x667 the vote buttons sit at 614 to 660 px (on the physical screen). In Safari with its
+toolbars (about 553 px) they need a short scroll. The handoff's optional short-screen tightening is NOT done (his
+call, pending).
+
+**Checked:** `node tools/home-qa.js` (new; widths, frames, flow, calm, played): no sideways scroll at 320, 375, 390
+and 440 in Chromium and WebKit; no home button carries the decorator's `presti-spin` (all are `.tm-flat`); five
+votes, Finish, Keep going with the URL unchanged; reduced motion; the played Daily. Every door launches its mode,
+How to play opens, no console errors. test.js 98, style law clean. The old Daily plaque, vote module and intro
+header CSS are deleted from styles.css (dead with this markup). Keys: styles.css and app.js at
+`20260927-home-v59`, `BUILD_V = "v59"`.
+
+**Still open from earlier today (00000k):** the non-ASCII capital bug in traits.js op=labels (Şengün and four
+others); offer it before the merge.
+
+## 00000k. (2026-09-27, afternoon) ship the base game today; the database audit
 
 **The owner's call.** "let's shelve those animations just for today - gotta fix the base game for now since we
 need to fully ship by EOD." The art bot (00000j) waits; do not render or wire clips today. His plan for this

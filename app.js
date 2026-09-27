@@ -2048,39 +2048,49 @@ function wireTraitChipTaps() {
   });
 }
 function traitsModuleHtml() {
-  // Ships hidden; wireBonusesModule reveals it only with a live session in
-  // hand, so the homepage never shows a stale or empty debate. The module IS
-  // a voting surface (owner redesign, 2026-07-27): five quick YES/NO calls
-  // run inline with progress dots; UNSURE and the full result hierarchy live
-  // on /bonuses/, one tap away via FULL PAGE or the question itself.
-  return '<section class="traits-module" id="traitsModule" hidden>' +
-    '<span class="tm-head" id="tmHead" hidden>VOTE: DID WE GET IT WRONG?</span>' +
-    '<div class="tm-lead">' +
-      head("poll", '<a class="tm-eyebrow" id="tmTitle" href="/bonuses/?src=home_module"><span class="tm-eyeb">HELP BALANCE THE GAME</span></a>', { tag: "h2", html: true, cls: "tm-lede" }) +
-      '<span class="tm-tag t-chip" id="tmTag" hidden></span>' +
-    "</div>" +
-    '<span class="tm-call" id="tmCall" hidden></span>' +
-    '<span class="tm-q" id="tmQ"></span>' +
-    '<span class="tm-def" id="tmDef"></span>' +
-    '<div class="tm-votes" id="tmVotes">' +
-      '<button class="tm-vb t-btn" data-kind="yes" type="button" id="tmYes">YES</button>' +
-      '<button class="tm-vb no t-btn" data-kind="no" type="button" id="tmNo">NO</button>' +
-      '<button class="tm-vb idk tm-flat t-btn" data-kind="quiet" type="button" id="tmIdk">IDK</button>' +
-    "</div>" +
-    '<div class="tm-res" id="tmRes" aria-live="polite"></div>' +
-    '<div class="tm-done" id="tmDone"></div>' +
-    '<div class="tm-foot"><span class="round-pips tm-pips" id="tmDots" aria-hidden="true"></span></div>' +
-    '<button class="tm-sharebar" type="button" id="tmShare" hidden>' +
-      '<strong class="tm-shlead">Share Vote</strong> (please don\u2019t vote brigade)</button>' +
-    "</section>";
+  // v59, the owner's home redesign ("Halftone v2"): the vote card votes IN PLACE and never leaves the
+  // page. Ask (who, the season, the trait as a question, YES / NO / IDK); then the tally in the same
+  // card (the bar, the call, what you said, NEXT QUESTION, the share link); after the set, "That's
+  // five." and KEEP GOING, which deals a fresh set right here. It ships hidden and empty: only a clean
+  // /api/traits answer reveals it, so the homepage never shows a stale or empty debate.
+  var dia = "";
+  for (var k = 0; k < 5; k++) dia += "<i></i>";
+  return '<div class="hm-ht hm-poll" id="traitsModule" hidden>' +
+    '<section class="hm-card" aria-labelledby="tmTitle">' +
+      '<div class="hm-poll-head">' +
+        '<h2 class="hm-poll-title" id="tmTitle">Help balance the game</h2>' +
+        '<div class="hm-dia" id="tmDots" role="img" aria-label="0 of 5 votes this round">' + dia + "</div>" +
+      "</div>" +
+      '<div class="hm-q" id="tmQBlock">' +
+        '<div class="hm-who"><div class="hm-name" id="tmName"></div><div class="hm-season" id="tmSeason"></div></div>' +
+        '<div class="hm-trait" id="tmTrait"></div>' +
+        '<div class="hm-votes" id="tmVotes">' +
+          '<div class="hm-ht is-yes"><button class="hm-vb tm-flat" type="button" id="tmYes">Yes</button></div>' +
+          '<div class="hm-ht is-no"><button class="hm-vb tm-flat" type="button" id="tmNo">No</button></div>' +
+          '<div class="hm-ht is-idk"><button class="hm-vb tm-flat" type="button" id="tmIdk" aria-label="I don\u2019t know: skip this one">IDK</button></div>' +
+        "</div>" +
+        '<div class="hm-res" id="tmRes" hidden>' +
+          '<div class="hm-bar" id="tmBar"><b id="tmBarFill"></b></div>' +
+          '<div class="hm-tally" aria-live="polite"><span id="tmTally"></span><span class="hm-you" id="tmYou"></span></div>' +
+          '<div class="hm-ht is-next"><button class="hm-next tm-flat" type="button" id="tmNext">Next question</button></div>' +
+          '<button class="hm-link hm-share tm-flat" type="button" id="tmShare">Share vote (please don\u2019t vote brigade)</button>' +
+        "</div>" +
+        '<p class="hm-err" id="tmErr" role="status" hidden></p>' +
+      "</div>" +
+      '<div class="hm-done" id="tmDone" hidden>' +
+        '<p class="hm-done-t" id="tmDoneT"></p>' +
+        '<p class="hm-done-s" id="tmDoneS"></p>' +
+        '<div class="hm-ht is-next" id="tmAgainWrap"><button class="hm-next tm-flat" type="button" id="tmAgain">Keep going</button></div>' +
+      "</div>" +
+    "</section>" +
+  "</div>";
 }
 
-// The inline home session: same worker, same voter, same analytics names as
-// the full page (source home_module throughout). Compact result beat per
-// vote, then the next question slides in; the fifth lands the completion
-// state with VOTE ON 5 MORE. Any fetch trouble mid-run degrades to the
-// FULL PAGE door instead of a dead card.
-var TM = { qs: [], i: 0, sid: null, busy: false, source: "home_module", loader: null, wired: false };
+// The inline home session: same worker, same voter, same analytics names as the full page (source
+// home_module throughout). v59: nothing auto-advances and nothing navigates. A vote lands its tally
+// in the card and waits for NEXT QUESTION; IDK is still a pass (nothing written), and it shows the
+// standing tally read-only; a failed vote stays on the card with a note instead of leaving for /bonuses/.
+var TM = { qs: [], i: 0, n: 0, sid: null, busy: false, phase: "ask", source: "home_module", loader: null, wired: false };
 // Question selection is keyed by the same first-party anonymous identity used
 // for retention analytics. Wait briefly for that cookie/localStorage recovery
 // handshake before requesting a feed; otherwise the first request can fall
@@ -2096,74 +2106,176 @@ function traitsIdentityReady() {
     })();
   });
 }
-function tmHref(q) {
-  return q && q.slug ? "/bonuses/" + q.slug + "?src=" + TM.source : "/bonuses/?src=" + TM.source;
+var TM_WORDS = ["zero", "one", "two", "three", "four", "five"];
+// The trait as a short question under the name (the owner's mock: "Team defender?"). Three read
+// better in the ballot's own words than as the trait's display name.
+var TM_ASK = {
+  "Super Three-Point Shooter": "Gravity shooter?",
+  "Championship #1": "The #1 on a title team?",
+  "Hunted": "Hunted on defense?"
+};
+function tmAsk(trait) {
+  var t = String(trait || "");
+  if (TM_ASK[t]) return TM_ASK[t];
+  return t ? t.charAt(0) + t.slice(1).toLowerCase() + "?" : "";
 }
-function tmDots() {
+// "2023-24" becomes "2023–24 · Pacers". The team rides the desk's metadata line when it names one
+// ("Kobe Bryant · 2007-08 Lakers"); otherwise the game's own data names it once site_data.json has
+// landed (tmDataReady patches the card in place). No team found, no team shown: never a guess.
+function tmSeasonLine(q) {
+  var lab = String(q.season_label || q.season || "").replace(/^(\d{4})-(\d{2})$/, "$1\u2013$2");
+  var team = tmTeamFor(q);
+  return lab + (team ? " \u00B7 " + team : "");
+}
+function tmTeamFor(q) {
+  var m = /\d{4}-\d{2}\s+(.+)$/.exec(String(q.metadata_line || ""));
+  if (m) return m[1];
+  if (!DATA_READY || !IDX || !q.season || !POOL_YEARS || !POOL_YEARS.forEach) return "";
+  var want = String(q.player_name || "").toLowerCase(), season = Number(q.season), best = null;
+  POOL_YEARS.forEach(function (cell) {
+    cell.forEach(function (rows, name) {
+      if (String(name).toLowerCase() !== want) return;
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (r[IDX.season] === season && (!best || r[IDX.mp] > best[IDX.mp])) best = r;   // a traded season: the longer stint
+      }
+    });
+  });
+  var fr = best ? TEAM2FR[best[IDX.team]] : "";
+  return fr ? titleCase(fr) : "";
+}
+function tmDataReady() {
+  var q = TM.qs[TM.i], s = el("tmSeason");
+  if (q && s && TM.phase !== "done") s.textContent = tmSeasonLine(q);
+}
+function tmCalm() {
+  // The site ignores the OS motion flag for the game itself (prefersReduce), but this reward is
+  // decoration on a form, so it honors it: the end state lands at once.
+  try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
+}
+function tmReplay(node, cls) {
+  if (!node) return;
+  node.classList.remove(cls);
+  void node.offsetWidth;
+  if (!tmCalm()) node.classList.add(cls);
+}
+function tmDots(fresh) {
   var d = el("tmDots");
   if (!d) return;
-  var out = "";
-  var total = Math.max(1, TM.qs.length);
-  for (var k = 0; k < total; k++) {
-    var on = k < TM.i || (k === TM.i && TM.qs[TM.i]);
-    out += "<span" + (on ? ' class="done"' : "") + "></span>";
+  var total = Math.min(5, Math.max(1, TM.qs.length)), marks = d.children;
+  if (marks.length !== total) {
+    var h = "";
+    for (var k = 0; k < total; k++) h += "<i></i>";
+    d.innerHTML = h;
+    marks = d.children;
   }
-  d.innerHTML = out;
+  for (var j = 0; j < marks.length; j++) marks[j].className = j < TM.n ? "on" : "";
+  d.setAttribute("aria-label", TM.n + " of " + total + " votes this round");
+  if (!fresh) { d.classList.remove("is-full"); return; }
+  if (TM.n > 0) tmPrint(d, marks[TM.n - 1], TM.n >= total);
 }
-function tmShowQuestion() {
+// The reward (owner: "a really fun, artistic dopamine reward" on every vote, distinct from the
+// game-by-game reel but the same family). The new diamond prints like a riso pass: the pink key
+// plate stamps down, the aqua plate lands off register and snaps in, and a ring of halftone dots
+// rolls out in both inks. The set's last diamond is the big one: the row re-inks left to right and
+// the ring doubles. Under a second, decoration only (NEXT is never held), no flashing, and the end
+// state lands at once under prefers-reduced-motion.
+function tmPrint(row, mark, last) {
+  if (!row || !mark || tmCalm()) return;
+  row.classList.remove("is-full");
+  void mark.offsetWidth;
+  mark.classList.add("is-new");
+  if (last) { row.classList.add("is-full"); tmReplay(el("tmTitle"), "is-lit"); }
+  // the set's big moment rings the whole row (centered on it, so it stays on the card); a single vote rings its diamond
+  var x = (last ? row.offsetWidth / 2 : mark.offsetLeft + mark.offsetWidth / 2) + "px", y = (mark.offsetTop + mark.offsetHeight / 2) + "px";
+  var bits = ["hm-burst", "hm-spray"].map(function (cls) {
+    var b = document.createElement("span");
+    b.className = cls + (last ? " is-big" : "");
+    b.setAttribute("aria-hidden", "true");
+    b.style.left = x;
+    b.style.top = y;
+    row.appendChild(b);
+    return b;
+  });
+  setTimeout(function () {
+    bits.forEach(function (b) { if (b.parentNode) b.parentNode.removeChild(b); });
+    mark.classList.remove("is-new");
+  }, 1000);
+}
+function tmCountUp(node, to) {
+  if (!node) return;
+  if (tmCalm() || !window.requestAnimationFrame) { node.textContent = to + "%"; return; }
+  var t0 = null;
+  function step(ts) {
+    if (t0 === null) t0 = ts;
+    var p = Math.min(1, (ts - t0) / 560), e = 1 - Math.pow(1 - p, 3);
+    node.textContent = Math.round(to * e) + "%";
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+// The call, in the game's real rule (the server's live thresholds: 62% settles a yes, 38% a no,
+// once 25 votes are in; the pill on the results ballot reads the same numbers).
+function tmCall(d, floor) {
+  if (!d || d.yes_pct == null) return { pct: null, text: "No votes yet" };
+  if (d.status === "qualifies") return { pct: d.yes_pct, text: " say yes \u00B7 Settled" };
+  if (d.status === "does_not_qualify") return { pct: 100 - d.yes_pct, no: true, text: " say no \u00B7 Settled" };
+  if (d.status === "disputed") return { pct: d.yes_pct, text: " say yes \u00B7 Still disputed" };
+  var left = Math.max(1, (floor || 25) - ((d.yes || 0) + (d.no || 0)));
+  if (d.yes_pct < 50) return { pct: 100 - d.yes_pct, no: true, text: " say no \u00B7 " + left + " more to settle" };
+  return { pct: d.yes_pct, text: " say yes \u00B7 " + left + " more to settle" };
+}
+function tmShowQuestion(anim) {
   var q = TM.qs[TM.i];
   var mod = el("traitsModule");
   if (!q || !mod) return tmComplete();
-  // v47.21: the tag rides the lead row, so the question is plain text again
-  // (no innerHTML ordering dance) and gets its full width back.
-  var tagAbbr = traitCardAbbr(q.trait_name || "");
-  var tagEl = el("tmTag");
-  if (tagEl) { tagEl.textContent = tagAbbr || ""; tagEl.hidden = !tagAbbr; }
-  el("tmQ").textContent = (q.public_question || "").toUpperCase();
-  el("tmDef").textContent = q.what_counts || "";
-  el("tmRes").style.display = "none";
-  el("tmVotes").style.display = "";
+  TM.phase = "ask";
+  el("tmQBlock").hidden = false;
+  el("tmDone").hidden = true;
+  el("tmName").textContent = q.player_name || "";
+  el("tmSeason").textContent = tmSeasonLine(q);
+  el("tmTrait").textContent = tmAsk(q.trait_name);
+  el("tmVotes").hidden = false;
+  el("tmRes").hidden = true;
+  el("tmErr").hidden = true;
   mod.classList.remove("tm-locked");
-  var sh = el("tmShare"); if (sh) sh.hidden = false;
-  var y = el("tmYes"), nn = el("tmNo"), ik = el("tmIdk");
-  y.classList.remove("pressed"); nn.classList.remove("pressed");
-  if (ik) ik.classList.remove("pressed");
-  tmDots();
+  ["tmYes", "tmNo", "tmIdk"].forEach(function (id) { var b = el(id); if (b) b.classList.remove("pressed"); });
+  if (anim) tmReplay(el("tmQBlock"), "is-in");
+  tmDots(false);
   analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
 }
-// Share the exact question on screen. Same canonical URL family the full
-// page shares (/bonuses/<slug> when curated, ?q=<id> otherwise; src=s so the
-// receiving session logs entry source "share"). Native share sheet when the
-// browser has one, copy-to-clipboard with a COPIED beat otherwise. Pure
-// navigation: no vote is written, the identity/vote path is untouched.
+// Share the exact question on screen: the same canonical URL family the full page shares
+// (/bonuses/<slug>, or ?q=<id>; src=s so the receiving session logs entry source "share").
+// Native share sheet when the browser has one, copy with a COPIED beat otherwise. No vote is written.
 function tmShareQuestion() {
   var q = TM.qs[TM.i];
   var sh = el("tmShare");
   if (!q || !sh) return;
   var url = location.origin + "/bonuses/" + (q.slug || ("?q=" + encodeURIComponent(q.id))) + (q.slug ? "?src=s" : "&src=s");
-  var text = "Vote on this one: " + (q.public_question || "");
+  var text = "Vote on this one: " + (q.public_question || (q.player_name + ", " + (q.season_label || q.season) + ": " + tmAsk(q.trait_name)));
   if (navigator.share) {
     navigator.share({ text: text, url: url }).then(function () {
       analyticsTrack("traits_question", { surface: "traits", action: "share_open", challenge: q.id, source: TM.source, sid: TM.sid });
     }).catch(function () {});
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(text + "\n" + url).then(function () {
-      if (!sh.dataset.labelHtml) sh.dataset.labelHtml = sh.innerHTML;
-      sh.textContent = "COPIED";
-      sh.classList.add("flashed");
-      setTimeout(function () { sh.innerHTML = sh.dataset.labelHtml; sh.classList.remove("flashed"); }, 1400);
+      var label = sh.getAttribute("data-label") || sh.textContent;
+      sh.setAttribute("data-label", label);
+      sh.textContent = "Copied";
+      setTimeout(function () { sh.textContent = label; }, 1400);
       analyticsTrack("traits_question", { surface: "traits", action: "share_copy", challenge: q.id, source: TM.source, sid: TM.sid });
     }).catch(function () {});
   }
 }
 function tmVote(resp, btn) {
-  if (TM.busy) return;
+  if (TM.busy || TM.phase !== "ask") return;
   var q = TM.qs[TM.i];
   var mod = el("traitsModule");
   if (!q || !mod) return;
   TM.busy = true;
   mod.classList.add("tm-locked");
   btn.classList.add("pressed");
+  el("tmErr").hidden = true;
   buzz(10);
   var t0 = Date.now();
   fetch("/api/traits", {
@@ -2171,95 +2283,139 @@ function tmVote(resp, btn) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ op: "vote", question_id: q.id, response: resp, source: TM.source, sid: TM.sid })
   }).then(function (r) { return r.json(); }).then(function (x) {
-    TM.busy = false;
-    if (!x || !x.ok || !x.display) return tmDegrade(q);
+    if (!x || !x.ok || !x.display) return tmFailed(x && x.reason);
     tmSeenAdd(q.id);
     analyticsTrack("traits_vote", { surface: "traits", action: resp, ordinal: TM.i + 1, challenge: q.id, outcome: x.outcome, value: Date.now() - t0, source: TM.source, sid: TM.sid });
-    tmResult(q, resp, x.display);
-  }).catch(function () { TM.busy = false; tmDegrade(q); });
+    tmResult(q, resp, x.display, x.rules);
+  }).catch(function () { tmFailed(); });
 }
-// IDK = a pass. Nothing is written server-side (an unsure lean is the full
-// page's UNSURE vote; a pass is "stop asking me this one"): the id goes into
-// the local seen store and the session moves on after a short pressed beat.
+function tmFailed(reason) {
+  TM.busy = false;
+  var mod = el("traitsModule");
+  if (mod) mod.classList.remove("tm-locked");
+  ["tmYes", "tmNo", "tmIdk"].forEach(function (id) { var b = el(id); if (b) b.classList.remove("pressed"); });
+  var e = el("tmErr");
+  if (!e) return;
+  e.textContent = reason === "rate_limited" ? "Easy there. Give it a second, then tap again." : "That vote didn\u2019t save. Tap it again.";
+  e.hidden = false;
+}
+// IDK = a pass. Nothing is written server-side (an unsure lean is the full page's UNSURE vote; a pass
+// is "stop asking me this one"): the id joins the local seen store, and the card shows where the
+// crowd stands, read-only, so a pass still pays out a tally and a diamond.
 function tmPass(btn) {
-  if (TM.busy) return;
+  if (TM.busy || TM.phase !== "ask") return;
   var q = TM.qs[TM.i];
-  if (!q) return;
+  var mod = el("traitsModule");
+  if (!q || !mod) return;
+  TM.busy = true;
+  mod.classList.add("tm-locked");
   btn.classList.add("pressed");
+  el("tmErr").hidden = true;
   buzz(6);
   tmSeenAdd(q.id);
   analyticsTrack("traits_vote", { surface: "traits", action: "pass", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
-  TM.i++;
-  setTimeout(function () { if (el("traitsModule")) tmShowQuestion(); }, 260);
+  fetch("/api/traits?op=result&q=" + encodeURIComponent(q.id) + "&sid=" + TM.sid, { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (x) { tmResult(q, "pass", x && x.ok ? x.display : null, x && x.rules); })
+    .catch(function () { tmResult(q, "pass", null, null); });
 }
-function tmResult(q, resp, d) {
-  var res = el("tmRes");
-  el("tmVotes").style.display = "none";
-  var line;
-  if (d.mode === "counts") line = "<b>" + d.yes + " YES \u00B7 " + d.no + " NO</b> so far";
-  else if ((d.yes_pct || 0) >= 50) line = "<b>" + d.yes_pct + "% SAY YES</b>";
-  else line = '<span class="neg">' + (100 - d.yes_pct) + "% SAY NO</span>";
-  var chip = d.status === "qualifies" ? " \u00B7 BONUS ACTIVE"
-    : d.status === "does_not_qualify" ? " \u00B7 NO BONUS"
-    : d.status === "disputed" ? " \u00B7 STILL DISPUTED" : "";
-  res.innerHTML = line + chip;
-  res.style.display = "block";
+function tmResult(q, resp, d, rules) {
+  if (!el("traitsModule")) return;
+  TM.busy = false;
+  TM.phase = "result";
+  TM.n++;
+  el("traitsModule").classList.remove("tm-locked");
+  el("tmVotes").hidden = true;
+  el("tmErr").hidden = true;
+  el("tmRes").hidden = false;
+  var call = tmCall(d, rules && rules.min_eligible_votes);
+  var tally = el("tmTally");
+  tally.textContent = "";
+  if (call.pct != null) {
+    var num = document.createElement("b");
+    num.className = "hm-pct" + (call.no ? " is-no" : "");
+    num.textContent = "0%";
+    tally.appendChild(num);
+    tally.appendChild(document.createTextNode(call.text));
+    tmCountUp(num, call.pct);
+  } else tally.textContent = call.text;
+  el("tmYou").textContent = resp === "yes" ? "You said yes" : resp === "no" ? "You said no" : "You passed";
+  el("tmNext").textContent = TM.i + 1 >= TM.qs.length ? "Finish" : "Next question";
+  el("tmBarFill").style.width = (d && d.yes_pct != null ? d.yes_pct : 0) + "%";
+  tmReplay(el("tmBar"), "is-rolling");
+  tmReplay(el("tmRes"), "is-in");
+  tmDots(true);
+  try { el("tmNext").focus({ preventScroll: true }); } catch (e) {}
   buzz(10);
-  analyticsTrack("traits_question", { surface: "traits", action: "result_view", ordinal: TM.i + 1, challenge: q.id, outcome: d.status, value: d.mode === "counts" ? 1 : 0, source: TM.source, sid: TM.sid });
+  analyticsTrack("traits_question", { surface: "traits", action: "result_view", ordinal: TM.i + 1, challenge: q.id, outcome: d ? d.status : "none", value: d && d.mode === "counts" ? 1 : 0, source: TM.source, sid: TM.sid });
+}
+function tmNext() {
+  if (TM.phase !== "result") return;
   TM.i++;
-  tmDots();
-  var wait = 1500;
-  try { if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) wait = 2100; } catch (e) {}
-  setTimeout(function () { if (el("traitsModule")) tmShowQuestion(); }, wait);
+  if (TM.i >= TM.qs.length) return tmComplete();
+  tmShowQuestion(true);
 }
 function tmComplete() {
-  var mod = el("traitsModule");
-  if (!mod) return;
-  el("tmQ").textContent = TM.qs.length + (TM.qs.length === 1 ? " VOTE IN" : " VOTES IN");
-  el("tmDef").textContent = "";
-  var doneTag = el("tmTag"); if (doneTag) { doneTag.textContent = ""; doneTag.hidden = true; }
-  el("tmVotes").style.display = "none";
-  el("tmRes").style.display = "none";
-  var sh = el("tmShare"); if (sh) sh.hidden = true;
-  var done = el("tmDone");
-  done.style.display = "block";
-  done.innerHTML = '<span class="td-l">Your votes helped set player bonuses.</span><br>' +
-    '<a class="tm-again t-btn" id="tmAgain" href="/bonuses/?src=' + TM.source + '">VOTE ON 5 MORE</a>';
-  tmDots();
+  if (!el("traitsModule")) return;
+  TM.phase = "done";
+  el("tmQBlock").hidden = true;
+  el("tmDone").hidden = false;
+  el("tmDoneT").textContent = "That\u2019s " + (TM_WORDS[TM.n] || TM.n) + ". Thanks for balancing the game.";
+  el("tmDoneS").textContent = "Your votes help settle the disputed calls.";
+  el("tmAgainWrap").hidden = false;
+  var again = el("tmAgain");
+  again.disabled = false;
+  again.textContent = "Keep going";
+  tmReplay(el("tmDone"), "is-in");
+  try { again.focus({ preventScroll: true }); } catch (e) {}
   buzz([12, 70, 12]);
-  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: TM.qs.length, source: TM.source, sid: TM.sid });
+  analyticsTrack("traits_session", { surface: "traits", action: "complete", value: TM.n, source: TM.source, sid: TM.sid });
 }
-function tmDegrade(q) {
-  // The inline lane hit trouble; hand the run to the full page with the
-  // current question pinned so nothing is lost.
-  try { location.href = tmHref(q); } catch (e) {}
+function tmAgain() {
+  var b = el("tmAgain");
+  if (!b || b.disabled) return;
+  b.disabled = true;
+  b.textContent = "Dealing\u2026";
+  tmStart(true);
+}
+// KEEP GOING came back empty (every curated call answered twice) or failed: say so in the card.
+function tmEmpty(failed) {
+  var b = el("tmAgain");
+  if (!b) return;
+  el("tmDoneT").textContent = failed ? "Couldn\u2019t deal more calls just now." : "That\u2019s every call for now.";
+  el("tmDoneS").textContent = failed ? "Check the connection, then try again." : "New disputes land all the time. Check back soon.";
+  if (failed) { b.disabled = false; b.textContent = "Try again"; }
+  else el("tmAgainWrap").hidden = true;
 }
 function tmStart(again) {
   var mod = el("traitsModule");
   if (!mod || !window.fetch || !TM.loader) return;
   TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
   traitsIdentityReady().then(function () { return TM.loader(); }).then(function (x) {
-    if (!x || !x.ok || !x.questions || !x.questions.length || !el("traitsModule")) return;
-    // The API already tiers never-answered, answered-once, and exhausted
-    // questions. Keep that order intact instead of independently hiding all
-    // standing votes, which would defeat the intentional second-answer round.
-    TM.qs = x.questions.filter(function (q) { return q.public_question; }).slice(0, 5);
+    if (!el("traitsModule")) return;
+    // The API already tiers never-answered, answered-once, and exhausted questions. Keep that order
+    // intact instead of independently hiding all standing votes, which would defeat the intentional
+    // second-answer round.
+    var qs = x && x.ok && x.questions ? x.questions.filter(function (q) { return q.public_question && q.player_name && q.trait_name; }).slice(0, 5) : [];
+    if (!qs.length) { if (again) tmEmpty(false); return; }
+    TM.qs = qs;
     TM.i = 0;
-    if (!TM.qs.length) return;
-    var d = el("tmDone"); if (d) { d.style.display = "none"; d.innerHTML = ""; }
+    TM.n = 0;
+    TM.busy = false;
     if (!TM.wired) {
       TM.wired = true;
       el("tmYes").addEventListener("click", function () { tmVote("yes", el("tmYes")); });
       el("tmNo").addEventListener("click", function () { tmVote("no", el("tmNo")); });
       el("tmIdk").addEventListener("click", function () { tmPass(el("tmIdk")); });
-      var shBtn = el("tmShare");
-      if (shBtn) shBtn.addEventListener("click", tmShareQuestion);
+      el("tmNext").addEventListener("click", tmNext);
+      el("tmAgain").addEventListener("click", tmAgain);
+      el("tmShare").addEventListener("click", tmShareQuestion);
     }
-    tmShowQuestion();
-    mod.hidden = false;
+    tmShowQuestion(again);
+    if (mod.hidden) { mod.hidden = false; tmReplay(mod, "is-in"); }
     analyticsTrack("traits_session", { surface: "traits", action: again ? "again" : "start", source: TM.source, sid: TM.sid });
     if (!again) analyticsTrack("mode_impression", { surface: TM.source === "home_module" ? "home" : "results", action: "traits", challenge: TM.qs[0].id });
-  }).catch(function () {});
+  }).catch(function () { if (again) tmEmpty(true); });
 }
 var TM_SEEN_KEY = "t82TraitsSeen";
 function tmSeenList() {
@@ -2281,8 +2437,12 @@ function tmSessionLoader() {
   return fetch("/api/traits?op=featured", { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (feat) {
+      // The day's featured call leads a fresh card, but never twice: once this browser has answered or
+      // passed it, KEEP GOING's next set deals without it (a pin overrides the server's answer ceiling).
+      var seen = tmSeenList();
       var pin = feat && feat.ok && feat.question ? feat.question.id : "";
-      var ex = tmSeenList().filter(function (x) { return x !== pin; }).slice(-48);
+      if (pin && seen.indexOf(pin) >= 0) pin = "";
+      var ex = seen.filter(function (x) { return x !== pin; }).slice(-48);
       return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : "") +
         (ex.length ? "&exclude=" + ex.map(encodeURIComponent).join(",") : ""), { credentials: "same-origin" })
         .then(function (r) { return r.json(); });
@@ -2292,6 +2452,7 @@ function wireBonusesModule() {
   TM.source = "home_module";
   TM.loader = tmSessionLoader;
   TM.wired = false;
+  TM.phase = "ask";
   tmStart(false);
 }
 // Fail-soft by construction: the section ships hidden and empty; only a clean
@@ -2977,69 +3138,75 @@ function renderIntro() {
     } catch (e) { dailyBoard = null; }
   }
   analyticsSendReturnProfile();
-  var dailyDate = "";
-  try { dailyDate = new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }).toUpperCase(); } catch (e) {}
-  // Tomorrow's board name is deterministic and free: anticipation is the
-  // ethical retention lever. No countdowns, no streak threats, no guilt copy
-  // anywhere on this surface; the streak renders as a patch you earned, never
-  // a leash. Once today is played, the tile's PRIMARY action becomes
-  // CHALLENGE A FRIEND: the retention surface feeds the share loop instead of
-  // farming compulsive re-opens. RUN IT BACK · PRACTICE rides second (v28,
-  // owner reversal of the v24 removal): practice is reachable from the tile
-  // again, ghost-skinned so the share action stays the loudest thing here.
-  var dailyTomorrow = null;
-  try { dailyTomorrow = T82DAILY.boardFor(T82DAILY.dayKey(Date.now() + 86400000)); } catch (e) {}
-  var dtStreak = dailyStreak >= 2 ? ' \u00B7 \uD83D\uDD25 ' + dailyStreak : '';
-  // The plaque hierarchy, per spec: THE DAILY #N is by far the loudest text,
-  // then the date, then today's board, then one short cryptic line. The
-  // one-run law and the full variation brief moved to the gate screen, so the
-  // plaque stays a poster, not a paragraph.
-  var dtTitle = '<span class="dt-title">\uD83D\uDDD3\uFE0F THE DAILY #' + (dailyBoard ? dailyBoard.num : "") + '</span>';
-  var dtDate = '<span class="dt-date mono">' + dailyDate + dtStreak + '</span>';
+  // No countdowns, no streak threats, no guilt copy anywhere on this surface; the streak renders as
+  // a patch you earned, never a leash. Once today is played, the tile's PRIMARY action becomes
+  // CHALLENGE A FRIEND: the retention surface feeds the share loop instead of farming compulsive
+  // re-opens. The practice run rides second (v28, owner reversal of the v24 removal), quieter, so
+  // the share action stays the loudest thing here.
+  // v59, the owner's home redesign ("Halftone v2"): three brightness tiers, every door a two-line
+  // button (the name in the display face, a plain line under it) on a dotted halftone offset shadow.
+  // Pink is the core game (Classic, Presti), aqua the side modes. Classic is the only thing that
+  // glows. The Daily keeps its played state: the record, CHALLENGE A FRIEND first, the practice run second.
+  var hmStreak = dailyStreak >= 2 ? " \u00B7 " + dailyStreak + "-day streak" : "";
   var thirdSlotHtml;
   if (dailyBoard && dailyOfficial) {
     thirdSlotHtml =
-      '<div class="daily-tile plq-frame is-played" role="group" aria-label="The Daily, played">' +
-        dtTitle +
-        '<span class="dt-result">\u2713 YOUR RUN ' + dailyOfficial.wins + '-' + (82 - dailyOfficial.wins) +
-          ' \u00B7 Net ' + T82DAILY.signedNet(dailyOfficial.net) + '</span>' +
-        '<span class="dt-actions">' +
-          '<button class="dt-act dt-act-share t-btn" data-size="sm" id="dailyChallengeBtn" data-share-label="CHALLENGE A FRIEND">CHALLENGE A FRIEND</button>' +
-          '<button class="dt-act dt-act-ghost t-btn" data-kind="quiet" data-size="sm" id="dailyPracticeBtn">RUN IT BACK \u00B7 PRACTICE</button>' +
-        '</span>' +
-      '</div>';
+      '<div class="hm-ht hm-mid is-cyan" id="homeDaily">' +
+        '<div class="hm-mode hm-played" role="group" aria-label="The Daily #' + dailyBoard.num + ', played">' +
+          '<span class="hm-t">The Daily #' + dailyBoard.num + ' <span class="hm-rec">\u2713 ' + dailyOfficial.wins + "-" + (82 - dailyOfficial.wins) + "</span></span>" +
+          '<span class="hm-acts">' +
+            '<button class="hm-act tm-flat" id="dailyChallengeBtn" type="button" data-share-label="Challenge a friend">Challenge a friend</button>' +
+            '<span class="hm-sep" aria-hidden="true">\u00B7</span>' +
+            '<button class="hm-act is-quiet tm-flat" id="dailyPracticeBtn" type="button">Run it back</button>' +
+          "</span>" +
+        "</div>" +
+      "</div>";
   } else if (dailyBoard) {
     thirdSlotHtml =
-      '<button class="daily-tile plq-frame" id="startDaily">' +
-        dtTitle +
-        '<span class="dt-board">' + esc(dailyBoard.name) + '</span>' +
-      '</button>';
+      '<div class="hm-ht hm-mid is-cyan" id="homeDaily">' +
+        '<button class="hm-mode tm-flat" id="startDaily" type="button">' +
+          '<span class="hm-t">The Daily #' + dailyBoard.num + "</span>" +
+          '<span class="hm-s">' + esc(dailyBoard.name) + hmStreak + "</span>" +
+        "</button>" +
+      "</div>";
   } else {
-    thirdSlotHtml = '<button class="btn btn-block more-modes" id="startPro">\uD83C\uDFC6 Pro \u00B7 pick the best seasons from memory</button>';
+    thirdSlotHtml = '<div class="hm-ht hm-mid is-cyan"><button class="hm-mode tm-flat" id="startPro" type="button">' +
+      '<span class="hm-t">Pro</span><span class="hm-s">Pick the best seasons from memory</span></button></div>';
   }
   app().innerHTML =
-    '<section class="ticket intro">' +
-      '<div class="intro-toprow"><button class="arena-chip" id="arenaChip" type="button">\uD83C\uDFDF Arena</button></div>' +
-      // v53 (owner): a one-liner and a HOW TO PLAY button replace the old paragraph and the
-      // DRAFT / WINNING text that sat under the vote card; the button opens the demo sheet.
-      '<div class="intro-head"><h1 class="intro-title" id="introTitle">Go 82\u20130</h1>' +
-        '<button class="mp-rules-btn intro-rules-btn" id="homeRulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: a short demo and the basics">' +
-          '<span class="mp-book-wrap">' + bookIconSvg() + '</span><span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span></span></button></div>' +
-      '<p class="intro-lead">Draft five NBA players. Real advanced stats play the season.</p>' +
-      '<button class="daily-strip" id="dailyStrip" hidden></button>' +
-      '<button class="btn btn-primary btn-block presti-spin" id="startClassic">\uD83C\uDFC0 Classic \u00B7 full stats</button>' +
-      '<button class="btn btn-primary btn-block presti-spin" id="startCap">\uD83D\uDC10 Presti Mode \u00B7 Salary Cap &amp; Random</button>' +
-      '<button class="btn btn-primary btn-block presti-spin weekly-tile" id="startWeekly" hidden>' +
-        '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
-        '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
-      thirdSlotHtml +
-      '<button class="btn btn-block more-modes" id="startRedraft">\uD83D\uDD01 Redrafted \u00B7 Redo\u00A0real\u00A0life\u00A0drafts</button>' +
-      '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
-      '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
-      // v58 (owner: the archive link "sucks so much front page space, gotta go below all the main mode
-      // buttons"): Past Dailies is the quiet line under the last mode, not a gap between the Daily and the Redrafted
-      (dailyBoard && dailyBoard.num > 1 ? '<button class="t-btn daily-past" data-kind="text" data-size="sm" id="dailyArchiveBtn" type="button">Past Dailies</button>' : "") +
-      traitsModuleHtml() +
+    '<section class="hm" id="home">' +
+      '<header class="hm-mast">' +
+        // "Draft what wins." replaces the old heading and paragraph; nothing sits above it. Five taps on
+        // it still bring Kaman back (the egg rides the id).
+        '<h1 class="hm-tag" id="introTitle"><span class="hm-tag-dots" aria-hidden="true">Draft what wins</span><span class="hm-tag-ink">Draft what wins</span></h1>' +
+        '<button class="hm-howto tm-flat" id="homeRulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: a short demo and the basics">' +
+          '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+            '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>' +
+          "<span>How to play</span></button>" +
+      "</header>" +
+      '<div class="hm-stack">' +
+        '<div class="hm-ht hm-hero"><button class="hm-mode tm-flat" id="startClassic" type="button">' +
+          '<span class="hm-t">Classic</span><span class="hm-s">Start here \u00B7 Full stats</span></button></div>' +
+        '<div class="hm-ht hm-mid is-pink"><button class="hm-mode tm-flat" id="startCap" type="button">' +
+          '<span class="hm-t">Presti mode</span><span class="hm-s">Experts only \u00B7 Salary cap &amp; stats from memory</span></button></div>' +
+        thirdSlotHtml +
+        '<div class="hm-ht hm-quiet"><button class="hm-mode tm-flat" id="startRedraft" type="button">' +
+          '<span class="hm-t">Draft Night Do-Over</span><span class="hm-s">Re-pick a real NBA draft class</span></button></div>' +
+        traitsModuleHtml() +
+      "</div>" +
+      // Past Dailies, renamed and moved under the vote card (the owner's mock): a quiet text link.
+      (dailyBoard && dailyBoard.num > 1 ? '<div class="hm-archive"><button class="hm-link tm-flat" id="dailyArchiveBtn" type="button">Daily archive</button></div>' : "") +
+      // The account lane's doors: index.html's #t82-live-hide is still their one switch on this lane
+      // (display:none); they stay in the markup for their wiring.
+      '<div class="hm-lane">' +
+        '<button class="arena-chip" id="arenaChip" type="button">\uD83C\uDFDF Arena</button>' +
+        '<button class="daily-strip" id="dailyStrip" hidden></button>' +
+        '<button class="btn btn-primary btn-block presti-spin weekly-tile" id="startWeekly" hidden>' +
+          '<span class="wk-eyebrow">THIS WEEK</span><span class="wk-name" id="wkName"></span>' +
+          '<span class="wk-blurb" id="wkBlurb"></span><span class="wk-meta" id="wkMeta"></span></button>' +
+        '<button class="btn btn-block more-modes" id="startDuel">\u2694\uFE0F Duel a friend \u00B7 correspondence</button>' +
+        '<button class="btn btn-block more-modes" id="startLeague">\uD83C\uDFC6 Found a league \u00B7 season-long H2H</button>' +
+      "</div>" +
     "</section>";
   analyticsTrack("home_view", {
     surface: "home", action: ANALYTICS_HOME_N === 1 ? "landing" : "return_to_menu",
@@ -3076,7 +3243,9 @@ function renderIntro() {
     PENDING_MODE = mode;   // data still downloading — remember the choice and launch the moment it lands
     ["startClassic", "startPro", "startCap", "startDaily"].forEach(function (id) { var b = el(id); if (b) b.disabled = true; });
     var pressed = el(mode === "classic" ? "startClassic" : mode === "pro" ? "startPro" : "startCap");
-    if (pressed) pressed.textContent = "Loading players\u2026";
+    var pressedSub = pressed && pressed.querySelector(".hm-s");   // v59: the door keeps its name; the line under it says so
+    if (pressedSub) pressedSub.textContent = "Loading players\u2026";
+    else if (pressed) pressed.textContent = "Loading players\u2026";
   }
   function queue(fn, btn) {
     if (DATA_READY) { fn(); return; }
@@ -3111,14 +3280,7 @@ function renderIntro() {
       if (ok) T82ARENA.route(); else featureLoadFailed(btn, label);
     });
   });
-  // Only the door-out elements count as a feature select now that the module
-  // votes inline; YES/NO taps report through the vote vocabulary instead.
-  ["tmTitle"].forEach(function (id) {
-    var door = el(id);
-    if (door) door.addEventListener("click", function () {
-      analyticsTrack("feature_select", { surface: "home", action: "traits" });
-    });
-  });
+  // v59: the card has no door out (voting never leaves the page); its taps report through the vote vocabulary.
   wireBonusesModule();
   el("startLeague").addEventListener("click", function () {   // league office needs no site data
     analyticsTrack("feature_select", { surface: "home", action: "league" });
@@ -3204,7 +3366,7 @@ function renderIntro() {
         DAILY_GATE_PENDING = { board: T82DAILY.boardFor(dl.key), tgt: ptgt, tag: "daily-practice:" + T82DAILY.dayNum(dl.key), archive: true };
       } else {
         // a link from a time zone already on tomorrow's board
-        var dTile = document.querySelector(".daily-tile");
+        var dTile = el("homeDaily");
         analyticsTrack("referral_open", {
           mode: dailyBoard.base, surface: "landing", action: "daily_link", outcome: "stale",
           daily_num: T82DAILY.dayNum(dl.key)
@@ -6784,7 +6946,7 @@ function sdShare() {
   if (!v) return;
   var lines = v.map(function (t, i) { return (i + 1) + ". " + (t.gi === 0 ? "ME" : t.name) + " " + t.wins + " and " + t.losses; });
   var mine = v.map(function (t) { return t.gi; }).indexOf(0);
-  var txt = "TRUE 82 \u00B7 THE REDRAFTED \u00B7 " + SD_CLASSES[SD.cls].label + "\n" +
+  var txt = "TRUE 82 \u00B7 DRAFT NIGHT DO-OVER \u00B7 " + SD_CLASSES[SD.cls].label + "\n" +
     lines.join("\n") + "\n" +
     (mine === 0 ? "I won the board." : "I want that draft back.") + "\n" +
     "https://true82.net/";
@@ -6994,8 +7156,8 @@ function renderShowdownResults() {
   }).join("");
   app().innerHTML =
     '<section class="t-mode rd-results" data-result-section="showdown_verdict">' +
-      head("redraft", "\uD83D\uDD01 The Redrafted \u00B7 " + SD_CLASSES[SD.cls].label.toLowerCase()) +
-      '<h1 class="t-title rd-stamp' + (mine === 0 ? " is-win" : "") + '">' + (mine === 0 ? "You win the Redrafted" : v[0].name + " wins the Redrafted") + "</h1>" +
+      head("redraft", "\uD83D\uDD01 Draft Night Do-Over \u00B7 " + SD_CLASSES[SD.cls].label.toLowerCase()) +
+      '<h1 class="t-title rd-stamp' + (mine === 0 ? " is-win" : "") + '">' + (mine === 0 ? "You win the Do-Over" : v[0].name + " wins the Do-Over") + "</h1>" +
       '<p class="t-small rd-line">' + (v[0].realized ? "Three seasons, played out." : "Three seasons, projected by the engine.") + "</p>" +
       '<div class="rd-podium">' + podium + "</div>" +
       '<button class="t-btn rd-again" data-size="lg" id="rdAgain" type="button">Run it back \u00B7 new seats</button>' +
@@ -7054,7 +7216,7 @@ function renderDifficultyScreen(cfg) {
 function renderShowdownDifficulty() {
   renderDifficultyScreen({
     mode: "showdown", surface: "redraft_gate",
-    eyebrow: "\uD83D\uDD01 The Redrafted",
+    eyebrow: "\uD83D\uDD01 Draft Night Do-Over",
     pickup: { sub: "Peak seasons of the best players.",
               fine: "Roll up. Everyone arrives in their prime. The short board.",
               chips: ["The headliners", "Peaks pre-set"] },
@@ -7126,7 +7288,7 @@ function renderShowdownGate(silent) {
       '<div class="rd-top"><button class="t-btn" data-kind="text" data-size="sm" id="rdBack" type="button">\u2039 Back</button>' +
         '<button class="t-btn" data-kind="quiet" data-size="sm" id="rdDiffPill" type="button">' + (SD_DIFF === "pickup" ? "Pickup" : "Pro") + " \u00B7 change</button></div>" +
       '<div class="t-card rd-card">' +
-        head("redraft", "\uD83D\uDD01 The Redrafted \u00B7 alpha") + dayTag +
+        head("redraft", "\uD83D\uDD01 Draft Night Do-Over \u00B7 alpha") + dayTag +
         '<h1 class="t-title rd-title">' + cls.label.charAt(0) + cls.label.slice(1).toLowerCase() + ". Three GMs. One board.</h1>" +
         '<p class="t-body rd-blurb"><b>' + esc(why || cls.blurb) + "</b></p>" +
         tail +
@@ -8181,7 +8343,7 @@ function renderResults(e, keepScroll) {
     '<section class="section rr-climb" data-result-section="goat_climb">' + head("results", "GOAT Climb", { cls: "rr-eyebrow" }) + climbHtml(e) + "</section>" +
     '<section class="section" data-result-section="scoring_card">' + head("results", "Scoring Card", { cls: "rr-eyebrow" }) + ledger + "</section>" +
     '<div class="actions" data-result-section="replay"><button class="btn btn-primary presti-spin" id="againBtn">' + (daily ? "Run it back \u00B7 practice" : "Run it back") + '</button>' +
-      (daily && daily.archive ? '<button class="t-btn" data-kind="text" id="pastDailiesBtn" type="button">Past Dailies</button>' : "") + '</div>' +
+      (daily && daily.archive ? '<button class="t-btn" data-kind="text" id="pastDailiesBtn" type="button">Daily archive</button>' : "") + '</div>' +
     '<p class="run-status" id="runStatus"></p></div>';
 
   trackResultSections();
@@ -8452,7 +8614,7 @@ function renderDailyArchive() {
     '<section class="t-mode da">' +
       '<div class="da-top"><button class="t-btn" data-kind="text" data-size="sm" id="daBack" type="button">\u2039 Back</button></div>' +
       head("daily", "\uD83D\uDCC5 The Daily") +
-      '<h1 class="t-title">Past Dailies</h1>' +
+      '<h1 class="t-title">Daily archive</h1>' +   // v59: the owner's name for it (was Past Dailies)
       '<p class="t-small da-lede">Every board replays exactly as it was dealt. A replay is practice: your official days and your streak stay as they are.</p>' +
       (rows ? '<div class="da-list" id="daList">' + rows + "</div>" : '<p class="t-small">No past boards yet. Come back tomorrow.</p>') +
     "</section>";
@@ -8517,7 +8679,7 @@ function renderDailyGate(board, target, variantTag, opts) {
         '<button class="gate-play-btn presti-spin" id="gatePlayBtn" type="button" aria-label="Start The Daily without using the dunk interaction">PLAY IT</button>' +
       '</div>' +
       // v58: the archive's second door, quiet, under today's start (the home page keeps the first)
-      (!archive && board.num > 1 ? '<button class="t-btn gate-past" data-kind="text" data-size="sm" id="gatePastBtn" type="button">Past Dailies</button>' : "") +
+      (!archive && board.num > 1 ? '<button class="t-btn gate-past" data-kind="text" data-size="sm" id="gatePastBtn" type="button">Daily archive</button>' : "") +
     '</section>';
   el("gateBack").addEventListener("click", function () {
     analyticsTrack("daily_gate_exit", { mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num, action: archive ? "archive_back" : "back" });
@@ -8642,7 +8804,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v58.5";
+var BUILD_V = "v59";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
@@ -8770,6 +8932,7 @@ function boot() {
     .then(function (data) {
       initData(data);
       DATA_READY = true;
+      tmDataReady();   // v59: the home vote card's season line gains its team
       var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
       analyticsTrack("data_ready", {
         action: "site_data", source: CFG.DATA_URL, outcome: "success", load_ms: ms,
