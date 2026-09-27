@@ -4,13 +4,48 @@
 
 **Date:** 2026-09-27
 **Build:** `v58.5`, pushed on branch `c-code-clean` (`BUILD_V = "v58.5"`; app.js, styles.css and look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** section 00000j (read it first): the owner's plan for the art bot's clips in the pick ceremony, and what is waiting on him. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Most recent change:** section 00000k (read it first): the database audit for go-live (0010 to 0025 are live; 0026, 0027 and the new 0028 are left) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that, 00000j: the owner's plan for the art bot's clips in the pick ceremony. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000j. START HERE (2026-09-27): where things stand, and the owner's plan for the art bot in the ceremony
+## 00000k. START HERE (2026-09-27, afternoon): ship the base game today; the database audit
+
+**The owner's call.** "let's shelve those animations just for today - gotta fix the base game for now since we
+need to fully ship by EOD." The art bot (00000j) waits; do not render or wire clips today. His plan for this
+session: the database first, then "UI tweaks", then "merge to main" (merging today keeps `START3` at Monday
+2026-09-28; see 00000j).
+
+**The database, audited (read-only, through true82.net's own API; nothing was written).** He asked what was
+missing from the migrations, including "the mass addition of player labels i generated previously". Findings:
+- His generated labels ARE 0026: `~/Downloads/0013_scout_claims.sql` (2026-09-04) is byte-identical to
+  `migrations/0026_scout_claims_v1.sql`. Not live: 2 of 29 sampled scout-only rows exist (made by the live roster
+  lane), and the preview's op=labels shows no scout layer.
+- Live already: 0006 to 0025, each checked by its own mark (list in migrations/MIGRATIONS-NOTES.md, "PRODUCTION
+  STATE"). 0025, the 24 homepage polls from accounts-test, was live all along (the deferred list in 00000h said
+  otherwise); its file is now in `migrations/` as repo truth. 0014 cannot be seen from outside: GO-LIVE step 7's
+  homepage count settles it (104 with it, 84 without).
+- Left, in order: 0026 (his labels), 0027 (Hunted), and **0028 (new, `0028_accent_names_v1.sql`)**: 27 curated
+  rows spelled Dončić, Jokić, Ginóbili, Kukoč and Stojaković without accents, so their 22 desk rulings and their
+  community votes (Jokić 2023 Team Defender 40 votes, qualifies; Dončić 2024 Off-Ball Scorer 37, ruled out...)
+  never reached a card. Renames player_name only; tested on a local SQLite copy of 0010 to 0028, reruns clean.
+  The two id spaces behind it (hand-folded curated ids vs the game's dash ids, `nikola-joki-...`) are written up
+  in MIGRATIONS-NOTES.
+- `docs/GO-LIVE.md` is rewritten as the one checklist: wrangler login, `d1 list`, 0026, 0027, 0028, one check
+  command (expect scout_yes 12770, scout_unsure 16451, hunted 1, unaccented 0, homepage 104).
+- 0026's largest statement is 29 KB (D1's limit is 100 KB). None of the three changes what v47 serves: its roster
+  lane uses a fixed trait list and skips non-ASCII names, and its labels never read the scout table.
+- The branch preview and true82.net read the same D1 (identical tallies).
+- 0001 to 0003 (accounts, leagues) belong to accounts-test and item 17; 0021 and 0022 were code-only deploys.
+
+**Found, not fixed (code, not a migration).** functions/api/traits.js op=labels compares SQLite `lower()` (ASCII
+only) with JavaScript's `toLowerCase()`, so a name with a non-ASCII capital never matches: 17 players, 69 of the
+0026 rows (Alperen Şengün, Ersan İlyasova, Šarūnas Marčiulionis, Dario Šarić, Álex Abrines). A small server fix
+(bind an ASCII-only-lowered copy of each name for SQL, keep the response keys as the client sends them); offer it
+before the merge.
+
+## 00000j. (2026-09-27) where things stand, and the owner's plan for the art bot in the ceremony
 
 **Time-critical, waiting on the owner.** c-code-clean (v58.5 site plus the art bot tools, last commit `4694653`) is
 pushed; the branch preview is https://c-code-clean.true82.pages.dev/. main and true82.net still run v47; never push
@@ -263,7 +298,7 @@ this session (the real drafts and the Dailies are client-side). Then the owner s
   Climb placement (brief: net rating; the July 26 ruling and v51.1: realized wins; ask); cut the "Go 82-0"
   lead-in (conflicts with v53; ask); retire the Tribune (still on, its AI edition costs API calls on tap);
   make the season stand out on player cards; Classic PICKUP/PRO and blind Classic PRO from the archive;
-  migration 0025 (24 homepage polls, accounts-test).
+  migration 0025 (24 homepage polls, accounts-test; 2026-09-27: it was already live, see 00000k).
 - Percentiles: the 14-day window and rank of the field never landed on any branch; the "4th of 11 today"
   line is unbuilt. Also: a logo permission check (crests.json has no recorded source), traded-player stats,
   load speed and a code review, a Daily star rating, a "start the season" bell, accounts (item 17), TrueW

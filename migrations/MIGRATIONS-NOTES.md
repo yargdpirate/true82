@@ -12,6 +12,22 @@ After pasting, verify state in one query: paste CHECK-STATE.sql. Expected
 after the current chain through 0018: traits 20 (17 core, 3 retired),
 questions 220 (205 active), rules 6, editorial 144, meta 200, homepage 30.
 
+PRODUCTION STATE (checked 2026-09-27, read-only, through true82.net's own
+GET /api/traits?op=result and op=labels, plus a HEAD on /r/)
+- Live: 0006-0009 (analytics, retention), the recaps table (the old 0005,
+  which predates this folder), and 0010-0025, each by its own mark: 0010 and
+  0011 question rows, 0012 and 0019 desk labels served by op=labels, 0013
+  slugs, 0015 copy, 0016's knucklehead trait, 0017's formula questions, 0018
+  categories, 0020 and 0023 homepage copy, 0024's short definitions, 0025's
+  24 polls. 0014 is invisible from outside; the homepage count in
+  docs/GO-LIVE.md step 7 settles it (104 with 0014, 84 without).
+- Not yet live: 0026, 0027, 0028. Order and commands: docs/GO-LIVE.md.
+- Never SQL: 0021 and 0022 were code-only deploys (docs/history/DEPLOY-0021
+  and DEPLOY-0022). 0001-0003 (accounts, leagues, fast advance) belong to
+  origin/accounts-test and item 17 (later); c-code-clean needs none of them.
+- The branch preview reads the production D1 (identical vote tallies on
+  true82.net and c-code-clean.true82.pages.dev).
+
 WHAT EACH FILE DOES
 
 0008_retention_events_v1 / 0009_retention_coverage_v1
@@ -141,3 +157,55 @@ the owner's new bad trait from the ballot handoff; Ball Stopper and Stat
 Padder were already core (0018). No questions are seeded: a hunted question
 is created by its first vote (op=vote create-on-first-vote). Paste-safe,
 idempotent. Apply with or after 0026.
+
+## 0025_homepage_barstool_v1.sql (from origin/accounts-test; ALREADY APPLIED in production)
+
+24 homepage polls (questions, meta rows, homepage flags). Written on the
+accounts-test line and applied to the shared production D1 from there; copied
+into this folder on 2026-09-27 as repo truth, byte for byte (it matches the
+owner's download in true82-allclasses2-on-v49.14). Verified live that day:
+lebron-james-2011-clutch, ja-morant-2023-off-court-knucklehead and
+wilt-chamberlain-1967-stat-padder carry its copy. Never needs running again;
+a rerun is harmless. VERIFY-0025-HOMEPAGE.sql is its checker.
+
+## 0028_accent_names_v1.sql (2026-09-27)
+
+op=labels finds a player's questions by lower(player_name), using the game's
+spelling from site_data.json. 27 curated rows (from 0010, 0011, 0018, 0019
+and 0025) spell five players without accents: Luka Doncic 12, Nikola Jokic 6,
+Toni Kukoc 3, Manu Ginobili 3, Peja Stojakovic 3. So their 22 desk rulings
+and their community votes never reached a card, settled ones included (read
+from the live API on 2026-09-27): Jokic 2023 Team Defender 40 votes,
+qualifies; Jokic 2023 Rim Protector 27, ruled out; Doncic 2024 Ball Pounder
+29, qualifies; Doncic 2024 Off-Ball Scorer 37, ruled out. This is the
+name-folding migration the v50 handoff called for. It renames player_name
+only: ids, votes, consensus, desk rulings, meta rows and links stay as they
+are. char() spells the accents so no paste path can mangle them. Idempotent:
+each WHERE matches only the unaccented spelling. Checked on a local copy with
+0010-0027 applied: unaccented rows 27 to 0, matching desk labels 0 to 22;
+0026-0028 rerun clean. Apply after 0027.
+
+Two id spaces (known, not fixed here). The curated ids fold accents by hand
+(nikola-jokic-2023-playmaker); the game, op=roster, create-on-first-vote and
+the 0026 scout rows turn each non-ASCII letter into a dash
+(nikola-joki-2023-playmaker, luka-don-i-..., manu-gin-bili-...). After 0026,
+13 of the 27 curated rows have a scout twin for the same player, season and
+trait. op=labels settles each trait once by name (community, then desk, then
+scout), and the ballot votes on the winning layer's own id first
+(ballotApplyLabels in app.js), so a desk or crowd ruling keeps collecting its
+votes on the curated row. Votes on an unsettled curated row whose twin wins
+on a scout claim (Jokic 2023 Playmaker 17, Doncic 2024 Rim Pressurer 15) stay
+stranded with or without 0028; merging twins would be its own careful
+migration. The live DB had no dash-id twins for these five on 2026-09-27: the
+v47 roster lane skips any name outside [a-z .'-].
+
+Left alone on purpose: PJ Tucker 2021 (a dormant question; the scout rows
+cover P.J. Tucker under p-j-tucker ids, so renaming would duplicate the
+trait) and Wilt Chamberlain 1967 (a 0025 homepage poll; Wilt is not in the
+game's data).
+
+Not fixable by a migration: SQLite's lower() folds only ASCII letters while
+parsePlayerPairs lowercases with JavaScript, so a name with a non-ASCII
+capital never matches in op=labels (17 players in site_data.json; 69 of the
+0026 scout rows: Alperen Şengün 14, Ersan İlyasova 25, Šarūnas Marčiulionis
+16, Dario Šarić 8, Álex Abrines 6). The fix belongs in functions/api/traits.js.
