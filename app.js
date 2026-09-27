@@ -1476,7 +1476,7 @@ function modePanelHtml() {
   if (G.social) {
     var claimed = window.T82DAILY ? T82DAILY.officialFor(G.social.key) : null;
     idHtml = '<span class="mp-id">\uD83D\uDCC5 DAILY #' + G.social.num + '</span>' +
-      (claimed ? '<span class="ds-pill ds-prac">PRACTICE RUN</span>'
+      (claimed || G.social.archive ? '<span class="ds-pill ds-prac">PRACTICE RUN</span>'   // v58.4: an archive replay never claims the day
                : '<span class="ds-pill ds-off">1 OFFICIAL ATTEMPT</span>');
     sub.push(baseName + " RULES");
     if (G.social.short) sub.push(esc(G.social.short));
@@ -3812,6 +3812,54 @@ function ledgerCreditRow(label, why, amt) {
     '<span class="ledger-amt good">+' + fmt1(amt) + "</span></div>";
 }
 
+// v58.4 THE LEDGER reads the run's own engine settings: a Daily or challenge board can move a target (the shooter
+// count, the usage budget, the rim bar, the veteran year), and the engine reads them the same way (sim-core C()).
+function runCfgSet(k) { var cfg = G && G.ch && G.ch.cfg; return !!(cfg && Object.prototype.hasOwnProperty.call(cfg, k)); }
+function runCfg(k) { return runCfgSet(k) ? G.ch.cfg[k] : SC[k]; }
+
+// The results ledger: one row per term of the engine's score, so the rows always add up to it (test.js pins that
+// on every kind of board). A board that pays a bonus through a negative tax (Five-Out, Board Money, Win Now) shows
+// it as a credit, and The Mid-Range's per-shooter charge gets its own row. Plain punctuation (the copy law).
+function resultsLedgerHtml(e) {
+  var req = runCfg("SPACERS_REQ"), vetYr = runCfg("AGE_VET_YEAR");
+  return '<div class="ledger">' +
+    '<div class="ledger-row"><span>Raw talent \u03A3V<span class="why">Sum of each pick\u2019s value over a replacement-level player.</span></span><span class="ledger-amt">' + fmt1(e.sumV) + "</span></div>" +
+    ledgerRow("Usage tax", "\u03A3 usage " + fmt1(e.sumUsage) + " vs budget " + Math.round(runCfg("USAGE_BUDGET")) + ". One ball: overlapping shot demand costs efficiency.", e.usageTax, e.usageTax > 0) +
+    (e.spacingBonus > 0
+      ? ledgerCreditRow("Spacing bonus", e.sumSp + " shooters. Extra spacing stretches the defense past the requirement.", e.spacingBonus)
+      : e.spacingBonus < 0
+        ? ledgerRow("Shooter charge", e.sumSp + " shooters against today\u2019s target of " + req + ". On this board every shooter past it costs you.", -e.spacingBonus, true)
+        : ledgerRow("Spacing tax", e.sumSp + " of " + req + " required spacers. Without shooting, the floor shrinks.", e.spacingTax, e.spacingTax > 0)) +
+    (e.backDefTax > 0
+      ? ledgerRow("Backcourt defense", "Both guards rank bottom-" + (e.backDefTier === 20 ? "20" : "33") + "% among guard defenders (DBPM). The perimeter leaks.", e.backDefTax, true)
+      : "") +
+    (e.wingDefTax > 0
+      ? ledgerRow("Wing defense", "Both forwards rank bottom-" + (e.wingDefTier === 20 ? "20" : "33") + "% among forward defenders (DBPM). The frontcourt gets cooked.", e.wingDefTax, true)
+      : "") +
+    (e.rimDefTax > 0
+      ? ledgerRow("Rim protection", (runCfgSet("RIM_TOP20") ? "None of your two forwards or center reaches today\u2019s bar of +" + fmt1(runCfg("RIM_TOP20")) + " DBPM."
+        : "None of your two forwards or center ranks top-20% among frontcourt defenders (DBPM).") + " The paint stays open.", e.rimDefTax, true)
+      : e.rimDefTax < 0
+        ? ledgerCreditRow("Five-out bonus", "None of your two forwards or center reaches +" + fmt1(runCfg("RIM_TOP20")) + " DBPM, and today\u2019s board pays for the open lane.", -e.rimDefTax)
+        : "") +
+    (e.glassTax > 0
+      ? ledgerRow("Glass", "Your five don\u2019t rebound: the era-adjusted board rate is bottom of the league, so second chances go the other way.", e.glassTax, true)
+      : e.glassTax < 0
+        ? ledgerCreditRow("Glass bonus", "Your five rebound at an elite rate, and today\u2019s board pays for it.", -e.glassTax)
+        : "") +
+    (e.creatorTax > 0
+      ? ledgerRow("No creator", "Nobody\u2019s era-adjusted assist rate says he can run an offense. Good luck beating a set defense 82 times.", e.creatorTax, true)
+      : e.creatorTax < 0
+        ? ledgerCreditRow("Creator bonus", "Today\u2019s board pays for your five\u2019s playmaking.", -e.creatorTax)
+        : "") +
+    (e.ageTax > 0
+      ? ledgerRow("Mileage", e.vetCount + " players in their " + sdOrdinal(vetYr) + " season or later. Heavy legs: an 82-game schedule is the sixth defender.", e.ageTax, true)
+      : e.ageTax < 0
+        ? ledgerCreditRow("Veteran bonus", e.vetCount + " players in their " + sdOrdinal(vetYr) + " season or later, and today\u2019s board pays for the experience.", -e.ageTax)
+        : "") +
+    '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>";
+}
+
 // Two-way profile: team offense = sum of pick OBPM, defense = sum of pick DBPM.
 // OBPM/DBPM are defined so a league-average player is ~0, so the 5-man sum reads as
 // "BPM above five average players" on each end. Bars are scaled per end (defense has a
@@ -4912,7 +4960,8 @@ function recapFitNotes(e) {
   var n = [];
   if (e.usageTax > 0) n.push("shot demand runs over budget: too many high-usage scorers sharing one ball");
   if (e.spacingBonus > 0) n.push("surplus shooting: extra floor-spacers stretch every defense");
-  else if (e.spacingTax > 0) n.push("only " + e.sumSp + " of " + SC.SPACERS_REQ + " required floor-spacers: the floor shrinks in the half court");
+  else if (e.spacingTax > 0) n.push("only " + e.sumSp + " of " + runCfg("SPACERS_REQ") + " required floor-spacers: the floor shrinks in the half court");
+  else if (e.spacingBonus < 0) n.push(e.sumSp + " shooters on a board that charges for every one past " + runCfg("SPACERS_REQ") + ": the extra spacing cost points");
   if (e.backDefTax > 0) n.push("both starting guards rank bottom-" + e.backDefTier + "% defensively: the perimeter leaks");
   if (e.wingDefTax > 0) n.push("both forwards rank bottom-" + e.wingDefTier + "% defensively: the frontcourt gets attacked");
   if (!n.length) n.push("a balanced five: no structural weakness the model could tax");
@@ -8041,31 +8090,7 @@ function renderResults(e, keepScroll) {
       '<div class="bt-tags" data-bt="' + i + '"></div></div>';
   }).join("");
 
-  var ledger = '<div class="ledger">' +
-    '<div class="ledger-row"><span>Raw talent \u03A3V<span class="why">Sum of each pick\u2019s value over a replacement-level player.</span></span><span class="ledger-amt">' + fmt1(e.sumV) + "</span></div>" +
-    ledgerRow("Usage tax", "\u03A3 usage " + fmt1(e.sumUsage) + " vs budget " + Math.round(SC.USAGE_BUDGET) + " \u2014 one ball; overlapping shot demand costs efficiency.", e.usageTax, e.usageTax > 0) +
-    (e.spacingBonus > 0
-      ? ledgerCreditRow("Spacing bonus", e.sumSp + " shooters \u2014 extra spacing stretches the defense past the requirement.", e.spacingBonus)
-      : ledgerRow("Spacing tax", e.sumSp + " of " + SC.SPACERS_REQ + " required spacers \u2014 without shooting, the floor shrinks.", e.spacingTax, e.spacingTax > 0)) +
-    (e.backDefTax > 0
-      ? ledgerRow("Backcourt defense", "Both guards rank bottom-" + (e.backDefTier === 20 ? "20" : "33") + "% among guard defenders (DBPM) \u2014 the perimeter leaks.", e.backDefTax, true)
-      : "") +
-    (e.wingDefTax > 0
-      ? ledgerRow("Wing defense", "Both forwards rank bottom-" + (e.wingDefTier === 20 ? "20" : "33") + "% among forward defenders (DBPM) \u2014 the frontcourt gets cooked.", e.wingDefTax, true)
-      : "") +
-    (e.rimDefTax > 0
-      ? ledgerRow("Rim protection", "None of your two forwards or center ranks top-20% among frontcourt defenders (DBPM) \u2014 bad rim defense; the paint stays open.", e.rimDefTax, true)
-      : "") +
-    (e.glassTax > 0
-      ? ledgerRow("Glass", "Your five don\u2019t rebound \u2014 era-adjusted board rate is bottom of the league; second chances all go the other way.", e.glassTax, true)
-      : "") +
-    (e.creatorTax > 0
-      ? ledgerRow("No creator", "Nobody\u2019s era-adjusted assist rate says he can run an offense \u2014 good luck beating a set defense 82 times.", e.creatorTax, true)
-      : "") +
-    (e.ageTax > 0
-      ? ledgerRow("Mileage", e.vetCount + " players past their " + SC.AGE_VET_YEAR + "th season \u2014 heavy legs; an 82-game schedule is the sixth defender.", e.ageTax, true)
-      : "") +
-    '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>";
+  var ledger = resultsLedgerHtml(e);
 
   // THE DAILY results layer. The official-run law lives here: the first finish
   // of the day claims official (with a run nonce so a Heat Check landing after
@@ -8617,7 +8642,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v58.3";
+var BUILD_V = "v58.4";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

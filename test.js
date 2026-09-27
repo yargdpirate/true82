@@ -455,5 +455,54 @@ if (fs.existsSync("site_data.json")) {
   eq("redrafted show: both halves of a snake double land together, once, in named slots", [PS.marks, PS.named, PS.quiet], [2, true, true]);
 }
 
+// ---------- v58.4 THE LEDGER ADDS UP: one row per term of the engine's score, on every kind of board ----------
+// The results ledger must show every term the engine charged or paid, so its rows sum to the score. The 200 new
+// Dailies pay bonuses through negative taxes (Five-Out, Board Money, Win Now) and The Mid-Range charges per extra
+// shooter; before v58.4 those got no row, and the shooter and usage lines printed the default targets on boards
+// that move them. The copy reads the board's own settings, with plain punctuation.
+{
+  const L = vm.runInContext(`(function () {
+    var keepG = G, keepSC = SC;
+    SC = Object.assign({}, SC, { SPACERS_REQ: 3, USAGE_BUDGET: 110, AGE_VET_YEAR: 12, RIM_TOP20: 0.9 });
+    function run(cfg, e) {
+      G = { ch: cfg ? { id: "t", cfg: cfg } : null };
+      e = Object.assign({ sumV: 30.5, sumUsage: 104.2, usageTax: 0, sumSp: 3, spacingTax: 0, spacingBonus: 0, backDefTax: 0, backDefTier: 0,
+        wingDefTax: 0, wingDefTier: 0, rimDefTax: 0, glassTax: 0, creatorTax: 0, ageTax: 0, vetCount: 0 }, e);
+      e.score = e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax;
+      e.net = e.score - BASELINE;
+      var html = resultsLedgerHtml(e), amts = [], re = /class="ledger-amt[^"]*">([^<]*)</g, m;
+      while ((m = re.exec(html))) amts.push(parseFloat(m[1].replace("\u2212", "-").replace("\u2713 ", "")));
+      var total = amts.slice(0, -1).reduce(function (a, b) { return a + b; }, 0);
+      return { adds: Math.abs(total - e.score) < 0.051, text: html.replace(/<[^>]+>/g, " "), dash: /[\u2013\u2014]/.test(html) };
+    }
+    var out = {
+      plain: run(null, { usageTax: 2.1, sumUsage: 118.2, sumSp: 2, spacingTax: 1.5, backDefTax: 2, backDefTier: 33, wingDefTax: 3, wingDefTier: 20,
+        rimDefTax: 2, glassTax: 3, creatorTax: 2, ageTax: 1, vetCount: 2 }),
+      surplus: run(null, { sumSp: 4.5, spacingBonus: 1.5 }),
+      paint: run({ RIM_TOP20: 2.5, RIM_D_TAX: 5 }, { rimDefTax: 5 }),
+      fiveOut: run({ RIM_TOP20: 2, RIM_D_TAX: -3 }, { rimDefTax: -3 }),
+      boardMoney: run({ GLASS_LOW: 99, GLASS_DIRE: 4.4, GLASS_TAX_DIRE: 0, GLASS_TAX_LOW: -3 }, { glassTax: -3 }),
+      winNow: run({ AGE_VET_YEAR: 10, AGE_VET_FREE: 2, AGE_TAX: -4 }, { ageTax: -4, vetCount: 3 }),
+      midRange: run({ SPACERS_REQ: 1, SPACING_TAX: 2, SPACING_BONUS: -1.5 }, { sumSp: 3, spacingBonus: -3 }),
+      gunslingers: run({ USAGE_RATE: 0, SPACERS_REQ: 5, SPACING_TAX: 2.5 }, { sumSp: 3, spacingTax: 5 }),
+      creator: run({ CREATOR_TAX: -2 }, { creatorTax: -2 }),
+      tightBall: run({ USAGE_BUDGET: 85 }, { sumUsage: 97.4, usageTax: 3.2 })
+    };
+    G = keepG; SC = keepSC;
+    return out;
+  })()`, ctx);
+  const names = Object.keys(L);
+  eq("results ledger: the rows add up to the score on every kind of board (credits, charges and moved targets)",
+    names.filter((k) => !L[k].adds), []);
+  eq("results ledger: bonuses paid through a negative tax get a credit row (Five-Out, Board Money, Win Now, a creator board)",
+    [/Five-out bonus/.test(L.fiveOut.text), /Glass bonus/.test(L.boardMoney.text), /Veteran bonus/.test(L.winNow.text), /Creator bonus/.test(L.creator.text)],
+    [true, true, true, true]);
+  eq("results ledger: the targets are the board's own (The Mid-Range's 1 shooter, Gunslingers' 5, a usage budget of 85, Win Now's 10th season, Paint Police's +2.5 bar)",
+    [/target of 1\b/.test(L.midRange.text), /3 of 5 required/.test(L.gunslingers.text), /budget 85\b/.test(L.tightBall.text), /10th season/.test(L.winNow.text),
+      /\+2\.5 DBPM/.test(L.paint.text), /2 of 3 required/.test(L.plain.text), /budget 110/.test(L.plain.text), /12th season/.test(L.plain.text)],
+    [true, true, true, true, true, true, true, true]);
+  eq("results ledger: no em or en dashes in any row (the copy law)", names.filter((k) => L[k].dash), []);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
