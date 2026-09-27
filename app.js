@@ -6879,21 +6879,20 @@ function sdPickShow(picks, done) {
   // the chime (about 1.3s) plays first; the name slams down on its last note, like the broadcast (a double's
   // second name lands half a second later, with the confetti)
   var land1 = Math.round((SD_CHIME_LEN + 0.03) * 1000);
-  var T = two ? { s1: land1 - 320, hit1: land1, s2: land1 + 180, hit: land1 + 500, fly: land1 + 1480, end: land1 + 1880 }
-              : { s1: land1 - 320, hit1: land1, s2: 0, hit: land1, fly: land1 + 1000, end: land1 + 1400 };
-  var conf = "", bulbs = "", i;
-  for (i = 0; i < 30; i++) {
-    var a = (i / 30) * Math.PI * 2 + Math.random() * 0.35, r = 95 + Math.random() * 125;
+  // v59.1 (the owner: the home diamonds' energy here): the pick number prints in a riso diamond on the chime's
+  // third phrase (d1; a double's second at d2), then the name prints on its last note
+  var T = two ? { d1: land1 - 540, s1: land1 - 320, hit1: land1, d2: land1 + 40, s2: land1 + 180, hit: land1 + 500, fly: land1 + 1480, end: land1 + 1880 }
+              : { d1: land1 - 540, s1: land1 - 320, hit1: land1, d2: 0, s2: 0, hit: land1, fly: land1 + 1000, end: land1 + 1400 };
+  var conf = "", i;
+  for (i = 0; i < 28; i++) {   // ink drops (v59.1: round, in the two inks and white), flung and falling
+    var a = (i / 28) * Math.PI * 2 + Math.random() * 0.35, r = 95 + Math.random() * 125;
     conf += '<i class="c' + (i % 4) + '" style="--dx:' + Math.round(Math.cos(a) * r) + "px;--dy:" + Math.round(Math.sin(a) * r * 0.75 - 30) +
-      "px;--rot:" + Math.round(Math.random() * 720 - 360) + "deg;--dl:" + (Math.random() * 0.09).toFixed(2) + 's"></i>';
-  }
-  for (i = 0; i < 7; i++) {   // small and spread out: a press row, never a strobe
-    bulbs += '<i style="--fx:' + Math.round(8 + Math.random() * 84) + "%;--fy:" + Math.round(7 + Math.random() * 34) + "%;--fd:" + (0.03 + i * 0.12).toFixed(2) + 's"></i>';
+      "px;--s:" + (5 + Math.round(Math.random() * 9)) + "px;--dl:" + (Math.random() * 0.09).toFixed(2) + 's"></i>';
   }
   var pickHtml = function (info, k) {
     var slotWord = { G: "guard", F: "forward", C: "center" }[info.slot] || info.slot;
     var real = info.real ? (info.pick ? "Real draft: " + sdOrdinal(info.pick) + " pick" : "Real draft: undrafted") : "";
-    return '<div class="rdp-pick p' + k + '"><div class="rdp-hit"><h2 class="rdp-name">' + esc(info.name) + "</h2></div>" +
+    return '<div class="rdp-pick p' + k + '"><div class="rdp-hit"><h2 class="rdp-name" data-ink="' + esc(info.name) + '">' + esc(info.name) + "</h2></div>" +
       '<p class="rdp-meta">' + esc(shortSeason(info.season) + " " + info.team) + " \u00B7 " + slotWord + "</p>" +
       (real ? '<p class="rdp-real">' + esc(real) + "</p>" : "") + "</div>";
   };
@@ -6904,11 +6903,11 @@ function sdPickShow(picks, done) {
   ov.innerHTML =
     '<div class="rdp-floor" aria-hidden="true"></div>' +
     '<div class="rdp-beams" aria-hidden="true"><i class="rdp-beam b1"></i><i class="rdp-beam b2"></i></div>' +
-    '<div class="rdp-bulbs" aria-hidden="true">' + bulbs + "</div>" +
     '<div class="rdp-card">' +
       '<p class="rdp-kick">' + (two ? "The picks are in" : "The pick is in") + "</p>" +
       '<p class="rdp-with">' + (two ? "With the " + sdOrdinal(picks[0].ordinal) + " and " + sdOrdinal(last.ordinal) + " picks"
         : "With the " + sdOrdinal(last.ordinal) + " pick of " + last.total) + " \u00B7 " + esc(last.label) + "</p>" +
+      '<div class="rdp-dias" aria-hidden="true">' + picks.map(function (p, k) { return '<span class="rdp-dia k' + (k + 1) + '"><b>' + p.ordinal + "</b></span>"; }).join("") + "</div>" +
       '<div class="rdp-stage"><span class="rdp-ring" aria-hidden="true"></span><span class="rdp-conf" aria-hidden="true">' + conf + "</span>" +
         picks.map(function (p, k) { return pickHtml(p, k + 1); }).join("") + "</div>" +
       '<p class="rdp-skip">Tap to skip</p>' +
@@ -6921,6 +6920,13 @@ function sdPickShow(picks, done) {
   ov.classList.add("on");
   if (reducedMotion()) { at(1100, sdPickShowEnd); return; }
   S.sound = sdShowSound(two ? [T.hit1 / 1000, T.hit / 1000] : [T.hit / 1000], T.fly / 1000, T.end / 1000);
+  var inkDia = function (k) {   // the diamond stamps and rings like a home-card vote
+    ov.classList.add("d" + k);
+    var d = ov.querySelector(".rdp-dia.k" + k), card = ov.querySelector(".rdp-card");
+    if (d && card) S.timers.push(setTimeout(function () { if (SD_SHOW === S) inkPrint(card, d, "token"); }, 150));
+  };
+  at(T.d1, function () { inkDia(1); });
+  if (two) at(T.d2, function () { inkDia(2); });
   at(T.s1, function () { ov.classList.add("s1"); });
   if (two) at(T.s2, function () { ov.classList.add("s2"); });
   if (two) at(T.hit1, function () { buzz(20); });
@@ -6959,6 +6965,8 @@ function sdPickShowEnd() {
     buzz(20);
   }
   if (S.done) S.done();
+  var landed = document.querySelectorAll(".rd-slot.is-landing");   // v59.1: the landing prints like the pick
+  for (var i = 0; i < landed.length; i++) { var card = landed[i].closest(".rd-team"); if (card) inkPrint(card, landed[i], "slot"); }
 }
 function denyTraySd(msg) {
   var inner = el("rdTray");
@@ -8855,7 +8863,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v59.1";
+var BUILD_V = "v59.2";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the

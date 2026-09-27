@@ -3,14 +3,49 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-27
-**Build:** `v59`, pushed on branch `c-code-clean` (`BUILD_V = "v59"`; app.js and styles.css at `20260927-home-v59`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** section 00000l (read it first): v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v59.2`, pushed on branch `c-code-clean` (`BUILD_V = "v59.2"`; app.js and styles.css at `20260927-pickink-v59-2`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** section 00000m (read it first): v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000l. START HERE (2026-09-27, evening): V59, the new home screen ("Halftone v2")
+## 00000m. START HERE (2026-09-27, night): V59.1 and V59.2, the ink print in the drafts
+
+**The owner's words.** On v59: "Omfg LOVE LOVE the new 'diamonds' to fill on the start screen widget. Can we bring
+that energy and style to the draft animation so it strongly matches that and the game by game screens energy?", then
+"I kinda meant the redraftables player drafting ceremony animation but finish this too". Both are built, on
+c-code-clean (not main).
+
+**The shared piece.** The home card's diamond print is now one component: `.ink-dias` (a row of diamonds; `i.on` on
+the home card, `span.done` / `span.now` in the draft bar), `inkPrint(host, mark, variant)` in app.js (the mark's stamp
+plus a two-ink halftone ring and six drops, as `<b>` elements so a row's own `> i` / `> span` rules never style them;
+variants "" one mark, "big" rings the whole row, "token" coin-sized, "slot" for a Do-Over roster slot), and the
+`ink-*` keyframes. The home's reduced-motion rule still covers it there (`.hm *`); the game ignores the OS flag as
+always (`prefersReduce`).
+
+**v59.1 (`75aadc5`), THE PICK PRINTS** (Classic, Presti, Pro, the Daily): drafted tokens in the tray are riso coins
+(the pink key with its halftone screen over an aqua offset crescent; `#app#app` outranks look.css's token rule; the
+moving and swap-target states keep working). Each pick prints its coin in the tray and its diamond in the draft bar
+(`G.inked` set in `confirmPick`, printed by `draftInk()` at the end of `renderDraft`; the reels settle at about 1.1 s,
+after the 0.6 s stamp). The fifth pick is `draftFinale()`: the fifth coin prints, the five re-ink left to right, the
+bar's diamonds ring as a row, the count reads LINEUP SET, the board takes no taps (`body.ink-finale`), and the season
+plays 0.95 s later (EXIT RUN in that beat wins: the timer checks it is still this game on the draft screen).
+
+**v59.2, THE PICK IS IN in riso** (the Do-Over's `sdPickShow`; the chime and its timing unchanged): the neon grid
+floor is a halftone court (two plates of dots rushing toward you), the spotlights are halftone beams, the flashbulbs
+are gone, the kicker lands with its inks split and snaps into register, the pick's number stamps in a riso diamond
+(`.rdp-dia`, `d1`/`d2` on the chime's third phrase, then `inkPrint` rings it), the name prints like the home tagline
+(a cream key with pink and aqua halftone copies from `data-ink` that land off register and snap in; the neon flicker
+is gone), the hit throws a two-ink halftone ring and round ink drops (no gold: a pick is not a gain), the room's one
+beat is a dot-screen wash at a third of full strength, and the landing slot on your roster card prints (its stamp
+plus a slot-sized ring). A snake double prints both diamonds and both names in turn.
+
+**Checked:** frames frozen or timed in Chromium and WebKit (a normal pick, the finale, a single and a staged double
+ceremony), Presti and Classic through LINEUP SET into results, the home flow, no page errors, test.js 98, style law
+clean. Keys: styles.css and app.js at `20260927-pickink-v59-2`, `BUILD_V = "v59.2"`.
+
+## 00000l. (2026-09-27, evening) V59, the new home screen ("Halftone v2")
 
 **The owner's words.** He sent a redesign package (`~/Downloads/true82-home-handoff.zip`: HOMESCREEN_HANDOFF.md,
 three PNGs, a reference HTML) and: "as always, don't follow spec strictly, make the artsitic and creative choice
