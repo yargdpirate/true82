@@ -2,13 +2,72 @@
 
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
-**Date:** 2026-09-26
+**Date:** 2026-09-27
 **Build:** `v58.5`, pushed on branch `c-code-clean` (`BUILD_V = "v58.5"`; app.js, styles.css and look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v58.5 (section 00000i): every stacked neon button stands on white. v58.4 (section 00000h, item 3): the results ledger adds up on the new Dailies. v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
+**Most recent change:** section 00000j (read it first): the owner's plan for the art bot's clips in the pick ceremony, and what is waiting on him. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
+
+## 00000j. START HERE (2026-09-27): where things stand, and the owner's plan for the art bot in the ceremony
+
+**Time-critical, waiting on the owner.** c-code-clean (v58.5 site plus the art bot tools, last commit `4694653`) is
+pushed; the branch preview is https://c-code-clean.true82.pages.dev/. main and true82.net still run v47; never push
+to main without his explicit "merge to main". Before that he runs the two database commands in `docs/GO-LIVE.md`
+(0026 scout claims, 0027 Hunted; wrangler, one command per step). POOL3's `START3` is **Monday 2026-09-28** (Daily
+#79). If the merge will land after Sunday 2026-09-27, move `START3` to the go-live day first (a Monday keeps the
+weekday texture), re-run `node test.js` and `node tools/daily-audit.js 300 pool3`, and bump the daily-core.js key;
+otherwise the archive and beat links would show POOL3 boards for days true82.net dealt POOL2 ones.
+
+**The art bot: where it is.** Reel 3 is published (the private gallery "Draft Night Moves",
+https://claude.ai/artifact/XMPeniEFZARAtwz7QsPRSJ, version 3; reels 2 and 1 folded under; his stars copy out as
+`ART-BOT PICKS v3`). Engine: `tools/artbot/` (README: how every piece works, round 3 notes). Raw Mixamo files (never in
+git): `~/true82-moves-raw/` (dribble, defender, jump-attack, football-catch, joyful-jump, roar, no-finger-wag,
+shrugging, taunt-flexing). Mixamo downloads need his OK each time (he signs in with his personal Adobe ID; exports go
+through Mixamo's export API from the signed-in page, see the README). The session scratchpad that held the gallery
+source and clips will not survive; rebuild with `node artbot.mjs` (3 styles x 4 scenes, about 6 minutes at 720 px).
+
+**His plan for the clips in the pick ceremony (2026-09-27).** Asked how the clips fit the Redrafted's pick show
+without slowing the flow, the agent proposed folding each clip into the existing 2.7 s show (the clip's impact
+frame is the name slam on the chime's last note; the celebration plays behind the name, dimmed, and fades as the
+name flies to the roster; tap still skips; no added time). He built on that. His words, organized:
+1. **Only stars get a clip.** "i think stars only deserve it". Per draft, designate the eligible stars: "the best
+   6(?ish?) players who are eligible" in the draft, "or perhaps just your first two picks since they'll be the stars
+   if you're playing right". **Open: which rule.** Ask him; the agent's lean is the top ~6 of the draft's pool by
+   value, since it rewards the pick rather than the order.
+2. **Style by tier.** "the true superstars are the only ones who get neon. nonstars get riso". Read as: designated
+   stars get the riso clip, true superstars get the neon one. **Open:** what counts as a true superstar (a value
+   threshold? the draft's top one or two?), and whether "nonstars get riso" means every non-star pick gets a riso clip
+   (which would contradict item 1). Ask.
+3. **No repeats.** "players don't see repeats of the same animation, so if you pick two designated star wings you
+   dont get the same one back to back". Needs more than one animation per position (see next steps).
+4. **The animation matches the position.** Guards: the crossover. Forwards: the tomahawk slam. Centers: "alley-oop
+   and blocks belong to centers based on if they have a high obpm or dbpm" (the alley-oop for a high-OBPM center, the
+   block for a high-DBPM one).
+5. **The alley-oop's celebration changes.** "the celly on alley-oop is ridiciousl, it would be fine if he just ran off
+   camera with his arms in a t position or something": drop the Luka jump (Joyful Jump); he runs off camera, arms out
+   in a T (an airplane).
+6. **Styles.** Keep neon as a resource "if i decide i like that better, i do prefer the flatness", "or perhaps we use
+   its flatness and 'aura' to merge with riso style which is a bit 3d at the moment". So: try a flatter riso (less
+   shade-driven dot density, flat ink fields) with neon's glow (aura) as a third look for him to compare. Chrono was
+   not mentioned: keep it as a resource.
+7. **"some tweaks are needed but we're getting there"**: he has not listed the other tweaks yet. Ask before the next
+   render.
+
+**Next steps (after his answers).**
+- Art bot: the oop's new celebration (the run-off with T arms: a Mixamo run clip plus arms held out by the reach, or
+  ask him to OK a download); more moves per position so stars never repeat back to back (guards: a step-back or a
+  hesitation; forwards: a two-hand hammer or a windmill; centers: a putback or a hook); "ceremony cuts": portrait
+  frames that fill a phone, the hit at exactly 1.3 s, a clear band where the name lands, small H.264 files (about
+  300 to 600 KB); the flat riso plus aura experiment.
+- Site (app.js, the Redrafted's `sdPickShow` in section 00000h, 2b): designate the draft's stars when the draft
+  starts, pick each star's clip by position (centers by OBPM or DBPM) with no back-to-back repeat, style by tier,
+  preload the clips when the draft starts, layer the clip mid-ground (screen-blended on the dark stage, dimmed to
+  about 40% once the name lands), sync its impact to the name slam (`land1`), a still frame for reduced motion, and
+  no clip on rival picks or non-stars (pending item 2). Keep the show's length unchanged.
+- Not yet agreed, from the agent's proposal: a faint loop of the star's clip on his roster card, and a one-time
+  "team poster" of all the clips at the end of the draft. Offer them; do not build them unasked.
 
 ## 00000i. V58.5: the neon buttons stand on white (2026-09-26, late)
 
