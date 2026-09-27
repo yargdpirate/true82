@@ -11,7 +11,9 @@
 // question's highlight, the results comp line and the GOAT Climb marker on
 // realized wins; the last four
 // are the v51 style law: no color or font outside the theme block, the shared
-// pieces exist, and the section header component);
+// pieces exist, and the section header component). POOL3 (2026-09-26) adds ten
+// more: the third daily rotation's shape and copy, the price hook's no-op
+// default, and 20 quick bot drafts on each of its 200 boards (about 12 seconds);
 // exits nonzero on any failure.
 
 const fs = require("fs");
@@ -299,6 +301,51 @@ eq("section headers: head() builds one component with the context's variant",
   D.recordArchive("2026-09-20", 71, 58, 4, false);
   eq("daily archive: a replay keeps the best record and counts runs, never touching official or the streak",
     [D.archiveFor("2026-09-20"), D.officialFor("2026-09-20"), D.streakFor("2026-09-21")], [{ num: 71, wins: 60, net: 5.2, runs: 2 }, null, 0]);
+}
+
+// ---------- POOL3 (2026-09-26): the third rotation, 200 new boards from #79 (2026-09-28) ----------
+// Shape pins for the rotation and its copy, the price hook's no-op default, and a quick playability
+// smoke test (node tools/daily-audit.js 300 pool3 is the full certification).
+{
+  const pctx = { Math, Date, console, JSON, URLSearchParams };
+  vm.createContext(pctx);
+  vm.runInContext(fs.readFileSync("challenges.js", "utf8"), pctx);
+  vm.runInContext(fs.readFileSync("daily-core.js", "utf8"), pctx);
+  const D = pctx.T82DAILY, CH = pctx.T82CH, P3 = D.POOL3 || [];
+  const cut = CH.CHALLENGES.findIndex(c => c.id === "small_ball_five") + 1;
+  const OLD = new Set(CH.CHALLENGES.slice(0, cut).map(c => c.id));
+  const EARLIER = new Set(D.POOL.filter(p => p.id).map(p => p.id).concat(D.POOL2));
+  eq("POOL3: exactly 200 unique ids", [P3.length, new Set(P3).size], [200, 200]);
+  eq("POOL3: every id is in the manifest and new (not in POOL, POOL2 or the 99 entries shipped before it)",
+    P3.filter(id => !CH.byId[id] || OLD.has(id) || EARLIER.has(id)), []);
+  eq("POOL3: the manifest's new section is exactly the pool, no orphan boards", CH.CHALLENGES.slice(cut).map(c => c.id).sort(), P3.slice().sort());
+  eq("POOL3: every id has daily copy, s and g", P3.filter(id => !(D.DAILY_COPY[id] && D.DAILY_COPY[id].s && D.DAILY_COPY[id].g)), []);
+  const DASH = /[–—]/;
+  eq("POOL3: zero em or en dashes in every new name, blurb, s and g (copy law)",
+    P3.filter(id => { const c = CH.byId[id] || {}, d = D.DAILY_COPY[id] || {}; return DASH.test([c.name, c.blurb, d.s, d.g].join(" ")); }), []);
+  const pre = D.shiftKey(D.START3, -1), wrap = D.shiftKey(D.START3, P3.length);
+  const i2 = (D.dayNum(pre) - D.dayNum(D.START2)) % D.POOL2.length;
+  eq("POOL3: starts 2026-09-28 (#79) after the last pinned day; #78 is still POOL2; day 200 wraps to the top",
+    [D.START3, D.dayNum(D.START3), D.START3 > "2026-09-26", D.boardFor(D.START3).ch.id, D.boardFor(pre).ch.id, D.POOL2[i2], D.boardFor(wrap).ch.id],
+    ["2026-09-28", 79, true, P3[0], "expansion_class", "expansion_class", P3[0]]);
+  const b79 = D.boardFor(D.START3);
+  eq("POOL3: a POOL3 day carries its own copy to the status row and the gate", [b79.short, b79.gate], [D.DAILY_COPY[P3[0]].s, D.DAILY_COPY[P3[0]].g]);
+  const bases = P3.map(id => CH.byId[id].base);
+  eq("POOL3: never the same base mode three days running, the wrap included",
+    bases.filter((b, i) => b === bases[(i + 1) % bases.length] && b === bases[(i + 2) % bases.length]).length, 0);
+  // the price(row,t) hook: absent means a multiplier of exactly 1, so every other board prices and draws as before
+  const T = ctx.T82, st = () => T.newState("cap", 4242, null), a = st(), b = st(), c = st(), V = [1.5, 3, 5.5, 8, 12];
+  const pa = V.map(v => T.capCost(a, v, 1)), pb = V.map(v => T.capCost(b, v, 1, undefined)), pc = V.map(v => T.capCost(c, v, 1, 1));
+  eq("POOL3 price hook: no multiplier prices and draws exactly as before", [pb, pc, b.rng.n, c.rng.n], [pa, pa, a.rng.n, a.rng.n]);
+  if (fs.existsSync("site_data.json")) {
+    const AUD = require("./tools/daily-audit.js");
+    const env = AUD.load(__dirname), bot = AUD.makeBot(env, {}), dead = [];
+    env.T82DAILY.POOL3.forEach(id => {
+      const ch = env.T82CH.byId[id];
+      for (let g = 1; g <= 20; g++) if (bot(ch.base, ch, 555000 + g * 7).dead) { dead.push(id); break; }
+    });
+    eq("POOL3: 20 quick bot drafts on every board, zero dead runs", dead, []);
+  }
 }
 
 // ---------- v55 THE REDRAFTED on the real player data (skipped when site_data.json is absent) ----------
