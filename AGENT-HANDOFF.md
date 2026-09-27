@@ -105,7 +105,7 @@ Chromium into masks, then printed in six styles (riso, neon, chrono, sunset, dot
 Alley-oop (Football Catch), Joy (Joyful Jump); Mixamo has no jump shot or dunk. The mixamo.com Download button
 did not respond in the app's browser pane, so the files came through Mixamo's own export API from the page, under
 the owner's signed-in personal Adobe ID (the pane's CKeller Law LLC Adobe for Teams login is refused by Mixamo).
-Goalie Throw hit Mixamo's rate limit. A private gallery artifact ("Draft Night Moves") shows all 30 clips with
+Goalie Throw hit Mixamo's rate limit. A private gallery artifact ("Draft Night Moves", https://claude.ai/artifact/XMPeniEFZARAtwz7QsPRSJ; its source and clips were built in the session scratchpad, so rebuild with tools/artbot) shows all 30 clips with
 stars and a copyable `ART-BOT PICKS v1` block; waiting on his picks.
 
 **3. The 200 new Dailies (POOL3).** IN FLIGHT at the time of writing: a helper agent is designing,
