@@ -1682,6 +1682,18 @@ button.more-modes:disabled,
 /* The two big calls sit UNDER the paper on the backdrop, standard gold bevel. */
 .np-under { display: flex; flex-direction: column; gap: 10px; width: min(430px, 94vw); margin-top: 14px; }
 .np-underbtn { width: 100%; font-family: var(--t-disp); font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 10px 15px; }
+/* v58: the two buttons under the paper are site buttons, so in Heat Vice they are neon like every other one
+   (look.css skips the Tribune, which the owner is retiring): SKIP TO RESULTS the pink tube, RUN IT BACK aqua */
+html[data-btn="neon"] button.presti-spin.np-underbtn { border: 1.5px solid var(--t-accent); color: var(--t-accent-hi);
+  background: linear-gradient(rgb(var(--t-overlay-rgb) / .5), rgb(var(--t-overlay-rgb) / .5)), var(--t-ground);
+  text-shadow: 0 0 6px rgb(var(--t-accent-rgb) / .85), 0 0 14px rgb(var(--t-accent-rgb) / .45);
+  box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-offset), 0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 8px rgb(var(--t-accent-rgb) / .6),
+    0 0 20px -2px rgb(var(--t-accent-rgb) / .45), inset 0 0 9px rgb(var(--t-accent-rgb) / .32); }
+html[data-btn="neon"] button.presti-spin.np-underbtn + button.presti-spin.np-underbtn { border-color: var(--t-offset); color: var(--t-light);
+  text-shadow: 0 0 6px rgb(var(--t-offset-rgb) / .85), 0 0 14px rgb(var(--t-offset-rgb) / .45);
+  box-shadow: 0 3px 0 0 var(--t-offset), 0 6px 0 0 var(--t-accent), 0 0 0 1px rgb(var(--t-offset-rgb) / .3), 0 0 8px rgb(var(--t-offset-rgb) / .6),
+    0 0 20px -2px rgb(var(--t-offset-rgb) / .45), inset 0 0 9px rgb(var(--t-offset-rgb) / .32); }
+html[data-btn="neon"] button.presti-spin.np-underbtn:not(:disabled):active { transform: translateY(3px); }
 
 /* ---- typesetting: greeked bars, teletype ticker, stamp, ink-dry ---- */
 .np-gline {
