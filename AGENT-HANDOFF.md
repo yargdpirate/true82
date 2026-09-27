@@ -94,6 +94,20 @@ difficulty doors reading as panels among neon buttons. Scoped to `html[data-btn=
   button in the draft header (`t82_sound`). `node tools/draft-chime.js out.wav [double]` renders the exact code
   to a WAV (Playwright, the tennis copy).
 
+**2c. THE ART BOT (tools/artbot/, 2026-09-26 night; the owner: "a huge eye candy component"):** he wants a
+pre-rendered, impressionistic, "drop dead gorgeous" background clip behind the pick ceremony, first by position,
+later by badges (clutch jumper, rim-protector block...), made by an art bot in several styles, with where it goes
+decided later (so NOTHING is wired into the site yet). Built: `tools/artbot/` (README there): Adobe Mixamo
+motion capture (royalty-free commercial use per Adobe's FAQ, no credit required; raw FBX files may not be
+redistributed, so they live in `~/true82-moves-raw/`, gitignored as `raw`) rendered by three.js in headless
+Chromium into masks, then printed in six styles (riso, neon, chrono, sunset, dots, vhs) in the theme's inks, to
+540x540 H.264 clips on black. First reel: Dribble (G), Slam (Mixamo's Jump Attack, F), Block (Defender, C),
+Alley-oop (Football Catch), Joy (Joyful Jump); Mixamo has no jump shot or dunk. The mixamo.com Download button
+did not respond in the app's browser pane, so the files came through Mixamo's own export API from the page, under
+the owner's signed-in personal Adobe ID (the pane's CKeller Law LLC Adobe for Teams login is refused by Mixamo).
+Goalie Throw hit Mixamo's rate limit. A private gallery artifact ("Draft Night Moves") shows all 30 clips with
+stars and a copyable `ART-BOT PICKS v1` block; waiting on his picks.
+
 **3. The 200 new Dailies (POOL3).** IN FLIGHT at the time of writing: a helper agent is designing,
 implementing and bot-auditing them in a worktree (`.claude/worktrees/agent-...`); the merge, the key bumps
 for challenges.js and daily-core.js, and this paragraph's final text come next. POOL3 starts Monday

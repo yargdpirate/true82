@@ -1,0 +1,7 @@
+{
+  "name": "true82-artbot",
+  "private": true,
+  "description": "TRUE 82 art bot: motion capture in, stylized clips out (not shipped with the site)",
+  "type": "module",
+  "dependencies": { "three": "0.186.1" }
+}
