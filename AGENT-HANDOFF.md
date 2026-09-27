@@ -3,12 +3,30 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v58.4`, pushed on branch `c-code-clean` (`BUILD_V = "v58.4"`; app.js, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, styles.css at `20260926-jingle-v58-3`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v58.4 (section 00000h, item 3): the results ledger adds up on the new Dailies. v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
+**Build:** `v58.5`, pushed on branch `c-code-clean` (`BUILD_V = "v58.5"`; app.js, styles.css and look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v58.5 (section 00000i): every stacked neon button stands on white. v58.4 (section 00000h, item 3): the results ledger adds up on the new Dailies. v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
+
+## 00000i. V58.5: the neon buttons stand on white (2026-09-26, late)
+
+The owner: "the buttons being pink with teal secondary (and vice versa) is a bit intense, and we try white as the
+secondary color (meaning the second stripe of color on the bottom that makes it look 3d) globally for those button
+types". Every stacked neon button keeps its own slab (pink under pink, aqua under aqua) and the second slab is now
+white (`--t-light`), on the main and the secondary buttons alike, the vote buttons included.
+- Done the lab's way, so a future ship keeps it: `docs/reprint-lab/src/system/60-depth.js` has a new recipe key
+  `depthBase` ("ink", the old pair, or "white"), with a "Depth base" control in the lab console and the Heat Vice
+  preset set to white. look.css is exactly what the component generates for the shipped recipe plus
+  `depthBase: "white"` (one `--dp-2: var(--t-light)` rule, the secondaries' override gone, the header's recipe code
+  updated; checked in the rebuilt lab: `LAB.componentCSS` gives the same rule and the code round-trips).
+- The lab file was rebuilt (`node src/build.js <snaps>`, with the v51 snapshots from an earlier session's scratchpad,
+  `72399d8d.../scratchpad/snaps`; keep a copy if that scratchpad is cleared).
+- The hand-built copies in styles.css follow: the Tribune's two buttons, THE DAILY home tile (rest, hover, press)
+  and the Redrafted's PICKUP and PRO doors.
+- Checked at 375px on the local site: HOW TO PLAY, Classic, Presti, the Daily tile, Redrafted, YES, NO and IDK all
+  compute a white second slab. Cache keys `20260926-whitebase-v58-5`. test.js 98, style law clean.
 
 ## 00000h. V58: THE REDRAFTED's real drafts, Heat Vice on the Daily and the Redrafted, 200 new Dailies (2026-09-26, evening)
 

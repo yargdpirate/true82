@@ -65,6 +65,7 @@
       { type: "seg", key: "btn", label: "Buttons", options: function () { return opts(LAB.SYS.btn); } },
       { type: "seg", key: "neon", label: "Neon amount", options: function () { return opts(LAB.SYS.neon || [["accents", "Accents"]]); }, also: function (v) { return v !== "accents" ? { btn: "neon" } : {}; } },
       { type: "seg", key: "btnDepth", label: "Button depth", options: function () { return opts(LAB.SYS.btnDepth || [["flat", "Flat"]]); } },
+      { type: "seg", key: "depthBase", label: "Depth base", options: function () { return opts(LAB.SYS.depthBase || [["ink", "Second ink"]]); } },
       { type: "seg", key: "card", label: "Cards", options: function () { return opts(LAB.SYS.card); } },
       { type: "seg", key: "wl", label: "Wins and losses", options: function () { return opts(LAB.SYS.wl || [["pair", "Look pair"]]); } },
       { type: "seg", key: "votes", label: "Votes and tags", options: function () { return opts(LAB.SYS.votes || [["classic", "Sunflower and red"]]); } },
