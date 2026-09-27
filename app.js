@@ -8322,7 +8322,7 @@ function renderResults(e, keepScroll) {
         '<div class="pr-name bt-name"><span class="slot-badge">' + p.slot + "</span>" +
           '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></div>" +
         '<div class="bt-ssn">' + prTeamHtml(row, p.fr) + "</div></div>" +
-        '<div class="pr-v bt-val t-num' + (valueOf(row) < 0 ? " is-neg" : "") + '"><small>V</small>' + valueOf(row).toFixed(2) + "</div></div>" +
+        '<div class="pr-v bt-val t-num' + (valueOf(row) < 0 ? " is-neg" : "") + '"><b class="sigma" aria-hidden="true">\u03A3</b><small>V</small>' + valueOf(row).toFixed(2) + "</div></div>" +
       '<div class="bt-box">' + ballotBoxHtml(row) + "</div>" +
       '<div class="bt-tags" data-bt="' + i + '"></div></div>';
   }).join("");
@@ -8877,7 +8877,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v59.5";
+var BUILD_V = "v59.6";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
