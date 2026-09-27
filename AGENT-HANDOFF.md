@@ -3,8 +3,8 @@
 **Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
 
 **Date:** 2026-09-26
-**Build:** `v58.3`, pushed on branch `c-code-clean` (`BUILD_V = "v58.3"`; styles.css and app.js at `20260926-jingle-v58-3`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`; daily-core.js and challenges.js keys move with the new Dailies, see 00000h). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
+**Build:** `v58.4`, pushed on branch `c-code-clean` (`BUILD_V = "v58.4"`; app.js, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, styles.css at `20260926-jingle-v58-3`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4. main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** v58.4 (section 00000h, item 3): the results ledger adds up on the new Dailies. v58 (section 00000h): THE REDRAFTED's PRO boards are the real drafts, the Daily and the Redrafted wear Heat Vice, a second Past Dailies door, the 200 new Dailies (POOL3 from 2026-09-28), and docs/GO-LIVE.md (the owner's database steps). Before that: v57 the app icon, v56 the Daily archive, v55 the Redrafted, v54 the neon masthead, v53 items 9, 11-14.
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
@@ -108,11 +108,35 @@ the owner's signed-in personal Adobe ID (the pane's CKeller Law LLC Adobe for Te
 Goalie Throw hit Mixamo's rate limit. A private gallery artifact ("Draft Night Moves", https://claude.ai/artifact/XMPeniEFZARAtwz7QsPRSJ; its source and clips were built in the session scratchpad, so rebuild with tools/artbot) shows all 30 clips with
 stars and a copyable `ART-BOT PICKS v1` block; waiting on his picks.
 
-**3. The 200 new Dailies (POOL3).** IN FLIGHT at the time of writing: a helper agent is designing,
-implementing and bot-auditing them in a worktree (`.claude/worktrees/agent-...`); the merge, the key bumps
-for challenges.js and daily-core.js, and this paragraph's final text come next. POOL3 starts Monday
-2026-09-28 (#79) so #78 (Sunday) stays a POOL2 day, and must never start before the go-live date (see
-docs/GO-LIVE.md).
+**3. The 200 new Dailies (POOL3), merged (`1ea7813`, merge `3d6e519`), then v58.4.** 200 boards, one a day from
+Monday 2026-09-28 (#79) through Thursday 2027-04-15 (#278), then looping (day index modulo 200). #1 to #77 stay
+pinned by test.js and #78 (Sunday 2026-09-27) stays a POOL2 day. A helper agent designed, built and bot-audited
+them in a worktree; the agent here reviewed and merged them. The plan, the whole run week by week, the mirror
+and cousin pairs, and how to swap a board safely: `docs/DAILIES-POOL3.md`.
+- Mix 73 Presti, 98 Classic, 29 Pro, with a weekday texture (Monday engine rules, Tuesday sequence puzzles,
+  Wednesday eras and wildcards, Thursday Pro blind, Friday a positive twist, Saturday franchise flavor, Sunday
+  Presti economy). No base mode three days running, one mechanic family at least 6 days apart, mirror pairs at
+  least 35. Every board changes which player is the right pick. A duplicate pass replaced seven repeats.
+- Certified: `node tools/daily-audit.js 300 pool3` plays 300 bot drafts on every board (zero dead runs, a
+  round-one pool median of 8+, centers on the board, a spread of records); all 200 pass. test.js pins the
+  rotation's shape and copy and runs 20 quick drafts per board.
+- New engine surface: an optional `price(row, t)` hook (a Presti price multiplier in sim-core's
+  `assignCapPool`; absent means exactly 1, checked on 1,263 bot games against the old sim-core and pinned).
+  Six boards use it. The cfg keys for the rim, glass, creator and mileage taxes are open to boards (no default
+  changed), and a negative tax is a bonus (Five-Out, Board Money, Win Now; The Mid-Range charges per shooter
+  past one through a negative `SPACING_BONUS`).
+- v58.4 (`b6eb3c2`) fixed what the review found: the results ledger is now `resultsLedgerHtml(e)`, one row per
+  term of the engine's score, so the rows always add up. A bonus paid through a negative tax shows as a credit,
+  the Mid-Range's charge has its own row, and the shooter, usage, rim bar and veteran-year lines read the
+  board's own settings (`runCfg`, the engine's `C()` rule) instead of the defaults. That default bug also hit
+  older boards that move the targets (three set `USAGE_BUDGET`; several set `SPACERS_REQ`). The Tribune's fit
+  notes read the board's shooter target too. Found while testing: an archive replay showed "1 OFFICIAL
+  ATTEMPT" in the draft header; it says PRACTICE RUN now. test.js 98 checks (four new ledger checks).
+- Timing: `START3` is 2026-09-28 in the code, but true82.net (v47) keeps dealing POOL2 until this branch is
+  merged. If the merge lands after Sunday 2026-09-27, the archive and beat links would show POOL3 boards for
+  days the live site dealt POOL2 ones (history rewritten for those days). So before a late merge, move
+  `START3` to the go-live day (a Monday keeps the weekday texture), re-run test.js and
+  `node tools/daily-audit.js 300 pool3`, and bump the daily-core.js key (docs/GO-LIVE.md says the same).
 
 **4. Going live** (the owner asked for "copy pastes for the database migrations"): `docs/GO-LIVE.md`. 0026 is
 7.6 MB (too big for the console), so it runs through wrangler (`npx --yes wrangler@4 login`, `d1 list`,

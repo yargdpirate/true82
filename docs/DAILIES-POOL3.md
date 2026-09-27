@@ -52,11 +52,12 @@ pinned by test.js, and #78 (2026-09-27) is still POOL2.
   default changed): `RIM_TOP20`, `RIM_D_TAX`, `GLASS_LOW`, `GLASS_DIRE`,
   `GLASS_TAX_LOW`, `GLASS_TAX_DIRE`, `CREATOR_PCT`, `CREATOR_TAX`,
   `AGE_VET_YEAR`, `AGE_VET_FREE`, `AGE_TAX`. A negative tax is a bonus.
-- **Display gap to fix in app.js.** The results ledger only itemizes rim,
-  rebounding, playmaker and mileage taxes above zero, and reads the spacing
-  target from the defaults. Five-Out, Board Money, Win Now and The Mid-Range
-  score correctly, but their credit (or the Mid-Range's per-shooter charge)
-  does not get its own ledger line.
+- **The results ledger** (fixed in v58.4). `resultsLedgerHtml(e)` in app.js
+  shows one row per term of the engine's score: a negative tax is a credit
+  row (Five-Out, Board Money, Win Now), The Mid-Range's per-shooter charge
+  has its own row, and every target it quotes is the board's own (`runCfg`).
+  test.js checks the rows add up on every kind of board. A board that adds
+  a new kind of term needs a row there too.
 
 ## The run
 
