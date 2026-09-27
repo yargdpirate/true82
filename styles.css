@@ -1057,6 +1057,14 @@ button.more-modes:disabled,
 .ledger-amt.good { color: var(--t-good-soft); }
 .ledger-amt.hot { color: var(--t-good-soft); }
 .ledger-row.total { background: var(--t-ground-2); font-weight: 500; }
+/* v59.4 (the owner): the aggregate player value wears a styled sigma, the sum of the five cards' V: a riso Σ in the
+   display face (the pink key, the aqua plate a hair off register), the V small like the cards', the total in the
+   display face so the row reads as the base the score is built on */
+.ledger-sum { display: inline-flex; align-items: baseline; white-space: nowrap; }
+.ledger-sum .sigma { font-family: var(--t-disp); font-weight: 900; font-size: 30px; line-height: 0.8; color: var(--t-accent);
+  text-shadow: 2px 2px 0 rgb(var(--t-offset-rgb) / .85); margin-right: 1px; }
+.ledger-sum small { font-family: var(--t-mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--t-text-2); margin-right: 5px; }
+.ledger-sum .ledger-amt { font-family: var(--t-disp); font-weight: 800; font-size: 22px; line-height: 0.9; letter-spacing: 0.01em; color: var(--t-text); }
 
 /* ---------- two-way profile (results) ---------- */
 .twoway-sec { margin-top: 14px; }

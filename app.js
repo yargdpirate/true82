@@ -4036,7 +4036,10 @@ function runCfg(k) { return runCfgSet(k) ? G.ch.cfg[k] : SC[k]; }
 function resultsLedgerHtml(e) {
   var req = runCfg("SPACERS_REQ"), vetYr = runCfg("AGE_VET_YEAR");
   return '<div class="ledger">' +
-    '<div class="ledger-row"><span>Raw talent \u03A3V<span class="why">Sum of each pick\u2019s value over a replacement-level player.</span></span><span class="ledger-amt">' + fmt1(e.sumV) + "</span></div>" +
+    // v59.4 (the owner): the aggregate wears a styled sigma, "ΣV" over the sum of the five cards' V values (the
+    // number keeps its own .ledger-amt, which test.js reads)
+    '<div class="ledger-row ledger-talent"><span>Raw talent<span class="why">Sum of each pick\u2019s value over a replacement-level player.</span></span>' +
+      '<span class="ledger-sum"><b class="sigma" aria-hidden="true">\u03A3</b><small>V</small><span class="ledger-amt">' + fmt1(e.sumV) + "</span></span></div>" +
     ledgerRow("Usage tax", "\u03A3 usage " + fmt1(e.sumUsage) + " vs budget " + Math.round(runCfg("USAGE_BUDGET")) + ". One ball: overlapping shot demand costs efficiency.", e.usageTax, e.usageTax > 0) +
     (e.spacingBonus > 0
       ? ledgerCreditRow("Spacing bonus", e.sumSp + " shooters. Extra spacing stretches the defense past the requirement.", e.spacingBonus)
@@ -8874,7 +8877,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v59.3";
+var BUILD_V = "v59.4";
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
