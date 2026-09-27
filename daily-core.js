@@ -27,7 +27,8 @@
    hooks unmodified) · manifest law (pool references ids; missing id -> vanilla
    board) · no em-dashes in any user-facing string in this file.
    Tests: test.js vm-loads this file and pins every past board (#1 through
-   #77, 2026-09-26) and the archive's storage (v56). */
+   #77, 2026-09-26) and the archive's storage (v56). From #79 (2026-09-28)
+   the days come from POOL3, 200 boards that loop; test.js pins its shape. */
 (function (g) {
   "use strict";
 
@@ -139,6 +140,83 @@
     "vhs_era", "odd_lots", "the_triangle", "twin_towers", "generalists", "post_up_week", "choosy_gm"
   ];
 
+  /* ---------- THE THIRD ROTATION (2026-09-28 onward) ----------
+     POOL3 is 200 new boards, one a day from Monday 2026-09-28 (Daily #79)
+     through Thursday 2027-04-15, then the list loops from the top (day index
+     modulo 200, so after the first pass the weekday texture drifts). Every day
+     before START3 keeps its POOL2 or legacy board: history is pinned by
+     test.js, and 2026-09-27 (#78) is still POOL2.
+     Weekday texture for the first pass, like POOL2: Mon engine rules, Tue
+     sequence puzzles, Wed era or wildcard, Thu blind (Pro), Fri a positive
+     twist, Sat franchise flavor, Sun economy (Presti). Never the same base
+     mode three days running (the wrap from #278 back to #79 included), and
+     boards from one mechanic family sit at least 6 days apart (mirror pairs
+     at least 35). docs/DAILIES-POOL3.md lists the run and the families.
+     SWAPPING: only a board whose date has not arrived may change. Replace an
+     id in place (never insert or delete: the rotation is modulo the length),
+     keep the manifest entry, and give the new id DAILY_COPY s and g.
+     Every id passed tools/daily-audit.js (node tools/daily-audit.js 300 pool3). */
+  var START3 = "2026-09-28";
+  var POOL3 = [
+    // week 1 (Mon Sep 28)
+    "paint_police", "scoring_relay", "rookie_scale", "the_spectrum", "gunslingers", "league_leaders", "minimum_guards",
+    // week 2 (Mon Oct 5)
+    "stat_sheet", "the_midpoint", "upside_down", "millennium_men", "screen_setter", "journeymen", "name_twins",
+    // week 3 (Mon Oct 12)
+    "scoring_cap", "double_dip", "late_bloomers", "frontcourt_giants", "shootout", "mvp_club", "price_ladder",
+    // week 4 (Mon Oct 19)
+    "board_meeting", "backcourt_mates", "worst_year", "pass_it_on", "bird_rights", "finishers", "vintage",
+    // week 5 (Mon Oct 26)
+    "two_way_alphas", "earn_it", "rookie_center", "play_big", "three_and_d", "finesse_forwards", "last_call",
+    // week 6 (Mon Nov 2)
+    "five_tools", "six_degrees", "the_off_year", "overlap", "hub_center", "frequent_flyers", "nostalgia_sale",
+    // week 7 (Mon Nov 9)
+    "balanced_attack", "nellie_ball", "young_legs", "word_chain", "inside_outside", "lottery_stars", "stars_and_scrubs",
+    // week 8 (Mon Nov 16)
+    "job_description", "pick_and_roll", "the_leap", "last_stop", "two_point_guards", "unsung", "big_man_sale",
+    // week 9 (Mon Nov 23)
+    "trust_the_process", "anniversary", "glass_season", "outside_in", "five_out", "starters", "rising_ceiling",
+    // week 10 (Mon Nov 30)
+    "wing_stoppers", "feed_the_star", "share_evenly", "second_act", "unicorn_hunt", "new_threads", "ring_tax",
+    // week 11 (Mon Dec 7)
+    "height_cap", "peer_group", "by_the_book", "spell_the_team", "big_guards", "the_hangover", "minimum_center",
+    // week 12 (Mon Dec 14)
+    "point_god", "the_post", "old_guard", "franchise_pillars", "ball_hawks", "no_mvps", "rookie_discount",
+    // week 13 (Mon Dec 21)
+    "punt_the_boards", "strangers", "career_high", "longevity", "tax_holiday", "treadmill", "fair_market",
+    // week 14 (Mon Dec 28)
+    "usage_pyramid", "spread_out", "old_man_center", "alphabet_split", "scorer_and_setter", "jewelry", "pay_the_backcourt",
+    // week 15 (Mon Jan 4)
+    "stocks", "frontcourt_mates", "the_prequel", "homegrown", "glass_bonus", "so_close", "long_names",
+    // week 16 (Mon Jan 11)
+    "shooter_premium", "by_the_numbers", "dime_season", "draft_class", "splash_backcourt", "headline_acts", "salary_match",
+    // week 17 (Mon Jan 18)
+    "bad_boys", "career_arc", "the_decline", "inside_out", "point_forwards", "east_meets_west", "payday",
+    // week 18 (Mon Jan 25)
+    "blue_collar", "contemporaries", "middle_man", "the_relay", "stretch_five", "robin", "max_center",
+    // week 19 (Mon Feb 1)
+    "point_of_attack", "alumni_night", "graybeards", "unique_names", "point_center", "parting_shot", "no_headliners",
+    // week 20 (Mon Feb 8)
+    "long_ball", "full_house", "scoring_tiers", "the_chain", "help_defense", "ring_chasers", "market_crash",
+    // week 21 (Mon Feb 15)
+    "punt_assists", "crossover", "rookie_backcourt", "ringless", "bucket_getters", "deadline_deals", "pay_scale",
+    // week 22 (Mon Feb 22)
+    "early_arc", "the_straight", "early_bloomers", "first_name_basis", "unselfish", "the_duo", "opening_steal",
+    // week 23 (Mon Mar 1)
+    "defense_first", "give_and_go", "pecking_order", "all_wings", "win_now", "power_forwards", "splurge_and_save",
+    // week 24 (Mon Mar 8)
+    "punt_defense", "era_pairs", "swat_season", "short_names", "ball_hogs", "bench_mob", "pay_by_size",
+    // week 25 (Mon Mar 15)
+    "stretch_fours", "the_point", "experience_cap", "lifers", "role_forwards", "shaqs_rolodex", "price_check",
+    // week 26 (Mon Mar 22)
+    "extra_pass", "season_relay", "swan_song", "zigzag", "forward_firepower", "old_school_backcourt", "high_low",
+    // week 27 (Mon Mar 29)
+    "crash_the_glass", "the_mentor", "new_guard", "play_small", "glue_guards", "no_point_guard", "top_shelf",
+    // week 28 (Mon Apr 5)
+    "mid_range", "mentorship", "the_encore", "rentals", "hundred_club", "contenders", "no_middle",
+    // week 29 (Mon Apr 12)
+    "tax_season", "then_and_now", "vet_guards", "common_names"
+  ];
   var VANILLA_NAME = { cap: "Straight Presti", classic: "Straight Classic", pro: "Straight Pro" };
   var VANILLA_BLURB = {
     cap: "No modifier. $50M, random prices, the board as dealt.",
@@ -307,7 +385,613 @@
     small_blind:     { s: "No stats. Nobody over 6'4\".",
                        g: "Pro rules plus a height cap: no stats, randomized seasons, and only players 6'4\" and under. The little guys blur together across eras. Memory is your only chip." },
     tall_blind:      { s: "No stats. 6'8\" and up.",
-                       g: "Pro rules, giants only: no stats, randomized seasons, everyone 6'8\" or taller. You remember the big men fine. The test is remembering which of their seasons were the good ones." }
+                       g: "Pro rules, giants only: no stats, randomized seasons, everyone 6'8\" or taller. You remember the big men fine. The test is remembering which of their seasons were the good ones." },
+
+    /* ---- POOL3 (2026-09-26): the 200 boards from #79 on, in run order.
+       s = the draft panel's status row after "<MODE> RULES", one breath;
+       g = the gate and HOW TO PLAY brief, 2 to 4 sentences. Every line was
+       checked against its manifest hooks and the engine numbers (Pro boards
+       open with the mode line because their cards carry no stats). ---- */
+    paint_police: {
+      s: "No +2.5 defender up front costs 5 net.",
+      g: "The rim rule gets strict. One of your two forwards or your center needs a defensive rating (DBPM) of +2.5 or better, about the top 3 percent of big men, instead of the usual +0.9. Miss it and the open paint costs 5 net instead of 2. Presti cards hide stats, so draft an elite shot blocker you trust." },
+    scoring_relay: {
+      s: "Each pick scores within 4 points of the one before.",
+      g: "Every pick must average within 4 points per game of the pick right before him. You can climb or fall 4 points a round, so plan the path to your stars. The year menu is your steering wheel." },
+    rookie_scale: {
+      s: "Every pick in his first three seasons.",
+      g: "Every pick must be in his first, second or third season, with debuts from 1975 on. The year menu takes any player back to his early years. Find the stars who were great from day one." },
+    the_spectrum: {
+      s: "Five picks, five position tags: G, G/F, F, F/C, C.",
+      g: "Pro rules: no stats, random seasons. No two picks may carry the same position tag, so you need one each of G, G/F, F, F/C and C. Cards grey out when a pick would leave a slot that no remaining tag can fill." },
+    gunslingers: {
+      s: "Usage tax off. You need five shooters, 2.5 each.",
+      g: "The usage tax is off, so ball-dominant scorers stack freely, but you need five floor spacers and each missing one costs 2.5 net. Volume shooters are the whole point. Each shooter past five still earns 1 net." },
+    league_leaders: {
+      s: "Every pick: top 15 in the league in a box-score stat.",
+      g: "Every pick must rank in the league's top 15 that season in points, rebounds, assists, steals or blocks (among players with 1,000 minutes). A rebounding leader counts as much as a scoring one. The year menu finds each player's league-leading seasons." },
+    minimum_guards: {
+      s: "Both guards must cost $3M or less.",
+      g: "Your two guards cost $3M or less each, which leaves at least $44M for two forwards and a center. Buy your stars up front and find guards in the bargain bin. A $1M year reroll reshuffles a board with no cheap guards." },
+    stat_sheet: {
+      s: "Every pick: 10 points, 4 boards and 2 assists.",
+      g: "Only seasons with at least 10 points, 4 rebounds and 2 assists a game can be drafted. Pure specialists vanish, so the board is all-around players. The year menu often has a qualifying season when the default one misses." },
+    the_midpoint: {
+      s: "Pick one is the middle season: two before, two after.",
+      g: "Your first pick's season is the midpoint: two of your picks must come from earlier seasons and two from later ones. Once one side is full, the dealer only offers decades on the other side. Open between 1985 and 2010 to keep both sides open." },
+    upside_down: {
+      s: "A guard must lead your five in rebounds.",
+      g: "One of your guards must average more rebounds than any of your forwards or your center. Draft a rebounding guard and bigs who do not rebound much. Cards grey out when a big would out-rebound the guards." },
+    millennium_men: {
+      s: "1990s and 2000s boards. Careers that crossed into 2000.",
+      g: "Pro rules: no stats, random seasons. Boards come from the 1990s and 2000s only, and every pick's career must include a season ending in 1999 or earlier and one ending in 2001 or later. Era skips just bounce between the two decades." },
+    screen_setter: {
+      s: "Center-eligible picks must use 15% of plays or less.",
+      g: "Any player with a C tag must have a usage rate of 15 or lower, wherever you slot him. Post-up stars are out and screen-and-roll bigs are in. The usage you save leaves room for bigger guards and wings." },
+    journeymen: {
+      s: "Every pick played for five or more franchises.",
+      g: "Every pick must have played for at least five franchises in his career. Stars who moved around are rare and valuable. Presti prices still apply." },
+    name_twins: {
+      s: "Two of your five must share a surname.",
+      g: "At least two of your five must share a surname, like two Johnsons or two Joneses. Until the pair is made, keep a common surname on the roster. Cards grey out when a pair can no longer happen." },
+    scoring_cap: {
+      s: "Your five may total 70 points a game, no more.",
+      g: "Add up your five's points per game: the total must be 70 or less. A 30-point star leaves 40 for the other four, so low-scoring defenders, rebounders and passers carry the day. Cards grey out when a pick would leave too little for the rest." },
+    double_dip: {
+      s: "Picks 1 and 2 share a board, and so do picks 3 and 4.",
+      g: "Your second board is your first board again, same franchise and decade, and your fourth board repeats your third. Prices and seasons re-roll on the repeat. Take one player now and leave a good one for the return." },
+    late_bloomers: {
+      s: "Guards and forwards who first scored 15 in year 4+.",
+      g: "Your guards and forwards must be players whose first 15-point season came in their fourth season or later, with debuts from 1975 on. Any season of theirs counts once they qualify. The center is free." },
+    frontcourt_giants: {
+      s: "Both forwards must also be able to play center.",
+      g: "Pro rules: no stats, random seasons. Your two forwards must be players who also qualify at center, so they carry an F/C tag. Wings are out at forward, so your perimeter comes from the guards." },
+    shootout: {
+      s: "Defense fines off. Five shooters wanted, 2.5 each.",
+      g: "Every defense fine is off today, pairs and rim alike, but you need five floor spacers and each missing one costs 2.5 net. Draft shooters who never guarded anybody. Each shooter past five earns 1 net." },
+    mvp_club: {
+      s: "Two of your five must be MVP winners.",
+      g: "At least two of your five must have won an MVP at some point in their careers, and any season of theirs counts. An MVP in a quiet season can be a bargain. Cards grey out when two can no longer fit." },
+    price_ladder: {
+      s: "One player from each of five price bands.",
+      g: "Buy exactly one player from each band: $1M to $2M, $3M to $5M, $6M to $9M, $10M to $14M, and $15M or more. The cheapest possible ladder costs $35M of your $50M, so overpaying inside a band is the only slack. Rerolls cost $1M and eat that slack too." },
+    board_meeting: {
+      s: "Your five must total 45 rebounds a game.",
+      g: "Add up your five's rebounds: 45 a game at least, 9 a man. Guards have to rebound too, so look for big guards and rebounding wings. Cards grey out once the math can no longer get there." },
+    backcourt_mates: {
+      s: "Your two guards must have been teammates once.",
+      g: "Your two guards must have played on the same team in some season of their careers. Pick your first guard with a long, well-traveled career. Cards grey out for guards who never shared a roster with him." },
+    worst_year: {
+      s: "Every pick in his lowest-scoring full season.",
+      g: "Every pick must be in the lowest-scoring season of his career among seasons with 1,000 minutes or more. Stars who were good even in their worst year are gold. The year menu jumps each player to that season." },
+    pass_it_on: {
+      s: "Each pick played for the previous pick's franchise.",
+      g: "Pro rules: no stats, random seasons. Each pick must have played, at some point in his career, for the franchise your previous pick was drafted from. Well-traveled players keep the chain alive." },
+    bird_rights: {
+      s: "Players on the team they started with are half price.",
+      g: "Every player on a card from the franchise he debuted with, with debuts from 1975 on, costs half his usual price. Home-grown stars come cheap. Gems and rip-offs still happen." },
+    finishers: {
+      s: "Both forwards average 1.5 assists or fewer.",
+      g: "Your two forwards must each average 1.5 assists or fewer. They catch and finish, and the playmaking comes from your guards and center. The guards and center are free." },
+    vintage: {
+      s: "Your five seasons must average 1990 or earlier.",
+      g: "Add up your five seasons and divide by five: the answer must be 1990 or earlier. One 2020 star needs a couple of 1970s or early 1980s seasons to pay for him. Presti locks each card's season, so a $1M year reroll is how you change them." },
+    two_way_alphas: {
+      s: "Usage tax off. Defense fines double.",
+      g: "The usage tax is off, so stars can stack, but every defense fine doubles: weak pairs cost 4 to 6 net and an unguarded rim costs 4. Stars who also defend are the target." },
+    earn_it: {
+      s: "No 20-point scorer until two under-10 scorers are in.",
+      g: "You cannot draft a 20-point scorer until two players who score under 10 are already on your roster. Build the supporting cast first, then buy the stars. The year menu can turn a star into a role player, and back." },
+    rookie_center: {
+      s: "Your center must be in his first or second season.",
+      g: "Your center must be in his first or second season, with a debut from 1975 on. The year menu takes any big man back to his rookie years. Young centers who could defend on day one are the target." },
+    play_big: {
+      s: "Everyone plays the biggest position he ever played.",
+      g: "Pro rules: no stats, random seasons. A player who ever qualified at center must play center, and one who ever qualified at forward must play forward. Only pure guards can play guard." },
+    three_and_d: {
+      s: "Both forwards: 3PT shooters with a steal a game.",
+      g: "Your two forwards must each be a floor spacer (the 3PT chip) who averages at least 1 steal. That is the modern wing, and most eras have only a few. The guards and center are free." },
+    finesse_forwards: {
+      s: "Neither forward may average more than 5 rebounds.",
+      g: "Your two forwards must each average 5 rebounds or fewer. The rebounding fine is still live, so your guards and center have to crash. Small forwards and wings fit; bruisers do not." },
+    last_call: {
+      s: "Pick five must cost at least half your money left.",
+      g: "Your last pick must cost at least half of the money you have left when you make it. Arrive at pick five with $20M and he costs $10M or more; arrive with $4M and a $2M player works. Save for a finisher or spend down early." },
+    five_tools: {
+      s: "A scorer, rebounder, passer, thief and shot blocker.",
+      g: "Each pick fills a different job: a 20-point scorer, a 9-rebound man, a 7-assist passer, a thief with 1.7 steals and a shot blocker with 1.7 blocks. A player who can do two jobs still fills only one. Cards grey out when a job would be left with nobody able to fill it." },
+    six_degrees: {
+      s: "Everyone must have played with someone you drafted.",
+      g: "After your first pick, every player must have been a teammate of at least one player already on your roster, in any season. The dealer only offers franchises your roster played for. Journeymen connect everything." },
+    the_off_year: {
+      s: "Nobody in his career-high scoring season.",
+      g: "No player may be drafted in the season he scored the most points per game. The year menu often defaults to that season, so check it. His second-best year is the play." },
+    overlap: {
+      s: "All five careers must share at least one season.",
+      g: "Pro rules: no stats, random seasons. There must be at least one season when all five of your players were in the league together. Long careers keep the window open." },
+    hub_center: {
+      s: "Your center must lead your five in assists.",
+      g: "Your center must average more assists than any of your guards and forwards. Until he is drafted, nobody else may average 3 or more. Passing bigs make this easy, so plan the rest around him." },
+    frequent_flyers: {
+      s: "Your five must have worn 22+ franchises combined.",
+      g: "Count the franchises each pick played for in his career and add them up: your five need 22 or more, over 4 each. Journeymen are the currency, and a one-team star costs you. Cards grey out when the total can no longer get there." },
+    nostalgia_sale: {
+      s: "Every season before 1990 is half price.",
+      g: "Every player on a pre-1990 card costs half his usual price. The 1970s and 1980s are on clearance, so a $1M year reroll can move a star into a cheap season. Gems and rip-offs still happen." },
+    balanced_attack: {
+      s: "Top and bottom scorer within 8 points.",
+      g: "Your best scorer and your worst scorer must be within 8 points per game of each other. A 28-point star means nobody under 20; a five of 12-point players fits anywhere. Use the year menu to slide scorers into range." },
+    nellie_ball: {
+      s: "Every pick must be able to play forward.",
+      g: "All five must qualify at forward, so your guards carry a G/F tag and your center an F/C tag. Positionless basketball, Don Nelson style. Presti cards show the tags, so read them before you pay." },
+    young_legs: {
+      s: "Both forwards must be in their first or second season.",
+      g: "Your two forwards must be in their first or second season, with debuts from 1975 on. The year menu takes any forward back to his early years. The guards and center are free." },
+    word_chain: {
+      s: "Each first name starts with the last surname's last letter.",
+      g: "Pro rules: no stats, random seasons. Each pick's first name must start with the last letter of the previous pick's surname: Kobe Bryant, then Tim Duncan, then Nick Van Exel. Surnames ending in Q, U or X must wait for your last pick." },
+    inside_outside: {
+      s: "One forward shoots threes, the other grabs 8 boards.",
+      g: "Your forwards must be one floor spacer (the 3PT chip) and one 8-rebound player. A forward who does both can fill either role. The guards and center are free." },
+    lottery_stars: {
+      s: "Every pick from a bottom-third team that season.",
+      g: "Every pick must come from a team in the weakest third of the league that season, ranked by its players' impact. Stars stuck on bad teams are the prize. Presti locks each card's season, so a $1M year reroll can find a lottery year." },
+    stars_and_scrubs: {
+      s: "Only two players may cost more than $2M.",
+      g: "Two of your five may cost more than $2M, and the other three must cost $2M or less. Spend big twice and fill the rest from the bargain bin. The $1M gems are the whole game." },
+    job_description: {
+      s: "Each pick needs 3PT, 8 reb, 6 ast, 2 stl or 2 blk.",
+      g: "Only seasons with a clear specialty can be drafted: a floor spacer (the 3PT chip), 8 rebounds, 6 assists, 2 steals or 2 blocks a game. Volume scorers with no specialty are off the board. Build a five whose jobs cover each other." },
+    pick_and_roll: {
+      s: "Your center must have played with one of your guards.",
+      g: "Your center must have been a teammate, in some season, of at least one of your guards. Draft a guard with a long career first, then find his old big man. Cards grey out for bigs who never shared a roster with your guards." },
+    the_leap: {
+      s: "Every pick in a season his scoring jumped 3+ points.",
+      g: "Every pick must be in a season when he scored at least 3 more points per game than the season before. Breakout years only. The year menu shows every leap a player made." },
+    last_stop: {
+      s: "Every pick wears the jersey he retired in.",
+      g: "Pro rules: no stats, random seasons. Every pick must be playing for a franchise he played for in his final season, for careers that ended by 2025. Late-career stops count as much as long runs." },
+    two_point_guards: {
+      s: "Both guards must average 6 assists.",
+      g: "Your two guards must each average at least 6 assists. Two quarterbacks share one ball, so the scoring has to come from the frontcourt. The forwards and center are free." },
+    unsung: {
+      s: "Nobody who finished top 50 in scoring that season.",
+      g: "No pick may rank in the league's top 50 in points per game that season (among players with 1,000 minutes). Defenders, rebounders and passers carry the day. The year menu can find a star's quieter seasons." },
+    big_man_sale: {
+      s: "Anyone who can play center is half price.",
+      g: "Every player with a C tag costs half his usual price today. Stock the frontcourt, and remember a center-eligible forward counts too. Gems and rip-offs still happen." },
+    trust_the_process: {
+      s: "Three players in year 5 or later costs 5 net.",
+      g: "If three or more of your five are in their fifth season or later, the team pays 5 net (normally it takes two players in their 12th season, and costs 1). Two veterans ride free, so fill the rest with players in their first four years. Boards run 1980 on, so era skips never land in the 1970s." },
+    anniversary: {
+      s: "Every season ends in the same digit as your first.",
+      g: "Your first pick's season sets a last digit: pick a 1996 season and every pick after must come from a season ending in 6. The year menu is the whole game. Count back in tens." },
+    glass_season: {
+      s: "Every pick in his career-high rebounding season.",
+      g: "Every pick must be in the season he averaged the most rebounds of his career. For bigs that is often a peak, and for guards it can be a strange year. The year menu jumps each player to it." },
+    outside_in: {
+      s: "Guards first, then forwards, then the center.",
+      g: "Pro rules: no stats, random seasons. Draft both guards before any forward, and both forwards before your center. The center comes last, so hope the last board has a good one." },
+    five_out: {
+      s: "No +2 rim protector up front earns 3 net.",
+      g: "The rim rule flips. If none of your forwards or your center has a defensive rating (DBPM) of +2 or better, your five earns 3 net instead of paying the usual 2. Draft skilled bigs and shooters, and leave the elite shot blockers on the board." },
+    starters: {
+      s: "Every pick ranked top three in team minutes.",
+      g: "Every pick must rank in the top three in minutes on his team that season. Workhorse seasons only: no bench years and no injury years. The year menu can find each player's heavy-minute seasons." },
+    rising_ceiling: {
+      s: "Pick one costs $4M or less, pick two $8M, up to $20M.",
+      g: "Your price ceiling rises each round: $4M for pick one, $8M for pick two, then $12M, $16M and $20M for pick five. Save your star for the end and hope he is on the last board. Cheap gems early are the plan." },
+    wing_stoppers: {
+      s: "One forward above +1.5 DBPM, or pay 4 to 7 net.",
+      g: "Your forwards need a real stopper. If neither forward has a defensive rating (DBPM) above +1.5 you pay 4 net, and if neither is above +0.5 you pay 7 (normally only two minus defenders cost 2 to 3). The guard-pair fine is off today." },
+    feed_the_star: {
+      s: "After a 22-point scorer, the next pick scores under 8.",
+      g: "Every time you draft a 22-point scorer, your very next pick must average under 8 points. Stars come with a role-player chaser, so order your picks. A star on pick five is free." },
+    share_evenly: {
+      s: "All five within 3 assists of each other.",
+      g: "Your highest and lowest assist men must be within 3 assists per game of each other. A 10-assist point guard means nobody under 7; a five of 2-assist players fits anywhere. Use the year menu to slide passers into range." },
+    second_act: {
+      s: "Nobody wearing the jersey of the team he started with.",
+      g: "Pro rules: no stats, random seasons. Every pick must be playing for a franchise he did not play for in his debut season, with debuts from 1975 on. Boards run 1980 on. Second homes only." },
+    unicorn_hunt: {
+      s: "Modern boards. Four shooters and a +2 rim protector.",
+      g: "Boards come from the 2010s and 2020s only, so era skips just bounce between the two. You need four floor spacers (2.5 net for each one missing) and a forward or center with a defensive rating (DBPM) of +2, or pay 4 net. Shooting bigs who block shots are the unicorns." },
+    new_threads: {
+      s: "Every pick in his first season with a new team.",
+      g: "Every pick must be in his first season with a franchise he joined after his debut. Offseason signings and trade arrivals only. The year menu shows where each player landed." },
+    ring_tax: {
+      s: "Anyone on that season's title team costs double.",
+      g: "Every player on a card from that season's NBA champion costs twice his usual price. Champions are expensive, so the value is on the runners-up and the also-rans. Gems and rip-offs still happen, and prices still top out at $23M." },
+    height_cap: {
+      s: "Your five may stand 32'6\" combined, no more.",
+      g: "Add up your five's heights: 32'6\" is the limit, an average of 6'6\". A 7-footer forces a small guard somewhere. Cards grey out when a pick would leave too little height for the open slots." },
+    peer_group: {
+      s: "Everyone within one career year of your first pick.",
+      g: "Your first pick's career year sets the stage, and everyone after must be within one season of it. Open with a rookie and you draft rookies and sophomores; open with a tenth-year veteran and you draft veterans. Debuts from 1975 on count." },
+    by_the_book: {
+      s: "One PG, one SG, one SF, one PF and one C.",
+      g: "Draft by each season's listed position: one point guard, one shooting guard, one small forward, one power forward and one center. Cards only show G, F and C, so the ones whose listing does not fit grey out. The year menu can change a player's listing." },
+    spell_the_team: {
+      s: "Each surname starts with a letter in the team's name.",
+      g: "Pro rules: no stats, random seasons. Every surname must start with a letter found in the franchise name on the board: on a Celtics board, C, E, L, T, I or S. A surname of several words counts as one." },
+    big_guards: {
+      s: "Both guards must average 5.5 rebounds.",
+      g: "Your two guards must each average at least 5.5 rebounds. Tall guards and triple-double types are in, and small shooters are out at guard. The forwards and center are free." },
+    the_hangover: {
+      s: "Every pick from last season's champion.",
+      g: "Every pick must come from the team that won the NBA title the season before. Defending champions, a year older. The year menu lines each player up with a title defense." },
+    minimum_center: {
+      s: "Your center costs $2M or less.",
+      g: "Your center must cost $2M or less, which leaves at least $48M for your guards and forwards. Hunt the bargain big men. A $1M year reroll reshuffles a board with no cheap centers." },
+    point_god: {
+      s: "No elite passer on your five costs 6 net.",
+      g: "Somebody on your five must rank in the top 1.5 percent of his season in assists, roughly its seven best passers. Without one, the offense stalls and costs 6 net (normally anyone in the top 20 percent clears it, and missing costs 2). Buy your point god early." },
+    the_post: {
+      s: "Draft your center first. Nobody may outscore him.",
+      g: "Your first pick must play center, and no later pick may average more points than he did. A 28-point center frees the whole board; a 10-point rim protector caps everyone at 10. Choose the anchor with the rest of the draft in mind." },
+    old_guard: {
+      s: "Guards from before 1995, forwards from 2005 on.",
+      g: "Your guards must be seasons from before 1995 and your forwards seasons from 2005 or later. The center can come from any era. The year menu can move a player across the line." },
+    franchise_pillars: {
+      s: "Only players with 5+ seasons for that franchise.",
+      g: "Pro rules: no stats, random seasons. Only players who spent five or more seasons with the franchise on the board are eligible. The long-time starters and lifers are all that is left." },
+    ball_hawks: {
+      s: "Both forwards must average 1.4 steals.",
+      g: "Your two forwards must each average at least 1.4 steals. Wings who jump passing lanes are in, and slow bigs are out at forward. The guards and center are free." },
+    no_mvps: {
+      s: "Nobody who ever won an MVP.",
+      g: "The 33 MVP winners who played a season since 1974 are off the board, from Kareem and Bird to Jordan and LeBron. The best players who never won one are the whole draft. Presti prices still apply." },
+    rookie_discount: {
+      s: "Players in their first three seasons are half price.",
+      g: "Every player in his first, second or third season, with debuts from 1975 on, costs half his usual price. Young stars are the bargain of the day. Gems and rip-offs still happen." },
+    punt_the_boards: {
+      s: "Your five may total 24 rebounds a game, at most.",
+      g: "Add up your five's rebounds: 24 a game at most, under 5 each. The rebounding fine will almost surely hit for 2 or 3 net, so make it up with shooting, passing and defense. Cards grey out once a pick would blow the cap." },
+    strangers: {
+      s: "No two picks ever played for the same franchise.",
+      g: "No two of your five may share a franchise anywhere in their careers, in any season. Journeymen are dangerous because they block a lot of teams. Lifers who stayed put are safe." },
+    career_high: {
+      s: "Every pick in his highest-scoring season.",
+      g: "Every pick must be in the season he averaged the most points of his career. Peak scoring is not always peak value, so weigh the usage tax. The year menu jumps each player to it." },
+    longevity: {
+      s: "Your five careers must total 70 seasons or more.",
+      g: "Pro rules: no stats, random seasons. Add up how many seasons each pick played from 1974 on: your five must reach 70, an average of 14. Draft the long careers early." },
+    tax_holiday: {
+      s: "Every fit rule is off. Pure talent.",
+      g: "No usage tax, no shooting quota or bonus, and no defense, rim, rebounding, playmaking or mileage fines. Your score is the plain sum of your five's impact ratings. Presti prices still apply, so buy the most impact per dollar." },
+    treadmill: {
+      s: "Every pick from a middle-third team that season.",
+      g: "Every pick must come from a team in the middle third of the league that season, ranked by its players' impact. Not contenders and not lottery teams. The year menu finds each player's middling seasons." },
+    fair_market: {
+      s: "No $1M gems and no rip-offs in the mid-tier.",
+      g: "The mid-tier mispricing is off: no $1M gems and no rip-offs priced like stars (normally about 1 in 7 and 1 in 2). Prices still wobble a little each deal, but a cheap player is cheap for a reason. Value per dollar is the only edge." },
+    usage_pyramid: {
+      s: "One 26% usage star, two from 19 to 26, two under 19.",
+      g: "Your five must be one player with a usage rate of 26 or more, two between 19 and 26, and two under 19. One alpha, two options, two role players. Cards grey out when a tier is full." },
+    spread_out: {
+      s: "No two of your seasons within six years of each other.",
+      g: "Every pair of your seasons must be at least seven years apart, so your five span at least 28 years. Presti locks each card's season, so a $1M year reroll can move a player out of a crowded era. Plan the spread from the first pick." },
+    old_man_center: {
+      s: "Your center must be in his tenth season or later.",
+      g: "Your center must be in his tenth season or later. Boards run 1990 on, so the 1970s and 1980s never come up. Old centers who still anchored a defense are the target." },
+    alphabet_split: {
+      s: "Guards' surnames A to M. Everyone else N to Z.",
+      g: "Pro rules: no stats, random seasons. Your guards' surnames must start with A through M, and your forwards' and center's with N through Z. A surname of several words goes by its first letter." },
+    scorer_and_setter: {
+      s: "One guard scores 18 a game, the other dishes 6 assists.",
+      g: "Your guards must be one 18-point scorer and one 6-assist passer; a player who does both can fill either role. The classic backcourt. The forwards and center are free." },
+    jewelry: {
+      s: "Guards and forwards must own a ring. Center is free.",
+      g: "Your guards and forwards must have been on a title team at some point in their careers, from 1974 on. Any season of theirs counts. The center is free." },
+    pay_the_backcourt: {
+      s: "Your two guards must be your two priciest players.",
+      g: "Nobody may cost more than either of your guards. Buy your stars at guard, and keep enough money for the second guard to match your priciest big. Cheap forwards and a cheap center are the plan." },
+    stocks: {
+      s: "Your five need 13 steals plus blocks a game.",
+      g: "Add every pick's steals and blocks: your five must reach 13 a game, about 2.6 per man. Shot blockers and ball hawks at every position matter more than scorers today. Cards grey out once the math can no longer get you there." },
+    frontcourt_mates: {
+      s: "Your two forwards must have been teammates once.",
+      g: "Your two forwards must have played on the same team in some season of their careers. Pick your first forward with a long, well-traveled career. Cards grey out for forwards who never shared a roster with him." },
+    the_prequel: {
+      s: "Every pick in the season before his best scoring year.",
+      g: "Every pick must be in the season right before his highest-scoring season. The year before the peak is often almost as good. The year menu jumps each player to it." },
+    homegrown: {
+      s: "Every pick wears the jersey of the team he started with.",
+      g: "Pro rules: no stats, random seasons. Every pick must be playing for a franchise he played for in his debut season, with debuts from 1975 on. Draft the home-grown stars." },
+    glass_bonus: {
+      s: "Elite team rebounding earns 3 net today.",
+      g: "Every player's rebounding is ranked against his own season. If your five average the 88th percentile or better, the team earns 3 net, and the usual rebounding fine is off. Draft rebounders at every position, guards included." },
+    so_close: {
+      s: "Every pick from the team that lost the Finals.",
+      g: "Every pick must come from the team that lost the NBA Finals that season. The dealer only offers boards that hold a runner-up season, and the year menu jumps each player to it. Great teams, no rings." },
+    long_names: {
+      s: "Your five surnames must total 36 letters or more.",
+      g: "Count the letters in your five surnames: 36 at least, over 7 a man. Suffixes like Jr. do not count, and a two-word surname counts as one. Long names are worth their weight today." },
+    shooter_premium: {
+      s: "Every floor spacer costs 50 percent more.",
+      g: "The market prices shooting today: every floor spacer's price is marked up 50 percent. Non-shooting stars are the bargains, but you still want about three shooters. Presti cards hide the 3PT chip, so memory tells you who shoots." },
+    by_the_numbers: {
+      s: "Pick one's season ends in 1, pick two's in 2, and so on.",
+      g: "Your first pick's season must end in 1, your second in 2, your third in 3, your fourth in 4 and your fifth in 5. The year menu is the whole game. Plan which player covers which digit." },
+    dime_season: {
+      s: "Every pick in his career-high assists season.",
+      g: "Every pick must be in the season he averaged the most assists of his career. For point guards that is often a peak year; for bigs it can be a strange one. The year menu jumps each player to it." },
+    draft_class: {
+      s: "Everyone debuted within a season of your first pick.",
+      g: "Pro rules: no stats, random seasons. Your first pick's debut season sets the class, and everyone after must have debuted within one season of it, from 1975 on. The dealer only offers decades the class played in." },
+    splash_backcourt: {
+      s: "Both guards must be floor spacers.",
+      g: "Both of your guards must carry the 3PT chip. Every era has a few, and the year menu can find a guard's shooting seasons. The forwards and center are free." },
+    headline_acts: {
+      s: "Every pick: top 80 in the league in scoring that season.",
+      g: "Every pick must rank in the league's top 80 in points per game that season (among players with 1,000 minutes). Scorers only, so watch the usage tax. The year menu finds each player's big scoring seasons." },
+    salary_match: {
+      s: "Guards share a price band, and so do forwards.",
+      g: "Your two guards must come from the same price band, and so must your two forwards: $1M to $3M, $4M to $7M, $8M to $12M, or $13M and up. Buy stars in pairs or bargains in pairs. The center is free." },
+    bad_boys: {
+      s: "Defense fines double. Shooting counts for nothing.",
+      g: "Every defense fine doubles: two weak guards or two weak forwards cost 4 to 6 net, and an unguarded rim costs 4. Shooting counts for nothing today, no tax and no bonus. Draft stoppers, even ones who cannot shoot." },
+    career_arc: {
+      s: "Each pick is one season deeper into his career.",
+      g: "Your first pick sets a career year, and each pick after must be exactly one season further along: year 3, then 4, then 5. Start no later than year 8, with debuts from 1975 on. The year menu lets you land every player on the right year." },
+    the_decline: {
+      s: "Guards and forwards in a season their scoring fell 3+.",
+      g: "Your guards and forwards must be in a season when they scored at least 3 fewer points per game than the season before. The center is free. The year menu finds each player's down years." },
+    inside_out: {
+      s: "Center first, then both forwards, then both guards.",
+      g: "Pro rules: no stats, random seasons. Draft your center first, then both forwards, then both guards. The guards come last, so hope the final boards have good ones." },
+    point_forwards: {
+      s: "Both forwards must average 3.5 assists.",
+      g: "Your two forwards must each average at least 3.5 assists. Point forwards are rare, so grab one when you see him. The guards and center are free, and the year menu can find a forward's best passing season." },
+    east_meets_west: {
+      s: "Guards from the East, forwards from the West.",
+      g: "Your guards must come from franchises in today's Eastern Conference and your forwards from the Western Conference. The center can come from anywhere. The board's franchise tells you which side it is on." },
+    payday: {
+      s: "Spend at most $8M per pick, running total.",
+      g: "The owner releases $8M a round: after pick one you may have spent $8M, after pick two $16M, and so on up to $40M. Unspent money carries over, so a cheap first pick funds a star later. You can never spend ahead." },
+    blue_collar: {
+      s: "Every pick: one rebound for every two points.",
+      g: "Every pick must grab at least one rebound for every two points he scores, so a 20-point scorer needs 10 boards. Most guards vanish, so your backcourt comes from low-scoring rebounders. The year menu can find a season that qualifies." },
+    contemporaries: {
+      s: "Every season within four years of your first pick's.",
+      g: "Your first pick's season sets a window: every pick after must come from within four seasons of it. The dealer only offers decades that overlap the window. Presti locks each card's season, so a $1M year reroll can pull a player into range." },
+    middle_man: {
+      s: "Pick one is your median scorer: two above, two below.",
+      g: "Your first pick is the middle of your scoring order: two later picks must outscore him and two must score less, with no ties. Open with a 15 to 20 point scorer to keep both sides open." },
+    the_relay: {
+      s: "No two of your five were ever in the league together.",
+      g: "Pro rules: no stats, random seasons. No two of your five careers may overlap by even one season, so you are drafting five eras. Short careers leave more room for the rest." },
+    stretch_five: {
+      s: "Modern boards. Every center-eligible pick must shoot.",
+      g: "Boards come from the 2010s and 2020s only, so era skips just bounce between the two. Any player with a C tag must be a floor spacer (the 3PT chip), even if you slot him at forward. Your center shoots threes today." },
+    robin: {
+      s: "Nobody who led his team in scoring that season.",
+      g: "No player may be drafted in a season he led his team in scoring (among players with 1,000 minutes for that team). Sidekicks, defenders and second options only. Presti locks each card's season, so a $1M year reroll may land a star in a year he was not the top scorer." },
+    max_center: {
+      s: "Draft your center first. Nobody may cost more than him.",
+      g: "Your first pick must play center, and no later pick may cost more than you paid for him. A $20M center frees the board; a $2M center caps everyone at $2M. Choose the anchor with the budget in mind." },
+    point_of_attack: {
+      s: "One guard above +1.5 DBPM, or pay 4 to 7 net.",
+      g: "Your backcourt needs a real stopper. If neither guard has a defensive rating (DBPM) above +1.5 you pay 4 net, and if neither is above +0.5 you pay 7 (normally only two minus defenders cost 2 to 3). The forward-pair fine is off today. Sort by DBPM and find your guard." },
+    alumni_night: {
+      s: "Everyone must have played for your first pick's team.",
+      g: "After your first pick, every player must have worn his franchise's jersey at some point in his career, whatever board he is on. Open with a deep franchise. Journeymen who passed through are gold." },
+    graybeards: {
+      s: "Your five's career years must total 45 or more.",
+      g: "Add up the career year of each pick's season (a rookie is 1, a tenth-year veteran 10): your five need 45, an average of 9. Boards run 1990 on. Veterans are the whole draft." },
+    unique_names: {
+      s: "Only surnames no other player has ever worn.",
+      g: "Pro rules: no stats, random seasons. Only players whose surname nobody else has worn since 1974 are eligible. The Johnsons and Joneses are off the board." },
+    point_center: {
+      s: "Every center-eligible pick must average 2 assists.",
+      g: "Any player with a C tag must average at least 2 assists, wherever you slot him. Black-hole post scorers are out and passing bigs are in. The year menu can find a big man's best passing season." },
+    parting_shot: {
+      s: "Every pick in his last season with a team before moving on.",
+      g: "Every pick must be in his final season with a franchise before he played for another one. Contract years and trade seasons, often. The year menu jumps each player to his parting seasons." },
+    no_headliners: {
+      s: "The priciest player on every board is off limits.",
+      g: "Whoever carries the highest price on the board cannot be drafted, and neither can anyone tied with him. Sometimes that is a rip-off and nothing is lost; sometimes it is the best player alive. A $1M year reroll reprices the board." },
+    long_ball: {
+      s: "Everyone 6'7\" or taller. Missing shooters cost 3.",
+      g: "Only players 6'7\" and taller are on the board, and each floor spacer short of three costs 3 net instead of 2. Your guards will be giants, so find the big men who can shoot." },
+    full_house: {
+      s: "Three picks from one season, two from another.",
+      g: "Your five seasons must be three of one year and two of another, like a full house in poker. Once you have used two seasons, the dealer keeps to their decades. The year menu is the whole game." },
+    scoring_tiers: {
+      s: "One 22-point scorer, two at 12 to 22, two under 12.",
+      g: "Your five must be one scorer at 22 points or more, two between 12 and 22, and two under 12. One star, two options, two role players. Cards grey out when a tier is full." },
+    the_chain: {
+      s: "Each pick was a teammate of the pick before him.",
+      g: "Pro rules: no stats, random seasons. Each pick must have shared a roster with your previous pick in some season. The dealer only offers franchises your last pick played for." },
+    help_defense: {
+      s: "Both forwards must block 1.2 shots a game.",
+      g: "Your two forwards must each average at least 1.2 blocks. Weak-side shot blockers are the target, and pure wings are out at forward. The guards and center are free." },
+    ring_chasers: {
+      s: "Every pick from that season's NBA champion.",
+      g: "Every pick must come from the team that won the NBA title that season. The dealer only offers boards that hold a title season, and the year menu jumps a player to his championship year. Champions grade well, so the margin is thin." },
+    market_crash: {
+      s: "Stars cost $1M. Pricey players are rip-offs.",
+      g: "The price curve collapsed: the five best players on every board almost always cost $1M or $2M, and anyone priced $10M or more is an overpriced middling player. Price no longer tells you who is good, so draft from memory. Ignore the big numbers." },
+    punt_assists: {
+      s: "Your five may total 10 assists a game, at most.",
+      g: "Add up your five's assists: 10 a game at most, 2 each. Expect the 2-net fine for having no real passer. Draft scorers, rebounders and stoppers who never needed the ball in their hands." },
+    crossover: {
+      s: "Each pick played for a franchise already on your card.",
+      g: "After pick one, every player must have played at some point for a franchise you have already drafted from. Each new franchise you draft from opens more doors. Journeymen connect everything." },
+    rookie_backcourt: {
+      s: "Both guards must be in their first or second season.",
+      g: "Your two guards must be in their first or second season, with debuts from 1975 on. Young guards rarely grade well, so the value has to come from the frontcourt. The year menu takes almost any guard back to his early years." },
+    ringless: {
+      s: "Nobody who ever won a title.",
+      g: "Pro rules: no stats, random seasons. Nobody who was on a title team in any season from 1974 to 2025 can be drafted. The best players who never won a ring are the whole draft." },
+    bucket_getters: {
+      s: "Both guards must average 18 points.",
+      g: "Your two guards must each average at least 18 points. Scoring guards carry the offense, so the forwards and center can be defenders and rebounders. Watch the usage tax with two high-volume guards." },
+    deadline_deals: {
+      s: "Guards and forwards traded during that season.",
+      g: "Your guards and forwards must be in a season when they played for two or more franchises. The center is free. The year menu finds each player's traded seasons." },
+    pay_scale: {
+      s: "Pick one: $10M or less. Everyone within $5M of him.",
+      g: "Your first pick must cost $10M or less, and every pick after must cost within $5M of him. A $10M opener allows $5M to $15M; a $1M opener caps everyone at $6M. Set your pay scale on purpose." },
+    early_arc: {
+      s: "The 1980s. Each missing shooter costs 3 net.",
+      g: "Every board comes from the 1980s, when about 1 in 4 regulars shot threes, so era skips re-deal the same decade. Each floor spacer short of three costs 3 net instead of 2. Find the decade's rare gunners." },
+    the_straight: {
+      s: "Five seasons in a row, any order. Like a poker straight.",
+      g: "Your five seasons must be five consecutive years, like 1991 through 1995, in any order and with no season repeated. The dealer only offers decades that can still complete the run. The year menu is the whole game." },
+    early_bloomers: {
+      s: "Guards and forwards who scored 15 a game by year two.",
+      g: "Your guards and forwards must be players who averaged 15 points in their first or second season, with debuts from 1975 on. Any season of theirs counts once they qualify. The center is free." },
+    first_name_basis: {
+      s: "Two of your five must share a first name.",
+      g: "Pro rules: no stats, random seasons. At least two of your five must share a first name. Until the pair is made, keep a common first name on the roster, like Michael or Chris, and cards grey out when a pair can no longer happen." },
+    unselfish: {
+      s: "Every pick: one assist for every five points.",
+      g: "Every pick must average at least one assist for every five points he scores, so a 20-point scorer needs 4 assists. Pure scorers vanish from the board. Point guards, passing bigs and low-usage connectors are what is left." },
+    the_duo: {
+      s: "Two of your five must be real teammates, same season.",
+      g: "Two of your five must have played for the same team in the same season. If your first four picks never pair up, your last board comes from their franchises and decades, so plan it. The year menu can line up two teammates' seasons." },
+    opening_steal: {
+      s: "Your first pick must cost $1M.",
+      g: "Your first pick must cost exactly $1M, a gem or a scrub. After that, spend freely. A $1M year reroll can refresh a first board with no steal worth taking." },
+    defense_first: {
+      s: "Your five's DBPM must add up to at least their OBPM.",
+      g: "Add up your five's defensive ratings (DBPM) and offensive ratings (OBPM): defense must be at least even. One offensive star needs defensive specialists to pay for him. Sort by DBPM to find them, and cards grey out when the math can no longer balance." },
+    give_and_go: {
+      s: "Picks alternate between a shooter and a non-shooter.",
+      g: "Your picks must alternate between floor spacers and non-shooters, starting either way. Presti cards hide the 3PT chip, but a card that breaks the pattern greys out, so the board tells you what you need next. Plan where your two or three shooters land." },
+    pecking_order: {
+      s: "No two picks may score within 3 points of each other.",
+      g: "Every pair of your picks must differ by at least 3 points per game, so your five form a scoring ladder, like 25, 20, 15, 10 and 5. The year menu helps you land each rung. Plan the rungs early." },
+    all_wings: {
+      s: "Both forwards must also be able to play guard.",
+      g: "Pro rules: no stats, random seasons. Your two forwards must be players who also qualify at guard, so they carry a G/F tag. Big forwards are out at forward, and the center slot is free." },
+    win_now: {
+      s: "Three players in year 10 or later earn 4 net.",
+      g: "If three or more of your five are in their tenth season or later, the team earns 4 net, and the usual mileage fine for old legs is gone. Boards run 1990 on, so the 1970s and 1980s never come up. Veterans on contenders are the play." },
+    power_forwards: {
+      s: "Both forwards must average 8 rebounds.",
+      g: "Your two forwards must each average at least 8 rebounds. Wings who only score are out at forward, and bruisers and rebounding bigs are in. The guards and center are free." },
+    splurge_and_save: {
+      s: "After an $8M+ pick, the next costs $2M or less.",
+      g: "Every time you pay $8M or more for a player, your next pick must cost $2M or less. Stars come with a bargain chaser, so plan which board holds the cheap half. A splurge on your fifth pick is free." },
+    punt_defense: {
+      s: "Your five may total 5 steals plus blocks, at most.",
+      g: "Add up your five's steals and blocks: 5 a game at most, 1 each. The defense fines still apply, so avoid pairing two weak defenders at guard or forward. Draft offense that does not need the stat sheet." },
+    era_pairs: {
+      s: "Guards from one decade, forwards from another.",
+      g: "Your two guards must come from the same decade, and your two forwards from one different decade. The center is free. Presti locks each card's season, so a $1M year reroll can move a player into the decade you need." },
+    swat_season: {
+      s: "Every pick in his career-high blocks season.",
+      g: "Every pick must be in the season he averaged the most blocks of his career. For guards that can be an odd year, and for bigs a defensive peak. The year menu jumps each player to it." },
+    short_names: {
+      s: "Your five surnames may total 30 letters at most.",
+      g: "Pro rules: no stats, random seasons. Count the letters in your five surnames: 30 at most, 6 a man. Suffixes like Jr. do not count, and a two-word surname counts as one." },
+    ball_hogs: {
+      s: "Your five's usage must total 125 or more.",
+      g: "Add up your five's usage rates: 125 or more. That guarantees at least 1.4 net of usage tax, so make every possession count with the most efficient stars. Cards grey out once the total can no longer get there." },
+    bench_mob: {
+      s: "Every pick ranked 6th or lower in team minutes.",
+      g: "Every pick must rank sixth or lower in minutes on his team that season. Starters are out, so hunt sixth men, backups and injury-shortened star seasons. The year menu can find a star's bench years." },
+    pay_by_size: {
+      s: "Guards cost least, forwards more, the center most.",
+      g: "No guard may cost more than a forward or your center, and no forward more than your center. Your priciest player plays in the middle. Cards grey out when a pick would break the order or leave too little money for the pricier slots still open." },
+    stretch_fours: {
+      s: "Both forwards must be floor spacers.",
+      g: "Your two forwards must both carry the 3PT chip. Presti cards hide it, but non-shooters grey out in the forward slots. The guards and center are free." },
+    the_point: {
+      s: "Pick one: a 4-assist guard. Nobody after may assist more.",
+      g: "Your first pick must be a guard who averages 4 or more assists, and no later pick may average more assists than he did. A 10-assist opener frees the board; a 4-assist opener caps everyone at 4. Choose the floor general carefully." },
+    experience_cap: {
+      s: "Your five's career years may total 18 at most.",
+      g: "Add up the career year of each pick's season (a rookie is 1, a fifth-year player 5): your five may total 18 at most, with debuts from 1975 on. One veteran means four kids. The year menu takes anyone back to his early years." },
+    lifers: {
+      s: "Guards and forwards spent their whole career on one team.",
+      g: "Pro rules: no stats, random seasons. Your guards and forwards must have played their entire careers, from 1974 on, for one franchise. The center is free." },
+    role_forwards: {
+      s: "Both forwards must use 16% of plays or fewer.",
+      g: "Your two forwards must each have a usage rate of 16 or lower. The shots go to your guards and center, while your forwards defend, rebound and spot up. The usage you save keeps the tax away." },
+    shaqs_rolodex: {
+      s: "Every pick was once a teammate of Shaquille O'Neal.",
+      g: "Every pick must have shared a roster with Shaq in some season. The dealer only offers his six franchises, from the 1990s to the 2010s. Kobe, Wade, Anfernee Hardaway and a long line of role players are all in play." },
+    price_check: {
+      s: "No two of your five may cost the same.",
+      g: "Every price you pay must be different: five players, five price tags. A $1M gem only works once, so the next cheap pick costs $2M, then $3M. Cards grey out when a price is taken or the money cannot cover the rest." },
+    extra_pass: {
+      s: "Your five must total 26 assists a game.",
+      g: "Add up the assists: your five need 26 a game, more than 5 each. Two real point guards get you most of the way, and passing forwards and centers do the rest. Scorers who never pass get hard to fit." },
+    season_relay: {
+      s: "Each season within three years of the pick before.",
+      g: "Every pick's season must be within three years of your previous pick's season. You can drift about a decade over the draft, and the dealer only offers decades within reach. Presti locks each card's season, so a $1M year reroll can keep you in range." },
+    swan_song: {
+      s: "Every pick in one of his last two seasons.",
+      g: "Every pick must be in one of the last two seasons of a career that ended by 2025. Most legends faded at the end, so hunt the ones who went out strong. The year menu shows each player's final seasons." },
+    zigzag: {
+      s: "Big, guard, big, guard, big. Start with a big.",
+      g: "Pro rules: no stats, random seasons. Your picks must alternate between a big (forward or center) and a guard, starting with a big. Two guards and three bigs only fit that way." },
+    forward_firepower: {
+      s: "Both forwards must average 18 points.",
+      g: "Your two forwards must each average at least 18 points. The wings carry the scoring, so the guards and center can be defenders and passers. The year menu can find a forward's big scoring season." },
+    old_school_backcourt: {
+      s: "Neither guard may be a floor spacer.",
+      g: "Neither of your guards may carry the 3PT chip. You still want about three floor spacers, so the shooting has to come from your forwards and center. The year menu can find a guard's season before he added the three." },
+    high_low: {
+      s: "One guard costs $10M or more, the other $2M or less.",
+      g: "Your guards must be one star at $10M or more and one bargain at $2M or less. Nothing in between plays guard. Until the star guard is in, keep $10M in the bank." },
+    crash_the_glass: {
+      s: "Rebounding fines run 4 to 7 net and start sooner.",
+      g: "Every player's rebounding is ranked against his own season. If your five average below the 84th percentile you pay 4 net, and below the 76th you pay 7 (normally 2 below the 66th and 3 below the 60th). Guards who rebound are gold today, and a small-ball five pays heavily." },
+    the_mentor: {
+      s: "Pick one: a 10-year vet. The rest: first five seasons.",
+      g: "Your first pick must be in his tenth season or later, and all four after him must be in their first five seasons. Boards run 1990 on, so the 1970s and 1980s never come up. One old head, four kids." },
+    new_guard: {
+      s: "Guards from 2010 on, forwards from before 2000.",
+      g: "Your guards must be seasons from 2010 or later and your forwards seasons from before 2000. The center can come from any era. The year menu can move a player across the line." },
+    play_small: {
+      s: "Everyone plays the smallest position he ever played.",
+      g: "Pro rules: no stats, random seasons. A player who ever qualified at guard must play guard, and one who ever qualified at forward must play forward. Only pure centers can play center." },
+    glue_guards: {
+      s: "Both guards must score 10 points or fewer.",
+      g: "Your two guards must each average 10 points or fewer. Defenders, passers and spot-up shooters run the backcourt, and your stars play up front. The forwards and center are free." },
+    no_point_guard: {
+      s: "Neither guard may average more than 3 assists.",
+      g: "Your two guards must each average 3 assists or fewer. The playmaking has to come from your forwards and center, or you pay the 2-net fine for having no real passer. Scoring and defensive guards fit fine." },
+    top_shelf: {
+      s: "Two of your first four picks must cost $12M or more.",
+      g: "Buy two stars at $12M or more within your first four picks. That leaves at most $26M for the other three, so gems matter. Cards grey out when a pick would make the two stars unaffordable." },
+    mid_range: {
+      s: "One shooter is ideal. Each extra shooter costs 1.5.",
+      g: "The spacing rule flips: you want exactly one floor spacer. Zero shooters costs 2 net, and every shooter past the first costs 1.5 (an elite gunner counts as one and a half). Presti cards hide the 3PT chip, so draft the non-shooters you remember." },
+    mentorship: {
+      s: "Each guard and forward pair: a rookie and a veteran.",
+      g: "Each pair, guards and forwards, must be one player in his first three seasons and one in his tenth or later. The center is free. Boards run 1990 on." },
+    the_encore: {
+      s: "Every pick in the season after his best scoring year.",
+      g: "Every pick must be in the season right after his highest-scoring season. Some stars kept rolling and some fell off, and the engine only sees the encore. The year menu jumps each player to it." },
+    rentals: {
+      s: "Only players who spent one season with that team.",
+      g: "Pro rules: no stats, random seasons. Only players who spent exactly one season with the franchise on the board are eligible. Think trade-deadline pickups and one-year stops." },
+    hundred_club: {
+      s: "Your five must total 110 points a game.",
+      g: "Add up your five's points per game: the total must reach 110, 22 a man. The usage tax will bite, so find stars who scored without eating every possession. Cards grey out once the math can no longer get there." },
+    contenders: {
+      s: "Every pick from a top-third team that season.",
+      g: "Every pick must come from a team in the strongest third of the league that season, ranked by its players' impact. Role players on great teams count, and stars on bad teams do not. Presti locks each card's season, so a $1M year reroll can find a contending year." },
+    no_middle: {
+      s: "Every price is $3M or less, or $12M or more.",
+      g: "Every player you draft must cost $3M or less or $12M or more. The middle of the market is closed, so it is stars and bargains. Two $12M stars leave $26M for three cheap picks." },
+    tax_season: {
+      s: "Every fine in the engine doubles.",
+      g: "Usage over 110 costs about 0.2 net a point, each missing shooter costs 4, defense pairs cost 4 to 6, and the rim, rebounding, no-playmaker and old-legs fines all double too. The shooting bonus stays. Talent alone will not save a five with holes, so cover every base." },
+    then_and_now: {
+      s: "Each pair: one from before 1995, one from 2005 on.",
+      g: "Your two guards must be one season from before 1995 and one from 2005 or later, and the same goes for your two forwards. Seasons from 1995 through 2004 can only play center. Presti locks each card's season, so a $1M year reroll can move a player into the window you need." },
+    vet_guards: {
+      s: "Both guards in their tenth season or later.",
+      g: "Your two guards must be in their tenth season or later. Boards run 1990 on, so the 1970s and 1980s never come up. Old point guards who still ran the show are the target." },
+    common_names: {
+      s: "Only surnames shared by five or more players.",
+      g: "Pro rules: no stats, random seasons. Only surnames worn by five or more players since 1974 are eligible: Johnson, Williams, Smith, Jones and friends. The rare names are off the board." }
   };
   var VANILLA_COPY = {
     cap:     { s: "Straight Presti. No twist today.",
@@ -348,6 +1032,9 @@
     var core = null;
     if (OVERRIDES[key]) {
       core = coreForId(OVERRIDES[key]);
+    } else if (dayNum(key) >= dayNum(START3)) {
+      var i3 = (dayNum(key) - dayNum(START3)) % POOL3.length;   // loops after 200 days
+      core = coreForId(POOL3[i3]);
     } else if (dayNum(key) >= dayNum(START2)) {
       var i2 = (dayNum(key) - dayNum(START2)) % POOL2.length;
       core = coreForId(POOL2[i2]);
@@ -537,6 +1224,7 @@
 
   var API = {
     EPOCH: EPOCH, GAMES: GAMES, POOL: POOL,
+    POOL2: POOL2, START2: START2, POOL3: POOL3, START3: START3,
     DAILY_COPY: DAILY_COPY, MODE_TIP: MODE_TIP,
     dayKey: dayKey, dayNum: dayNum, validKey: validKey, shiftKey: shiftKey,
     hash32: hash32, seedFor: seedFor, boardFor: boardFor,

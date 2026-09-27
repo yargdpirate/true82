@@ -19,6 +19,10 @@
      filter(row, t)  -> bool     pool eligibility (who exists this week)
      pick(S, row, slot) -> bool  stateful legality at pick time
      deal(S) -> {decs?, frs?}    constrain era/franchise dealing
+     price(row, t) -> number     (2026-09-26, optional) Presti price multiplier for
+                                 that season, applied before the mispricing pass;
+                                 absent = 1, so older boards price and draw exactly
+                                 as they always did (draft-side only: prices)
      cfg: { KEY: val }           whitelisted overlays: CAP_BUDGET, CAP_GEM,
            CAP_TRAP, TEAM_SKIPS, ERA_SKIPS, and the engine tax/threshold keys }
    TRUST LAW: NET_SD, BASELINE, REPLACEMENT and the Hot Hand are NOT hookable.
@@ -412,9 +416,12 @@ function capRoll(S, bargainDecay) {
   return 1.25 + 0.35 * rnd(S);                          // 20% gouged
 }
 
-function capCost(S, v, bargainDecay) {
+function capCost(S, v, bargainDecay, mult) {
   // C(S,"PRICE_MULT",1): weekly-challenge hook (e.g. Inflation weeks). Default 1 = live pricing, untouched.
-  return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll(S, bargainDecay) * C(S, "PRICE_MULT", 1)));
+  // mult (2026-09-26, POOL3): the board's per-player price(row,t) multiplier. Absent -> 1, and x * 1 is exactly
+  // x, so every board without a price hook prices (and draws) exactly as before.
+  var m = (typeof mult === "number" && mult > 0 && isFinite(mult)) ? mult : 1;
+  return Math.max(1, Math.round(0.26 * Math.pow(Math.max(v, 1), 2) * capRoll(S, bargainDecay) * C(S, "PRICE_MULT", 1) * m));
 }
 
 function assignCapPool(S, avoid) {
@@ -438,7 +445,9 @@ function assignCapPool(S, avoid) {
     S.yearByName[name] = pickRow[IDX.season];
     var peakMin = 0;   // peak minutes across the player's eligible seasons -> weights the $2 bump
     for (var pj = 0; pj < elig.length; pj++) if (stintMinutes(elig[pj]) > peakMin) peakMin = stintMinutes(elig[pj]);
-    items.push({ name: name, v: valueOf(S, pickRow), cost: capCost(S, valueOf(S, pickRow), decay), peakMin: peakMin });
+    // challenge price hook (POOL3 market boards): a pure multiplier on this season's fair price, draws no randomness
+    var pm = (S.ch && typeof S.ch.price === "function") ? S.ch.price(pickRow, T.t) : 1;
+    items.push({ name: name, v: valueOf(S, pickRow), cost: capCost(S, valueOf(S, pickRow), decay, pm), peakMin: peakMin });
   });
   if (!items.length) return;
   capMisprice(S, items);
