@@ -233,8 +233,8 @@
      Every line tells a first-timer WHAT changed, by HOW MUCH, and what to DO
      about it, in plain english, using the engine's real numbers. Defaults for
      reference: $50M cap budget, mid-tier gem odds about 1 in 7 with half the
-     mid-tier rip-offs, usage budget 110 taxed at about 0.1 net per point over,
-     3 floor spacers wanted (zero shooters bleeds about 6 net), pair-defense
+     mid-tier rip-offs, usage budget 120 taxed at 0.3 net per point over (v63),
+     two small guards or a small frontcourt 2 each, 3 floor spacers wanted (zero shooters bleeds about 6 net), pair-defense
      taxes 2 to 3 net, one skip of each in classic, unlimited $1M rerolls in
      cap. Each brief below was verified against its manifest cfg/filter/pick/
      deal hooks in the same commit; if a hook changes, change the brief too.
@@ -332,18 +332,18 @@
                        g: "The board only deals seasons with 2,500 or more minutes played, and your budget is $30M. Everyone is durable and almost nothing is cheap. The game is finding the iron-man seasons the market underpriced." },
     seventies_money: { s: "1970s only, with Presti pricing.",
                        g: "Every board comes from the 1970s, so era skips are dead today (they re-deal the same decade). Presti pricing still applies. The era's box scores run hot, but the engine grades impact, not points." },
-    luxury_tax:      { s: "Usage tax at four times the rate.",
-                       g: "The usage tax runs at more than four times the normal rate: every point of team usage above 110 costs about 0.4 net instead of 0.1. One alpha is affordable. Two is a felony. Surround your star with low-usage role players." },
+    luxury_tax:      { s: "Usage tax from 110, at 0.4 a point.",
+                       g: "The usage tax starts sooner and bites harder: every point of team usage above 110 costs 0.4 net, where a normal board charges 0.3 above 120. One alpha is affordable. Two is a felony. Surround your star with low-usage role players." },
     analytics_dept:  { s: "Five shooters required.",
                        g: "You must draft FIVE floor spacers, up from the usual three, and each missing shooter costs 2.5 net instead of 2. Miss the quota by two and you have burned about a dozen wins. If he cannot shoot, he does not board." },
     post_up_week:    { s: "Shooting counts for nothing.",
                        g: "The spacing rules are switched off: zero shooters costs nothing, five shooters earns nothing. A jumper is decoration today. Draft raw talent and defense and feed the block like it is 1994." },
-    the_triangle:    { s: "Usage budget cut to 85.",
-                       g: "The team usage budget drops from 110 to 85, and every point over it is taxed. Five stars who all need the ball will eat each other alive. Two low-usage glue guys are worth more than a third alpha today." },
+    the_triangle:    { s: "Usage budget cut to 100.",
+                       g: "The team usage budget drops from 120 to 100, and every point over it costs 0.3 net. Five stars who all need the ball will eat each other alive. Two low-usage glue guys are worth more than a third alpha today." },
     iso_week:        { s: "Usage tax off. Stack the alphas.",
                        g: "The usage tax is off: total team usage is free no matter how high it climbs. The sharing penalty that normally breaks superteams is gone, so stack every ball-dominant star you can find." },
-    heliocentric:    { s: "Usage budget 130, tax at half rate.",
-                       g: "The usage budget rises from 110 to 130 and overage is taxed at about half the normal rate. Build the whole team around one giant-usage sun and let four moons orbit. The engine will barely notice the ball-hogging." },
+    heliocentric:    { s: "Usage budget 130, tax nearly off.",
+                       g: "The usage budget rises from 120 to 130 and overage costs 0.05 net a point instead of 0.3. Build the whole team around one giant-usage sun and let four moons orbit. The engine will barely notice the ball-hogging." },
     lockdown:        { s: "Defense penalties doubled.",
                        g: "The pair-defense penalties are doubled: two weak defenders together in the backcourt or at forward now costs 4 to 6 net instead of 2 to 3. One liability can hide. Two in the same position group cannot." },
     no_defense:      { s: "Defense penalties off.",
@@ -604,7 +604,7 @@
       g: "Every player on a card from that season's NBA champion costs twice his usual price. Champions are expensive, so the value is on the runners-up and the also-rans. Gems and rip-offs still happen, and prices still top out at $23M." },
     height_cap: {
       s: "Your five may stand 32'6\" combined, no more.",
-      g: "Add up your five's heights: 32'6\" is the limit, an average of 6'6\". A 7-footer forces a small guard somewhere. Cards grey out when a pick would leave too little height for the open slots." },
+      g: "Add up your five's heights: 32'6\" is the limit, an average of 6'6\". Spend the inches evenly: two guards 6'2\" or shorter cost 2, and so do two frontcourt players 6'6\" or shorter. Cards grey out when a pick would leave too little height for the open slots." },
     peer_group: {
       s: "Everyone within one career year of your first pick.",
       g: "Your first pick's career year sets the stage, and everyone after must be within one season of it. Open with a rookie and you draft rookies and sophomores; open with a tenth-year veteran and you draft veterans. Debuts from 1975 on count." },
@@ -889,7 +889,7 @@
       g: "Pro rules: no stats, random seasons. Count the letters in your five surnames: 30 at most, 6 a man. Suffixes like Jr. do not count, and a two-word surname counts as one." },
     ball_hogs: {
       s: "Your five's usage must total 125 or more.",
-      g: "Add up your five's usage rates: 125 or more. That guarantees at least 1.4 net of usage tax, so make every possession count with the most efficient stars. Cards grey out once the total can no longer get there." },
+      g: "Add up your five's usage rates: 125 or more. That guarantees at least 1.5 net of usage tax, so make every possession count with the most efficient stars. Cards grey out once the total can no longer get there." },
     bench_mob: {
       s: "Every pick ranked 6th or lower in team minutes.",
       g: "Every pick must rank sixth or lower in minutes on his team that season. Starters are out, so hunt sixth men, backups and injury-shortened star seasons. The year menu can find a star's bench years." },
@@ -982,7 +982,7 @@
       g: "Every player you draft must cost $3M or less or $12M or more. The middle of the market is closed, so it is stars and bargains. Two $12M stars leave $26M for three cheap picks." },
     tax_season: {
       s: "Every fine in the engine doubles.",
-      g: "Usage over 110 costs about 0.2 net a point, each missing shooter costs 4, defense pairs cost 4 to 6, and the rim, rebounding, no-playmaker and old-legs fines all double too. The shooting bonus stays. Talent alone will not save a five with holes, so cover every base." },
+      g: "Usage over 120 costs 0.6 net a point, two small guards or a small frontcourt cost 4, each missing shooter costs 4, defense pairs cost 4 to 6, and the rim, rebounding, no-playmaker and old-legs fines all double too. The shooting bonus stays. Talent alone will not save a five with holes, so cover every base." },
     then_and_now: {
       s: "Each pair: one from before 1995, one from 2005 on.",
       g: "Your two guards must be one season from before 1995 and one from 2005 or later, and the same goes for your two forwards. Seasons from 1995 through 2004 can only play center. Presti locks each card's season, so a $1M year reroll can move a player into the window you need." },
@@ -1007,7 +1007,7 @@
   // commit. Numbers here are the engine truth (sim-core + site_data scoring).
   var MODE_TIP = {
     cap: "Presti rules: $50M budget for five players, and every card shows its price. Prices are randomized each round. The true stars are priced honestly, most fringe players run $1M to $6M, and the mid-tier is the minefield: about 1 in 7 is a $1M steal and about half are rip-offs priced like stars. Skipping the team or era, or rerolling the years, costs $1M a pull, as often as the money allows, but every empty roster spot needs $1M kept in reserve. Some boards are unwinnable. That is the game.",
-    classic: "Classic rules: full stats on every card, and the season menu under each name lets you use any year of that player's career. One team skip and one era skip for the whole draft. The engine rewards star impact, wants about three shooters, taxes ball-hog pileups (a fourth 20-point scorer costs 3), a five under 6'6\" on average and bad-defense pairs, and turns your net rating into a record the moment pick five lands.",
+    classic: "Classic rules: full stats on every card, and the season menu under each name lets you use any year of that player's career. One team skip and one era skip for the whole draft. The engine rewards star impact, wants about three shooters, taxes a five that needs more than one ball (team usage past 120), two small guards or a small frontcourt, and bad-defense pairs, and turns your net rating into a record the moment pick five lands.",
     pro: "Pro rules: no stats are shown and every player's season is randomized. You can still change the season with the menu under his name, also blind. Draft from memory. The engine grades your five with the real numbers at the end."
   };
 

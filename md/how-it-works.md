@@ -25,9 +25,9 @@ drafted players during the draft — where a guy plays matters.
 Every player-season carries a value score built mostly from Box Plus/Minus
 (BPM) — its offensive and defensive halves, OBPM and DBPM, are why the pool
 only goes back to 1974. The engine sums your five players' value, then adjusts
-for fit: too many high-usage scorers costs you (only three 20-point scorers
-share the ball free), a five that averages under 6'6" pays for its size,
-adequate shooting around the lineup pays off, and a backcourt or wing rotation full of poor defenders takes
+for fit: a five that needs more than one ball costs you (add up their usage:
+past 120, every point costs 0.3), two small guards or two undersized bigs pay
+for their size, adequate shooting around the lineup pays off, and a backcourt or wing rotation full of poor defenders takes
 a slot-specific penalty. Players from the low-3PT and pre-3PT eras get shooting
 credit based on reputation, because the box score of 1978 can't tell you who
 would let it fly today. The result is a net rating for your lineup, which maps

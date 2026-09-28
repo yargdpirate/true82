@@ -31,14 +31,17 @@
    C(): RIM_TOP20, RIM_D_TAX, GLASS_LOW, GLASS_DIRE, GLASS_TAX_LOW,
    GLASS_TAX_DIRE, CREATOR_PCT, CREATOR_TAX, AGE_VET_YEAR, AGE_VET_FREE,
    AGE_TAX. A negative tax is a bonus (five_out, glass_bonus, win_now,
-   mid_range). v62 adds ONEBALL_PPG, ONEBALL_FREE, ONEBALL_TAX, SHORT_AVG_HT
-   and SHORT_TAX (one ball and too short, sim-core scorersAndSize); a board
-   whose own rule forces a short five or a five of scorers sets its tax to 0
-   (Short Kings, both Small-Ball Apocalypses, The Small Blind, Height Cap;
-   Volume Merchants, The Hundred Club, The Superteam Problem, Ball Hogs), and
-   so does a board whose copy lets the alphas stack with the usage tax off
-   (Iso Week, Gunslingers, Two-Way Alphas; Tax Holiday turns off both, and
-   the tag rows too, since its copy says every fit rule is off). v62.1's
+   mid_range). v63 (sim-core oneBall, sizeUnits): the one-ball rule IS the
+   usage tax, now 120 free and 0.3 a point past it by code default (v62's
+   20-point ONEBALL_* keys are gone); a board whose own rule forces a five of
+   volume scorers keeps the old gentle usage tax, 110 at 0.09375 (Volume
+   Merchants); a board that twists the usage tax restates its twist against
+   the new normal (The Luxury Tax 110 at 0.4, The Triangle 100, The Superteam
+   Problem 105, Tax Season double: 0.6). Size by unit (SMALL_G_HT, SMALL_FC_HT,
+   SMALL_G_TAX, SMALL_FC_TAX) replaces v62's SHORT_* average; a board whose
+   own rule forces a short five turns both off (Short Kings, both Small-Ball
+   Apocalypses, The Small Blind, Tax Holiday); Height Cap keeps them (where
+   you spend the inches is its game). v62.1's
    Dueling Banjos Tax (LBL_BANJO_TAX, two settled TITLE #1s) is off where the
    copy promises stacked alphas: Iso Week, Two-Way Alphas, The Superteam
    Problem, Tax Holiday. v62.2's pairs (LBL_STICK_TAX, LBL_HUNTED_TAX,
@@ -308,8 +311,8 @@
         var p = last(S); if (!p || p.cost == null) return true;
         var c = cost(S, row, t); return c == null || c >= p.cost; } },
     { id: "luxury_tax", name: "The Luxury Tax", base: "cap",
-      blurb: "Usage overage taxed at nearly triple rate. Your stars cost twice — once in dollars, once in shots.",
-      cfg: { USAGE_RATE: 0.4 } },
+      blurb: "The usage tax starts sooner and bites harder. Your stars cost twice — once in dollars, once in shots.",
+      cfg: { USAGE_BUDGET: 110, USAGE_RATE: 0.4 } },
     { id: "moneyball", name: "Moneyball", base: "cap",
       blurb: "$30 budget, and every player on the board logged 2,500+ minutes. Cheap AND durable. Get weird.",
       cfg: { CAP_BUDGET: 30 },
@@ -329,11 +332,11 @@
       blurb: "Shooters pay YOU this week — the spacing bonus tripled. Run and gun and profit.",
       cfg: { SPACING_BONUS: 1.5, SPACERS_REQ: 2 } },
     { id: "the_triangle", name: "The Triangle", base: "classic",
-      blurb: "Usage budget slashed to 85. Share the damn ball or the engine shares your losses.",
-      cfg: { USAGE_BUDGET: 85 } },
+      blurb: "Usage budget slashed to 100. Share the damn ball or the engine shares your losses.",
+      cfg: { USAGE_BUDGET: 100 } },
     { id: "iso_week", name: "Iso Week", base: "classic",
       blurb: "The usage tax is OFF. Five alphas, one ball, zero consequences. History's most toxic lineups are legal.",
-      cfg: { USAGE_RATE: 0, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
+      cfg: { USAGE_RATE: 0, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
     { id: "heliocentric", name: "Heliocentrism", base: "classic",
       blurb: "Usage budget 130, tax nearly nothing. One sun, four moons — build the solar system.",
       cfg: { USAGE_BUDGET: 130, USAGE_RATE: 0.05 } },
@@ -356,7 +359,7 @@
     { id: "short_kings", name: "Short Kings", base: "classic",
       blurb: "Nobody over 6'3\". Yes, that includes your center.",
       filter: function (row, t) { return row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 75; },
-      cfg: { SHORT_TAX: 0 } },
+      cfg: { SMALL_G_TAX: 0, SMALL_FC_TAX: 0 } },
     { id: "towers", name: "The Towers", base: "classic",
       blurb: "6'10\" minimum, all five. Spacing optional. Rim protection mandatory.",
       filter: function (row, t) { return row[t.IDX.ht] >= 82; } },
@@ -399,7 +402,7 @@
     { id: "volume_scorers", name: "Volume Merchants", base: "classic",
       blurb: "Twenty-five a night or you're not on the board. Efficiency sold separately.",
       filter: function (row, t) { return row[t.IDX.ppg] >= 25; },
-      cfg: { ONEBALL_TAX: 0 } },
+      cfg: { USAGE_BUDGET: 110, USAGE_RATE: 0.09375 } },
     { id: "role_players", name: "The Role Players' Union", base: "classic",
       blurb: "Heavy minutes, light scoring — 2,400+ minutes, 12 points max. Somebody's gotta do the dirty work. Everybody, apparently.",
       filter: function (row, t) { return row[t.IDX.ppg] <= 12 && row[t.IDX.mp] >= 2400; } },
@@ -409,7 +412,7 @@
     { id: "superteam", name: "The Superteam Problem", base: "classic",
       blurb: "Stars only — and the usage budget just got smaller. Everyone's an alpha. The ball is not amused.",
       filter: function (row, t) { return row[t.IDX.bpm_star] >= 4; },
-      cfg: { USAGE_BUDGET: 95, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
+      cfg: { USAGE_BUDGET: 105, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
     { id: "kaman_epoch", name: "The Kaman Epoch", base: "cap",
       blurb: "Only seasons from 2004–2016 — the age of Kaman. He watches. He judges.",
       filter: function (row, t) { return row[t.IDX.season] >= 2004 && row[t.IDX.season] <= 2016; } },
@@ -587,7 +590,7 @@
     { id: "small_ball_apoc", name: "The Small-Ball Apocalypse", base: "cap",
       blurb: "Nobody over 6'5\", and the suits demand five shooters. The future arrived and it's tiny.",
       filter: function (row, t) { return row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 77; },
-      cfg: { SPACERS_REQ: 5, SPACING_TAX: 2, SHORT_TAX: 0 } },
+      cfg: { SPACERS_REQ: 5, SPACING_TAX: 2, SMALL_G_TAX: 0, SMALL_FC_TAX: 0 } },
     { id: "grit_grind", name: "Grit and Grind", base: "cap",
       blurb: "No shooters on the board, all-defense expectations — but the spacing tax is halved. Memphis rules.",
       filter: function (row, t) { return row[t.IDX.sp] === 0; },
@@ -601,7 +604,7 @@
     { id: "small_blind", name: "The Small Blind", base: "pro",
       blurb: "No stats, and nobody over 6'4\". Poker rules: memory is your only chip.",
       filter: function (row, t) { return row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 76; },
-      cfg: { SHORT_TAX: 0 } },
+      cfg: { SMALL_G_TAX: 0, SMALL_FC_TAX: 0 } },
     { id: "tall_blind", name: "The Tall Blind", base: "pro",
       blurb: "No stats, 6'8\" and up. You remember the giants. Do you remember their seasons?",
       filter: function (row, t) { return row[t.IDX.ht] >= 80; } },
@@ -650,7 +653,7 @@
        this to a global "has C" filter; that recreates the multi-center bug. */
     { id: "small_ball_five", name: "The Small-Ball Apocalypse", base: "cap",
       blurb: "Guard and forward slots are 6'4\" and under. The one center may be any height, but must qualify at both forward and center.",
-      cfg: { SPACERS_REQ: 4, SPACING_TAX: 2, SHORT_TAX: 0 },
+      cfg: { SPACERS_REQ: 4, SPACING_TAX: 2, SMALL_G_TAX: 0, SMALL_FC_TAX: 0 },
       filter: function (row, t) {
         var set = t.CAREER_BUCKETS && t.CAREER_BUCKETS.get(row[t.IDX.name]);
         var shortEnough = row[t.IDX.ht] > 0 && row[t.IDX.ht] <= 76;
@@ -698,13 +701,14 @@
       cfg: { GD_BOTTOM33: 1.5, GD_BOTTOM20: 0.5, BACKCOURT_D_TAX_33: 4, BACKCOURT_D_TAX_20: 7, WING_D_TAX_20: 0, WING_D_TAX_33: 0 } },
     { id: "tax_season", name: "Tax Season", base: "classic",
       blurb: "Every fit rule in the engine costs double. Talent alone will not save you.",
-      cfg: { USAGE_RATE: 0.1875, SPACING_TAX: 4, SPACING_BONUS: 2, BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4,
-             WING_D_TAX_20: 6, WING_D_TAX_33: 4, RIM_D_TAX: 4, GLASS_TAX_LOW: 4, GLASS_TAX_DIRE: 6, CREATOR_TAX: 4, AGE_TAX: 2 } },
+      cfg: { USAGE_RATE: 0.6, SPACING_TAX: 4, SPACING_BONUS: 2, BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4,
+             WING_D_TAX_20: 6, WING_D_TAX_33: 4, RIM_D_TAX: 4, GLASS_TAX_LOW: 4, GLASS_TAX_DIRE: 6, CREATOR_TAX: 4, AGE_TAX: 2,
+             SMALL_G_TAX: 4, SMALL_FC_TAX: 4 } },   // v63: double the new one-ball rate (0.3) and the size units (2)
     { id: "tax_holiday", name: "Tax Holiday", base: "cap",
       blurb: "Every fit rule is off. No usage, spacing, defense or dirty-work math. Pure talent.",
       cfg: { USAGE_RATE: 0, SPACING_TAX: 0, SPACING_BONUS: 0, BACKCOURT_D_TAX_20: 0, BACKCOURT_D_TAX_33: 0,
              WING_D_TAX_20: 0, WING_D_TAX_33: 0, RIM_D_TAX: 0, GLASS_TAX_LOW: 0, GLASS_TAX_DIRE: 0, CREATOR_TAX: 0, AGE_TAX: 0,
-             ONEBALL_TAX: 0, SHORT_TAX: 0, LBL_ISO_TAX: 0, LBL_CLUTCH_TAX: 0, LBL_TEAMD_TAX: 0, LBL_RIMPLUS_TAX: 0, LBL_TSHOT_TAX: 0,
+             SMALL_G_TAX: 0, SMALL_FC_TAX: 0, LBL_ISO_TAX: 0, LBL_CLUTCH_TAX: 0, LBL_TEAMD_TAX: 0, LBL_RIMPLUS_TAX: 0, LBL_TSHOT_TAX: 0,
              LBL_KNUCK_TAX_2: 0, LBL_KNUCK_TAX_3: 0, LBL_SWITCH_CREDIT: 0, LBL_CUT_CREDIT: 0, LBL_BANJO_TAX: 0,
              LBL_STICK_TAX: 0, LBL_HUNTED_TAX: 0, LBL_FOUL_TAX: 0, LBL_STATPAD_TAX: 0 } },   // v62: every fit rule means the tag rows too
 
@@ -1105,7 +1109,6 @@
       cfg: { SPACING_TAX: 3 } },
     { id: "height_cap", name: "Height Cap", base: "cap",
       blurb: "Your five may stand 32'6\" combined, no more. Every inch has a cost.",
-      cfg: { SHORT_TAX: 0 },
       pick: function (S, row, slot, t) {                 // the slots still open keep room for a small man at each
         var I = t.IDX, s = row[I.ht]; S.picks.forEach(function (p) { s += p.row[I.ht]; });
         var open = { G: 2 - S.filled.G, F: 2 - S.filled.F, C: 1 - S.filled.C }; open[slot]--;
@@ -1114,7 +1117,7 @@
     /* ---- batch two: combos, cousins with new targets, teams and timelines ---- */
     { id: "gunslingers", name: "Gunslingers", base: "cap",
       blurb: "The usage tax is off, but you need five shooters or pay 2.5 each. Volume shooters rule.",
-      cfg: { USAGE_RATE: 0, SPACERS_REQ: 5, SPACING_TAX: 2.5, ONEBALL_TAX: 0 } },
+      cfg: { USAGE_RATE: 0, SPACERS_REQ: 5, SPACING_TAX: 2.5 } },
     { id: "bad_boys", name: "Bad Boys", base: "cap",
       blurb: "Every defense fine doubles and shooting counts for nothing. Win ugly.",
       cfg: { BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4, WING_D_TAX_20: 6, WING_D_TAX_33: 4, RIM_D_TAX: 4,
@@ -1253,7 +1256,6 @@
         return S.budget - c >= sum; } },
     { id: "hundred_club", name: "The Hundred Club", base: "classic",
       blurb: "Your five must combine for 110 points a night or more. Bring the buckets.",
-      cfg: { ONEBALL_TAX: 0 },
       pick: function (S, row, slot, t) {
         var I = t.IDX, s = row[I.ppg]; S.picks.forEach(function (p) { s += p.row[I.ppg]; });
         var open = { G: 2 - S.filled.G, F: 2 - S.filled.F, C: 1 - S.filled.C }; open[slot]--;
@@ -1456,7 +1458,7 @@
              SPACERS_REQ: 5, SPACING_TAX: 2.5 } },
     { id: "two_way_alphas", name: "Two-Way Alphas", base: "cap",
       blurb: "The usage tax is off and every defense fine doubles. Stars who defend.",
-      cfg: { USAGE_RATE: 0, BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4, WING_D_TAX_20: 6, WING_D_TAX_33: 4, RIM_D_TAX: 4, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
+      cfg: { USAGE_RATE: 0, BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4, WING_D_TAX_20: 6, WING_D_TAX_33: 4, RIM_D_TAX: 4, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
     { id: "unicorn_hunt", name: "Unicorn Hunt", base: "classic",
       blurb: "Modern boards. You need four shooters and a +2 rim protector up front, or pay.",
       deal: function () { return { decs: [2010, 2020] }; },
@@ -1486,7 +1488,6 @@
       filter: function (row, t) { return RUNNERS[row[t.IDX.season]] === frOf(row, t); } },
     { id: "ball_hogs", name: "Ball Hogs", base: "classic",
       blurb: "Your five must use 125 percent of plays or more. The usage tax is guaranteed. Make it worth it.",
-      cfg: { ONEBALL_TAX: 0 },
       pick: function (S, row, slot, t) {
         var I = t.IDX, s = row[I.usage]; S.picks.forEach(function (p) { s += p.row[I.usage]; });
         return s + picksLeftAfter(S) * 33 >= 125; } },

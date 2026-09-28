@@ -1,24 +1,144 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING, ASK THE OWNER: "Time to go to main. Did you playtest?"**
-> `c-code-clean` holds v61.1, v62, v62.1 and v62.2 (sections 00000r to 00000u); `main` is still v60.1. Everything is
-> built, tested and on the branch preview (https://c-code-clean.true82.pages.dev/). If he says yes: fast-forward
-> `main` to `c-code-clean` and push (as in 00000p: `git checkout main && git merge --ff-only c-code-clean && git push
-> origin main && git checkout c-code-clean`), wait for the deploy, then check true82.net's footer reads v62.2 and a
-> Classic draft shows the heights, the 20+ chips and the red tags. If he has not playtested, point him at the preview
-> and the list in 00000u ("What to playtest").
+> **FIRST THING, ASK THE OWNER: "v63 is on the preview. Did you playtest it? Then: time to go to main?"**
+> He playtested v62.2 on 2026-09-28 and sent eight tweaks instead of the merge (section 00000v); they are built as v63
+> on `c-code-clean`. `main` is still v60.1, so a merge now takes v61.1 through v63 live together. If he says go:
+> fast-forward (as in 00000p; local `main` is behind `origin/main`, so first `git checkout main && git merge --ff-only
+> origin/main`, then `git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`), wait for
+> the deploy, then check true82.net's footer reads v63 and a Classic draft shows the ball meter and no 20+ chips. If he
+> has not played v63, point him at the preview and the list in 00000v ("What to playtest").
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v62.2, the Simmons pair taxes and the stat-padder charge on the freshly scouted tags (section 00000u), on v62.1, the Dueling Banjos Tax and the scouting pass (00000t), v62, one ball and too short (00000s), and v61.1, the label taxes (00000r); none of it is on main. Migration 0029 IS applied to the live D1. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
+**Current source of truth:** the GitHub repo. `c-code-clean` = v63, the owner's eight tweaks (section 00000v: one ball is usage only, size by unit, the tray's ball meter, positives-first badges with no "?" on the boards, the printed "+" hint, the logo leads the home and the slogan opens HOW TO PLAY), on v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r); none of it is on main. Migration 0029 IS applied to the live D1. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
 
 **Date:** 2026-09-28
-**Build:** `v62.2` on `c-code-clean` (`BUILD_V = "v62.2"`; sim-core.js, challenges.js and app.js at `20260928-v62-2`; styles.css and daily-core.js at `20260928-v62`; labels.json via `<meta name="t82-labels" content="20260928-tags">` in index.html; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 12). v60.1 (live): app.js at `20260927-v60-1`.
-**Most recent change:** section 00000u (read it first): v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v63` on `c-code-clean` (`BUILD_V = "v63"`; sim-core.js, challenges.js, daily-core.js, app.js and styles.css at `20260928-v63`; labels.json via `<meta name="t82-labels" content="20260928-tags">` in index.html; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 13). v60.1 (live): app.js at `20260927-v60-1`.
+**Most recent change:** section 00000v (read it first): v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000u. START HERE (2026-09-28, late morning): V62.2, THE SIMMONS PAIRS, THE STAT PADDERS, THE TAGS LOADED
+## 00000v. START HERE (2026-09-28, afternoon): V63, THE OWNER'S EIGHT TWEAKS AFTER HIS PLAYTEST
+
+**Where things stand.** `main` = v60.1, LIVE. `c-code-clean` = v63 (this) on v62.2, v62.1, v62 and v61.1: all go live
+together at the owner's "push to main". Preview: https://c-code-clean.true82.pages.dev/ (mock database: reads the live
+tags, saves nothing).
+
+**The owner's words** (asked "time to go to main, did you playtest?", he said "i did playtest" and sent eight items,
+"chunk ... defer some if needed ... not all of these are just spec changes. use your judgment"):
+1. "the usage tax probably overlaps substantially with the 20 point per game scorer thing, we should probably
+   consolidate just with usage or some FGA or points"
+2. "the 20 point per game score doesn't need a badge on the classic draft screen"
+3. "debating whether or not you need to put all the team aggregate taxes on the classic draft screen"
+4. "there needs to be some order for the badges on the draft and results screen. definitely the positive followed by
+   the negatives ... whether the ? are actually implemented or not and then accordingly either just don't put them on
+   the tags for the classic screen or we just don't mention the "?" and add the ? badges no differently"
+5. the "+" glove on the results "just isn't working ... we've tried to fix it numerous times and it keeps breaking,
+   you pick this time"; "I just need a thing that says here look make sure to click this button"
+6. size by unit instead of the average: "you can have a short Center like Draymond Green but your other forwards can't
+   also be short or same thing with guards ... Fred VanVleet is one of your guards but your other guard can't be like
+   Kyle Lowry"
+7. "the true 82 logo is kind of getting deemphasized because of the 'draft what wins' tagline" : put the slogan in HOW
+   TO PLAY with what the game is and "that we're different because we actually do real team fit using advanced stats
+   and player attribute labels which you can vote on ... very tersely, using the gorgeous artistic flair"; "we might
+   need separate manuals more granularly"
+8. "NO ACTION NOW": name a real guide-writing expert whose guidelines can pare the manual down.
+Then, mid-build, **the lesson** (saved as the memory `owner-intent-over-spec`): "20 ppg doesnt make sense either
+because realistically a 82-0 team would be made of I imagine at least 4 players at their absolute apex who score at
+that rate, I think the agent followed my 'use simple stats to create a tax' too rigidly without thinking through the
+logic, let's not make that mistake again. what I NEED for the game I want, not just my spec, for all of these."
+
+### What shipped (engine `VERSION` 13; sim-core `oneBall`, `sizeUnits`)
+- **One ball is the usage tax, alone.** The 20-point rule is gone (and its chip, tray line, legend row, Scoring Card
+  row). Every real draft that paid the 20-point charge paid usage too (100% overlap; corr 0.80 between scorers and
+  usage): one sin charged twice. Usage is the mechanism: five on the floor share 100% of the plays. The starting fives
+  of the 32 title teams in the analysis sum to 94-119 (median 105; season numbers run high because each was measured
+  beside bench players); drafted Classic fives sum to 137 at the median, p90 153. Rule: a five shares `USAGE_BUDGET`
+  **120** free and pays `USAGE_RATE` **0.3** a point past it (code defaults in sim-core; site_data.json still says 110
+  and 0.09375, and is untouched, like v62's keys). No title team pays. The apex test: Magic '87, Jordan '91, Bird '86,
+  Hakeem '94 and Rodman '92 (four 20-point scorers, 128) pay 2.4 (they paid 4.7 in v62.2); Iverson '01, Kobe '06,
+  Westbrook '17, LeBron '09 and Embiid '23 (187) pay 20.1.
+- **Size by unit** (replaces the 6'6" average): two G-slot players at `SMALL_G_HT` 6'2" or shorter cost `SMALL_G_TAX`
+  2; two or more F/F/C players at `SMALL_FC_HT` 6'6" or shorter cost `SMALL_FC_TAX` 2 (one Draymond at center is fine).
+  By the slot he plays (a 6'2" guard slotted at F is a small big); a missing height never counts. Fires on 8.1% (guards)
+  and 6.3% (frontcourt) of Classic drafts, barely overlapping the glass and backcourt-defense taxes (3%); among the
+  champions only the '22 Warriors pay (Wiggins and Draymond, both 6'6", frontcourt 2; they paid 3 for "too short").
+- **The numbers** (15,144 real drafts): Classic realized 82-0 **14.2%** (v62.2: 14.5%), expected wins 77.0; best play
+  in the same deals 35.7% (35.4%): drafting well is worth a little more than before. Presti 4.1% (4.1%). One ball fires
+  on 87% of Classic drafts, 5.9 when it does (v62.2: usage 96% at 2.6 plus 20-point 61% at 4.3).
+- **Boards that touch these keys** (challenges.js header): Volume Merchants keeps the old gentle usage tax (110 at
+  0.09375; every entry is a 25-point scorer); the usage twists restate against the new normal: The Luxury Tax 110 at 0.4
+  (copy: "starts sooner and bites harder"), The Triangle 100 ("slashed to 100"), The Superteam Problem 105, Tax Season
+  double (0.6, and size 4 each); The Hundred Club and Ball Hogs now use the default (Ball Hogs' copy: at least 1.5
+  guaranteed); Short Kings, both Small-Ball Apocalypses, The Small Blind and Tax Holiday turn both size units off;
+  Height Cap keeps them (where you spend the inches is its game). v62's ONEBALL_* and SHORT_* keys are gone everywhere.
+  All 200 POOL3 Dailies certify (`node tools/daily-audit.js 120 pool3 --labels`, 0 below the bar); no Daily's median
+  bot record moves more than 2 wins (Tax Season, Height Cap, Ball Hogs, The Hundred Club, Overlap -2). The five weekly
+  boards below the bar (Superteam, Volume Merchants, Short Kings, Small-Ball Apocalypse, Small Blind) were below it
+  before v63 too (tiny pools, no centers).
+- **The draft screen (item 3, the call):** not all the taxes. Each card shows its ingredients (usage in Classic's stat
+  line, the height, the tags), and the tray keeps only the totals no card can show: the **ball meter** (`trayBallHtml`:
+  "THE BALL" bar, gold to the notch at 120, red past it, a selected player previews in a paler band, "96 → 125 of 120
+  −1.4"; Classic-style boards only, hidden until the first player is in hand; Presti and Pro draft the stats from
+  memory) and "Still missing" roles. The v62 tray lines (20+ scorers, the height average, "Tag taxes:") are gone. A pick
+  that would cost a size tax shows **its height in red** (`sizeWarn`: only when every legal open slot makes him the
+  second small man in that unit), like a second TITLE #1; the Scoring Card keeps the whole bill.
+- **Badges (item 4):** the board reads the results cards' order (BALLOT_TRAITS: offense, defense, reputation;
+  positives, then negatives); the results cards group good tags first (settled, then "?"), then bad (settled, then
+  "?"). The "?" question, answered: a "?" role tag DOES count (it fills its role; it has to, since settled tags are thin
+  and a settled-only rule would charge 20 of the 32 title teams for a missing role), and a "?" reputation does not (so
+  it never shows on a board). So the boards drop the "?" mark and show a "?" role tag like any other; the results cards
+  keep "?", where it means "vote on this".
+- **The "+" hint (item 5, my pick):** the animated glove and all its machinery (timers, scroll stillness, the
+  retire-after-three counter, the `tb-hint` keys) are gone; the owner never saw it again because he taps tags all day.
+  The first results card now prints the hint in its own markup (`ballotHintHtml`): a two-ink slip with the white glove
+  tapping up at the row, "Know him? Tap (+) to tag him, or tap any tag to vote.", and its "+" breathes the halftone
+  ring (`.bt-cue`, now in the markup). Always there; nothing to retire. `node tools/results-qa.js hint [w]` checks it.
+- **The home and HOW TO PLAY (item 7):** the "Draft what wins" heading is off the home (a screen-reader h1 stays) and
+  the logo leads at up to 400px; Kaman's egg moved to the logo (five taps on the home). The home HOW TO PLAY opens with
+  the slogan in the old halftone type, "Five NBA seasons from any era. One 82-game season. Can they go 82-0?", and two
+  stamped claims: REAL FIT ("Advanced stats grade how your five play together, not how famous they are.") and YOUR VOTES
+  COUNT ("Player tags like ISO-D and CLUTCH change the score. Vote on them after every draft.").
+- Copy updated: the rules sheet (ONE BALL, SIZE), the board legend, the Scoring Card rows ("One ball: Your five use 138
+  of the ball (L. James 34, K. Malone 33, A. Edwards 31). A five can share 120; each point past it costs 0.3. Somebody
+  has to set a screen."; "Two small guards"; "Small frontcourt"), the Tribune notes, the Do-Over receipts, the Daily
+  gate's Classic tip, the Daily briefs that quoted 110 or 0.1, how-it-works (page and md).
+- Checks: test.js 127 (the v62 checks rewritten, new ones for the rules, the red heights, the meter, the badge order
+  and the board keys), style law clean; Chromium and WebKit at 320 and 375 (the home, HOW TO PLAY, the board, the tray
+  through five picks, the results hint, the Scoring Card): no sideways scroll, no page errors. Played in the browser
+  pane too (red 6'1" Conley after a 6'1" Duhon; the meter preview; the Do-Over board; Presti; the Daily; the Kaman egg).
+
+### Calls he may overrule
+- The one-ball dial: 120 free at 0.3 keeps Classic's challenge where he left it. Measured alternatives: 110 at 0.1875
+  (82-0 14.4%, 7 title teams pay up to 1.7), 115 at 0.25 (13.3%), 120 at 0.25 (16.3%), 120 at 0.375 (11.4%).
+- Presti shows no ball meter (stats from memory); its cards show heights and tags, as before.
+- The hint never retires. If it wears on regulars, the cheap dial is to stop the ring after a first vote, keeping the slip.
+- "The ball sticks" (two BALL-STOP/BALL-POUND, -2) and the Banjos stay on top of one ball: they price style and
+  hierarchy, not volume. But usage now carries the whole one-ball charge, so a five of ball-stoppers pays more usage
+  tax than in v62.2, plus the pair. Say if that reads as the same sin twice.
+- Tax Season doubles usage and size, not the tag rows (as before v63).
+
+### Deferred, and the guru (item 8)
+- **The manual rework** (item 7's "separate manuals more granularly" plus item 8) waits for his go. The expert I named:
+  **Celia Hodent**, PhD in psychology, who led UX at Epic Games on Fortnite (before that Ubisoft and LucasArts) and wrote
+  *The Gamer's Brain* (2017). Her onboarding method fits our crowded manual exactly: list everything a player must
+  learn, rank it by the game's pillars, teach it in that order and depth, and teach it in context rather than up front
+  (cognitive load is the enemy of learning). GDC 2016 talk "The Gamer's Brain, Part 2: UX of Onboarding and Player
+  Engagement" (gdcvault.com/play/1023231). For the rulebook side, the runner-up is Paul Grogan (Gaming Rules!).
+
+### What to playtest (for the owner, on the preview)
+A Classic draft: no 20+ chips; positive tags before red ones; no "?" on the board; the ball meter from the first
+player you tap (tap a big-usage star late to see it go red); take a 6'2" guard, then look for red heights on the next
+guards. Finish: the first card's hint and ring; the Scoring Card's One ball and size rows. The home: the logo leads;
+HOW TO PLAY opens with DRAFT WHAT WINS and the two claims.
+
+### Next, in order
+1. His answer to the top question (then merge to main).
+2. The manual rework on Hodent's method (item 7's granular manuals), once he says go.
+3. Record the tag rows and the v62/v63 taxes on game_complete (a migration: new columns) to watch live firing.
+4. TITLE #1 coverage as a rule, if he wants the Banjos airtight (00000t).
+
+## 00000u. (2026-09-28, late morning): V62.2, THE SIMMONS PAIRS, THE STAT PADDERS, THE TAGS LOADED
 
 **The owner's words.** "flavor text on Dueling Banjos is: Took the alphas some time to figure out how to play together
 and not just alongside each other. / you load the tags / your pair tax suggestions + -1 per stat padder. flavor text

@@ -223,8 +223,10 @@ eq("ballot: the engine's chip survives a NO as unsettled, never removed",
   tagsOf({ eng: "GRAVITY", mine: { "Super Three-Point Shooter": "no" } }), ["GRAVITY:q*"]);
 eq("ballot: a crowd split marks a settled tag unsettled",
   tagsOf({ settled: { "Clutch": 1 }, split: { "Clutch": "q2" } }), ["CLUTCH:q"]);
-eq("ballot: a tag you add joins the settled group with your ring",
-  tagsOf({ open: { "Clutch": "q1" }, mine: { "Hunted": "yes" } }), ["HUNTED:on*", "CLUTCH:q"]);
+eq("ballot: a tag you add joins the settled group with your ring (a bad one still sits after the good ones, v63)",
+  tagsOf({ open: { "Clutch": "q1" }, mine: { "Hunted": "yes" } }), ["CLUTCH:q", "HUNTED:on*"]);
+eq("ballot (v63, the owner: positives followed by negatives): the good tags, settled then '?', then the bad ones, settled then '?'",
+  tagsOf({ settled: { "Off-Court Knucklehead": 1, "Iso Defender": 1 }, open: { "Clutch": "q1", "Hunted": "q2" } }), ["ISO-D:on", "CLUTCH:q", "KNUCK:on", "HUNTED:q"]);
 eq("ballot: vote ids match op=roster and the scout backfill (accents fold)",
   [ctx.ballotQid("Luka Don\u010di\u0107", 2024, "hunted"), ctx.ballotQid("Shaquille O'Neal", 2000, "clutch")],
   ["luka-don-i-2024-hunted", "shaquille-o-neal-2000-clutch"]);
@@ -494,23 +496,24 @@ if (fs.existsSync("site_data.json")) {
   const L = vm.runInContext(`(function () {
     var keepG = G, keepSC = SC;
     SC = Object.assign({}, SC, { SPACERS_REQ: 3, USAGE_BUDGET: 110, AGE_VET_YEAR: 12, RIM_TOP20: 0.9 });
-    function pick(n) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; return { row: r }; }
-    var FIT = { ppgBar: 20, free: 3, per: 3, shortHt: 78, shortAmt: 3 };   // v62: the engine's one ball and too short settings
+    function pick(n, usg, ht) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.usage] = usg; r[IDX.ht] = ht; return { row: r }; }
+    var SIZE0 = { gBar: 74, fcBar: 78, gAmt: 2, fcAmt: 2, smallG: [], smallFC: [], gTax: 0, fcTax: 0, tax: 0 };   // v63: the engine's size settings
     function run(cfg, e) {
-      G = { ch: cfg ? { id: "t", cfg: cfg } : null, picks: ["Dennis Rodman", "Charles Barkley", "Rod Strickland", "Mark Price", "Brad Daugherty"].map(pick) };
-      e = Object.assign({ sumV: 30.5, sumUsage: 104.2, usageTax: 0, sumSp: 3, spacingTax: 0, spacingBonus: 0, backDefTax: 0, backDefTier: 0,
-        wingDefTax: 0, wingDefTier: 0, rimDefTax: 0, glassTax: 0, creatorTax: 0, ageTax: 0, vetCount: 0, labelRows: [], labelTax: 0,
-        oneBallTax: 0, shortTax: 0, scorers: [], htAvg: 79 }, e);
+      G = { ch: cfg ? { id: "t", cfg: cfg } : null, picks: [["Dennis Rodman", 10.2, 78], ["Charles Barkley", 30.4, 78], ["Rod Strickland", 22.1, 74],
+        ["Mark Price", 25.3, 72], ["Brad Daugherty", 22.6, 84]].map(function (x) { return pick(x[0], x[1], x[2]); }) };
+      e = Object.assign({ sumV: 30.5, sumUsage: 104.2, usageTax: 0, usageBudget: 120, usageRate: 0.3, usageOver: 0, sumSp: 3, spacingTax: 0, spacingBonus: 0,
+        backDefTax: 0, backDefTier: 0, wingDefTax: 0, wingDefTier: 0, rimDefTax: 0, glassTax: 0, creatorTax: 0, ageTax: 0, vetCount: 0, labelRows: [], labelTax: 0,
+        size: SIZE0, smallGTax: 0, smallFCTax: 0, sizeTax: 0 }, e);
       e.labelTax = e.labelRows.reduce(function (a, r) { return a + r.amt; }, 0);
-      e.score = e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.oneBallTax - e.shortTax;
+      e.score = e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.sizeTax;
       e.net = e.score - BASELINE;
       var html = resultsLedgerHtml(e), amts = [], re = /class="ledger-amt[^"]*">([^<]*)</g, m;
       while ((m = re.exec(html))) amts.push(parseFloat(m[1].replace("\u2212", "-").replace("\u2713 ", "")));
       var total = amts.slice(0, -1).reduce(function (a, b) { return a + b; }, 0);
-      return { adds: Math.abs(total - e.score) < 0.051, text: html.replace(/<[^>]+>/g, " "), dash: /[\u2013\u2014]/.test(html) };
+      return { adds: Math.abs(total - e.score) < 0.051, text: html.replace(/<[^>]+>/g, " ").replace(/&quot;/g, '"'), dash: /[\u2013\u2014]/.test(html) };
     }
     var out = {
-      plain: run(null, { usageTax: 2.1, sumUsage: 118.2, sumSp: 2, spacingTax: 1.5, backDefTax: 2, backDefTier: 33, wingDefTax: 3, wingDefTier: 20,
+      plain: run(null, { usageTax: 2.1, sumUsage: 127, usageOver: 7, sumSp: 2, spacingTax: 1.5, backDefTax: 2, backDefTier: 33, wingDefTax: 3, wingDefTier: 20,
         rimDefTax: 2, glassTax: 3, creatorTax: 2, ageTax: 1, vetCount: 2 }),
       surplus: run(null, { sumSp: 4.5, spacingBonus: 1.5 }),
       paint: run({ RIM_TOP20: 2.5, RIM_D_TAX: 5 }, { rimDefTax: 5 }),
@@ -520,13 +523,13 @@ if (fs.existsSync("site_data.json")) {
       midRange: run({ SPACERS_REQ: 1, SPACING_TAX: 2, SPACING_BONUS: -1.5 }, { sumSp: 3, spacingBonus: -3 }),
       gunslingers: run({ USAGE_RATE: 0, SPACERS_REQ: 5, SPACING_TAX: 2.5 }, { sumSp: 3, spacingTax: 5 }),
       creator: run({ CREATOR_TAX: -2 }, { creatorTax: -2 }),
-      tightBall: run({ USAGE_BUDGET: 85 }, { sumUsage: 97.4, usageTax: 3.2 }),
+      tightBall: run({ USAGE_BUDGET: 100 }, { usageBudget: 100, sumUsage: 110.7, usageOver: 10.7, usageTax: 3.21 }),
       labels: run(null, { labelsOn: true, labelsBuilt: "2026-09-27T12:00:00Z", rimDefTax: 2, creatorTax: 2, labelRows: [{ id: "iso", amt: 2, who: [] },
         { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] },
         { id: "banjo", amt: 2, who: [3, 1] }, { id: "stick", amt: 2, who: [0, 4] }, { id: "statpad", amt: 1, who: [2] }] }),
-      oneBall: run(null, { oneBallTax: 3, scorers: [0, 1, 2, 3], fit: FIT }),
-      oneBall5: run(null, { oneBallTax: 6, scorers: [0, 1, 2, 3, 4], fit: FIT }),
-      short: run(null, { shortTax: 3, htAvg: 77.6, fit: FIT })
+      ballOver: run(null, { sumUsage: 142.3, usageOver: 22.3, usageTax: 6.69 }),
+      ballOff: run({ USAGE_RATE: 0 }, { usageRate: 0, sumUsage: 150.2 }),
+      size: run(null, { smallGTax: 2, smallFCTax: 2, sizeTax: 4, size: Object.assign({}, SIZE0, { smallG: [2, 3], smallFC: [0, 1], gTax: 2, fcTax: 2, tax: 4 }) })
     };
     G = keepG; SC = keepSC;
     return out;
@@ -537,9 +540,9 @@ if (fs.existsSync("site_data.json")) {
   eq("results ledger: bonuses paid through a negative tax get a credit row (Five-Out, Board Money, Win Now, a creator board)",
     [/Five-out bonus/.test(L.fiveOut.text), /Glass bonus/.test(L.boardMoney.text), /Veteran bonus/.test(L.winNow.text), /Creator bonus/.test(L.creator.text)],
     [true, true, true, true]);
-  eq("results ledger: the targets are the board's own (The Mid-Range's 1 shooter, Gunslingers' 5, a usage budget of 85, Win Now's 10th season, Paint Police's +2.5 bar)",
-    [/target of 1\b/.test(L.midRange.text), /3 of 5 required/.test(L.gunslingers.text), /budget 85\b/.test(L.tightBall.text), /10th season/.test(L.winNow.text),
-      /\+2\.5 DBPM/.test(L.paint.text), /2 of 3 required/.test(L.plain.text), /budget 110/.test(L.plain.text), /12th season/.test(L.plain.text)],
+  eq("results ledger: the targets are the board's own (The Mid-Range's 1 shooter, Gunslingers' 5, The Triangle's ball of 100, Win Now's 10th season, Paint Police's +2.5 bar)",
+    [/target of 1\b/.test(L.midRange.text), /3 of 5 required/.test(L.gunslingers.text), /can share 100\b/.test(L.tightBall.text), /10th season/.test(L.winNow.text),
+      /\+2\.5 DBPM/.test(L.paint.text), /2 of 3 required/.test(L.plain.text), /can share 120\b/.test(L.plain.text), /12th season/.test(L.plain.text)],
     [true, true, true, true, true, true, true, true]);
   eq("results ledger: no em or en dashes in any row (the copy law)", names.filter((k) => L[k].dash), []);
   eq("results ledger: the label rows print with their names and their note (v61)",
@@ -550,73 +553,112 @@ if (fs.existsSync("site_data.json")) {
       /The ball sticks\s+Two players who hold the ball \(D\. Rodman, B\. Daugherty\)\. It goes in and it does not come out\./.test(L.labels.text),
       /Stat padding\s+A stat padder \(R\. Strickland\)\. Karma for your stat padding sins\./.test(L.labels.text)],
     [true, true, true, true, true, true, true, false, true, true, true]);
-  eq("results ledger: one ball names the scorers, too short gives the average, and neither row shows when it does not fire (v62)",
-    [/Four 20-point scorers \(D\. Rodman, C\. Barkley, R\. Strickland, M\. Price\)\. Three can share one ball; the fourth costs 3\. Somebody has to set a screen/.test(L.oneBall.text),
-      /Five 20-point scorers \(.*\)\. Three can share one ball; every one after that costs 3\. The ball is never coming back/.test(L.oneBall5.text),
-      /Your five average 6'5\.6"\. Under 6'6", the other team lives on the offensive glass/.test(L.short.text), /One ball|Too short/.test(L.plain.text)],
-    [true, true, true, false]);
+  eq("results ledger: one ball names the biggest ball users and the board's share, reads under the budget and off boards plainly; the size rows name the small men (v63)",
+    [/One ball\s+Your five use 142 of the ball \(C\. Barkley 30, M\. Price 25, B\. Daugherty 23\)\. A five can share 120; each point past it costs 0\.3\. The ball is never coming back\./.test(L.ballOver.text),
+      /One ball\s+Your five use 127 of the ball \(C\. Barkley 30, M\. Price 25, B\. Daugherty 23\)\. A five can share 120; each point past it costs 0\.3\. Somebody has to set a screen\./.test(L.plain.text),
+      /One ball\s+Your five use 104 of the ball, inside the 120 a five can share\./.test(L.surplus.text),
+      /One ball\s+Off on today.s board: your five use 150 of the ball, free\./.test(L.ballOff.text),
+      /Two small guards\s+Both guards 6'2" or shorter \(R\. Strickland 6'2", M\. Price 6'0"\)\. One small guard can hide; two get posted up and shot over\./.test(L.size.text),
+      /Small frontcourt\s+Two frontcourt players 6'6" or shorter \(D\. Rodman 6'6", C\. Barkley 6'6"\)\. One undersized big is fine; two, and the other team lives on the offensive glass\./.test(L.size.text),
+      /small guards|Small frontcourt|20-point|Too short/.test(L.plain.text)],
+    [true, true, true, true, true, true, false]);
 }
 
-// v62 ONE BALL and TOO SHORT (sim-core scorersAndSize, the engine, the boards, the tray): three 20-point scorers share
-// the ball free and the fourth and fifth cost 3 each (20.0 counts, 19.9 does not); a five that averages under 6'6"
-// pays 3 (exactly 6'6" does not, nor a missing height or a partial five); a board's 0 turns either off; the score adds
-// them up; the boards show the 20+ chip and the height (never in Pro; always on the Do-Over board); the tray counts.
+// v63 ONE BALL and SIZE BY UNIT (sim-core oneBall, sizeUnits, the engine): a five shares 120 of usage free and pays 0.3
+// a point past it (a board moves either); points do not count, only usage; two guards 6'2" or shorter cost 2 and two or
+// more F/C 6'6" or shorter cost 2 (by the slot he plays; a missing height never counts; a board's 0 turns either off; a
+// partial five pays once two small men share a unit); the score adds them up; the 20-point rule and its chip are gone.
 {
   const R = vm.runInContext(`(function () {
-    var keepG = G, keepMode = MODE;
-    function row(n, ppg, ht) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.bpm_star] = 2; r[IDX.usage] = 20; r[IDX.sp] = 0; r[IDX.dbpm] = 0;
-      r[IDX.obpm] = 0; r[IDX.rpg] = 5; r[IDX.apg] = 5; r[IDX.ppg] = ppg; r[IDX.ht] = ht; return r; }
-    function five(ppgs, hts) { return ppgs.map(function (p, i) { return row("p" + i, p, hts ? hts[i] : 80); }); }
-    var slots = ["G", "G", "F", "F", "C"], S0 = { ch: null }, BASE = { RIM_TOP20: 0.9, RIM_D_TAX: 2, USAGE_RATE: 0, USAGE_BUDGET: 999 };
-    function eng(rows, cfg) { return T82.engine({ ch: { cfg: Object.assign({}, BASE, cfg || {}) } }, rows, slots); }
+    function row(n, usg, ht) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.bpm_star] = 2; r[IDX.usage] = usg; r[IDX.sp] = 0; r[IDX.dbpm] = 0;
+      r[IDX.obpm] = 0; r[IDX.rpg] = 5; r[IDX.apg] = 5; r[IDX.ppg] = 30; r[IDX.ht] = ht; return r; }
+    function five(usgs, hts) { return usgs.map(function (u, i) { return row("p" + i, u, hts ? hts[i] : 80); }); }
+    var slots = ["G", "G", "F", "F", "C"], BASE = { RIM_TOP20: 0.9, RIM_D_TAX: 2 };
+    function eng(rows, cfg, sl) { return T82.engine({ ch: { cfg: Object.assign({}, BASE, cfg || {}) } }, rows, sl || slots); }
+    function r2(x) { return Math.round(x * 1000) / 1000; }
     var out = {};
-    out.ball = [[25, 22, 20, 12, 8], [25, 22, 20, 20, 8], [25, 22, 21, 20, 20], [25, 22, 20, 19.9, 19.9]].map(function (p) { return eng(five(p)).oneBallTax; });
-    out.ballOff = eng(five([25, 22, 21, 20, 20]), { ONEBALL_TAX: 0 }).oneBallTax;
-    out.short = [[72, 76, 78, 80, 83], [72, 76, 78, 80, 84], [72, 76, 78, 80, 0]].map(function (h) { return eng(five([1, 1, 1, 1, 1], h)).shortTax; });
-    out.shortOff = eng(five([1, 1, 1, 1, 1], [72, 76, 78, 80, 83]), { SHORT_TAX: 0 }).shortTax;
-    out.partial = T82.scorersAndSize(S0, five([1, 1, 1, 1], [70, 70, 70, 70])).shortTax;
-    var e = eng(five([25, 22, 21, 20, 20], [72, 74, 76, 78, 80]));
-    out.adds = Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.oneBallTax - e.shortTax - e.score) < 1e-9;
-    out.both = [e.oneBallTax, e.shortTax, e.scorers.length, htText(e.htAvg)];
-    G = { ch: null, picks: [], screen: "draft" };
-    MODE = "classic"; out.chip = [/>20\\+</.test(scorerChipHtml(row("a", 20, 80))), scorerChipHtml(row("b", 19.9, 80)), heightTag(row("c", 1, 79))];
-    MODE = "pro"; out.pro = [scorerChipHtml(row("a", 20, 80)), heightTag(row("c", 1, 79)), /20\\+/.test(boardTagsHtml(row("a", 20, 80), true)), heightTag(row("c", 1, 79), true)];
-    MODE = "classic"; G.ch = { cfg: { ONEBALL_TAX: 0 } }; out.chipOff = scorerChipHtml(row("a", 30, 80));
-    function lines() { var m, re = /<span>(.*?)<\\/span>/g, h = trayFitHtml(), o = []; while ((m = re.exec(h))) o.push(m[1].replace(/<[^>]+>/g, "")); return o; }
-    G = { ch: null, screen: "draft", picks: five([25, 22, 20, 12], [74, 76, 78, 80]).map(function (r) { return { row: r }; }) };
-    out.tray = lines();
-    G.picks[3].row[IDX.ppg] = 20; G.picks.forEach(function (p) { p.row[IDX.ht] = 80; });
-    out.tray4 = lines();
-    G.picks.pop(); G.picks.pop(); G.picks[0].row[IDX.ppg] = 1; G.picks[0].row[IDX.ht] = 70;
-    out.tray2 = lines();
-    MODE = "pro"; out.trayPro = trayFitHtml();
-    G = keepG; MODE = keepMode;
+    out.ball = [[30, 28, 26, 22, 14], [30, 28, 26, 22, 24], [40, 38, 36, 34, 30]].map(function (u) { return r2(eng(five(u)).usageTax); });
+    out.ballBoards = [r2(eng(five([30, 28, 26, 22, 14]), { USAGE_BUDGET: 100 }).usageTax), eng(five([40, 38, 36, 34, 30]), { USAGE_RATE: 0 }).usageTax,
+      r2(eng(five([30, 28, 26, 22, 24]), { USAGE_BUDGET: 110, USAGE_RATE: 0.09375 }).usageTax)];
+    out.ballNoPpg = eng(five([20, 20, 20, 20, 20])).usageTax;
+    out.size = [[74, 74, 80, 80, 84], [74, 75, 80, 80, 84], [73, 0, 80, 80, 84], [76, 76, 78, 78, 84], [76, 76, 78, 79, 84], [76, 76, 78, 77, 76], [74, 74, 78, 78, 78]]
+      .map(function (h) { return eng(five([20, 20, 20, 20, 20], h)).sizeTax; });
+    out.sizeBoards = [eng(five([20, 20, 20, 20, 20], [74, 74, 78, 78, 84]), { SMALL_G_TAX: 0 }).sizeTax, eng(five([20, 20, 20, 20, 20], [74, 74, 78, 78, 84]), { SMALL_FC_TAX: 0 }).sizeTax];
+    out.sizeSlot = eng(five([20, 20, 20, 20, 20], [74, 80, 74, 78, 84])).sizeTax;
+    out.partial = [T82.sizeUnits({ ch: null }, five([1, 1], [72, 73]), ["G", "G"]).tax, T82.sizeUnits({ ch: null }, five([1], [72]), ["G"]).tax];
+    var e = eng(five([40, 38, 36, 34, 30], [74, 74, 78, 78, 84]));
+    out.adds = Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.sizeTax - e.score) < 1e-9;
+    out.parts = [e.usageBudget, e.usageRate, e.usageOver, e.smallGTax, e.smallFCTax];
+    out.gone = [typeof T82.scorersAndSize, typeof scorerChipHtml, typeof trayFitHtml, "oneBallTax" in e, "shortTax" in e];
     return out;
   })()`, ctx);
-  eq("one ball: three 20-point scorers are free, the fourth and fifth cost 3 each (20.0 counts, 19.9 does not); a board's 0 turns it off",
-    [R.ball, R.ballOff], [[0, 3, 6, 0], 0]);
-  eq("too short: under 6'6\" on average costs 3, exactly 6'6\" does not, nor a missing height or a partial five; a board's 0 turns it off",
-    [R.short, R.shortOff, R.partial], [[3, 0, 0], 0, 0]);
-  eq("one ball and too short: the score adds both up", [R.adds, R.both], [true, [6, 3, 5, "6'4\""]]);
-  eq("boards: the 20+ chip and the height show in Classic, never in Pro, always on the Do-Over board; a board with one ball off shows no chip",
-    [R.chip, R.pro, R.chipOff], [[true, "", " · 6'7\""], ["", "", true, " · 6'7\""], ""]);
-  eq("tray: speaks up at the third scorer and past it, and for height only with two picks or one left (never in Pro)", [R.tray, R.tray4, R.tray2, R.trayPro],
-    [["20+ scorers: 3 of 3 free, a 4th costs 3", "Height 6'5\" avg, the last pick needs 6'10\""], ["20+ scorers: 4, −3"], [], ""]);
+  eq("one ball: 120 of usage is free, each point past it costs 0.3 (130 costs 3, five alphas at 178 cost 17.4)", R.ball, [0, 3, 17.4]);
+  eq("one ball: a board moves the budget or the rate (The Triangle's 100; a usage-off board; Volume Merchants' old 110 at 0.09375)", R.ballBoards, [6, 0, 1.875]);
+  eq("one ball: points never count, only usage (five 30-point scorers who use 20 each pay nothing)", R.ballNoPpg, 0);
+  eq("size by unit: two guards 6'2\" or shorter cost 2, 6'3\" does not, a missing height never counts; two or more F/C 6'6\" or shorter cost 2, three still 2; both units 4",
+    R.size, [2, 0, 0, 2, 0, 2, 4]);
+  eq("size by unit: a board's 0 turns either off; the unit is the slot he plays (a 6'2\" forward is a small big); a partial five pays once two small guards are in",
+    [R.sizeBoards, R.sizeSlot, R.partial], [[2, 2], 2, [2, 0]]);
+  eq("one ball and size: the score adds them up and the engine reports its settings", [R.adds, R.parts], [true, [120, 0.3, 58, 2, 2]]);
+  eq("the 20-point rule is gone: no scorersAndSize, no 20+ chip, no tray warning lines, no oneBallTax or shortTax", R.gone, ["undefined", "undefined", "undefined", false, false]);
 }
 
-// v62: a board whose own rule forces a short five or a five of scorers (or whose copy stacks the alphas with the usage
-// tax off) turns the new tax off, so it is never a flat charge on every entry; Tax Holiday turns every fit rule off.
+// v63 THE BOARD AND THE TRAY: a height turns red only when every legal open slot would make the pick the second small
+// man in his unit (never in Pro; plain on the Do-Over board); the tray's ball meter fills with the picks, previews a
+// selected player, goes red past the budget, and stays out of Presti, Pro, a finished five and a usage-off board.
+{
+  const B = vm.runInContext(`(function () {
+    var keepG = G, keepMode = MODE, keepResolve = resolveRow, keepBlock = pickBlock, sel = null;
+    function row(n, usg, ht, g, f, c) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.bpm_star] = 2; r[IDX.usage] = usg; r[IDX.sp] = 0; r[IDX.dbpm] = 0;
+      r[IDX.obpm] = 0; r[IDX.rpg] = 5; r[IDX.apg] = 5; r[IDX.ppg] = 10; r[IDX.ht] = ht; r[IDX.g_pct] = g; r[IDX.f_pct] = f; r[IDX.c_pct] = c; return r; }
+    var out = {};
+    MODE = "classic";
+    G = { ch: null, mode: "classic", screen: "draft", filled: { G: 1, F: 0, C: 0 }, picks: [{ row: row("zz small one", 30, 72, 100, 0, 0), slot: "G" }] };
+    function red(r) { return /is-small/.test(heightTag(r)); }
+    out.guard = [red(row("zz small guard", 20, 73, 100, 0, 0)), red(row("zz small wing", 20, 73, 60, 40, 0)), red(row("zz tall guard", 20, 75, 100, 0, 0))];
+    G.filled = { G: 2, F: 1, C: 0 }; G.picks.push({ row: row("zz guard two", 20, 77, 100, 0, 0), slot: "G" }, { row: row("zz small four", 20, 76, 0, 100, 0), slot: "F" });
+    out.big = [red(row("zz small forward", 20, 77, 0, 100, 0)), red(row("zz big forward", 20, 80, 0, 100, 0))];
+    out.why = /a second small big costs 2/.test(heightTag(row("zz small forward", 20, 77, 0, 100, 0)));
+    MODE = "pro"; out.pro = heightTag(row("zz small forward", 20, 77, 0, 100, 0));
+    MODE = "classic"; out.sd = heightTag(row("zz small forward", 20, 77, 0, 100, 0), true);
+    // the ball meter
+    G = { ch: null, mode: "classic", screen: "draft", filled: { G: 2, F: 1, C: 0 }, picks: [30, 28, 26].map(function (u, i) { return { row: row("zz b" + i, u, 80, 100, 0, 0), slot: "G" }; }) };
+    function meter() { return trayBallHtml().replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim(); }
+    out.m1 = [meter(), /is-over/.test(trayBallHtml())];
+    resolveRow = function () { return sel; }; pickBlock = function () { return null; };
+    sel = row("zz alpha", 40, 80, 100, 0, 0); G.selected = "zz alpha";
+    out.m2 = [meter(), /is-over/.test(trayBallHtml())];
+    G.selected = null; G.picks.push({ row: row("zz b3", 44, 80, 0, 100, 0), slot: "F" });
+    out.m3 = [meter(), /is-over/.test(trayBallHtml())];
+    MODE = "cap"; out.cap = trayBallHtml(); MODE = "pro"; out.pro2 = trayBallHtml(); MODE = "classic";
+    G.ch = { cfg: { USAGE_RATE: 0 } }; out.off = trayBallHtml(); G.ch = null;
+    G.picks.push({ row: row("zz b4", 10, 84, 0, 0, 100), slot: "C" }); out.done = trayBallHtml();
+    resolveRow = keepResolve; pickBlock = keepBlock; G = keepG; MODE = keepMode;
+    return out;
+  })()`, ctx);
+  eq("board heights: red only when every legal open slot makes him the second small guard (a G/F who can play forward is not red; 6'3\" is not)", B.guard, [true, false, false]);
+  eq("board heights: the second small frontcourt player is red and says why; a 6'8\" forward is not; Pro shows no height; the Do-Over board shows it plain",
+    [B.big, B.why, B.pro, B.sd], [[true, false], true, "", " · 6'5\""]);
+  eq("the ball meter: fills with the picks, previews a selected player, turns red past the budget with the charge",
+    [B.m1, B.m2, B.m3], [["The ball 84 of 120", false], ["The ball 84 → 124 of 120 −1.2", true], ["The ball 128 of 120 −2.4", true]]);
+  eq("the ball meter: none in Presti or Pro, none on a usage-off board, none once the five is full", [B.cap, B.pro2, B.off, B.done], ["", "", "", ""]);
+}
+
+// v63: a board whose own rule forces a short five turns both size units off; a board that forces a five of volume
+// scorers keeps the old gentle usage tax; the boards that twist the usage tax restate the twist against the new normal;
+// Tax Holiday turns every fit rule off; no board carries v62's ONEBALL_* or SHORT_* keys.
 {
   const bctx = { Math, Date, console, JSON, URLSearchParams };
   vm.createContext(bctx);
   vm.runInContext(fs.readFileSync("challenges.js", "utf8"), bctx);
   const by = bctx.T82CH.byId, cfgOf = (id, k) => (by[id] && by[id].cfg ? by[id].cfg[k] : undefined);
-  eq("boards: the short boards turn too short off; the scorer and stack-the-alphas boards turn one ball off; Tax Holiday turns off both and the tag rows",
-    [["short_kings", "small_ball_apoc", "small_blind", "small_ball_five", "height_cap"].map((id) => cfgOf(id, "SHORT_TAX")),
-      ["volume_scorers", "hundred_club", "superteam", "ball_hogs", "iso_week", "gunslingers", "two_way_alphas"].map((id) => cfgOf(id, "ONEBALL_TAX")),
-      ["ONEBALL_TAX", "SHORT_TAX", "LBL_ISO_TAX", "LBL_KNUCK_TAX_2", "LBL_CUT_CREDIT"].map((k) => cfgOf("tax_holiday", k)),
-      cfgOf("the_mediums", "SHORT_TAX"), cfgOf("heliocentric", "ONEBALL_TAX")],
-    [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0], undefined, undefined]);
+  const stale = Object.keys(by).filter((id) => by[id].cfg && Object.keys(by[id].cfg).some((k) => /^(ONEBALL_|SHORT_)/.test(k)));
+  eq("boards (v63): the short boards turn both size units off, Height Cap keeps them; Volume Merchants keeps 110 at 0.09375; the usage twists; Tax Holiday; no stale keys",
+    [["short_kings", "small_ball_apoc", "small_blind", "small_ball_five", "tax_holiday"].map((id) => [cfgOf(id, "SMALL_G_TAX"), cfgOf(id, "SMALL_FC_TAX")]),
+      cfgOf("height_cap", "SMALL_G_TAX"), [cfgOf("volume_scorers", "USAGE_BUDGET"), cfgOf("volume_scorers", "USAGE_RATE")],
+      [cfgOf("luxury_tax", "USAGE_BUDGET"), cfgOf("luxury_tax", "USAGE_RATE"), cfgOf("the_triangle", "USAGE_BUDGET"), cfgOf("superteam", "USAGE_BUDGET"),
+        cfgOf("tax_season", "USAGE_RATE"), cfgOf("tax_season", "SMALL_G_TAX"), cfgOf("tax_holiday", "USAGE_RATE")], stale],
+    [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], undefined, [110, 0.09375], [110, 0.4, 100, 105, 0.6, 4, 0], []]);
 }
 
 // v61 THE LABEL TAXES (sim-core labelTaxes and engine): a role nobody fills costs net and a "?" fills it; the
@@ -663,7 +705,7 @@ if (fs.existsSync("site_data.json")) {
       rimStat: eng(["nobody a", "nobody b", "nobody c", "nobody d", "nobody e"]).rimDefTax,
       rimTag: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"]).rimDefTax,
       fiveOut: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"], { ch: { cfg: { RIM_TOP20: 0.9, RIM_D_TAX: -3 } } }).rimDefTax,
-      scoreSum: (function () { var e = eng(["stopper", "maybe", "bigman", "passer", "cutter"]); return Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.oneBallTax - e.shortTax - e.score) < 1e-9 && e.labelRows.length > 0; })(),
+      scoreSum: (function () { var e = eng(["stopper", "maybe", "bigman", "passer", "cutter"]); return Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.sizeTax - e.score) < 1e-9 && e.labelRows.length > 0; })(),
       folded: !!T82.labelsOf("Jos\u00E9 Calder\u00F3n", 2000),
       // v62.1 the Dueling Banjos Tax: two settled TITLE #1s cost 2; a "?" never counts; a board's 0 turns it off
       banjo: [ids(["alpha one", "alpha two"]).filter(function (x) { return /^banjo/.test(x); }), ids(["alpha one", "alpha maybe"]).filter(function (x) { return /^banjo/.test(x); }),
@@ -685,8 +727,11 @@ if (fs.existsSync("site_data.json")) {
         o.red = /data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two")));
         o.selfNotRed = (function () { G.picks = [{ row: row("alpha two") }]; return !/data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two"))); })();
         G.picks = [{ row: row("alpha one") }, { row: row("alpha two") }];
-        o.tray = trayFitHtml().indexOf("Tag taxes: <b>Dueling Banjos</b> −" + "2") >= 0;
-        o.rolesLine = !/Banjo/.test(trayRolesHtml() || "");
+        o.trayQuiet = !/Banjo|Tag taxes/.test(trayBallHtml() + (trayRolesHtml() || ""));   // v63: the tray keeps totals only; the bill is the Scoring Card's
+        // v63 the badge order and the "?": positives first, then negatives; a "?" role tag shows like a settled one
+        function chips(n) { var m, re = />([A-Z0-9#+ -]+)<\\/button>/g, h = boardTagsHtml(row(n)), o2 = []; while ((m = re.exec(h))) o2.push(m[1]); return o2; }
+        o.order = [chips("stopper"), chips("bigman"), chips("maybe")];
+        o.noMaybe = !/is-maybe|\\?/.test(boardTagsHtml(row("bigman")) + boardTagsHtml(row("maybe")));
         G = keepG; MODE = keepMode;
         return o;
       })()
@@ -706,8 +751,10 @@ if (fs.existsSync("site_data.json")) {
   eq("dueling banjos: two settled TITLE #1s cost 2, a '?' never counts, a board's 0 turns it off (v62.1)", R.banjo, [["banjo+2"], [], []]);
   eq("the Simmons pairs (v62.2): two who hold the ball cost 2 (one player with both tags counts once), two hunted 2 (a '?' never counts), two foul merchants 1, every stat padder 1 (a '?' never counts), a board's 0 turns them off",
     R.pairs, [["stick+2"], [], ["hunted+2"], [], ["foul+1"], ["statpad+1"], ["statpad+2"], [], []]);
-  eq("dueling banjos on the board: a settled TITLE #1 shows, a '?' one does not, it turns red once another is on your five (never for himself), the tray names the tax, the roles line does not",
-    R.banjoBoard, { plain: true, maybeHidden: true, red: true, selfNotRed: true, tray: true, rolesLine: true });
+  eq("dueling banjos on the board: a settled TITLE #1 shows, a '?' one does not, it turns red once another is on your five (never for himself); the tray stays quiet (v63: the Scoring Card has the bill)",
+    [R.banjoBoard.plain, R.banjoBoard.maybeHidden, R.banjoBoard.red, R.banjoBoard.selfNotRed, R.banjoBoard.trayQuiet], [true, true, true, true, true]);
+  eq("board badges (v63): positives first, then negatives, in the results cards' order; a '?' role tag shows plain (it fills its role); a '?' reputation stays hidden",
+    [R.banjoBoard.order, R.banjoBoard.noMaybe], [[["ISO-D", "CLUTCH", "KNUCK"], ["TEAM-D", "RIM-P"], ["ISO-D", "KNUCK"]], true]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

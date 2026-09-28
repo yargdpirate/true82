@@ -2,8 +2,8 @@
    (a wrangler pages dev entry in .claude/launch.json, e.g. site-api3 on :8791) and Playwright (the draft-chime.js copy).
      node tools/results-qa.js results [w]   a Classic season auto-drafted to results; full-page shot + the Scoring Card's box
      node tools/results-qa.js sheet [w]     the "+" tag sheet: open it, add a tile, take one off; the card follows, votes post
-     node tools/results-qa.js glove         the glove under thumb scrolling: no hand while scrolling, plays once the page
-                                            is still, plays again on the next results screen, retires on a real "+" tap
+     node tools/results-qa.js hint [w]      v63's printed "+" hint: on the first card only, on every results screen, and a
+                                            real "+" tap still opens the tag sheet
      node tools/results-qa.js room [w]      /bonuses/ from the home card (n=5): five votes, frames of the stamp (the vote
                                             reply held back, animations frozen), the count and diamonds, no sideways scroll
    Screenshots land in $OUT (default: /tmp/t82-results-qa). Votes go to the LOCAL D1 only. */
@@ -20,8 +20,6 @@ async function toResults(page, o) {
   await page.goto(BASE);
   await page.waitForFunction(() => typeof DATA_READY !== "undefined" && DATA_READY, null, { timeout: 30000 });
   await page.evaluate((o) => {
-    if (o.hint === "fresh") { try { localStorage.removeItem("tb-hint"); localStorage.removeItem("tb-hint-n"); } catch (e) {} }
-    if (o.hint === "seen") { try { localStorage.setItem("tb-hint", "1"); } catch (e) {} }
     newGame(o.mode || "classic");
   }, o);
   for (let r = 0; r < 5; r++) {
@@ -58,7 +56,7 @@ async function results(w) {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: w, height: 740 }, deviceScaleFactor: 2 });
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
-  await toResults(page, { hint: "seen" });
+  await toResults(page);
   await page.screenshot({ path: `${OUT}/results-${w}.png`, fullPage: true });
   const r = await page.evaluate(() => {
     const L = document.querySelector(".ledger"), t = document.querySelector(".ledger-row.total");
@@ -75,7 +73,7 @@ async function sheet(w) {
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
   const posts = [];
   page.on("request", (r) => { if (r.method() === "POST" && r.url().includes("/api/traits")) posts.push(JSON.parse(r.postData()).response); });
-  await toResults(page, { hint: "seen", settle: 3500 });
+  await toResults(page, { settle: 3500 });
   const cardTags = () => page.evaluate(() => document.querySelector('.bt-tags[data-bt]').innerText.replace(/\s+/g, " "));
   const before = await cardTags();
   await page.evaluate(() => document.querySelector(".rr .bt-card .bt-tag.add").click());
@@ -99,33 +97,25 @@ async function sheet(w) {
   await browser.close();
 }
 
-async function glove() {
+async function hint(w) {
+  // v63: the "+" hint is printed on the first card (no timers, no scroll logic, nothing that retires): it is there on
+  // every results screen, only on the first card, and a real "+" tap still opens the tag sheet.
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  const ctx = await browser.newContext({ viewport: { width: w, height: 667 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
-  await toResults(page, { hint: "fresh", settle: 200 });
-  const during = [];
-  for (let i = 0; i < 12; i++) {
-    await page.touchscreen.tap(5, 600);                 // a touch on the page's empty margin, then a flick
-    await page.mouse.wheel(0, i % 3 === 2 ? -500 : 420);
-    await sleep(200);
-    during.push(await page.evaluate(() => !!document.querySelector(".bt-hand")));
-  }
-  await page.evaluate(() => document.querySelector(".rr .bt-card").scrollIntoView({ block: "center" }));
-  let after = null;
-  for (let i = 0; i < 20 && !after; i++) { await sleep(150); after = await page.evaluate(() => { const h = document.querySelector(".bt-hand.show"); return h ? h.closest(".bt-card").getAttribute("data-pick") : null; }); }
-  await page.screenshot({ path: `${OUT}/glove.png` });
-  await sleep(3200);
-  const plays = await page.evaluate(() => localStorage.getItem("tb-hint-n"));
-  await toResults(page, { settle: 200 });
-  await page.evaluate(() => document.querySelector(".rr .bt-card").scrollIntoView({ block: "center" }));
-  let again = false;
-  for (let i = 0; i < 20 && !again; i++) { await sleep(200); again = await page.evaluate(() => !!document.querySelector(".bt-hand.show")); }
+  await toResults(page, { settle: 600 });
+  const first = await page.evaluate(() => [...document.querySelectorAll(".rr .bt-card")].map((c) => !!c.querySelector(".bt-hint")));
+  await page.evaluate(() => { const c = document.querySelector(".rr .bt-card"); c.scrollIntoView({ block: "start" }); window.scrollBy(0, -12); });
+  await sleep(500);
+  await page.screenshot({ path: `${OUT}/hint-${w}.png` });
   await page.evaluate(() => document.querySelector(".rr .bt-card .bt-tag.add").click());
-  await sleep(300);
-  const retired = await page.evaluate(() => localStorage.getItem("tb-hint") === "1" && !document.querySelector(".bt-hand"));
-  console.log(JSON.stringify({ handWhileScrolling: during.some(Boolean), playedOnCard: after, plays, playsOnNextScreen: again, retiredByARealTap: retired }));
+  await sleep(500);
+  const sheetOpen = await page.evaluate(() => !!document.querySelector(".bt-sheet.on"));
+  await toResults(page, { settle: 600 });
+  const again = await page.evaluate(() => !!document.querySelector(".rr .bt-card .bt-hint"));
+  console.log(JSON.stringify({ hintOnCards: first, sheetOpensFromPlus: sheetOpen, hintOnNextScreen: again,
+    sideways: await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1) }));
   await browser.close();
 }
 
@@ -169,7 +159,7 @@ async function room(w) {
   const which = process.argv[2] || "results", w = +(process.argv[3] || 375);
   if (which === "results") await results(w);
   else if (which === "sheet") await sheet(w);
-  else if (which === "glove") await glove();
+  else if (which === "hint") await hint(w);
   else if (which === "room") await room(w);
   else throw new Error("unknown check: " + which);
 })().catch((e) => { console.error(e); process.exit(1); });

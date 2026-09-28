@@ -2682,6 +2682,25 @@ body.rules-open { overflow: hidden; }
 .rs-list li::marker { color: var(--t-label); }
 .rs-engine li strong { color: var(--t-accent); font-weight: 600; letter-spacing: 0.03em; }
 .rs-note { margin: 10px 0 0; font-family: var(--t-mono); font-size: 10.5px; color: var(--t-text-2); }
+/* v63 THE PITCH (app.js howToPitchHtml): the home's old slogan, cream type over a pink halftone copy of itself a hair
+   off register; one line of what the game is; two stamped claims, pink then aqua, each on a halftone offset */
+.rs-pitch { margin: 4px 0 14px; text-align: center; }
+.rs-slogan { position: relative; display: inline-block; margin: 6px 0 8px; font-family: var(--t-disp); font-weight: 800; font-size: min(40px, 10.6vw);
+  line-height: .9; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.rs-slogan span { display: block; }
+.rs-slogan-ink { position: relative; color: var(--t-text); }
+.rs-slogan-dots { position: absolute; left: 4px; top: 4px; color: transparent;
+  background-image: radial-gradient(circle, var(--t-accent) 1px, transparent 1.45px); background-size: 3px 3px;
+  -webkit-background-clip: text; background-clip: text; }
+.rs-what { margin: 0 auto 12px; max-width: 30em; font-size: 14px; line-height: 1.45; color: var(--t-text); }
+.rs-claims { display: grid; gap: 12px; margin: 0; padding: 0 6px 6px 0; list-style: none; text-align: left; }
+.rs-claim { position: relative; isolation: isolate; display: grid; gap: 3px; padding: 9px 12px 10px; --c: var(--t-accent); --dot: rgb(var(--t-accent-rgb) / .7); }
+.rs-claim.is-cyan { --c: var(--t-offset); --dot: rgb(var(--t-offset-rgb) / .7); }
+.rs-claim::before, .rs-claim::after { content: ""; position: absolute; border-radius: 10px; pointer-events: none; }
+.rs-claim::before { left: 5px; top: 5px; right: -5px; bottom: -5px; z-index: -2; background: radial-gradient(circle, var(--dot) 1px, transparent 1.4px) 0 0 / 4px 4px; }
+.rs-claim::after { inset: 0; z-index: -1; background: var(--t-ground); box-shadow: inset 0 0 0 1.5px var(--c); }
+.rs-claim b { font-family: var(--t-disp); font-weight: 800; font-size: 19px; line-height: 1; letter-spacing: .05em; color: var(--c); }
+.rs-claim span { font-size: 13.5px; line-height: 1.4; color: var(--t-text); }
 .rs-foot {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 14px calc(11px + env(safe-area-inset-bottom));
@@ -3729,17 +3748,31 @@ body.gating .gate-back {
 .tchips { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 5px; }
 /* display:contents dissolves the wrapper so each chip packs the .pr-sub line on its own (v47.11) */
 .tchips-inline { display: contents; }
-/* v61: the tags on every board (app.js boardTagsHtml). A "?" tag counts as filling its role, so it shows, hollow and
-   dashed with its "?"; Presti's column keeps them on one wrapping line under the season (#app#app outranks look.css) */
-#app#app .tchip.is-maybe { background: transparent; color: var(--t-text-2); box-shadow: inset 0 0 0 1px rgb(var(--t-text-2-rgb) / .6); }
+/* v61: the tags on every board (app.js boardTagsHtml); Presti's column keeps them on one wrapping line under the season.
+   (v63: a "?" role tag fills its role like a settled one, so the board shows it plain; the hollow "?" style is gone.) */
 .cap-main .board-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 1px; }
 /* v61: the tray names the roles still open once two picks are left, and what each would cost */
 .tray-roles { font-family: var(--t-mono); font-size: 11px; line-height: 1.35; letter-spacing: 0.03em; color: var(--t-text-2); text-align: center; padding: 6px 4px 0; }
 .tray-roles b { color: var(--t-bad-soft); font-weight: 700; }
 .tray-roles.is-full { color: var(--t-good-soft); }
-/* v62: the tray's one ball and height warnings (app.js trayFitHtml) sit over the roles line, one line each */
-.tray-fit > span { display: block; }
-.tray-fit + .tray-roles { padding-top: 2px; }
+/* v63: the ball meter (app.js trayBallHtml): the five's usage against the free ball. Gold up to the notch (the budget),
+   red past it; a selected player's share previews in a paler band. One line, so the tray stays short at 320px. */
+.tray-ball { display: flex; align-items: center; gap: 8px; max-width: 420px; margin: 0 auto; padding: 7px 6px 0; font-family: var(--t-mono); font-size: 11px; line-height: 1; letter-spacing: 0.03em; color: var(--t-text-2); }
+.tray-ball .tb-lab { flex: 0 0 auto; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--t-label); }
+.tray-ball.is-over .tb-lab { color: var(--t-bad-soft); }
+.tray-ball .tb-track { position: relative; flex: 1 1 auto; min-width: 64px; height: 9px; border-radius: 5px; overflow: hidden; background: var(--t-ground-3); box-shadow: inset 0 0 0 1px var(--t-line); }
+.tray-ball .tb-track i { position: absolute; top: 0; bottom: 0; }
+.tray-ball .tb-fill { left: 0; background: var(--t-accent); }
+.tray-ball .tb-over { background: var(--t-bad); }
+.tray-ball .tb-next { background: rgb(var(--t-accent-rgb) / .45); }
+.tray-ball .tb-next.is-over { background: rgb(var(--t-bad-rgb) / .5); }
+.tray-ball .tb-notch { width: 2px; margin-left: -1px; background: var(--t-text); }
+.tray-ball .tb-num { flex: 0 0 auto; font-family: var(--t-disp); font-weight: 700; font-size: 15px; letter-spacing: 0.02em; color: var(--t-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tray-ball .tb-num small { font-family: var(--t-mono); font-weight: 400; font-size: 10px; color: var(--t-text-2); }
+.tray-ball .tb-tax { color: var(--t-bad-soft); }
+.tray-ball + .tray-roles { padding-top: 4px; }
+/* v63: a height that would make a second small man in his unit (app.js heightTag) reads red, like a second TITLE #1 */
+.pr-ht.is-small { color: var(--t-bad-soft); }
 .ledger-note { margin: 8px 2px 0; color: var(--t-text-2); }
 .trait-info-btn { appearance: none; -webkit-appearance: none; width: 27px; height: 27px; flex: 0 0 27px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 50%; background: linear-gradient(180deg, var(--t-accent), var(--t-accent-face)); color: var(--t-accent-ink);
@@ -3963,14 +3996,20 @@ body.bt-open { overflow: hidden; }
 .bt-sheet .bt-done { display: flex; width: 100%; justify-content: center; margin-top: 18px; }
 body.bt-open .t-toast { top: calc(16px + env(safe-area-inset-top)); bottom: auto; transform: translate(-50%, -20px); }
 body.bt-open .t-toast.on { transform: translate(-50%, 0); }
-/* v60: the glove rides inside the card it teaches on (so it scrolls with it), over its neighbors' ink */
+/* v63 THE "+" HINT (app.js ballotHintHtml): printed on the first card, no timers. A two-ink slip: the key ink's tint with
+   the offset ink printed off register behind it; the white glove taps up at the tag row above it. */
 .rr .bt-card { position: relative; }
-.bt-hand { position: absolute; z-index: 6; width: 44px; height: 44px; pointer-events: none; opacity: 0; filter: drop-shadow(0 4px 6px rgb(var(--t-shadow-rgb) / .5));
-  transition: left 0.45s ease, top 0.45s ease, opacity 0.3s ease, transform 0.18s ease; }
-.bt-hand.show { opacity: 1; }
-.bt-hand.tap { transform: translate(-3px, -6px) scale(0.86); }
-.bt-hand path { fill: var(--t-light); stroke: var(--t-ground); }
-/* until the trick is learned, the first card's "+" breathes a halftone ring in the key ink */
+.rr .bt-hint { position: relative; display: flex; align-items: center; gap: 9px; margin: 12px 3px 2px 0; padding: 8px 10px 8px 8px; border-radius: 10px;
+  background: rgb(var(--t-accent-rgb) / .12); box-shadow: inset 0 0 0 1.5px rgb(var(--t-accent-rgb) / .55), 3px 3px 0 rgb(var(--t-offset-rgb) / .45);
+  font-family: var(--t-mono); font-size: 12px; line-height: 1.35; letter-spacing: 0.01em; color: var(--t-text); }
+.rr .bt-hint b { color: var(--t-accent); font-weight: 700; }
+.rr .bt-glove { flex: 0 0 28px; width: 28px; height: 28px; overflow: visible; filter: drop-shadow(0 2px 3px rgb(var(--t-shadow-rgb) / .55));
+  transform-origin: 50% 90%; animation: bt-glove 1.8s ease-in-out infinite; }
+.rr .bt-glove path { fill: var(--t-light); stroke: var(--t-ground); }
+@keyframes bt-glove { 0%, 50%, 100% { transform: translateY(0) scale(1); } 62%, 72% { transform: translateY(-5px) scale(.88); } 84% { transform: translateY(0) scale(1); } }
+.rr .bt-plus-mini { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; margin: 0 1px; border-radius: 50%;
+  border: 1.5px dashed var(--t-accent); color: var(--t-accent); font-family: var(--t-disp); font-weight: 900; font-size: 14px; line-height: 1; vertical-align: -4px; }
+/* the first card's "+" breathes a halftone ring in the key ink */
 .rr .bt-card.bt-cue .bt-tag.add::after { content: ""; position: absolute; inset: -8px; border-radius: 999px; pointer-events: none; opacity: 0;
   background: radial-gradient(circle, var(--t-accent) 1.25px, transparent 1.75px) 0 0 / 4px 4px;
   -webkit-mask-image: radial-gradient(closest-side, transparent 62%, var(--fx-mask) 72%, var(--fx-mask) 90%, transparent 100%);
@@ -3978,8 +4017,9 @@ body.bt-open .t-toast.on { transform: translate(-50%, 0); }
   animation: bt-cue 2.8s ease-out 1.2s infinite; }
 @keyframes bt-cue { 0%, 48% { opacity: 0; transform: scale(.7); } 62% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
 @media (prefers-reduced-motion: reduce) {
-  .t-sheet, .t-toast, .t-backdrop, .t-chip, .bt-tag, .bt-hand, .bt-tog { transition: none; }
+  .t-sheet, .t-toast, .t-backdrop, .t-chip, .bt-tag, .bt-tog { transition: none; }
   .rr .bt-card.bt-cue .bt-tag.add::after { animation: none; opacity: .7; transform: none; }
+  .rr .bt-glove { animation: none; }
 }
 
 /* ---------- v59 THE HOME: Halftone v2 (the owner's redesign; AGENT-HANDOFF section 00000l) ----------
@@ -3993,18 +4033,10 @@ body.bt-open .t-toast.on { transform: translate(-50%, 0); }
 /* the masthead on the home screen: the same art, the mock's size, no rule under it */
 /* (#app#app outranks look.css's doubled-id masthead rule; a browser without :has() keeps today's masthead) */
 body:has(#app#app > .hm) .site-head { border-bottom-color: transparent; padding-bottom: 0; }
-body:has(#app#app > .hm) .brand-logo { width: min(300px, 80%); max-width: none; }
-
-/* "Draft what wins": cream type over a pink halftone copy of itself, a hair off register */
+/* v63 (the owner: the tagline "takes away from the pretty logo"): with "Draft what wins" moved into HOW TO PLAY, the
+   logo leads the home screen at nearly the full width of a phone */
+body:has(#app#app > .hm) .brand-logo { width: min(400px, 96%); max-width: none; -webkit-user-select: none; user-select: none; }
 .hm-mast { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; }
-.hm-tag { position: relative; margin: 0; font-family: var(--t-disp); font-weight: 800; font-size: min(47px, 11.4vw);
-  line-height: .9; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap;
-  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-.hm-tag span { display: block; }
-.hm-tag-ink { position: relative; color: var(--t-text); }
-.hm-tag-dots { position: absolute; left: 4px; top: 4px; color: transparent;
-  background-image: radial-gradient(circle, var(--t-accent) 1px, transparent 1.45px); background-size: 3px 3px;
-  -webkit-background-clip: text; background-clip: text; }
 .hm-howto { appearance: none; -webkit-appearance: none; margin: 8px 0 0; padding: 6px 10px; border: 0; background: none;
   cursor: pointer; display: inline-flex; align-items: center; gap: 7px; color: rgb(var(--t-offset-rgb) / .9);
   font: 500 15px/1.2 var(--t-body); -webkit-tap-highlight-color: transparent; }

@@ -1390,26 +1390,42 @@ function chipsFor(row, tab) {
   return out.length ? '<span class="chips">' + out.join("") + "</span>" : "";
 }
 function bucketTag(row) { return rowBuckets(row).join("/"); }
-/* v62 ONE BALL and TOO SHORT (the owner's picks, 2026-09-28; sim-core scorersAndSize). The boards show what the two
-   rules read: a "20+" chip on every 20-point scorer (boardTagsHtml) and the listed height by the position (heightTag).
-   Pro shows neither: it is played from memory, the owner's rule for its tags, and the rules still count the same. */
+/* v63 ONE BALL and SIZE BY UNIT (the owner, 2026-09-28; sim-core oneBall, sizeUnits). The boards show what the two rules
+   read: usage in Classic's stat line (the tray adds it up on the ball meter, trayBallHtml) and the listed height by the
+   position, which turns red when that pick would be the second small man in his unit (like a second TITLE #1). Pro
+   shows none of it, from memory (the owner's rule for its tags); the rules still count. v62's "20+" chip went with the
+   20-point rule (the owner: an 82-0 five is four apex scorers, so the rule has to price bad fit, not greatness). */
 function htText(inches) {
   if (!(inches > 0)) return "";
   var ft = Math.floor(inches / 12), inch = Math.round((inches - ft * 12) * 10) / 10;
   if (inch >= 12) { ft++; inch -= 12; }
   return ft + "'" + (inch % 1 ? inch.toFixed(1) : String(inch)) + '"';
 }
-// sd: the Do-Over's board, which always shows both and scores with the default rules (its verdict plays fresh
+// sd: the Do-Over's board, which always shows the heights and scores with the default rules (its verdict plays fresh
 // Classic states), whatever mode or board ran last
-function fitRules(rows, sd) { return typeof T82 !== "undefined" && T82.scorersAndSize ? T82.scorersAndSize(sd ? null : G, rows || []) : null; }
-function heightTag(row, sd) { return (!sd && (MODE === "pro" || MODE === "kaman")) || !row || !(row[IDX.ht] > 0) ? "" : " \u00B7 " + htText(row[IDX.ht]); }
-function scorerChipHtml(row, sd) {
-  if (!row || (!sd && (MODE === "pro" || MODE === "kaman"))) return "";
-  var f = fitRules([row], sd);
-  if (!f || !f.per || !f.scorers.length) return "";   // a board that turns one ball off shows no chip
-  var abbr = f.ppgBar + "+", full = f.ppgBar + "-point scorer";
-  return '<button type="button" class="tchip t-chip eng is-scorer" data-size="sm" tabindex="-1" data-full="' + full + '" data-abbr="' + abbr + '"' +
-    ' aria-pressed="false" aria-label="' + full + ', from the box score. Tap for full label." title="' + full + '">' + abbr + "</button>";
+function ballRule(rows, sd) { return typeof T82 !== "undefined" && T82.oneBall ? T82.oneBall(sd ? null : G, rows || []) : null; }
+function sizeRule(rows, slots, sd) { return typeof T82 !== "undefined" && T82.sizeUnits ? T82.sizeUnits(sd ? null : G, rows || [], slots || []) : null; }
+// Would drafting this row cost a size tax? Only when every open slot he can legally take makes him the second small guard
+// or the second small big; one slot that costs nothing and there is no warning. Returns { amt, g } or null.
+function sizeWarn(row) {
+  if (!G || G.screen !== "draft" || !G.picks || !G.picks.length || !row || !(row[IDX.ht] > 0)) return null;
+  var rows = G.picks.map(function (p) { return p.row; }), slots = G.picks.map(function (p) { return p.slot; });
+  var now = sizeRule(rows, slots);
+  if (!now) return null;
+  var opts = rowOpenBuckets(row).filter(function (b) { return bucketLegal(row, b); }), worst = null;
+  for (var i = 0; i < opts.length; i++) {
+    var after = sizeRule(rows.concat([row]), slots.concat([opts[i]])), add = after.tax - now.tax;
+    if (!(add > 0)) return null;
+    if (!worst || add < worst.amt) worst = { amt: add, g: after.gTax > now.gTax };
+  }
+  return worst;
+}
+function heightTag(row, sd) {
+  if ((!sd && (MODE === "pro" || MODE === "kaman")) || !row || !(row[IDX.ht] > 0)) return "";
+  var w = sd ? null : sizeWarn(row);
+  if (!w) return " \u00B7 " + htText(row[IDX.ht]);
+  var why = (w.g ? "a second small guard costs " : "a second small big costs ") + fmt1(w.amt).replace(/\.0$/, "");
+  return ' \u00B7 <span class="pr-ht is-small" title="' + why + '">' + htText(row[IDX.ht]) + '<span class="sr-only">, ' + why + "</span></span>";
 }
 
 /* ---------- rendering: shared ---------- */
@@ -1801,11 +1817,11 @@ var RULES_DAILY_CAP = "One shared board per day. Everyone gets the same teams, t
 var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
-  ["ONE BALL", "Three 20-point scorers can share one ball. The fourth and the fifth cost 3 net each, and team usage above 110 costs a little on top."],
+  ["ONE BALL", "Add up your five's usage (the share of plays each one finishes). A title team uses about 105, and 120 is free. Every point past 120 costs 0.3 net: four stars and a glue guy pay a little, five ball-dominant alphas pay a lot."],
   ["REPUTATIONS", "Two TITLE #1 stars cost 2 (the Dueling Banjos Tax), and so do two players who hold the ball or two defenders teams hunt. Two foul merchants cost 1, and every stat padder costs 1. Only settled tags count."],
   ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. And someone up front, a forward or your center, has to protect the rim, or that is 2 more."],
   ["THE DIRTY WORK", "Your five still have to rebound and somebody has to pass. A bottom-of-the-league board rate costs 2 to 3, no real playmaker costs 2, and more than one player past his 12th season costs 1."],
-  ["SIZE", "Your five have to average 6'6\" or taller, or that is 3 net."],
+  ["SIZE", "One small man can hide; two in the same unit get found. Two guards 6'2\" or shorter cost 2, and so do two frontcourt players 6'6\" or shorter."],
   ["THE MATH", "Net 0 is a 41-41 team, and one point of net is worth 2 to 3 wins in the middle. The 96 Bulls grade about +13. An 82-0 five needs about +27."]
 ];
 // Campaign "howto": this surface reports separately from the info pages.
@@ -1930,10 +1946,27 @@ var RULES_HOME_MODES = [
   ["PRESTI", "A $50M salary cap. Every player has a price."],
   ["THE DAILY", "One board a day for everyone. Your first run counts."]
 ];
+// v63 (the owner: move "Draft what wins" off the home into HOW TO PLAY, with "what the game is, but also that we're
+// different because we actually do real team fit using advanced stats and player attribute labels which you can vote
+// on ... very tersely"): the slogan in the home's old halftone type, one line of what it is, two stamped claims.
+var HOWTO_PITCH = {
+  what: "Five NBA seasons from any era. One 82-game season. Can they go 82\u20130?",
+  claims: [["REAL FIT", "Advanced stats grade how your five play together, not how famous they are."],
+    ["YOUR VOTES COUNT", "Player tags like ISO-D and CLUTCH change the score. Vote on them after every draft."]]
+};
+function howToPitchHtml() {
+  return '<div class="rs-pitch">' +
+    '<p class="rs-slogan" aria-hidden="true"><span class="rs-slogan-dots">Draft what wins</span><span class="rs-slogan-ink">Draft what wins</span></p>' +
+    '<p class="sr-only">Draft what wins.</p>' +
+    '<p class="rs-what">' + HOWTO_PITCH.what + "</p>" +
+    '<ul class="rs-claims">' + HOWTO_PITCH.claims.map(function (c, i) {
+      return '<li class="rs-claim' + (i ? " is-cyan" : "") + '"><b>' + c[0] + "</b><span>" + c[1] + "</span></li>";
+    }).join("") + "</ul></div>";
+}
 function rulesHomeHtml() {
   return '<div class="rs-head">' + head("sheet", "How to play", { cls: "rs-title" }) +
     '<button class="rs-close" id="rulesClose" type="button" aria-label="Close how to play">\u2715</button></div>' +
-    '<div class="rs-scroll">' + howToDemoHtml() + '<div class="sr-only">' + howToStepsHtml() + "</div>" +
+    '<div class="rs-scroll">' + howToPitchHtml() + howToDemoHtml() + '<div class="sr-only">' + howToStepsHtml() + "</div>" +
       head("rules", "Game basics", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list">' +
       RULES_BASICS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>" +
       head("rules", "The modes", { tag: "h3", cls: "rs-eyebrow" }) + '<ul class="rs-list rs-engine">' +
@@ -2064,13 +2097,11 @@ function buildTraitLegendInto(panel, scope) {
     var abbr = chips[i].getAttribute("data-abbr") || traitCardAbbr(full);
     var isEng = chips[i].classList.contains("eng");
     var tone = chips[i].getAttribute("data-tone");
-    var scorer = chips[i].classList.contains("is-scorer");   // v62: the one-ball chip is the box score, not shooting math
-    var def = (BALLOT_BY_NAME[full] && BALLOT_BY_NAME[full].d) ||
-      (scorer ? "Averaged " + abbr.replace("+", "") + " points or more that season. Three can share one ball; a fourth and a fifth cost 3 net each." : "");   // v53: the definitions are back
+    var def = BALLOT_BY_NAME[full] && BALLOT_BY_NAME[full].d;   // v53: the definitions are back
     var line = '<div class="trait-legend-row"><span class="t-chip" data-size="sm"' + (tone ? ' data-tone="' + esc(tone) + '"' : "") + ">" +
-      esc(abbr) + '</span><span class="tl-txt"><b>' + esc(full) + (scorer ? " \u00B7 box score" : isEng ? " \u00B7 engine" : "") + "</b>" +
+      esc(abbr) + '</span><span class="tl-txt"><b>' + esc(full) + (isEng ? " \u00B7 engine" : "") + "</b>" +
       (def ? "<small>" + esc(def) + "</small>" : "") + "</span></div>";
-    if (isEng) { engRows.push(line); if (!scorer) eng.push(abbr); } else rows.push(line);
+    if (isEng) { engRows.push(line); eng.push(abbr); } else rows.push(line);
   }
   // the engine note names only the engine codes this legend actually lists (v51)
   eng.sort();   // "3PT" before "GRAVITY"
@@ -2079,11 +2110,12 @@ function buildTraitLegendInto(panel, scope) {
     : " " + eng.join(" and ") + " are the engine\u2019s own shooting math, not votes.";
   // v61: on a draft board the tags are what the Scoring Card reads, so the note says how
   var board = scope.id === "pool" || !!scope.querySelector(".board-tags");
-  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each); for pairs: two knuckleheads 2, two TITLE #1s 2 (the Dueling Banjos Tax), two who hold the ball (BALL-STOP or BALL-POUND) 2, two HUNTED 2, two FOUL-MERCH 1; and 1 for every STAT-PAD. Red tags count only when settled." +
-    (scope.querySelector(".tchip.is-maybe") ? " A tag with a ? is unsettled: it still fills its role." : "");
-  // v62: the height by each position is what the size rule reads (Pro shows no heights)
-  var fr = board && MODE !== "pro" ? fitRules([]) : null;
-  if (fr && fr.shortAmt > 0) tagNote += " The height by each position counts too: a five that averages under " + htText(fr.shortHt) + " costs " + fr.shortAmt + " net.";
+  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each); for pairs: two knuckleheads 2, two TITLE #1s 2 (the Dueling Banjos Tax), two who hold the ball (BALL-STOP or BALL-POUND) 2, two HUNTED 2, two FOUL-MERCH 1; and 1 for every STAT-PAD.";
+  // v63: the height by each position is what the size rule reads, and usg (Classic's stat line) is the one ball (Pro shows neither)
+  var sz = board && MODE !== "pro" ? sizeRule([], []) : null, bl = board && MODE === "classic" ? ballRule([]) : null;
+  if (sz && (sz.gAmt > 0 || sz.fcAmt > 0)) tagNote += " Heights count by unit: two guards " + htText(sz.gBar) + " or shorter cost " + fmt1(sz.gAmt).replace(/\.0$/, "") +
+    ", and so do two frontcourt players " + htText(sz.fcBar) + " or shorter. A red height is the second one.";
+  if (bl && bl.rate > 0) tagNote += " The usg numbers share one ball: your five get " + Math.round(bl.budget) + " free, then each point costs " + fmt1(bl.rate).replace(/\.0$/, "") + ".";
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
     '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
     '<div class="trait-legend-note">Community votes confirm or overturn these labels.' + engNote + tagNote + "</div>";
@@ -2675,7 +2707,6 @@ var BALLOT_GROUPS = [["Offense", "off"], ["Defense", "def"], ["Reputation", "rep
 var BALLOT_BY_NAME = {};
 BALLOT_TRAITS.forEach(function (T) { BALLOT_BY_NAME[T.name] = T; TRAIT_CARD_ABBR[T.name] = T.chip; });   // the one source of trait codes
 var BALLOT_ENG = { "3PT": "Three-Point Shooter", "GRAVITY": "Super Three-Point Shooter" };
-var BALLOT_HINT_KEY = "tb-hint";
 var BALLOT = { cards: [], rules: null, queue: [], busy: false, lastPost: 0, cur: null, toastT: 0, wired: false };
 
 function ballotSid() {
@@ -2702,7 +2733,9 @@ function ballotNewCard(entry) {
 }
 // Pure: the tags a card shows, in order. state "on" = the site's yes,
 // "off" = you overturned it (hollow, stays so the dispute reads), "q" =
-// unsettled. Settled first, then "?", in trait order; "+" is appended by
+// unsettled. v63 (the owner: "definitely the positive followed by the
+// negatives"): the good tags, then the bad ones, the board's order too;
+// within each, settled first, then "?", in trait order. "+" is appended by
 // the renderer. Also returns what the "+" picker should offer.
 function ballotTagModel(card) {
   var engName = BALLOT_ENG[card.eng] || "";
@@ -2738,7 +2771,9 @@ function ballotTagModel(card) {
   var offer = BALLOT_TRAITS.filter(function (T) {
     return T.pick && !shown[T.name] && reopen.indexOf(T) === -1 && !(gravityShown && T.id === "three-point-shooter");
   });
-  return { tags: on.concat(q), reopen: reopen, offer: offer };
+  function good(t) { return !t.T.neg; }
+  function bad(t) { return !!t.T.neg; }
+  return { tags: on.filter(good).concat(q.filter(good), on.filter(bad), q.filter(bad)), reopen: reopen, offer: offer };
 }
 function ballotTagHtml(tag) {
   var T = tag.T, cls = "bt-tag t-chip" + (T.neg ? " neg" : "") + (tag.state === "q" ? " q is-q" : "") +
@@ -2811,12 +2846,10 @@ function wireBallot(entries) {
       var cardEl = tag.closest(".bt-card");
       var card = cardEl ? ballotCard(+cardEl.getAttribute("data-pick")) : null;
       if (!card) return;
-      ballotHintStop();
       if (tag.getAttribute("data-add")) ballotOpenPicker(card);
       else ballotOpenAsk(card, tag.getAttribute("data-trait"));
     });
   }
-  ballotArmHint();
   if (!window.fetch || !BALLOT.cards.length) return;
   var qs = BALLOT.cards.map(function (c) { return encodeURIComponent(c.name) + "~" + c.season; }).join(",");
   fetch("/api/traits?op=labels&mine=1&sid=" + ballotSid() + "&players=" + qs, { credentials: "same-origin" })
@@ -3209,129 +3242,34 @@ function ballotShowResult(card, T, resp, d, c) {
 /* ---- the glove ---- */
 // The white glove, one drawing: this hint and the HOW TO PLAY demo both use it.
 var GLOVE_PATH = '<path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" stroke-width="2.4" stroke-linejoin="round"/>';
-// v60 (the owner: the glove tapping a card's "+" "doesn't work ... pretty much never worked if you're scrolling"). It
-// was a fixed-position hand placed from one snapshot of the page, killed for good (and marked seen) by the first
-// touch anywhere, so a thumb that was scrolling ended it before it ever played. Now the hand rides inside a card (it
-// scrolls with it) and plays on whichever card is most on screen once the page has held still for half a second; a
-// scroll only calls it off, and it plays again when the page settles. It retires once you tap a tag or a "+" (you
-// know the trick) or after it has played through three times (once per results screen), and until then the first
-// card's "+" breathes a halftone ring.
-var BALLOT_HINT = null;          // the play under way: { hand, card, timers }
-var BALLOT_HINT_ARM = null;      // this results screen's watcher
-var BALLOT_HINT_PLAYS_KEY = "tb-hint-n", BALLOT_HINT_MAX = 3;
-function ballotHintSeen() { try { return localStorage.getItem(BALLOT_HINT_KEY) === "1"; } catch (e) { return true; } }
-function ballotHintAbort() {
-  if (!BALLOT_HINT) return;
-  var H = BALLOT_HINT; BALLOT_HINT = null;
-  H.timers.forEach(clearTimeout);
-  if (H.hand && H.hand.parentNode) H.hand.parentNode.removeChild(H.hand);
-  if (H.card) H.card.querySelectorAll(".bt-tag.pressed").forEach(function (b) { b.classList.remove("pressed"); });
-}
-function ballotHintDisarm() {
-  var A = BALLOT_HINT_ARM;
-  if (!A) return;
-  BALLOT_HINT_ARM = null;
-  clearInterval(A.poll);
-  if (A.io) A.io.disconnect();
-  window.removeEventListener("scroll", A.onMove);
-  window.removeEventListener("resize", A.onMove);
-  A.cards.forEach(function (c) { c.classList.remove("bt-cue"); });
-}
-// The player has used a tag or a "+": the lesson is learned, for good.
-function ballotHintStop() {
-  var live = !!(BALLOT_HINT || BALLOT_HINT_ARM);
-  ballotHintAbort();
-  ballotHintDisarm();
-  if (live) try { localStorage.setItem(BALLOT_HINT_KEY, "1"); } catch (e) {}
+// v63 THE "+" HINT (the owner, after v60's scroll-proof glove still "just isn't working ... we've tried to fix it
+// numerous times and it keeps breaking, you pick this time"). The animated hand is gone: it depended on timers, scroll
+// stillness, how much of a card showed and a retire-after-three counter, so a returning player (the owner, who taps tags
+// all day) never saw it again. Now the first results card prints the hint in its own markup (ballotHintHtml): the glove,
+// "Tap + to tag him, or any tag to vote", and its "+" breathes the halftone ring (.bt-cue). No state, nothing to miss.
+function ballotHintHtml() {
+  return '<p class="bt-hint"><svg class="bt-glove" viewBox="0 0 48 48" aria-hidden="true">' + GLOVE_PATH + "</svg>" +
+    '<span><b>Know him?</b> Tap <span class="bt-plus-mini" aria-hidden="true">+</span><span class="sr-only">the plus</span> to tag him, or tap any tag to vote.</span></p>';
 }
 function ballotOverlayUp() {
   return !!document.querySelector(".np-overlay, .hh-overlay, .reel-overlay, .rules-overlay, .bt-sheet.on");
 }
-function ballotArmHint() {
-  ballotHintAbort();
-  ballotHintDisarm();
-  if (ballotHintSeen()) return;
-  var cards = Array.prototype.slice.call(document.querySelectorAll(".rr .bt-card"));
-  if (!cards.length) return;
-  var A = BALLOT_HINT_ARM = { cards: cards, vis: [], still: Date.now(), played: false, io: null, poll: 0, onMove: null };
-  cards[0].classList.add("bt-cue");
-  if (window.IntersectionObserver) {
-    A.io = new IntersectionObserver(function (ents) {
-      ents.forEach(function (en) { var k = cards.indexOf(en.target); if (k >= 0) A.vis[k] = en.intersectionRatio; });
-    }, { threshold: [0, 0.25, 0.5, 0.75, 0.9, 1] });
-    cards.forEach(function (c) { A.io.observe(c); });
-  } else cards.forEach(function (c, k) { A.vis[k] = k ? 0 : 1; });
-  A.onMove = function () { A.still = Date.now(); if (BALLOT_HINT) ballotHintAbort(); };
-  window.addEventListener("scroll", A.onMove, { passive: true });
-  window.addEventListener("resize", A.onMove, { passive: true });
-  A.poll = setInterval(function () {
-    if (BALLOT_HINT_ARM !== A) return;
-    if (!document.body.contains(cards[0])) { ballotHintDisarm(); return; }
-    if (A.played || BALLOT_HINT || document.hidden || ballotOverlayUp()) return;
-    if (Date.now() - A.still < 550) return;
-    var best = -1, bv = 0.6;                          // the card most on screen, at least 60% of it
-    A.vis.forEach(function (v, k) { if (v > bv + 1e-6) { bv = v; best = k; } });
-    if (best >= 0) ballotHintPlay(A, cards[best]);
-  }, 200);
-}
-function ballotHintPlay(A, cardEl) {
-  if (BALLOT_HINT || ballotHintSeen()) return;
-  // the tags can re-render under the hand (the labels land), so each step finds its chip afresh
-  function tagEl() { return cardEl.querySelector(".bt-tag:not(.q):not(.add)") || cardEl.querySelector(".bt-tag:not(.add)"); }
-  function plusEl() { return cardEl.querySelector(".bt-tag.add"); }
-  var tag = tagEl(), plus = plusEl();
-  if (!plus) return;
-  var reduce = reducedMotion();
-  var hand = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  hand.setAttribute("viewBox", "0 0 48 48"); hand.setAttribute("aria-hidden", "true");
-  hand.setAttribute("class", "bt-hand");
-  hand.innerHTML = GLOVE_PATH;
-  cardEl.appendChild(hand);
-  var H = BALLOT_HINT = { hand: hand, card: cardEl, timers: [] };
-  function later(fn, ms) { H.timers.push(setTimeout(function () { if (BALLOT_HINT === H) fn(); }, ms)); }
-  function at(node) {                                   // in the card's own box, so the hand scrolls with it
-    var cb = cardEl.getBoundingClientRect(), r = node.getBoundingClientRect();
-    hand.style.left = (r.left - cb.left + r.width * 0.55) + "px"; hand.style.top = (r.top - cb.top + r.height * 0.45) + "px";
-  }
-  function tapAt(find, t, ink) {
-    var node = null;
-    later(function () {
-      node = find();
-      if (!node) return;
-      at(node);
-      hand.classList.add("tap"); node.classList.add("pressed");
-      if (ink && !reduce) inkPrint(cardEl, node, "");   // the "+" answers the glove with a small print
-    }, t);
-    later(function () { hand.classList.remove("tap"); if (node) node.classList.remove("pressed"); }, t + 200);
-  }
-  var t0 = 30;
-  later(function () {
-    var first = tagEl() || plusEl();
-    hand.style.transition = "none"; if (first) at(first);
-    if (!reduce) { hand.style.transform = "translate(40px,50px)"; void hand.getBoundingClientRect(); }
-    hand.style.transition = ""; hand.style.transform = ""; hand.classList.add("show");
-  }, t0);
-  var t = 1000;
-  if (tag) { tapAt(tagEl, t); t += 1150; later(function () { var p = plusEl(); if (p) at(p); }, t - 450); }
-  tapAt(plusEl, t, true); tapAt(plusEl, t + 520, false);
-  later(function () { hand.classList.remove("show"); }, t + 1050);
-  later(function () {
-    ballotHintAbort();
-    A.played = true;
-    var n = 0;
-    try { n = (+localStorage.getItem(BALLOT_HINT_PLAYS_KEY) || 0) + 1; localStorage.setItem(BALLOT_HINT_PLAYS_KEY, String(n)); } catch (e) {}
-    if (n >= BALLOT_HINT_MAX) { ballotHintDisarm(); try { localStorage.setItem(BALLOT_HINT_KEY, "1"); } catch (e) {} }
-  }, t + 1400);
-}
 
 /* ---------- v61: the tags on every draft board ----------
    Every mode's board (Classic, Presti, the Daily, the Do-Over) shows the tags the scoring reads, from the same
-   frozen copy: the roles a lineup must fill (a "?" one shows its "?", because it counts as filling the role) and a
-   settled knucklehead (only a settled one counts). Flat read-only chips; the (i) legend spells them out. Pro is the
-   exception (the owner, 2026-09-27: "in pro you don't see the tags til the results screen but they still count the
-   same"): Pro is played from memory, so its board and tray show none, and the Scoring Card still charges them. */
-var BOARD_TAGS = ["off-court-knucklehead", "stat-padder", "hunted", "ball-stopper", "ball-pounder", "foul-merchant", "championship-number-one",
-  "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];   // v62.2: the scouted negatives, settled only
+   frozen copy: the roles a lineup must fill and the settled reputations. Flat read-only chips; the (i) legend spells
+   them out. Pro is the exception (the owner, 2026-09-27: "in pro you don't see the tags til the results screen but
+   they still count the same"): Pro is played from memory, so its board and tray show none, and the Scoring Card still
+   charges them.
+   v63 (the owner: "there needs to be some order for the badges on the draft and results screen. definitely the
+   positive followed by the negatives"): the board reads the results cards' order, BALLOT_TRAITS, positives first. And
+   a "?" role tag shows like any other: it fills its role exactly like a settled one (it has to: settled tags are thin,
+   so a settled-only rule would charge 20 of 32 real title teams for a missing role), so on the board the "?" said
+   nothing a drafter could use. The results cards keep their "?", where it means "vote on this". */
+var BOARD_TAG_IDS = { "rim-pressurer": 1, "tough-shot-maker": 1, "playmaker": 1, "iso-defender": 1, "team-defender": 1, "rim-protector": 1,
+  "clutch": 1, "championship-number-one": 1, "hunted": 1, "ball-stopper": 1, "ball-pounder": 1, "foul-merchant": 1, "stat-padder": 1,
+  "off-court-knucklehead": 1 };
+var BOARD_TAGS = BALLOT_TRAITS.filter(function (T) { return BOARD_TAG_IDS[T.id]; }).map(function (T) { return T.id; });
 // v62.1 THE DUELING BANJOS TAX (sim-core labelTaxes): two settled TITLE #1s cost 2, so a TITLE #1 shows settled only (like
 // a knucklehead), and once your five has one, every other TITLE #1 on the board turns red: that pick would pay it
 var BANJO_ID = "championship-number-one";
@@ -3347,16 +3285,15 @@ function fiveHasTitle1(row) {
 }
 function boardTagsHtml(row, sd) {
   var o = row && typeof T82 !== "undefined" && T82.labelsOf ? T82.labelsOf(row[IDX.name], row[IDX.season]) : null;
-  var h = scorerChipHtml(row, sd);   // v62: the one-ball chip leads the row's chips
-  if (!o) return h ? '<span class="tchips tchips-inline board-tags">' + h + "</span>" : "";
-  var banjo = !sd && G && G.screen === "draft" && o[BANJO_ID] === "y" && fiveHasTitle1(row);
+  if (!o) return "";
+  var banjo = !sd && G && G.screen === "draft" && o[BANJO_ID] === "y" && fiveHasTitle1(row), h = "";
   BOARD_TAGS.forEach(function (id) {
     var v = o[id], T = ballotTrait(id);
-    if (!v || !T || ((T.neg || id === BANJO_ID) && v !== "y")) return;
-    var maybe = v !== "y", bad = T.neg || (id === BANJO_ID && banjo), nm = T.name + (maybe ? ", unsettled" : "") + (id === BANJO_ID && banjo ? ", a second one costs 2" : "");
-    h += '<button type="button" class="tchip t-chip' + (maybe ? " is-maybe" : "") + '" data-size="sm"' + (bad ? ' data-tone="bad"' : "") +
+    if (!v || !T || ((T.neg || id === BANJO_ID) && v !== "y")) return;   // a reputation counts settled only, so it shows settled only
+    var bad = T.neg || (id === BANJO_ID && banjo), nm = T.name + (id === BANJO_ID && banjo ? ", a second one costs 2" : "");
+    h += '<button type="button" class="tchip t-chip" data-size="sm"' + (bad ? ' data-tone="bad"' : "") +
       ' tabindex="-1" data-full="' + esc(T.name) + '" data-abbr="' + esc(T.chip) + '"' +
-      ' aria-label="' + esc(nm) + '" aria-pressed="false" title="' + esc(nm) + '">' + esc(T.chip) + (maybe ? "?" : "") + "</button>";
+      ' aria-label="' + esc(nm) + '" aria-pressed="false" title="' + esc(nm) + '">' + esc(T.chip) + "</button>";
   });
   return h ? '<span class="tchips tchips-inline board-tags">' + h + "</span>" : "";
 }
@@ -3416,6 +3353,7 @@ function wireDonate() {
   });
 }
 
+var KAMAN_TAPS = [];
 function renderIntro() {
   G = null;
   ANALYTICS_HOME_N += 1;
@@ -3474,9 +3412,9 @@ function renderIntro() {
   app().innerHTML =
     '<section class="hm" id="home">' +
       '<header class="hm-mast">' +
-        // "Draft what wins." replaces the old heading and paragraph; nothing sits above it. Five taps on
-        // it still bring Kaman back (the egg rides the id).
-        '<h1 class="hm-tag" id="introTitle"><span class="hm-tag-dots" aria-hidden="true">Draft what wins</span><span class="hm-tag-ink">Draft what wins</span></h1>' +
+        // v63 (the owner: the tagline "takes away from the pretty logo"): "Draft what wins" moved into HOW TO PLAY, so
+        // the logo leads the home screen; the heading stays for screen readers. Kaman's egg moved to the logo.
+        '<h1 class="sr-only" id="introTitle">TRUE 82: draft what wins</h1>' +
         '<button class="hm-howto tm-flat" id="homeRulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: a short demo and the basics">' +
           '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
             '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>' +
@@ -3679,14 +3617,19 @@ function renderIntro() {
     }
   }
 
-  // kaman left the menu — five quick taps on the title bring Him back
-  var kTaps = [], title = el("introTitle");
-  if (title) title.addEventListener("click", function () {
-    var now = Date.now();
-    kTaps = kTaps.filter(function (t) { return now - t < 2500; });
-    kTaps.push(now);
-    if (kTaps.length >= 5) { kTaps = []; analyticsTrack("feature_select", { surface: "home", action: "kaman_egg", mode: "kaman" }); start("kaman"); }
-  });
+  // kaman left the menu — five quick taps on the logo bring Him back (v63: the tagline that carried the egg is gone
+  // from the home; the logo lives outside #app, so it is wired once and only listens on the home screen)
+  var logo = document.querySelector(".site-head .brand-logo");
+  if (logo && !logo.__kaman) {
+    logo.__kaman = 1;
+    logo.addEventListener("click", function () {
+      if (G || !el("home")) return;
+      var now = Date.now();
+      KAMAN_TAPS = KAMAN_TAPS.filter(function (t) { return now - t < 2500; });
+      KAMAN_TAPS.push(now);
+      if (KAMAN_TAPS.length >= 5) { KAMAN_TAPS = []; analyticsTrack("feature_select", { surface: "home", action: "kaman_egg", mode: "kaman" }); start("kaman"); }
+    });
+  }
 
   // daily strip — the server mints today's seed; anonymous can play, sign-in makes it count
   if (window.T82ACC) T82ACC.fetchDaily().then(function (d) {
@@ -3835,37 +3778,39 @@ function lineupRailHtml() {
 }
 
 function trayHtml() {
-  return lineupRailHtml() + trayFitHtml() + trayRolesHtml();
+  return lineupRailHtml() + trayBallHtml() + trayRolesHtml();
 }
-// v62: the tray speaks up when one of the two rules is about to bite (the engine's own reading, sim-core
-// scorersAndSize): at the third 20-point scorer (the last free one) and past it, and, with two picks or one left, when
-// the five is heading under 6'6" (what the last picks must average to dodge it). Each on its own line, so the tray
-// stays short at 320px. Pro plays from memory, so it shows nothing (the Scoring Card still charges both).
-function trayFitHtml() {
-  if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || !G.picks.length || G.picks.length >= CFG.ROUNDS) return "";
-  var f = fitRules(G.picks.map(function (p) { return p.row; }));
-  if (!f) return "";
-  var bits = [], n = f.scorers.length, left = CFG.ROUNDS - G.picks.length;
-  if (f.per > 0 && n >= f.free) {
-    bits.push(n > f.free ? f.ppgBar + "+ scorers: " + n + ", <b>\u2212" + fmt1(f.per * (n - f.free)).replace(/\.0$/, "") + "</b>"
-      : f.ppgBar + "+ scorers: " + n + " of " + f.free + " free, a " + (["1st", "2nd", "3rd", "4th", "5th"][f.free] || "next") + " costs " + f.per);
-  }
-  if (f.shortAmt > 0 && f.htKnown === G.picks.length && left <= 2 && f.htAvg < f.shortHt) {
-    var need = Math.ceil((f.shortHt * CFG.ROUNDS - f.htSum) / left * 10) / 10;
-    bits.push("Height " + htText(f.htAvg) + " avg, " + (need > 91 ? "<b>too short \u2212" + f.shortAmt + "</b>"
-      : "<b>the last " + (left === 1 ? "pick needs " + htText(Math.ceil(need)) : left + " need " + htText(need) + " avg") + "</b>"));
-  }
-  // v62.1/v62.2: every combination tax on the tags, once it fires (the Banjos, the knuckleheads, the Simmons pairs, the
-  // stat padders); a TITLE #1 turns red on the board first, and the negative tags are red already
-  var lt = T82.labelTaxes && T82.labelsReady && T82.labelsReady() ? T82.labelTaxes(G, G.picks.map(function (p) { return p.row; })) : null;
-  var combo = lt ? lt.rows.filter(function (r) { return r.amt > 0 && LBL_COMBO_IDS[r.id]; }) : [];
-  if (combo.length) bits.push("Tag taxes: " + combo.map(function (r) { return "<b>" + esc(LBL_COPY[r.id][0].replace(/ Tax$/, "")) + "</b> \u2212" + (r.amt % 1 ? fmt1(r.amt) : r.amt); }).join(" \u00B7 "));
-  return bits.length ? '<div class="tray-roles tray-fit">' + bits.map(function (b) { return "<span>" + b + "</span>"; }).join("") + "</div>" : "";
+/* v63 THE BALL METER (the owner's item 3: "debating whether or not you need to put all the team aggregate taxes on the
+   classic draft screen"). No: each card already shows its ingredients (usage, height, tags), and a pick that would cost
+   a pair or size tax turns red on the board before you take it. The tray keeps only the running totals no card can
+   show: the ball (this meter) and the roles still missing (trayRolesHtml); the Scoring Card keeps the whole bill. The
+   meter fills as you draft, the budget is the notch, anything past it is red, and a selected player previews where he
+   takes it. Classic-style boards only: Presti and Pro draft the stats from memory, and the Scoring Card charges it. */
+function trayBallHtml() {
+  if (!G || G.screen !== "draft" || MODE !== "classic" || !G.picks || G.picks.length >= CFG.ROUNDS) return "";
+  var rows = G.picks.map(function (p) { return p.row; }), b = ballRule(rows);
+  if (!b || !(b.rate > 0)) return "";                     // a board with the usage tax off shows no meter
+  var sel = G.selected ? resolveRow(G.selected) : null;
+  var nb = sel && !pickBlock(sel) ? ballRule(rows.concat([sel])) : null;
+  if (!rows.length && !nb) return "";                     // an empty meter says nothing until the first player is in hand
+  var top = Math.max(b.budget * 1.5, (nb || b).sum + 5);   // the track: the free ball, then half as much again
+  function pct(x) { return Math.max(0, Math.min(100, 100 * x / top)).toFixed(1) + "%"; }
+  var now = b.sum, next = nb ? nb.sum : now, over = nb ? nb.over : b.over, tax = nb ? nb.tax : b.tax;
+  var fill = '<i class="tb-fill" style="width:' + pct(Math.min(now, b.budget)) + '"></i>' +
+    (now > b.budget ? '<i class="tb-over" style="left:' + pct(b.budget) + ";width:" + pct(now - b.budget) + '"></i>' : "") +
+    (next > now ? '<i class="tb-next' + (next > b.budget ? " is-over" : "") + '" style="left:' + pct(now) + ";width:" + pct(next - now) + '"></i>' : "") +
+    '<i class="tb-notch" style="left:' + pct(b.budget) + '"></i>';
+  var num = Math.round(now) + (nb ? " \u2192 " + Math.round(next) : "") + '<small> of ' + Math.round(b.budget) + "</small>" +
+    (tax > 0.049 ? ' <b class="tb-tax">\u2212' + fmt1(tax) + "</b>" : "");
+  var say = "The ball: your five use " + Math.round(now) + (nb ? ", " + Math.round(next) + " with " + G.selected : "") + ", of " + Math.round(b.budget) + " free" +
+    (tax > 0.049 ? ", costing " + fmt1(tax) + " net" : "") + ".";
+  return '<div class="tray-ball' + (over > 0 ? " is-over" : "") + '" role="img" aria-label="' + esc(say) + '">' +
+    '<span class="tb-lab">The ball</span><span class="tb-track" aria-hidden="true">' + fill + "</span>" +
+    '<span class="tb-num" aria-hidden="true">' + num + "</span></div>";
 }
 // v61: once two picks are left, the tray names the roles nobody on your five fills yet, with what each would cost
 // (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
 var LBL_ROLE_IDS = { iso: 1, clutch: 1, teamd: 1, rimplus: 1, tshot: 1 };
-var LBL_COMBO_IDS = { knuck: 1, banjo: 1, stick: 1, hunted: 1, foul: 1, statpad: 1 };
 function trayRolesHtml() {
   if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
   if (!window.T82 || !T82.labelTaxes || !T82.labelsReady()) return "";
@@ -4339,18 +4284,27 @@ var LBL_COPY = {
   cut: ["Somebody passes to the cutters", ""]
 };
 var LBL_NUM = ["", "One", "Two", "Three", "Four", "Five"];
-// v62: one ball and too short on the Scoring Card (the owner's picks). The scorers are named, like the knuckleheads.
-function fitLedgerHtml(e) {
-  if (!e || !e.fit) return "";
-  var f = e.fit, rows = G.picks.map(function (p) { return p.row; }), h = "";
-  var names = (e.scorers || []).map(function (i) { return rows[i] ? shareSurname(rows[i][IDX.name]) : ""; }).filter(Boolean).join(", ");
-  var n = (e.scorers || []).length, extra = n - f.free;
-  if (e.oneBallTax > 0) h += ledgerRow("One ball", (LBL_NUM[n] || n) + " " + f.ppgBar + "-point scorers (" + esc(names) + "). " + (LBL_NUM[f.free] || f.free) +
-    " can share one ball; " + (extra === 1 ? "the " + ["", "first", "second", "third", "fourth", "fifth"][n] + " costs " + fmt1(f.per).replace(/\.0$/, "") + ". Somebody has to set a screen."
-      : "every one after that costs " + fmt1(f.per).replace(/\.0$/, "") + ". The ball is never coming back."), e.oneBallTax, true);
-  else if (e.oneBallTax < 0) h += ledgerCreditRow("Scorers bonus", (LBL_NUM[n] || n) + " " + f.ppgBar + "-point scorers (" + esc(names) + "), and today\u2019s board pays for the buckets.", -e.oneBallTax);
-  if (e.shortTax > 0) h += ledgerRow("Too short", "Your five average " + htText(e.htAvg) + ". Under " + htText(f.shortHt) + ", the other team lives on the offensive glass.", e.shortTax, true);
-  else if (e.shortTax < 0) h += ledgerCreditRow("Small-ball bonus", "Your five average " + htText(e.htAvg) + ", and today\u2019s board pays for the speed.", -e.shortTax);
+// v63: one ball and size by unit on the Scoring Card. The biggest ball users are named, like the knuckleheads; the size
+// rows name the small men and their heights. A board that pays through a negative key shows a credit.
+function ballLedgerHtml(e) {
+  var rows = G.picks.map(function (p) { return p.row; }), budget = Math.round(e.usageBudget), rate = e.usageRate;
+  if (!(rate > 0) && !(e.usageTax < 0)) return ledgerRow("One ball", "Off on today\u2019s board: your five use " + Math.round(e.sumUsage) + " of the ball, free.", 0, false);
+  if (e.usageTax < 0) return ledgerCreditRow("One ball", "Your five use " + Math.round(e.sumUsage) + " of the ball, and today\u2019s board pays for it.", -e.usageTax);
+  if (!(e.usageTax > 0)) return ledgerRow("One ball", "Your five use " + Math.round(e.sumUsage) + " of the ball, inside the " + budget + " a five can share.", 0, false);
+  var top = rows.map(function (r, i) { return i; }).sort(function (a, b) { return rows[b][IDX.usage] - rows[a][IDX.usage]; }).slice(0, 3)
+    .map(function (i) { return shareSurname(rows[i][IDX.name]) + " " + Math.round(rows[i][IDX.usage]); }).join(", ");
+  return ledgerRow("One ball", "Your five use " + Math.round(e.sumUsage) + " of the ball (" + esc(top) + "). A five can share " + budget +
+    "; each point past it costs " + fmt1(rate).replace(/\.0$/, "") + ". " + (e.usageOver >= 20 ? "The ball is never coming back." : "Somebody has to set a screen."), e.usageTax, true);
+}
+function sizeLedgerHtml(e) {
+  var z = e && e.size;
+  if (!z) return "";
+  var rows = G.picks.map(function (p) { return p.row; }), h = "";
+  function who(list) { return list.map(function (i) { return rows[i] ? shareSurname(rows[i][IDX.name]) + " " + htText(rows[i][IDX.ht]) : ""; }).filter(Boolean).join(", "); }
+  if (z.gTax > 0) h += ledgerRow("Two small guards", "Both guards " + htText(z.gBar) + " or shorter (" + esc(who(z.smallG)) + "). One small guard can hide; two get posted up and shot over.", z.gTax, true);
+  else if (z.gTax < 0) h += ledgerCreditRow("Small backcourt bonus", "Both guards " + htText(z.gBar) + " or shorter (" + esc(who(z.smallG)) + "), and today\u2019s board pays for the speed.", -z.gTax);
+  if (z.fcTax > 0) h += ledgerRow("Small frontcourt", LBL_NUM[z.smallFC.length] + " frontcourt players " + htText(z.fcBar) + " or shorter (" + esc(who(z.smallFC)) + "). One undersized big is fine; two, and the other team lives on the offensive glass.", z.fcTax, true);
+  else if (z.fcTax < 0) h += ledgerCreditRow("Small-ball bonus", LBL_NUM[z.smallFC.length] + " frontcourt players " + htText(z.fcBar) + " or shorter (" + esc(who(z.smallFC)) + "), and today\u2019s board pays for the speed.", -z.fcTax);
   return h;
 }
 function labelRowsHtml(e) {
@@ -4385,7 +4339,7 @@ function resultsLedgerHtml(e) {
     // number keeps its own .ledger-amt, which test.js reads)
     '<div class="ledger-row ledger-talent"><span>Raw talent<span class="why">Sum of each pick\u2019s value over a replacement-level player.</span></span>' +
       '<span class="ledger-sum"><b class="sigma" aria-hidden="true">\u03A3</b><small>V</small><span class="ledger-amt">' + fmt1(e.sumV) + "</span></span></div>" +
-    ledgerRow("Usage tax", "\u03A3 usage " + fmt1(e.sumUsage) + " vs budget " + Math.round(runCfg("USAGE_BUDGET")) + ". Overlapping shot demand costs efficiency.", e.usageTax, e.usageTax > 0) +
+    ballLedgerHtml(e) +
     (e.spacingBonus > 0
       ? ledgerCreditRow("Spacing bonus", e.sumSp + " shooters. Extra spacing stretches the defense past the requirement.", e.spacingBonus)
       : e.spacingBonus < 0
@@ -4418,7 +4372,7 @@ function resultsLedgerHtml(e) {
       : e.ageTax < 0
         ? ledgerCreditRow("Veteran bonus", e.vetCount + " players in their " + sdOrdinal(vetYr) + " season or later, and today\u2019s board pays for the experience.", -e.ageTax)
         : "") +
-    fitLedgerHtml(e) +
+    sizeLedgerHtml(e) +
     labelRowsHtml(e) +
     '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>" +
     (e.labelsOn && labelsAsOf(e) ? '<p class="ledger-note t-small">Tag rows read the tags as of ' + labelsAsOf(e) + ". Think a tag is wrong? Tap it on the card above and vote.</p>" : "");
@@ -5521,14 +5475,14 @@ function recapTier(w) { for (var i = 0; i < RECAP_TIERS.length; i++) if (w >= RE
 // Scoring Card shows, phrased for a writer instead of a ledger.
 function recapFitNotes(e) {
   var n = [];
-  if (e.usageTax > 0) n.push("shot demand runs over budget: too many high-usage scorers sharing one ball");
+  if (e.usageTax > 0) n.push("more than one ball's worth of stars: their usage adds up to " + Math.round(e.sumUsage) + " against the " + Math.round(e.usageBudget) + " a lineup can share");
   if (e.spacingBonus > 0) n.push("surplus shooting: extra floor-spacers stretch every defense");
   else if (e.spacingTax > 0) n.push("only " + e.sumSp + " of " + runCfg("SPACERS_REQ") + " required floor-spacers: the floor shrinks in the half court");
   else if (e.spacingBonus < 0) n.push(e.sumSp + " shooters on a board that charges for every one past " + runCfg("SPACERS_REQ") + ": the extra spacing cost points");
   if (e.backDefTax > 0) n.push("both starting guards rank bottom-" + e.backDefTier + "% defensively: the perimeter leaks");
   if (e.wingDefTax > 0) n.push("both forwards rank bottom-" + e.wingDefTier + "% defensively: the frontcourt gets attacked");
-  if (e.oneBallTax > 0) n.push((e.scorers && e.scorers.length >= 5 ? "five" : "four") + " 20-point scorers share one ball: somebody has to set the screens");   // v62
-  if (e.shortTax > 0) n.push("an undersized five that averages " + htText(e.htAvg) + ": the other team owns the offensive glass");
+  if (e.smallGTax > 0) n.push("two small guards: they get posted up and shot over all night");   // v63
+  if (e.smallFCTax > 0) n.push("an undersized frontcourt: the other team owns the offensive glass");
   (e.labelRows || []).forEach(function (r) {   // v61: the label taxes and credits
     var line = { iso: "nobody on the roster can guard the other team's best scorer", clutch: "nobody wants the last shot in a close game",
       teamd: "nobody rotates on defense", rimplus: "nobody attacks the rim or gets to the line", tshot: "nobody can make a tough shot when a play breaks down",
@@ -7400,9 +7354,8 @@ function sdReceiptsHtml(e) {
   else if (e.spacingTax > 0) bits.push("spacing -" + fmt1(e.spacingTax));
   var dTax = (e.backDefTax || 0) + (e.wingDefTax || 0) + (e.rimDefTax || 0);
   if (dTax > 0) bits.push("defense -" + fmt1(dTax));
-  if (e.usageTax > 0) bits.push("usage -" + fmt1(e.usageTax));
-  if (e.oneBallTax > 0) bits.push("one ball -" + fmt1(e.oneBallTax));   // v62
-  if (e.shortTax > 0) bits.push("too short -" + fmt1(e.shortTax));
+  if (e.usageTax > 0) bits.push("one ball -" + fmt1(e.usageTax));   // v63: one ball is the usage tax
+  if (e.sizeTax > 0) bits.push("size -" + fmt1(e.sizeTax));
   return '<span class="rd-receipts t-meta">' + bits.join(" \u00B7 ") + "</span>";
 }
 // One team's column on the draft board: the GM, then five slots (G G F F C).
@@ -8678,16 +8631,16 @@ function renderResults(e, keepScroll) {
   // v50 THE TAG BALLOT: each card is a printed slip (name, season, the
   // engine value as the hero number, one box-score line, then the tags).
   // wireBallot fills the tag row; the engine chip and "+" are live at once.
-  var picksHtml = picksInSlotOrder().map(function (entry) {
+  var picksHtml = picksInSlotOrder().map(function (entry, k) {
     var p = entry.p, i = entry.i, row = p.row, name = row[IDX.name];
-    return '<div class="pick-card bt-card t-card" data-pick="' + i + '">' +
+    return '<div class="pick-card bt-card t-card' + (k ? "" : " bt-cue") + '" data-pick="' + i + '">' +
       '<div class="bt-head"><div class="bt-who">' +
         '<div class="pr-name bt-name"><span class="slot-badge">' + p.slot + "</span>" +
           '<a class="pr-bref" data-bb="' + esc(name) + '" data-camp="results_five" href="' + bbrefSearch(name, "results_five") + '" target="_blank" rel="noopener">' + esc(name) + "</a></div>" +
         '<div class="bt-ssn">' + prTeamHtml(row, p.fr) + "</div></div>" +
         '<div class="pr-v bt-val t-num' + (valueOf(row) < 0 ? " is-neg" : "") + '"><b class="sigma" aria-hidden="true">\u03A3</b><small>V</small>' + valueOf(row).toFixed(2) + "</div></div>" +
       '<div class="bt-box">' + ballotBoxHtml(row) + "</div>" +
-      '<div class="bt-tags" data-bt="' + i + '"></div></div>';
+      '<div class="bt-tags" data-bt="' + i + '"></div>' + (k ? "" : ballotHintHtml()) + "</div>";   // v63: the "+" hint, printed on the first card
   }).join("");
 
   var ledger = resultsLedgerHtml(e);
@@ -9240,7 +9193,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v62.2";
+var BUILD_V = "v63";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

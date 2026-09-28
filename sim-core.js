@@ -27,9 +27,11 @@
            CAP_TRAP, TEAM_SKIPS, ERA_SKIPS, and the engine tax/threshold keys
            (v61: the label taxes too: LBL_ISO_TAX, LBL_CLUTCH_TAX, LBL_TEAMD_TAX,
            LBL_RIMPLUS_TAX, LBL_TSHOT_TAX, LBL_KNUCK_TAX_2/_3, LBL_SWITCH_CREDIT,
-           LBL_CUT_CREDIT; 0 turns one off on a board; v62: ONEBALL_PPG,
-           ONEBALL_FREE, ONEBALL_TAX, SHORT_AVG_HT, SHORT_TAX; v62.1: LBL_BANJO_TAX;
-           v62.2: LBL_STICK_TAX, LBL_HUNTED_TAX, LBL_FOUL_TAX, LBL_STATPAD_TAX) }
+           LBL_CUT_CREDIT; 0 turns one off on a board; v62.1: LBL_BANJO_TAX;
+           v62.2: LBL_STICK_TAX, LBL_HUNTED_TAX, LBL_FOUL_TAX, LBL_STATPAD_TAX;
+           v63: USAGE_BUDGET and USAGE_RATE are the one-ball rule (code defaults
+           120 and 0.3), and SMALL_G_HT, SMALL_FC_HT, SMALL_G_TAX, SMALL_FC_TAX
+           size the five by unit; v62's ONEBALL_* and SHORT_* keys are gone) }
    TRUST LAW: NET_SD, BASELINE, REPLACEMENT and the Hot Hand are NOT hookable.
    Challenges shape the draft, never the sim's fairness or the wheel.
 
@@ -625,38 +627,52 @@ function labelTaxes(S, pickRows) {
   return out;
 }
 
-// v62 ONE BALL and TOO SHORT (the owner's picks, 2026-09-28; AGENT-HANDOFF 00000s). Tested on 15,144 real drafts
-// against the starting fives of 32 champions: drafted fives already match champions on size, rebounding, rim
-// protection and passing (the G-G-F-F-C slots see to that), so a "does anyone do X?" rule taxes champions first. What
-// no champion did is start four or five 20-point scorers (61% of Classic drafts do; no champion had more than three).
-//   one ball: three 20-point scorers share the ball free; the fourth and the fifth cost ONEBALL_TAX each
-//   too short: a five whose listed heights average under SHORT_AVG_HT inches (6'6") pays SHORT_TAX
-// Both read the box score and the listed height only, which the boards show (a "20+" chip; the height by the
-// position; Pro from memory). A partial five (the tray) gets the count and the running height, never a short tax.
-function scorersAndSize(S, pickRows) {
-  var out = { scorers: [], htSum: 0, htKnown: 0, htAvg: 0, oneBallTax: 0, shortTax: 0,
-    ppgBar: C(S, "ONEBALL_PPG", 20), free: C(S, "ONEBALL_FREE", 3), per: C(S, "ONEBALL_TAX", 3),
-    shortHt: C(S, "SHORT_AVG_HT", 78), shortAmt: C(S, "SHORT_TAX", 3) };
-  for (var i = 0; i < pickRows.length; i++) {
-    if ((pickRows[i][IDX.ppg] || 0) >= out.ppgBar) out.scorers.push(i);
-    if (pickRows[i][IDX.ht] > 0) { out.htSum += pickRows[i][IDX.ht]; out.htKnown++; }
+// v63 ONE BALL and SIZE BY UNIT (the owner, 2026-09-28; AGENT-HANDOFF 00000v). They replace v62's one ball (a 4th and a
+// 5th 20-point scorer cost 3 each) and too short (a five averaging under 6'6" cost 3). The owner: "20 ppg doesn't make
+// sense ... realistically a 82-0 team would be made of at least 4 players at their absolute apex who score at that
+// rate". A tax has to price bad fit, never greatness; and size is a matchup problem, one unit at a time.
+//   one ball IS the usage tax: every real draft that paid the 20-point charge paid usage too (one sin, charged twice).
+//     Usage is the share of a team's plays a player finishes, so the five on the floor share 100% of it. The starting
+//     fives of 32 title teams sum to 94-119% (a season number runs high: it was measured beside bench players); drafted
+//     Classic fives sum to 137% at the median. A five shares ONE_BALL_BUDGET free and pays ONE_BALL_RATE a point past
+//     it (board keys USAGE_BUDGET and USAGE_RATE; these code defaults replace site_data's 110 and 0.09375, which the
+//     data file keeps). No title team pays; four apex scorers and a glue guy pay a little; five alphas pay a lot.
+//   size by unit: one small man can be hidden, two in the same unit get found. Two G-slot players at SMALL_G_HT (6'2")
+//     or shorter cost SMALL_G_TAX; two or more F/F/C players at SMALL_FC_HT (6'6") or shorter cost SMALL_FC_TAX (one
+//     Draymond at center is fine). A missing height never counts (fail soft). Both work on a partial five: the tray's
+//     meter and the board's red heights read them as the picks come in.
+// Real drafts: Classic realized 82-0 14.5% (v62.2) to 14.2%, best play in the same deals 35.4% to 35.7%; Presti 4.1%.
+var ONE_BALL_BUDGET = 120, ONE_BALL_RATE = 0.3;
+function oneBall(S, pickRows) {
+  var sum = 0;
+  for (var i = 0; i < pickRows.length; i++) sum += pickRows[i][IDX.usage] || 0;
+  var budget = C(S, "USAGE_BUDGET", ONE_BALL_BUDGET), rate = C(S, "USAGE_RATE", ONE_BALL_RATE), over = Math.max(0, sum - budget);
+  return { sum: sum, budget: budget, rate: rate, over: over, tax: rate * over };
+}
+function sizeUnits(S, pickRows, slots) {
+  var out = { gBar: C(S, "SMALL_G_HT", 74), fcBar: C(S, "SMALL_FC_HT", 78), gAmt: C(S, "SMALL_G_TAX", 2), fcAmt: C(S, "SMALL_FC_TAX", 2),
+    smallG: [], smallFC: [], gTax: 0, fcTax: 0, tax: 0 };
+  for (var i = 0; slots && i < pickRows.length; i++) {
+    var h = pickRows[i][IDX.ht] || 0;
+    if (!(h > 0)) continue;
+    if (slots[i] === "G") { if (h <= out.gBar) out.smallG.push(i); }
+    else if (slots[i] === "F" || slots[i] === "C") { if (h <= out.fcBar) out.smallFC.push(i); }
   }
-  out.htAvg = out.htKnown ? out.htSum / out.htKnown : 0;
-  out.oneBallTax = out.per * Math.max(0, out.scorers.length - out.free);
-  if (pickRows.length === CFG.ROUNDS && out.htKnown === pickRows.length && out.htSum < out.shortHt * out.htKnown) out.shortTax = out.shortAmt;
+  if (out.smallG.length >= 2) out.gTax = out.gAmt;
+  if (out.smallFC.length >= 2) out.fcTax = out.fcAmt;
+  out.tax = out.gTax + out.fcTax;
   return out;
 }
 
 function engine(S, pickRows, slots) {
-  var sumV = 0, sumUsage = 0, sumSp = 0, sumObpm = 0, sumDbpm = 0;
+  var sumV = 0, sumSp = 0, sumObpm = 0, sumDbpm = 0;
   pickRows.forEach(function (row) {
     sumV += valueOf(S, row);
-    sumUsage += row[IDX.usage];
     sumSp += row[IDX.sp];
     sumObpm += row[IDX.obpm];
     sumDbpm += row[IDX.dbpm];
   });
-  var usageTax = C(S,"USAGE_RATE") * Math.max(0, sumUsage - C(S,"USAGE_BUDGET"));
+  var ball = oneBall(S, pickRows), sumUsage = ball.sum, usageTax = ball.tax;   // v63: the one-ball rule
   // Floor spacing. Default play reads the explicit SPACING_CURVE table (supports
   // fractional super-shooter counts). A challenge week that overrides any spacing
   // knob falls back to the linear formula so those hooks still bite.
@@ -734,15 +750,16 @@ function engine(S, pickRows, slots) {
   else if (glassSum < C(S, "GLASS_LOW")) glassTax = C(S, "GLASS_TAX_LOW");
   var creatorTax = bestAst < C(S, "CREATOR_PCT") && !(C(S, "CREATOR_TAX") > 0 && lbl.playTag) ? C(S, "CREATOR_TAX") : 0;   // v61: a PLAY tag clears a tax
   var ageTax = vetCount > C(S, "AGE_VET_FREE") ? C(S, "AGE_TAX") : 0;
-  var fit = scorersAndSize(S, pickRows);
+  var size = sizeUnits(S, pickRows, slots);   // v63: two small guards; a small frontcourt
 
-  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax - rimDefTax - glassTax - creatorTax - ageTax - lbl.tax - fit.oneBallTax - fit.shortTax;
+  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax - rimDefTax - glassTax - creatorTax - ageTax - lbl.tax - size.tax;
   var net = score - BASELINE;
   var p = phi(S, net / SC.NET_SD);
   return {
     sumV: sumV, sumUsage: sumUsage, sumSp: sumSp,
     sumObpm: sumObpm, sumDbpm: sumDbpm,
-    usageTax: usageTax, spacingTax: spacingTax, spacingBonus: spacingBonus,
+    usageTax: usageTax, usageBudget: ball.budget, usageRate: ball.rate, usageOver: ball.over,
+    spacingTax: spacingTax, spacingBonus: spacingBonus,
     backDefTax: backDefTax, backDefTier: backDefTier,
     wingDefTax: wingDefTax, wingDefTier: wingDefTier,
     rimDefTax: rimDefTax,
@@ -750,7 +767,7 @@ function engine(S, pickRows, slots) {
     creatorTax: creatorTax, creatorBest: bestAst,
     ageTax: ageTax, vetCount: vetCount,
     labelRows: lbl.rows, labelTax: lbl.tax, labelsOn: lbl.on, labelsBuilt: lbl.built,
-    oneBallTax: fit.oneBallTax, scorers: fit.scorers, shortTax: fit.shortTax, htAvg: fit.htAvg, fit: fit,
+    smallGTax: size.gTax, smallFCTax: size.fcTax, sizeTax: size.tax, size: size,
     score: score, net: net, p: p,
     projW: CFG.GAMES_IN_SEASON * p,
     winTally: Math.min(CFG.GAMES_IN_SEASON, Math.ceil(CFG.GAMES_IN_SEASON * p)),
@@ -1388,7 +1405,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 12,  // v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 13,  // v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
@@ -1419,7 +1436,7 @@ function initDataCore(data) {
     assignProSeasons: assignProSeasons, effCost: effCost, capAffordable: capAffordable, stintMinutes: stintMinutes,
     resolveRow: resolveRow, poolYearsEligible: poolYearsEligible, engine: engine, erf: erf, phi: phi,
     setLabels: setLabels, labelsOf: labelsOf, labelsReady: function () { return !!LABELS; }, foldName: foldName, labelTaxes: labelTaxes,
-    scorersAndSize: scorersAndSize,
+    oneBall: oneBall, sizeUnits: sizeUnits,
     hhNet82: hhNet82, hhPickHot: hhPickHot, hhSpinSeg: hhSpinSeg, hhEligible: hhEligible,
     hhWins: hhWins, swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,
     HH_SEGMENTS: HH_SEGMENTS, HH_BONUS_SCALE: HH_BONUS_SCALE
