@@ -1,16 +1,82 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v62, one ball and too short (section 00000s) on top of v61.1, the label taxes (section 00000r); neither is on main. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
+**Current source of truth:** the GitHub repo. `c-code-clean` = v62.1, the Dueling Banjos Tax and the thin-tag scouting pass (section 00000t), on top of v62, one ball and too short (00000s), and v61.1, the label taxes (00000r); none of it is on main. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
 
 **Date:** 2026-09-28
-**Build:** `v62` on `c-code-clean` (`BUILD_V = "v62"`; styles.css, sim-core.js, challenges.js, daily-core.js and app.js at `20260928-v62`; labels.json via `<meta name="t82-labels" content="20260927-v61">` in index.html; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 10). v60.1 (live): app.js at `20260927-v60-1`.
-**Most recent change:** section 00000s (read it first): v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v62.1` on `c-code-clean` (`BUILD_V = "v62.1"`; sim-core.js, challenges.js and app.js at `20260928-v62-1`; styles.css and daily-core.js at `20260928-v62`; labels.json via `<meta name="t82-labels" content="20260927-v61">` in index.html; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 11). v60.1 (live): app.js at `20260927-v60-1`.
+**Most recent change:** section 00000t (read it first): v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000s. START HERE (2026-09-28, small hours): V62, ONE BALL AND TOO SHORT (c-code-clean, NOT main yet)
+## 00000t. START HERE (2026-09-28, morning): V62.1, THE DUELING BANJOS TAX, AND THE THIN-TAG SCOUTING PASS
+
+**Where things stand.** `main` = v60.1, LIVE. `c-code-clean` = v62.1 (this) on v62 (00000s) on v61.1 (00000r): all
+three go live together at the owner's "push to main". Migration 0029 (the scouting pass) is in the repo and NOT
+applied: it waits for the owner's go, because the results cards on true82.net read the live tags and would show the
+new ones at once.
+
+**The owner's words.** "yes run the scouting pass for those tags"; mid-pass: "make sure to be ultra stingy about champ
+#1 labels - otherwise all this work we're doing to nerf common teams will be undone or even worsened - perhaps not just
+player names but also see if we can cut off early/late career too"; then: "yes make title #1 the alpha clash tax but
+call it the 'Dueling Banjos Tax' (refer to Bill Simmons numerous comments on that over time on Wade and LeBron - not
+'bad' but took a long time to be optimal and figure out how to play together and make each other better instead of
+just taking turns)".
+
+### The Dueling Banjos Tax (sim-core `labelTaxes`, row id `banjo`; engine VERSION 11)
+- Two or more SETTLED TITLE #1s on one five cost `LBL_BANJO_TAX` 2 (a "?" never counts, like the knuckleheads).
+- Why a tax and not the planned +1 credit: 67% of drafted Classic fives already carry a settled TITLE #1 (the desk
+  and the crowd have said yes to 94 player-seasons, about 30 of them stars who did not win that year), so a credit
+  would have lifted Classic 82-0 from 16.4% back to 18.3%, a quarter of what one ball took. As a tax it fires on 27%
+  of drafted Classic fives (5% of Presti) and on none of the 32 champions (no champion has two). Classic realized
+  82-0 on real drafts: 16.4% to 14.9%; Presti 4.3% to 4.2%. (Since v61: Classic 24% to 15%.)
+- Boards: a TITLE #1 chip shows on every board settled only (like KNUCK; Pro shows none); once your five has one,
+  every other TITLE #1 on the board turns red (tone "bad", aria "a second one costs 2"); the tray adds "TITLE #1s: 2,
+  -2 (Dueling Banjos)" once it fires; the roles line lists roles only now (`LBL_ROLE_IDS`). The legend and the rules
+  sheet's ONE BALL line say it; the Scoring Card reads "Dueling Banjos Tax: Two TITLE #1s (C. Drexler, A. Davis).
+  Not bad, just slow: they take turns before they learn to make each other better." (three: "Everybody takes a turn,
+  and nobody makes anybody better."); the Tribune's writer gets it.
+- Off (0) where a board's copy promises stacked alphas: Iso Week, Two-Way Alphas, The Superteam Problem, Tax Holiday.
+  All 200 POOL3 Dailies certify; it moves no board's median bot record more than one win (the bot seldom stacks
+  TITLE #1s). test.js 118 (two new), style law clean; checked in the browser (the red chip on Anthony Davis '15 once
+  Drexler '92 was on the five, the Scoring Card row).
+- Known gap: TITLE #1 coverage is the desk's hand-picked list plus crowd votes, not a rule, so some #1-caliber seasons
+  carry it and equal ones do not (Barkley '93 does, Jordan '88 does not). The owner asked for stingy labels, so the
+  scouting pass added no TITLE #1 at all; if the gap bothers him, the fix is a rule (each champion's #1 plus each MVP)
+  written as desk rulings.
+
+### The scouting pass for the thin tags (migration 0029, NOT applied)
+- Five tags: hunted, ball-stopper, ball-pounder, foul-merchant, stat-padder. TITLE #1 was taken away from the scouts
+  (the owner's stinginess ruling; the desk already names every champion's number one), and the 18 TITLE #1 lines
+  written before that were dropped.
+- Method: every draftable player-season (13,986: a whole season over 785 minutes; 2,442 players) in ten era chunks,
+  each scouted by a parallel model scout from one brief (docs/scout/THIN-TAGS-BRIEF-2026-09-28.md: the definitions,
+  yes/unsure standards, and the desk's earlier rulings as calibration). Yes = the reputation that season is common
+  knowledge; unsure = a real, arguable case; silence otherwise (never from the stat line alone). Merged and validated
+  (0 errors); any player-season-tag that already has a live question (desk or crowd) was left alone (85), so no twins.
+- Result: 464 claims (215 yes, 249 unsure) on 118 players. Yes counts: ball-stopper 109, ball-pounder 31,
+  foul-merchant 34, stat-padder 22, hunted 19 (the thin tags go to 132 / 64 / 48 / 34 / 19 settled once refreshed).
+  The claims are kept at docs/scout/thin-tags-claims-2026-09-28.json.
+- To load: `npx wrangler d1 execute true82 --remote --file=migrations/0029_scout_thin_tags_v1.sql` (notes and the
+  check in migrations/MIGRATIONS-NOTES.md), then `node tools/labels-refresh.js` (or the Monday task) freezes them into
+  labels.json. Nothing in the scoring reads these five tags yet, so the refresh's balance bar passes as is.
+
+### Pricing the Simmons pair taxes (measured on the refreshed tags, simulated; NOT built)
+- Two settled ball-stickers (BALL-STOP or BALL-POUND, a player counted once) -2: fires on 7.8% of Classic drafts,
+  Classic 82-0 14.9% to 14.6%. Two HUNTED -2: 0.2%. Two FOUL-MERCH -1: 1.0%. Two STAT-PAD -1: 0.0%; a STAT-PAD value
+  cut of -1 per player (the owner's own definition says "decrease his value in the game engine") fires on 4.1%. All
+  four pairs together: 8.8% of Classic drafts, 82-0 14.9% to 14.6%. None of the 32 champions pays any of them. They
+  are fences with flavor (like knuckleheads), not the challenge; the challenge is one ball, too short and the banjos.
+- If they are turned on: add the five tags to BOARD_TAGS (settled only, like KNUCK), rows in LBL_COPY, keys in
+  labelTaxes, balance-check with tools/labels-balance.js, re-certify the Dailies.
+
+### Next, in order
+1. The owner's go to load 0029 (one command above), then a tag refresh.
+2. His pick of the pair taxes (my pick: the ball-stickers pair and the hunted pair, both -2; foul-merch -1).
+3. His "push to main" (v61.1, v62 and v62.1 together).
+
+## 00000s. (2026-09-28, small hours): V62, ONE BALL AND TOO SHORT (c-code-clean, NOT main yet)
 
 **Where things stand.** `main` = v60.1, LIVE. `c-code-clean` = v62 on top of v61.1 (the label taxes); both go live
 together when the owner says "push to main" (a fast-forward, as for v60). Branch preview: https://c-code-clean.true82.pages.dev/

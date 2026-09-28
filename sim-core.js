@@ -28,7 +28,7 @@
            (v61: the label taxes too: LBL_ISO_TAX, LBL_CLUTCH_TAX, LBL_TEAMD_TAX,
            LBL_RIMPLUS_TAX, LBL_TSHOT_TAX, LBL_KNUCK_TAX_2/_3, LBL_SWITCH_CREDIT,
            LBL_CUT_CREDIT; 0 turns one off on a board; v62: ONEBALL_PPG,
-           ONEBALL_FREE, ONEBALL_TAX, SHORT_AVG_HT, SHORT_TAX) }
+           ONEBALL_FREE, ONEBALL_TAX, SHORT_AVG_HT, SHORT_TAX; v62.1: LBL_BANJO_TAX) }
    TRUST LAW: NET_SD, BASELINE, REPLACEMENT and the Hot Hand are NOT hookable.
    Challenges shape the draft, never the sim's fairness or the wheel.
 
@@ -591,6 +591,12 @@ function labelTaxes(S, pickRows) {
   });
   var kn = settled("off-court-knucklehead"), knAmt = kn.length >= 3 ? C(S, "LBL_KNUCK_TAX_3", 3) : C(S, "LBL_KNUCK_TAX_2", 2);
   if (kn.length >= 2 && knAmt) out.rows.push({ id: "knuck", amt: knAmt, who: kn });   // v62: a board's 0 turns it off (no "-0.0" row)
+  // v62.1 THE DUELING BANJOS TAX (the owner, 2026-09-28, after Simmons on Wade and LeBron): two settled TITLE #1s on one
+  // five cost LBL_BANJO_TAX. Not bad, just slow: two number ones take turns before they learn to make each other better.
+  // It was going to be a +1 credit, but 67% of drafted Classic fives carry a TITLE #1, so a credit would have handed
+  // back a quarter of what one ball takes; as a tax it hits 27% of them and none of the 32 champions. Settled only.
+  var t1 = settled("championship-number-one"), bjAmt = C(S, "LBL_BANJO_TAX", 2);
+  if (t1.length >= 2 && bjAmt) out.rows.push({ id: "banjo", amt: bjAmt, who: t1 });
   var sw = settled("switchable-defender");
   if (sw.length >= 3 && C(S, "LBL_SWITCH_CREDIT", 1)) out.rows.push({ id: "switch", amt: -C(S, "LBL_SWITCH_CREDIT", 1), who: sw });
   // a playmaker and two off-ball scorers, three different players (the balance run: "a playmaker and one off-ball
@@ -1368,7 +1374,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 10,  // v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 11,  // v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {

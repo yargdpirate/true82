@@ -1801,7 +1801,7 @@ var RULES_DAILY_CAP = "One shared board per day. Everyone gets the same teams, t
 var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
-  ["ONE BALL", "Three 20-point scorers can share one ball. The fourth and the fifth cost 3 net each, and team usage above 110 costs a little on top."],
+  ["ONE BALL", "Three 20-point scorers can share one ball. The fourth and the fifth cost 3 net each, and team usage above 110 costs a little on top. Two TITLE #1 stars cost 2 more: the Dueling Banjos Tax."],
   ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. And someone up front, a forward or your center, has to protect the rim, or that is 2 more."],
   ["THE DIRTY WORK", "Your five still have to rebound and somebody has to pass. A bottom-of-the-league board rate costs 2 to 3, no real playmaker costs 2, and more than one player past his 12th season costs 1."],
   ["SIZE", "Your five have to average 6'6\" or taller, or that is 3 net."],
@@ -2078,7 +2078,7 @@ function buildTraitLegendInto(panel, scope) {
     : " " + eng.join(" and ") + " are the engine\u2019s own shooting math, not votes.";
   // v61: on a draft board the tags are what the Scoring Card reads, so the note says how
   var board = scope.id === "pool" || !!scope.querySelector(".board-tags");
-  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each), and for two knuckleheads." +
+  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each), for two knuckleheads, and for two TITLE #1s (the Dueling Banjos Tax)." +
     (scope.querySelector(".tchip.is-maybe") ? " A tag with a ? is unsettled: it still fills its role." : "");
   // v62: the height by each position is what the size rule reads (Pro shows no heights)
   var fr = board && MODE !== "pro" ? fitRules([]) : null;
@@ -3329,18 +3329,32 @@ function ballotHintPlay(A, cardEl) {
    settled knucklehead (only a settled one counts). Flat read-only chips; the (i) legend spells them out. Pro is the
    exception (the owner, 2026-09-27: "in pro you don't see the tags til the results screen but they still count the
    same"): Pro is played from memory, so its board and tray show none, and the Scoring Card still charges them. */
-var BOARD_TAGS = ["off-court-knucklehead", "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];
+var BOARD_TAGS = ["off-court-knucklehead", "championship-number-one", "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];
+// v62.1 THE DUELING BANJOS TAX (sim-core labelTaxes): two settled TITLE #1s cost 2, so a TITLE #1 shows settled only (like
+// a knucklehead), and once your five has one, every other TITLE #1 on the board turns red: that pick would pay it
+var BANJO_ID = "championship-number-one";
+function fiveHasTitle1(row) {
+  if (!G || !G.picks || !G.picks.length || typeof T82 === "undefined" || !T82.labelsOf) return false;
+  for (var i = 0; i < G.picks.length; i++) {
+    var r = G.picks[i].row;
+    if (!r || (row && r[IDX.name] === row[IDX.name])) continue;
+    var o = T82.labelsOf(r[IDX.name], r[IDX.season]);
+    if (o && o[BANJO_ID] === "y") return true;
+  }
+  return false;
+}
 function boardTagsHtml(row, sd) {
-  var o = row && window.T82 && T82.labelsOf ? T82.labelsOf(row[IDX.name], row[IDX.season]) : null;
+  var o = row && typeof T82 !== "undefined" && T82.labelsOf ? T82.labelsOf(row[IDX.name], row[IDX.season]) : null;
   var h = scorerChipHtml(row, sd);   // v62: the one-ball chip leads the row's chips
   if (!o) return h ? '<span class="tchips tchips-inline board-tags">' + h + "</span>" : "";
+  var banjo = !sd && G && G.screen === "draft" && o[BANJO_ID] === "y" && fiveHasTitle1(row);
   BOARD_TAGS.forEach(function (id) {
     var v = o[id], T = ballotTrait(id);
-    if (!v || !T || (T.neg && v !== "y")) return;
-    var maybe = v !== "y";
-    h += '<button type="button" class="tchip t-chip' + (maybe ? " is-maybe" : "") + '" data-size="sm"' + (T.neg ? ' data-tone="bad"' : "") +
+    if (!v || !T || ((T.neg || id === BANJO_ID) && v !== "y")) return;
+    var maybe = v !== "y", bad = T.neg || (id === BANJO_ID && banjo), nm = T.name + (maybe ? ", unsettled" : "") + (id === BANJO_ID && banjo ? ", a second one costs 2" : "");
+    h += '<button type="button" class="tchip t-chip' + (maybe ? " is-maybe" : "") + '" data-size="sm"' + (bad ? ' data-tone="bad"' : "") +
       ' tabindex="-1" data-full="' + esc(T.name) + '" data-abbr="' + esc(T.chip) + '"' +
-      ' aria-label="' + esc(T.name + (maybe ? ", unsettled" : "")) + '" aria-pressed="false" title="' + esc(T.name) + '">' + esc(T.chip) + (maybe ? "?" : "") + "</button>";
+      ' aria-label="' + esc(nm) + '" aria-pressed="false" title="' + esc(nm) + '">' + esc(T.chip) + (maybe ? "?" : "") + "</button>";
   });
   return h ? '<span class="tchips tchips-inline board-tags">' + h + "</span>" : "";
 }
@@ -3839,15 +3853,20 @@ function trayFitHtml() {
     bits.push("Height " + htText(f.htAvg) + " avg, " + (need > 91 ? "<b>too short \u2212" + f.shortAmt + "</b>"
       : "<b>the last " + (left === 1 ? "pick needs " + htText(Math.ceil(need)) : left + " need " + htText(need) + " avg") + "</b>"));
   }
+  // v62.1: the Dueling Banjos Tax, once a second settled TITLE #1 is on the five (the board has turned him red first)
+  var lt = T82.labelTaxes && T82.labelsReady && T82.labelsReady() ? T82.labelTaxes(G, G.picks.map(function (p) { return p.row; })) : null;
+  var bj = lt ? lt.rows.filter(function (r) { return r.id === "banjo"; })[0] : null;
+  if (bj) bits.push("TITLE #1s: " + bj.who.length + ", <b>\u2212" + bj.amt + "</b> (Dueling Banjos)");
   return bits.length ? '<div class="tray-roles tray-fit">' + bits.map(function (b) { return "<span>" + b + "</span>"; }).join("") + "</div>" : "";
 }
 // v61: once two picks are left, the tray names the roles nobody on your five fills yet, with what each would cost
 // (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
+var LBL_ROLE_IDS = { iso: 1, clutch: 1, teamd: 1, rimplus: 1, tshot: 1 };
 function trayRolesHtml() {
   if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
   if (!window.T82 || !T82.labelTaxes || !T82.labelsReady()) return "";
   var lt = T82.labelTaxes(G, G.picks.map(function (p) { return p.row; }));
-  var open = lt.rows.filter(function (r) { return r.amt > 0 && LBL_COPY[r.id] && r.id !== "knuck"; });
+  var open = lt.rows.filter(function (r) { return r.amt > 0 && LBL_ROLE_IDS[r.id]; });   // roles only (not knuckleheads or banjos)
   if (!open.length) return '<div class="tray-roles is-full">Every role on the tag sheet is filled</div>';
   return '<div class="tray-roles">Still missing: ' + open.map(function (r) {
     return '<b>' + esc(LBL_COPY[r.id][0].replace(/^No /, "")) + "</b> \u2212" + (r.amt % 1 ? fmt1(r.amt) : r.amt);
@@ -4307,6 +4326,7 @@ var LBL_COPY = {
   rimplus: ["No RIM+", "Jumpers all night. Nobody gets to the line."],
   tshot: ["No TSHOT", "When the play breaks down, nobody can bail you out."],
   knuck: ["Knuckleheads", ""],
+  banjo: ["Dueling Banjos Tax", ""],
   "switch": ["Switch everything", ""],
   cut: ["Somebody passes to the cutters", ""]
 };
@@ -4334,6 +4354,8 @@ function labelRowsHtml(e) {
     if (!c) return "";
     if (r.id === "knuck") return ledgerRow(c[0], LBL_NUM[r.who.length] + " knuckleheads (" + esc(who(r.who)) + ")." +
       (r.who.length >= 3 ? " They started hanging out." : " They\u2019ll start hanging out."), r.amt, true);
+    if (r.id === "banjo") return ledgerRow(c[0], LBL_NUM[r.who.length] + " TITLE #1s (" + esc(who(r.who)) + ")." +
+      (r.who.length >= 3 ? " Everybody takes a turn, and nobody makes anybody better." : " Not bad, just slow: they take turns before they learn to make each other better."), r.amt, true);
     if (r.id === "switch") return ledgerCreditRow(c[0], LBL_NUM[r.who.length] + " switchable defenders (" + esc(who(r.who)) + "). Every screen is a wash.", -r.amt);
     if (r.id === "cut") return ledgerCreditRow(c[0], "A playmaker (" + esc(who([r.who[0]])) + ") and two off-ball scorers (" + esc(who(r.who.slice(1))) + "). The cutters finally get the ball.", -r.amt);
     return ledgerRow(c[0], c[1], r.amt, true);
@@ -5499,6 +5521,7 @@ function recapFitNotes(e) {
     var line = { iso: "nobody on the roster can guard the other team's best scorer", clutch: "nobody wants the last shot in a close game",
       teamd: "nobody rotates on defense", rimplus: "nobody attacks the rim or gets to the line", tshot: "nobody can make a tough shot when a play breaks down",
       knuck: r.who && r.who.length >= 3 ? "three off-court knuckleheads share a locker room" : "two off-court knuckleheads share a locker room",
+      banjo: "two title-team number ones taking turns with the ball: dueling banjos",
       "switch": "three switchable defenders: they switch everything", cut: "a playmaker keeps finding two off-ball scorers cutting to the rim" }[r.id];
     if (line) n.push(line);
   });
@@ -9203,7 +9226,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v62";
+var BUILD_V = "v62.1";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

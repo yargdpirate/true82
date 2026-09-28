@@ -101,7 +101,7 @@ const report = {};
   console.log(`  82-0 projections: ${R.perfect[0]} -> ${R.perfect[1]} (${pct(R.perfect[0], R.lineups)} -> ${pct(R.perfect[1], R.lineups)})`);
   console.log(`  records: ${pct(R.same, R.lineups)} unchanged, ${pct(R.up, R.lineups)} up, ${pct(R.lineups - R.same - R.up, R.lineups)} down (${pct(R.down3, R.lineups)} down 3+ wins); range ${R.worst} to +${R.best}`);
   console.log(`  any label tax: ${pct(R.anyTax, R.lineups)}; any credit: ${pct(R.anyCredit, R.lineups)}`);
-  console.log("  fires: " + ["iso", "clutch", "teamd", "rimplus", "tshot", "knuck", "switch", "cut"].map((k) => k + " " + pct(fires[k] || 0, R.lineups)).join(", "));
+  console.log("  fires: " + ["iso", "clutch", "teamd", "rimplus", "tshot", "knuck", "banjo", "switch", "cut"].map((k) => k + " " + pct(fires[k] || 0, R.lineups)).join(", "));
   console.log(`  a tag cleared the stat rim tax on ${pct(rimCleared, R.lineups)} of lineups, the creator tax on ${pct(creatorCleared, R.lineups)}\n`);
 });
 if (process.env.JSON_OUT) fs.writeFileSync(process.env.JSON_OUT, JSON.stringify(report, null, 1));

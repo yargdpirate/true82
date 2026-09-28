@@ -522,7 +522,8 @@ if (fs.existsSync("site_data.json")) {
       creator: run({ CREATOR_TAX: -2 }, { creatorTax: -2 }),
       tightBall: run({ USAGE_BUDGET: 85 }, { sumUsage: 97.4, usageTax: 3.2 }),
       labels: run(null, { labelsOn: true, labelsBuilt: "2026-09-27T12:00:00Z", rimDefTax: 2, creatorTax: 2, labelRows: [{ id: "iso", amt: 2, who: [] },
-        { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] }] }),
+        { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] },
+        { id: "banjo", amt: 2, who: [3, 1] }] }),
       oneBall: run(null, { oneBallTax: 3, scorers: [0, 1, 2, 3], fit: FIT }),
       oneBall5: run(null, { oneBallTax: 6, scorers: [0, 1, 2, 3, 4], fit: FIT }),
       short: run(null, { shortTax: 3, htAvg: 77.6, fit: FIT })
@@ -544,8 +545,9 @@ if (fs.existsSync("site_data.json")) {
   eq("results ledger: the label rows print with their names and their note (v61)",
     [/No ISO-D/.test(L.labels.text), /Two knuckleheads \(D\. Rodman, C\. Barkley\)\. They.ll start hanging out/.test(L.labels.text),
       /Three switchable defenders \(D\. Rodman, R\. Strickland, M\. Price\)/.test(L.labels.text), /A playmaker \(R\. Strickland\) and two off-ball scorers \(C\. Barkley, B\. Daugherty\)/.test(L.labels.text),
-      /nobody is tagged RIM-P/.test(L.labels.text), /nobody is tagged PLAY/.test(L.labels.text), /tags as of Sep 27/.test(L.labels.text), /tagged RIM-P/.test(L.plain.text)],
-    [true, true, true, true, true, true, true, false]);
+      /nobody is tagged RIM-P/.test(L.labels.text), /nobody is tagged PLAY/.test(L.labels.text), /tags as of Sep 27/.test(L.labels.text), /tagged RIM-P/.test(L.plain.text),
+      /Dueling Banjos Tax\s+Two TITLE #1s \(M\. Price, C\. Barkley\)\. Not bad, just slow: they take turns before they learn to make each other better\./.test(L.labels.text)],
+    [true, true, true, true, true, true, true, false, true]);
   eq("results ledger: one ball names the scorers, too short gives the average, and neither row shows when it does not fire (v62)",
     [/Four 20-point scorers \(D\. Rodman, C\. Barkley, R\. Strickland, M\. Price\)\. Three can share one ball; the fourth costs 3\. Somebody has to set a screen/.test(L.oneBall.text),
       /Five 20-point scorers \(.*\)\. Three can share one ball; every one after that costs 3\. The ball is never coming back/.test(L.oneBall5.text),
@@ -630,7 +632,10 @@ if (fs.existsSync("site_data.json")) {
     "passer": { "2000": code({ "playmaker": "y", "off-ball-scorer": "y", "rim-pressurer": "y", "tough-shot-maker": "y" }) },
     "cutter": { "2000": code({ "off-ball-scorer": "y" }) },
     "cutter two": { "2000": code({ "off-ball-scorer": "y" }) },
-    "jose calderon": { "2000": code({ "playmaker": "u" }) } } };
+    "jose calderon": { "2000": code({ "playmaker": "u" }) },
+    "alpha one": { "2000": code({ "championship-number-one": "y", "playmaker": "y" }) },
+    "alpha two": { "2000": code({ "championship-number-one": "y" }) },
+    "alpha maybe": { "2000": code({ "championship-number-one": "u" }) } } };
   const R = vm.runInContext(`(function () {
     T82.setLabels(lblInput);
     function row(n, dbpm) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.bpm_star] = 2; r[IDX.usage] = 20; r[IDX.sp] = 0; r[IDX.dbpm] = dbpm || 0;
@@ -652,7 +657,24 @@ if (fs.existsSync("site_data.json")) {
       rimTag: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"]).rimDefTax,
       fiveOut: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"], { ch: { cfg: { RIM_TOP20: 0.9, RIM_D_TAX: -3 } } }).rimDefTax,
       scoreSum: (function () { var e = eng(["stopper", "maybe", "bigman", "passer", "cutter"]); return Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.oneBallTax - e.shortTax - e.score) < 1e-9 && e.labelRows.length > 0; })(),
-      folded: !!T82.labelsOf("Jos\u00E9 Calder\u00F3n", 2000)
+      folded: !!T82.labelsOf("Jos\u00E9 Calder\u00F3n", 2000),
+      // v62.1 the Dueling Banjos Tax: two settled TITLE #1s cost 2; a "?" never counts; a board's 0 turns it off
+      banjo: [ids(["alpha one", "alpha two"]).filter(function (x) { return /^banjo/.test(x); }), ids(["alpha one", "alpha maybe"]).filter(function (x) { return /^banjo/.test(x); }),
+        ids(["alpha one", "alpha two"], { LBL_BANJO_TAX: 0 }).filter(function (x) { return /^banjo/.test(x); })],
+      banjoBoard: (function () {
+        var keepG = G, keepMode = MODE, o = {};
+        MODE = "classic"; G = { ch: null, screen: "draft", picks: [] };
+        o.plain = /TITLE #1/.test(boardTagsHtml(row("alpha two"))) && !/data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two")));
+        o.maybeHidden = !/TITLE #1/.test(boardTagsHtml(row("alpha maybe")));
+        G.picks = [{ row: row("alpha one") }];
+        o.red = /data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two")));
+        o.selfNotRed = (function () { G.picks = [{ row: row("alpha two") }]; return !/data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two"))); })();
+        G.picks = [{ row: row("alpha one") }, { row: row("alpha two") }];
+        o.tray = trayFitHtml().indexOf("TITLE #1s: 2, <b>−" + "2</b> (Dueling Banjos)") >= 0;
+        o.rolesLine = !/Banjo/.test(trayRolesHtml() || "");
+        G = keepG; MODE = keepMode;
+        return o;
+      })()
     };
     T82.setLabels(null);
     var e0 = eng(["nobody a", "nobody b", "nobody c", "nobody d", "nobody e"]);
@@ -666,6 +688,9 @@ if (fs.existsSync("site_data.json")) {
   eq("label taxes: the rim tax fires only when the stats and the tags agree (a RIM-P '?' clears it; a Five-Out bonus is still paid)",
     [R.rimStat, R.rimTag, R.fiveOut], [2, 0, -3]);
   eq("label taxes: the score adds the rows up; names fold accents (Calderon); no tags file, no label taxes", [R.scoreSum, R.folded, R.failSoft], [true, true, [0, 0, false, 2]]);
+  eq("dueling banjos: two settled TITLE #1s cost 2, a '?' never counts, a board's 0 turns it off (v62.1)", R.banjo, [["banjo+2"], [], []]);
+  eq("dueling banjos on the board: a settled TITLE #1 shows, a '?' one does not, it turns red once another is on your five (never for himself), the tray names the tax, the roles line does not",
+    R.banjoBoard, { plain: true, maybeHidden: true, red: true, selfNotRed: true, tray: true, rolesLine: true });
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -209,3 +209,24 @@ parsePlayerPairs lowercases with JavaScript, so a name with a non-ASCII
 capital never matches in op=labels (17 players in site_data.json; 69 of the
 0026 scout rows: Alperen Şengün 14, Ersan İlyasova 25, Šarūnas Marčiulionis
 16, Dario Šarić 8, Álex Abrines 6). The fix belongs in functions/api/traits.js.
+
+## 0029_scout_thin_tags_v1.sql (v62.1, 2026-09-28; NOT APPLIED until the owner says so)
+
+The scout backfill for five tags the 0026 pass never covered: hunted, ball-stopper, ball-pounder, foul-merchant,
+stat-padder. 464 question rows and 464 scout claims (215 yes, 249 unsure), same shape and source convention as 0026
+(`source` = "scout-2026-09-28 claude-opus-5-5"). Every draftable player-season (13,986, a whole season over 785
+minutes) was scouted by ten parallel scouts from one brief (docs/scout/THIN-TAGS-BRIEF-2026-09-28.md, which carries
+the desk's earlier rulings as calibration); the merged claims are kept at docs/scout/thin-tags-claims-2026-09-28.json.
+TITLE #1 is left out on purpose (the owner: "ultra stingy"; the desk already names every champion's number one).
+No claim is written for a player, season and tag that already has a question row (a desk or crowd call stays
+theirs), so there are no twins. INSERT OR IGNORE throughout; applied twice to a scratch copy of the trait tables:
+464 questions, 464 claims, no orphans.
+
+111 KB: too big for the console paste path. Apply it with wrangler:
+`npx wrangler d1 execute true82 --remote --file=migrations/0029_scout_thin_tags_v1.sql`
+Check: `SELECT verdict, COUNT(*) n FROM trait_scout_v1 WHERE source LIKE 'scout-2026-09-28%' GROUP BY verdict`
+returns unsure 249, yes 215. The results cards on true82.net read the live tags, so the new tags show there at once;
+the game's boards and scoring read labels.json, which picks them up at the next tag refresh
+(`node tools/labels-refresh.js`, or the Monday task). Rollback: `DELETE FROM trait_scout_v1 WHERE source =
+'scout-2026-09-28 claude-opus-5-5'` (the question rows are harmless without a claim).
+
