@@ -56,8 +56,11 @@ Branch preview: https://c-code-clean.true82.pages.dev/ (which now runs on the mo
    stamps on with its second ink off register and the ink print rings it (or lifts off); the crowd's count lands on
    the tile ("64% say yes · 37 votes"). Quick toggles on one tag ride the vote still waiting to go (one post). A tile is
    `.bt-tog`, not `.bt-tile`, because look.css paints `.bt-tile` as a neon plate. The card's own tags still open the
-   full question (YES / NO / NOT SURE, the tally). Calls made: the three traits the "+" never offered (TITLE #1,
-   BALL-POUND, FOUL-MERCH: the owner's four-negative ceiling) appear only when already on the card; under a settled
+   full question (YES / NO / NOT SURE, the tally). The owner, right after the merge: "make sure TITLE #1, BALL-POUND,
+   FOUL-MERCH are offered in all aspects the same as the other traits": every core trait now carries `pick: 1` in
+   BALLOT_TRAITS (18 tiles; the old four-negative ceiling is gone); all three are core on the server, so a first vote
+   creates the question like any other (checked: votes land, the card shows them). The server's op=roster lane still
+   has its own short trait list, but no client calls it since v50. Under a settled
    GRAVITY the 3PT tile stays put, lit, reading "Comes with GRAVITY" (a tap nudges and says "Take GRAVITY off
    first"), since the card never prints both; a settled tag you take off stays on the card hollow with an X (the v50
    ballot rule: the dispute stays readable), so say the word if removed tags should vanish from the card instead;

@@ -2600,9 +2600,8 @@ function applyLabelChips(container, hits, tab) {
    The draft pool's chips stay read-only (v47.9) and the old strike-through
    anti chips are retired everywhere. Copy law: zero em-dashes. */
 var BALLOT_TRAITS = [
-  // pick = offered by "+" (the owner's set: 12 core + three bad traits).
-  // The other three core traits show when a ruling says so and vote like
-  // any tag, but are not offered as adds (owner's four-negative ceiling).
+  // pick = offered by "+". v60 (the owner: "make sure TITLE #1, BALL-POUND, FOUL-MERCH are offered in all aspects
+  // the same as the other traits"): every core trait is, so the old four-negative ceiling is gone.
   { id: "three-point-shooter", name: "Three-Point Shooter", chip: "3PT", q: "a 3PT shooter", g: "off", pick: 1,
     d: "Defenses had to guard him past the arc." },
   { id: "super-three-point-shooter", name: "Super Three-Point Shooter", chip: "GRAVITY", q: "a gravity shooter", g: "off", pick: 1,
@@ -2625,15 +2624,15 @@ var BALLOT_TRAITS = [
     d: "Shots at the rim change because he is there." },
   { id: "clutch", name: "Clutch", chip: "CLUTCH", q: "clutch", g: "rep", pick: 1,
     d: "You want the last shot in his hands. So does he." },
-  { id: "championship-number-one", name: "Championship #1", chip: "TITLE #1", q: "a title team’s number one", g: "rep",
+  { id: "championship-number-one", name: "Championship #1", chip: "TITLE #1", q: "a title team’s number one", g: "rep", pick: 1,
     d: "The best player on a team that could win it all." },
   { id: "hunted", name: "Hunted", chip: "HUNTED", q: "hunted on defense", g: "rep", neg: 1, pick: 1,
     d: "Opponents go at him on purpose: switch onto him, post him, run him off screens." },
   { id: "ball-stopper", name: "Ball Stopper", chip: "BALL-STOP", q: "a ball stopper", g: "rep", neg: 1, pick: 1,
     d: "The ball goes in and does not come out." },
-  { id: "ball-pounder", name: "Ball Pounder", chip: "BALL-POUND", q: "a ball pounder", g: "rep", neg: 1,
+  { id: "ball-pounder", name: "Ball Pounder", chip: "BALL-POUND", q: "a ball pounder", g: "rep", neg: 1, pick: 1,
     d: "Needs a lot of dribbles before anything happens." },
-  { id: "foul-merchant", name: "Foul Merchant", chip: "FOUL-MERCH", q: "a foul merchant", g: "rep", neg: 1,
+  { id: "foul-merchant", name: "Foul Merchant", chip: "FOUL-MERCH", q: "a foul merchant", g: "rep", neg: 1, pick: 1,
     d: "Hunts whistles for cheap free throws." },
   { id: "stat-padder", name: "Stat Padder", chip: "STAT-PAD", q: "a stat padder", g: "rep", neg: 1, pick: 1,
     d: "Numbers that do not add up to winning." },

@@ -239,8 +239,8 @@ eq("ballot: tally words, pill, and no big percent off one vote",
 const sheetOf = (card) => ctx.ballotSheetTiles(Object.assign({ eng: "", settled: {}, open: {}, split: {}, qids: {}, mine: {} }, card));
 const sh1 = sheetOf({ eng: "3PT", settled: { "Playmaker": 1, "Championship #1": 1, "Clutch": 1 }, open: { "Team Defender": "q1" },
   mine: { "Hunted": "yes", "Rim Protector": "no", "Clutch": "no" } });
-eq("tag sheet: all fifteen '+' traits plus the card's own others (TITLE #1), lit only when on his card for you",
-  [sh1.length, sh1.filter(s => s.lit).map(s => s.T.chip)], [16, ["3PT", "PLAY", "TEAM-D", "TITLE #1", "HUNTED"]]);
+eq("tag sheet: every core trait is offered, TITLE #1, BALL-POUND and FOUL-MERCH included, lit only when on his card for you",
+  [sh1.length, ctx.BALLOT_TRAITS.every(T => T.pick), sh1.filter(s => s.lit).map(s => s.T.chip)], [18, true, ["3PT", "PLAY", "TEAM-D", "TITLE #1", "HUNTED"]]);
 const actOf = (list, chip) => list.filter(s => s.T.chip === chip)[0].act;
 eq("tag sheet: each tile says what a tap does",
   ["3PT", "PLAY", "TEAM-D", "CLUTCH", "RIM-P", "GRAVITY"].map(c => actOf(sh1, c)),
