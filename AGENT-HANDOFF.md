@@ -1,14 +1,16 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING, ASK THE OWNER: "v63.1 is on the preview. Did you playtest it? Then: time to go to main?"**
-> He playtested v63 on 2026-09-28 and sent nine more items (section 00000w); they are built as v63.1 on
-> `c-code-clean`. `main` is still v60.1, so a merge takes v61.1 through v63.1 live together (ideally at a day boundary:
-> the Presti price pass changed, so a Presti Daily's board differs from a morning run). If he says go: fast-forward (as
-> in 00000p; local `main` is behind `origin/main`, so first `git checkout main && git merge --ff-only origin/main`,
-> then `git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`), wait for the deploy,
-> then check true82.net's footer reads v63.1. If he has not played v63.1, point him at "What to playtest" in 00000w.
+> **FIRST THING: CHECK WHETHER THE OWNER'S MERGE LANDED.** On 2026-09-28 (evening) he played v63.1 and said "push"
+> (to main). The agent's own push to `main` was blocked by the session's auto-mode permission guard (a production
+> deploy), so the merge was handed to him as one command to run from the repo folder:
+> `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
+> Check it: `git fetch origin && git log --oneline -1 origin/main` shows the v63.1 commit or later (`94b5f2e`, or the
+> handoff commit on top of it), and https://true82.net/app.js carries `BUILD_V = "v63.1"` (the footer reads v63.1).
+> - **Landed:** run the post-merge checks below ("After the merge" in 00000w), then ask him what's next (the queue
+>   is "Next, in order" in 00000w: the manual rework on Celia Hodent's method is first).
+> - **Not landed:** give him the command above again, one step at a time if he wants, then run the same checks.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v63.1, the owner's second playtest list (section 00000w: one ball capped at 6 with the Banjos folded in, the painting shuffle, no ball meter, Presti's $26 ceiling and its luck gem, the iPhone zoom fix for the run-it-back bug, spacing, the Daily's quotes), on v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r); none of it is on main. Migration 0029 IS applied to the live D1. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
+**Current source of truth:** the GitHub repo. `c-code-clean` = v63.1, the owner's second playtest list (section 00000w: one ball capped at 6 with the Banjos folded in, the painting shuffle, no ball meter, Presti's $26 ceiling and its luck gem, the iPhone zoom fix for the run-it-back bug, spacing, the Daily's quotes), on v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). He said "push" on 2026-09-28: once his merge runs, `main` = `c-code-clean` = v63.1, LIVE on true82.net; until then `main` = v60.1 (section 00000q). Migration 0029 IS applied to the live D1; v61.1 to v63.1 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-28
 **Build:** `v63.1` on `c-code-clean` (`BUILD_V = "v63.1"`; sim-core.js, challenges.js, daily-core.js, app.js, styles.css, reel-riso.js and results-riso.js at `20260928-v63-1`; labels.json via `<meta name="t82-labels" content="20260928-tags">` in index.html; look.css at `20260927-v60`; engine `T82.VERSION` 14). v60.1 (live): app.js at `20260927-v60-1`.
@@ -20,8 +22,9 @@ Read this file before editing. It summarizes the current architecture, the recen
 
 ## 00000w. START HERE (2026-09-28, evening): V63.1, THE OWNER'S SECOND PLAYTEST
 
-**Where things stand.** `main` = v60.1, LIVE. `c-code-clean` = v63.1 (this) on v63, v62.2, v62.1, v62, v61.1: all go
-live together at his "push to main". Preview: https://c-code-clean.true82.pages.dev/ (mock database).
+**Where things stand.** `c-code-clean` = v63.1 (this) on v63, v62.2, v62.1, v62, v61.1: all go live together. He
+played v63.1 and said "push"; his merge command is at the top of this file (the agent's push to main was blocked by
+the permission guard). Preview: https://c-code-clean.true82.pages.dev/ (mock database).
 
 **The owner's words** (after playing v63): "1) usage is too punitive. I had a team with prime kobe and mj but it went
 like 60 wins where it would prev be close to undefeated. like this would imply the latest olympic starting lineup would
@@ -116,10 +119,25 @@ changes every time. The reel: the SWEPT stamps and the loss lines hug the dots. 
 some boards. The home: the logo right on top of "How to play"; the Daily's name in quotes. On the phone: run it back a
 few times after tapping around the results.
 
+### After the merge (the checks)
+1. true82.net's footer reads **v63.1** (and https://true82.net/app.js has `BUILD_V = "v63.1"`); a hard refresh may be
+   needed once, since the cache keys changed (`20260928-v63-1`).
+2. A Classic draft on true82.net: no 20+ chips, no ball meter, positive tags before red ones, heights by position (red
+   for a second small guard). Presti: prices up to $26.
+3. A finished season: the "+" hint slip on the first card, the Scoring Card's One ball row (never past 6), a painting
+   from the shuffle. The Daily's home door shows its name in quotes.
+4. Real writes are back on (the previews run on the mock database; true82.net writes to D1 `true82`): a vote on a tag
+   posts, and game_complete events land (the avocado dashboard counts true82.net only).
+5. Note for the day: the merge landed in the evening of 2026-09-28. A Presti Daily's board is dealt by the new price
+   pass after the merge, so today's Presti Daily can differ for anyone who played it earlier today; tomorrow's is clean.
+
 ### Next, in order
-1. His answer to the top question (then merge to main, ideally at a day boundary).
+1. The merge (his command at the top), then the checks above.
 2. The manual rework on Celia Hodent's method (00000v), once he says go.
 3. Record the tag rows and the v62-v63.1 taxes on game_complete (a migration) to watch live firing.
+4. For any future tax: `node tools/champions.js` prints what each of the 32 title teams pays (the benchmark the v62 to
+   v63.1 checks used, now in the repo), and `node tools/labels-balance.js` scores the real drafts; test apex fantasy
+   fives too (the owner's lesson: a rule prices bad fit, never greatness).
 
 ## 00000v. (2026-09-28, afternoon): V63, THE OWNER'S EIGHT TWEAKS AFTER HIS PLAYTEST
 
