@@ -1,24 +1,127 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING, ASK THE OWNER: "v63 is on the preview. Did you playtest it? Then: time to go to main?"**
-> He playtested v62.2 on 2026-09-28 and sent eight tweaks instead of the merge (section 00000v); they are built as v63
-> on `c-code-clean`. `main` is still v60.1, so a merge now takes v61.1 through v63 live together. If he says go:
-> fast-forward (as in 00000p; local `main` is behind `origin/main`, so first `git checkout main && git merge --ff-only
-> origin/main`, then `git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`), wait for
-> the deploy, then check true82.net's footer reads v63 and a Classic draft shows the ball meter and no 20+ chips. If he
-> has not played v63, point him at the preview and the list in 00000v ("What to playtest").
+> **FIRST THING, ASK THE OWNER: "v63.1 is on the preview. Did you playtest it? Then: time to go to main?"**
+> He playtested v63 on 2026-09-28 and sent nine more items (section 00000w); they are built as v63.1 on
+> `c-code-clean`. `main` is still v60.1, so a merge takes v61.1 through v63.1 live together (ideally at a day boundary:
+> the Presti price pass changed, so a Presti Daily's board differs from a morning run). If he says go: fast-forward (as
+> in 00000p; local `main` is behind `origin/main`, so first `git checkout main && git merge --ff-only origin/main`,
+> then `git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`), wait for the deploy,
+> then check true82.net's footer reads v63.1. If he has not played v63.1, point him at "What to playtest" in 00000w.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v63, the owner's eight tweaks (section 00000v: one ball is usage only, size by unit, the tray's ball meter, positives-first badges with no "?" on the boards, the printed "+" hint, the logo leads the home and the slogan opens HOW TO PLAY), on v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r); none of it is on main. Migration 0029 IS applied to the live D1. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
+**Current source of truth:** the GitHub repo. `c-code-clean` = v63.1, the owner's second playtest list (section 00000w: one ball capped at 6 with the Banjos folded in, the painting shuffle, no ball meter, Presti's $26 ceiling and its luck gem, the iPhone zoom fix for the run-it-back bug, spacing, the Daily's quotes), on v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r); none of it is on main. Migration 0029 IS applied to the live D1. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
 
 **Date:** 2026-09-28
-**Build:** `v63` on `c-code-clean` (`BUILD_V = "v63"`; sim-core.js, challenges.js, daily-core.js, app.js and styles.css at `20260928-v63`; labels.json via `<meta name="t82-labels" content="20260928-tags">` in index.html; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 13). v60.1 (live): app.js at `20260927-v60-1`.
-**Most recent change:** section 00000v (read it first): v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v63.1` on `c-code-clean` (`BUILD_V = "v63.1"`; sim-core.js, challenges.js, daily-core.js, app.js, styles.css, reel-riso.js and results-riso.js at `20260928-v63-1`; labels.json via `<meta name="t82-labels" content="20260928-tags">` in index.html; look.css at `20260927-v60`; engine `T82.VERSION` 14). v60.1 (live): app.js at `20260927-v60-1`.
+**Most recent change:** section 00000w (read it first): v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000v. START HERE (2026-09-28, afternoon): V63, THE OWNER'S EIGHT TWEAKS AFTER HIS PLAYTEST
+## 00000w. START HERE (2026-09-28, evening): V63.1, THE OWNER'S SECOND PLAYTEST
+
+**Where things stand.** `main` = v60.1, LIVE. `c-code-clean` = v63.1 (this) on v63, v62.2, v62.1, v62, v61.1: all go
+live together at his "push to main". Preview: https://c-code-clean.true82.pages.dev/ (mock database).
+
+**The owner's words** (after playing v63): "1) usage is too punitive. I had a team with prime kobe and mj but it went
+like 60 wins where it would prev be close to undefeated. like this would imply the latest olympic starting lineup would
+be a bunch of bums. also the champ #1 to some extent overlaps. discuss solution. perhaps the penalty need to scale down
+at the higher extremes? 2) shuffle the artwork no matter the result, I want people to see all my art assets even if
+theyre awesome 3) short guy tax works 4) remove the usage bar on classic draft 5) on presti change the max salary to $26
+from current $23 6) on my phone I have a bug where running it back sometimes results in the footer with medallions
+taking up like half the page in perpetuity - only on second play - investigate 6) on presti, no more guaranteed $1
+bargains - determine its appearance based on the luck of the other player costs the player rolled relative to the
+game's valuation of them before player label taxes+awards 7) even less padding between true 82 logo and how to play
+link 8) less vertical padding between win/loss dots and the flavor text/'swept' stamp", then "the subtitle of the daily
+should have quotes around it".
+
+### 1. One ball tops out at 6, and the Banjos fold into it (engine VERSION 14)
+- **What was wrong:** real Classic drafts with both Jordan and Kobe (34 on record) are five-alpha fives: usage 155-167.
+  v63 charged them 10.6-14 for one ball, plus the Banjos 2 and "the ball sticks" 2: on the live v60.1 rules they
+  averaged net 31.8 (82-0 41%); on v63 net 24.0 (21%), and the worst, Dantley '83, Jordan '91, Kobe '06, Jaylen Brown
+  '26, Dirk '11, fell from 81 wins to 68. The 2024 Olympic starters (Curry, Booker, LeBron, Durant, Embiid; their 2024
+  seasons) projected 65 wins.
+- **The rule now:** 120 of usage free, 0.3 a point past it, **never more than 6** (`USAGE_CAP`, about one All-Star).
+  Stars adapt: once the ball is fully shared, one more alpha takes a smaller role. Typical fives pay what v63 charged;
+  only the pileups change. The cap hits 42% of Classic drafts.
+- **The Banjos no longer charge** (the owner: "the champ #1 to some extent overlaps"): two alphas learning to share IS
+  the one-ball story. The engine still names the settled TITLE #1s (`e.title1`), and the one-ball row closes with his
+  line when two or more share the five: "Took the alphas some time to figure out how to play together and not just
+  alongside each other." (at the cap without them: "The stars figure it out, but somebody still has to set the
+  screens."). TITLE #1 left the boards (a board shows only what the scoring reads); the results cards keep it.
+  `LBL_BANJO_TAX` is gone from every board.
+- **Boards:** the ones whose twist is "usage hurts more" lift the cap: The Luxury Tax, The Triangle, The Superteam
+  Problem 10; Tax Season 12 (double). Their Daily copy says so.
+- **Numbers:** Classic realized 82-0 **18.5%** (v63 14.2%, before v62 24.2%), expected wins 78.0; Presti 4.3%. MJ+Kobe
+  drafts 80.7 wins (34%). Olympic '24 fives 79 and 74 wins; the Dream Team 79; five alphas (Iverson, Kobe '06,
+  Westbrook, LeBron '09, Embiid) 81. Best play in the same deals 35.1% (gap over as-drafted 16 points; v63 20). No title
+  team pays one ball; the '22 Warriors still pay the frontcourt size rule.
+- Measured and not chosen (Classic 82-0, Banjos gone): cap 5 19.7%, cap 7 17.5%, cap 8 16.8%; smooth curves that level
+  off (6·(1-e^(-over/20))) 21.4%. The cap keeps typical drafts exactly where v63 had them.
+
+### 2. The painting shuffles (results-riso.js, app.js `resultsPrintPal`)
+Golden, dusk or night used to follow the record (golden at 59+ wins, so Classic players almost only saw golden). Now a
+shuffle bag on the device (`localStorage` "t82-print-bag") deals all three before repeating; a run keeps its painting
+through a Heat Check reprint (`G.printPal`); a spec without `pal` (the Reprint Lab) keeps the old rule. The sun never
+sinks under the water now (a golden print on a losing year sets on the horizon). Checked: three seasons of 72-79 wins
+printed golden, night, dusk.
+
+### 4. No ball meter
+The tray is the lineup rail and "Still missing" roles again (`trayBallHtml` and its CSS are gone). The cards still show
+usage; the legend and the rules sheet explain one ball.
+
+### 5 and 6b. Presti: a $26 ceiling, and the $1 gem as luck's rebate (sim-core `CAP_CEIL`, `capMisprice`)
+- The most a player costs is **$26** (fire sale $24). Stars worth V 9+ now average $22.9 (was $21.3); 47% sit at the
+  ceiling (66% at $23 before).
+- **The gem:** a board that sets `CAP_GEM` keeps its flat per-player gem (Gem Rush, The Golden Age, The Gauntlet,
+  Guaranteed Contracts, Escalator, Fair Market: their copy promises it). Every other board gets **at most one** gem, as
+  luck's rebate: its luck is what its five most valuable players rolled against their fair price (the price curve with
+  an even roll, under the ceiling; value is V, never a tag tax or credit). At or under fair: no gem. Over: a gem with
+  chance (paid/fair − 1)/0.3, certain at 30% over. Gems went from 27% of boards to 11%, and they turn up on the boards
+  whose stars rolled dear. A price-aware bot (value minus 0.25 per dollar, no skips) went 2.6% → 2.3% on 82-0, 74.5 →
+  74.3 expected wins. The mode tip and the Gem Rush / Golden Age / Ring Tax copy were updated; docs/MODES.md too.
+
+### 6. The run-it-back tray (the owner's phone): the likely cause and the fix
+Not reproducible in iPhone-sized WebKit (the tray measured 71px on the first, second and third game, Classic and
+Presti, and looked right). The iOS Simulator is not available here (no full Xcode on this Mac). The likely cause is
+iPhone Safari zoom: a quick double tap on the long results page zooms in, RUN IT BACK is still in reach, and the draft
+screen, locked to one screen with the pool as its only scroller, keeps the zoom, so the fixed tray fills the view with
+nothing to scroll. That fits "sometimes", "only on second play" and "in perpetuity". Fix: `html { touch-action:
+manipulation }` (no double-tap zoom anywhere; pinch zoom stays) and `resetPageZoom()` in `initDraftViewport` (a draft
+that opens zoomed snaps back: the viewport meta briefly caps the scale at 1, then lets go). If it happens again, ask him
+for a screenshot.
+
+### 7, 8 and the Daily
+- The logo to "How to play" gap is 2px (the home's `#app` top padding and the link's top margin are gone).
+- The reel's month rows: the flavor line and the SWEPT stamp sit right under the dots (the strip's drip room 0.95 →
+  0.55 of a dot pitch, last-row drips shorter, the margins 8px → 1px).
+- The Daily's home subtitle wears quotes (for example, “Paint Police”).
+
+### Checks
+test.js 127 (the capped one ball, the lifted caps, the Banjos retired, TITLE #1 off the boards, the alphas line on the
+Scoring Card, no meter); style law clean; all 200 POOL3 Dailies certify (the biggest median move −3, Jewelry, a Presti
+board); Chromium and WebKit at 320 and 375: no sideways scroll, no page errors; in the browser pane: the home gap and
+quotes, the reel rows, three shuffled paintings, Presti boards up to $26.
+
+### Calls he may overrule
+- The cap (6). Stricter 7 or 8 keeps more challenge (82-0 17.5% / 16.8%); 5 is looser (19.7%).
+- The Banjos folded into one ball rather than kept beside it; TITLE #1 off the boards.
+- "The ball sticks" (two ball-holders, −2) still stacks on one ball.
+- The gem's luck reads the board's five best players; the chance scale (certain at 30% over fair).
+
+### What to playtest
+A Classic draft stacked with alphas (Jordan, Kobe, anyone): the Scoring Card's one-ball row stops at −6 and tells the
+Banjos line when two TITLE #1s share the five. No meter in the tray. Three or four seasons in a row: the painting
+changes every time. The reel: the SWEPT stamps and the loss lines hug the dots. Presti: a $26 star, and a $1 gem only on
+some boards. The home: the logo right on top of "How to play"; the Daily's name in quotes. On the phone: run it back a
+few times after tapping around the results.
+
+### Next, in order
+1. His answer to the top question (then merge to main, ideally at a day boundary).
+2. The manual rework on Celia Hodent's method (00000v), once he says go.
+3. Record the tag rows and the v62-v63.1 taxes on game_complete (a migration) to watch live firing.
+
+## 00000v. (2026-09-28, afternoon): V63, THE OWNER'S EIGHT TWEAKS AFTER HIS PLAYTEST
 
 **Where things stand.** `main` = v60.1, LIVE. `c-code-clean` = v63 (this) on v62.2, v62.1, v62 and v61.1: all go live
 together at the owner's "push to main". Preview: https://c-code-clean.true82.pages.dev/ (mock database: reads the live

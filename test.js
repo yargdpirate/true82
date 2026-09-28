@@ -526,8 +526,9 @@ if (fs.existsSync("site_data.json")) {
       tightBall: run({ USAGE_BUDGET: 100 }, { usageBudget: 100, sumUsage: 110.7, usageOver: 10.7, usageTax: 3.21 }),
       labels: run(null, { labelsOn: true, labelsBuilt: "2026-09-27T12:00:00Z", rimDefTax: 2, creatorTax: 2, labelRows: [{ id: "iso", amt: 2, who: [] },
         { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] },
-        { id: "banjo", amt: 2, who: [3, 1] }, { id: "stick", amt: 2, who: [0, 4] }, { id: "statpad", amt: 1, who: [2] }] }),
-      ballOver: run(null, { sumUsage: 142.3, usageOver: 22.3, usageTax: 6.69 }),
+        { id: "stick", amt: 2, who: [0, 4] }, { id: "statpad", amt: 1, who: [2] }] }),
+      ballOver: run(null, { sumUsage: 142.3, usageOver: 22.3, usageTax: 6, usageCap: 6, usageCapped: true }),
+      ballAlphas: run(null, { sumUsage: 131, usageOver: 11, usageTax: 3.3, usageCap: 6, title1: [3, 1] }),
       ballOff: run({ USAGE_RATE: 0 }, { usageRate: 0, sumUsage: 150.2 }),
       size: run(null, { smallGTax: 2, smallFCTax: 2, sizeTax: 4, size: Object.assign({}, SIZE0, { smallG: [2, 3], smallFC: [0, 1], gTax: 2, fcTax: 2, tax: 4 }) })
     };
@@ -549,13 +550,14 @@ if (fs.existsSync("site_data.json")) {
     [/No ISO-D/.test(L.labels.text), /Two knuckleheads \(D\. Rodman, C\. Barkley\)\. They.ll start hanging out/.test(L.labels.text),
       /Three switchable defenders \(D\. Rodman, R\. Strickland, M\. Price\)/.test(L.labels.text), /A playmaker \(R\. Strickland\) and two off-ball scorers \(C\. Barkley, B\. Daugherty\)/.test(L.labels.text),
       /nobody is tagged RIM-P/.test(L.labels.text), /nobody is tagged PLAY/.test(L.labels.text), /tags as of Sep 27/.test(L.labels.text), /tagged RIM-P/.test(L.plain.text),
-      /Dueling Banjos Tax\s+Two TITLE #1s \(M\. Price, C\. Barkley\)\. Took the alphas some time to figure out how to play together and not just alongside each other\./.test(L.labels.text),
+      /Dueling Banjos/.test(L.labels.text),
       /The ball sticks\s+Two players who hold the ball \(D\. Rodman, B\. Daugherty\)\. It goes in and it does not come out\./.test(L.labels.text),
       /Stat padding\s+A stat padder \(R\. Strickland\)\. Karma for your stat padding sins\./.test(L.labels.text)],
-    [true, true, true, true, true, true, true, false, true, true, true]);
+    [true, true, true, true, true, true, true, false, false, true, true]);
   eq("results ledger: one ball names the biggest ball users and the board's share, reads under the budget and off boards plainly; the size rows name the small men (v63)",
-    [/One ball\s+Your five use 142 of the ball \(C\. Barkley 30, M\. Price 25, B\. Daugherty 23\)\. A five can share 120; each point past it costs 0\.3\. The ball is never coming back\./.test(L.ballOver.text),
-      /One ball\s+Your five use 127 of the ball \(C\. Barkley 30, M\. Price 25, B\. Daugherty 23\)\. A five can share 120; each point past it costs 0\.3\. Somebody has to set a screen\./.test(L.plain.text),
+    [/One ball\s+Your five use 142 of the ball \(C\. Barkley 30, M\. Price 25, B\. Daugherty 23\)\. A five can share 120; each point past it costs 0\.3, never more than 6\. The stars figure it out, but somebody still has to set the screens\./.test(L.ballOver.text),
+      /One ball\s+Your five use 127 of the ball \(C\. Barkley 30, M\. Price 25, B\. Daugherty 23\)\. A five can share 120; each point past it costs 0\.3\. Somebody has to set a screen\./.test(L.plain.text) &&
+        /One ball\s+Your five use 131 of the ball \(.*\)\. A five can share 120; each point past it costs 0\.3, never more than 6\. Took the alphas some time to figure out how to play together and not just alongside each other\./.test(L.ballAlphas.text),
       /One ball\s+Your five use 104 of the ball, inside the 120 a five can share\./.test(L.surplus.text),
       /One ball\s+Off on today.s board: your five use 150 of the ball, free\./.test(L.ballOff.text),
       /Two small guards\s+Both guards 6'2" or shorter \(R\. Strickland 6'2", M\. Price 6'0"\)\. One small guard can hide; two get posted up and shot over\./.test(L.size.text),
@@ -581,6 +583,7 @@ if (fs.existsSync("site_data.json")) {
     out.ballBoards = [r2(eng(five([30, 28, 26, 22, 14]), { USAGE_BUDGET: 100 }).usageTax), eng(five([40, 38, 36, 34, 30]), { USAGE_RATE: 0 }).usageTax,
       r2(eng(five([30, 28, 26, 22, 24]), { USAGE_BUDGET: 110, USAGE_RATE: 0.09375 }).usageTax)];
     out.ballNoPpg = eng(five([20, 20, 20, 20, 20])).usageTax;
+    out.ballCap = [eng(five([40, 38, 36, 34, 30]), { USAGE_CAP: 12 }).usageTax, r2(eng(five([40, 38, 36, 34, 30]), { USAGE_BUDGET: 110, USAGE_RATE: 0.4, USAGE_CAP: 10 }).usageTax)];
     out.size = [[74, 74, 80, 80, 84], [74, 75, 80, 80, 84], [73, 0, 80, 80, 84], [76, 76, 78, 78, 84], [76, 76, 78, 79, 84], [76, 76, 78, 77, 76], [74, 74, 78, 78, 78]]
       .map(function (h) { return eng(five([20, 20, 20, 20, 20], h)).sizeTax; });
     out.sizeBoards = [eng(five([20, 20, 20, 20, 20], [74, 74, 78, 78, 84]), { SMALL_G_TAX: 0 }).sizeTax, eng(five([20, 20, 20, 20, 20], [74, 74, 78, 78, 84]), { SMALL_FC_TAX: 0 }).sizeTax];
@@ -588,24 +591,24 @@ if (fs.existsSync("site_data.json")) {
     out.partial = [T82.sizeUnits({ ch: null }, five([1, 1], [72, 73]), ["G", "G"]).tax, T82.sizeUnits({ ch: null }, five([1], [72]), ["G"]).tax];
     var e = eng(five([40, 38, 36, 34, 30], [74, 74, 78, 78, 84]));
     out.adds = Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.sizeTax - e.score) < 1e-9;
-    out.parts = [e.usageBudget, e.usageRate, e.usageOver, e.smallGTax, e.smallFCTax];
+    out.parts = [e.usageBudget, e.usageRate, e.usageOver, e.smallGTax, e.smallFCTax, e.usageCap, e.usageCapped];
     out.gone = [typeof T82.scorersAndSize, typeof scorerChipHtml, typeof trayFitHtml, "oneBallTax" in e, "shortTax" in e];
     return out;
   })()`, ctx);
-  eq("one ball: 120 of usage is free, each point past it costs 0.3 (130 costs 3, five alphas at 178 cost 17.4)", R.ball, [0, 3, 17.4]);
+  eq("one ball: 120 of usage is free, each point past it costs 0.3, never more than 6 (130 costs 3, five alphas at 178 cost 6, v63.1)", R.ball, [0, 3, 6]);
   eq("one ball: a board moves the budget or the rate (The Triangle's 100; a usage-off board; Volume Merchants' old 110 at 0.09375)", R.ballBoards, [6, 0, 1.875]);
   eq("one ball: points never count, only usage (five 30-point scorers who use 20 each pay nothing)", R.ballNoPpg, 0);
+  eq("one ball: a board lifts the cap (Tax Season 12, The Luxury Tax 10)", R.ballCap, [12, 10]);
   eq("size by unit: two guards 6'2\" or shorter cost 2, 6'3\" does not, a missing height never counts; two or more F/C 6'6\" or shorter cost 2, three still 2; both units 4",
     R.size, [2, 0, 0, 2, 0, 2, 4]);
   eq("size by unit: a board's 0 turns either off; the unit is the slot he plays (a 6'2\" forward is a small big); a partial five pays once two small guards are in",
     [R.sizeBoards, R.sizeSlot, R.partial], [[2, 2], 2, [2, 0]]);
-  eq("one ball and size: the score adds them up and the engine reports its settings", [R.adds, R.parts], [true, [120, 0.3, 58, 2, 2]]);
+  eq("one ball and size: the score adds them up and the engine reports its settings", [R.adds, R.parts], [true, [120, 0.3, 58, 2, 2, 6, true]]);
   eq("the 20-point rule is gone: no scorersAndSize, no 20+ chip, no tray warning lines, no oneBallTax or shortTax", R.gone, ["undefined", "undefined", "undefined", false, false]);
 }
 
 // v63 THE BOARD AND THE TRAY: a height turns red only when every legal open slot would make the pick the second small
-// man in his unit (never in Pro; plain on the Do-Over board); the tray's ball meter fills with the picks, previews a
-// selected player, goes red past the budget, and stays out of Presti, Pro, a finished five and a usage-off board.
+// man in his unit (never in Pro; plain on the Do-Over board); v63.1: no ball meter in the tray (the owner removed it).
 {
   const B = vm.runInContext(`(function () {
     var keepG = G, keepMode = MODE, keepResolve = resolveRow, keepBlock = pickBlock, sel = null;
@@ -621,27 +624,14 @@ if (fs.existsSync("site_data.json")) {
     out.why = /a second small big costs 2/.test(heightTag(row("zz small forward", 20, 77, 0, 100, 0)));
     MODE = "pro"; out.pro = heightTag(row("zz small forward", 20, 77, 0, 100, 0));
     MODE = "classic"; out.sd = heightTag(row("zz small forward", 20, 77, 0, 100, 0), true);
-    // the ball meter
-    G = { ch: null, mode: "classic", screen: "draft", filled: { G: 2, F: 1, C: 0 }, picks: [30, 28, 26].map(function (u, i) { return { row: row("zz b" + i, u, 80, 100, 0, 0), slot: "G" }; }) };
-    function meter() { return trayBallHtml().replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim(); }
-    out.m1 = [meter(), /is-over/.test(trayBallHtml())];
-    resolveRow = function () { return sel; }; pickBlock = function () { return null; };
-    sel = row("zz alpha", 40, 80, 100, 0, 0); G.selected = "zz alpha";
-    out.m2 = [meter(), /is-over/.test(trayBallHtml())];
-    G.selected = null; G.picks.push({ row: row("zz b3", 44, 80, 0, 100, 0), slot: "F" });
-    out.m3 = [meter(), /is-over/.test(trayBallHtml())];
-    MODE = "cap"; out.cap = trayBallHtml(); MODE = "pro"; out.pro2 = trayBallHtml(); MODE = "classic";
-    G.ch = { cfg: { USAGE_RATE: 0 } }; out.off = trayBallHtml(); G.ch = null;
-    G.picks.push({ row: row("zz b4", 10, 84, 0, 0, 100), slot: "C" }); out.done = trayBallHtml();
+    out.noMeter = [typeof trayBallHtml, /tray-ball/.test(trayHtml.toString())];   // v63.1: the owner removed the meter
     resolveRow = keepResolve; pickBlock = keepBlock; G = keepG; MODE = keepMode;
     return out;
   })()`, ctx);
   eq("board heights: red only when every legal open slot makes him the second small guard (a G/F who can play forward is not red; 6'3\" is not)", B.guard, [true, false, false]);
   eq("board heights: the second small frontcourt player is red and says why; a 6'8\" forward is not; Pro shows no height; the Do-Over board shows it plain",
     [B.big, B.why, B.pro, B.sd], [[true, false], true, "", " · 6'5\""]);
-  eq("the ball meter: fills with the picks, previews a selected player, turns red past the budget with the charge",
-    [B.m1, B.m2, B.m3], [["The ball 84 of 120", false], ["The ball 84 → 124 of 120 −1.2", true], ["The ball 128 of 120 −2.4", true]]);
-  eq("the ball meter: none in Presti or Pro, none on a usage-off board, none once the five is full", [B.cap, B.pro2, B.off, B.done], ["", "", "", ""]);
+  eq("the tray has no ball meter (v63.1, the owner: \"remove the usage bar on classic draft\")", B.noMeter, ["undefined", false]);
 }
 
 // v63: a board whose own rule forces a short five turns both size units off; a board that forces a five of volume
@@ -708,8 +698,8 @@ if (fs.existsSync("site_data.json")) {
       scoreSum: (function () { var e = eng(["stopper", "maybe", "bigman", "passer", "cutter"]); return Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.sizeTax - e.score) < 1e-9 && e.labelRows.length > 0; })(),
       folded: !!T82.labelsOf("Jos\u00E9 Calder\u00F3n", 2000),
       // v62.1 the Dueling Banjos Tax: two settled TITLE #1s cost 2; a "?" never counts; a board's 0 turns it off
-      banjo: [ids(["alpha one", "alpha two"]).filter(function (x) { return /^banjo/.test(x); }), ids(["alpha one", "alpha maybe"]).filter(function (x) { return /^banjo/.test(x); }),
-        ids(["alpha one", "alpha two"], { LBL_BANJO_TAX: 0 }).filter(function (x) { return /^banjo/.test(x); })],
+      banjo: [ids(["alpha one", "alpha two"]).filter(function (x) { return /^banjo/.test(x); }),
+        T82.labelTaxes({ ch: null }, [row("alpha one"), row("alpha maybe"), row("alpha two")]).title1],
       pairs: (function () {
         function only(list, re, cfg) { return ids(list, cfg).filter(function (x) { return re.test(x); }); }
         return [only(["holder one", "holder two"], /^stick/), only(["holder both", "nobody a"], /^stick/), only(["hunted one", "hunted two"], /^hunted/),
@@ -721,13 +711,10 @@ if (fs.existsSync("site_data.json")) {
       banjoBoard: (function () {
         var keepG = G, keepMode = MODE, o = {};
         MODE = "classic"; G = { ch: null, screen: "draft", picks: [] };
-        o.plain = /TITLE #1/.test(boardTagsHtml(row("alpha two"))) && !/data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two")));
-        o.maybeHidden = !/TITLE #1/.test(boardTagsHtml(row("alpha maybe")));
         G.picks = [{ row: row("alpha one") }];
-        o.red = /data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two")));
-        o.selfNotRed = (function () { G.picks = [{ row: row("alpha two") }]; return !/data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two"))); })();
+        o.offBoard = !/TITLE #1/.test(boardTagsHtml(row("alpha two")) + boardTagsHtml(row("alpha one")));   // v63.1: it no longer charges, so it leaves the board
         G.picks = [{ row: row("alpha one") }, { row: row("alpha two") }];
-        o.trayQuiet = !/Banjo|Tag taxes/.test(trayBallHtml() + (trayRolesHtml() || ""));   // v63: the tray keeps totals only; the bill is the Scoring Card's
+        o.trayQuiet = !/Banjo|Tag taxes/.test(trayRolesHtml() || "");   // v63: the tray keeps the roles only; the bill is the Scoring Card's
         // v63 the badge order and the "?": positives first, then negatives; a "?" role tag shows like a settled one
         function chips(n) { var m, re = />([A-Z0-9#+ -]+)<\\/button>/g, h = boardTagsHtml(row(n)), o2 = []; while ((m = re.exec(h))) o2.push(m[1]); return o2; }
         o.order = [chips("stopper"), chips("bigman"), chips("maybe")];
@@ -748,11 +735,11 @@ if (fs.existsSync("site_data.json")) {
   eq("label taxes: the rim tax fires only when the stats and the tags agree (a RIM-P '?' clears it; a Five-Out bonus is still paid)",
     [R.rimStat, R.rimTag, R.fiveOut], [2, 0, -3]);
   eq("label taxes: the score adds the rows up; names fold accents (Calderon); no tags file, no label taxes", [R.scoreSum, R.folded, R.failSoft], [true, true, [0, 0, false, 2]]);
-  eq("dueling banjos: two settled TITLE #1s cost 2, a '?' never counts, a board's 0 turns it off (v62.1)", R.banjo, [["banjo+2"], [], []]);
+  eq("dueling banjos (v63.1): two settled TITLE #1s no longer charge on their own; the engine names the settled ones for the one-ball row ('?' never counts)", R.banjo, [[], [0, 2]]);
   eq("the Simmons pairs (v62.2): two who hold the ball cost 2 (one player with both tags counts once), two hunted 2 (a '?' never counts), two foul merchants 1, every stat padder 1 (a '?' never counts), a board's 0 turns them off",
     R.pairs, [["stick+2"], [], ["hunted+2"], [], ["foul+1"], ["statpad+1"], ["statpad+2"], [], []]);
-  eq("dueling banjos on the board: a settled TITLE #1 shows, a '?' one does not, it turns red once another is on your five (never for himself); the tray stays quiet (v63: the Scoring Card has the bill)",
-    [R.banjoBoard.plain, R.banjoBoard.maybeHidden, R.banjoBoard.red, R.banjoBoard.selfNotRed, R.banjoBoard.trayQuiet], [true, true, true, true, true]);
+  eq("TITLE #1 on the board (v63.1): gone with the Banjos charge; the tray stays quiet (v63: the Scoring Card has the bill)",
+    [R.banjoBoard.offBoard, R.banjoBoard.trayQuiet], [true, true]);
   eq("board badges (v63): positives first, then negatives, in the results cards' order; a '?' role tag shows plain (it fills its role); a '?' reputation stays hidden",
     [R.banjoBoard.order, R.banjoBoard.noMaybe], [[["ISO-D", "CLUTCH", "KNUCK"], ["TEAM-D", "RIM-P"], ["ISO-D", "KNUCK"]], true]);
 }

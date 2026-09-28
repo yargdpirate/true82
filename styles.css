@@ -142,7 +142,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-html { -webkit-tap-highlight-color: transparent; }
+html { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }   /* v63.1: no double-tap zoom (iPhone Safari kept it into the next draft); pinch zoom stays */
 body {
   background: var(--t-ground);
   color: var(--t-text);
@@ -3755,22 +3755,6 @@ body.gating .gate-back {
 .tray-roles { font-family: var(--t-mono); font-size: 11px; line-height: 1.35; letter-spacing: 0.03em; color: var(--t-text-2); text-align: center; padding: 6px 4px 0; }
 .tray-roles b { color: var(--t-bad-soft); font-weight: 700; }
 .tray-roles.is-full { color: var(--t-good-soft); }
-/* v63: the ball meter (app.js trayBallHtml): the five's usage against the free ball. Gold up to the notch (the budget),
-   red past it; a selected player's share previews in a paler band. One line, so the tray stays short at 320px. */
-.tray-ball { display: flex; align-items: center; gap: 8px; max-width: 420px; margin: 0 auto; padding: 7px 6px 0; font-family: var(--t-mono); font-size: 11px; line-height: 1; letter-spacing: 0.03em; color: var(--t-text-2); }
-.tray-ball .tb-lab { flex: 0 0 auto; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--t-label); }
-.tray-ball.is-over .tb-lab { color: var(--t-bad-soft); }
-.tray-ball .tb-track { position: relative; flex: 1 1 auto; min-width: 64px; height: 9px; border-radius: 5px; overflow: hidden; background: var(--t-ground-3); box-shadow: inset 0 0 0 1px var(--t-line); }
-.tray-ball .tb-track i { position: absolute; top: 0; bottom: 0; }
-.tray-ball .tb-fill { left: 0; background: var(--t-accent); }
-.tray-ball .tb-over { background: var(--t-bad); }
-.tray-ball .tb-next { background: rgb(var(--t-accent-rgb) / .45); }
-.tray-ball .tb-next.is-over { background: rgb(var(--t-bad-rgb) / .5); }
-.tray-ball .tb-notch { width: 2px; margin-left: -1px; background: var(--t-text); }
-.tray-ball .tb-num { flex: 0 0 auto; font-family: var(--t-disp); font-weight: 700; font-size: 15px; letter-spacing: 0.02em; color: var(--t-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.tray-ball .tb-num small { font-family: var(--t-mono); font-weight: 400; font-size: 10px; color: var(--t-text-2); }
-.tray-ball .tb-tax { color: var(--t-bad-soft); }
-.tray-ball + .tray-roles { padding-top: 4px; }
 /* v63: a height that would make a second small man in his unit (app.js heightTag) reads red, like a second TITLE #1 */
 .pr-ht.is-small { color: var(--t-bad-soft); }
 .ledger-note { margin: 8px 2px 0; color: var(--t-text-2); }
@@ -3831,7 +3815,7 @@ body.gating .gate-back {
 .reel-note-pending { min-height: 18px; }
 /* v59.3 (the owner): the gap under each month's games holds a SWEPT stamp or one loss pinned on one of your five,
    in a bigger face; the pending gap is the same height, so nothing shifts when it fills */
-.reel-act .reel-note { min-height: 26px; margin: 5px 0 10px; font-size: 15.5px; line-height: 1.35; color: var(--t-text-2); }
+.reel-act .reel-note { min-height: 26px; margin: 1px 0 10px; font-size: 15.5px; line-height: 1.35; color: var(--t-text-2); }   /* v63.1: tight under the dots (the owner) */
 .reel-act .reel-note-pending { min-height: 26px; }
 .reel-blame { font-weight: 700; color: var(--t-loss); }
 .reel-note .riso-swept { margin: 2px 0 0 2px; padding: 3px 10px 2px; border-width: 2.5px; font-size: 15px; letter-spacing: 0.16em; }
@@ -3843,7 +3827,7 @@ body.gating .gate-back {
 
 /* the stamps: reel-riso.js prints each month as a strip on the theme's print stock */
 .reel-overlay.riso .reel-card { min-height: min(540px, 82vh); background: var(--t-print-paper); }
-.reel-overlay.riso .reel-grid { display: block; margin: 7px 0 3px; }
+.reel-overlay.riso .reel-grid { display: block; margin: 7px 0 0; }
 .riso-strip { display: block; mix-blend-mode: var(--t-print-blend); }
 .riso-swept { display: inline-block; margin-left: 4px; padding: 2px 6px 1px; border: 2px solid var(--t-print-pop); border-radius: 3px; color: var(--t-print-pop); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; transform: rotate(-9deg); }
 .riso-flash { position: absolute; inset: 0; z-index: 2; background: var(--t-loss); mix-blend-mode: var(--t-print-blend); opacity: 0; pointer-events: none; }
@@ -4033,11 +4017,12 @@ body.bt-open .t-toast.on { transform: translate(-50%, 0); }
 /* the masthead on the home screen: the same art, the mock's size, no rule under it */
 /* (#app#app outranks look.css's doubled-id masthead rule; a browser without :has() keeps today's masthead) */
 body:has(#app#app > .hm) .site-head { border-bottom-color: transparent; padding-bottom: 0; }
+body:has(#app#app > .hm) #app { padding-top: 0; }   /* v63.1 (the owner: "even less padding between true 82 logo and how to play link") */
 /* v63 (the owner: the tagline "takes away from the pretty logo"): with "Draft what wins" moved into HOW TO PLAY, the
    logo leads the home screen at nearly the full width of a phone */
 body:has(#app#app > .hm) .brand-logo { width: min(400px, 96%); max-width: none; -webkit-user-select: none; user-select: none; }
 .hm-mast { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; }
-.hm-howto { appearance: none; -webkit-appearance: none; margin: 8px 0 0; padding: 6px 10px; border: 0; background: none;
+.hm-howto { appearance: none; -webkit-appearance: none; margin: 0; padding: 2px 10px 6px; border: 0; background: none;
   cursor: pointer; display: inline-flex; align-items: center; gap: 7px; color: rgb(var(--t-offset-rgb) / .9);
   font: 500 15px/1.2 var(--t-body); -webkit-tap-highlight-color: transparent; }
 .hm-howto span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px;

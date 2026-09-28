@@ -1391,8 +1391,8 @@ function chipsFor(row, tab) {
 }
 function bucketTag(row) { return rowBuckets(row).join("/"); }
 /* v63 ONE BALL and SIZE BY UNIT (the owner, 2026-09-28; sim-core oneBall, sizeUnits). The boards show what the two rules
-   read: usage in Classic's stat line (the tray adds it up on the ball meter, trayBallHtml) and the listed height by the
-   position, which turns red when that pick would be the second small man in his unit (like a second TITLE #1). Pro
+   read: usage in Classic's stat line (v63.1: no tray meter, the owner's call) and the listed height by the
+   position, which turns red when that pick would be the second small man in his unit. Pro
    shows none of it, from memory (the owner's rule for its tags); the rules still count. v62's "20+" chip went with the
    20-point rule (the owner: an 82-0 five is four apex scorers, so the rule has to price bad fit, not greatness). */
 function htText(inches) {
@@ -1624,6 +1624,19 @@ function modePanelHtml() {
    the fade and padding follow automatically. A one-time MORE PLAYERS cue
    shows on round 1 if the list overflows, and dies on the first scroll. */
 var DRAFT_VP = { ro: null, off: null };
+// v63.1 (the owner: "running it back sometimes results in the footer with medallions taking up like half the page in
+// perpetuity - only on second play", on his phone). Not reproducible in an emulator; the likely cause is iPhone Safari
+// zoom: a quick double tap on the long results page zooms in, RUN IT BACK stays in reach, and the draft screen, locked
+// to one screen with the pool as its only scroller, keeps the zoom, so the fixed tray fills the view with nothing to
+// scroll. styles.css now turns double-tap zoom off (pinch zoom stays), and a draft that opens zoomed snaps back: the
+// viewport meta briefly caps the scale at 1, which Safari applies, then the cap comes off so pinch zoom works again.
+function resetPageZoom() {
+  var vv = window.visualViewport, m = document.querySelector('meta[name="viewport"]');
+  if (!vv || !m || !(vv.scale > 1.01)) return;
+  var c = m.getAttribute("content") || "width=device-width, initial-scale=1";
+  m.setAttribute("content", c + ", maximum-scale=1");
+  setTimeout(function () { m.setAttribute("content", c); }, 400);
+}
 function setTrayVar() {
   var tray = document.querySelector(".tray");
   if (!tray) return;
@@ -1631,6 +1644,7 @@ function setTrayVar() {
   document.documentElement.style.setProperty("--tray-h", h + "px");
 }
 function initDraftViewport() {
+  resetPageZoom();
   if (DRAFT_VP.ro) { try { DRAFT_VP.ro.disconnect(); } catch (e) {} DRAFT_VP.ro = null; }
   if (DRAFT_VP.off) { DRAFT_VP.off(); DRAFT_VP.off = null; }
   var tray = document.querySelector(".tray");
@@ -1817,8 +1831,8 @@ var RULES_DAILY_CAP = "One shared board per day. Everyone gets the same teams, t
 var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
-  ["ONE BALL", "Add up your five's usage (the share of plays each one finishes). A title team uses about 105, and 120 is free. Every point past 120 costs 0.3 net: four stars and a glue guy pay a little, five ball-dominant alphas pay a lot."],
-  ["REPUTATIONS", "Two TITLE #1 stars cost 2 (the Dueling Banjos Tax), and so do two players who hold the ball or two defenders teams hunt. Two foul merchants cost 1, and every stat padder costs 1. Only settled tags count."],
+  ["ONE BALL", "Add up your five's usage (the share of plays each one finishes). A title team uses about 105, and 120 is free. Every point past 120 costs 0.3 net, but never more than 6: stars adapt, so even five alphas lose about one All-Star's worth."],
+  ["REPUTATIONS", "Two players who hold the ball cost 2, and so do two defenders teams hunt. Two foul merchants cost 1, and every stat padder costs 1. Only settled tags count."],
   ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. And someone up front, a forward or your center, has to protect the rim, or that is 2 more."],
   ["THE DIRTY WORK", "Your five still have to rebound and somebody has to pass. A bottom-of-the-league board rate costs 2 to 3, no real playmaker costs 2, and more than one player past his 12th season costs 1."],
   ["SIZE", "One small man can hide; two in the same unit get found. Two guards 6'2\" or shorter cost 2, and so do two frontcourt players 6'6\" or shorter."],
@@ -2110,12 +2124,13 @@ function buildTraitLegendInto(panel, scope) {
     : " " + eng.join(" and ") + " are the engine\u2019s own shooting math, not votes.";
   // v61: on a draft board the tags are what the Scoring Card reads, so the note says how
   var board = scope.id === "pool" || !!scope.querySelector(".board-tags");
-  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each); for pairs: two knuckleheads 2, two TITLE #1s 2 (the Dueling Banjos Tax), two who hold the ball (BALL-STOP or BALL-POUND) 2, two HUNTED 2, two FOUL-MERCH 1; and 1 for every STAT-PAD.";
+  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each); for pairs: two knuckleheads 2, two who hold the ball (BALL-STOP or BALL-POUND) 2, two HUNTED 2, two FOUL-MERCH 1; and 1 for every STAT-PAD.";
   // v63: the height by each position is what the size rule reads, and usg (Classic's stat line) is the one ball (Pro shows neither)
   var sz = board && MODE !== "pro" ? sizeRule([], []) : null, bl = board && MODE === "classic" ? ballRule([]) : null;
   if (sz && (sz.gAmt > 0 || sz.fcAmt > 0)) tagNote += " Heights count by unit: two guards " + htText(sz.gBar) + " or shorter cost " + fmt1(sz.gAmt).replace(/\.0$/, "") +
     ", and so do two frontcourt players " + htText(sz.fcBar) + " or shorter. A red height is the second one.";
-  if (bl && bl.rate > 0) tagNote += " The usg numbers share one ball: your five get " + Math.round(bl.budget) + " free, then each point costs " + fmt1(bl.rate).replace(/\.0$/, "") + ".";
+  if (bl && bl.rate > 0) tagNote += " The usg numbers share one ball: your five get " + Math.round(bl.budget) + " free, then each point costs " + fmt1(bl.rate).replace(/\.0$/, "") +
+    (bl.cap >= 0 ? ", never more than " + fmt1(bl.cap).replace(/\.0$/, "") : "") + ".";
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
     '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
     '<div class="trait-legend-note">Community votes confirm or overturn these labels.' + engNote + tagNote + "</div>";
@@ -3266,31 +3281,19 @@ function ballotOverlayUp() {
    a "?" role tag shows like any other: it fills its role exactly like a settled one (it has to: settled tags are thin,
    so a settled-only rule would charge 20 of 32 real title teams for a missing role), so on the board the "?" said
    nothing a drafter could use. The results cards keep their "?", where it means "vote on this". */
+// v63.1: TITLE #1 leaves the board with the Banjos charge (a board shows only the tags the scoring reads); the results
+// cards still show it, and the Scoring Card's one-ball row names two of them in the owner's line.
 var BOARD_TAG_IDS = { "rim-pressurer": 1, "tough-shot-maker": 1, "playmaker": 1, "iso-defender": 1, "team-defender": 1, "rim-protector": 1,
-  "clutch": 1, "championship-number-one": 1, "hunted": 1, "ball-stopper": 1, "ball-pounder": 1, "foul-merchant": 1, "stat-padder": 1,
-  "off-court-knucklehead": 1 };
+  "clutch": 1, "hunted": 1, "ball-stopper": 1, "ball-pounder": 1, "foul-merchant": 1, "stat-padder": 1, "off-court-knucklehead": 1 };
 var BOARD_TAGS = BALLOT_TRAITS.filter(function (T) { return BOARD_TAG_IDS[T.id]; }).map(function (T) { return T.id; });
-// v62.1 THE DUELING BANJOS TAX (sim-core labelTaxes): two settled TITLE #1s cost 2, so a TITLE #1 shows settled only (like
-// a knucklehead), and once your five has one, every other TITLE #1 on the board turns red: that pick would pay it
-var BANJO_ID = "championship-number-one";
-function fiveHasTitle1(row) {
-  if (!G || !G.picks || !G.picks.length || typeof T82 === "undefined" || !T82.labelsOf) return false;
-  for (var i = 0; i < G.picks.length; i++) {
-    var r = G.picks[i].row;
-    if (!r || (row && r[IDX.name] === row[IDX.name])) continue;
-    var o = T82.labelsOf(r[IDX.name], r[IDX.season]);
-    if (o && o[BANJO_ID] === "y") return true;
-  }
-  return false;
-}
 function boardTagsHtml(row, sd) {
   var o = row && typeof T82 !== "undefined" && T82.labelsOf ? T82.labelsOf(row[IDX.name], row[IDX.season]) : null;
   if (!o) return "";
-  var banjo = !sd && G && G.screen === "draft" && o[BANJO_ID] === "y" && fiveHasTitle1(row), h = "";
+  var h = "";
   BOARD_TAGS.forEach(function (id) {
     var v = o[id], T = ballotTrait(id);
-    if (!v || !T || ((T.neg || id === BANJO_ID) && v !== "y")) return;   // a reputation counts settled only, so it shows settled only
-    var bad = T.neg || (id === BANJO_ID && banjo), nm = T.name + (id === BANJO_ID && banjo ? ", a second one costs 2" : "");
+    if (!v || !T || (T.neg && v !== "y")) return;   // a reputation counts settled only, so it shows settled only
+    var bad = !!T.neg, nm = T.name;
     h += '<button type="button" class="tchip t-chip" data-size="sm"' + (bad ? ' data-tone="bad"' : "") +
       ' tabindex="-1" data-full="' + esc(T.name) + '" data-abbr="' + esc(T.chip) + '"' +
       ' aria-label="' + esc(nm) + '" aria-pressed="false" title="' + esc(nm) + '">' + esc(T.chip) + "</button>";
@@ -3402,7 +3405,7 @@ function renderIntro() {
       '<div class="hm-ht hm-mid is-cyan" id="homeDaily">' +
         '<button class="hm-mode tm-flat" id="startDaily" type="button">' +
           '<span class="hm-t">The Daily #' + dailyBoard.num + "</span>" +
-          '<span class="hm-s">' + esc(dailyBoard.name) + hmStreak + "</span>" +
+          '<span class="hm-s">\u201C' + esc(dailyBoard.name) + "\u201D" + hmStreak + "</span>" +   // v63.1: the board's name in quotes (the owner)
         "</button>" +
       "</div>";
   } else {
@@ -3778,36 +3781,12 @@ function lineupRailHtml() {
 }
 
 function trayHtml() {
-  return lineupRailHtml() + trayBallHtml() + trayRolesHtml();
+  return lineupRailHtml() + trayRolesHtml();
 }
-/* v63 THE BALL METER (the owner's item 3: "debating whether or not you need to put all the team aggregate taxes on the
-   classic draft screen"). No: each card already shows its ingredients (usage, height, tags), and a pick that would cost
-   a pair or size tax turns red on the board before you take it. The tray keeps only the running totals no card can
-   show: the ball (this meter) and the roles still missing (trayRolesHtml); the Scoring Card keeps the whole bill. The
-   meter fills as you draft, the budget is the notch, anything past it is red, and a selected player previews where he
-   takes it. Classic-style boards only: Presti and Pro draft the stats from memory, and the Scoring Card charges it. */
-function trayBallHtml() {
-  if (!G || G.screen !== "draft" || MODE !== "classic" || !G.picks || G.picks.length >= CFG.ROUNDS) return "";
-  var rows = G.picks.map(function (p) { return p.row; }), b = ballRule(rows);
-  if (!b || !(b.rate > 0)) return "";                     // a board with the usage tax off shows no meter
-  var sel = G.selected ? resolveRow(G.selected) : null;
-  var nb = sel && !pickBlock(sel) ? ballRule(rows.concat([sel])) : null;
-  if (!rows.length && !nb) return "";                     // an empty meter says nothing until the first player is in hand
-  var top = Math.max(b.budget * 1.5, (nb || b).sum + 5);   // the track: the free ball, then half as much again
-  function pct(x) { return Math.max(0, Math.min(100, 100 * x / top)).toFixed(1) + "%"; }
-  var now = b.sum, next = nb ? nb.sum : now, over = nb ? nb.over : b.over, tax = nb ? nb.tax : b.tax;
-  var fill = '<i class="tb-fill" style="width:' + pct(Math.min(now, b.budget)) + '"></i>' +
-    (now > b.budget ? '<i class="tb-over" style="left:' + pct(b.budget) + ";width:" + pct(now - b.budget) + '"></i>' : "") +
-    (next > now ? '<i class="tb-next' + (next > b.budget ? " is-over" : "") + '" style="left:' + pct(now) + ";width:" + pct(next - now) + '"></i>' : "") +
-    '<i class="tb-notch" style="left:' + pct(b.budget) + '"></i>';
-  var num = Math.round(now) + (nb ? " \u2192 " + Math.round(next) : "") + '<small> of ' + Math.round(b.budget) + "</small>" +
-    (tax > 0.049 ? ' <b class="tb-tax">\u2212' + fmt1(tax) + "</b>" : "");
-  var say = "The ball: your five use " + Math.round(now) + (nb ? ", " + Math.round(next) + " with " + G.selected : "") + ", of " + Math.round(b.budget) + " free" +
-    (tax > 0.049 ? ", costing " + fmt1(tax) + " net" : "") + ".";
-  return '<div class="tray-ball' + (over > 0 ? " is-over" : "") + '" role="img" aria-label="' + esc(say) + '">' +
-    '<span class="tb-lab">The ball</span><span class="tb-track" aria-hidden="true">' + fill + "</span>" +
-    '<span class="tb-num" aria-hidden="true">' + num + "</span></div>";
-}
+/* v63.1 (the owner, after playing v63's ball meter: "remove the usage bar on classic draft"): the tray is the lineup
+   and the roles still missing. Each card still shows its usage (Classic's stat line); the Scoring Card charges one
+   ball. (v63's call on item 3 stands otherwise: the ingredients on the cards, a red height before a costly pick, the
+   whole bill on the Scoring Card.) */
 // v61: once two picks are left, the tray names the roles nobody on your five fills yet, with what each would cost
 // (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
 var LBL_ROLE_IDS = { iso: 1, clutch: 1, teamd: 1, rimplus: 1, tshot: 1 };
@@ -3815,7 +3794,7 @@ function trayRolesHtml() {
   if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
   if (!window.T82 || !T82.labelTaxes || !T82.labelsReady()) return "";
   var lt = T82.labelTaxes(G, G.picks.map(function (p) { return p.row; }));
-  var open = lt.rows.filter(function (r) { return r.amt > 0 && LBL_ROLE_IDS[r.id]; });   // roles only (not knuckleheads or banjos)
+  var open = lt.rows.filter(function (r) { return r.amt > 0 && LBL_ROLE_IDS[r.id]; });   // roles only (not the pairs)
   if (!open.length) return '<div class="tray-roles is-full">Every role on the tag sheet is filled</div>';
   return '<div class="tray-roles">Still missing: ' + open.map(function (r) {
     return '<b>' + esc(LBL_COPY[r.id][0].replace(/^No /, "")) + "</b> \u2212" + (r.amt % 1 ? fmt1(r.amt) : r.amt);
@@ -3831,7 +3810,7 @@ function confirmHtml() {
   var yr = shortSeason(row[IDX.season]);
   var who = MODE === "kaman" ? "Chris Kaman" : esc(G.selected);
   // v20: the money math happens where the thumb is. The confirm line shows
-  // the price AND what the bank holds after: "· $23M · leaves $27M".
+  // the price AND what the bank holds after: "· $26M · leaves $24M".
   var costNote = "";
   if (MODE === "cap" && effCost(G.selected) != null) {
     var _c = effCost(G.selected);
@@ -4275,7 +4254,6 @@ var LBL_COPY = {
   rimplus: ["No RIM+", "Jumpers all night. Nobody gets to the line."],
   tshot: ["No TSHOT", "When the play breaks down, nobody can bail you out."],
   knuck: ["Knuckleheads", ""],
-  banjo: ["Dueling Banjos Tax", ""],
   stick: ["The ball sticks", ""],
   hunted: ["Hunted", ""],
   foul: ["Foul merchants", ""],
@@ -4293,8 +4271,13 @@ function ballLedgerHtml(e) {
   if (!(e.usageTax > 0)) return ledgerRow("One ball", "Your five use " + Math.round(e.sumUsage) + " of the ball, inside the " + budget + " a five can share.", 0, false);
   var top = rows.map(function (r, i) { return i; }).sort(function (a, b) { return rows[b][IDX.usage] - rows[a][IDX.usage]; }).slice(0, 3)
     .map(function (i) { return shareSurname(rows[i][IDX.name]) + " " + Math.round(rows[i][IDX.usage]); }).join(", ");
+  // v63.1: the cap (never more than 6 on a normal board), and the Banjos' story told here, in the owner's line, when two
+  // or more settled TITLE #1s share the five (the Banjos no longer charge on their own)
+  var alphas = (e.title1 || []).length >= 2;
   return ledgerRow("One ball", "Your five use " + Math.round(e.sumUsage) + " of the ball (" + esc(top) + "). A five can share " + budget +
-    "; each point past it costs " + fmt1(rate).replace(/\.0$/, "") + ". " + (e.usageOver >= 20 ? "The ball is never coming back." : "Somebody has to set a screen."), e.usageTax, true);
+    "; each point past it costs " + fmt1(rate).replace(/\.0$/, "") + (e.usageCap >= 0 ? ", never more than " + fmt1(e.usageCap).replace(/\.0$/, "") : "") + ". " +
+    (alphas ? "Took the alphas some time to figure out how to play together and not just alongside each other."
+      : e.usageCapped ? "The stars figure it out, but somebody still has to set the screens." : e.usageOver >= 20 ? "The ball is never coming back." : "Somebody has to set a screen."), e.usageTax, true);
 }
 function sizeLedgerHtml(e) {
   var z = e && e.size;
@@ -4316,8 +4299,7 @@ function labelRowsHtml(e) {
     if (!c) return "";
     if (r.id === "knuck") return ledgerRow(c[0], LBL_NUM[r.who.length] + " knuckleheads (" + esc(who(r.who)) + ")." +
       (r.who.length >= 3 ? " They started hanging out." : " They\u2019ll start hanging out."), r.amt, true);
-    // v62.2: the owner's own lines for the Banjos and the stat padders
-    if (r.id === "banjo") return ledgerRow(c[0], LBL_NUM[r.who.length] + " TITLE #1s (" + esc(who(r.who)) + "). Took the alphas some time to figure out how to play together and not just alongside each other.", r.amt, true);
+    // v62.2: the owner's own line for the stat padders (v63.1: his Banjos line now closes the one-ball row)
     if (r.id === "stick") return ledgerRow(c[0], LBL_NUM[r.who.length] + " players who hold the ball (" + esc(who(r.who)) + "). It goes in and it does not come out.", r.amt, true);
     if (r.id === "hunted") return ledgerRow(c[0], LBL_NUM[r.who.length] + " hunted defenders (" + esc(who(r.who)) + "). Come playoff time, they get switched onto every trip.", r.amt, true);
     if (r.id === "foul") return ledgerRow(c[0], LBL_NUM[r.who.length] + " foul merchants (" + esc(who(r.who)) + "). The whistle disappears in the playoffs.", r.amt, true);
@@ -5475,7 +5457,8 @@ function recapTier(w) { for (var i = 0; i < RECAP_TIERS.length; i++) if (w >= RE
 // Scoring Card shows, phrased for a writer instead of a ledger.
 function recapFitNotes(e) {
   var n = [];
-  if (e.usageTax > 0) n.push("more than one ball's worth of stars: their usage adds up to " + Math.round(e.sumUsage) + " against the " + Math.round(e.usageBudget) + " a lineup can share");
+  if (e.usageTax > 0) n.push("more than one ball's worth of stars: their usage adds up to " + Math.round(e.sumUsage) + " against the " + Math.round(e.usageBudget) + " a lineup can share" +
+    ((e.title1 || []).length >= 2 ? ", with two alphas still figuring out how to play together, not just alongside each other" : ""));
   if (e.spacingBonus > 0) n.push("surplus shooting: extra floor-spacers stretch every defense");
   else if (e.spacingTax > 0) n.push("only " + e.sumSp + " of " + runCfg("SPACERS_REQ") + " required floor-spacers: the floor shrinks in the half court");
   else if (e.spacingBonus < 0) n.push(e.sumSp + " shooters on a board that charges for every one past " + runCfg("SPACERS_REQ") + ": the extra spacing cost points");
@@ -5487,7 +5470,6 @@ function recapFitNotes(e) {
     var line = { iso: "nobody on the roster can guard the other team's best scorer", clutch: "nobody wants the last shot in a close game",
       teamd: "nobody rotates on defense", rimplus: "nobody attacks the rim or gets to the line", tshot: "nobody can make a tough shot when a play breaks down",
       knuck: r.who && r.who.length >= 3 ? "three off-court knuckleheads share a locker room" : "two off-court knuckleheads share a locker room",
-      banjo: "two alphas still figuring out how to play together, not just alongside each other: dueling banjos",
       stick: "two players who hold the ball: it goes in and it does not come out", hunted: "two defenders the other team hunts on every switch",
       foul: "two foul merchants living at the line until the playoff whistle disappears", statpad: "stat padding: numbers that do not add up to winning",
       "switch": "three switchable defenders: they switch everything", cut: "a playmaker keeps finding two off-ball scorers cutting to the rim" }[r.id];
@@ -8490,6 +8472,23 @@ function printCall(fn) {
     return null;
   }
 }
+// v63.1 (the owner: "shuffle the artwork no matter the result, I want people to see all my art assets"): the season
+// print's painting (golden, dusk or night) no longer follows the record. It comes from a shuffle bag kept on the
+// device, so every player sees all three within three seasons; one run keeps its painting through a Heat Check reprint.
+var PRINT_PALS = ["golden", "dusk", "night"], PRINT_BAG_KEY = "t82-print-bag";
+function resultsPrintPal() {
+  if (G && G.printPal) return G.printPal;
+  var bag = null, pal;
+  try { bag = JSON.parse(localStorage.getItem(PRINT_BAG_KEY) || "null"); } catch (err) { bag = null; }
+  if (!Array.isArray(bag) || !bag.length || bag.some(function (k) { return PRINT_PALS.indexOf(k) < 0; })) {
+    bag = PRINT_PALS.slice();
+    for (var i = bag.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = bag[i]; bag[i] = bag[j]; bag[j] = t; }   // cosmetic: Math.random
+  }
+  pal = bag.shift();
+  try { localStorage.setItem(PRINT_BAG_KEY, JSON.stringify(bag)); } catch (err) {}
+  if (G) G.printPal = pal;
+  return pal;
+}
 function resultsPrintSpec(e, daily, winsNow) {
   var games = e.season && e.season.games && e.season.games.length === CFG.GAMES_IN_SEASON
     ? e.season.games.map(function (g) { return g ? 1 : 0; }) : null;
@@ -8509,7 +8508,7 @@ function resultsPrintSpec(e, daily, winsNow) {
   return {
     games: games, wins: wins, saved: saved, context: context, names: names, roster: roster, net: signed1(net),
     comp: wins >= CFG.GAMES_IN_SEASON ? "Greatest of all GOATs" : shareCompFor(wins, false),
-    seed: reelHash(names.join("|") + "#" + wins)
+    seed: reelHash(names.join("|") + "#" + wins), pal: resultsPrintPal()
   };
 }
 function mountResultsPrint(e, daily) {
@@ -9193,7 +9192,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v63";
+var BUILD_V = "v63.1";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

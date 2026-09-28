@@ -106,9 +106,15 @@ Calibrated by Monte Carlo so optimal play sneaks an 82-0 roster under the cap
 
 **Mispricing pass** (`capMisprice`) makes cost a noisy signal: among value-2–4
 marginals NOT in the board's top-5 by value (top-5 are shielded),
-`CAP_GEM = 0.15` chance → $1 gem; `CAP_TRAP = 0.50` chance → repriced into the
-premium band (overlapping the real top-3 costs). Then 2–4 sub-value-2 players
-get lifted to $2–$6 so "$1 = junk" stops being a tell.
+`CAP_TRAP = 0.50` chance → repriced into the premium band (overlapping the real
+top-3 costs). **The $1 gem (v63.1, the owner):** a board that sets `CAP_GEM`
+keeps the flat per-player gem chance its copy promises; every other board gets
+at most one gem, as luck's rebate: if its top five rolled over their fair price
+(the curve with an even roll, under the ceiling), a gem appears with chance
+(paid/fair − 1)/`CAP_GEM_SPAN` (0.3), capped at 1; at or under fair, none. About
+11% of boards (27% before). Then 2–4 sub-value-2 players get lifted to $2–$6 so
+"$1 = junk" stops being a tell. **Ceiling:** `CAP_CEIL` $26 (v63.1; $23 before),
+$24 in a fire sale.
 
 **Rerolls** (`chargeReroll`): every paid spin (Skip team / Skip era / Skip yrs)
 costs $1 and rolls ONE die: < 0.075 → REFUND (dollar back, button flash);

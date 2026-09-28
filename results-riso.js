@@ -369,12 +369,18 @@
     function U(x) { return clamp((x - L.X0) / (L.X1 - L.X0) * 82, 0, 82); }
     function far1(x) { return Math.min(WL - 10 * vs, WL - 64 * vs - 0.5 * SC * Math.max(0, avg(U(x), 7)) - 38 * vs * (1 - Math.abs(fbm(n2, x * 0.006, 4)))); }
     function far2(x) { return Math.min(WL - 30 * vs, WL - 118 * vs - 0.3 * SC * Math.max(0, avg(U(x), 14)) - 86 * vs * (1 - Math.abs(fbm(n3, x * 0.0045, 4)))); }
-    var pal;
-    if (wp >= 0.72) pal = { key: "golden", light: "sun", top: [[0, 0.58], [0.55, 0.25], [1, 0]], band: [[0, 0], [0.5, 0.28], [0.85, 0.55], [1, 0.48]], waterB: [[0, 0.2], [1, 0.55]], ridgeB: 0.86, ridgeP: 0.7, sr: 86 };
-    else if (wp >= 0.45) pal = { key: "dusk", light: "orange", top: [[0, 0.62], [0.6, 0.3], [1, 0.1]], band: [[0, 0.1], [0.5, 0.45], [1, 0.62]], waterB: [[0, 0.26], [1, 0.6]], ridgeB: 0.88, ridgeP: 0.7, sr: 104 };
-    else pal = { key: "night", light: "teal", top: [[0, 0.9], [0.7, 0.7], [1, 0.5]], band: [[0, 0.05], [1, 0.2]], waterB: [[0, 0.55], [1, 0.82]], ridgeB: 0.95, ridgeP: 0.62, sr: 0 };
+    // v63.1 (the owner: "shuffle the artwork no matter the result, I want people to see all my art assets even if
+    // they're awesome"): app.js hands the painting in spec.pal from a shuffle bag, so every player sees all three; a
+    // spec without one (the Reprint Lab, an old poster recipe) keeps the win-rate rule. The sun never sinks below the
+    // water now (a golden print on a losing year sets on the horizon instead).
+    var PAL = {
+      golden: { key: "golden", light: "sun", top: [[0, 0.58], [0.55, 0.25], [1, 0]], band: [[0, 0], [0.5, 0.28], [0.85, 0.55], [1, 0.48]], waterB: [[0, 0.2], [1, 0.55]], ridgeB: 0.86, ridgeP: 0.7, sr: 86 },
+      dusk: { key: "dusk", light: "orange", top: [[0, 0.62], [0.6, 0.3], [1, 0.1]], band: [[0, 0.1], [0.5, 0.45], [1, 0.62]], waterB: [[0, 0.26], [1, 0.6]], ridgeB: 0.88, ridgeP: 0.7, sr: 104 },
+      night: { key: "night", light: "teal", top: [[0, 0.9], [0.7, 0.7], [1, 0.5]], band: [[0, 0.05], [1, 0.2]], waterB: [[0, 0.55], [1, 0.82]], ridgeB: 0.95, ridgeP: 0.62, sr: 0 }
+    };
+    var pal = PAL[spec.pal] || (wp >= 0.72 ? PAL.golden : wp >= 0.45 ? PAL.dusk : PAL.night);
     var sr = pal.sr * L.rs;
-    var sx = clamp(lerp(X(peak), 500, 0.35), 190, 810), sy = WL - (wp - 0.5) * 2 * (WL - L.FY0 - sr - 14);
+    var sx = clamp(lerp(X(peak), 500, 0.35), 190, 810), sy = Math.min(WL - sr * 0.45, WL - (wp - 0.5) * 2 * (WL - L.FY0 - sr - 14));
     var moon = { x: 740, y: L.FY0 + (WL - L.FY0) * 0.3, r: 57 * L.rs };
     var losses = [];
     if (games) for (i = 0; i < 82; i++) if (!games[i]) losses.push(i);

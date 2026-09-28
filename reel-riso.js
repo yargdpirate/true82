@@ -286,7 +286,7 @@
         if (b > 0) { g.fillStyle = tone(0.55 * b); circ(g, c[0], c[1], R * s * 0.64); g.fill(); }
         g.fillStyle = tone(0.96);
         var lastRow = Math.floor(D.idx / S.cols) === S.rows - 1;
-        drawDrips(g, D, c, R, S.pitch * (lastRow ? 0.92 : 0.22), easeOut((e - 0.12) / 1.15));
+        drawDrips(g, D, c, R, S.pitch * (lastRow ? 0.5 : 0.22), easeOut((e - 0.12) / 1.15));   // v63.1: shorter last-row drips (the owner: less room under the dots)
         var k = clamp(e / 0.06, 0, 1);
         if (k > 0) D.splats.forEach(function (q) { circ(g, c[0] + Math.cos(q.a) * q.d * R, c[1] + Math.sin(q.a) * q.d * R, q.s * R * k); g.fill(); });
         drawCracks(g, D, c, R * s);
@@ -334,7 +334,7 @@
       var gw = Math.max(120, Math.round(S.grid.getBoundingClientRect().width || 300));
       var pitch = clamp(gw / 15, 17, 27), cols = Math.max(1, Math.min(S.count, Math.floor(gw / pitch))), rows = Math.ceil(S.count / cols);
       S.pitch = pitch; S.cols = cols; S.rows = rows;
-      S.cssW = Math.round(cols * pitch); S.cssH = Math.round(rows * pitch + pitch * 0.95);   // room below for drips
+      S.cssW = Math.round(cols * pitch); S.cssH = Math.round(rows * pitch + pitch * 0.55);   // room below for drips (v63.1: 0.95 to 0.55, the owner)
       S.canvas.style.width = S.cssW + "px"; S.canvas.style.height = S.cssH + "px";
       S.P = makePlate(S.cssW, S.cssH, 900 + S.mi * 31, TH);
       S.canvas.width = S.P.W; S.canvas.height = S.P.H;
@@ -610,7 +610,7 @@
     var streaks = opts.streaks || [], gw = Math.max(120, Math.round(opts.cssW || 300)), pitch = clamp(gw / 15, 17, 27), count = games.length;
     var S = { mi: opts.mi || 0, count: count, pitch: pitch, cols: Math.max(1, Math.min(count, Math.floor(gw / pitch))), dots: [] };
     S.rows = Math.ceil(count / S.cols);
-    S.cssW = Math.round(S.cols * pitch); S.cssH = Math.round(S.rows * pitch + pitch * 0.95);
+    S.cssW = Math.round(S.cols * pitch); S.cssH = Math.round(S.rows * pitch + pitch * 0.55);
     var d = opts.d || 2, r = mulberry((900 + S.mi * 31) >>> 0);
     var P = { W: Math.round(S.cssW * d), H: Math.round(S.cssH * d), k: d, pitch: PITCH * d, rgb: TH.rgb, blend: TH.blend };
     P.grain = makeGrain(P.W, P.H, r); P.starve = makeStarve(P.W, P.H, r, d); P.s = cv(P.W, P.H); P.sg = P.s.getContext("2d", { willReadFrequently: true });

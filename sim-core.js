@@ -27,11 +27,13 @@
            CAP_TRAP, TEAM_SKIPS, ERA_SKIPS, and the engine tax/threshold keys
            (v61: the label taxes too: LBL_ISO_TAX, LBL_CLUTCH_TAX, LBL_TEAMD_TAX,
            LBL_RIMPLUS_TAX, LBL_TSHOT_TAX, LBL_KNUCK_TAX_2/_3, LBL_SWITCH_CREDIT,
-           LBL_CUT_CREDIT; 0 turns one off on a board; v62.1: LBL_BANJO_TAX;
+           LBL_CUT_CREDIT; 0 turns one off on a board;
            v62.2: LBL_STICK_TAX, LBL_HUNTED_TAX, LBL_FOUL_TAX, LBL_STATPAD_TAX;
            v63: USAGE_BUDGET and USAGE_RATE are the one-ball rule (code defaults
            120 and 0.3), and SMALL_G_HT, SMALL_FC_HT, SMALL_G_TAX, SMALL_FC_TAX
-           size the five by unit; v62's ONEBALL_* and SHORT_* keys are gone) }
+           size the five by unit; v62's ONEBALL_* and SHORT_* keys are gone;
+           v63.1: USAGE_CAP (default 6) tops one ball out; v62.1's LBL_BANJO_TAX
+           is gone with the Banjos charge) }
    TRUST LAW: NET_SD, BASELINE, REPLACEMENT and the Hot Hand are NOT hookable.
    Challenges shape the draft, never the sim's fairness or the wheel.
 
@@ -131,6 +133,10 @@
   var DEC_SPAN = new Map(), SEASON_SPAN = null, TEAM2FR = {}, BEST_BY_NAME = new Map();
   var FRANCHISES = [], CAREER_BUCKETS = new Map(), KAMAN_SEASONS = [], DRAFT_ROWS = [];
   var CAP_BUDGET = 50, CAP_TRAP = 0.50, CAP_GEM = 0.15;
+  // v63.1 (the owner): the most a player ever costs is CAP_CEIL (was $23; the fire sale's -$2 makes $24), and on a
+  // board that does not set CAP_GEM itself, a $1 gem is luck's rebate, never a given: CAP_GEM_SPAN is how far over fair
+  // the board's five best players have to have rolled for the gem to be certain (capMisprice)
+  var CAP_CEIL = 26, CAP_GEM_SPAN = 0.3;
   var DATA_VERSION = 0;
 
   // ---- MANUAL PLAYER-VALUE ADJUSTMENTS (VALUE_ADJ) -------------------------
@@ -454,13 +460,14 @@ function assignCapPool(S, avoid) {
     for (var pj = 0; pj < elig.length; pj++) if (stintMinutes(elig[pj]) > peakMin) peakMin = stintMinutes(elig[pj]);
     // challenge price hook (POOL3 market boards): a pure multiplier on this season's fair price, draws no randomness
     var pm = (S.ch && typeof S.ch.price === "function") ? S.ch.price(pickRow, T.t) : 1;
-    items.push({ name: name, v: valueOf(S, pickRow), cost: capCost(S, valueOf(S, pickRow), decay, pm), peakMin: peakMin });
+    items.push({ name: name, v: valueOf(S, pickRow), cost: capCost(S, valueOf(S, pickRow), decay, pm), peakMin: peakMin, pm: pm });
   });
   if (!items.length) return;
   capMisprice(S, items);
   capBumpTwos(S, items);   // two more $1 players -> $2, weighted by peak minutes (stacks on capMisprice)
-  // Hard ceiling: a player never costs more than $23. effCost's fire-sale -$2 then caps fire-sale at $21.
-  for (var i = 0; i < items.length; i++) S.costByName[items[i].name] = Math.min(23, items[i].cost);
+  // Hard ceiling: a player never costs more than CAP_CEIL ($26 since v63.1; $23 before). effCost's fire-sale -$2 then
+  // caps fire-sale at $24.
+  for (var i = 0; i < items.length; i++) S.costByName[items[i].name] = Math.min(CAP_CEIL, items[i].cost);
 }
 
 function capBumpTwos(S, items) {
@@ -486,14 +493,33 @@ function capMisprice(S, items) {
   for (i = 0; i < Math.min(5, n); i++) shielded[byVal[i].name] = true;
   var costs = items.map(function (it) { return it.cost; }).sort(function (a, b) { return b - a; });
   var lo = Math.max(costs[Math.min(2, n - 1)], 10), hi = Math.max(costs[0], lo + 8);  // premium band overlaps real top-3
+  // v63.1 (the owner: "no more guaranteed $1 bargains - determine its appearance based on the luck of the other player
+  // costs the player rolled relative to the game's valuation of them before player label taxes+awards"). A board that
+  // sets CAP_GEM keeps the flat per-player gem its copy promises (Gem Rush, The Golden Age, Fair Market ...). Every
+  // other board gets at most one gem, and only as luck's rebate: its luck is what its five most valuable players rolled
+  // against their fair price (the price curve with an even roll, under the ceiling; value is V, never a tag tax or
+  // credit). Stars that rolled at or under fair: no gem. Rolled dear: a gem, likelier the dearer, certain at
+  // CAP_GEM_SPAN over. One draw decides it and one picks the player, after the traps.
+  var flatGem = !!(S && S.ch && S.ch.cfg && Object.prototype.hasOwnProperty.call(S.ch.cfg, "CAP_GEM"));
+  var gemRate = flatGem ? C(S, "CAP_GEM", CAP_GEM) : 0, open = [];
   for (i = 0; i < n; i++) {
     var it = items[i];
     if (it.v >= 2 && it.v <= 4 && !shielded[it.name]) {
       var r = rnd(S);
-      if (r < C(S,"CAP_GEM",CAP_GEM)) it.cost = 1;                                                       // underpriced gem
-      else if (r < C(S,"CAP_GEM",CAP_GEM) + C(S,"CAP_TRAP",CAP_TRAP)) it.cost = Math.round(lo + rnd(S) * (hi - lo)); // overpriced trap
-      else if (it.cost < 2) it.cost = 2;                                                  // $1 floor now reads as "gem"
+      if (r < gemRate) it.cost = 1;                                                       // underpriced gem (a flat-gem board)
+      else if (r < gemRate + C(S,"CAP_TRAP",CAP_TRAP)) it.cost = Math.round(lo + rnd(S) * (hi - lo)); // overpriced trap
+      else { if (it.cost < 2) it.cost = 2; open.push(it); }                               // $1 floor now reads as "gem"
     }
+  }
+  if (!flatGem && open.length) {
+    var paid = 0, fair = 0;
+    for (i = 0; i < Math.min(5, n); i++) {
+      var st = byVal[i];
+      paid += Math.min(CAP_CEIL, st.cost);
+      fair += Math.min(CAP_CEIL, Math.max(1, Math.round(0.26 * Math.pow(Math.max(st.v, 1), 2) * C(S, "PRICE_MULT", 1) * (st.pm || 1))));
+    }
+    var pGem = fair > 0 ? Math.max(0, Math.min(1, (paid / fair - 1) / CAP_GEM_SPAN)) : 0;
+    if (rnd(S) < pGem) open[rndi(S, open.length)].cost = 1;
   }
   var weak = [];
   for (i = 0; i < n; i++) if (items[i].v < 2) weak.push(i);
@@ -581,7 +607,7 @@ var LBL_ROLES = [["iso", "iso-defender", "LBL_ISO_TAX", 2], ["clutch", "clutch",
   ["teamd", "team-defender", "LBL_TEAMD_TAX", 1], ["rimplus", "rim-pressurer", "LBL_RIMPLUS_TAX", 1],
   ["tshot", "tough-shot-maker", "LBL_TSHOT_TAX", 1]];
 function labelTaxes(S, pickRows) {
-  var out = { on: !!LABELS, rows: [], tax: 0, rimTag: false, playTag: false, built: LABELS_BUILT };
+  var out = { on: !!LABELS, rows: [], tax: 0, rimTag: false, playTag: false, built: LABELS_BUILT, title1: [] };
   if (!LABELS) return out;
   var tags = pickRows.map(function (r) { return labelsOf(r[IDX.name], r[IDX.season]) || {}; });
   function covered(t) { for (var i = 0; i < tags.length; i++) if (tags[i][t] === "y" || tags[i][t] === "u") return true; return false; }
@@ -594,12 +620,11 @@ function labelTaxes(S, pickRows) {
   });
   var kn = settled("off-court-knucklehead"), knAmt = kn.length >= 3 ? C(S, "LBL_KNUCK_TAX_3", 3) : C(S, "LBL_KNUCK_TAX_2", 2);
   if (kn.length >= 2 && knAmt) out.rows.push({ id: "knuck", amt: knAmt, who: kn });   // v62: a board's 0 turns it off (no "-0.0" row)
-  // v62.1 THE DUELING BANJOS TAX (the owner, 2026-09-28, after Simmons on Wade and LeBron): two settled TITLE #1s on one
-  // five cost LBL_BANJO_TAX. Not bad, just slow: two number ones take turns before they learn to make each other better.
-  // It was going to be a +1 credit, but 67% of drafted Classic fives carry a TITLE #1, so a credit would have handed
-  // back a quarter of what one ball takes; as a tax it hits 27% of them and none of the 32 champions. Settled only.
-  var t1 = settled("championship-number-one"), bjAmt = C(S, "LBL_BANJO_TAX", 2);
-  if (t1.length >= 2 && bjAmt) out.rows.push({ id: "banjo", amt: bjAmt, who: t1 });
+  // v62.1 THE DUELING BANJOS TAX (the owner, 2026-09-28, after Simmons on Wade and LeBron) charged two settled TITLE #1s
+  // 2 (as a +1 credit it would have handed back a quarter of what one ball took). v63.1 (the owner: "the champ #1 to some extent overlaps" with one ball): two alphas who have to learn to share IS
+  // the one-ball story, so the Banjos no longer charge on their own. The engine reports the settled TITLE #1s (title1)
+  // and the one-ball row on the Scoring Card tells the owner's line when two or more share the five.
+  out.title1 = settled("championship-number-one");
   // v62.2 THE SIMMONS PAIRS (the owner, 2026-09-28): the thin tags, scouted into 0029, charged as pairs on settled tags
   // (like the knuckleheads): two players who hold the ball (BALL-STOP or BALL-POUND, a player counted once) LBL_STICK_TAX;
   // two hunted defenders LBL_HUNTED_TAX; two foul merchants LBL_FOUL_TAX. And every settled stat padder pays
@@ -642,12 +667,20 @@ function labelTaxes(S, pickRows) {
 //     Draymond at center is fine). A missing height never counts (fail soft). Both work on a partial five: the tray's
 //     meter and the board's red heights read them as the picks come in.
 // Real drafts: Classic realized 82-0 14.5% (v62.2) to 14.2%, best play in the same deals 35.4% to 35.7%; Presti 4.1%.
-var ONE_BALL_BUDGET = 120, ONE_BALL_RATE = 0.3;
+// v63.1 (the owner, after playing it: "usage is too punitive. I had a team with prime kobe and mj but it went like 60
+// wins where it would prev be close to undefeated. like this would imply the latest olympic starting lineup would be a
+// bunch of bums ... perhaps the penalty need to scale down at the higher extremes?"): the charge tops out at USAGE_CAP
+// (6, about one All-Star). Stars adapt: once the ball is fully shared, one more alpha takes a smaller role, he does not
+// wreck the team. Typical fives pay what v63 charged; the pileups stop at 6. Real drafts with both Jordan and Kobe:
+// v63 79.1 wins on average (82-0 21%), now 80.7 (34%); the 2024 Olympic starters 74-79 wins (v63: 65-77).
+var ONE_BALL_BUDGET = 120, ONE_BALL_RATE = 0.3, ONE_BALL_CAP = 6;
 function oneBall(S, pickRows) {
   var sum = 0;
   for (var i = 0; i < pickRows.length; i++) sum += pickRows[i][IDX.usage] || 0;
-  var budget = C(S, "USAGE_BUDGET", ONE_BALL_BUDGET), rate = C(S, "USAGE_RATE", ONE_BALL_RATE), over = Math.max(0, sum - budget);
-  return { sum: sum, budget: budget, rate: rate, over: over, tax: rate * over };
+  var budget = C(S, "USAGE_BUDGET", ONE_BALL_BUDGET), rate = C(S, "USAGE_RATE", ONE_BALL_RATE), cap = C(S, "USAGE_CAP", ONE_BALL_CAP);
+  var over = Math.max(0, sum - budget), tax = rate * over;
+  if (cap >= 0 && tax > cap) tax = cap;
+  return { sum: sum, budget: budget, rate: rate, cap: cap, over: over, tax: tax, capped: rate * over > cap };
 }
 function sizeUnits(S, pickRows, slots) {
   var out = { gBar: C(S, "SMALL_G_HT", 74), fcBar: C(S, "SMALL_FC_HT", 78), gAmt: C(S, "SMALL_G_TAX", 2), fcAmt: C(S, "SMALL_FC_TAX", 2),
@@ -758,7 +791,7 @@ function engine(S, pickRows, slots) {
   return {
     sumV: sumV, sumUsage: sumUsage, sumSp: sumSp,
     sumObpm: sumObpm, sumDbpm: sumDbpm,
-    usageTax: usageTax, usageBudget: ball.budget, usageRate: ball.rate, usageOver: ball.over,
+    usageTax: usageTax, usageBudget: ball.budget, usageRate: ball.rate, usageOver: ball.over, usageCap: ball.cap, usageCapped: ball.capped,
     spacingTax: spacingTax, spacingBonus: spacingBonus,
     backDefTax: backDefTax, backDefTier: backDefTier,
     wingDefTax: wingDefTax, wingDefTier: wingDefTier,
@@ -766,7 +799,7 @@ function engine(S, pickRows, slots) {
     glassTax: glassTax, glassSum: glassSum,
     creatorTax: creatorTax, creatorBest: bestAst,
     ageTax: ageTax, vetCount: vetCount,
-    labelRows: lbl.rows, labelTax: lbl.tax, labelsOn: lbl.on, labelsBuilt: lbl.built,
+    labelRows: lbl.rows, labelTax: lbl.tax, labelsOn: lbl.on, labelsBuilt: lbl.built, title1: lbl.title1,
     smallGTax: size.gTax, smallFCTax: size.fcTax, sizeTax: size.tax, size: size,
     score: score, net: net, p: p,
     projW: CFG.GAMES_IN_SEASON * p,
@@ -1405,7 +1438,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 13,  // v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 14,  // v14 (v63.1): one ball tops out at 6 (USAGE_CAP); the Dueling Banjos no longer charge (one ball tells their story); Presti's ceiling is $26 (was $23) and its $1 gem is luck's rebate (one at most, only when the board's five best rolled over fair) on boards that do not set CAP_GEM. v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
