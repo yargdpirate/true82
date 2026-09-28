@@ -24,7 +24,10 @@
                                  absent = 1, so older boards price and draw exactly
                                  as they always did (draft-side only: prices)
      cfg: { KEY: val }           whitelisted overlays: CAP_BUDGET, CAP_GEM,
-           CAP_TRAP, TEAM_SKIPS, ERA_SKIPS, and the engine tax/threshold keys }
+           CAP_TRAP, TEAM_SKIPS, ERA_SKIPS, and the engine tax/threshold keys
+           (v61: the label taxes too: LBL_ISO_TAX, LBL_CLUTCH_TAX, LBL_TEAMD_TAX,
+           LBL_RIMPLUS_TAX, LBL_TSHOT_TAX, LBL_KNUCK_TAX_2/_3, LBL_SWITCH_CREDIT,
+           LBL_CUT_CREDIT; 0 turns one off on a board) }
    TRUST LAW: NET_SD, BASELINE, REPLACEMENT and the Hot Hand are NOT hookable.
    Challenges shape the draft, never the sim's fairness or the wheel.
 
@@ -542,6 +545,65 @@ function resolveRow(S, name) {
 //  sumSp: 0   0.5  1  1.5  2  2.5  3  3.5  4  4.5   5   5.5   6  6.5   7  7.5
 var SPACING_CURVE = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 4.5, 5, 5.5, 6, 6.5];
 
+// v61 THE LABEL TAXES (the owner's rules, 2026-09-27; AGENT-HANDOFF 00000r). The player tags price how the five fit
+// together (a player's own worth is already his V). They are read from labels.json, a frozen copy of the live tags
+// that ships with each release (tools/labels-freeze.js), so a lineup scores the same all day and a vote never moves
+// a score. No file, no label taxes: the engine scores exactly as before (fail soft).
+//   a role nobody fills costs net; a "?" tag counts as filling it (the benefit of the doubt goes to the drafter)
+//   knuckleheads cost net on settled tags only; the two fits (three SWITCH; a PLAY and two OFF-B) pay on settled tags only
+//   Rim protection and No creator still come from the stats; a RIM-P or PLAY tag (even a "?") clears them, so they
+//   fire only when the stats and the tags agree (never more often than before; the owner: swap them to the tags
+//   only once the tag versions fire about as often)
+var LABELS = null, LABELS_BUILT = "";
+function foldName(s) { s = String(s == null ? "" : s); return (s.normalize ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : s).toLowerCase(); }
+function setLabels(data) {
+  LABELS = null; LABELS_BUILT = "";
+  if (!data || !data.traits || !data.p) return false;
+  var map = new Map(), tr = data.traits;
+  Object.keys(data.p).forEach(function (nm) {
+    var seasons = data.p[nm];
+    Object.keys(seasons).forEach(function (yr) {
+      var code = String(seasons[yr]), o = {};
+      for (var i = 0; i + 1 < code.length; i += 2) { var t = tr[parseInt(code.charAt(i), 36)]; if (t) o[t] = code.charAt(i + 1); }
+      map.set(nm + "~" + yr, o);
+    });
+  });
+  LABELS = map; LABELS_BUILT = String(data.built || "");
+  return true;
+}
+function labelsOf(name, season) { return (LABELS && LABELS.get(foldName(name) + "~" + season)) || null; }
+// The roles a lineup must fill: [row id, tag, cost key, default net]. The two fits that pay: [id, tag, count, key, net].
+var LBL_ROLES = [["iso", "iso-defender", "LBL_ISO_TAX", 2], ["clutch", "clutch", "LBL_CLUTCH_TAX", 1],
+  ["teamd", "team-defender", "LBL_TEAMD_TAX", 1], ["rimplus", "rim-pressurer", "LBL_RIMPLUS_TAX", 1],
+  ["tshot", "tough-shot-maker", "LBL_TSHOT_TAX", 1]];
+function labelTaxes(S, pickRows) {
+  var out = { on: !!LABELS, rows: [], tax: 0, rimTag: false, playTag: false, built: LABELS_BUILT };
+  if (!LABELS) return out;
+  var tags = pickRows.map(function (r) { return labelsOf(r[IDX.name], r[IDX.season]) || {}; });
+  function covered(t) { for (var i = 0; i < tags.length; i++) if (tags[i][t] === "y" || tags[i][t] === "u") return true; return false; }
+  function settled(t) { var who = []; for (var i = 0; i < tags.length; i++) if (tags[i][t] === "y") who.push(i); return who; }
+  out.rimTag = covered("rim-protector");
+  out.playTag = covered("playmaker");
+  LBL_ROLES.forEach(function (x) {
+    var amt = C(S, x[2], x[3]);
+    if (amt && !covered(x[1])) out.rows.push({ id: x[0], amt: amt, who: [] });
+  });
+  var kn = settled("off-court-knucklehead");
+  if (kn.length >= 2) out.rows.push({ id: "knuck", amt: kn.length >= 3 ? C(S, "LBL_KNUCK_TAX_3", 3) : C(S, "LBL_KNUCK_TAX_2", 2), who: kn });
+  var sw = settled("switchable-defender");
+  if (sw.length >= 3 && C(S, "LBL_SWITCH_CREDIT", 1)) out.rows.push({ id: "switch", amt: -C(S, "LBL_SWITCH_CREDIT", 1), who: sw });
+  // a playmaker and two off-ball scorers, three different players (the balance run: "a playmaker and one off-ball
+  // scorer" fired on half of all real lineups, a coin flip, not a fit; two cutters fire on about one in eight)
+  var pl = settled("playmaker"), ob = settled("off-ball-scorer"), trio = null;
+  for (var a = 0; a < pl.length && !trio; a++) {
+    var cut = ob.filter(function (i) { return i !== pl[a]; });
+    if (cut.length >= 2) trio = [pl[a], cut[0], cut[1]];
+  }
+  if (trio && C(S, "LBL_CUT_CREDIT", 1)) out.rows.push({ id: "cut", amt: -C(S, "LBL_CUT_CREDIT", 1), who: trio });
+  out.tax = out.rows.reduce(function (s, r) { return s + r.amt; }, 0);
+  return out;
+}
+
 function engine(S, pickRows, slots) {
   var sumV = 0, sumUsage = 0, sumSp = 0, sumObpm = 0, sumDbpm = 0;
   pickRows.forEach(function (row) {
@@ -596,6 +658,7 @@ function engine(S, pickRows, slots) {
   // computed over all frontcourt-eligible pool rows) — otherwise a flat tax.
   // One protector clears the whole frontcourt; the tax never stacks with the
   // wing duo penalty conceptually but both CAN fire (different sins).
+  var lbl = labelTaxes(S, pickRows);
   var rimDefTax = 0;
   if (slots) {
     var front = [];
@@ -607,7 +670,7 @@ function engine(S, pickRows, slots) {
       for (var r2 = 0; r2 < front.length; r2++) {
         if (front[r2][IDX.dbpm] >= bar) { guarded = true; break; }
       }
-      if (!guarded) rimDefTax = C(S, "RIM_D_TAX");
+      if (!guarded && !(C(S, "RIM_D_TAX") > 0 && lbl.rimTag)) rimDefTax = C(S, "RIM_D_TAX");   // v61: a RIM-P tag clears a tax (never a board's bonus)
     }
   }
 
@@ -626,10 +689,10 @@ function engine(S, pickRows, slots) {
   var glassTax = 0;
   if (glassSum < C(S, "GLASS_DIRE")) glassTax = C(S, "GLASS_TAX_DIRE");
   else if (glassSum < C(S, "GLASS_LOW")) glassTax = C(S, "GLASS_TAX_LOW");
-  var creatorTax = bestAst < C(S, "CREATOR_PCT") ? C(S, "CREATOR_TAX") : 0;
+  var creatorTax = bestAst < C(S, "CREATOR_PCT") && !(C(S, "CREATOR_TAX") > 0 && lbl.playTag) ? C(S, "CREATOR_TAX") : 0;   // v61: a PLAY tag clears a tax
   var ageTax = vetCount > C(S, "AGE_VET_FREE") ? C(S, "AGE_TAX") : 0;
 
-  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax - rimDefTax - glassTax - creatorTax - ageTax;
+  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax - rimDefTax - glassTax - creatorTax - ageTax - lbl.tax;
   var net = score - BASELINE;
   var p = phi(S, net / SC.NET_SD);
   return {
@@ -642,6 +705,7 @@ function engine(S, pickRows, slots) {
     glassTax: glassTax, glassSum: glassSum,
     creatorTax: creatorTax, creatorBest: bestAst,
     ageTax: ageTax, vetCount: vetCount,
+    labelRows: lbl.rows, labelTax: lbl.tax, labelsOn: lbl.on, labelsBuilt: lbl.built,
     score: score, net: net, p: p,
     projW: CFG.GAMES_IN_SEASON * p,
     winTally: Math.min(CFG.GAMES_IN_SEASON, Math.ceil(CFG.GAMES_IN_SEASON * p)),
@@ -1279,7 +1343,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 8,   // v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 9,   // v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
@@ -1309,6 +1373,7 @@ function initDataCore(data) {
     assignCapPool: assignCapPool, capMisprice: capMisprice,
     assignProSeasons: assignProSeasons, effCost: effCost, capAffordable: capAffordable, stintMinutes: stintMinutes,
     resolveRow: resolveRow, poolYearsEligible: poolYearsEligible, engine: engine, erf: erf, phi: phi,
+    setLabels: setLabels, labelsOf: labelsOf, labelsReady: function () { return !!LABELS; }, foldName: foldName, labelTaxes: labelTaxes,
     hhNet82: hhNet82, hhPickHot: hhPickHot, hhSpinSeg: hhSpinSeg, hhEligible: hhEligible,
     hhWins: hhWins, swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,
     HH_SEGMENTS: HH_SEGMENTS, HH_BONUS_SCALE: HH_BONUS_SCALE

@@ -1,16 +1,79 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v60 (section 00000q), LIVE on true82.net: main was fast-forwarded to `612b7ee` on 2026-09-27 (night) at the owner's "push to main". Keep working on `c-code-clean`; merge only on his word.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v61, the label taxes (section 00000r), NOT on main. `main` = v60.1, LIVE on true82.net (section 00000q). Merge v61 only on the owner's word.
 
 **Date:** 2026-09-27
-**Build:** `v60.1` (`BUILD_V = "v60.1"`, app.js at `20260927-v60-1` for the three traits the "+" now offers; styles.css, look.css and results-riso.js at `20260927-v60`, the same keys on bonuses/, traits/ and docs/style-guide.html). Before it, `v59.6` (styles.css and app.js were at `20260927-sigma-v59-6`, reel-riso.js at `20260927-tribune-v59-3`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). MERGED: main was fast-forwarded to this line on 2026-09-27 at the owner's go ("playtested and we're g2g"); main auto-deploys, so still never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** section 00000q (read it first): v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v61` on `c-code-clean` (`BUILD_V = "v61"`; styles.css, app.js and sim-core.js at `20260927-v61`, `LABELS_V = "20260927-v61"` for labels.json; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 9). v60.1 (live): app.js at `20260927-v60-1`.
+**Most recent change:** section 00000r (read it first): v61, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000q. START HERE (2026-09-27, night): V60 ON C-CODE-CLEAN, THE OWNER'S TEN ITEMS
+## 00000r. START HERE (2026-09-27, late night): V61, THE LABEL TAXES (on c-code-clean, not main)
+
+**The owner's words.** "propose taxes based on labels. assume for the moment the player labels are comprehensive and
+representative. here's mine: 2 knuckleheads: -2 net ... no rim protector -2", then "no iso d -2, no clutch -1, etc
+propose the rest and flavor text and penalty. And assess where the labels being comprehensive and representative is a
+good assumption and where it will cause taxes to frustrate players and be unfair", then "fully agreed" to the verdicts
+and fixes below. The assessment's numbers (label coverage by era, by player quality and by trait; how often each rule
+would fire) came from the live tags and simulated drafts; the headline: the scout left 16,451 calls "unsure" against
+12,770 "yes", role players are thinly tagged, SWITCH/OFF-B/CLUTCH skew modern, and six traits (TITLE #1, HUNTED,
+BALL-STOP, BALL-POUND, FOUL-MERCH, STAT-PAD) were never in the scout backfill (0 to about 100 settled tags each).
+
+**What shipped (sim-core.js `labelTaxes`, `engine`; app.js "v61").**
+- Taxes, a role nobody on your five fills: No ISO-D 2, No CLUTCH 1, No TEAM-D 1, No RIM+ 1, No TSHOT 1. A "?" tag
+  (scout unsure, crowd disputed) FILLS the role: the benefit of the doubt goes to the drafter.
+- Knuckleheads: two settled KNUCK tags 2, three or more 3 ("They'll start hanging out"). Settled tags only.
+- Credits (settled tags only): Switch everything (3+ SWITCH) +1; Somebody passes to the cutters (a PLAY and two OFF-B
+  on three different players) +1. CALL MADE: the agreed version was "PLAY plus one OFF-B on another player", but the
+  balance run showed it firing on 49% of real lineups (a coin flip that also lifted 82-0 projections from 37.6% to
+  40.4% in Classic); two cutters fire on 12%. Revert is one line in `labelTaxes`.
+- Rim protection and No creator keep their stat rules, and a RIM-P or PLAY tag (even a "?") now clears them, so they
+  fire only when the stats and the tags agree (never more than before; a board's Five-Out or creator BONUS is never
+  touched). They swap fully to tags only once the tag versions fire about as often (today 3% for the stat rim rule,
+  25% for a tag-only one; 10% counting "?").
+- Waiting for a scout backfill (not taxed): HUNTED, BALL-STOP, BALL-POUND, FOUL-MERCH, STAT-PAD, TITLE #1 (TITLE #1
+  to become a +1 credit then). Era-bound SWITCH and OFF-B are credits only, never taxes.
+- Each is a board key (`LBL_ISO_TAX` ... `LBL_CUT_CREDIT`; 0 turns one off on a Daily); sim-core's header lists them.
+  The engine VERSION is 9 (the analytics patch fence).
+
+**The fixes (all agreed).**
+1. "?" fills a role (above).
+2. Frozen tags: `labels.json` (40 KB gzipped, 9,975 player-seasons, 29,416 tags) is a snapshot of the live tags that
+   the engine AND every board read, so a lineup scores the same all day and a vote never moves a score. Built by
+   `node tools/labels-freeze.js` (one read-only SELECT on D1 true82 through wrangler, the same precedence as the live
+   label service: crowd > desk > scout; names matched with accents folded). app.js loads it beside site_data.json
+   (`loadLabels`); the results wait up to 2.5 s for it (`whenLabels`); no file = no label taxes (fail soft).
+   **Weekly refresh (the owner's rule):** `node tools/labels-freeze.js`, bump `LABELS_V` in app.js, `node test.js`,
+   `node tools/labels-balance.js`, commit, and ship with the owner's go.
+3. Tags on every draft board: Classic, Pro, Presti, the Daily and the Do-Over rows show the tags the scoring reads
+   (`boardTagsHtml`: the five roles plus RIM-P and PLAY, a "?" one hollow with its "?", a settled KNUCK in the bad
+   tone), and every board has the (i) legend, whose note says what the tags cost. The Classic pool's old live-label
+   fetch is gone (the board shows exactly what scores). Once two picks are left, the tray says "Still missing: ISO-D
+   -2 · CLUTCH -1" (the engine's own reading). CALL MADE: Pro ("from memory") shows tags too, per "every mode".
+4. Stat taxes swap to tags only when calibrated (above).
+
+**The Scoring Card** prints a row per tax and credit in the owner's copy ("No ISO-D: Nobody can guard their best scorer.
+He gets 40."; knuckleheads and the credits name the players), the rim and creator rows add "and nobody is tagged
+RIM-P / PLAY", and a note under the card says "Tag rows read the tags as of <date>. Think a tag is wrong? Tap it on
+the card above and vote." The Tribune's writer gets the same facts (`recapFitNotes`).
+
+**Balance (`node tools/labels-balance.js`, 15,130 real complete drafts from the live analytics, standard boards).**
+Classic: mean projected wins 79.60 -> 79.57, 82-0 projections 37.6% -> 38.3%. Presti: 76.47 -> 76.43, 1.9% -> 2.4%.
+85% of lineups unchanged, 8% up, 7% down, 2.2% down 3+ wins (worst -11, a mid-net Presti team hit by three roles). Any
+label tax fires on 7.7% of Classic and 10.3% of Presti lineups; a tag cleared the stat rim tax on 4.7%. No baseline
+change needed. The Daily: `node tools/daily-audit.js 120 pool3 --labels` (new flag) certifies all 200 boards PASS.
+
+**Checked:** test.js 109 (7 new: the rules, "?" filling, settled-only counts, board switches, the rim clearing and the
+Five-Out bonus, accents, fail soft, the shipped file); style law clean; the boards (Classic, Presti, Pro, the Do-Over)
+at 375 with tags and the legend; the tray line; a results screen with label rows; tools/results-qa.js results, sheet
+and room still pass.
+
+**Not done / next:** the scout backfill for the six thin traits (the same model pass 0026 was, then a migration and a
+refresh of labels.json); analytics do not record the label rows yet (a game_complete column would need a migration).
+
+## 00000q. (2026-09-27, night): V60 ON C-CODE-CLEAN, THE OWNER'S TEN ITEMS
 
 **The owner's words** (a numbered list, "let's do these changes to ccode-clean to start off"; he allowed deferring
 some for quality; none were deferred). Built, tested and pushed on `c-code-clean`, then LIVE: main fast-forwarded to

@@ -28,7 +28,7 @@
         prices, so read them in the app.
 
    Usage (from anywhere):
-     node tools/daily-audit.js [N] [mode] [ids] [--no-menu]
+     node tools/daily-audit.js [N] [mode] [ids] [--no-menu] [--labels]   (--labels: score with labels.json, as the site does since v61)
        N        bot games per id (default 300)
        mode     all (default) | pool2 | pool3 | new | one ID | ids A,B,C
                 pool3 is the certification mode: it prints PASS/FAIL per id and
@@ -52,6 +52,9 @@ function load(root) {
     vm.runInContext(fs.readFileSync(path.join(root, f), "utf8"), ctx, { filename: f }));
   const data = JSON.parse(fs.readFileSync(path.join(root, "site_data.json"), "utf8"));
   const t = ctx.T82.initData(data);
+  // v61: the label taxes score like the site when the frozen tags are loaded (--labels)
+  if (process.argv.includes("--labels") && fs.existsSync(path.join(root, "labels.json")))
+    ctx.T82.setLabels(JSON.parse(fs.readFileSync(path.join(root, "labels.json"), "utf8")));
   return { T82: ctx.T82, T82CH: ctx.T82CH, T82DAILY: ctx.T82DAILY, data, t };
 }
 
@@ -254,7 +257,7 @@ function verdict(r) {
 
 function run(argv) {
   const noMenu = argv.includes("--no-menu");
-  argv = argv.filter(a => a !== "--no-menu");
+  argv = argv.filter(a => a !== "--no-menu" && a !== "--labels");
   const N = parseInt(argv[0] || "300", 10);
   const mode = argv[1] || "all";
   const env = load(ROOT);

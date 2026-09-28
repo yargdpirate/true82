@@ -2052,9 +2052,13 @@ function buildTraitLegendInto(panel, scope) {
   var engNote = !eng.length ? ""
     : eng.length === 1 ? " " + eng[0] + " is the engine\u2019s own shooting math, not a vote."
     : " " + eng.join(" and ") + " are the engine\u2019s own shooting math, not votes.";
+  // v61: on a draft board the tags are what the Scoring Card reads, so the note says how
+  var board = scope.id === "pool" || !!scope.querySelector(".board-tags");
+  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each), and for two knuckleheads." +
+    (scope.querySelector(".tchip.is-maybe") ? " A tag with a ? is unsettled: it still fills its role." : "");
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
     '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
-    '<div class="trait-legend-note">Community votes confirm or overturn these labels.' + engNote + "</div>";
+    '<div class="trait-legend-note">Community votes confirm or overturn these labels.' + engNote + tagNote + "</div>";
 }
 // One shared open/close for every label-legend (i) button.
 function traitInfoToggle(ib, legend) {
@@ -3290,6 +3294,26 @@ function ballotHintPlay(A, cardEl) {
   }, t + 1400);
 }
 
+/* ---------- v61: the tags on every draft board ----------
+   Every mode's board (Classic, Pro, Presti, the Daily, the Do-Over) shows the tags the scoring reads, from the same
+   frozen copy: the roles a lineup must fill (a "?" one shows its "?", because it counts as filling the role) and a
+   settled knucklehead (only a settled one counts). Flat read-only chips; the (i) legend spells them out. */
+var BOARD_TAGS = ["off-court-knucklehead", "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];
+function boardTagsHtml(row) {
+  var o = row && window.T82 && T82.labelsOf ? T82.labelsOf(row[IDX.name], row[IDX.season]) : null;
+  if (!o) return "";
+  var h = "";
+  BOARD_TAGS.forEach(function (id) {
+    var v = o[id], T = ballotTrait(id);
+    if (!v || !T || (T.neg && v !== "y")) return;
+    var maybe = v !== "y";
+    h += '<button type="button" class="tchip t-chip' + (maybe ? " is-maybe" : "") + '" data-size="sm"' + (T.neg ? ' data-tone="bad"' : "") +
+      ' tabindex="-1" data-full="' + esc(T.name) + '" data-abbr="' + esc(T.chip) + '"' +
+      ' aria-label="' + esc(T.name + (maybe ? ", unsettled" : "")) + '" aria-pressed="false" title="' + esc(T.name) + '">' + esc(T.chip) + (maybe ? "?" : "") + "</button>";
+  });
+  return h ? '<span class="tchips tchips-inline board-tags">' + h + "</span>" : "";
+}
+
 /* ---------- community labels on the classic draft pool (v47.9) ----------
    Same chips, same placement, same tap-to-expand and legend as the results
    cards, injected into each pool row's .pr-sub beside the year control and
@@ -3332,29 +3356,10 @@ function refreshPoolTraitLegend() {
   btn.hidden = false;
   buildTraitLegendInto(legend, pool);
 }
+// v61: the board's chips come from the frozen tags inside each row (boardTagsHtml), in every mode; this only keeps
+// the pool's (i) legend in step with them. (v47.9 to v60 fetched live labels for the Classic pool here.)
 function wireDraftPoolLabels() {
-  if (MODE !== "classic") return;
-  var pool = el("pool");
-  if (!pool) return;
-  var missing = applyPoolLabelPass(pool);
-  refreshPoolTraitLegend();
-  if (!missing.length || !window.fetch) return;
-  for (var c = 0; c < missing.length; c += 60) {
-    (function (chunk) {
-      chunk.forEach(function (m) { TRAIT_LABEL_FETCHING[m.key] = 1; });
-      var qs = chunk.map(function (m) { return encodeURIComponent(m.name) + "~" + m.season; }).join(",");
-      fetch("/api/traits?op=labels&players=" + qs, { credentials: "same-origin" })
-        .then(function (r) { return r.json(); })
-        .then(function (x) {
-          chunk.forEach(function (m) { delete TRAIT_LABEL_FETCHING[m.key]; });
-          if (!x || !x.ok || !x.labels) return;
-          chunk.forEach(function (m) { TRAIT_LABEL_CACHE[m.key] = x.labels[m.key] || []; });
-          var p2 = el("pool");
-          if (p2) { applyPoolLabelPass(p2); refreshPoolTraitLegend(); }
-        })
-        .catch(function () { chunk.forEach(function (m) { delete TRAIT_LABEL_FETCHING[m.key]; }); });
-    })(missing.slice(c, c + 60));
-  }
+  if (el("pool")) refreshPoolTraitLegend();
 }
 
 function wireDonate() {
@@ -3783,7 +3788,19 @@ function lineupRailHtml() {
 }
 
 function trayHtml() {
-  return lineupRailHtml();
+  return lineupRailHtml() + trayRolesHtml();
+}
+// v61: once two picks are left, the tray names the roles nobody on your five fills yet, with what each would cost
+// (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
+function trayRolesHtml() {
+  if (!G || G.screen !== "draft" || MODE === "kaman" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
+  if (!window.T82 || !T82.labelTaxes || !T82.labelsReady()) return "";
+  var lt = T82.labelTaxes(G, G.picks.map(function (p) { return p.row; }));
+  var open = lt.rows.filter(function (r) { return r.amt > 0 && LBL_COPY[r.id] && r.id !== "knuck"; });
+  if (!open.length) return '<div class="tray-roles is-full">Every role on the tag sheet is filled</div>';
+  return '<div class="tray-roles">Still missing: ' + open.map(function (r) {
+    return '<b>' + esc(LBL_COPY[r.id][0].replace(/^No /, "")) + "</b> \u2212" + (r.amt % 1 ? fmt1(r.amt) : r.amt);
+  }).join(" \u00B7 ") + "</div>";
 }
 
 function confirmHtml() {
@@ -3892,7 +3909,7 @@ function poolRowHtml(bestRow) {
   var sel = (G.selected === name) && open;
   var cls = "player-row" + (sel ? " sel" : "") + (open ? "" : " off");
   var tag = bucketTag(row) + (block ? " \u00B7 " + block.tag : "");
-  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "");
+  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "") + boardTagsHtml(row);
   var sub2 = (MODE === "classic") ? '<span class="pr-sub pr-stats">' + statLine(row) + "</span>" : "";
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true" title="' + esc(block.why) + '"') + ">" +
@@ -3946,6 +3963,7 @@ function capRowHtml(bestRow) {
         '<span class="pr-pos">' + bucketTag(row) + why + '</span>' +
         '<span class="cap-season">' + shortSeason(row[IDX.season]) + ' ' + esc(row[IDX.team]) + '</span>' +
       '</span>' +
+      boardTagsHtml(row) +
     '</span>' +
     '<span class="cap-cost">' + costHtml + '</span>' +
   '</div>';
@@ -3988,7 +4006,7 @@ function refreshPool() {
   traitExpandedChip = null;   // the expanded chip's node just got rebuilt
   pool.innerHTML = poolInnerHtml(currentPoolRows());
   updateTray();
-  wireDraftPoolLabels();      // classic only inside; re-applies from cache
+  wireDraftPoolLabels();      // the (i) legend follows the rows' tags
   syncPoolCue();
 }
 
@@ -4058,11 +4076,11 @@ function renderDraft(anim) {
     poolHeadHtml = '<div class="pool-head pool-head-tools">' +
       '<div class="sort-chips" id="sortChips">' + chipsHtml + "</div>" +
       '<input type="search" id="poolSearch" class="pool-search" placeholder="search" aria-label="Search player names" autocomplete="off" spellcheck="false">' +
-      (MODE === "classic"
+      (MODE !== "kaman"   // v61: every board carries tags now, so every board explains them
         ? '<button class="trait-info-btn pool-trait-info" id="poolTraitInfoBtn" type="button" aria-label="Explain player labels" aria-controls="poolTraitLegend" aria-expanded="false" title="Player label legend" hidden>i</button>'
         : "") +
       "</div>" +
-      (MODE === "classic" ? '<div class="trait-legend pool-trait-legend" id="poolTraitLegend" hidden></div>' : "");
+      (MODE !== "kaman" ? '<div class="trait-legend pool-trait-legend" id="poolTraitLegend" hidden></div>' : "");
   }
 
   // Compact draft chrome (2026-07-17): utility bar + mode panel replace the
@@ -4229,6 +4247,37 @@ function runCfg(k) { return runCfgSet(k) ? G.ch.cfg[k] : SC[k]; }
 // The results ledger: one row per term of the engine's score, so the rows always add up to it (test.js pins that
 // on every kind of board). A board that pays a bonus through a negative tax (Five-Out, Board Money, Win Now) shows
 // it as a credit, and The Mid-Range's per-shooter charge gets its own row. Plain punctuation (the copy law).
+// v61 THE LABEL TAXES on the Scoring Card: a row per tax and credit, in the owner's words where he gave them.
+var LBL_COPY = {
+  iso: ["No ISO-D", "Nobody can guard their best scorer. He gets 40."],
+  clutch: ["No CLUTCH", "Nobody wants the last shot."],
+  teamd: ["No TEAM-D", "Nobody rotates. Help never comes."],
+  rimplus: ["No RIM+", "Jumpers all night. Nobody gets to the line."],
+  tshot: ["No TSHOT", "When the play breaks down, nobody can bail you out."],
+  knuck: ["Knuckleheads", ""],
+  "switch": ["Switch everything", ""],
+  cut: ["Somebody passes to the cutters", ""]
+};
+var LBL_NUM = ["", "One", "Two", "Three", "Four", "Five"];
+function labelRowsHtml(e) {
+  if (!e || !e.labelRows || !e.labelRows.length) return "";
+  var rows = G.picks.map(function (p) { return p.row; });
+  function who(list) { return list.map(function (i) { return rows[i] ? shareSurname(rows[i][IDX.name]) : ""; }).filter(Boolean).join(", "); }
+  return e.labelRows.map(function (r) {
+    var c = LBL_COPY[r.id];
+    if (!c) return "";
+    if (r.id === "knuck") return ledgerRow(c[0], LBL_NUM[r.who.length] + " knuckleheads (" + esc(who(r.who)) + ")." +
+      (r.who.length >= 3 ? " They started hanging out." : " They\u2019ll start hanging out."), r.amt, true);
+    if (r.id === "switch") return ledgerCreditRow(c[0], LBL_NUM[r.who.length] + " switchable defenders (" + esc(who(r.who)) + "). Every screen is a wash.", -r.amt);
+    if (r.id === "cut") return ledgerCreditRow(c[0], "A playmaker (" + esc(who([r.who[0]])) + ") and two off-ball scorers (" + esc(who(r.who.slice(1))) + "). The cutters finally get the ball.", -r.amt);
+    return ledgerRow(c[0], c[1], r.amt, true);
+  }).join("");
+}
+function labelsAsOf(e) {
+  var d = e && e.labelsBuilt ? new Date(e.labelsBuilt) : null;
+  if (!d || isNaN(d.getTime())) return "";
+  return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()] + " " + d.getUTCDate();
+}
 function resultsLedgerHtml(e) {
   var req = runCfg("SPACERS_REQ"), vetYr = runCfg("AGE_VET_YEAR");
   return '<div class="ledger">' +
@@ -4249,8 +4298,8 @@ function resultsLedgerHtml(e) {
       ? ledgerRow("Wing defense", "Both forwards rank bottom-" + (e.wingDefTier === 20 ? "20" : "33") + "% among forward defenders (DBPM). The frontcourt gets cooked.", e.wingDefTax, true)
       : "") +
     (e.rimDefTax > 0
-      ? ledgerRow("Rim protection", (runCfgSet("RIM_TOP20") ? "None of your two forwards or center reaches today\u2019s bar of +" + fmt1(runCfg("RIM_TOP20")) + " DBPM."
-        : "None of your two forwards or center ranks top-20% among frontcourt defenders (DBPM).") + " The paint stays open.", e.rimDefTax, true)
+      ? ledgerRow("Rim protection", (runCfgSet("RIM_TOP20") ? "None of your two forwards or center reaches today\u2019s bar of +" + fmt1(runCfg("RIM_TOP20")) + " DBPM"
+        : "None of your two forwards or center ranks top-20% among frontcourt defenders (DBPM)") + (e.labelsOn ? ", and nobody is tagged RIM-P." : ".") + " The paint stays open.", e.rimDefTax, true)
       : e.rimDefTax < 0
         ? ledgerCreditRow("Five-out bonus", "None of your two forwards or center reaches +" + fmt1(runCfg("RIM_TOP20")) + " DBPM, and today\u2019s board pays for the open lane.", -e.rimDefTax)
         : "") +
@@ -4260,7 +4309,7 @@ function resultsLedgerHtml(e) {
         ? ledgerCreditRow("Glass bonus", "Your five rebound at an elite rate, and today\u2019s board pays for it.", -e.glassTax)
         : "") +
     (e.creatorTax > 0
-      ? ledgerRow("No creator", "Nobody\u2019s era-adjusted assist rate says he can run an offense. Good luck beating a set defense 82 times.", e.creatorTax, true)
+      ? ledgerRow("No creator", "Nobody\u2019s era-adjusted assist rate says he can run an offense" + (e.labelsOn ? ", and nobody is tagged PLAY." : ".") + " Good luck beating a set defense 82 times.", e.creatorTax, true)
       : e.creatorTax < 0
         ? ledgerCreditRow("Creator bonus", "Today\u2019s board pays for your five\u2019s playmaking.", -e.creatorTax)
         : "") +
@@ -4269,7 +4318,9 @@ function resultsLedgerHtml(e) {
       : e.ageTax < 0
         ? ledgerCreditRow("Veteran bonus", e.vetCount + " players in their " + sdOrdinal(vetYr) + " season or later, and today\u2019s board pays for the experience.", -e.ageTax)
         : "") +
-    '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>";
+    labelRowsHtml(e) +
+    '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>" +
+    (e.labelsOn && labelsAsOf(e) ? '<p class="ledger-note t-small">Tag rows read the tags as of ' + labelsAsOf(e) + ". Think a tag is wrong? Tap it on the card above and vote.</p>" : "");
 }
 
 // Two-way profile: team offense = sum of pick OBPM, defense = sum of pick DBPM.
@@ -5375,6 +5426,13 @@ function recapFitNotes(e) {
   else if (e.spacingBonus < 0) n.push(e.sumSp + " shooters on a board that charges for every one past " + runCfg("SPACERS_REQ") + ": the extra spacing cost points");
   if (e.backDefTax > 0) n.push("both starting guards rank bottom-" + e.backDefTier + "% defensively: the perimeter leaks");
   if (e.wingDefTax > 0) n.push("both forwards rank bottom-" + e.wingDefTier + "% defensively: the frontcourt gets attacked");
+  (e.labelRows || []).forEach(function (r) {   // v61: the label taxes and credits
+    var line = { iso: "nobody on the roster can guard the other team's best scorer", clutch: "nobody wants the last shot in a close game",
+      teamd: "nobody rotates on defense", rimplus: "nobody attacks the rim or gets to the line", tshot: "nobody can make a tough shot when a play breaks down",
+      knuck: r.who && r.who.length >= 3 ? "three off-court knuckleheads share a locker room" : "two off-court knuckleheads share a locker room",
+      "switch": "three switchable defenders: they switch everything", cut: "a playmaker keeps finding two off-ball scorers cutting to the rim" }[r.id];
+    if (line) n.push(line);
+  });
   if (!n.length) n.push("a balanced five: no structural weakness the model could tax");
   return n;
 }
@@ -7286,7 +7344,7 @@ function sdBoardRowHtml(p) {
     (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
     '<span class="pr-top">' + sdPickBadgeHtml(p) + '<span class="pr-name">' + esc(p.name) + "</span>" +
     '<span class="pr-pos">' + sdPosTag(row) + sdUndraftedTag(p) + (block ? " \u00B7 " + block.tag : "") + "</span></span>" +
-    '<span class="pr-sub">' + sdYearControlHtml(p, row) + "</span></div>";
+    '<span class="pr-sub">' + sdYearControlHtml(p, row) + boardTagsHtml(row) + "</span></div>";
 }
 // A first-round pick with no playable season keeps his slot, greyed, so the order reads true.
 var SD_GHOST_WHY = "He never logged a season of 785 minutes, the bar every mode uses, so he cannot be drafted here.";
@@ -7646,6 +7704,7 @@ function openRedrafted(via) {
 }
 
 function showResults() {
+  if (LABELS_STATE === "loading") { whenLabels(showResults); return; }   // v61: score with the tags every phone scores with
   G.screen = "results";
   document.body.classList.remove("has-pick");   // the draft is over: nothing is selected (the reel and results never carry it)
   if (MODE === "kaman") {
@@ -9073,7 +9132,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v60.1";
+var BUILD_V = "v61";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {
@@ -9183,6 +9242,33 @@ function gameFinishedPings() {
   setTimeout(fetchFootStats, 1500);
 }
 
+// v61 THE LABEL TAXES read a frozen copy of the player tags, shipped with each release (tools/labels-freeze.js
+// writes labels.json; bump LABELS_V with it). It loads beside the game data; a board shows its tags once it lands,
+// and the results wait for it (2.5 s at most) so a slow phone scores exactly like everyone else. No file: no label
+// taxes, and the game plays exactly as before.
+var LABELS_V = "20260927-v61";
+var LABELS_STATE = "idle", LABELS_WAITERS = [];
+function loadLabels() {
+  if (LABELS_STATE !== "idle") return;
+  if (!window.fetch || !window.T82 || !T82.setLabels) { LABELS_STATE = "failed"; return; }
+  LABELS_STATE = "loading";
+  function done(ok) {
+    LABELS_STATE = ok ? "ready" : "failed";
+    var w = LABELS_WAITERS; LABELS_WAITERS = [];
+    w.forEach(function (f) { f(); });
+    if (ok && G && G.screen === "draft" && el("pool")) refreshPool();   // a board already up gains its tags
+  }
+  fetch("labels.json?v=" + LABELS_V)
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (d) { done(!!T82.setLabels(d)); })
+    .catch(function () { done(false); });
+}
+function whenLabels(fn) {
+  if (LABELS_STATE !== "loading") { fn(); return; }
+  var fired = false, go = function () { if (!fired) { fired = true; fn(); } };
+  LABELS_WAITERS.push(go);
+  setTimeout(go, 2500);
+}
 function boot() {
   if (SHARE_REF) analyticsTrack("referral_open", {
     surface: "landing", action: "tribune_share", outcome: "open", source: SHARE_REF
@@ -9201,6 +9287,7 @@ function boot() {
   else if (SD_QA.open) openRedrafted("deep_link");   // ?redraft=1 / ?redraft=YEAR (v55)
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
+  loadLabels();      // v61: the frozen tags, beside the game data
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
   var dataHttpStatus = 0;
   fetch(CFG.DATA_URL)

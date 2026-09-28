@@ -367,6 +367,19 @@ eq("section headers: head() builds one component with the context's variant",
 
 // ---------- v55 THE REDRAFTED on the real player data (skipped when site_data.json is absent) ----------
 // The owner's "redraftables", ported from the accounts-test archive: every class derives from the data,
+// v61: the shipped labels.json (tools/labels-freeze.js) loads into the engine and matches the game's names
+if (fs.existsSync("labels.json")) {
+  const lbl = JSON.parse(fs.readFileSync("labels.json", "utf8"));
+  ctx.lblReal = lbl;
+  const Q = vm.runInContext(`(function () {
+    var ok = T82.setLabels(lblReal), k = T82.labelsOf("Kawhi Leonard", 2019) || {}, l = T82.labelsOf("Luka Don\u010Di\u0107", 2024) || {};
+    var r = [ok, k["iso-defender"], l["playmaker"]];
+    T82.setLabels(null);
+    return r;
+  })()`, ctx);
+  eq("labels.json: the frozen tags load, and stars resolve by the game's own spelling (Kawhi 2019 ISO-D, Doncic 2024 PLAY)", Q, [true, "y", "y"]);
+}
+
 // every board can field three legal teams in both difficulties, and a full computer draft always finishes.
 if (fs.existsSync("site_data.json")) {
   const rctx = { window: {}, navigator: {}, location: { search: "" }, document: ctx.document, performance: ctx.performance,
@@ -481,11 +494,13 @@ if (fs.existsSync("site_data.json")) {
   const L = vm.runInContext(`(function () {
     var keepG = G, keepSC = SC;
     SC = Object.assign({}, SC, { SPACERS_REQ: 3, USAGE_BUDGET: 110, AGE_VET_YEAR: 12, RIM_TOP20: 0.9 });
+    function pick(n) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; return { row: r }; }
     function run(cfg, e) {
-      G = { ch: cfg ? { id: "t", cfg: cfg } : null };
+      G = { ch: cfg ? { id: "t", cfg: cfg } : null, picks: ["Dennis Rodman", "Charles Barkley", "Rod Strickland", "Mark Price", "Brad Daugherty"].map(pick) };
       e = Object.assign({ sumV: 30.5, sumUsage: 104.2, usageTax: 0, sumSp: 3, spacingTax: 0, spacingBonus: 0, backDefTax: 0, backDefTier: 0,
-        wingDefTax: 0, wingDefTier: 0, rimDefTax: 0, glassTax: 0, creatorTax: 0, ageTax: 0, vetCount: 0 }, e);
-      e.score = e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax;
+        wingDefTax: 0, wingDefTier: 0, rimDefTax: 0, glassTax: 0, creatorTax: 0, ageTax: 0, vetCount: 0, labelRows: [], labelTax: 0 }, e);
+      e.labelTax = e.labelRows.reduce(function (a, r) { return a + r.amt; }, 0);
+      e.score = e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax;
       e.net = e.score - BASELINE;
       var html = resultsLedgerHtml(e), amts = [], re = /class="ledger-amt[^"]*">([^<]*)</g, m;
       while ((m = re.exec(html))) amts.push(parseFloat(m[1].replace("\u2212", "-").replace("\u2713 ", "")));
@@ -503,7 +518,9 @@ if (fs.existsSync("site_data.json")) {
       midRange: run({ SPACERS_REQ: 1, SPACING_TAX: 2, SPACING_BONUS: -1.5 }, { sumSp: 3, spacingBonus: -3 }),
       gunslingers: run({ USAGE_RATE: 0, SPACERS_REQ: 5, SPACING_TAX: 2.5 }, { sumSp: 3, spacingTax: 5 }),
       creator: run({ CREATOR_TAX: -2 }, { creatorTax: -2 }),
-      tightBall: run({ USAGE_BUDGET: 85 }, { sumUsage: 97.4, usageTax: 3.2 })
+      tightBall: run({ USAGE_BUDGET: 85 }, { sumUsage: 97.4, usageTax: 3.2 }),
+      labels: run(null, { labelsOn: true, labelsBuilt: "2026-09-27T12:00:00Z", rimDefTax: 2, creatorTax: 2, labelRows: [{ id: "iso", amt: 2, who: [] },
+        { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] }] })
     };
     G = keepG; SC = keepSC;
     return out;
@@ -519,6 +536,64 @@ if (fs.existsSync("site_data.json")) {
       /\+2\.5 DBPM/.test(L.paint.text), /2 of 3 required/.test(L.plain.text), /budget 110/.test(L.plain.text), /12th season/.test(L.plain.text)],
     [true, true, true, true, true, true, true, true]);
   eq("results ledger: no em or en dashes in any row (the copy law)", names.filter((k) => L[k].dash), []);
+  eq("results ledger: the label rows print with their names and their note (v61)",
+    [/No ISO-D/.test(L.labels.text), /Two knuckleheads \(D\. Rodman, C\. Barkley\)\. They.ll start hanging out/.test(L.labels.text),
+      /Three switchable defenders \(D\. Rodman, R\. Strickland, M\. Price\)/.test(L.labels.text), /A playmaker \(R\. Strickland\) and two off-ball scorers \(C\. Barkley, B\. Daugherty\)/.test(L.labels.text),
+      /nobody is tagged RIM-P/.test(L.labels.text), /nobody is tagged PLAY/.test(L.labels.text), /tags as of Sep 27/.test(L.labels.text), /tagged RIM-P/.test(L.plain.text)],
+    [true, true, true, true, true, true, true, false]);
+}
+
+// v61 THE LABEL TAXES (sim-core labelTaxes and engine): a role nobody fills costs net and a "?" fills it; the
+// knuckleheads and the two credits read settled tags only; a board can switch one off; the rim and creator taxes
+// fire only when the stats and the tags agree (never a board's bonus); no tags file, no label taxes.
+{
+  const TR = ["three-point-shooter", "super-three-point-shooter", "rim-pressurer", "off-ball-scorer", "tough-shot-maker", "playmaker",
+    "iso-defender", "team-defender", "switchable-defender", "rim-protector", "clutch", "championship-number-one", "hunted",
+    "ball-stopper", "ball-pounder", "foul-merchant", "stat-padder", "off-court-knucklehead"];
+  const code = (o) => Object.keys(o).map((t) => TR.indexOf(t).toString(36) + o[t]).join("");
+  ctx.lblInput = { v: 1, built: "2026-09-27T00:00:00Z", traits: TR, p: {
+    "stopper": { "2000": code({ "iso-defender": "y", "clutch": "y", "switchable-defender": "y", "off-court-knucklehead": "y" }) },
+    "maybe": { "2000": code({ "iso-defender": "u", "switchable-defender": "y", "off-court-knucklehead": "y" }) },
+    "bigman": { "2000": code({ "rim-protector": "u", "team-defender": "y", "switchable-defender": "y", "off-court-knucklehead": "u" }) },
+    "passer": { "2000": code({ "playmaker": "y", "off-ball-scorer": "y", "rim-pressurer": "y", "tough-shot-maker": "y" }) },
+    "cutter": { "2000": code({ "off-ball-scorer": "y" }) },
+    "cutter two": { "2000": code({ "off-ball-scorer": "y" }) },
+    "jose calderon": { "2000": code({ "playmaker": "u" }) } } };
+  const R = vm.runInContext(`(function () {
+    T82.setLabels(lblInput);
+    function row(n, dbpm) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.bpm_star] = 2; r[IDX.usage] = 20; r[IDX.sp] = 0; r[IDX.dbpm] = dbpm || 0;
+      r[IDX.obpm] = 0; r[IDX.rpg] = 5; r[IDX.apg] = 5; return r; }
+    function ids(names, cfg) { return T82.labelTaxes({ ch: cfg ? { cfg: cfg } : null }, names.map(function (n) { return row(n); })).rows.map(function (r) { return r.id + (r.amt > 0 ? "+" : "") + r.amt; }); }
+    var S = { ch: { cfg: { RIM_TOP20: 0.9, RIM_D_TAX: 2, USAGE_RATE: 0, USAGE_BUDGET: 999 } } }, slots = ["G", "G", "F", "F", "C"];
+    var eng = function (names, st) { return T82.engine(st || S, names.map(function (n) { return row(n); }), slots); };
+    var out = {
+      none: ids(["nobody a", "nobody b", "nobody c", "nobody d", "nobody e"]),
+      maybeFills: ids(["maybe", "nobody b"]).indexOf("iso+2") < 0,
+      knuck2: ids(["stopper", "maybe"]).filter(function (x) { return /^knuck/.test(x); }),
+      knuckMaybe: ids(["stopper", "bigman"]).filter(function (x) { return /^knuck/.test(x); }),
+      switch3: ids(["stopper", "maybe", "bigman"]).filter(function (x) { return /^switch/.test(x); }),
+      cutSame: ids(["passer"]).filter(function (x) { return /^cut/.test(x); }),
+      cutPair: ids(["passer", "cutter"]).filter(function (x) { return /^cut/.test(x); }),
+      cutTrio: ids(["passer", "cutter", "cutter two"]).filter(function (x) { return /^cut/.test(x); }),
+      boardOff: ids(["nobody a"], { LBL_ISO_TAX: 0 }).indexOf("iso+2") < 0,
+      rimStat: eng(["nobody a", "nobody b", "nobody c", "nobody d", "nobody e"]).rimDefTax,
+      rimTag: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"]).rimDefTax,
+      fiveOut: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"], { ch: { cfg: { RIM_TOP20: 0.9, RIM_D_TAX: -3 } } }).rimDefTax,
+      scoreSum: (function () { var e = eng(["stopper", "maybe", "bigman", "passer", "cutter"]); return Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.score) < 1e-9 && e.labelRows.length > 0; })(),
+      folded: !!T82.labelsOf("Jos\u00E9 Calder\u00F3n", 2000)
+    };
+    T82.setLabels(null);
+    var e0 = eng(["nobody a", "nobody b", "nobody c", "nobody d", "nobody e"]);
+    out.failSoft = [e0.labelTax, e0.labelRows.length, e0.labelsOn, e0.rimDefTax];
+    return out;
+  })()`, ctx);
+  eq("label taxes: a lineup with no tags pays every role (ISO-D 2, CLUTCH 1, TEAM-D 1, RIM+ 1, TSHOT 1)", R.none, ["iso+2", "clutch+1", "teamd+1", "rimplus+1", "tshot+1"]);
+  eq("label taxes: a '?' fills a role; knuckleheads count settled tags only (two cost 2, a '?' third does not count)", [R.maybeFills, R.knuck2, R.knuckMaybe], [true, ["knuck+2"], []]);
+  eq("label taxes: switch everything needs three settled SWITCH; the cutters credit needs a playmaker and two other off-ball scorers; a board can switch a tax off",
+    [R.switch3, R.cutSame, R.cutPair, R.cutTrio, R.boardOff], [["switch-1"], [], [], ["cut-1"], true]);
+  eq("label taxes: the rim tax fires only when the stats and the tags agree (a RIM-P '?' clears it; a Five-Out bonus is still paid)",
+    [R.rimStat, R.rimTag, R.fiveOut], [2, 0, -3]);
+  eq("label taxes: the score adds the rows up; names fold accents (Calderon); no tags file, no label taxes", [R.scoreSum, R.folded, R.failSoft], [true, true, [0, 0, false, 2]]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

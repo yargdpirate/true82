@@ -84,7 +84,7 @@ async function sheet(w) {
   const addId = await page.evaluate(() => document.querySelector("#btSheet .bt-tog:not(.is-lit)").getAttribute("data-trait"));
   await page.click(`#btSheet .bt-tog[data-trait="${addId}"]`);
   await sleep(1800);
-  const remId = await page.evaluate((a) => [...document.querySelectorAll("#btSheet .bt-tog.is-lit")].map((t) => t.getAttribute("data-trait")).filter((t) => t !== a)[0], addId);
+  const remId = await page.evaluate((a) => [...document.querySelectorAll("#btSheet .bt-tog.is-lit:not(.is-implied)")].map((t) => t.getAttribute("data-trait")).filter((t) => t !== a)[0], addId);
   await page.click(`#btSheet .bt-tog[data-trait="${remId}"]`);
   await sleep(1800);
   await page.screenshot({ path: `${OUT}/sheet-after-${w}.png` });

@@ -3729,6 +3729,15 @@ body.gating .gate-back {
 .tchips { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 5px; }
 /* display:contents dissolves the wrapper so each chip packs the .pr-sub line on its own (v47.11) */
 .tchips-inline { display: contents; }
+/* v61: the tags on every board (app.js boardTagsHtml). A "?" tag counts as filling its role, so it shows, hollow and
+   dashed with its "?"; Presti's column keeps them on one wrapping line under the season (#app#app outranks look.css) */
+#app#app .tchip.is-maybe { background: transparent; color: var(--t-text-2); box-shadow: inset 0 0 0 1px rgb(var(--t-text-2-rgb) / .6); }
+.cap-main .board-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 1px; }
+/* v61: the tray names the roles still open once two picks are left, and what each would cost */
+.tray-roles { font-family: var(--t-mono); font-size: 11px; line-height: 1.35; letter-spacing: 0.03em; color: var(--t-text-2); text-align: center; padding: 6px 4px 0; }
+.tray-roles b { color: var(--t-bad-soft); font-weight: 700; }
+.tray-roles.is-full { color: var(--t-good-soft); }
+.ledger-note { margin: 8px 2px 0; color: var(--t-text-2); }
 .trait-info-btn { appearance: none; -webkit-appearance: none; width: 27px; height: 27px; flex: 0 0 27px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 50%; background: linear-gradient(180deg, var(--t-accent), var(--t-accent-face)); color: var(--t-accent-ink);
   font-family: var(--t-body); font-style: italic; font-weight: 700; font-size: 16px; line-height: 1; cursor: pointer;
