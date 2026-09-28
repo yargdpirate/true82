@@ -19,7 +19,11 @@ const ROOT = path.join(__dirname, "..");
 const WR_LOCAL = "/private/tmp/claude-501/-Users-ggz-true82/e9c38d0a-5a5c-4f39-bde5-b87ab002875b/scratchpad/wr/node_modules/.bin/wrangler";
 const WRANGLER = process.env.WRANGLER || (fs.existsSync(WR_LOCAL) ? WR_LOCAL : null);
 function wrangler(args, opts) {
-  return WRANGLER ? wrangler(args, opts) : execFileSync("npx", ["--yes", "wrangler@4"].concat(args), opts);
+  if (WRANGLER) {
+    try { return execFileSync(WRANGLER, args, opts); }
+    catch (e) { if (process.env.WRANGLER || !/^(ENOENT|EACCES)$/.test(e.code || "")) throw e; }   // a half-gone temp copy: use npx
+  }
+  return execFileSync("npx", ["--yes", "wrangler@4"].concat(args), opts);
 }
 const TRAITS = ["three-point-shooter", "super-three-point-shooter", "rim-pressurer", "off-ball-scorer", "tough-shot-maker", "playmaker",
   "iso-defender", "team-defender", "switchable-defender", "rim-protector", "clutch", "championship-number-one", "hunted",
