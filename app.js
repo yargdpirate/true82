@@ -1801,7 +1801,8 @@ var RULES_DAILY_CAP = "One shared board per day. Everyone gets the same teams, t
 var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
-  ["ONE BALL", "Three 20-point scorers can share one ball. The fourth and the fifth cost 3 net each, and team usage above 110 costs a little on top. Two TITLE #1 stars cost 2 more: the Dueling Banjos Tax."],
+  ["ONE BALL", "Three 20-point scorers can share one ball. The fourth and the fifth cost 3 net each, and team usage above 110 costs a little on top."],
+  ["REPUTATIONS", "Two TITLE #1 stars cost 2 (the Dueling Banjos Tax), and so do two players who hold the ball or two defenders teams hunt. Two foul merchants cost 1, and every stat padder costs 1. Only settled tags count."],
   ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. And someone up front, a forward or your center, has to protect the rim, or that is 2 more."],
   ["THE DIRTY WORK", "Your five still have to rebound and somebody has to pass. A bottom-of-the-league board rate costs 2 to 3, no real playmaker costs 2, and more than one player past his 12th season costs 1."],
   ["SIZE", "Your five have to average 6'6\" or taller, or that is 3 net."],
@@ -2078,7 +2079,7 @@ function buildTraitLegendInto(panel, scope) {
     : " " + eng.join(" and ") + " are the engine\u2019s own shooting math, not votes.";
   // v61: on a draft board the tags are what the Scoring Card reads, so the note says how
   var board = scope.id === "pool" || !!scope.querySelector(".board-tags");
-  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each), for two knuckleheads, and for two TITLE #1s (the Dueling Banjos Tax)." +
+  var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each); for pairs: two knuckleheads 2, two TITLE #1s 2 (the Dueling Banjos Tax), two who hold the ball (BALL-STOP or BALL-POUND) 2, two HUNTED 2, two FOUL-MERCH 1; and 1 for every STAT-PAD. Red tags count only when settled." +
     (scope.querySelector(".tchip.is-maybe") ? " A tag with a ? is unsettled: it still fills its role." : "");
   // v62: the height by each position is what the size rule reads (Pro shows no heights)
   var fr = board && MODE !== "pro" ? fitRules([]) : null;
@@ -3329,7 +3330,8 @@ function ballotHintPlay(A, cardEl) {
    settled knucklehead (only a settled one counts). Flat read-only chips; the (i) legend spells them out. Pro is the
    exception (the owner, 2026-09-27: "in pro you don't see the tags til the results screen but they still count the
    same"): Pro is played from memory, so its board and tray show none, and the Scoring Card still charges them. */
-var BOARD_TAGS = ["off-court-knucklehead", "championship-number-one", "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];
+var BOARD_TAGS = ["off-court-knucklehead", "stat-padder", "hunted", "ball-stopper", "ball-pounder", "foul-merchant", "championship-number-one",
+  "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];   // v62.2: the scouted negatives, settled only
 // v62.1 THE DUELING BANJOS TAX (sim-core labelTaxes): two settled TITLE #1s cost 2, so a TITLE #1 shows settled only (like
 // a knucklehead), and once your five has one, every other TITLE #1 on the board turns red: that pick would pay it
 var BANJO_ID = "championship-number-one";
@@ -3853,15 +3855,17 @@ function trayFitHtml() {
     bits.push("Height " + htText(f.htAvg) + " avg, " + (need > 91 ? "<b>too short \u2212" + f.shortAmt + "</b>"
       : "<b>the last " + (left === 1 ? "pick needs " + htText(Math.ceil(need)) : left + " need " + htText(need) + " avg") + "</b>"));
   }
-  // v62.1: the Dueling Banjos Tax, once a second settled TITLE #1 is on the five (the board has turned him red first)
+  // v62.1/v62.2: every combination tax on the tags, once it fires (the Banjos, the knuckleheads, the Simmons pairs, the
+  // stat padders); a TITLE #1 turns red on the board first, and the negative tags are red already
   var lt = T82.labelTaxes && T82.labelsReady && T82.labelsReady() ? T82.labelTaxes(G, G.picks.map(function (p) { return p.row; })) : null;
-  var bj = lt ? lt.rows.filter(function (r) { return r.id === "banjo"; })[0] : null;
-  if (bj) bits.push("TITLE #1s: " + bj.who.length + ", <b>\u2212" + bj.amt + "</b> (Dueling Banjos)");
+  var combo = lt ? lt.rows.filter(function (r) { return r.amt > 0 && LBL_COMBO_IDS[r.id]; }) : [];
+  if (combo.length) bits.push("Tag taxes: " + combo.map(function (r) { return "<b>" + esc(LBL_COPY[r.id][0].replace(/ Tax$/, "")) + "</b> \u2212" + (r.amt % 1 ? fmt1(r.amt) : r.amt); }).join(" \u00B7 "));
   return bits.length ? '<div class="tray-roles tray-fit">' + bits.map(function (b) { return "<span>" + b + "</span>"; }).join("") + "</div>" : "";
 }
 // v61: once two picks are left, the tray names the roles nobody on your five fills yet, with what each would cost
 // (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
 var LBL_ROLE_IDS = { iso: 1, clutch: 1, teamd: 1, rimplus: 1, tshot: 1 };
+var LBL_COMBO_IDS = { knuck: 1, banjo: 1, stick: 1, hunted: 1, foul: 1, statpad: 1 };
 function trayRolesHtml() {
   if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
   if (!window.T82 || !T82.labelTaxes || !T82.labelsReady()) return "";
@@ -4327,6 +4331,10 @@ var LBL_COPY = {
   tshot: ["No TSHOT", "When the play breaks down, nobody can bail you out."],
   knuck: ["Knuckleheads", ""],
   banjo: ["Dueling Banjos Tax", ""],
+  stick: ["The ball sticks", ""],
+  hunted: ["Hunted", ""],
+  foul: ["Foul merchants", ""],
+  statpad: ["Stat padding", ""],
   "switch": ["Switch everything", ""],
   cut: ["Somebody passes to the cutters", ""]
 };
@@ -4354,8 +4362,12 @@ function labelRowsHtml(e) {
     if (!c) return "";
     if (r.id === "knuck") return ledgerRow(c[0], LBL_NUM[r.who.length] + " knuckleheads (" + esc(who(r.who)) + ")." +
       (r.who.length >= 3 ? " They started hanging out." : " They\u2019ll start hanging out."), r.amt, true);
-    if (r.id === "banjo") return ledgerRow(c[0], LBL_NUM[r.who.length] + " TITLE #1s (" + esc(who(r.who)) + ")." +
-      (r.who.length >= 3 ? " Everybody takes a turn, and nobody makes anybody better." : " Not bad, just slow: they take turns before they learn to make each other better."), r.amt, true);
+    // v62.2: the owner's own lines for the Banjos and the stat padders
+    if (r.id === "banjo") return ledgerRow(c[0], LBL_NUM[r.who.length] + " TITLE #1s (" + esc(who(r.who)) + "). Took the alphas some time to figure out how to play together and not just alongside each other.", r.amt, true);
+    if (r.id === "stick") return ledgerRow(c[0], LBL_NUM[r.who.length] + " players who hold the ball (" + esc(who(r.who)) + "). It goes in and it does not come out.", r.amt, true);
+    if (r.id === "hunted") return ledgerRow(c[0], LBL_NUM[r.who.length] + " hunted defenders (" + esc(who(r.who)) + "). Come playoff time, they get switched onto every trip.", r.amt, true);
+    if (r.id === "foul") return ledgerRow(c[0], LBL_NUM[r.who.length] + " foul merchants (" + esc(who(r.who)) + "). The whistle disappears in the playoffs.", r.amt, true);
+    if (r.id === "statpad") return ledgerRow(c[0], (r.who.length === 1 ? "A stat padder (" : LBL_NUM[r.who.length] + " stat padders (") + esc(who(r.who)) + "). Karma for your stat padding sins.", r.amt, true);
     if (r.id === "switch") return ledgerCreditRow(c[0], LBL_NUM[r.who.length] + " switchable defenders (" + esc(who(r.who)) + "). Every screen is a wash.", -r.amt);
     if (r.id === "cut") return ledgerCreditRow(c[0], "A playmaker (" + esc(who([r.who[0]])) + ") and two off-ball scorers (" + esc(who(r.who.slice(1))) + "). The cutters finally get the ball.", -r.amt);
     return ledgerRow(c[0], c[1], r.amt, true);
@@ -5521,7 +5533,9 @@ function recapFitNotes(e) {
     var line = { iso: "nobody on the roster can guard the other team's best scorer", clutch: "nobody wants the last shot in a close game",
       teamd: "nobody rotates on defense", rimplus: "nobody attacks the rim or gets to the line", tshot: "nobody can make a tough shot when a play breaks down",
       knuck: r.who && r.who.length >= 3 ? "three off-court knuckleheads share a locker room" : "two off-court knuckleheads share a locker room",
-      banjo: "two title-team number ones taking turns with the ball: dueling banjos",
+      banjo: "two alphas still figuring out how to play together, not just alongside each other: dueling banjos",
+      stick: "two players who hold the ball: it goes in and it does not come out", hunted: "two defenders the other team hunts on every switch",
+      foul: "two foul merchants living at the line until the playoff whistle disappears", statpad: "stat padding: numbers that do not add up to winning",
       "switch": "three switchable defenders: they switch everything", cut: "a playmaker keeps finding two off-ball scorers cutting to the rim" }[r.id];
     if (line) n.push(line);
   });
@@ -9226,7 +9240,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v62.1";
+var BUILD_V = "v62.2";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

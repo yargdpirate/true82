@@ -523,7 +523,7 @@ if (fs.existsSync("site_data.json")) {
       tightBall: run({ USAGE_BUDGET: 85 }, { sumUsage: 97.4, usageTax: 3.2 }),
       labels: run(null, { labelsOn: true, labelsBuilt: "2026-09-27T12:00:00Z", rimDefTax: 2, creatorTax: 2, labelRows: [{ id: "iso", amt: 2, who: [] },
         { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] },
-        { id: "banjo", amt: 2, who: [3, 1] }] }),
+        { id: "banjo", amt: 2, who: [3, 1] }, { id: "stick", amt: 2, who: [0, 4] }, { id: "statpad", amt: 1, who: [2] }] }),
       oneBall: run(null, { oneBallTax: 3, scorers: [0, 1, 2, 3], fit: FIT }),
       oneBall5: run(null, { oneBallTax: 6, scorers: [0, 1, 2, 3, 4], fit: FIT }),
       short: run(null, { shortTax: 3, htAvg: 77.6, fit: FIT })
@@ -546,8 +546,10 @@ if (fs.existsSync("site_data.json")) {
     [/No ISO-D/.test(L.labels.text), /Two knuckleheads \(D\. Rodman, C\. Barkley\)\. They.ll start hanging out/.test(L.labels.text),
       /Three switchable defenders \(D\. Rodman, R\. Strickland, M\. Price\)/.test(L.labels.text), /A playmaker \(R\. Strickland\) and two off-ball scorers \(C\. Barkley, B\. Daugherty\)/.test(L.labels.text),
       /nobody is tagged RIM-P/.test(L.labels.text), /nobody is tagged PLAY/.test(L.labels.text), /tags as of Sep 27/.test(L.labels.text), /tagged RIM-P/.test(L.plain.text),
-      /Dueling Banjos Tax\s+Two TITLE #1s \(M\. Price, C\. Barkley\)\. Not bad, just slow: they take turns before they learn to make each other better\./.test(L.labels.text)],
-    [true, true, true, true, true, true, true, false, true]);
+      /Dueling Banjos Tax\s+Two TITLE #1s \(M\. Price, C\. Barkley\)\. Took the alphas some time to figure out how to play together and not just alongside each other\./.test(L.labels.text),
+      /The ball sticks\s+Two players who hold the ball \(D\. Rodman, B\. Daugherty\)\. It goes in and it does not come out\./.test(L.labels.text),
+      /Stat padding\s+A stat padder \(R\. Strickland\)\. Karma for your stat padding sins\./.test(L.labels.text)],
+    [true, true, true, true, true, true, true, false, true, true, true]);
   eq("results ledger: one ball names the scorers, too short gives the average, and neither row shows when it does not fire (v62)",
     [/Four 20-point scorers \(D\. Rodman, C\. Barkley, R\. Strickland, M\. Price\)\. Three can share one ball; the fourth costs 3\. Somebody has to set a screen/.test(L.oneBall.text),
       /Five 20-point scorers \(.*\)\. Three can share one ball; every one after that costs 3\. The ball is never coming back/.test(L.oneBall5.text),
@@ -635,7 +637,12 @@ if (fs.existsSync("site_data.json")) {
     "jose calderon": { "2000": code({ "playmaker": "u" }) },
     "alpha one": { "2000": code({ "championship-number-one": "y", "playmaker": "y" }) },
     "alpha two": { "2000": code({ "championship-number-one": "y" }) },
-    "alpha maybe": { "2000": code({ "championship-number-one": "u" }) } } };
+    "alpha maybe": { "2000": code({ "championship-number-one": "u" }) },
+    "holder one": { "2000": code({ "ball-stopper": "y" }) }, "holder two": { "2000": code({ "ball-pounder": "y" }) },
+    "holder both": { "2000": code({ "ball-stopper": "y", "ball-pounder": "y" }) },
+    "hunted one": { "2000": code({ "hunted": "y" }) }, "hunted two": { "2000": code({ "hunted": "y" }) }, "hunted maybe": { "2000": code({ "hunted": "u" }) },
+    "whistle one": { "2000": code({ "foul-merchant": "y" }) }, "whistle two": { "2000": code({ "foul-merchant": "y" }) },
+    "padder": { "2000": code({ "stat-padder": "y" }) }, "padder two": { "2000": code({ "stat-padder": "y" }) }, "padder maybe": { "2000": code({ "stat-padder": "u" }) } } };
   const R = vm.runInContext(`(function () {
     T82.setLabels(lblInput);
     function row(n, dbpm) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.bpm_star] = 2; r[IDX.usage] = 20; r[IDX.sp] = 0; r[IDX.dbpm] = dbpm || 0;
@@ -661,6 +668,14 @@ if (fs.existsSync("site_data.json")) {
       // v62.1 the Dueling Banjos Tax: two settled TITLE #1s cost 2; a "?" never counts; a board's 0 turns it off
       banjo: [ids(["alpha one", "alpha two"]).filter(function (x) { return /^banjo/.test(x); }), ids(["alpha one", "alpha maybe"]).filter(function (x) { return /^banjo/.test(x); }),
         ids(["alpha one", "alpha two"], { LBL_BANJO_TAX: 0 }).filter(function (x) { return /^banjo/.test(x); })],
+      pairs: (function () {
+        function only(list, re, cfg) { return ids(list, cfg).filter(function (x) { return re.test(x); }); }
+        return [only(["holder one", "holder two"], /^stick/), only(["holder both", "nobody a"], /^stick/), only(["hunted one", "hunted two"], /^hunted/),
+          only(["hunted one", "hunted maybe"], /^hunted/), only(["whistle one", "whistle two"], /^foul/), only(["padder"], /^statpad/),
+          only(["padder", "padder two"], /^statpad/), only(["padder maybe"], /^statpad/),
+          only(["holder one", "holder two", "hunted one", "hunted two", "whistle one", "whistle two", "padder"], /^(stick|hunted|foul|statpad)/,
+            { LBL_STICK_TAX: 0, LBL_HUNTED_TAX: 0, LBL_FOUL_TAX: 0, LBL_STATPAD_TAX: 0 })];
+      })(),
       banjoBoard: (function () {
         var keepG = G, keepMode = MODE, o = {};
         MODE = "classic"; G = { ch: null, screen: "draft", picks: [] };
@@ -670,7 +685,7 @@ if (fs.existsSync("site_data.json")) {
         o.red = /data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two")));
         o.selfNotRed = (function () { G.picks = [{ row: row("alpha two") }]; return !/data-tone="bad"[^>]*>TITLE #1/.test(boardTagsHtml(row("alpha two"))); })();
         G.picks = [{ row: row("alpha one") }, { row: row("alpha two") }];
-        o.tray = trayFitHtml().indexOf("TITLE #1s: 2, <b>−" + "2</b> (Dueling Banjos)") >= 0;
+        o.tray = trayFitHtml().indexOf("Tag taxes: <b>Dueling Banjos</b> −" + "2") >= 0;
         o.rolesLine = !/Banjo/.test(trayRolesHtml() || "");
         G = keepG; MODE = keepMode;
         return o;
@@ -689,6 +704,8 @@ if (fs.existsSync("site_data.json")) {
     [R.rimStat, R.rimTag, R.fiveOut], [2, 0, -3]);
   eq("label taxes: the score adds the rows up; names fold accents (Calderon); no tags file, no label taxes", [R.scoreSum, R.folded, R.failSoft], [true, true, [0, 0, false, 2]]);
   eq("dueling banjos: two settled TITLE #1s cost 2, a '?' never counts, a board's 0 turns it off (v62.1)", R.banjo, [["banjo+2"], [], []]);
+  eq("the Simmons pairs (v62.2): two who hold the ball cost 2 (one player with both tags counts once), two hunted 2 (a '?' never counts), two foul merchants 1, every stat padder 1 (a '?' never counts), a board's 0 turns them off",
+    R.pairs, [["stick+2"], [], ["hunted+2"], [], ["foul+1"], ["statpad+1"], ["statpad+2"], [], []]);
   eq("dueling banjos on the board: a settled TITLE #1 shows, a '?' one does not, it turns red once another is on your five (never for himself), the tray names the tax, the roles line does not",
     R.banjoBoard, { plain: true, maybeHidden: true, red: true, selfNotRed: true, tray: true, rolesLine: true });
 }

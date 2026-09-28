@@ -28,7 +28,8 @@
            (v61: the label taxes too: LBL_ISO_TAX, LBL_CLUTCH_TAX, LBL_TEAMD_TAX,
            LBL_RIMPLUS_TAX, LBL_TSHOT_TAX, LBL_KNUCK_TAX_2/_3, LBL_SWITCH_CREDIT,
            LBL_CUT_CREDIT; 0 turns one off on a board; v62: ONEBALL_PPG,
-           ONEBALL_FREE, ONEBALL_TAX, SHORT_AVG_HT, SHORT_TAX; v62.1: LBL_BANJO_TAX) }
+           ONEBALL_FREE, ONEBALL_TAX, SHORT_AVG_HT, SHORT_TAX; v62.1: LBL_BANJO_TAX;
+           v62.2: LBL_STICK_TAX, LBL_HUNTED_TAX, LBL_FOUL_TAX, LBL_STATPAD_TAX) }
    TRUST LAW: NET_SD, BASELINE, REPLACEMENT and the Hot Hand are NOT hookable.
    Challenges shape the draft, never the sim's fairness or the wheel.
 
@@ -597,6 +598,19 @@ function labelTaxes(S, pickRows) {
   // back a quarter of what one ball takes; as a tax it hits 27% of them and none of the 32 champions. Settled only.
   var t1 = settled("championship-number-one"), bjAmt = C(S, "LBL_BANJO_TAX", 2);
   if (t1.length >= 2 && bjAmt) out.rows.push({ id: "banjo", amt: bjAmt, who: t1 });
+  // v62.2 THE SIMMONS PAIRS (the owner, 2026-09-28): the thin tags, scouted into 0029, charged as pairs on settled tags
+  // (like the knuckleheads): two players who hold the ball (BALL-STOP or BALL-POUND, a player counted once) LBL_STICK_TAX;
+  // two hunted defenders LBL_HUNTED_TAX; two foul merchants LBL_FOUL_TAX. And every settled stat padder pays
+  // LBL_STATPAD_TAX on his own: the one tag charged alone, by the owner's choice ("decrease his value in the game
+  // engine, fraud stats"; his line: "Karma for your stat padding sins"). None of the 32 champions pays any of them.
+  var stick = [];
+  for (var s5 = 0; s5 < tags.length; s5++) if (tags[s5]["ball-stopper"] === "y" || tags[s5]["ball-pounder"] === "y") stick.push(s5);
+  var stAmt = C(S, "LBL_STICK_TAX", 2), hu = settled("hunted"), huAmt = C(S, "LBL_HUNTED_TAX", 2);
+  var fm = settled("foul-merchant"), fmAmt = C(S, "LBL_FOUL_TAX", 1), sp = settled("stat-padder"), spAmt = C(S, "LBL_STATPAD_TAX", 1);
+  if (stick.length >= 2 && stAmt) out.rows.push({ id: "stick", amt: stAmt, who: stick });
+  if (hu.length >= 2 && huAmt) out.rows.push({ id: "hunted", amt: huAmt, who: hu });
+  if (fm.length >= 2 && fmAmt) out.rows.push({ id: "foul", amt: fmAmt, who: fm });
+  if (sp.length && spAmt) out.rows.push({ id: "statpad", amt: spAmt * sp.length, who: sp });
   var sw = settled("switchable-defender");
   if (sw.length >= 3 && C(S, "LBL_SWITCH_CREDIT", 1)) out.rows.push({ id: "switch", amt: -C(S, "LBL_SWITCH_CREDIT", 1), who: sw });
   // a playmaker and two off-ball scorers, three different players (the balance run: "a playmaker and one off-ball
@@ -1374,7 +1388,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 11,  // v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 12,  // v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {

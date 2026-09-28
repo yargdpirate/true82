@@ -41,7 +41,9 @@
    the tag rows too, since its copy says every fit rule is off). v62.1's
    Dueling Banjos Tax (LBL_BANJO_TAX, two settled TITLE #1s) is off where the
    copy promises stacked alphas: Iso Week, Two-Way Alphas, The Superteam
-   Problem, Tax Holiday. One new optional hook: price(row,t) -> a Presti price
+   Problem, Tax Holiday. v62.2's pairs (LBL_STICK_TAX, LBL_HUNTED_TAX,
+   LBL_FOUL_TAX) and LBL_STATPAD_TAX are off on Tax Holiday; the ball-holders
+   pair is also off on the same three alpha boards. One new optional hook: price(row,t) -> a Presti price
    multiplier for that season (sim-core assignCapPool; absent = 1, so every
    other board prices and draws exactly as before; draft-side only).
    Hooks are pure functions of (S,row,tables) — no Date/random/fetch. Helpers
@@ -331,7 +333,7 @@
       cfg: { USAGE_BUDGET: 85 } },
     { id: "iso_week", name: "Iso Week", base: "classic",
       blurb: "The usage tax is OFF. Five alphas, one ball, zero consequences. History's most toxic lineups are legal.",
-      cfg: { USAGE_RATE: 0, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0 } },
+      cfg: { USAGE_RATE: 0, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
     { id: "heliocentric", name: "Heliocentrism", base: "classic",
       blurb: "Usage budget 130, tax nearly nothing. One sun, four moons — build the solar system.",
       cfg: { USAGE_BUDGET: 130, USAGE_RATE: 0.05 } },
@@ -407,7 +409,7 @@
     { id: "superteam", name: "The Superteam Problem", base: "classic",
       blurb: "Stars only — and the usage budget just got smaller. Everyone's an alpha. The ball is not amused.",
       filter: function (row, t) { return row[t.IDX.bpm_star] >= 4; },
-      cfg: { USAGE_BUDGET: 95, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0 } },
+      cfg: { USAGE_BUDGET: 95, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
     { id: "kaman_epoch", name: "The Kaman Epoch", base: "cap",
       blurb: "Only seasons from 2004–2016 — the age of Kaman. He watches. He judges.",
       filter: function (row, t) { return row[t.IDX.season] >= 2004 && row[t.IDX.season] <= 2016; } },
@@ -703,7 +705,8 @@
       cfg: { USAGE_RATE: 0, SPACING_TAX: 0, SPACING_BONUS: 0, BACKCOURT_D_TAX_20: 0, BACKCOURT_D_TAX_33: 0,
              WING_D_TAX_20: 0, WING_D_TAX_33: 0, RIM_D_TAX: 0, GLASS_TAX_LOW: 0, GLASS_TAX_DIRE: 0, CREATOR_TAX: 0, AGE_TAX: 0,
              ONEBALL_TAX: 0, SHORT_TAX: 0, LBL_ISO_TAX: 0, LBL_CLUTCH_TAX: 0, LBL_TEAMD_TAX: 0, LBL_RIMPLUS_TAX: 0, LBL_TSHOT_TAX: 0,
-             LBL_KNUCK_TAX_2: 0, LBL_KNUCK_TAX_3: 0, LBL_SWITCH_CREDIT: 0, LBL_CUT_CREDIT: 0, LBL_BANJO_TAX: 0 } },   // v62: every fit rule means the tag rows too
+             LBL_KNUCK_TAX_2: 0, LBL_KNUCK_TAX_3: 0, LBL_SWITCH_CREDIT: 0, LBL_CUT_CREDIT: 0, LBL_BANJO_TAX: 0,
+             LBL_STICK_TAX: 0, LBL_HUNTED_TAX: 0, LBL_FOUL_TAX: 0, LBL_STATPAD_TAX: 0 } },   // v62: every fit rule means the tag rows too
 
     /* ---- the ledger: price rules (Presti) ---- */
     { id: "fair_market", name: "Fair Market", base: "cap",
@@ -1453,7 +1456,7 @@
              SPACERS_REQ: 5, SPACING_TAX: 2.5 } },
     { id: "two_way_alphas", name: "Two-Way Alphas", base: "cap",
       blurb: "The usage tax is off and every defense fine doubles. Stars who defend.",
-      cfg: { USAGE_RATE: 0, BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4, WING_D_TAX_20: 6, WING_D_TAX_33: 4, RIM_D_TAX: 4, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0 } },
+      cfg: { USAGE_RATE: 0, BACKCOURT_D_TAX_20: 6, BACKCOURT_D_TAX_33: 4, WING_D_TAX_20: 6, WING_D_TAX_33: 4, RIM_D_TAX: 4, ONEBALL_TAX: 0, LBL_BANJO_TAX: 0, LBL_STICK_TAX: 0 } },
     { id: "unicorn_hunt", name: "Unicorn Hunt", base: "classic",
       blurb: "Modern boards. You need four shooters and a +2 rim protector up front, or pay.",
       deal: function () { return { decs: [2010, 2020] }; },

@@ -210,7 +210,7 @@ capital never matches in op=labels (17 players in site_data.json; 69 of the
 0026 scout rows: Alperen Şengün 14, Ersan İlyasova 25, Šarūnas Marčiulionis
 16, Dario Šarić 8, Álex Abrines 6). The fix belongs in functions/api/traits.js.
 
-## 0029_scout_thin_tags_v1.sql (v62.1, 2026-09-28; NOT APPLIED until the owner says so)
+## 0029_scout_thin_tags_v1.sql (v62.1, 2026-09-28; APPLIED to D1 true82 on 2026-09-28 at the owner's go: unsure 249, yes 215)
 
 The scout backfill for five tags the 0026 pass never covered: hunted, ball-stopper, ball-pounder, foul-merchant,
 stat-padder. 464 question rows and 464 scout claims (215 yes, 249 unsure), same shape and source convention as 0026
