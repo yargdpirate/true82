@@ -1,16 +1,105 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v61.1, the label taxes (section 00000r), NOT on main. `main` = v60.1, LIVE on true82.net (section 00000q). Merge v61.1 only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
+**Current source of truth:** the GitHub repo. `c-code-clean` = v62, one ball and too short (section 00000s) on top of v61.1, the label taxes (section 00000r); neither is on main. `main` = v60.1, LIVE on true82.net (section 00000q). Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r).
 
-**Date:** 2026-09-27
-**Build:** `v61.1` on `c-code-clean` (`BUILD_V = "v61.1"`; app.js at `20260927-v61-1`; styles.css and sim-core.js at `20260927-v61`; labels.json via `<meta name="t82-labels" content="20260927-v61">` in index.html; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 9). v60.1 (live): app.js at `20260927-v60-1`.
-**Most recent change:** section 00000r (read it first): v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Date:** 2026-09-28
+**Build:** `v62` on `c-code-clean` (`BUILD_V = "v62"`; styles.css, sim-core.js, challenges.js, daily-core.js and app.js at `20260928-v62`; labels.json via `<meta name="t82-labels" content="20260927-v61">` in index.html; look.css and results-riso.js at `20260927-v60`; engine `T82.VERSION` 10). v60.1 (live): app.js at `20260927-v60-1`.
+**Most recent change:** section 00000s (read it first): v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000r. START HERE (2026-09-28, early morning): V61.1, THE LABEL TAXES (c-code-clean, NOT main yet)
+## 00000s. START HERE (2026-09-28, small hours): V62, ONE BALL AND TOO SHORT (c-code-clean, NOT main yet)
+
+**Where things stand.** `main` = v60.1, LIVE. `c-code-clean` = v62 on top of v61.1 (the label taxes); both go live
+together when the owner says "push to main" (a fast-forward, as for v60). Branch preview: https://c-code-clean.true82.pages.dev/
+(the mock database: reads the live tags and data, saves nothing).
+
+**How we got here (the owner's words).** "what taxes can we put in to force actual reasonable team comp? either with our
+labels or box score stats (we had not enough rebounding for example) or more creative (we currently have too old; can
+we do too short when hights added together or soemthing? I just want cahllenge in these lineup and prlim tests ...
+suggests the labels do nothing and i want them to enforce a real working team." After the analysis below: "fix it,
+then go with mild, presti too and too short."
+
+### What the analysis found (15,144 real drafts; the starting fives of 32 champions, the '77 Blazers to the '25 Thunder)
+- **The v61 tag taxes made 82-0 slightly easier**: taxes fire on 8% of drafts, credits on 13% (Classic realized 82-0
+  23.9% to 24.3%). They ask "does anyone on your five have X?", and stars carry every tag (the average Classic five has
+  3.3 settled tough-shot makers; a champion has one or two). The credits are the one tag rule that tells real teams
+  apart (16 of 32 champions earn one, 13% of drafts), so they stay.
+- **Drafted fives already look like champions** in size (both about 6'7" on average: the G-G-F-F-C slots force a
+  center), rebounding, rim protection, passing, shooting, DBPM and youth. So every "do you have X?" rule (tags or stats:
+  a tougher glass bar, two veterans, one job per player, too short) hits real champions before it hits drafts, and
+  moves 82-0 by a point at most. They are fences, never the challenge.
+- **The one gap:** 61% of Classic drafts start four or five 20-point scorers; no champion had more than three. In the
+  median team pool the best non-scorer is only 1.3 V behind the best scorer, so a 3-point charge makes "star or glue
+  guy" a real call (e.g. Giannis '26 or Jrue '21).
+- **The live season math** (for any future balance work): Classic rolls 82 games at min(0.991, phi(net/12)); Presti
+  is uncapped (app.js sets PG_CAP per mode). Realized 82-0 over real drafts before v62: Classic about 24%, Presti about 6%.
+
+### The rules as shipped (sim-core `scorersAndSize`, the engine; VERSION 10)
+- **One ball:** three 20-point scorers (ppg 20.0 or more that season) share the ball free; the fourth and the fifth
+  cost 3 net each. Keys `ONEBALL_PPG` 20, `ONEBALL_FREE` 3, `ONEBALL_TAX` 3 (code defaults through C(), like the v61
+  keys, so site_data.json and its pipeline are untouched).
+- **Too short:** a complete five whose listed heights average under 6'6" (`SHORT_AVG_HT` 78 inches) pays `SHORT_TAX` 3.
+  Never on a partial five; a missing height means no charge (fail soft).
+- Both apply in every mode (the owner: "presti too"), the Do-Over's verdict included. Today's usage tax stays as it
+  was; its Scoring Card line no longer says "One ball" (the new row owns the name).
+- **Boards:** a board whose own rule forces a short five or a five of scorers turns that tax off (it would be a flat
+  charge on every entry): Short Kings, both Small-Ball Apocalypses, The Small Blind, Height Cap (SHORT_TAX 0); Volume
+  Merchants, The Hundred Club, The Superteam Problem, Ball Hogs (ONEBALL_TAX 0); so does a board whose copy stacks the
+  alphas with the usage tax off (Iso Week, Gunslingers, Two-Way Alphas). Tax Holiday's copy says every fit rule is
+  off, so it zeroes both and, fixed here, the v61 tag rows too. `labelTaxes` no longer prints a "-0.0" knucklehead row
+  when a board sets that tax to 0.
+
+### What the player sees
+- **Boards:** the listed height by every position ("G/F · 6'7"") and a "20+" chip leading the chips of every
+  20-point scorer, in Classic, Presti, the Daily and the Do-Over (always there, whatever mode ran last). Pro shows
+  neither (the owner's from-memory rule for its tags); both still count. The (i) legend defines 20+ ("box score") and
+  says the heights count. A board with one ball off shows no 20+ chips.
+- **Tray** (`trayFitHtml`): speaks up only when a rule is about to bite, one short line each, so the tray stays small at
+  320px: "20+ scorers: 3 of 3 free, a 4th costs 3", then "20+ scorers: 4, -3"; with two picks or one left and the five
+  under 6'6": "Height 6'3.7" avg, the last 2 need 6'9.5" avg" (or "too short -3" when out of reach).
+- **Scoring Card:** "One ball: Four 20-point scorers (D. Garland, K. Malone, K. Garnett, M. Malone). Three can share
+  one ball; the fourth costs 3. Somebody has to set a screen." (five: "every one after that costs 3. The ball is never
+  coming back.") and "Too short: Your five average 5'9.6". Under 6'6", the other team lives on the offensive glass."
+  Each results card's stat line ends with the height ("6'7" HT"; the season line was too narrow at 320px).
+- Rules sheet: ONE BALL rewritten, a new SIZE line; the Daily gate's Classic tip and how-it-works (page and md) say
+  the same. The Tribune's writer and the Do-Over receipts get both facts.
+
+### The numbers
+- Real drafts, realized 82-0: Classic 24.2% to 16.4% (expected wins 79.0 to 77.3); Presti 5.9% to 4.3% (75.9 to
+  74.6). One ball fires on 61% of Classic drafts (4 scorers 34%, 5 scorers 28%) and 29% of Presti; too short on 10%
+  and 8%.
+- **Dodgeable:** the best five a drafter could build from the same deals (every season in the five pools, local
+  search) goes 37.0% to 35.6% on 82-0, while the drafts as made go 24.6% to 16.6% (1,500 Classic drafts): the gap
+  between building a team and hoarding stars grows from 12 points to 19. That is the challenge the owner asked for.
+- Champions: only the '22 Warriors pay (too short, 6'5.6"). Stricter dials measured: every scorer past two at 3
+  (Classic 82-0 as drafted 11%, best play 33%; the '17 Warriors and '24 Celtics would pay); 4 each (9%, 32.5%).
+- All 200 POOL3 Dailies certify with the new rules (`node tools/daily-audit.js 120 pool3 --labels`, 0 below the bar;
+  the biggest median drop is 3 wins, Play Big 69 to 66). test.js 116 (7 new checks), style law clean. Checked in
+  Chromium and WebKit at 320 and 375 (no sideways scroll, no overflowing rows, no page errors): the boards, the
+  tray through five picks, the results cards, the Scoring Card; the legend and the rules sheet read right.
+
+### The Monday tag refresh (fixed, baa3597)
+The v61 tag tools' wrangler helper called itself forever whenever the old local wrangler copy existed (it does), so
+`labels-freeze.js`, `labels-balance.js` and the scheduled refresh would have crashed. It now runs the local copy, or
+`npx wrangler@4` when that copy is gone or cannot start. Checked: `node tools/labels-refresh.js --dry` froze the live
+tags ("No tag changed since the last refresh"), and the balance tool read the real drafts live.
+
+### Next, in order
+1. The owner's "push to main" (v61.1 and v62 go together). On the preview first: a Classic draft (heights, 20+ chips,
+   the tray at the third scorer, the Scoring Card rows), a Presti board, a Pro board with none of it.
+2. The superfan tags (the owner asked which tag taxes a Bill Simmons would lodge that the game misses). They are the
+   thin traits already on the tag sheet: HUNTED ("they'll hunt him every trip in May"), BALL-STOP and BALL-POUND ("the
+   ball dies in his hands"), FOUL-MERCH ("the whistle disappears in the playoffs"), STAT-PAD ("empty calories"), and
+   TITLE #1 as a credit ("has he ever been the best player on a champion?"). Each needs a scout backfill first (the
+   original model pass lives outside this repo), then pair taxes balance-checked with `tools/labels-balance.js`;
+   HUNTED pairs first: the offense-first superteams the drafts favor are exactly the fives that get hunted.
+3. Record the label rows and the two new taxes on game_complete (a migration: new columns) to watch live firing.
+4. Swap the rim and creator taxes to tags once the tag versions fire about as often as the stat ones (00000r).
+
+## 00000r. (2026-09-28, early morning): V61.1, THE LABEL TAXES (c-code-clean, NOT main yet)
 
 **Where things stand.** `main` = v60.1, LIVE on true82.net. `c-code-clean` = v61.1 plus the tag tools (`3585f47`),
 on the branch preview (https://c-code-clean.true82.pages.dev/, which runs on the mock database: it reads the live

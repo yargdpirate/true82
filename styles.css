@@ -3737,6 +3737,9 @@ body.gating .gate-back {
 .tray-roles { font-family: var(--t-mono); font-size: 11px; line-height: 1.35; letter-spacing: 0.03em; color: var(--t-text-2); text-align: center; padding: 6px 4px 0; }
 .tray-roles b { color: var(--t-bad-soft); font-weight: 700; }
 .tray-roles.is-full { color: var(--t-good-soft); }
+/* v62: the tray's one ball and height warnings (app.js trayFitHtml) sit over the roles line, one line each */
+.tray-fit > span { display: block; }
+.tray-fit + .tray-roles { padding-top: 2px; }
 .ledger-note { margin: 8px 2px 0; color: var(--t-text-2); }
 .trait-info-btn { appearance: none; -webkit-appearance: none; width: 27px; height: 27px; flex: 0 0 27px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 50%; background: linear-gradient(180deg, var(--t-accent), var(--t-accent-face)); color: var(--t-accent-ink);

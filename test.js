@@ -495,12 +495,14 @@ if (fs.existsSync("site_data.json")) {
     var keepG = G, keepSC = SC;
     SC = Object.assign({}, SC, { SPACERS_REQ: 3, USAGE_BUDGET: 110, AGE_VET_YEAR: 12, RIM_TOP20: 0.9 });
     function pick(n) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; return { row: r }; }
+    var FIT = { ppgBar: 20, free: 3, per: 3, shortHt: 78, shortAmt: 3 };   // v62: the engine's one ball and too short settings
     function run(cfg, e) {
       G = { ch: cfg ? { id: "t", cfg: cfg } : null, picks: ["Dennis Rodman", "Charles Barkley", "Rod Strickland", "Mark Price", "Brad Daugherty"].map(pick) };
       e = Object.assign({ sumV: 30.5, sumUsage: 104.2, usageTax: 0, sumSp: 3, spacingTax: 0, spacingBonus: 0, backDefTax: 0, backDefTier: 0,
-        wingDefTax: 0, wingDefTier: 0, rimDefTax: 0, glassTax: 0, creatorTax: 0, ageTax: 0, vetCount: 0, labelRows: [], labelTax: 0 }, e);
+        wingDefTax: 0, wingDefTier: 0, rimDefTax: 0, glassTax: 0, creatorTax: 0, ageTax: 0, vetCount: 0, labelRows: [], labelTax: 0,
+        oneBallTax: 0, shortTax: 0, scorers: [], htAvg: 79 }, e);
       e.labelTax = e.labelRows.reduce(function (a, r) { return a + r.amt; }, 0);
-      e.score = e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax;
+      e.score = e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.oneBallTax - e.shortTax;
       e.net = e.score - BASELINE;
       var html = resultsLedgerHtml(e), amts = [], re = /class="ledger-amt[^"]*">([^<]*)</g, m;
       while ((m = re.exec(html))) amts.push(parseFloat(m[1].replace("\u2212", "-").replace("\u2713 ", "")));
@@ -520,7 +522,10 @@ if (fs.existsSync("site_data.json")) {
       creator: run({ CREATOR_TAX: -2 }, { creatorTax: -2 }),
       tightBall: run({ USAGE_BUDGET: 85 }, { sumUsage: 97.4, usageTax: 3.2 }),
       labels: run(null, { labelsOn: true, labelsBuilt: "2026-09-27T12:00:00Z", rimDefTax: 2, creatorTax: 2, labelRows: [{ id: "iso", amt: 2, who: [] },
-        { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] }] })
+        { id: "clutch", amt: 1, who: [] }, { id: "knuck", amt: 2, who: [0, 1] }, { id: "switch", amt: -1, who: [0, 2, 3] }, { id: "cut", amt: -1, who: [2, 1, 4] }] }),
+      oneBall: run(null, { oneBallTax: 3, scorers: [0, 1, 2, 3], fit: FIT }),
+      oneBall5: run(null, { oneBallTax: 6, scorers: [0, 1, 2, 3, 4], fit: FIT }),
+      short: run(null, { shortTax: 3, htAvg: 77.6, fit: FIT })
     };
     G = keepG; SC = keepSC;
     return out;
@@ -541,6 +546,73 @@ if (fs.existsSync("site_data.json")) {
       /Three switchable defenders \(D\. Rodman, R\. Strickland, M\. Price\)/.test(L.labels.text), /A playmaker \(R\. Strickland\) and two off-ball scorers \(C\. Barkley, B\. Daugherty\)/.test(L.labels.text),
       /nobody is tagged RIM-P/.test(L.labels.text), /nobody is tagged PLAY/.test(L.labels.text), /tags as of Sep 27/.test(L.labels.text), /tagged RIM-P/.test(L.plain.text)],
     [true, true, true, true, true, true, true, false]);
+  eq("results ledger: one ball names the scorers, too short gives the average, and neither row shows when it does not fire (v62)",
+    [/Four 20-point scorers \(D\. Rodman, C\. Barkley, R\. Strickland, M\. Price\)\. Three can share one ball; the fourth costs 3\. Somebody has to set a screen/.test(L.oneBall.text),
+      /Five 20-point scorers \(.*\)\. Three can share one ball; every one after that costs 3\. The ball is never coming back/.test(L.oneBall5.text),
+      /Your five average 6'5\.6"\. Under 6'6", the other team lives on the offensive glass/.test(L.short.text), /One ball|Too short/.test(L.plain.text)],
+    [true, true, true, false]);
+}
+
+// v62 ONE BALL and TOO SHORT (sim-core scorersAndSize, the engine, the boards, the tray): three 20-point scorers share
+// the ball free and the fourth and fifth cost 3 each (20.0 counts, 19.9 does not); a five that averages under 6'6"
+// pays 3 (exactly 6'6" does not, nor a missing height or a partial five); a board's 0 turns either off; the score adds
+// them up; the boards show the 20+ chip and the height (never in Pro; always on the Do-Over board); the tray counts.
+{
+  const R = vm.runInContext(`(function () {
+    var keepG = G, keepMode = MODE;
+    function row(n, ppg, ht) { var r = []; r[IDX.name] = n; r[IDX.season] = 2000; r[IDX.bpm_star] = 2; r[IDX.usage] = 20; r[IDX.sp] = 0; r[IDX.dbpm] = 0;
+      r[IDX.obpm] = 0; r[IDX.rpg] = 5; r[IDX.apg] = 5; r[IDX.ppg] = ppg; r[IDX.ht] = ht; return r; }
+    function five(ppgs, hts) { return ppgs.map(function (p, i) { return row("p" + i, p, hts ? hts[i] : 80); }); }
+    var slots = ["G", "G", "F", "F", "C"], S0 = { ch: null }, BASE = { RIM_TOP20: 0.9, RIM_D_TAX: 2, USAGE_RATE: 0, USAGE_BUDGET: 999 };
+    function eng(rows, cfg) { return T82.engine({ ch: { cfg: Object.assign({}, BASE, cfg || {}) } }, rows, slots); }
+    var out = {};
+    out.ball = [[25, 22, 20, 12, 8], [25, 22, 20, 20, 8], [25, 22, 21, 20, 20], [25, 22, 20, 19.9, 19.9]].map(function (p) { return eng(five(p)).oneBallTax; });
+    out.ballOff = eng(five([25, 22, 21, 20, 20]), { ONEBALL_TAX: 0 }).oneBallTax;
+    out.short = [[72, 76, 78, 80, 83], [72, 76, 78, 80, 84], [72, 76, 78, 80, 0]].map(function (h) { return eng(five([1, 1, 1, 1, 1], h)).shortTax; });
+    out.shortOff = eng(five([1, 1, 1, 1, 1], [72, 76, 78, 80, 83]), { SHORT_TAX: 0 }).shortTax;
+    out.partial = T82.scorersAndSize(S0, five([1, 1, 1, 1], [70, 70, 70, 70])).shortTax;
+    var e = eng(five([25, 22, 21, 20, 20], [72, 74, 76, 78, 80]));
+    out.adds = Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.oneBallTax - e.shortTax - e.score) < 1e-9;
+    out.both = [e.oneBallTax, e.shortTax, e.scorers.length, htText(e.htAvg)];
+    G = { ch: null, picks: [], screen: "draft" };
+    MODE = "classic"; out.chip = [/>20\\+</.test(scorerChipHtml(row("a", 20, 80))), scorerChipHtml(row("b", 19.9, 80)), heightTag(row("c", 1, 79))];
+    MODE = "pro"; out.pro = [scorerChipHtml(row("a", 20, 80)), heightTag(row("c", 1, 79)), /20\\+/.test(boardTagsHtml(row("a", 20, 80), true)), heightTag(row("c", 1, 79), true)];
+    MODE = "classic"; G.ch = { cfg: { ONEBALL_TAX: 0 } }; out.chipOff = scorerChipHtml(row("a", 30, 80));
+    function lines() { var m, re = /<span>(.*?)<\\/span>/g, h = trayFitHtml(), o = []; while ((m = re.exec(h))) o.push(m[1].replace(/<[^>]+>/g, "")); return o; }
+    G = { ch: null, screen: "draft", picks: five([25, 22, 20, 12], [74, 76, 78, 80]).map(function (r) { return { row: r }; }) };
+    out.tray = lines();
+    G.picks[3].row[IDX.ppg] = 20; G.picks.forEach(function (p) { p.row[IDX.ht] = 80; });
+    out.tray4 = lines();
+    G.picks.pop(); G.picks.pop(); G.picks[0].row[IDX.ppg] = 1; G.picks[0].row[IDX.ht] = 70;
+    out.tray2 = lines();
+    MODE = "pro"; out.trayPro = trayFitHtml();
+    G = keepG; MODE = keepMode;
+    return out;
+  })()`, ctx);
+  eq("one ball: three 20-point scorers are free, the fourth and fifth cost 3 each (20.0 counts, 19.9 does not); a board's 0 turns it off",
+    [R.ball, R.ballOff], [[0, 3, 6, 0], 0]);
+  eq("too short: under 6'6\" on average costs 3, exactly 6'6\" does not, nor a missing height or a partial five; a board's 0 turns it off",
+    [R.short, R.shortOff, R.partial], [[3, 0, 0], 0, 0]);
+  eq("one ball and too short: the score adds both up", [R.adds, R.both], [true, [6, 3, 5, "6'4\""]]);
+  eq("boards: the 20+ chip and the height show in Classic, never in Pro, always on the Do-Over board; a board with one ball off shows no chip",
+    [R.chip, R.pro, R.chipOff], [[true, "", " · 6'7\""], ["", "", true, " · 6'7\""], ""]);
+  eq("tray: speaks up at the third scorer and past it, and for height only with two picks or one left (never in Pro)", [R.tray, R.tray4, R.tray2, R.trayPro],
+    [["20+ scorers: 3 of 3 free, a 4th costs 3", "Height 6'5\" avg, the last pick needs 6'10\""], ["20+ scorers: 4, −3"], [], ""]);
+}
+
+// v62: a board whose own rule forces a short five or a five of scorers (or whose copy stacks the alphas with the usage
+// tax off) turns the new tax off, so it is never a flat charge on every entry; Tax Holiday turns every fit rule off.
+{
+  const bctx = { Math, Date, console, JSON, URLSearchParams };
+  vm.createContext(bctx);
+  vm.runInContext(fs.readFileSync("challenges.js", "utf8"), bctx);
+  const by = bctx.T82CH.byId, cfgOf = (id, k) => (by[id] && by[id].cfg ? by[id].cfg[k] : undefined);
+  eq("boards: the short boards turn too short off; the scorer and stack-the-alphas boards turn one ball off; Tax Holiday turns off both and the tag rows",
+    [["short_kings", "small_ball_apoc", "small_blind", "small_ball_five", "height_cap"].map((id) => cfgOf(id, "SHORT_TAX")),
+      ["volume_scorers", "hundred_club", "superteam", "ball_hogs", "iso_week", "gunslingers", "two_way_alphas"].map((id) => cfgOf(id, "ONEBALL_TAX")),
+      ["ONEBALL_TAX", "SHORT_TAX", "LBL_ISO_TAX", "LBL_KNUCK_TAX_2", "LBL_CUT_CREDIT"].map((k) => cfgOf("tax_holiday", k)),
+      cfgOf("the_mediums", "SHORT_TAX"), cfgOf("heliocentric", "ONEBALL_TAX")],
+    [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0], undefined, undefined]);
 }
 
 // v61 THE LABEL TAXES (sim-core labelTaxes and engine): a role nobody fills costs net and a "?" fills it; the
@@ -579,7 +651,7 @@ if (fs.existsSync("site_data.json")) {
       rimStat: eng(["nobody a", "nobody b", "nobody c", "nobody d", "nobody e"]).rimDefTax,
       rimTag: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"]).rimDefTax,
       fiveOut: eng(["nobody a", "nobody b", "nobody c", "nobody d", "bigman"], { ch: { cfg: { RIM_TOP20: 0.9, RIM_D_TAX: -3 } } }).rimDefTax,
-      scoreSum: (function () { var e = eng(["stopper", "maybe", "bigman", "passer", "cutter"]); return Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.score) < 1e-9 && e.labelRows.length > 0; })(),
+      scoreSum: (function () { var e = eng(["stopper", "maybe", "bigman", "passer", "cutter"]); return Math.abs(e.sumV - e.usageTax - e.spacingTax + e.spacingBonus - e.backDefTax - e.wingDefTax - e.rimDefTax - e.glassTax - e.creatorTax - e.ageTax - e.labelTax - e.oneBallTax - e.shortTax - e.score) < 1e-9 && e.labelRows.length > 0; })(),
       folded: !!T82.labelsOf("Jos\u00E9 Calder\u00F3n", 2000)
     };
     T82.setLabels(null);

@@ -1390,6 +1390,27 @@ function chipsFor(row, tab) {
   return out.length ? '<span class="chips">' + out.join("") + "</span>" : "";
 }
 function bucketTag(row) { return rowBuckets(row).join("/"); }
+/* v62 ONE BALL and TOO SHORT (the owner's picks, 2026-09-28; sim-core scorersAndSize). The boards show what the two
+   rules read: a "20+" chip on every 20-point scorer (boardTagsHtml) and the listed height by the position (heightTag).
+   Pro shows neither: it is played from memory, the owner's rule for its tags, and the rules still count the same. */
+function htText(inches) {
+  if (!(inches > 0)) return "";
+  var ft = Math.floor(inches / 12), inch = Math.round((inches - ft * 12) * 10) / 10;
+  if (inch >= 12) { ft++; inch -= 12; }
+  return ft + "'" + (inch % 1 ? inch.toFixed(1) : String(inch)) + '"';
+}
+// sd: the Do-Over's board, which always shows both and scores with the default rules (its verdict plays fresh
+// Classic states), whatever mode or board ran last
+function fitRules(rows, sd) { return typeof T82 !== "undefined" && T82.scorersAndSize ? T82.scorersAndSize(sd ? null : G, rows || []) : null; }
+function heightTag(row, sd) { return (!sd && (MODE === "pro" || MODE === "kaman")) || !row || !(row[IDX.ht] > 0) ? "" : " \u00B7 " + htText(row[IDX.ht]); }
+function scorerChipHtml(row, sd) {
+  if (!row || (!sd && (MODE === "pro" || MODE === "kaman"))) return "";
+  var f = fitRules([row], sd);
+  if (!f || !f.per || !f.scorers.length) return "";   // a board that turns one ball off shows no chip
+  var abbr = f.ppgBar + "+", full = f.ppgBar + "-point scorer";
+  return '<button type="button" class="tchip t-chip eng is-scorer" data-size="sm" tabindex="-1" data-full="' + full + '" data-abbr="' + abbr + '"' +
+    ' aria-pressed="false" aria-label="' + full + ', from the box score. Tap for full label." title="' + full + '">' + abbr + "</button>";
+}
 
 /* ---------- rendering: shared ---------- */
 
@@ -1780,9 +1801,10 @@ var RULES_DAILY_CAP = "One shared board per day. Everyone gets the same teams, t
 var RULES_ENGINE = [
   ["TALENT", "Every player adds his impact rating (BPM) over a replacement-level scrub. Star power is most of your score."],
   ["SHOOTING", "Three floor spacers is the target. Zero shooters costs about 6 net rating. Elite gunners count as one and a half."],
-  ["ONE BALL", "Team usage above 110 gets taxed. Two high-usage alphas fit. Four is a turf war your net pays for."],
+  ["ONE BALL", "Three 20-point scorers can share one ball. The fourth and the fifth cost 3 net each, and team usage above 110 costs a little on top."],
   ["DEFENSE", "If both guards, or both forwards, are minus defenders, the pair costs 2 to 3 net. And someone up front, a forward or your center, has to protect the rim, or that is 2 more."],
   ["THE DIRTY WORK", "Your five still have to rebound and somebody has to pass. A bottom-of-the-league board rate costs 2 to 3, no real playmaker costs 2, and more than one player past his 12th season costs 1."],
+  ["SIZE", "Your five have to average 6'6\" or taller, or that is 3 net."],
   ["THE MATH", "Net 0 is a 41-41 team, and one point of net is worth 2 to 3 wins in the middle. The 96 Bulls grade about +13. An 82-0 five needs about +27."]
 ];
 // Campaign "howto": this surface reports separately from the info pages.
@@ -2041,11 +2063,13 @@ function buildTraitLegendInto(panel, scope) {
     var abbr = chips[i].getAttribute("data-abbr") || traitCardAbbr(full);
     var isEng = chips[i].classList.contains("eng");
     var tone = chips[i].getAttribute("data-tone");
-    var def = (BALLOT_BY_NAME[full] && BALLOT_BY_NAME[full].d) || "";   // v53: the definitions are back
+    var scorer = chips[i].classList.contains("is-scorer");   // v62: the one-ball chip is the box score, not shooting math
+    var def = (BALLOT_BY_NAME[full] && BALLOT_BY_NAME[full].d) ||
+      (scorer ? "Averaged " + abbr.replace("+", "") + " points or more that season. Three can share one ball; a fourth and a fifth cost 3 net each." : "");   // v53: the definitions are back
     var line = '<div class="trait-legend-row"><span class="t-chip" data-size="sm"' + (tone ? ' data-tone="' + esc(tone) + '"' : "") + ">" +
-      esc(abbr) + '</span><span class="tl-txt"><b>' + esc(full) + (isEng ? " \u00B7 engine" : "") + "</b>" +
+      esc(abbr) + '</span><span class="tl-txt"><b>' + esc(full) + (scorer ? " \u00B7 box score" : isEng ? " \u00B7 engine" : "") + "</b>" +
       (def ? "<small>" + esc(def) + "</small>" : "") + "</span></div>";
-    if (isEng) { engRows.push(line); eng.push(abbr); } else rows.push(line);
+    if (isEng) { engRows.push(line); if (!scorer) eng.push(abbr); } else rows.push(line);
   }
   // the engine note names only the engine codes this legend actually lists (v51)
   eng.sort();   // "3PT" before "GRAVITY"
@@ -2056,6 +2080,9 @@ function buildTraitLegendInto(panel, scope) {
   var board = scope.id === "pool" || !!scope.querySelector(".board-tags");
   var tagNote = !board ? "" : " Your five pays net for a role nobody fills (ISO-D 2; CLUTCH, TEAM-D, RIM+, TSHOT 1 each), and for two knuckleheads." +
     (scope.querySelector(".tchip.is-maybe") ? " A tag with a ? is unsettled: it still fills its role." : "");
+  // v62: the height by each position is what the size rule reads (Pro shows no heights)
+  var fr = board && MODE !== "pro" ? fitRules([]) : null;
+  if (fr && fr.shortAmt > 0) tagNote += " The height by each position counts too: a five that averages under " + htText(fr.shortHt) + " costs " + fr.shortAmt + " net.";
   panel.innerHTML = '<div class="trait-legend-title">PLAYER LABELS</div>' +
     '<div class="trait-legend-grid">' + rows.concat(engRows).join("") + '</div>' +
     '<div class="trait-legend-note">Community votes confirm or overturn these labels.' + engNote + tagNote + "</div>";
@@ -2731,8 +2758,10 @@ function ballotBoxHtml(row) {
   function cell(v, lab) {
     return '<span><b>' + (v === null || v === undefined || !isFinite(v) ? "\u2013" : Number(v).toFixed(1)) + "</b><small>" + lab + "</small></span>";
   }
+  // v62: the listed height closes the line (the size rule reads it; the season line is too narrow at 320px)
   return cell(row[IDX.ppg], "PTS") + cell(row[IDX.rpg], "REB") + cell(row[IDX.apg], "AST") +
-    cell(row[IDX.spg], "STL") + cell(row[IDX.bpg], "BLK") + cell(row[IDX.usage], "USG%");
+    cell(row[IDX.spg], "STL") + cell(row[IDX.bpg], "BLK") + cell(row[IDX.usage], "USG%") +
+    (row[IDX.ht] > 0 ? "<span><b>" + htText(row[IDX.ht]) + "</b><small>HT</small></span>" : "");
 }
 function ballotCard(i) {
   for (var k = 0; k < BALLOT.cards.length; k++) if (BALLOT.cards[k].i === i) return BALLOT.cards[k];
@@ -3301,10 +3330,10 @@ function ballotHintPlay(A, cardEl) {
    exception (the owner, 2026-09-27: "in pro you don't see the tags til the results screen but they still count the
    same"): Pro is played from memory, so its board and tray show none, and the Scoring Card still charges them. */
 var BOARD_TAGS = ["off-court-knucklehead", "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];
-function boardTagsHtml(row) {
+function boardTagsHtml(row, sd) {
   var o = row && window.T82 && T82.labelsOf ? T82.labelsOf(row[IDX.name], row[IDX.season]) : null;
-  if (!o) return "";
-  var h = "";
+  var h = scorerChipHtml(row, sd);   // v62: the one-ball chip leads the row's chips
+  if (!o) return h ? '<span class="tchips tchips-inline board-tags">' + h + "</span>" : "";
   BOARD_TAGS.forEach(function (id) {
     var v = o[id], T = ballotTrait(id);
     if (!v || !T || (T.neg && v !== "y")) return;
@@ -3790,7 +3819,27 @@ function lineupRailHtml() {
 }
 
 function trayHtml() {
-  return lineupRailHtml() + trayRolesHtml();
+  return lineupRailHtml() + trayFitHtml() + trayRolesHtml();
+}
+// v62: the tray speaks up when one of the two rules is about to bite (the engine's own reading, sim-core
+// scorersAndSize): at the third 20-point scorer (the last free one) and past it, and, with two picks or one left, when
+// the five is heading under 6'6" (what the last picks must average to dodge it). Each on its own line, so the tray
+// stays short at 320px. Pro plays from memory, so it shows nothing (the Scoring Card still charges both).
+function trayFitHtml() {
+  if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || !G.picks.length || G.picks.length >= CFG.ROUNDS) return "";
+  var f = fitRules(G.picks.map(function (p) { return p.row; }));
+  if (!f) return "";
+  var bits = [], n = f.scorers.length, left = CFG.ROUNDS - G.picks.length;
+  if (f.per > 0 && n >= f.free) {
+    bits.push(n > f.free ? f.ppgBar + "+ scorers: " + n + ", <b>\u2212" + fmt1(f.per * (n - f.free)).replace(/\.0$/, "") + "</b>"
+      : f.ppgBar + "+ scorers: " + n + " of " + f.free + " free, a " + (["1st", "2nd", "3rd", "4th", "5th"][f.free] || "next") + " costs " + f.per);
+  }
+  if (f.shortAmt > 0 && f.htKnown === G.picks.length && left <= 2 && f.htAvg < f.shortHt) {
+    var need = Math.ceil((f.shortHt * CFG.ROUNDS - f.htSum) / left * 10) / 10;
+    bits.push("Height " + htText(f.htAvg) + " avg, " + (need > 91 ? "<b>too short \u2212" + f.shortAmt + "</b>"
+      : "<b>the last " + (left === 1 ? "pick needs " + htText(Math.ceil(need)) : left + " need " + htText(need) + " avg") + "</b>"));
+  }
+  return bits.length ? '<div class="tray-roles tray-fit">' + bits.map(function (b) { return "<span>" + b + "</span>"; }).join("") + "</div>" : "";
 }
 // v61: once two picks are left, the tray names the roles nobody on your five fills yet, with what each would cost
 // (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
@@ -3910,7 +3959,7 @@ function poolRowHtml(bestRow) {
   var open = !block;
   var sel = (G.selected === name) && open;
   var cls = "player-row" + (sel ? " sel" : "") + (open ? "" : " off");
-  var tag = bucketTag(row) + (block ? " \u00B7 " + block.tag : "");
+  var tag = bucketTag(row) + heightTag(row) + (block ? " \u00B7 " + block.tag : "");
   // Pro is played from memory: its board and tray show no tags; they still count, and the results show them (the owner)
   var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "") + (MODE === "pro" ? "" : boardTagsHtml(row));
   var sub2 = (MODE === "classic") ? '<span class="pr-sub pr-stats">' + statLine(row) + "</span>" : "";
@@ -3963,7 +4012,7 @@ function capRowHtml(bestRow) {
     '<span class="cap-main">' +
       '<span class="pr-name">' + esc(name) + '</span>' +
       '<span class="cap-meta">' +
-        '<span class="pr-pos">' + bucketTag(row) + why + '</span>' +
+        '<span class="pr-pos">' + bucketTag(row) + heightTag(row) + why + '</span>' +
         '<span class="cap-season">' + shortSeason(row[IDX.season]) + ' ' + esc(row[IDX.team]) + '</span>' +
       '</span>' +
       boardTagsHtml(row) +
@@ -4262,6 +4311,20 @@ var LBL_COPY = {
   cut: ["Somebody passes to the cutters", ""]
 };
 var LBL_NUM = ["", "One", "Two", "Three", "Four", "Five"];
+// v62: one ball and too short on the Scoring Card (the owner's picks). The scorers are named, like the knuckleheads.
+function fitLedgerHtml(e) {
+  if (!e || !e.fit) return "";
+  var f = e.fit, rows = G.picks.map(function (p) { return p.row; }), h = "";
+  var names = (e.scorers || []).map(function (i) { return rows[i] ? shareSurname(rows[i][IDX.name]) : ""; }).filter(Boolean).join(", ");
+  var n = (e.scorers || []).length, extra = n - f.free;
+  if (e.oneBallTax > 0) h += ledgerRow("One ball", (LBL_NUM[n] || n) + " " + f.ppgBar + "-point scorers (" + esc(names) + "). " + (LBL_NUM[f.free] || f.free) +
+    " can share one ball; " + (extra === 1 ? "the " + ["", "first", "second", "third", "fourth", "fifth"][n] + " costs " + fmt1(f.per).replace(/\.0$/, "") + ". Somebody has to set a screen."
+      : "every one after that costs " + fmt1(f.per).replace(/\.0$/, "") + ". The ball is never coming back."), e.oneBallTax, true);
+  else if (e.oneBallTax < 0) h += ledgerCreditRow("Scorers bonus", (LBL_NUM[n] || n) + " " + f.ppgBar + "-point scorers (" + esc(names) + "), and today\u2019s board pays for the buckets.", -e.oneBallTax);
+  if (e.shortTax > 0) h += ledgerRow("Too short", "Your five average " + htText(e.htAvg) + ". Under " + htText(f.shortHt) + ", the other team lives on the offensive glass.", e.shortTax, true);
+  else if (e.shortTax < 0) h += ledgerCreditRow("Small-ball bonus", "Your five average " + htText(e.htAvg) + ", and today\u2019s board pays for the speed.", -e.shortTax);
+  return h;
+}
 function labelRowsHtml(e) {
   if (!e || !e.labelRows || !e.labelRows.length) return "";
   var rows = G.picks.map(function (p) { return p.row; });
@@ -4288,7 +4351,7 @@ function resultsLedgerHtml(e) {
     // number keeps its own .ledger-amt, which test.js reads)
     '<div class="ledger-row ledger-talent"><span>Raw talent<span class="why">Sum of each pick\u2019s value over a replacement-level player.</span></span>' +
       '<span class="ledger-sum"><b class="sigma" aria-hidden="true">\u03A3</b><small>V</small><span class="ledger-amt">' + fmt1(e.sumV) + "</span></span></div>" +
-    ledgerRow("Usage tax", "\u03A3 usage " + fmt1(e.sumUsage) + " vs budget " + Math.round(runCfg("USAGE_BUDGET")) + ". One ball: overlapping shot demand costs efficiency.", e.usageTax, e.usageTax > 0) +
+    ledgerRow("Usage tax", "\u03A3 usage " + fmt1(e.sumUsage) + " vs budget " + Math.round(runCfg("USAGE_BUDGET")) + ". Overlapping shot demand costs efficiency.", e.usageTax, e.usageTax > 0) +
     (e.spacingBonus > 0
       ? ledgerCreditRow("Spacing bonus", e.sumSp + " shooters. Extra spacing stretches the defense past the requirement.", e.spacingBonus)
       : e.spacingBonus < 0
@@ -4321,6 +4384,7 @@ function resultsLedgerHtml(e) {
       : e.ageTax < 0
         ? ledgerCreditRow("Veteran bonus", e.vetCount + " players in their " + sdOrdinal(vetYr) + " season or later, and today\u2019s board pays for the experience.", -e.ageTax)
         : "") +
+    fitLedgerHtml(e) +
     labelRowsHtml(e) +
     '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>" +
     (e.labelsOn && labelsAsOf(e) ? '<p class="ledger-note t-small">Tag rows read the tags as of ' + labelsAsOf(e) + ". Think a tag is wrong? Tap it on the card above and vote.</p>" : "");
@@ -5429,6 +5493,8 @@ function recapFitNotes(e) {
   else if (e.spacingBonus < 0) n.push(e.sumSp + " shooters on a board that charges for every one past " + runCfg("SPACERS_REQ") + ": the extra spacing cost points");
   if (e.backDefTax > 0) n.push("both starting guards rank bottom-" + e.backDefTier + "% defensively: the perimeter leaks");
   if (e.wingDefTax > 0) n.push("both forwards rank bottom-" + e.wingDefTier + "% defensively: the frontcourt gets attacked");
+  if (e.oneBallTax > 0) n.push((e.scorers && e.scorers.length >= 5 ? "five" : "four") + " 20-point scorers share one ball: somebody has to set the screens");   // v62
+  if (e.shortTax > 0) n.push("an undersized five that averages " + htText(e.htAvg) + ": the other team owns the offensive glass");
   (e.labelRows || []).forEach(function (r) {   // v61: the label taxes and credits
     var line = { iso: "nobody on the roster can guard the other team's best scorer", clutch: "nobody wants the last shot in a close game",
       teamd: "nobody rotates on defense", rimplus: "nobody attacks the rim or gets to the line", tshot: "nobody can make a tough shot when a play breaks down",
@@ -7298,6 +7364,8 @@ function sdReceiptsHtml(e) {
   var dTax = (e.backDefTax || 0) + (e.wingDefTax || 0) + (e.rimDefTax || 0);
   if (dTax > 0) bits.push("defense -" + fmt1(dTax));
   if (e.usageTax > 0) bits.push("usage -" + fmt1(e.usageTax));
+  if (e.oneBallTax > 0) bits.push("one ball -" + fmt1(e.oneBallTax));   // v62
+  if (e.shortTax > 0) bits.push("too short -" + fmt1(e.shortTax));
   return '<span class="rd-receipts t-meta">' + bits.join(" \u00B7 ") + "</span>";
 }
 // One team's column on the draft board: the GM, then five slots (G G F F C).
@@ -7346,8 +7414,8 @@ function sdBoardRowHtml(p) {
   return '<div class="player-row' + (sel ? " sel" : "") + (open ? "" : " off") + '" role="button" tabindex="0" data-name="' + esc(p.name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true"' + (block ? ' title="' + esc(block.why) + '"' : "")) + ">" +
     '<span class="pr-top">' + sdPickBadgeHtml(p) + '<span class="pr-name">' + esc(p.name) + "</span>" +
-    '<span class="pr-pos">' + sdPosTag(row) + sdUndraftedTag(p) + (block ? " \u00B7 " + block.tag : "") + "</span></span>" +
-    '<span class="pr-sub">' + sdYearControlHtml(p, row) + boardTagsHtml(row) + "</span></div>";
+    '<span class="pr-pos">' + sdPosTag(row) + heightTag(row, true) + sdUndraftedTag(p) + (block ? " \u00B7 " + block.tag : "") + "</span></span>" +
+    '<span class="pr-sub">' + sdYearControlHtml(p, row) + boardTagsHtml(row, true) + "</span></div>";
 }
 // A first-round pick with no playable season keeps his slot, greyed, so the order reads true.
 var SD_GHOST_WHY = "He never logged a season of 785 minutes, the bar every mode uses, so he cannot be drafted here.";
@@ -9135,7 +9203,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v61.1";
+var BUILD_V = "v62";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

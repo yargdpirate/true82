@@ -27,7 +27,8 @@
            CAP_TRAP, TEAM_SKIPS, ERA_SKIPS, and the engine tax/threshold keys
            (v61: the label taxes too: LBL_ISO_TAX, LBL_CLUTCH_TAX, LBL_TEAMD_TAX,
            LBL_RIMPLUS_TAX, LBL_TSHOT_TAX, LBL_KNUCK_TAX_2/_3, LBL_SWITCH_CREDIT,
-           LBL_CUT_CREDIT; 0 turns one off on a board) }
+           LBL_CUT_CREDIT; 0 turns one off on a board; v62: ONEBALL_PPG,
+           ONEBALL_FREE, ONEBALL_TAX, SHORT_AVG_HT, SHORT_TAX) }
    TRUST LAW: NET_SD, BASELINE, REPLACEMENT and the Hot Hand are NOT hookable.
    Challenges shape the draft, never the sim's fairness or the wheel.
 
@@ -588,8 +589,8 @@ function labelTaxes(S, pickRows) {
     var amt = C(S, x[2], x[3]);
     if (amt && !covered(x[1])) out.rows.push({ id: x[0], amt: amt, who: [] });
   });
-  var kn = settled("off-court-knucklehead");
-  if (kn.length >= 2) out.rows.push({ id: "knuck", amt: kn.length >= 3 ? C(S, "LBL_KNUCK_TAX_3", 3) : C(S, "LBL_KNUCK_TAX_2", 2), who: kn });
+  var kn = settled("off-court-knucklehead"), knAmt = kn.length >= 3 ? C(S, "LBL_KNUCK_TAX_3", 3) : C(S, "LBL_KNUCK_TAX_2", 2);
+  if (kn.length >= 2 && knAmt) out.rows.push({ id: "knuck", amt: knAmt, who: kn });   // v62: a board's 0 turns it off (no "-0.0" row)
   var sw = settled("switchable-defender");
   if (sw.length >= 3 && C(S, "LBL_SWITCH_CREDIT", 1)) out.rows.push({ id: "switch", amt: -C(S, "LBL_SWITCH_CREDIT", 1), who: sw });
   // a playmaker and two off-ball scorers, three different players (the balance run: "a playmaker and one off-ball
@@ -601,6 +602,28 @@ function labelTaxes(S, pickRows) {
   }
   if (trio && C(S, "LBL_CUT_CREDIT", 1)) out.rows.push({ id: "cut", amt: -C(S, "LBL_CUT_CREDIT", 1), who: trio });
   out.tax = out.rows.reduce(function (s, r) { return s + r.amt; }, 0);
+  return out;
+}
+
+// v62 ONE BALL and TOO SHORT (the owner's picks, 2026-09-28; AGENT-HANDOFF 00000s). Tested on 15,144 real drafts
+// against the starting fives of 32 champions: drafted fives already match champions on size, rebounding, rim
+// protection and passing (the G-G-F-F-C slots see to that), so a "does anyone do X?" rule taxes champions first. What
+// no champion did is start four or five 20-point scorers (61% of Classic drafts do; no champion had more than three).
+//   one ball: three 20-point scorers share the ball free; the fourth and the fifth cost ONEBALL_TAX each
+//   too short: a five whose listed heights average under SHORT_AVG_HT inches (6'6") pays SHORT_TAX
+// Both read the box score and the listed height only, which the boards show (a "20+" chip; the height by the
+// position; Pro from memory). A partial five (the tray) gets the count and the running height, never a short tax.
+function scorersAndSize(S, pickRows) {
+  var out = { scorers: [], htSum: 0, htKnown: 0, htAvg: 0, oneBallTax: 0, shortTax: 0,
+    ppgBar: C(S, "ONEBALL_PPG", 20), free: C(S, "ONEBALL_FREE", 3), per: C(S, "ONEBALL_TAX", 3),
+    shortHt: C(S, "SHORT_AVG_HT", 78), shortAmt: C(S, "SHORT_TAX", 3) };
+  for (var i = 0; i < pickRows.length; i++) {
+    if ((pickRows[i][IDX.ppg] || 0) >= out.ppgBar) out.scorers.push(i);
+    if (pickRows[i][IDX.ht] > 0) { out.htSum += pickRows[i][IDX.ht]; out.htKnown++; }
+  }
+  out.htAvg = out.htKnown ? out.htSum / out.htKnown : 0;
+  out.oneBallTax = out.per * Math.max(0, out.scorers.length - out.free);
+  if (pickRows.length === CFG.ROUNDS && out.htKnown === pickRows.length && out.htSum < out.shortHt * out.htKnown) out.shortTax = out.shortAmt;
   return out;
 }
 
@@ -691,8 +714,9 @@ function engine(S, pickRows, slots) {
   else if (glassSum < C(S, "GLASS_LOW")) glassTax = C(S, "GLASS_TAX_LOW");
   var creatorTax = bestAst < C(S, "CREATOR_PCT") && !(C(S, "CREATOR_TAX") > 0 && lbl.playTag) ? C(S, "CREATOR_TAX") : 0;   // v61: a PLAY tag clears a tax
   var ageTax = vetCount > C(S, "AGE_VET_FREE") ? C(S, "AGE_TAX") : 0;
+  var fit = scorersAndSize(S, pickRows);
 
-  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax - rimDefTax - glassTax - creatorTax - ageTax - lbl.tax;
+  var score = sumV - usageTax - spacingTax + spacingBonus - backDefTax - wingDefTax - rimDefTax - glassTax - creatorTax - ageTax - lbl.tax - fit.oneBallTax - fit.shortTax;
   var net = score - BASELINE;
   var p = phi(S, net / SC.NET_SD);
   return {
@@ -706,6 +730,7 @@ function engine(S, pickRows, slots) {
     creatorTax: creatorTax, creatorBest: bestAst,
     ageTax: ageTax, vetCount: vetCount,
     labelRows: lbl.rows, labelTax: lbl.tax, labelsOn: lbl.on, labelsBuilt: lbl.built,
+    oneBallTax: fit.oneBallTax, scorers: fit.scorers, shortTax: fit.shortTax, htAvg: fit.htAvg, fit: fit,
     score: score, net: net, p: p,
     projW: CFG.GAMES_IN_SEASON * p,
     winTally: Math.min(CFG.GAMES_IN_SEASON, Math.ceil(CFG.GAMES_IN_SEASON * p)),
@@ -1343,7 +1368,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 9,   // v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 10,  // v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
@@ -1374,6 +1399,7 @@ function initDataCore(data) {
     assignProSeasons: assignProSeasons, effCost: effCost, capAffordable: capAffordable, stintMinutes: stintMinutes,
     resolveRow: resolveRow, poolYearsEligible: poolYearsEligible, engine: engine, erf: erf, phi: phi,
     setLabels: setLabels, labelsOf: labelsOf, labelsReady: function () { return !!LABELS; }, foldName: foldName, labelTaxes: labelTaxes,
+    scorersAndSize: scorersAndSize,
     hhNet82: hhNet82, hhPickHot: hhPickHot, hhSpinSeg: hhSpinSeg, hhEligible: hhEligible,
     hhWins: hhWins, swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,
     HH_SEGMENTS: HH_SEGMENTS, HH_BONUS_SCALE: HH_BONUS_SCALE

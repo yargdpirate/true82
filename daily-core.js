@@ -1007,7 +1007,7 @@
   // commit. Numbers here are the engine truth (sim-core + site_data scoring).
   var MODE_TIP = {
     cap: "Presti rules: $50M budget for five players, and every card shows its price. Prices are randomized each round. The true stars are priced honestly, most fringe players run $1M to $6M, and the mid-tier is the minefield: about 1 in 7 is a $1M steal and about half are rip-offs priced like stars. Skipping the team or era, or rerolling the years, costs $1M a pull, as often as the money allows, but every empty roster spot needs $1M kept in reserve. Some boards are unwinnable. That is the game.",
-    classic: "Classic rules: full stats on every card, and the season menu under each name lets you use any year of that player's career. One team skip and one era skip for the whole draft. The engine rewards star impact, wants about three shooters, taxes ball-hog pileups and bad-defense pairs, and turns your net rating into a record the moment pick five lands.",
+    classic: "Classic rules: full stats on every card, and the season menu under each name lets you use any year of that player's career. One team skip and one era skip for the whole draft. The engine rewards star impact, wants about three shooters, taxes ball-hog pileups (a fourth 20-point scorer costs 3), a five under 6'6\" on average and bad-defense pairs, and turns your net rating into a record the moment pick five lands.",
     pro: "Pro rules: no stats are shown and every player's season is randomized. You can still change the season with the menu under his name, also blind. Draft from memory. The engine grades your five with the real numbers at the end."
   };
 
