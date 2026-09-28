@@ -1,6 +1,6 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v60 (section 00000q, NOT on main). `main` = v59.6, LIVE on true82.net since 2026-09-27 (evening). Merge v60 only on the owner's word.
+**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v60 (section 00000q), LIVE on true82.net: main was fast-forwarded to `612b7ee` on 2026-09-27 (night) at the owner's "push to main". Keep working on `c-code-clean`; merge only on his word.
 
 **Date:** 2026-09-27
 **Build:** `v60` on branch `c-code-clean` (`BUILD_V = "v60"`; styles.css, look.css, app.js and results-riso.js at `20260927-v60`, the same keys on bonuses/, traits/ and docs/style-guide.html). Before it, `v59.6` (styles.css and app.js were at `20260927-sigma-v59-6`, reel-riso.js at `20260927-tribune-v59-3`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). MERGED: main was fast-forwarded to this line on 2026-09-27 at the owner's go ("playtested and we're g2g"); main auto-deploys, so still never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
@@ -13,7 +13,8 @@ Read this file before editing. It summarizes the current architecture, the recen
 ## 00000q. START HERE (2026-09-27, night): V60 ON C-CODE-CLEAN, THE OWNER'S TEN ITEMS
 
 **The owner's words** (a numbered list, "let's do these changes to ccode-clean to start off"; he allowed deferring
-some for quality; none were deferred). Built, tested and pushed on `c-code-clean` (NOT main; main still runs v59.6).
+some for quality; none were deferred). Built, tested and pushed on `c-code-clean`, then LIVE: main fast-forwarded to
+`612b7ee` the same night at his "push to main". From that deploy on, only true82.net writes to D1 (item 8).
 Branch preview: https://c-code-clean.true82.pages.dev/ (which now runs on the mock database, item 8).
 
 1. **"buttons ... with a white accent to create 3d-ness ... change to darker hues of the buttons current color"**.
