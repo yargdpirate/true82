@@ -646,7 +646,7 @@ html[data-card] .wrap :is(#pb-k#pb-k,.pb-card){background:linear-gradient(rgb(va
     var early = d.mode === "counts";
     var big, cls;
     if (early) { big = d.yes + " YES · " + d.no + " NO"; cls = "is-early"; }
-    else if ((d.yes_pct || 0) >= 50) { big = d.yes_pct + "% YES"; cls = "is-yes"; }
+    else if ((d.yes_pct || 0) > 50 || (d.yes_pct === 50 && resp !== "no")) { big = d.yes_pct + "% YES"; cls = "is-yes"; }   // a dead heat shows your side
     else { big = (100 - d.yes_pct) + "% NO"; cls = "is-no"; }
     var elig = (d.yes || 0) + (d.no || 0), total = elig + (d.unsure || 0);
     // The tally counts this vote too, so "% agree" needs at least one other
