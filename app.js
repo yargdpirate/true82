@@ -3295,9 +3295,11 @@ function ballotHintPlay(A, cardEl) {
 }
 
 /* ---------- v61: the tags on every draft board ----------
-   Every mode's board (Classic, Pro, Presti, the Daily, the Do-Over) shows the tags the scoring reads, from the same
+   Every mode's board (Classic, Presti, the Daily, the Do-Over) shows the tags the scoring reads, from the same
    frozen copy: the roles a lineup must fill (a "?" one shows its "?", because it counts as filling the role) and a
-   settled knucklehead (only a settled one counts). Flat read-only chips; the (i) legend spells them out. */
+   settled knucklehead (only a settled one counts). Flat read-only chips; the (i) legend spells them out. Pro is the
+   exception (the owner, 2026-09-27: "in pro you don't see the tags til the results screen but they still count the
+   same"): Pro is played from memory, so its board and tray show none, and the Scoring Card still charges them. */
 var BOARD_TAGS = ["off-court-knucklehead", "iso-defender", "rim-protector", "playmaker", "team-defender", "clutch", "rim-pressurer", "tough-shot-maker"];
 function boardTagsHtml(row) {
   var o = row && window.T82 && T82.labelsOf ? T82.labelsOf(row[IDX.name], row[IDX.season]) : null;
@@ -3793,7 +3795,7 @@ function trayHtml() {
 // v61: once two picks are left, the tray names the roles nobody on your five fills yet, with what each would cost
 // (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
 function trayRolesHtml() {
-  if (!G || G.screen !== "draft" || MODE === "kaman" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
+  if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
   if (!window.T82 || !T82.labelTaxes || !T82.labelsReady()) return "";
   var lt = T82.labelTaxes(G, G.picks.map(function (p) { return p.row; }));
   var open = lt.rows.filter(function (r) { return r.amt > 0 && LBL_COPY[r.id] && r.id !== "knuck"; });
@@ -3909,7 +3911,8 @@ function poolRowHtml(bestRow) {
   var sel = (G.selected === name) && open;
   var cls = "player-row" + (sel ? " sel" : "") + (open ? "" : " off");
   var tag = bucketTag(row) + (block ? " \u00B7 " + block.tag : "");
-  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "") + boardTagsHtml(row);
+  // Pro is played from memory: its board and tray show no tags; they still count, and the results show them (the owner)
+  var sub1 = yearControlHtml(name, row) + (MODE === "classic" ? chipsFor(row, -1) : "") + (MODE === "pro" ? "" : boardTagsHtml(row));
   var sub2 = (MODE === "classic") ? '<span class="pr-sub pr-stats">' + statLine(row) + "</span>" : "";
   return '<div class="' + cls + '" role="button" tabindex="0" data-name="' + esc(name) + '" aria-pressed="' + sel + '"' +
     (open ? "" : ' aria-disabled="true" title="' + esc(block.why) + '"') + ">" +
@@ -9132,7 +9135,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v61";
+var BUILD_V = "v61.1";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {
@@ -9246,7 +9249,12 @@ function gameFinishedPings() {
 // writes labels.json; bump LABELS_V with it). It loads beside the game data; a board shows its tags once it lands,
 // and the results wait for it (2.5 s at most) so a slow phone scores exactly like everyone else. No file: no label
 // taxes, and the game plays exactly as before.
-var LABELS_V = "20260927-v61";
+// the version rides a <meta name="t82-labels"> in index.html, so a weekly tag refresh (tools/labels-refresh.js) only
+// touches labels.json and index.html (HTML is never long-cached)
+var LABELS_V = (function () {
+  try { var m = document.querySelector('meta[name="t82-labels"]'); if (m && m.content) return m.content; } catch (e) {}
+  return "20260927-v61";
+})();
 var LABELS_STATE = "idle", LABELS_WAITERS = [];
 function loadLabels() {
   if (LABELS_STATE !== "idle") return;

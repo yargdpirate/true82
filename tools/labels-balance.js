@@ -3,6 +3,8 @@
    frozen tags (labels.json), and reports how often each tax and credit fires and how the records move.
      node tools/labels-balance.js           reads the real drafts from the live D1 through wrangler (READ-ONLY SELECT)
      node tools/labels-balance.js <file>    reads them from a saved JSON result of that query (re-runs, offline)
+     --old <labels file>                    "before" scores with that older labels.json instead of no tags (a weekly
+                                            refresh's week-over-week check); JSON_OUT=<file> writes the numbers
    Standard boards only (Classic, Presti, Pro with no Daily or challenge twist): a board's own tax settings live in
    challenges.js and would need its run's board to score. Projected records (the engine's own), not realized seasons. */
 "use strict";
@@ -11,8 +13,11 @@ const ROOT = path.join(__dirname, "..");
 const WRANGLER = process.env.WRANGLER || "/private/tmp/claude-501/-Users-ggz-true82/e9c38d0a-5a5c-4f39-bde5-b87ab002875b/scratchpad/wr/node_modules/.bin/wrangler";
 const SQL = "SELECT run_id, mode, ordinal, player, season, slot, source, challenge FROM events WHERE name = 'draft_pick' AND run_id IS NOT NULL AND mode IN ('classic','cap','pro')";
 
+const oi = process.argv.indexOf("--old");
+const oldLabels = oi > 0 ? JSON.parse(fs.readFileSync(process.argv[oi + 1], "utf8")) : null;
+const args = process.argv.slice(2).filter((a, i, all) => a !== "--old" && all[i - 1] !== "--old");
 let picks;
-if (process.argv[2]) picks = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+if (args[0]) picks = JSON.parse(fs.readFileSync(args[0], "utf8"));
 else {
   const out = execFileSync(WRANGLER, ["d1", "execute", "true82", "--remote", "--json", "--command", SQL],
     { cwd: require("os").tmpdir(), maxBuffer: 1 << 30, stdio: ["ignore", "pipe", "ignore"] }).toString();
@@ -50,11 +55,12 @@ runs.forEach((r) => {
   if (rows.length === 5 && slots.filter((s) => s === "G").length === 2 && slots.filter((s) => s === "F").length === 2) lineups.push({ mode: r.mode, rows, slots });
 });
 
-function score(withLabels) {
-  T.setLabels(withLabels ? labels : null);
+function score(tags) {
+  T.setLabels(tags || null);
   return lineups.map((l) => T.engine({ ch: null }, l.rows, l.slots));
 }
-const before = score(false), after = score(true);
+const before = score(oldLabels), after = score(labels);
+if (oldLabels) console.log("before = the older labels.json (" + (oldLabels.built || "?") + "), after = this one (" + (labels.built || "?") + ")\n");
 const MODE = { classic: "Classic", cap: "Presti", pro: "Pro" };
 const pct = (a, b) => (b ? (100 * a / b).toFixed(1) + "%" : "-");
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
