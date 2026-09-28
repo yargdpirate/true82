@@ -53,7 +53,7 @@
   --t-print-key: #D41F84;       /* the key ink: sky, water, ticks, month labels */
   --t-print-pop: #41C6EA;       /* the second ink: offsets, ridges, rims */
   --t-print-sun: #FFB511;       /* the light of a winning season */
-  --t-print-dusk: #FFB511;      /* the light of a middling season */
+  --t-print-dusk: #FF7F3A;      /* the light of a middling season (a sunset orange, v60) */
   --t-print-night: #9D7AD2;     /* the light of a losing season */
   /* neutral effects */
   --t-shadow: #000000;          /* drop shadows, inner shadows */
@@ -61,6 +61,10 @@
   /* named shades: a recipe over the roles, computed by tools/theme-core.js */
   --t-accent-face: #DA3E98;     /* accent 72% + accent-edge: keycap face: the accent pushed toward its edge */
   --t-accent-glow: #FF6DC0;     /* accent-hi 58% + accent: gold light between the accent and its highlight: focus rings, hot meter steps */
+  --t-accent-slab: #B8347F;     /* accent 72% + shadow: a stacked button's first slab under an accent tube (a deeper cut of its ink) */
+  --t-accent-base: #661D46;     /* accent 40% + shadow: a stacked button's base under an accent tube (its ink in deep shadow) */
+  --t-offset-slab: #2F8FA8;     /* offset 72% + shadow: a stacked button's first slab under an offset tube */
+  --t-offset-base: #1A4F5E;     /* offset 40% + shadow: a stacked button's base under an offset tube */
   --t-good-soft: #80A39C;       /* good 33% + text-2: good as text on the ground (calm, not neon) */
   --t-good-top: #2C8861;        /* good 80% + ground: green keycap top */
   --t-good-face: #23744D;       /* good 70% + shadow: green keycap face */
@@ -93,14 +97,15 @@
   --t-you-rgb: 122 137 250; --t-offset-rgb: 65 198 234; --t-sun-rgb: 255 181 17; --t-sun-edge-rgb: 191 136 13;
   --t-sun-ink-rgb: 140 100 9; --t-win-rgb: 65 198 234; --t-loss-rgb: 255 72 176; --t-print-paper-rgb: 22 18 43;
   --t-print-key-rgb: 212 31 132; --t-print-pop-rgb: 65 198 234; --t-print-sun-rgb: 255 181 17;
-  --t-print-dusk-rgb: 255 181 17; --t-print-night-rgb: 157 122 210; --t-shadow-rgb: 0 0 0; --t-light-rgb: 255 255 255;
-  --t-accent-face-rgb: 218 62 152; --t-accent-glow-rgb: 255 109 192; --t-good-soft-rgb: 128 163 156;
-  --t-good-top-rgb: 44 136 97; --t-good-face-rgb: 35 116 77; --t-good-edge-rgb: 23 76 51; --t-good-ink-rgb: 9 30 20;
-  --t-bad-soft-rgb: 241 102 94; --t-bad-top-rgb: 255 105 94; --t-bad-face-rgb: 222 79 68; --t-bad-hi-rgb: 255 138 129;
-  --t-warn-rgb: 255 77 148; --t-hot-hi-rgb: 255 218 96; --t-hot-glow-rgb: 255 188 117; --t-text-3-rgb: 99 95 116;
-  --t-off-face-rgb: 56 46 81; --t-off-edge-rgb: 67 56 95; --t-off-ink-rgb: 100 84 130; --t-overlay-warm-rgb: 34 14 35;
-  --t-metal-deep-rgb: 94 73 132; --t-metal-dark-rgb: 63 49 84; --t-news-ink-rgb: 28 22 42;
-  --t-news-ink-2-rgb: 74 60 104; --t-news-red-rgb: 189 67 58;
+  --t-print-dusk-rgb: 255 127 58; --t-print-night-rgb: 157 122 210; --t-shadow-rgb: 0 0 0; --t-light-rgb: 255 255 255;
+  --t-accent-face-rgb: 218 62 152; --t-accent-glow-rgb: 255 109 192; --t-accent-slab-rgb: 184 52 127;
+  --t-accent-base-rgb: 102 29 70; --t-offset-slab-rgb: 47 143 168; --t-offset-base-rgb: 26 79 94;
+  --t-good-soft-rgb: 128 163 156; --t-good-top-rgb: 44 136 97; --t-good-face-rgb: 35 116 77;
+  --t-good-edge-rgb: 23 76 51; --t-good-ink-rgb: 9 30 20; --t-bad-soft-rgb: 241 102 94; --t-bad-top-rgb: 255 105 94;
+  --t-bad-face-rgb: 222 79 68; --t-bad-hi-rgb: 255 138 129; --t-warn-rgb: 255 77 148; --t-hot-hi-rgb: 255 218 96;
+  --t-hot-glow-rgb: 255 188 117; --t-text-3-rgb: 99 95 116; --t-off-face-rgb: 56 46 81; --t-off-edge-rgb: 67 56 95;
+  --t-off-ink-rgb: 100 84 130; --t-overlay-warm-rgb: 34 14 35; --t-metal-deep-rgb: 94 73 132;
+  --t-metal-dark-rgb: 63 49 84; --t-news-ink-rgb: 28 22 42; --t-news-ink-2-rgb: 74 60 104; --t-news-red-rgb: 189 67 58;
   /* type */
   --t-disp: "Big Shoulders Display", "Barlow Condensed", "Arial Narrow", sans-serif;/* display: numbers, titles, buttons */
   --t-body: "Rubik", system-ui, sans-serif;                       /* running text */
@@ -1040,7 +1045,9 @@ button.more-modes:disabled,
 }
 .pick-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 
-.ledger { border: 1px solid var(--t-line); }
+/* v60 (the owner: the Scoring Card's tally "overflows over the bottom border"): the card clips its rows to its own
+   rounded corners, so the shaded total row no longer paints square corners over the border */
+.ledger { border: 1px solid var(--t-line); overflow: hidden; }
 .ledger-row {
   display: flex;
   justify-content: space-between;
@@ -1683,11 +1690,11 @@ button.more-modes:disabled,
 html[data-btn="neon"] button.presti-spin.np-underbtn { border: 1.5px solid var(--t-accent); color: var(--t-accent-hi);
   background: linear-gradient(rgb(var(--t-overlay-rgb) / .5), rgb(var(--t-overlay-rgb) / .5)), var(--t-ground);
   text-shadow: 0 0 6px rgb(var(--t-accent-rgb) / .85), 0 0 14px rgb(var(--t-accent-rgb) / .45);
-  box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 8px rgb(var(--t-accent-rgb) / .6),
+  box-shadow: 0 3px 0 0 var(--t-accent-slab), 0 6px 0 0 var(--t-accent-base), 0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 8px rgb(var(--t-accent-rgb) / .6),
     0 0 20px -2px rgb(var(--t-accent-rgb) / .45), inset 0 0 9px rgb(var(--t-accent-rgb) / .32); }
 html[data-btn="neon"] button.presti-spin.np-underbtn + button.presti-spin.np-underbtn { border-color: var(--t-offset); color: var(--t-light);
   text-shadow: 0 0 6px rgb(var(--t-offset-rgb) / .85), 0 0 14px rgb(var(--t-offset-rgb) / .45);
-  box-shadow: 0 3px 0 0 var(--t-offset), 0 6px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-offset-rgb) / .3), 0 0 8px rgb(var(--t-offset-rgb) / .6),
+  box-shadow: 0 3px 0 0 var(--t-offset-slab), 0 6px 0 0 var(--t-offset-base), 0 0 0 1px rgb(var(--t-offset-rgb) / .3), 0 0 8px rgb(var(--t-offset-rgb) / .6),
     0 0 20px -2px rgb(var(--t-offset-rgb) / .45), inset 0 0 9px rgb(var(--t-offset-rgb) / .32); }
 html[data-btn="neon"] button.presti-spin.np-underbtn:not(:disabled):active { transform: translateY(3px); }
 
@@ -2800,19 +2807,19 @@ body.rules-open { overflow: hidden; }
 .rd-divider:first-child { padding-top: 2px; }
 /* v58 THE REDRAFTED in Heat Vice. look.css paints .t-card as an outline card, which left the two difficulty
    doors reading as panels and the clock with no light. The doors take the neon buttons' recipe (a tube on a
-   dark plate over its own slab and a white one): PICKUP in the second tube (aqua), PRO in the main one (pink), the court art kept
+   dark plate over two darker cuts of its own ink, v60): PICKUP in the second tube (aqua), PRO in the main one (pink), the court art kept
    underneath. The team on the clock lights its tube. #app#app outranks look.css's doubled-id selectors. */
 html[data-btn="neon"] #app#app .rd-diff[data-diff] { border: 1.5px solid var(--t-accent); border-radius: var(--t-r-card); margin-top: 14px;
-  box-shadow: 0 3px 0 0 var(--t-accent), 0 6px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 10px rgb(var(--t-accent-rgb) / .55),
+  box-shadow: 0 3px 0 0 var(--t-accent-slab), 0 6px 0 0 var(--t-accent-base), 0 0 0 1px rgb(var(--t-accent-rgb) / .3), 0 0 10px rgb(var(--t-accent-rgb) / .55),
     0 0 24px -2px rgb(var(--t-accent-rgb) / .4), inset 0 0 12px rgb(var(--t-accent-rgb) / .28); }
 html[data-btn="neon"] #app#app .rd-diff[data-diff]:active { transform: translateY(3px);
-  box-shadow: 0 0 0 0 var(--t-accent), 0 3px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-accent-rgb) / .35), 0 0 12px rgb(var(--t-accent-rgb) / .65), inset 0 0 14px rgb(var(--t-accent-rgb) / .34); }
+  box-shadow: 0 0 0 0 var(--t-accent-slab), 0 3px 0 0 var(--t-accent-base), 0 0 0 1px rgb(var(--t-accent-rgb) / .35), 0 0 12px rgb(var(--t-accent-rgb) / .65), inset 0 0 14px rgb(var(--t-accent-rgb) / .34); }
 html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"] { border-color: var(--t-offset);
   background: radial-gradient(78% 120% at 6% -18%, rgb(var(--t-offset-rgb) / .3), rgb(var(--t-offset-rgb) / .06) 44%, transparent 70%), var(--t-ground);
-  box-shadow: 0 3px 0 0 var(--t-offset), 0 6px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-offset-rgb) / .3), 0 0 10px rgb(var(--t-offset-rgb) / .55),
+  box-shadow: 0 3px 0 0 var(--t-offset-slab), 0 6px 0 0 var(--t-offset-base), 0 0 0 1px rgb(var(--t-offset-rgb) / .3), 0 0 10px rgb(var(--t-offset-rgb) / .55),
     0 0 24px -2px rgb(var(--t-offset-rgb) / .4), inset 0 0 12px rgb(var(--t-offset-rgb) / .28); }
 html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"]:active {
-  box-shadow: 0 0 0 0 var(--t-offset), 0 3px 0 0 var(--t-light), 0 0 0 1px rgb(var(--t-offset-rgb) / .35), 0 0 12px rgb(var(--t-offset-rgb) / .65), inset 0 0 14px rgb(var(--t-offset-rgb) / .34); }
+  box-shadow: 0 0 0 0 var(--t-offset-slab), 0 3px 0 0 var(--t-offset-base), 0 0 0 1px rgb(var(--t-offset-rgb) / .35), 0 0 12px rgb(var(--t-offset-rgb) / .65), inset 0 0 14px rgb(var(--t-offset-rgb) / .34); }
 html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"] .rd-diff-name { color: var(--t-offset); text-shadow: 0 0 8px rgb(var(--t-offset-rgb) / .8), 0 0 22px rgb(var(--t-offset-rgb) / .4); }
 html[data-btn="neon"] #app#app .rd-diff[data-diff="pickup"]::before { border-color: rgb(var(--t-offset-rgb) / .28); }
 html[data-btn="neon"] #app#app .rd-team.is-clock { border-color: var(--t-accent);
@@ -3886,13 +3893,54 @@ body.bt-open { overflow: hidden; }
 .bt-pill { margin: 11px 0 12px; }
 .bt-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .bt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.bt-tile { appearance: none; -webkit-appearance: none; text-align: left; cursor: pointer; display: grid; gap: 3px; align-content: start; min-height: 50px; padding: 10px 11px;
-  border: 1px solid var(--t-line); border-radius: var(--t-r-chip); background: var(--t-ground-3); color: var(--t-text); font: inherit; }
-.bt-tile:active { border-color: var(--t-accent); }
-.bt-tile b { font-family: var(--t-disp); font-weight: 700; font-size: 16px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--t-accent); }
-.bt-tile.neg b { color: var(--t-bad-soft); }
-.bt-tile small { font-size: 12.5px; line-height: 1.3; color: var(--t-text-2); }
-.bt-tile:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
+/* v60 THE TAG SHEET (the "+"): each trait a toggle tile, in its group, never moving. Lit = on his card for you: the
+   card's own chip, a ring and a wash in the chip's ink, a check in the corner. Unlit: a dashed tile, the chip hollow,
+   a "+" in the corner. The last line says what a tap does and the crowd's count lands under it with the vote. A tap
+   prints the chip on (it stamps with its second ink off register, the ink print rings it, the tile flares) or lifts
+   it off. The chip inks follow the card's: wins' ink for a good trait, losses' for a bad one. */
+.bt-tog { --tile-ink: var(--t-win); --tile-wash: rgb(var(--t-win-rgb) / .17); --tile-wash-2: rgb(var(--t-win-rgb) / .04);
+  --tile-ring: rgb(var(--t-win-rgb) / .22); --tile-glow: rgb(var(--t-win-rgb) / .6); --tile-flare: rgb(var(--t-win-rgb) / .85); --tile-flare-2: rgb(var(--t-win-rgb) / .55);
+  --tile-off: rgb(var(--t-accent-rgb) / .9); --tile-off-0: rgb(var(--t-accent-rgb) / 0);
+  position: relative; overflow: visible; appearance: none; -webkit-appearance: none; text-align: left; cursor: pointer; display: grid; gap: 5px;
+  align-content: start; min-height: 50px; padding: 9px 10px 10px; border: 1.5px dashed rgb(var(--t-text-2-rgb) / .34); border-radius: var(--t-r-btn);
+  background: var(--t-ground-2); color: var(--t-text); font: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease, transform .07s ease; }
+.bt-tog.neg { --tile-ink: var(--t-loss); --tile-wash: rgb(var(--t-loss-rgb) / .17); --tile-wash-2: rgb(var(--t-loss-rgb) / .04);
+  --tile-ring: rgb(var(--t-loss-rgb) / .22); --tile-glow: rgb(var(--t-loss-rgb) / .6); --tile-flare: rgb(var(--t-loss-rgb) / .85); --tile-flare-2: rgb(var(--t-loss-rgb) / .55);
+  --tile-off: rgb(var(--t-offset-rgb) / .9); --tile-off-0: rgb(var(--t-offset-rgb) / 0); }
+.bt-tog.is-lit { border: 1.5px solid var(--tile-ink);
+  background: linear-gradient(180deg, var(--tile-wash), var(--tile-wash-2) 70%), var(--t-ground-2);
+  box-shadow: 0 0 0 1px var(--tile-ring), 0 0 14px -3px var(--tile-glow); }
+.bt-tog:active { transform: translateY(1px) scale(.985); }
+.bt-tog-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 34px; }
+.bt-tog .bt-tag { pointer-events: none; }
+.bt-tog-mark { flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; box-sizing: border-box;
+  font: 700 13px/1 var(--t-mono); font-style: normal; color: var(--t-text-2); border: 1.5px dashed rgb(var(--t-text-2-rgb) / .6); }
+.bt-tog.is-lit .bt-tog-mark { color: var(--t-ground); background: var(--tile-ink); border: 0; box-shadow: 0 0 8px var(--tile-glow); }
+.bt-tog small { font-size: 12.5px; line-height: 1.3; color: var(--t-text-2); }
+.bt-tog-act { font-family: var(--t-mono); font-size: 10px; line-height: 1.35; letter-spacing: 0.05em; text-transform: uppercase; color: var(--t-text-2); }
+.bt-tog.is-lit .bt-tog-act { color: var(--tile-ink); }
+.bt-tog-tally { font-family: var(--t-mono); font-size: 10.5px; line-height: 1.3; color: var(--t-text); }
+.bt-tog-tally:empty { display: none; }
+.bt-tog-tally.is-in { animation: bt-tally .32s ease-out both; }
+.bt-tog:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
+.bt-tog.is-printed { animation: bt-flare .62s ease-out both; }
+.bt-tog.is-printed .bt-tag { animation: bt-stamp .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+.bt-tog.is-printed .bt-tog-mark { animation: bt-mark .42s cubic-bezier(.2, .9, .3, 1.3) .12s both; }
+.bt-tog.is-lifted .bt-tag { animation: bt-lift .44s ease-out both; }
+/* 3PT under a settled GRAVITY: lit, carried by it, not a toggle of its own (a tap nudges and says why) */
+.bt-tog.is-implied { border-style: dashed; box-shadow: none; }
+.bt-tog.is-nope { animation: bt-nope .36s ease both; }
+@keyframes bt-nope { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@keyframes bt-stamp { 0% { opacity: 0; transform: scale(1.75) rotate(-5deg); box-shadow: 7px 6px 0 var(--tile-off); }
+  40% { opacity: 1; transform: scale(.86); box-shadow: 3px 3px 0 var(--tile-off); }
+  70% { transform: scale(1.07); box-shadow: -1px 1px 0 var(--tile-off); }
+  100% { transform: none; box-shadow: 0 0 0 var(--tile-off-0); } }
+@keyframes bt-flare { 0% { box-shadow: 0 0 0 3px var(--tile-flare-2), 0 0 30px var(--tile-flare); }
+  100% { box-shadow: 0 0 0 1px var(--tile-ring), 0 0 14px -3px var(--tile-glow); } }
+@keyframes bt-mark { 0% { transform: scale(0) rotate(-90deg); } 100% { transform: none; } }
+@keyframes bt-lift { 0% { transform: none; } 35% { opacity: .45; transform: translateY(-6px) rotate(4deg) scale(.94); } 100% { opacity: 1; transform: none; } }
+@keyframes bt-tally { from { opacity: 0; transform: translateY(4px); } }
 .bt-sub { color: var(--t-text-2); font-size: 15px; margin: 0 0 6px; }
 .bt-grp { margin: 14px 0 7px; }   /* the picker's group headers (the shared .t-head carries no top margin) */
 .bt-foot { font-family: var(--t-mono); font-size: 11px; color: var(--t-text-2); text-align: center; margin: 16px 0 0; }
@@ -3903,13 +3951,23 @@ body.bt-open { overflow: hidden; }
 .bt-sheet .bt-done { display: flex; width: 100%; justify-content: center; margin-top: 18px; }
 body.bt-open .t-toast { top: calc(16px + env(safe-area-inset-top)); bottom: auto; transform: translate(-50%, -20px); }
 body.bt-open .t-toast.on { transform: translate(-50%, 0); }
-.bt-hand { position: fixed; z-index: 890; width: 44px; height: 44px; pointer-events: none; opacity: 0; filter: drop-shadow(0 4px 6px rgb(var(--t-shadow-rgb) / .5));
+/* v60: the glove rides inside the card it teaches on (so it scrolls with it), over its neighbors' ink */
+.rr .bt-card { position: relative; }
+.bt-hand { position: absolute; z-index: 6; width: 44px; height: 44px; pointer-events: none; opacity: 0; filter: drop-shadow(0 4px 6px rgb(var(--t-shadow-rgb) / .5));
   transition: left 0.45s ease, top 0.45s ease, opacity 0.3s ease, transform 0.18s ease; }
 .bt-hand.show { opacity: 1; }
 .bt-hand.tap { transform: translate(-3px, -6px) scale(0.86); }
 .bt-hand path { fill: var(--t-light); stroke: var(--t-ground); }
+/* until the trick is learned, the first card's "+" breathes a halftone ring in the key ink */
+.rr .bt-card.bt-cue .bt-tag.add::after { content: ""; position: absolute; inset: -8px; border-radius: 999px; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, var(--t-accent) 1.25px, transparent 1.75px) 0 0 / 4px 4px;
+  -webkit-mask-image: radial-gradient(closest-side, transparent 62%, var(--fx-mask) 72%, var(--fx-mask) 90%, transparent 100%);
+  mask-image: radial-gradient(closest-side, transparent 62%, var(--fx-mask) 72%, var(--fx-mask) 90%, transparent 100%);
+  animation: bt-cue 2.8s ease-out 1.2s infinite; }
+@keyframes bt-cue { 0%, 48% { opacity: 0; transform: scale(.7); } 62% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
 @media (prefers-reduced-motion: reduce) {
-  .t-sheet, .t-toast, .t-backdrop, .t-chip, .bt-tag, .bt-hand { transition: none; }
+  .t-sheet, .t-toast, .t-backdrop, .t-chip, .bt-tag, .bt-hand, .bt-tog { transition: none; }
+  .rr .bt-card.bt-cue .bt-tag.add::after { animation: none; opacity: .7; transform: none; }
 }
 
 /* ---------- v59 THE HOME: Halftone v2 (the owner's redesign; AGENT-HANDOFF section 00000l) ----------

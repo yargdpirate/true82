@@ -1,16 +1,115 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. Since 2026-09-27 (evening) `main` = `c-code-clean` = v59.6: the whole v48 to v59.6 line is LIVE on true82.net.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v60 (section 00000q, NOT on main). `main` = v59.6, LIVE on true82.net since 2026-09-27 (evening). Merge v60 only on the owner's word.
 
 **Date:** 2026-09-27
-**Build:** `v59.6`, pushed on branch `c-code-clean` (`BUILD_V = "v59.6"`; styles.css and app.js at `20260927-sigma-v59-6`, reel-riso.js at `20260927-tribune-v59-3`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). MERGED: main was fast-forwarded to this line on 2026-09-27 at the owner's go ("playtested and we're g2g"); main auto-deploys, so still never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** section 00000p (read it first): v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v60` on branch `c-code-clean` (`BUILD_V = "v60"`; styles.css, look.css, app.js and results-riso.js at `20260927-v60`, the same keys on bonuses/, traits/ and docs/style-guide.html). Before it, `v59.6` (styles.css and app.js were at `20260927-sigma-v59-6`, reel-riso.js at `20260927-tribune-v59-3`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). MERGED: main was fast-forwarded to this line on 2026-09-27 at the owner's go ("playtested and we're g2g"); main auto-deploys, so still never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** section 00000q (read it first): v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000p. START HERE (2026-09-27, 18:15 MDT): V59.6 IS LIVE ON MAIN
+## 00000q. START HERE (2026-09-27, night): V60 ON C-CODE-CLEAN, THE OWNER'S TEN ITEMS
+
+**The owner's words** (a numbered list, "let's do these changes to ccode-clean to start off"; he allowed deferring
+some for quality; none were deferred). Built, tested and pushed on `c-code-clean` (NOT main; main still runs v59.6).
+Branch preview: https://c-code-clean.true82.pages.dev/ (which now runs on the mock database, item 8).
+
+1. **"buttons ... with a white accent to create 3d-ness ... change to darker hues of the buttons current color"**.
+   Every stacked neon button now stands on two deeper cuts of its own ink: the first slab 72% of it over black, the
+   base 40% (pink over dark magenta over plum, aqua over teal over deep teal, green the same way). Done the lab's way:
+   `docs/reprint-lab/src/system/60-depth.js` has a third `depthBase`, "shade" (console: "Own shade"), the Heat Vice
+   preset uses it, look.css carries exactly what the component generates (checked in a browser against
+   `LAB.componentCSS`; the recipe code in look.css's header decodes to `depthBase: "shade"`; the old-phone fallback
+   is the neon over black). The hand-built copies in styles.css (the Tribune's under-buttons, the Do-Over's PICKUP and
+   PRO doors) use four new theme shades: `accent-slab`, `accent-base`, `offset-slab`, `offset-base`
+   (tools/theme-core.js, STYLE-GUIDE.md). The lab file `docs/reprint-lab/reprint-lab.html` is rebuilt
+   (`node src/build.js <snaps>` with the v51 snapshots in the 72399d8d scratchpad's `snaps`).
+2. **"the 'painting' ... make sure we're using all (3?) of them"**. There are three: golden (59+ wins, a gold sun),
+   dusk (37 to 58, an orange sun) and night (36 or fewer, a moon). Since v52 the lab found no warm ink of its own for
+   Vice's dusk and fell back to the sun's gold, so golden and dusk printed alike and the owner only ever saw two.
+   `print-dusk` is now a sunset orange, `#FF7F3A` (theme-core ROLES, and pinned in the lab's vice palette as
+   `print: { orange: "#FF7F3A" }` so `LAB.drum("vice")` gives it too). Call made: the orange sits clear of both the
+   gold and the red that means bad.
+3. **The mountain fills left to right** (results-riso.js `derive` `fillX`, `levelClip`, `drawLevel`, the reveal in
+   `mount`): the color runs in from the frame's left edge and stops wins/82 of the way across (82-0 fills it all,
+   80-2 leaves a sliver on the right as an empty outline over a dry lake). The fill's front is a thin upright line of
+   the light ink. The reveal: the season line draws across, then the color sweeps in from the left (0.85 s), then the
+   names land. `composeTo` clips now take a list of rects (the land fills from the left while the strip under it
+   prints across with the season). The share poster and `T82PRINT.print` follow.
+4. **The glove on the results "+" "pretty much never worked if you're scrolling"** (app.js "the glove"). It was a
+   fixed-position hand placed from one snapshot of the page and killed for good, and marked seen, by the first touch
+   anywhere, so a scrolling thumb ended it before it played. Now the hand rides INSIDE a card (it scrolls with it) and
+   plays on whichever card is most on screen (60%+) once the page has held still 550 ms; a scroll calls it off and it
+   replays when the page settles. It retires for good when you tap a tag or a "+" (`tb-hint`), or after three full
+   plays, one per results screen (`tb-hint-n`). Until then the first card's "+" breathes a halftone ring. The tag and
+   "+" are found afresh at each step (the labels can re-render mid-play).
+5. **The "+" sheet shows every trait and removes as well as adds, no YES/NO step** (app.js "v60 THE TAG SHEET",
+   `ballotSheetTiles`, `ballotTileState`, `ballotToggle`, styles.css `.bt-tog`). Title "Edit his tags"; every trait the
+   "+" offers plus any other tag on the card, in the Offense / Defense / Reputation groups, in trait order (a tile never
+   moves). Lit = on his card for you: the card's own chip, a ring and wash in its ink, a check in the corner; unlit =
+   dashed, the chip hollow, a "+" in the corner. The last line of each tile says what a tap does ("On his card · tap to
+   remove", "Tap to add", "Unsettled · tap to take it off", "The engine's call · tap to dispute", "You took it off ·
+   tap to put it back"). A tap is the vote at once (YES lights it, NO takes it off); the card behind follows; the chip
+   stamps on with its second ink off register and the ink print rings it (or lifts off); the crowd's count lands on
+   the tile ("64% say yes · 37 votes"). Quick toggles on one tag ride the vote still waiting to go (one post). A tile is
+   `.bt-tog`, not `.bt-tile`, because look.css paints `.bt-tile` as a neon plate. The card's own tags still open the
+   full question (YES / NO / NOT SURE, the tally). Calls made: the three traits the "+" never offered (TITLE #1,
+   BALL-POUND, FOUL-MERCH: the owner's four-negative ceiling) appear only when already on the card; under a settled
+   GRAVITY the 3PT tile stays put, lit, reading "Comes with GRAVITY" (a tap nudges and says "Take GRAVITY off
+   first"), since the card never prints both; a settled tag you take off stays on the card hollow with an X (the v50
+   ballot rule: the dispute stays readable), so say the word if removed tags should vanish from the card instead;
+   the "Every tag, spelled out" link left the sheet (every tile carries its definition).
+6. **"scoring card tallying up team value overflows over the bottom border"**: the shaded total row's square corners
+   painted over the card's rounded border. `.ledger` now clips to its corners (`overflow: hidden`).
+7. **Past questions on the home card** (app.js `tmExcludeIds`, `tmSessionLoader`; functions/api/traits.js op=session).
+   Causes: the day's featured call re-led every fresh card until it was answered; a call shown and left unanswered
+   was never remembered; only the last 48 answers rode along; passes (IDK) write nothing server-side. Now every call
+   on screen is remembered (`t82TraitsShown`, next to `t82TraitsSeen`), the newest 150 of both ride along, the
+   featured call leads only if this device has never shown it, and only when that leaves nothing does the deal fall
+   back (answered only, then the server's own two-answer ceiling). The server takes up to 160 exclusions and skips
+   them in code (D1's bound-parameter limit is 100). /bonuses/ keeps the same two lists.
+8. **"a mock database ... I only want any reads on /avocado from traffic originating at the specific domain
+   true82.net"**. Events never recorded their site (the `host` column is a link-out's host), so history cannot be
+   split; from now on only true82.net writes. `functions/_middleware.js` sets `context.data.mockDb` for every host but
+   true82.net, www.true82.net and local dev (localhost, 127.0.0.1, *.localhost). On a mock host: /api/event,
+   /api/retention, /api/identity (coverage), /api/games (the KV counter), votes (/api/traits POST replies with the real
+   standing tally plus this vote, nothing written), and Tribune publishing and view counts (/:id, /r/:id) are all
+   accepted and dropped; every read still comes from the real D1, so previews look real. /avocado says so in a line at
+   the top. The footer reads "v60 · test server, nothing saved" on a mock host. If the middleware ever did not run,
+   writes land (production never fails closed). Consequences on previews: your votes are not remembered between loads
+   (the device lists still keep repeats away), and a published Tribune link does not open there.
+   Checked on the local server: a vote sent as `Host: c-code-clean.true82.pages.dev` returned the mock reply and left
+   the local D1 at 80 votes; the same vote from localhost wrote (81).
+9. **KEEP GOING after five home votes opens /bonuses/** (`tmAgain`: `/bonuses/?src=home_more&n=5`; `home_more` is a
+   new vote source in traits.js SOURCES). The page carries the count on ("05 votes cast") and deals past the five.
+10. **The vote room** (bonuses/index.html, "v60 THE VOTE ROOM"; the owner: "bigger stylistic swings"). The masthead
+   PLAYER BONUSES prints in two inks; a VOTES CAST counter (from the home card's n) and the set's five ink diamonds
+   sit over the card, which stands on a halftone offset shadow (solid, overriding look.css's see-through outline card).
+   A vote slams its answer onto the card the instant it is tapped: a tilted two-ink rubber stamp (YES aqua, NO pink,
+   UNSURE grey) with a big halftone ring, 16 ink drops and a card jolt; it lifts as the result prints: the percent
+   slams in two inks and counts up, the verdict chip stamps on at a tilt, the tally bar rolls in like ink, the diamond
+   prints and the counter ticks. The fifth vote re-inks the row and prints the running total ("10 VOTES IN") with its
+   own ring and drops, then VOTE ON 5 MORE. Reuses styles.css's keyframes (rdpSlam, rdpPlate*, rdpRing, rdpConf,
+   rdpShake, ink-*) and a twin of app.js's inkPrint. prefers-reduced-motion gets the end states. `html` clips sideways
+   overflow (the rings fly past the edges).
+
+**Checked:** Chromium and WebKit at 320 and 375: a Classic season to results (the painting, the fill, the Scoring
+Card, the buttons), the tag sheet (add, remove, tallies, no overflow at 320 in WebKit), the glove under simulated
+thumb scrolling (no hand while scrolling, plays on the card in view after, survives into the next results screen,
+retires on a real "+" tap), the vote room frame by frame (stamp frozen at 90/180/320/600 ms), the home flow
+(`node tools/home-qa.js flow`: five votes, Finish, KEEP GOING lands on /bonuses/ with the count at 05 and the deal
+skipping all five), `home-qa.js widths` (no sideways scroll at 320 to 440 in both engines), the draft and Do-Over
+buttons. test.js 102 (4 new tag-sheet checks), style law clean. New: `node tools/results-qa.js results|sheet|glove|room
+[width]` (the local site with its API, e.g. `.claude/launch.json` site-api3 on :8791; header says how) replays these
+checks; `tools/home-qa.js flow` now follows KEEP GOING into /bonuses/.
+
+**For the owner to try on the preview:** a Classic season (the buttons' new bases, the painting and the fill, the
+Scoring Card's corners); on YOUR FIVE, wait a beat without scrolling (the glove), then tap a card's "+" and toggle a
+few tiles; five votes on the home card, then KEEP GOING (the vote room). Test servers no longer save anything.
+
+## 00000p. (2026-09-27, 18:15 MDT) V59.6 IS LIVE ON MAIN
 
 The owner, after playtesting the branch preview: "all good. prep the handoff so when it's read it's pushed to main.
 playetsted and we're g2g". Done: `main` was fast-forwarded to `c-code-clean` (v59.6; main had no commits of its own) and

@@ -234,6 +234,23 @@ eq("ballot: tally words, pill, and no big percent off one vote",
   [t1.big, t1.line, t1.pill, t2.big, t2.line, t2.pill],
   [false, "1 vote so far \u00B7 1 yes, 0 no \u00B7 you said yes", "24 more votes settle it", true,
     "812 people have voted \u00B7 54% say yes \u00B7 you said no", "Disputed \u00B7 flips at 62%"]);
+// v60 THE TAG SHEET (the "+"): every trait the "+" offers plus any other tag on the card, each lit only when the tag
+// is on his card for you, and its last line says what a tap does (a tap is the vote; no YES/NO step).
+const sheetOf = (card) => ctx.ballotSheetTiles(Object.assign({ eng: "", settled: {}, open: {}, split: {}, qids: {}, mine: {} }, card));
+const sh1 = sheetOf({ eng: "3PT", settled: { "Playmaker": 1, "Championship #1": 1, "Clutch": 1 }, open: { "Team Defender": "q1" },
+  mine: { "Hunted": "yes", "Rim Protector": "no", "Clutch": "no" } });
+eq("tag sheet: all fifteen '+' traits plus the card's own others (TITLE #1), lit only when on his card for you",
+  [sh1.length, sh1.filter(s => s.lit).map(s => s.T.chip)], [16, ["3PT", "PLAY", "TEAM-D", "TITLE #1", "HUNTED"]]);
+const actOf = (list, chip) => list.filter(s => s.T.chip === chip)[0].act;
+eq("tag sheet: each tile says what a tap does",
+  ["3PT", "PLAY", "TEAM-D", "CLUTCH", "RIM-P", "GRAVITY"].map(c => actOf(sh1, c)),
+  ["The engine\u2019s call \u00B7 tap to dispute", "On his card \u00B7 tap to remove", "Unsettled \u00B7 tap to take it off",
+    "You took it off \u00B7 tap to put it back", "Tap to add", "Tap to add"]);
+const g3 = sheetOf({ eng: "3PT", settled: { "Super Three-Point Shooter": 1 } }).filter(s => s.T.chip === "3PT")[0];
+eq("tag sheet: a disputed engine chip reads as yours to take back; under a settled GRAVITY, 3PT's tile stays put, carried",
+  [actOf(sheetOf({ eng: "GRAVITY", mine: { "Super Three-Point Shooter": "no" } }), "GRAVITY"), !!g3 && g3.lit, !!g3 && !!g3.implied, g3 && g3.act],
+  ["You disputed it \u00B7 tap to agree", true, true, "Comes with GRAVITY"]);
+eq("tag sheet: tile copy has zero em-dashes (copy law)", [].concat(...[sh1].map(l => l.map(s => s.act))).some(l => l.includes(EM)), false);
 const ballotCopy = [].concat(...ctx.BALLOT_TRAITS.map(T => [T.chip, T.q, T.d || ""]), [t1.line, t1.pill, t2.line, t2.pill]);
 eq("ballot: trait copy and tally words have zero em-dashes (copy law)", ballotCopy.some(l => l.includes(EM)), false);
 // v53 (owner: "ADD DEFINITIONS TO TRAITS"): every trait carries its one-line definition, and the

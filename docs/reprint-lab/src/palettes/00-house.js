@@ -84,6 +84,9 @@
     blurb: "Heat Vice nights: fluorescent pink keys and aqua glow on midnight.",
     stock: "midnight", darkMode: "screen", inks: { key: "#F7F3FF", a: "fluopink", b: "aqua", c: "violet" },
     map: { word: "key", word82: "a", depth: "a", shade: "c", body: "a", line: "b", glow: "b", accent: "c", frame: "b", tag: "b", back: "c" },
+    // v60 (the owner: "make sure we're using all 3" season paintings): the drum found no warm ink of its own for the
+    // middling season and fell back to the sun, so golden and dusk printed alike. Dusk is a sunset orange.
+    print: { orange: "#FF7F3A" },
     sys: {
       night: {
         ground: "#16122B", ground2: "#26223A", ground3: "#332F47", line: "#534176", text: "#F7F3FF", text2: "#A6A2B3",

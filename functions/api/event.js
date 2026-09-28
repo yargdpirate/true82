@@ -208,6 +208,7 @@ export async function onRequest(context) {
     t_age: clamp(num(b.t_age), 0, 50)
   };
 
+  if (context.data && context.data.mockDb) return noContent(null, "mock");   // v60: a test server's event is dropped (_middleware.js)
   try {
     await insert(env.DB, V40_FIELDS, r);
     return noContent(null, "v40");

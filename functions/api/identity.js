@@ -119,6 +119,7 @@ function coverageRow(request, x) {
 
 function scheduleCoverage(context, env, row) {
   if (!env || !env.DB) return;
+  if (context && context.data && context.data.mockDb) return;   // v60: a test server's coverage row is dropped (_middleware.js)
   let work;
   try { work = env.DB.prepare(`INSERT INTO retention_coverage_v1
     (ts,local_day,sid,decision,reason,country,device,browser,gpc,dnt,cookie_present,local_present,storage_ok,identity_source)

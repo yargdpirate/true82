@@ -19,30 +19,26 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script id="t82BonusPreload"></script>
-<link rel="stylesheet" href="/styles.css?v=20260926-whitebase-v58-5">
-<link rel="stylesheet" href="/look.css?v=20260926-whitebase-v58-5">
+<link rel="stylesheet" href="/styles.css?v=20260927-v60">
+<link rel="stylesheet" href="/look.css?v=20260927-v60">
 <style>
 /* Player Bonuses (v51): this page wears the site's theme (styles.css: the
    theme block and the shared pieces). Only its layout lives here, and every
    color and font below is a theme token (test.js checks this block too). */
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--t-ground);color:var(--t-text);font-family:var(--t-body)}
+html{overflow-x:clip}   /* v60: the vote room's rings and drops fly past the edges; the page never scrolls sideways */
 body{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:22px 0 30px;overflow-x:hidden;
   background:
     radial-gradient(120% 90% at 50% 0%, rgb(var(--t-accent-rgb) / .05), transparent 55%),
     repeating-linear-gradient(0deg, transparent 0 46px, rgb(var(--t-text-rgb) / .022) 46px 47px),
     radial-gradient(140% 120% at 50% 110%, var(--t-overlay), var(--t-ground) 60%)}
 .wrap{width:100%;max-width:520px;padding:0 20px;position:relative}
+@media (max-width:374px){.wrap{padding:0 14px}}
 .brand{font-family:var(--t-mono);font-size:13px;letter-spacing:.28em;color:var(--t-text-2)}
 .brand a{color:inherit;text-decoration:none}
-/* v47.21: the title row carries the trait chip - it sits right of the
-   wordmark and clear of the absolutely positioned hoop mark. v51: the
-   wordmark never breaks; on the narrowest phones a long code (FOUL-MERCH)
-   drops under it instead. */
-h1{font-family:var(--t-disp);font-weight:700;font-size:clamp(24px,7vw,30px);letter-spacing:.05em;line-height:1;color:var(--t-text-2);margin:4px 0 18px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 11px;white-space:nowrap;padding-right:36px;min-height:26px}
-.card{background:linear-gradient(180deg,var(--t-ground-2),var(--t-ground));border:1px solid var(--t-line);border-top-color:rgb(var(--t-text-rgb) / .13);border-radius:23px;padding:26px 24px;position:relative;box-shadow:0 18px 44px -22px rgb(var(--t-shadow-rgb) / .65)}
-.toprow{display:flex;justify-content:space-between;font-family:var(--t-mono);font-size:12px;letter-spacing:.22em;color:var(--t-text-2);margin-bottom:14px}
-.q-tag[hidden]{display:none}
+.card{background:linear-gradient(180deg,var(--t-ground-2),var(--t-ground));border:1px solid var(--t-line);border-top-color:rgb(var(--t-text-rgb) / .13);border-radius:23px;padding:22px 22px 24px;position:relative;box-shadow:0 18px 44px -22px rgb(var(--t-shadow-rgb) / .65)}
+@media (max-width:374px){.card{padding:18px 16px 20px}}
 /* v51: the question wears the shared .t-title role (display face, caps,
    balanced lines), the same voice as the ballot sheet and the homepage poll;
    only its size is this page's own. */
@@ -80,41 +76,15 @@ a.qx-btn[hidden]{display:none}
 .pressed{filter:brightness(1.12)}
 .locked .vbtn,.locked .v-unsure{pointer-events:none;opacity:.55}
 .locked .pressed{opacity:1}
-.result{opacity:0;transition:opacity .21s ease}
-.result.show{opacity:1}
-.result.seq .rv{opacity:0;transform:translateY(7px);animation:rvIn .34s ease-out forwards}
-.result.seq .rv:nth-child(1){animation-delay:.02s}
-.result.seq .rv:nth-child(2){animation-delay:.1s}
-.result.seq .rv:nth-child(3){animation-delay:.18s}
-.result.seq .rv:nth-child(4){animation-delay:.26s}
-.result.seq .rv:nth-child(5){animation-delay:.34s}
-.result.seq .rv:nth-child(6){animation-delay:.42s}
-@keyframes rvIn{to{opacity:1;transform:none}}
-.bar .y{transition:width .5s cubic-bezier(.2,.7,.2,1) .2s}
 .skel{border-radius:23px;border:1px solid var(--t-line);padding:26px 24px;background:linear-gradient(180deg,var(--t-ground-2),var(--t-ground))}
 .skel .sk{border-radius:9px;background:linear-gradient(100deg,var(--t-ground-2) 30%,var(--t-ground-3) 45%,var(--t-ground-2) 60%);background-size:220% 100%;animation:skSweep 1.15s linear infinite}
 @keyframes skSweep{to{background-position:-120% 0}}
-.done-head{font-family:var(--t-disp);font-weight:700;font-size:26px;letter-spacing:.06em;color:var(--t-text)}
-.done-head::after{content:"";display:block;height:3px;width:0;background:var(--t-accent);border-radius:2px;margin-top:6px;animation:doneBar .5s ease-out .3s forwards}
-@keyframes doneBar{to{width:64px}}
-@media (prefers-reduced-motion:reduce){
-  .result{transition:none}
-  .result.seq .rv{animation:none;opacity:1;transform:none}
-  .bar .y{transition:none}
-  .skel .sk{animation:none}
-  .done-head::after{animation:none;width:64px}
-}
-.r-eyebrow{font-family:var(--t-mono);font-size:12px;letter-spacing:.24em;color:var(--t-text-2);margin-bottom:6px}
-.r-big{font-family:var(--t-disp);font-weight:700;font-size:clamp(52px,15vw,66px);line-height:1}
-.r-big.yes{color:var(--t-accent)}.r-big.no{color:var(--t-bad-soft)}.r-big.early{color:var(--t-text);font-size:clamp(38px,11vw,50px)}
-.r-you{font-size:16px;color:var(--t-text);margin:10px 0 12px}
-.r-chip{margin-bottom:14px;font-size:12px;letter-spacing:.2em;padding:7px 12px;min-height:0;border-width:1.5px}
+.r-you{font-size:16px;color:var(--t-text);margin:8px 0 12px}
+.r-chip{font-size:12px;letter-spacing:.2em;padding:7px 12px;min-height:0;border-width:1.5px}
 .chip-active{color:var(--t-accent);border-color:var(--t-accent)}
 .chip-none{color:var(--t-bad-soft);border-color:var(--t-bad-soft)}
 .chip-disputed{color:var(--t-text);border-color:var(--t-line)}
 .chip-pending{color:var(--t-text-2);border-color:var(--t-line)}
-.bar{height:9px;border-radius:5px;background:var(--t-ground);overflow:hidden;display:flex;margin-bottom:18px}
-.bar .y{background:var(--t-accent)}.bar .n{background:var(--t-bad-soft)}
 .act-next{display:flex;width:100%;height:56px;min-height:0;border-radius:15px;font-size:22px;letter-spacing:.1em}
 .act-share{display:flex;width:100%;height:48px;min-height:0;margin-top:11px;border-radius:13px;font-weight:600;font-size:18px;letter-spacing:.1em}
 .done-line{font-size:15px;color:var(--t-text-2);margin:6px 0 16px}
@@ -123,13 +93,114 @@ a.qx-btn[hidden]{display:none}
 .err-line{color:var(--t-bad-soft);font-size:14.5px;margin:12px 0 10px}
 .page-mark{position:absolute;top:0;right:20px;width:26px;height:29px;opacity:.9}
 .flash{font-family:var(--t-mono);font-size:12px;letter-spacing:.14em;color:var(--t-accent)}
+
+/* ---------- v60 THE VOTE ROOM (the owner: the voting screen gets "the same satisfying breed of graphics and
+   momentous, highly stylized visual rewards" as the reel, the home card and the draft, "bigger stylistic swings").
+   The masthead prints in two inks. A counter and the set's five ink diamonds ride over the card, which stands on
+   a halftone offset shadow. A vote slams its answer onto the card as a two-ink rubber stamp with a halftone ring and
+   ink drops, and the card jolts under it; then the result prints: the percent in two inks, the verdict stamped
+   on, the tally rolled in like ink. Each vote prints its diamond and ticks the counter; the set's fifth re-inks the
+   row and prints the running count. The keyframes it borrows live in styles.css (rdpSlam, rdpPlatePink and
+   rdpPlateAqua, rdpRing, rdpConf, rdpShake, ink-*). prefers-reduced-motion lands every end state at once. ---------- */
+.pb-mast{position:relative;isolation:isolate;display:inline-block;margin:4px 0 12px;padding-right:40px;font-family:var(--t-disp);font-weight:800;
+  font-size:clamp(34px,10.6vw,46px);line-height:.9;letter-spacing:.03em;text-transform:uppercase;color:var(--t-text);white-space:nowrap}
+.pb-ink{position:relative;isolation:isolate}
+.pb-ink::before,.pb-ink::after{content:attr(data-ink);position:absolute;left:0;top:0;right:0;z-index:-1;pointer-events:none;
+  color:transparent;-webkit-background-clip:text;background-clip:text;background-size:4px 4px;white-space:nowrap}
+.pb-ink::before{background-image:radial-gradient(circle,var(--p1,var(--t-accent)) 1.35px,transparent 1.85px);transform:translate(5px,5px)}
+.pb-ink::after{background-image:radial-gradient(circle,var(--p2,var(--t-offset)) 1.15px,transparent 1.65px);transform:translate(-3px,-2px);opacity:.85}
+.pb-mast.pb-ink::before{background-size:3.5px 3.5px;transform:translate(4px,4px)}
+.pb-mast.pb-ink::after{background-size:3.5px 3.5px;transform:translate(-2px,-2px)}
+.pb-print{animation:rdpSlam .34s cubic-bezier(.2,.9,.3,1.3) both}
+.pb-print::before{animation:rdpPlatePink .64s cubic-bezier(.25,.9,.3,1) both}
+.pb-print::after{animation:rdpPlateAqua .64s cubic-bezier(.25,.9,.3,1) .04s both}
+/* the meter: the running count in the display face, the set's diamonds */
+.pb-meter{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 2px 14px}
+.pb-meter[hidden]{display:none}
+.pb-count{display:flex;align-items:center;gap:9px}
+.pb-count b{font-family:var(--t-disp);font-weight:900;font-size:40px;line-height:.85;letter-spacing:.02em;color:var(--t-text);font-variant-numeric:tabular-nums}
+.pb-count span{font-family:var(--t-mono);font-size:10.5px;line-height:1.25;letter-spacing:.18em;text-transform:uppercase;color:var(--t-text-2)}
+.pb-dias{gap:13px;padding:4px 6px 4px 4px}
+.pb-dias>i{width:13px;height:13px}
+.pb-dias>i::before{transform:translate(3px,0)}
+/* the card on its halftone offset shadow (the home's .hm-ht). look.css prints .wrap .card as a see-through outline
+   card, which would show the dots through it, so the vote room's card is solid ground under the same white rule
+   (the doubled id in :is() outranks look.css's) */
+.pb-ht{--off:7px;--r:23px;--dot:rgb(var(--t-accent-rgb) / .42)}
+html[data-card] .wrap :is(#pb-k#pb-k,.pb-card){background:linear-gradient(rgb(var(--t-ground-2-rgb) / .5),rgb(var(--t-ground-2-rgb) / .5)),var(--t-ground);
+  border:2px solid rgb(var(--t-text-rgb) / .85);border-radius:23px;box-shadow:none}
+.pb-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;min-height:24px}
+.pb-eyebrow{font-family:var(--t-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--t-text-2);white-space:nowrap}
+/* the stamp: the answer slams onto the card, a two-ink rubber stamp at a tilt, with a halftone ring and ink drops */
+.card.is-hit{animation:rdpShake .34s ease both}
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  background:radial-gradient(circle,rgb(var(--t-light-rgb) / .9) 1.4px,transparent 2px) 0 0 / 6px 6px}
+.card.is-hit::after{animation:rdpRoom .36s ease-out both}
+.pb-stamp{position:absolute;inset:0;z-index:6;display:grid;place-items:center;pointer-events:none;overflow:visible}
+.pb-stamp.is-yes{--k:var(--t-offset);--p1:var(--t-accent);--p2:var(--t-light)}
+.pb-stamp.is-no{--k:var(--t-accent);--p1:var(--t-offset);--p2:var(--t-light)}
+.pb-stamp.is-unsure{--k:var(--t-text-2);--p1:var(--t-accent);--p2:var(--t-offset)}
+.pb-stamp-tilt{transform:rotate(-9deg)}
+.pb-stamp b{display:block;padding:2px 14px 0;border:6px solid var(--k);border-radius:18px;color:var(--k);background:rgb(var(--t-ground-rgb) / .62);
+  font-family:var(--t-disp);font-weight:900;font-size:clamp(78px,24vw,112px);line-height:.95;letter-spacing:.04em;text-transform:uppercase;
+  text-shadow:0 0 26px rgb(var(--t-ground-rgb) / .8);box-shadow:0 0 0 3px rgb(var(--t-ground-rgb) / .5),0 16px 40px -12px rgb(var(--t-shadow-rgb) / .7);
+  animation:rdpSlam .3s cubic-bezier(.2,.9,.3,1.3) both}
+.pb-stamp.is-unsure b{font-size:clamp(52px,16vw,74px)}
+.pb-stamp b::before,.pb-stamp b::after{padding:inherit}
+.pb-stamp b::before{animation:rdpPlatePink .6s cubic-bezier(.25,.9,.3,1) both}
+.pb-stamp b::after{animation:rdpPlateAqua .6s cubic-bezier(.25,.9,.3,1) .04s both}
+.pb-ring{position:absolute;left:50%;top:50%;width:360px;height:360px;margin:-180px 0 0 -180px;border-radius:50%;opacity:0;pointer-events:none;
+  background-image:radial-gradient(circle,var(--k) 2.2px,transparent 2.8px);background-size:7px 7px;
+  -webkit-mask-image:radial-gradient(circle closest-side,transparent 50%,var(--fx-mask) 60%,var(--fx-mask) 80%,transparent 100%);
+  mask-image:radial-gradient(circle closest-side,transparent 50%,var(--fx-mask) 60%,var(--fx-mask) 80%,transparent 100%);
+  animation:rdpRing .86s cubic-bezier(.12,.75,.3,1) .04s both}
+.pb-ring::after{content:"";position:absolute;inset:0;border-radius:50%;opacity:0;
+  background-image:radial-gradient(circle,var(--p1) 2.2px,transparent 2.8px);background-size:7px 7px;
+  animation:ink-ring2 .86s cubic-bezier(.12,.75,.3,1) .1s both}
+.pb-conf{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none}
+.pb-conf i{position:absolute;left:calc(var(--s) / -2);top:calc(var(--s) / -2);width:var(--s);height:var(--s);border-radius:50%;opacity:0;
+  animation:rdpConf 1.1s cubic-bezier(.15,.7,.35,1) var(--dl) both}
+.pb-conf i.c0,.pb-conf i.c2{background:var(--t-accent)}
+.pb-conf i.c1{background:var(--t-offset)}
+.pb-conf i.c3{background:var(--t-light)}
+.pb-stamp.is-lift{animation:pbLift .36s ease-in both}
+@keyframes pbLift{to{opacity:0;transform:translateY(-30px) scale(.82)}}
+/* the result prints: the percent in two inks, the verdict stamped on, the tally rolled in */
+.pb-res{outline:none}
+.pb-early{font-family:var(--t-mono);font-size:12px;letter-spacing:.24em;color:var(--t-text-2);margin:0 0 6px}
+.pb-big{display:inline-block;font-family:var(--t-disp);font-weight:900;font-size:clamp(56px,16vw,72px);line-height:.95;letter-spacing:.02em;
+  color:var(--t-text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pb-big.is-yes{color:var(--t-offset);--p1:var(--t-accent);--p2:var(--t-light)}
+.pb-big.is-no{color:var(--t-accent);--p1:var(--t-offset);--p2:var(--t-light)}
+.pb-big.is-early{font-size:clamp(40px,11vw,52px)}
+.pb-res .pb-up{animation:rdpUp .3s ease-out both}
+.pb-res .pb-up.d1{animation-delay:.12s}.pb-res .pb-up.d2{animation-delay:.2s}.pb-res .pb-up.d3{animation-delay:.28s}.pb-res .pb-up.d4{animation-delay:.36s}
+.pb-verdict{display:flex;margin:0 0 14px}
+.pb-verdict .r-chip{transform:rotate(-4deg);animation:pbChip .46s cubic-bezier(.2,.9,.3,1.3) .3s both}
+@keyframes pbChip{0%{opacity:0;transform:rotate(-4deg) scale(2.3)}60%{opacity:1;transform:rotate(-4deg) scale(.92)}100%{opacity:1;transform:rotate(-4deg) scale(1)}}
+.pb-bar{margin:0 0 16px;height:12px;border-radius:6px}
+/* the set is in: the running count prints big, the diamonds re-ink, a ring throws */
+.pb-done{position:relative;margin-top:4px}
+.pb-done-head{display:inline-block;font-family:var(--t-disp);font-weight:900;font-size:clamp(46px,13vw,60px);line-height:.95;letter-spacing:.03em;
+  text-transform:uppercase;color:var(--t-text);white-space:nowrap}
+.pb-done-burst{position:absolute;left:34%;top:26px;--k:var(--t-accent);--p1:var(--t-offset)}
+.pb-empty .q{font-size:30px}
+@media (prefers-reduced-motion:reduce){
+  .pb-print,.pb-print::before,.pb-print::after,.card.is-hit,.card.is-hit::after,.pb-res .pb-up,.pb-verdict .r-chip,.pb-done-burst *{animation:none}
+  .pb-print::before,.pb-print::after{opacity:1}
+  .skel .sk{animation:none}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand"><a href="/?src=bonuses">TRUE 82</a></div>
   <svg class="page-mark" viewBox="0 0 32 36" aria-hidden="true" focusable="false"><path d="M16 1l1.9 3.9 4.3.6-3.1 3 .7 4.2L16 10.7l-3.8 2 .7-4.2-3.1-3 4.3-.6z" style="fill:var(--t-accent)"/><rect x="5" y="15" width="22" height="3.4" rx="1.7" style="fill:var(--t-metal)"/><path d="M9 18.4l4.4 13M23 18.4l-4.4 13M16 18.4v13M10.9 24h10.2M12.8 29.6h6.4" style="stroke:var(--t-metal)" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
-  <h1>PLAYER BONUSES<span class="q-tag t-chip" id="titleTag" hidden></span></h1>
+  <h1 class="pb-mast pb-ink" id="pbMast" data-ink="PLAYER BONUSES">PLAYER BONUSES</h1>
+  <div class="pb-meter" id="pbMeter" hidden>
+    <div class="pb-count"><b class="pb-ink" id="pbCount" data-ink="00">00</b><span id="pbCountLab">votes<br>cast</span></div>
+    <div class="ink-dias pb-dias" id="pbDias" role="img" aria-label="0 of 5 this round"></div>
+  </div>
   <div id="stage"></div>
 </div>
 <script src="/analytics.js?v=20260725-traits-v44"></script>
@@ -159,33 +230,38 @@ a.qx-btn[hidden]{display:none}
   };
   // The bad traits wear the bad chip, as on the results ballot.
   var TAG_BAD = { "Hunted": 1, "Ball Stopper": 1, "Ball Pounder": 1, "Foul Merchant": 1, "Stat Padder": 1, "Off-Court Knucklehead": 1 };
-  // v47.21: the chip lives in the page title, so it is set per question
-  // rather than built into the question markup, and cleared whenever the
-  // card is not showing a question.
-  function setTitleTag(q) {
-    var t = document.getElementById("titleTag");
-    if (!t) return;
+  // v60: the trait's chip rides the card's top line (the masthead prints the page's name now).
+  function tagChipHtml(q) {
     var name = String((q && q.trait_name) || ""), a = TAG_ABBR[name] || "";
-    t.textContent = a;
-    if (TAG_BAD[name]) t.setAttribute("data-tone", "bad"); else t.removeAttribute("data-tone");
-    t.hidden = !a;
+    return a ? '<span class="q-tag t-chip"' + (TAG_BAD[name] ? ' data-tone="bad"' : "") + ">" + esc(a) + "</span>" : "";
   }
   var Q = [], idx = 0, doneIds = [], sessionOpen = false, completedOnce = false, lastAnswered = null;
-  var SEEN_KEY = "t82TraitsSeen";
-  function seenList() {
+  // v60: this device's history, oldest first: t82TraitsSeen holds the calls answered here or on the home card,
+  // t82TraitsShown every call that was on screen. Both ride along so a deal skips them (the owner: past questions
+  // should come back as rarely as possible).
+  var SEEN_KEY = "t82TraitsSeen", SHOWN_KEY = "t82TraitsShown";
+  function listOf(key) {
     try {
-      var a = JSON.parse(localStorage.getItem(SEEN_KEY) || "[]");
+      var a = JSON.parse(localStorage.getItem(key) || "[]");
       return Array.isArray(a) ? a.filter(function (x) { return typeof x === "string"; }) : [];
     } catch (e) { return []; }
   }
-  function seenAdd(id) {
+  function listAdd(key, id) {
     if (!id) return;
     try {
-      var a = seenList().filter(function (x) { return x !== id; });
+      var a = listOf(key).filter(function (x) { return x !== id; });
       a.push(id);
       if (a.length > 400) a = a.slice(a.length - 400);
-      localStorage.setItem(SEEN_KEY, JSON.stringify(a));
+      localStorage.setItem(key, JSON.stringify(a));
     } catch (e) {}
+  }
+  function seenList() { return listOf(SEEN_KEY); }
+  function seenAdd(id) { listAdd(SEEN_KEY, id); }
+  function excludeIds(ref, withShown) {
+    var out = [], have = {};
+    var lists = [doneIds.slice().reverse()].concat(withShown ? [listOf(SHOWN_KEY).slice(-100).reverse(), seenList().slice(-100).reverse()] : [seenList().slice(-150).reverse()]);
+    lists.forEach(function (l) { l.forEach(function (x) { if (x && x !== ref && !have[x]) { have[x] = 1; out.push(x); } }); });
+    return out.slice(0, 150);
   }
 
   // Haptics. Android: navigator.vibrate. iOS: the Taptic Engine's one web
@@ -251,7 +327,7 @@ a.qx-btn[hidden]{display:none}
   }
   function bbTag(u) { return u + (u.indexOf("?") === -1 ? "?" : "&") + "utm_source=true82.net&utm_campaign=bonuses"; }
   function bbGuess(name) {
-    var ascii = (name.normalize ? name.normalize("NFD") : name).replace(/[\u0300-\u036f]/g, "");
+    var ascii = (name.normalize ? name.normalize("NFD") : name).replace(/[̀-ͯ]/g, "");
     ascii = ascii.replace(/\s+(Jr|Sr|II|III|IV|V)\.?$/i, "");
     var parts = ascii.split(/\s+/).filter(Boolean);
     if (parts.length < 2) return null;
@@ -291,6 +367,98 @@ a.qx-btn[hidden]{display:none}
     });
   }
 
+  /* ---- v60 the prints: the same ink as the home card's diamonds and the draft's picks ---- */
+  function replay(node, cls) {
+    if (!node) return;
+    node.classList.remove(cls);
+    void node.offsetWidth;
+    if (!reduceMotion) node.classList.add(cls);
+  }
+  // THE INK PRINT (app.js inkPrint's twin; the page does not load app.js): the mark takes .is-new (its stamp in
+  // styles.css), and a two-ink halftone ring and a spray of drops roll out from its center inside host.
+  function inkPrint(host, mark, variant) {
+    if (!host || !mark || reduceMotion) return;
+    mark.classList.remove("is-new");
+    void mark.offsetWidth;
+    mark.classList.add("is-new");
+    var hb = host.getBoundingClientRect(), mb = mark.getBoundingClientRect();
+    var x = (variant === "big" ? hb.width / 2 : mb.left - hb.left + mb.width / 2) + "px";
+    var y = (mb.top - hb.top + mb.height / 2) + "px";
+    var bits = ["ink-burst", "ink-spray"].map(function (cls) {
+      var b = document.createElement("b");
+      b.className = cls + (variant ? " is-" + variant : "");
+      b.setAttribute("aria-hidden", "true");
+      b.style.left = x;
+      b.style.top = y;
+      host.appendChild(b);
+      return b;
+    });
+    setTimeout(function () {
+      bits.forEach(function (b) { if (b.parentNode) b.parentNode.removeChild(b); });
+      mark.classList.remove("is-new");
+    }, 1000);
+  }
+  function confettiHtml(n) {
+    var h = "";
+    for (var i = 0; i < n; i++) {
+      var a = (i / n) * Math.PI * 2 + (i % 2 ? 0.22 : -0.12), r = 92 + (i * 37 % 74);
+      h += '<i class="c' + (i % 4) + '" style="--dx:' + Math.round(Math.cos(a) * r) + "px;--dy:" + Math.round(Math.sin(a) * r * 0.8 - 26) +
+        "px;--s:" + (5 + (i * 13 % 5)) + "px;--dl:" + ((i % 5) * 0.02).toFixed(2) + 's"></i>';
+    }
+    return h;
+  }
+  // The count carries on from the home card (?n=) and every counted vote here; the diamonds are this set's five.
+  var cast = Math.max(0, Math.min(99, parseInt(params.get("n"), 10) || 0)), setN = 0;
+  function two(n) { return (n < 10 ? "0" : "") + n; }
+  function meterShow() {
+    var m = document.getElementById("pbMeter");
+    if (!m || !m.hidden) return;
+    m.hidden = false;
+    meterPaint(false);
+  }
+  function meterPaint(fresh) {
+    var c = document.getElementById("pbCount"), d = document.getElementById("pbDias"), lab = document.getElementById("pbCountLab");
+    if (!c || !d) return;
+    c.textContent = two(cast);
+    c.setAttribute("data-ink", two(cast));
+    if (lab) lab.innerHTML = cast === 1 ? "vote<br>cast" : "votes<br>cast";
+    var total = Math.max(1, Math.min(5, Q.length || 5));
+    if (d.children.length !== total) { var h = ""; for (var k = 0; k < total; k++) h += "<i></i>"; d.innerHTML = h; }
+    for (var j = 0; j < d.children.length; j++) d.children[j].className = j < setN ? "on" : "";
+    d.setAttribute("aria-label", setN + " of " + total + " this round");
+    if (!fresh) { d.classList.remove("is-full"); return; }
+    replay(c, "pb-print");
+    var last = setN >= total;
+    if (last) { d.classList.remove("is-full"); void d.offsetWidth; if (!reduceMotion) d.classList.add("is-full"); }
+    if (setN > 0) inkPrint(d, d.children[setN - 1], last ? "big" : "");
+  }
+  // The stamp: a vote slams its answer onto the card the moment it is tapped; it lifts as the result prints.
+  var curStamp = null;
+  function stampOn(resp) {
+    stampOff(true);
+    var card = document.getElementById("qcard");
+    if (!card || reduceMotion) return;
+    var word = resp === "yes" ? "YES" : resp === "no" ? "NO" : "UNSURE";
+    var st = document.createElement("div");
+    st.className = "pb-stamp is-" + resp;
+    st.setAttribute("aria-hidden", "true");
+    st.innerHTML = '<i class="pb-ring"></i><span class="pb-conf">' + confettiHtml(16) + '</span>' +
+      '<div class="pb-stamp-tilt"><b class="pb-ink" data-ink="' + word + '">' + word + "</b></div>";
+    card.appendChild(st);
+    replay(card, "is-hit");
+    curStamp = { el: st, t0: Date.now() };
+  }
+  function stampOff(now) {
+    var s = curStamp;
+    curStamp = null;
+    if (!s) return;
+    var wait = now ? 0 : Math.max(0, 480 - (Date.now() - s.t0));
+    setTimeout(function () {
+      s.el.classList.add("is-lift");
+      setTimeout(function () { if (s.el.parentNode) s.el.parentNode.removeChild(s.el); }, 380);
+    }, wait);
+  }
+
   function statusChip(status) {
     if (status === "qualifies") return '<span class="r-chip t-chip chip-active" data-tone="plain">BONUS ACTIVE</span>';
     if (status === "does_not_qualify") return '<span class="r-chip t-chip chip-none" data-tone="plain">NO BONUS</span>';
@@ -307,19 +475,25 @@ a.qx-btn[hidden]{display:none}
         '<div class="sk" style="height:104px"></div><div class="sk" style="height:104px"></div></div>' +
       '<div class="sk" style="height:58px;margin-top:14px"></div></section>';
   }
+  // v60: a deal skips everything this device has shown or answered; only when that leaves nothing does it fall back,
+  // first to the answered ones alone, then to the server's own two-answer ceiling.
+  function deal(ref, ex) {
+    return api("/api/traits?op=session&sid=" + sid + (ref ? "&q=" + encodeURIComponent(ref) : "") +
+      (ex.length ? "&exclude=" + ex.map(encodeURIComponent).join(",") : ""));
+  }
+  function dealt(x) { return !!(x && x.ok && x.questions && x.questions.length); }
   function startSession(ref, again) {
     sessionOpen = false;
-    setTitleTag(null);
     stage.innerHTML = skeletonHtml();
-    var seenEx = doneIds.concat(seenList()).filter(function (x, i, a) {
-      return x && x !== ref && a.indexOf(x) === i;
-    }).slice(-48);
-    var qs = "/api/traits?op=session&sid=" + sid +
-      (ref ? "&q=" + encodeURIComponent(ref) : "") +
-      (seenEx.length ? "&exclude=" + seenEx.map(encodeURIComponent).join(",") : "");
-    identityReady().then(function () { return api(qs); }).then(function (x) {
-      if (!x || !x.ok || !x.questions || !x.questions.length) return feedError(x && x.reason);
+    identityReady().then(function () {
+      return deal(ref, excludeIds(ref, true)).then(function (x) {
+        if (dealt(x)) return x;
+        return deal(ref, excludeIds(ref, false)).then(function (y) { return dealt(y) ? y : deal(ref, []); });
+      });
+    }).then(function (x) {
+      if (!dealt(x)) return x && x.reason === "no_questions" ? feedEmpty() : feedError(x && x.reason);
       Q = x.questions; idx = 0; sessionOpen = true;
+      if (again) setN = 0;
       track("traits_session", { surface: "traits", action: again ? "again" : "start", source: entrySource });
       renderQuestion();
     }).catch(function () { feedError("network"); });
@@ -327,14 +501,22 @@ a.qx-btn[hidden]{display:none}
 
   function feedError(reason) {
     sessionOpen = false;
-    setTitleTag(null);
     stage.innerHTML =
-      '<section class="card"><div class="toprow"><span>PLAYER BONUS</span></div>' +
+      '<div class="hm-ht pb-ht"><section class="card pb-card"><div class="pb-top"><span class="pb-eyebrow">Player bonus</span></div>' +
       '<p class="q t-title" style="font-size:30px">THE QUESTION FEED DID NOT ANSWER.</p>' +
       '<button class="act-next t-btn" id="retryFeed">TRY AGAIN</button>' +
-      '<a class="act-share t-btn" data-kind="quiet" href="/?src=bonuses">BACK TO TRUE 82</a></section>';
+      '<a class="act-share t-btn" data-kind="quiet" href="/?src=bonuses">BACK TO TRUE 82</a></section></div>';
     track("traits_session", { surface: "traits", action: "feed_error", source: entrySource, outcome: String(reason || "unknown").slice(0, 40) });
     document.getElementById("retryFeed").addEventListener("click", function () { startSession(pinnedRef); });
+  }
+  function feedEmpty() {
+    sessionOpen = false;
+    stage.innerHTML =
+      '<div class="hm-ht pb-ht"><section class="card pb-card pb-empty"><div class="pb-top"><span class="pb-eyebrow">Player bonus</span></div>' +
+      '<p class="q t-title">THAT’S EVERY CALL FOR NOW.</p>' +
+      '<p class="done-line">New disputes land all the time. Check back soon.</p>' +
+      '<a class="act-next t-btn" href="/?src=bonuses">PLAY THE GAME</a></section></div>';
+    track("traits_session", { surface: "traits", action: "empty", source: entrySource });
   }
 
   function questionText(q) {
@@ -347,7 +529,8 @@ a.qx-btn[hidden]{display:none}
     var n = idx + 1;
     var wc = q.what_counts || q.definition || "";
     stage.innerHTML =
-      '<section class="card" id="qcard">' +
+      '<div class="hm-ht pb-ht"><section class="card pb-card" id="qcard">' +
+        '<div class="pb-top"><span class="pb-eyebrow">Player bonus · ' + n + " of " + Q.length + "</span>" + tagChipHtml(q) + "</div>" +
         // a no-break space keeps "a", "an" and "the" with the next word, so no line ends on one
         '<p class="q t-title">' + esc(questionText(q)).replace(/\b(a|an|the) /gi, "$1 ") + "</p>" +
         (q.metadata_line ? '<p class="meta">' + esc(q.metadata_line) + "</p>" : "") +
@@ -362,13 +545,14 @@ a.qx-btn[hidden]{display:none}
         // right under the vote buttons, so a failed vote's TRY AGAIN sits by them
         '<div id="resultZone" aria-live="polite"></div>' +
         '<div class="qx" id="qx">' +
-          '<a class="qx-btn t-btn" data-kind="quiet" id="qRef" hidden target="_blank" rel="noopener">Stats Refresher \u2197</a>' +
+          '<a class="qx-btn t-btn" data-kind="quiet" id="qRef" hidden target="_blank" rel="noopener">Stats Refresher ↗</a>' +
           '<button class="qx-btn qx-share t-btn" data-kind="quiet" id="qShare" type="button">' +
-            '<span class="qx-lead">Share Vote</span><span class="qx-sub">(please don\u2019t vote brigade)</span></button>' +
+            '<span class="qx-lead">Share Vote</span><span class="qx-sub">(please don’t vote brigade)</span></button>' +
           '<a class="qx-btn qx-play t-btn" href="/?src=bonuses">PLAY THE GAME</a>' +
         "</div>" +
-      "</section>";
-    setTitleTag(q);
+      "</section></div>";
+    listAdd(SHOWN_KEY, q.id);
+    meterShow();
     track("traits_question", { surface: "traits", action: "view", ordinal: n, challenge: q.id, source: entrySource });
     var card = document.getElementById("qcard");
     var qRef = document.getElementById("qRef");
@@ -401,17 +585,17 @@ a.qx-btn[hidden]{display:none}
   var VOTE_GAP_MS = 1300, lastVoteAt = 0;
   function castVote(q, resp, btn, isRetry) {
     var controls = document.getElementById("controls");
-    var card = document.getElementById("qcard");
     if (!controls) return;
     if (controls.classList.contains("locked") && !isRetry) return;
     controls.classList.add("locked");
     btn.classList.add("pressed");
+    stampOn(resp);
     var started = Date.now(), tries = 0;
-    // A slow reply swaps only the label's text for "\u2026" (like COPIED), so the
+    // A slow reply swaps only the label's text for "…" (like COPIED), so the
     // button's haptic switch and its listeners stay in place.
     var label = null, saved = null;
     for (var n = btn.firstChild; n && !label; n = n.nextSibling) if (n.nodeType === 3 && n.nodeValue.trim()) label = n;
-    var slow = setTimeout(function () { if (label) { saved = label.nodeValue; label.nodeValue = "\u2026"; } }, 400);
+    var slow = setTimeout(function () { if (label) { saved = label.nodeValue; label.nodeValue = "…"; } }, 400);
     var minH = controls.offsetHeight;
     function settle() {
       lastVoteAt = Date.now();
@@ -444,9 +628,10 @@ a.qx-btn[hidden]{display:none}
   }
 
   function voteFailed(q, resp, btn, reason) {
+    stampOff(true);
     track("traits_question", { surface: "traits", action: "try_again", ordinal: idx + 1, challenge: q.id, outcome: String(reason || "unknown").slice(0, 40) });
     var zone = document.getElementById("resultZone");
-    zone.innerHTML = '<p class="err-line">Vote didn\u2019t send.</p>' +
+    zone.innerHTML = '<p class="err-line">Vote didn’t send.</p>' +
       '<button class="act-next t-btn" id="tryBtn">TRY AGAIN</button>';
     document.getElementById("tryBtn").addEventListener("click", function () {
       zone.innerHTML = "";
@@ -460,76 +645,80 @@ a.qx-btn[hidden]{display:none}
     var zone = document.getElementById("resultZone");
     var early = d.mode === "counts";
     var big, cls;
-    if (early) { big = d.yes + " YES \u00b7 " + d.no + " NO"; cls = "early"; }
-    else if ((d.yes_pct || 0) >= 50) { big = d.yes_pct + "% YES"; cls = "yes"; }
-    else { big = (100 - d.yes_pct) + "% NO"; cls = "no"; }
+    if (early) { big = d.yes + " YES · " + d.no + " NO"; cls = "is-early"; }
+    else if ((d.yes_pct || 0) >= 50) { big = d.yes_pct + "% YES"; cls = "is-yes"; }
+    else { big = (100 - d.yes_pct) + "% NO"; cls = "is-no"; }
     var elig = (d.yes || 0) + (d.no || 0), total = elig + (d.unsure || 0);
     // The tally counts this vote too, so "% agree" needs at least one other
     // voter in its count (yes and no for a yes or no, everyone for UNSURE).
     // Alone, it would be "100% agree" with nobody else there.
     var pool = resp === "unsure" ? total : elig;
     var you = "You voted " + resp.toUpperCase() +
-      (d.agree_pct != null && pool > 1 ? " \u00b7 " + d.agree_pct + "% agree" : total <= 1 ? " \u00b7 first vote" : "");
-    var barHtml = elig > 0
-      ? '<div class="bar" aria-hidden="true"><span class="y" style="width:' + Math.round(100 * d.yes / elig) + '%"></span><span class="n" style="flex:1"></span></div>' : "";
+      (d.agree_pct != null && pool > 1 ? " · " + d.agree_pct + "% agree" : total <= 1 ? " · first vote" : "");
+    var yesW = elig > 0 ? Math.round(100 * d.yes / elig) : 0;
+    var barHtml = elig > 0 ? '<div class="hm-bar pb-bar" id="pbBar" aria-hidden="true"><b style="width:' + yesW + '%"></b></div>' : "";
     var changeHtml = '<button class="cv-link t-btn" data-kind="text" id="cvBtn">CHANGE VOTE</button>';
     var last = idx >= Q.length - 1;
+    // v60: a first vote on this question here is counted: its diamond prints and the counter ticks
+    var counted = !preVoted && q.id && doneIds.indexOf(q.id) < 0;
+    if (counted) { doneIds.push(q.id); cast = Math.min(99, cast + 1); setN = Math.min(5, setN + 1); }
     var actions = last
-      ? '<p class="done-head" style="margin-top:4px">' + Q.length + (Q.length === 1 ? ' VOTE IN' : ' VOTES IN') + '</p>' +
+      ? '<div class="pb-done" id="pbDone"><div class="pb-done-burst" aria-hidden="true"></div>' +
+        '<p class="pb-done-head pb-ink" id="pbDoneHead" data-ink="' + cast + (cast === 1 ? " VOTE IN" : " VOTES IN") + '">' + cast + (cast === 1 ? " VOTE IN" : " VOTES IN") + "</p>" +
         '<p class="done-line">Your votes helped set player bonuses.</p>' +
         '<button class="act-next t-btn" id="moreBtn">VOTE ON 5 MORE</button>' +
         '<button class="act-share t-btn" data-kind="quiet" id="shareBtn">SHARE LAST QUESTION</button>' +
-        '<a class="act-share t-btn" data-kind="quiet" href="/?src=bonuses">BACK TO TRUE 82</a>'
+        '<a class="act-share t-btn" data-kind="quiet" href="/?src=bonuses">BACK TO TRUE 82</a></div>'
       : '<button class="act-next t-btn" id="nextBtn">NEXT QUESTION</button>' +
         '<button class="act-share t-btn" data-kind="quiet" id="shareBtn">SHARE QUESTION</button>';
     zone.innerHTML =
-      '<div class="result seq" tabindex="-1"' + (minH ? ' style="min-height:' + minH + 'px"' : "") + ">" +
-        '<div class="rv">' + (early ? '<p class="r-eyebrow">EARLY RESULT</p>' : "") +
-          '<p class="r-big ' + cls + '" id="rBig">' + big + "</p></div>" +
-        '<div class="rv"><p class="r-you">' + esc(you) + "</p></div>" +
-        '<div class="rv">' + statusChip(d.status) + "</div>" +
-        (barHtml ? '<div class="rv">' + barHtml + "</div>" : "") +
-        '<div class="rv">' + changeHtml + "</div>" +
-        '<div class="rv">' + actions + "</div>" +
-        '<div class="rv"><p class="flash" id="flash" role="status"></p></div>' +
+      '<div class="pb-res" tabindex="-1"' + (minH ? ' style="min-height:' + minH + 'px"' : "") + ">" +
+        (early ? '<p class="pb-early pb-up">EARLY RESULT</p>' : "") +
+        '<p class="pb-big pb-ink ' + cls + '" id="rBig" data-ink="' + big + '">' + big + "</p>" +
+        '<p class="r-you pb-up d1">' + esc(you) + "</p>" +
+        '<div class="pb-verdict">' + statusChip(d.status) + "</div>" +
+        barHtml +
+        '<div class="pb-up d3">' + changeHtml + "</div>" +
+        '<div class="pb-up d4">' + actions + "</div>" +
+        '<p class="flash" id="flash" role="status"></p>' +
       "</div>";
     if (controls) controls.remove();
     var qx = document.getElementById("qx");
     if (qx) qx.remove();
-    var rEl = zone.querySelector(".result");
-    requestAnimationFrame(function () {
-      if (!rEl) return;
-      rEl.classList.add("show");
-      try { rEl.focus({ preventScroll: true }); } catch (e) { try { rEl.focus(); } catch (e2) {} }
-      var yFill = rEl.querySelector(".bar .y");
-      if (yFill) {
-        var w = yFill.style.width;
-        if (!reduceMotion) {
-          yFill.style.width = "0%";
-          requestAnimationFrame(function () { yFill.style.width = w; });
-        }
-      }
-    });
-    if (!early && !reduceMotion && window.matchMedia) {
+    stampOff(false);
+    var rEl = zone.querySelector(".pb-res"), bigEl = document.getElementById("rBig");
+    replay(bigEl, "pb-print");
+    replay(document.getElementById("pbBar"), "is-rolling");
+    try { rEl.focus({ preventScroll: true }); } catch (e) { try { rEl.focus(); } catch (e2) {} }
+    if (!early && !reduceMotion && bigEl) {
       (function () {
-        var bigEl = document.getElementById("rBig");
         var target = parseInt(big, 10);
         var tail = big.slice(String(target).length);
-        if (!bigEl || !isFinite(target)) return;
+        if (!isFinite(target)) return;
         var t0 = null;
         function step(ts) {
           if (t0 === null) t0 = ts;
-          var k = Math.min(1, (ts - t0) / 500);
-          var eased = 1 - Math.pow(1 - k, 3);
-          bigEl.textContent = Math.round(target * eased) + tail;
-          if (k < 1) requestAnimationFrame(step); else bigEl.textContent = big;
+          var k = Math.min(1, (ts - t0) / 520);
+          var txt = Math.round(target * (1 - Math.pow(1 - k, 3))) + tail;
+          bigEl.textContent = txt; bigEl.setAttribute("data-ink", txt);
+          if (k < 1) requestAnimationFrame(step); else { bigEl.textContent = big; bigEl.setAttribute("data-ink", big); }
         }
         requestAnimationFrame(step);
       })();
     }
+    if (counted) meterPaint(true);
+    if (last) {
+      var head = document.getElementById("pbDoneHead"), burst = document.querySelector("#pbDone .pb-done-burst");
+      setTimeout(function () {
+        replay(head, "pb-print");
+        if (burst && !reduceMotion) {
+          burst.innerHTML = '<i class="pb-ring"></i><span class="pb-conf">' + confettiHtml(18) + "</span>";
+          setTimeout(function () { burst.innerHTML = ""; }, 1400);
+        }
+      }, 420);
+    }
     hapticTick(last ? [12, 70, 12] : 10);
     track("traits_question", { surface: "traits", action: "result_view", ordinal: idx + 1, challenge: q.id, outcome: d.status, value: early ? 1 : 0, source: entrySource });
-    if (!preVoted && q.id) { if (doneIds.indexOf(q.id) < 0) doneIds.push(q.id); }
     seenAdd(q.id);
     var nextBtn = document.getElementById("nextBtn");
     if (nextBtn) hapticOverlay(nextBtn);
@@ -551,7 +740,6 @@ a.qx-btn[hidden]{display:none}
       // Standing votes are revisable: rebuild the live controls with the
       // current answer pressed, and the next tap records outcome "changed".
       track("traits_question", { surface: "traits", action: "change_open", ordinal: idx + 1, challenge: q.id, source: entrySource });
-      if (preVoted || doneIds.indexOf(q.id) >= 0) { /* stays counted toward the session */ }
       q.my_response = null;
       renderQuestion();
       var prev = document.querySelector('[data-v="' + resp + '"]');
@@ -567,7 +755,7 @@ a.qx-btn[hidden]{display:none}
     // behind it: no tally to brag about, so just invite the vote.
     var elig = d ? (d.yes || 0) + (d.no || 0) : 0;
     if (!d || !elig || (d.mode !== "counts" && (d.yes_pct == null || elig < 2))) text = "Vote on this one: " + pq;
-    else if (d.mode === "counts") text = "Early vote is " + d.yes + "\u2013" + d.no + ": " + pq;
+    else if (d.mode === "counts") text = "Early vote is " + d.yes + "–" + d.no + ": " + pq;
     else if (resp === "yes") text = "I voted yes: " + pq + " " + d.yes_pct + "% currently say yes.";
     else if (resp === "no") text = "I voted no, and " + (100 - d.yes_pct) + "% agree: " + pq;
     else text = d.yes_pct + "% say yes: " + pq;
@@ -609,18 +797,22 @@ a.qx-btn[hidden]{display:none}
     }
   });
 
+  replay(document.getElementById("pbMast"), "pb-print");
   if (preload && preload.id) {
     Q = [preload]; idx = 0; sessionOpen = true;
     track("traits_session", { surface: "traits", action: "start", source: entrySource || "link" });
     renderQuestion();
     identityReady().then(function () {
-      return api("/api/traits?op=session&sid=" + sid + "&q=" + encodeURIComponent(preload.id));
+      return deal(preload.id, excludeIds(preload.id, true));
     }).then(function (x) {
       if (x && x.ok && x.questions && x.questions.length) {
         var mine = Q[0];
         Q = x.questions;
         if (Q[0] && Q[0].id !== mine.id) Q.unshift(mine);
         Q = Q.slice(0, 5);
+        meterPaint(false);
+        var top = document.querySelector("#qcard .pb-eyebrow");
+        if (top && Q[idx] === mine) top.textContent = "Player bonus · " + (idx + 1) + " of " + Q.length;
       }
     }).catch(function () {});
   } else {

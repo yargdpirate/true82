@@ -1446,7 +1446,10 @@ export async function onRequest(context) {
 
   const privacyNote = `<section class="privacy"><b>Privacy boundary:</b> ordinary product analytics remains anonymous and session-scoped. The separate retention stream uses one random first-party TRUE 82 browser id, stored in a secure first-party cookie with local-storage fallback for up to 400 days. No account, fingerprint, IP-derived id, ad network, sale/sharing, or cross-site enrichment. Consent regions, unknown/Tor geolocation, and explicit site opt-out are disabled; DNT/GPC are observed but do not suppress first-party product measurement.</section>`;
   const buildStamp = `<p class="muted" style="text-align:center;margin-top:28px;opacity:.65">dashboard v44 · first-party retention + player traits · ${new Date().toISOString().slice(0,16).replace("T"," ")} UTC</p>`;
-  return html(page("TRUE 82 · analytics", header + privacyNote + `<div class="grid">${cards.join("")}</div>` + buildStamp));
+  // v60 THE MOCK DATABASE (functions/_middleware.js): from 2026-09-27 on, only true82.net writes here; the test
+  // servers (the branch previews and every other *.pages.dev address) run on a mock that drops their writes
+  const siteNote = `<section class="privacy"><b>true82.net only:</b> since v60 (2026-09-27) this dashboard counts only traffic that came through true82.net. The Cloudflare test servers (branch previews, *.pages.dev) read the real database but write to a mock, so test runs, test votes and test Tribune editions never land here. Rows from before that date can still include test traffic.${context.data && context.data.mockDb ? " You are reading this on a test server: the numbers are the live database's." : ""}</section>`;
+  return html(page("TRUE 82 · analytics", header + siteNote + privacyNote + `<div class="grid">${cards.join("")}</div>` + buildStamp));
 }
 
 /* ---------- dashboard calculations ---------- */

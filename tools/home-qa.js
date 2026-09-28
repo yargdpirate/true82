@@ -3,7 +3,8 @@
      node tools/home-qa.js widths   320/375/390/440 in Chromium and WebKit: no sideways scroll, where the
                                     vote buttons land, and that no home button got the 3D decorator's skin
      node tools/home-qa.js frames   the vote reward frozen at set moments (one vote, then the fifth)
-     node tools/home-qa.js flow     five votes (YES, NO, IDK, YES, NO), Finish, Keep going, never leaving the page
+     node tools/home-qa.js flow     five votes (YES, NO, IDK, YES, NO), Finish, then Keep going opens /bonuses/ (v60)
+                                    with the count carried on and none of the five calls dealt again
      node tools/home-qa.js calm     prefers-reduced-motion: the end state at once, nothing running
      node tools/home-qa.js played   the Daily door once today's run is in (a fake local record, removed after)
    Screenshots land in $OUT (default: /tmp/t82-home-qa). Votes go to the LOCAL D1 only. */
@@ -91,11 +92,16 @@ async function measure(page) {
     }
     report.done = await page.evaluate(() => ({ title: document.getElementById("tmDoneT").textContent, doneShown: !document.getElementById("tmDone").hidden, url: location.href }));
     await shotCard("6-done");
-    await page.click("#tmAgain");
-    await page.waitForFunction(() => !document.getElementById("tmQBlock").hidden, null, { timeout: 8000 });
-    await sleep(500);
-    report.again = await page.evaluate(() => ({ q: document.getElementById("tmName").textContent + " / " + document.getElementById("tmTrait").textContent, dia: document.getElementById("tmDots").getAttribute("aria-label"), url: location.href }));
-    await shotCard("7-again");
+    const five = await page.evaluate(() => TM.qs.map((q) => q.id));
+    let deal = "";
+    page.on("request", (r) => { if (r.url().includes("op=session") && r.url().includes("/api/traits")) deal = decodeURIComponent(r.url()); });
+    await Promise.all([page.waitForNavigation({ timeout: 10000 }), page.click("#tmAgain")]);
+    await page.waitForSelector("#qcard", { timeout: 15000 });
+    await sleep(700);
+    report.again = await page.evaluate(() => ({ url: location.pathname + location.search, count: document.getElementById("pbCount").textContent,
+      q: document.querySelector("#qcard .q").textContent }));
+    report.again.skipsTheFive = five.every((id) => deal.indexOf(id) >= 0);
+    await page.screenshot({ path: `${OUT}/flow-7-bonuses.png` });
     await browser.close();
   }
   if (which === "all" || which === "calm") {

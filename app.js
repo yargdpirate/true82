@@ -770,7 +770,7 @@ var _buttonStyleObserver = null;
 // .hh-charity too: I DON'T WANT YOUR CHARITY is the outline ghost it was written
 // as, not a full-width gold keycap louder than the ball lever.
 var BTN3D_EXCLUDE = "button:not(.startover-btn):not(.np-bundle):not(.sort-chip):not(.cap-info):not(.du-exit):not(.rs-close):not(.tchip):not(.trait-info-btn):not(.tm-sharebar):not(.tm-flat):not(.hh-skip)" +
-  ":not(.bt-tag):not(.bt-big):not(.bt-tile):not(.bt-change):not(.bt-done):not(.gate-back):not(.hh-charity)" +
+  ":not(.bt-tag):not(.bt-big):not(.bt-tog):not(.bt-change):not(.bt-done):not(.gate-back):not(.hh-charity)" +
   ":not(.t-chip):not(.rd-diff):not(.da-row):not(.rd-feat)";   // v55: a chip is never a keycap; the Redrafted's difficulty cards, its featured rows (v58) and the Daily archive's rows are cards
 function decorate3dButtons(root) {
   if (!root) return;
@@ -2292,6 +2292,7 @@ function tmShowQuestion(anim) {
   ["tmYes", "tmNo", "tmIdk"].forEach(function (id) { var b = el(id); if (b) b.classList.remove("pressed"); });
   if (anim) tmReplay(el("tmQBlock"), "is-in");
   tmDots(false);
+  tmSeenAdd(q.id, TM_SHOWN_KEY);                // v60: a question on screen counts as seen, voted on or not
   analyticsTrack("traits_question", { surface: "traits", action: "view", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
 }
 // Share the exact question on screen: the same canonical URL family the full page shares
@@ -2421,12 +2422,15 @@ function tmComplete() {
   buzz([12, 70, 12]);
   analyticsTrack("traits_session", { surface: "traits", action: "complete", value: TM.n, source: TM.source, sid: TM.sid });
 }
+// v60 (the owner: "if you answer 5 questions on the voting widget on the front page and you selected to do more it
+// redirects you to the dedicated voting screen"): KEEP GOING opens /bonuses/, which carries the count on and deals
+// past everything this device has seen.
 function tmAgain() {
   var b = el("tmAgain");
   if (!b || b.disabled) return;
   b.disabled = true;
-  b.textContent = "Dealing\u2026";
-  tmStart(true);
+  analyticsTrack("traits_session", { surface: "traits", action: "more", value: TM.n, source: TM.source, sid: TM.sid });
+  location.href = "/bonuses/?src=home_more&n=" + Math.max(0, Math.min(99, TM.n | 0));
 }
 // KEEP GOING came back empty (every curated call answered twice) or failed: say so in the card.
 function tmEmpty(failed) {
@@ -2467,35 +2471,54 @@ function tmStart(again) {
     if (!again) analyticsTrack("mode_impression", { surface: TM.source === "home_module" ? "home" : "results", action: "traits", challenge: TM.qs[0].id });
   }).catch(function () { if (again) tmEmpty(true); });
 }
-var TM_SEEN_KEY = "t82TraitsSeen";
-function tmSeenList() {
+// This device's history, oldest first: t82TraitsSeen holds the calls answered or passed (the /bonuses/ page keeps the
+// same list), t82TraitsShown every call that was on screen (v60).
+var TM_SEEN_KEY = "t82TraitsSeen", TM_SHOWN_KEY = "t82TraitsShown";
+function tmSeenList(key) {
   try {
-    var a = JSON.parse(localStorage.getItem(TM_SEEN_KEY) || "[]");
+    var a = JSON.parse(localStorage.getItem(key || TM_SEEN_KEY) || "[]");
     return Array.isArray(a) ? a.filter(function (x) { return typeof x === "string"; }) : [];
   } catch (e) { return []; }
 }
-function tmSeenAdd(id) {
+function tmSeenAdd(id, key) {
   if (!id) return;
   try {
-    var a = tmSeenList().filter(function (x) { return x !== id; });
+    var a = tmSeenList(key).filter(function (x) { return x !== id; });
     a.push(id);
     if (a.length > 400) a = a.slice(a.length - 400);
-    localStorage.setItem(TM_SEEN_KEY, JSON.stringify(a));
+    localStorage.setItem(key || TM_SEEN_KEY, JSON.stringify(a));
   } catch (e) {}
 }
+// v60 (the owner: back on the start screen "im getting past questions ... we're trying to get it as much as possible
+// that [it] doesn't happen"). The server already skips what this browser's voter id has answered, but a pass, a call
+// shown and left unanswered, and any browser without the retention cookie were only covered by the last 48 answers,
+// and the day's featured call re-led every fresh card until it was answered. Now every call this device has shown
+// or answered rides along (the newest 150), the featured call leads only if this device has never shown it, and
+// only when that leaves nothing does the deal fall back: first to the answered ones only, then to the server's own
+// two-answer ceiling.
+function tmExcludeIds(withShown) {
+  var seen = tmSeenList(TM_SEEN_KEY), out = [], have = {};
+  var lists = withShown ? [tmSeenList(TM_SHOWN_KEY).slice(-100), seen.slice(-100)] : [seen.slice(-150)];
+  lists.forEach(function (l) { for (var i = l.length - 1; i >= 0; i--) if (!have[l[i]]) { have[l[i]] = 1; out.push(l[i]); } });
+  return out.slice(0, 150);
+}
 function tmSessionLoader() {
+  function deal(pin, ex) {
+    return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : "") +
+      (ex.length ? "&exclude=" + ex.map(encodeURIComponent).join(",") : ""), { credentials: "same-origin" })
+      .then(function (r) { return r.json(); });
+  }
+  function dealt(x) { return !!(x && x.ok && x.questions && x.questions.length); }
   return fetch("/api/traits?op=featured", { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (feat) {
-      // The day's featured call leads a fresh card, but never twice: once this browser has answered or
-      // passed it, KEEP GOING's next set deals without it (a pin overrides the server's answer ceiling).
-      var seen = tmSeenList();
+      var ex = tmExcludeIds(true);
       var pin = feat && feat.ok && feat.question ? feat.question.id : "";
-      if (pin && seen.indexOf(pin) >= 0) pin = "";
-      var ex = seen.filter(function (x) { return x !== pin; }).slice(-48);
-      return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : "") +
-        (ex.length ? "&exclude=" + ex.map(encodeURIComponent).join(",") : ""), { credentials: "same-origin" })
-        .then(function (r) { return r.json(); });
+      if (pin && ex.indexOf(pin) >= 0) pin = "";
+      return deal(pin, ex).then(function (x) {
+        if (dealt(x)) return x;
+        return deal("", tmExcludeIds(false)).then(function (y) { return dealt(y) ? y : deal("", []); });
+      });
     });
 }
 function wireBonusesModule() {
@@ -2794,7 +2817,7 @@ function ballotShow(label) {
   s.sh.classList.add("on");
   document.body.classList.add("bt-open");
   setTimeout(function () {
-    var f = s.sh.querySelector(".bt-big, .bt-tile, .bt-done");
+    var f = s.sh.querySelector(".bt-big, .bt-tog, .bt-done");
     if (f && f.focus) try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); }
   }, 60);
   return s;
@@ -2846,24 +2869,140 @@ function ballotOpenAsk(card, traitId) {
 function ballotQidFor(card, T) {
   return card.qids[T.name] || card.open[T.name] || card.split[T.name] || ballotQid(card.name, card.season, T.id);
 }
-function ballotOpenPicker(card) {
-  var model = ballotTagModel(card), h = "";
-  BALLOT.cur = { card: card, T: null };
-  function tile(T) {
-    return '<button type="button" class="bt-tile' + (T.neg ? " neg" : "") + '" data-trait="' + esc(T.id) + '"><b>' + esc(T.chip) + "</b>" +
-      (T.d ? "<small>" + esc(T.d) + "</small>" : "") + "</button>";
-  }
-  h += head("sheet", "Add a tag", { cls: "bt-h" }) + '<p class="bt-sub">' + esc(card.name) + ", " + esc(shortSeason(card.season)) + ". What else was he?</p>";
-  if (model.reopen.length) h += head("group", "Open questions", { tag: "h3", cls: "bt-grp" }) + '<div class="bt-grid">' + model.reopen.map(tile).join("") + "</div>";
-  BALLOT_GROUPS.forEach(function (gp) {
-    var items = model.offer.filter(function (T) { return T.g === gp[1]; });
-    if (items.length) h += head("group", gp[0], { tag: "h3", cls: "bt-grp" }) + '<div class="bt-grid">' + items.map(tile).join("") + "</div>";
+// v60 THE TAG SHEET (the owner, 2026-09-27: the "+" screen "needs to show all trait[s] and allow for removal of
+// those selected ... when you click anything in that plus-box screen you shouldn't need the YES/NO popup, just apply
+// then and there"). Every trait the "+" offers, plus any other tag on the card, in the ballot's groups and trait
+// order, so a tile never moves when it changes. A tile is lit when the tag is on his card for you: the card's own
+// chip, a ring in its ink, a check in the corner. An unlit tile shows the chip hollow and a "+" in the corner. Its
+// last line says what a tap does. A tap is your vote at once (YES lights it, NO takes it off), the card behind
+// follows, the tile prints (or lifts), and the crowd's count lands on it with the vote. The card's own tags still
+// open the full question (YES / NO / NOT SURE) with its tally.
+function ballotSheetTiles(card) {
+  var model = ballotTagModel(card), byName = {};
+  model.tags.forEach(function (t) { byName[t.T.name] = t; });
+  var engName = BALLOT_ENG[card.eng] || "";
+  var gravityOn = !!(byName["Super Three-Point Shooter"] && byName["Super Three-Point Shooter"].state === "on");
+  return BALLOT_TRAITS.filter(function (T) {
+    return !!T.pick || !!byName[T.name] || model.reopen.indexOf(T) >= 0;
+  }).map(function (T) {
+    // a settled GRAVITY carries 3PT (the card never prints both), so 3PT's tile stays put, lit, and says why
+    if (gravityOn && T.id === "three-point-shooter" && !byName[T.name]) return { T: T, lit: true, q: false, implied: true, act: "Comes with GRAVITY" };
+    return ballotTileState(card, T, byName[T.name], T.name === engName);
   });
-  h += '<p class="bt-foot"><button type="button" class="bt-gloss-open t-btn" data-kind="text" data-size="sm">Every tag, spelled out</button></p>';
+}
+// Lit = the tag shows on his card and you have not said no to it. The act line is what a tap does.
+function ballotTileState(card, T, tag, eng) {
+  var mine = card.mine[T.name] || "";
+  var lit = !!tag && tag.state !== "off" && mine !== "no";
+  var act = lit
+    ? (eng ? "The engine\u2019s call \u00B7 tap to dispute" : tag.state === "q" ? "Unsettled \u00B7 tap to take it off" : "On his card \u00B7 tap to remove")
+    : (eng && tag ? "You disputed it \u00B7 tap to agree" : tag && tag.state === "off" ? "You took it off \u00B7 tap to put it back" : "Tap to add");
+  return { T: T, lit: lit, q: !!tag && tag.state === "q", act: act };
+}
+function ballotTileSig(card, st) { return [st.lit ? 1 : 0, st.q ? 1 : 0, st.act, (card.tally && card.tally[st.T.name]) || ""].join("|"); }
+function ballotTileHtml(card, st) {
+  var T = st.T, tally = (card.tally && card.tally[T.name]) || "";
+  var chip = '<span class="bt-tag t-chip' + (T.neg ? " neg" : "") + (st.q ? " q is-q" : "") + (st.lit ? "" : " off is-off") +
+    '" data-size="lg" aria-hidden="true">' + esc(T.chip) + "</span>";
+  return '<button type="button" class="bt-tog' + (T.neg ? " neg" : "") + (st.lit ? " is-lit" : "") + (st.implied ? " is-implied" : "") +
+    '" data-trait="' + esc(T.id) + '" data-sig="' + esc(ballotTileSig(card, st)) +
+    '" aria-pressed="' + (st.lit ? "true" : "false") + '" aria-label="' + esc(T.name + ". " + st.act.replace(/\u00B7/g, ".")) + '">' +
+    '<span class="bt-tog-top">' + chip + '<i class="bt-tog-mark" aria-hidden="true">' + (st.lit ? "\u2713" : "+") + "</i></span>" +
+    (T.d ? "<small>" + esc(T.d) + "</small>" : "") +
+    '<span class="bt-tog-act">' + esc(st.act) + "</span>" +
+    '<span class="bt-tog-tally">' + esc(tally) + "</span>" +
+  "</button>";
+}
+function ballotSheetBody(card) {
+  var tiles = ballotSheetTiles(card), h = "";
+  h += '<div class="bt-who t-meta">' + esc(ballotWho(card)) + "</div>" +
+    head("sheet", "Edit his tags", { cls: "bt-h" }) +
+    '<p class="bt-sub">Lit tags are on his card. Tap one to add it or take it off. Each tap is your vote.</p>';
+  BALLOT_GROUPS.forEach(function (gp) {
+    var items = tiles.filter(function (st) { return st.T.g === gp[1]; });
+    if (items.length) h += head("group", gp[0], { tag: "h3", cls: "bt-grp" }) + '<div class="bt-grid">' +
+      items.map(function (st) { return ballotTileHtml(card, st); }).join("") + "</div>";
+  });
+  return h + '<button type="button" class="bt-done t-btn">Done</button>';
+}
+function ballotOpenPicker(card) {
+  BALLOT.cur = { card: card, T: null, sheet: true };
   var s = ballotSheetEls();
-  s.inn.innerHTML = h;
-  ballotShow("Add a tag for " + card.name);
+  s.inn.innerHTML = ballotSheetBody(card);
+  ballotShow("Edit the tags for " + card.name);
   analyticsTrack("traits_question", { surface: "results_card", action: "add_open", source: "card", sid: ballotSid() });
+}
+// Bring the open sheet up to date after a change: every tile whose state moved is repainted (a GRAVITY vote moves
+// 3PT's tile too); fx on T's tile, "print" stamps it on, "lift" takes it off. Should the set of tiles itself change,
+// the sheet redraws where it stands.
+function ballotSheetRepaint(card, T, fx) {
+  var cur = BALLOT.cur, sh = el("btSheet"), inn = el("btSheetIn");
+  if (!cur || !cur.sheet || cur.card !== card || !sh || !inn) return;
+  var tiles = ballotSheetTiles(card), focusId = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute("data-trait");
+  var ids = tiles.map(function (st) { return st.T.id; }).join(",");
+  var have = Array.prototype.map.call(sh.querySelectorAll(".bt-tog"), function (n) { return n.getAttribute("data-trait"); }).join(",");
+  if (ids !== have) {
+    var top = sh.scrollTop;
+    inn.innerHTML = ballotSheetBody(card);
+    sh.scrollTop = top;
+  } else tiles.forEach(function (st) {
+    var node = sh.querySelector('.bt-tog[data-trait="' + st.T.id + '"]');
+    if (!node || node.getAttribute("data-sig") === ballotTileSig(card, st)) return;
+    var wrap = document.createElement("div");
+    wrap.innerHTML = ballotTileHtml(card, st);
+    node.parentNode.replaceChild(wrap.firstChild, node);
+  });
+  var tile = sh.querySelector('.bt-tog[data-trait="' + T.id + '"]');
+  if (focusId) {
+    var f = sh.querySelector('.bt-tog[data-trait="' + focusId + '"]');
+    if (f && document.activeElement !== f) try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); }
+  }
+  if (tile && fx && !reducedMotion()) {
+    tile.classList.remove("is-printed", "is-lifted", "is-nope");
+    void tile.offsetWidth;
+    tile.classList.add(fx === "print" ? "is-printed" : fx === "nope" ? "is-nope" : "is-lifted");
+    if (fx === "print") inkPrint(tile, tile.querySelector(".bt-tag"), "");
+    setTimeout(function () { tile.classList.remove("is-printed", "is-lifted", "is-nope"); }, 900);
+  }
+}
+function ballotToggle(card, traitId) {
+  var T = ballotTrait(traitId);
+  if (!T) return;
+  var st = null;
+  ballotSheetTiles(card).forEach(function (x) { if (x.T === T) st = x; });
+  if (!st) return;
+  if (st.implied) {                                   // 3PT under a settled GRAVITY: it goes when GRAVITY goes
+    ballotSheetRepaint(card, T, "nope");
+    buzz(20);
+    ballotToast("3PT comes with GRAVITY. Take GRAVITY off first.");
+    return;
+  }
+  var resp = st.lit ? "no" : "yes";
+  var prev = card.mine[T.name] || "";
+  card.mine[T.name] = resp;
+  if (card.tally) delete card.tally[T.name];
+  ballotRender(card);
+  ballotSheetRepaint(card, T, st.lit ? "lift" : "print");
+  buzz(st.lit ? 8 : 12);
+  ballotEnqueue({ card: card, T: T, resp: resp, prev: prev, qid: ballotQidFor(card, T), tries: 0, sheet: true });
+}
+// The crowd's count on a tile, once the vote lands: "64% say yes · 37 votes" (the count alone below the minimum).
+function ballotTileTally(card, T, d) {
+  if (!d) return;
+  var total = (d.yes || 0) + (d.no || 0) + (d.unsure || 0);
+  var line = (d.mode === "pct" && d.yes_pct != null ? (d.yes_pct >= 50 ? d.yes_pct + "% say yes" : (100 - d.yes_pct) + "% say no")
+    : (d.yes || 0) + " yes, " + (d.no || 0) + " no") + " \u00B7 " + total + (total === 1 ? " vote" : " votes");
+  card.tally = card.tally || {};
+  card.tally[T.name] = line;
+  var sh = el("btSheet"), cur = BALLOT.cur;
+  var tile = cur && cur.sheet && cur.card === card && sh ? sh.querySelector('.bt-tog[data-trait="' + T.id + '"]') : null;
+  var node = tile && tile.querySelector(".bt-tog-tally");
+  if (!node) return;
+  node.textContent = line;
+  tmReplay(node, "is-in");
+  var st = null;
+  ballotSheetTiles(card).forEach(function (x) { if (x.T === T) st = x; });
+  if (st) tile.setAttribute("data-sig", ballotTileSig(card, st));
 }
 // The tag glossary: every trait's code and its one-line definition, in the
 // ballot's groups. names (optional) limits it to those traits (the pool legend).
@@ -2893,8 +3032,8 @@ function ballotSheetClick(ev) {
   var t = ev.target.closest ? ev.target : null;
   if (!t) return;
   var cur = BALLOT.cur;
-  var tile = t.closest(".bt-tile");
-  if (tile && cur) { ballotOpenAsk(cur.card, tile.getAttribute("data-trait")); return; }
+  var tile = t.closest(".bt-tog");
+  if (tile && cur && cur.sheet) { ballotToggle(cur.card, tile.getAttribute("data-trait")); return; }
   var big = t.closest(".bt-big");
   if (big && cur && cur.T) { ballotAnswer(cur.card, cur.T, big.getAttribute("data-v")); return; }
   if (t.closest(".bt-change") && cur && cur.T) {
@@ -2931,6 +3070,11 @@ function ballotAnswer(card, T, resp) {
   ballotEnqueue({ card: card, T: T, resp: resp, prev: prev, qid: qid, tries: 0 });
 }
 function ballotEnqueue(job) {
+  // a quick change of heart on the same tag rides the vote still waiting to go (v60: the sheet's toggles)
+  for (var i = 0; i < BALLOT.queue.length; i++) {
+    var q = BALLOT.queue[i];
+    if (q.card === job.card && q.T === job.T) { q.resp = job.resp; q.sheet = q.sheet || job.sheet; ballotPump(); return; }
+  }
   BALLOT.queue.push(job);
   ballotPump();
 }
@@ -2953,8 +3097,9 @@ function ballotPump() {
     if (x && x.ok) {
       if (!job.card.qids[job.T.name]) job.card.qids[job.T.name] = job.qid;
       analyticsTrack("traits_vote", { surface: "results_card", action: job.resp, challenge: job.qid, outcome: x.outcome,
-        value: Date.now() - t0, source: "card", sid: ballotSid() });
-      ballotShowResult(job.card, job.T, job.resp, x.display || null, x.consensus || null);
+        value: Date.now() - t0, source: "card", variant: job.sheet ? "sheet" : "", sid: ballotSid() });
+      if (job.sheet) ballotTileTally(job.card, job.T, x.display || null);
+      else ballotShowResult(job.card, job.T, job.resp, x.display || null, x.consensus || null);
     } else if (x && x.reason === "rate_limited" && job.tries < 2) {
       job.tries++; BALLOT.lastPost = Date.now(); BALLOT.queue.unshift(job);
     } else ballotFailed(job, (x && x.reason) || "bad_reply");
@@ -2965,6 +3110,7 @@ function ballotFailed(job, why) {
   if (job.card.mine[job.T.name] === job.resp) {
     if (job.prev) job.card.mine[job.T.name] = job.prev; else delete job.card.mine[job.T.name];
     ballotRender(job.card);
+    ballotSheetRepaint(job.card, job.T, "");
   }
   analyticsTrack("traits_vote", { surface: "results_card", action: job.resp, challenge: job.qid, outcome: "error_" + why, source: "card", sid: ballotSid() });
   var cur = BALLOT.cur;
@@ -3027,71 +3173,122 @@ function ballotShowResult(card, T, resp, d, c) {
   if (done && document.activeElement && document.activeElement.closest && document.activeElement.closest("#btSheet")) done.focus();
 }
 
-/* ---- the one-time glove ---- */
+/* ---- the glove ---- */
 // The white glove, one drawing: this hint and the HOW TO PLAY demo both use it.
 var GLOVE_PATH = '<path d="M19 4c-2.2 0-3.6 1.6-3.6 3.8v16.4l-2.9-3.1c-1.5-1.6-3.9-1.7-5.4-.3-1.5 1.4-1.6 3.8-.2 5.4l9.6 11.2c2.1 2.5 5.2 3.9 8.5 3.9h5.5c5.6 0 10.1-4.5 10.1-10.1v-9.4c0-2-1.6-3.6-3.6-3.6-.7 0-1.3.2-1.8.5-.4-1.6-1.9-2.8-3.6-2.8-.9 0-1.7.3-2.3.8-.6-1.3-1.9-2.2-3.4-2.2-.8 0-1.5.2-2.1.6V7.8C22.6 5.6 21.2 4 19 4z" stroke-width="2.4" stroke-linejoin="round"/>';
-var BALLOT_HINT = null;
+// v60 (the owner: the glove tapping a card's "+" "doesn't work ... pretty much never worked if you're scrolling"). It
+// was a fixed-position hand placed from one snapshot of the page, killed for good (and marked seen) by the first
+// touch anywhere, so a thumb that was scrolling ended it before it ever played. Now the hand rides inside a card (it
+// scrolls with it) and plays on whichever card is most on screen once the page has held still for half a second; a
+// scroll only calls it off, and it plays again when the page settles. It retires once you tap a tag or a "+" (you
+// know the trick) or after it has played through three times (once per results screen), and until then the first
+// card's "+" breathes a halftone ring.
+var BALLOT_HINT = null;          // the play under way: { hand, card, timers }
+var BALLOT_HINT_ARM = null;      // this results screen's watcher
+var BALLOT_HINT_PLAYS_KEY = "tb-hint-n", BALLOT_HINT_MAX = 3;
 function ballotHintSeen() { try { return localStorage.getItem(BALLOT_HINT_KEY) === "1"; } catch (e) { return true; } }
-function ballotHintStop() {
+function ballotHintAbort() {
   if (!BALLOT_HINT) return;
   var H = BALLOT_HINT; BALLOT_HINT = null;
   H.timers.forEach(clearTimeout);
   if (H.hand && H.hand.parentNode) H.hand.parentNode.removeChild(H.hand);
-  document.querySelectorAll(".bt-tag.pressed").forEach(function (b) { b.classList.remove("pressed"); });
-  document.removeEventListener("pointerdown", ballotHintStop, true);
-  try { localStorage.setItem(BALLOT_HINT_KEY, "1"); } catch (e) {}
+  if (H.card) H.card.querySelectorAll(".bt-tag.pressed").forEach(function (b) { b.classList.remove("pressed"); });
+}
+function ballotHintDisarm() {
+  var A = BALLOT_HINT_ARM;
+  if (!A) return;
+  BALLOT_HINT_ARM = null;
+  clearInterval(A.poll);
+  if (A.io) A.io.disconnect();
+  window.removeEventListener("scroll", A.onMove);
+  window.removeEventListener("resize", A.onMove);
+  A.cards.forEach(function (c) { c.classList.remove("bt-cue"); });
+}
+// The player has used a tag or a "+": the lesson is learned, for good.
+function ballotHintStop() {
+  var live = !!(BALLOT_HINT || BALLOT_HINT_ARM);
+  ballotHintAbort();
+  ballotHintDisarm();
+  if (live) try { localStorage.setItem(BALLOT_HINT_KEY, "1"); } catch (e) {}
 }
 function ballotOverlayUp() {
   return !!document.querySelector(".np-overlay, .hh-overlay, .reel-overlay, .rules-overlay, .bt-sheet.on");
 }
 function ballotArmHint() {
-  if (ballotHintSeen() || !window.IntersectionObserver) return;
-  var first = document.querySelector(".bt-card");
-  if (!first) return;
-  var poll = 0;
-  var io = new IntersectionObserver(function (ents) {
-    var vis = ents[0] && ents[0].isIntersecting;
-    clearInterval(poll);
-    if (!vis) return;
-    poll = setInterval(function () {
-      if (!document.body.contains(first)) { clearInterval(poll); io.disconnect(); return; }
-      if (ballotOverlayUp()) return;
-      clearInterval(poll); io.disconnect();
-      var go = function () { setTimeout(function () { if (document.body.contains(first) && !ballotOverlayUp()) ballotHintPlay(first); }, 700); };
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go();
-    }, 400);
-  }, { threshold: 0.9 });
-  io.observe(first);
+  ballotHintAbort();
+  ballotHintDisarm();
+  if (ballotHintSeen()) return;
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".rr .bt-card"));
+  if (!cards.length) return;
+  var A = BALLOT_HINT_ARM = { cards: cards, vis: [], still: Date.now(), played: false, io: null, poll: 0, onMove: null };
+  cards[0].classList.add("bt-cue");
+  if (window.IntersectionObserver) {
+    A.io = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) { var k = cards.indexOf(en.target); if (k >= 0) A.vis[k] = en.intersectionRatio; });
+    }, { threshold: [0, 0.25, 0.5, 0.75, 0.9, 1] });
+    cards.forEach(function (c) { A.io.observe(c); });
+  } else cards.forEach(function (c, k) { A.vis[k] = k ? 0 : 1; });
+  A.onMove = function () { A.still = Date.now(); if (BALLOT_HINT) ballotHintAbort(); };
+  window.addEventListener("scroll", A.onMove, { passive: true });
+  window.addEventListener("resize", A.onMove, { passive: true });
+  A.poll = setInterval(function () {
+    if (BALLOT_HINT_ARM !== A) return;
+    if (!document.body.contains(cards[0])) { ballotHintDisarm(); return; }
+    if (A.played || BALLOT_HINT || document.hidden || ballotOverlayUp()) return;
+    if (Date.now() - A.still < 550) return;
+    var best = -1, bv = 0.6;                          // the card most on screen, at least 60% of it
+    A.vis.forEach(function (v, k) { if (v > bv + 1e-6) { bv = v; best = k; } });
+    if (best >= 0) ballotHintPlay(A, cards[best]);
+  }, 200);
 }
-function ballotHintPlay(cardEl) {
+function ballotHintPlay(A, cardEl) {
   if (BALLOT_HINT || ballotHintSeen()) return;
-  var tag = cardEl.querySelector(".bt-tag:not(.q):not(.add)") || cardEl.querySelector(".bt-tag:not(.add)");
-  var plus = cardEl.querySelector(".bt-tag.add");
-  if (!tag || !plus) return;
+  // the tags can re-render under the hand (the labels land), so each step finds its chip afresh
+  function tagEl() { return cardEl.querySelector(".bt-tag:not(.q):not(.add)") || cardEl.querySelector(".bt-tag:not(.add)"); }
+  function plusEl() { return cardEl.querySelector(".bt-tag.add"); }
+  var tag = tagEl(), plus = plusEl();
+  if (!plus) return;
   var reduce = reducedMotion();
   var hand = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   hand.setAttribute("viewBox", "0 0 48 48"); hand.setAttribute("aria-hidden", "true");
   hand.setAttribute("class", "bt-hand");
   hand.innerHTML = GLOVE_PATH;
-  document.body.appendChild(hand);
-  var H = BALLOT_HINT = { hand: hand, timers: [] };
+  cardEl.appendChild(hand);
+  var H = BALLOT_HINT = { hand: hand, card: cardEl, timers: [] };
   function later(fn, ms) { H.timers.push(setTimeout(function () { if (BALLOT_HINT === H) fn(); }, ms)); }
-  function at(node) { var r = node.getBoundingClientRect(); hand.style.left = (r.left + r.width * 0.55) + "px"; hand.style.top = (r.top + r.height * 0.45) + "px"; }
-  function tapAt(node, t) {
-    later(function () { hand.classList.add("tap"); node.classList.add("pressed"); }, t);
-    later(function () { hand.classList.remove("tap"); node.classList.remove("pressed"); }, t + 180);
+  function at(node) {                                   // in the card's own box, so the hand scrolls with it
+    var cb = cardEl.getBoundingClientRect(), r = node.getBoundingClientRect();
+    hand.style.left = (r.left - cb.left + r.width * 0.55) + "px"; hand.style.top = (r.top - cb.top + r.height * 0.45) + "px";
   }
-  document.addEventListener("pointerdown", ballotHintStop, true);
+  function tapAt(find, t, ink) {
+    var node = null;
+    later(function () {
+      node = find();
+      if (!node) return;
+      at(node);
+      hand.classList.add("tap"); node.classList.add("pressed");
+      if (ink && !reduce) inkPrint(cardEl, node, "");   // the "+" answers the glove with a small print
+    }, t);
+    later(function () { hand.classList.remove("tap"); if (node) node.classList.remove("pressed"); }, t + 200);
+  }
+  var t0 = 30;
   later(function () {
-    hand.style.transition = "none"; at(tag);
+    var first = tagEl() || plusEl();
+    hand.style.transition = "none"; if (first) at(first);
     if (!reduce) { hand.style.transform = "translate(40px,50px)"; void hand.getBoundingClientRect(); }
     hand.style.transition = ""; hand.style.transform = ""; hand.classList.add("show");
-  }, 30);
-  tapAt(tag, 1000); tapAt(tag, 1450);
-  later(function () { at(plus); }, 2000);
-  tapAt(plus, 2550);
-  later(function () { hand.classList.remove("show"); }, 3000);
-  later(ballotHintStop, 3400);
+  }, t0);
+  var t = 1000;
+  if (tag) { tapAt(tagEl, t); t += 1150; later(function () { var p = plusEl(); if (p) at(p); }, t - 450); }
+  tapAt(plusEl, t, true); tapAt(plusEl, t + 520, false);
+  later(function () { hand.classList.remove("show"); }, t + 1050);
+  later(function () {
+    ballotHintAbort();
+    A.played = true;
+    var n = 0;
+    try { n = (+localStorage.getItem(BALLOT_HINT_PLAYS_KEY) || 0) + 1; localStorage.setItem(BALLOT_HINT_PLAYS_KEY, String(n)); } catch (e) {}
+    if (n >= BALLOT_HINT_MAX) { ballotHintDisarm(); try { localStorage.setItem(BALLOT_HINT_KEY, "1"); } catch (e) {} }
+  }, t + 1400);
 }
 
 /* ---------- community labels on the classic draft pool (v47.9) ----------
@@ -8877,8 +9074,15 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v59.6";
+var BUILD_V = "v60";
+// v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
+// a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
+function testServer() {
+  var h = String(location.hostname || "").toLowerCase();
+  return !(h === "true82.net" || h === "www.true82.net" || h === "localhost" || h === "127.0.0.1" || h === "[::1]" || /\.localhost$/.test(h));
+}
 function footSeg(txt) { return '<span class="foot-seg">' + txt + "</span>"; }
+function footBuild() { return footSeg(BUILD_V + (testServer() ? " \u00B7 test server, nothing saved" : "")); }
 // Footer stat line — finished drafts per mode + Presti winrate (82-0 with OR without
 // the Hot Hand), read from D1 via /api/stats: the same store /avocado reads, so the
 // footer can't disagree with the dashboard. Fails soft: on any error the footer
@@ -8889,7 +9093,7 @@ function setFootStats(d) {
   if (!el) return;
   if (!d || typeof d.presti !== "number" ||
       !((d.presti || 0) + (d.classic || 0) + (d.pro || 0))) {
-    el.innerHTML = footSeg(BUILD_V);
+    el.innerHTML = footBuild();
     return;
   }
   var rate = d.presti ? Math.round(1000 * (d.presti82 || 0) / d.presti) / 10 : 0;
@@ -8898,12 +9102,12 @@ function setFootStats(d) {
     footSeg((d.classic || 0).toLocaleString() + " Classic drafts"),
     footSeg((d.pro || 0).toLocaleString() + " Pro drafts"),
     footSeg("Presti WR " + rate + "%"),
-    footSeg(BUILD_V)
+    footBuild()
   ].join(" | ");
 }
 function fetchFootStats() {
   var fe = document.getElementById("footStats");
-  if (fe && !fe.innerHTML) fe.innerHTML = footSeg(BUILD_V);   // visible before (or without) the stats reply
+  if (fe && !fe.innerHTML) fe.innerHTML = footBuild();   // visible before (or without) the stats reply
   try {
     fetch("/api/stats")
       .then(function (r) { return r.json(); })

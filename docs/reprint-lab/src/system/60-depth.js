@@ -8,7 +8,9 @@
      keycap   one solid slab, the button's own ink pushed toward the shadow, and the same press
    Keycap, offset, halftone and sticker buttons already carry depth; they are left as they are.
    The base (recipe key "depthBase"): "ink" is the stacked pair above; "white" puts white under every button's own
-   slab instead (the owner, 2026-09-26: pink over aqua and aqua over pink "is a bit intense", try white).
+   slab instead (the owner, 2026-09-26: pink over aqua and aqua over pink "is a bit intense", try white); "shade" cuts
+   both slabs from the button's own ink pushed toward the shadow, a deep cut under a deeper one, so the lit tube stands
+   on a solid block of its own color (the owner, 2026-09-27: "change to darker hues of the buttons current color").
    Colors come from the controls layer's family variables (--k-*) and the neon layer's second tube
    (--lab-neon2), so depth follows every palette. Rules sit under a seven-id boost: they restate the
    style's own shadow (glow included) with the base added, so they must outrank the neon amount layer. */
@@ -17,7 +19,7 @@
   LAB.SYS.btnDepth = [["flat", "Flat"], ["stacked", "Stacked"], ["keycap", "Keycap"]];
   LAB.SYS_DEFAULT.btnDepth = "flat";
   LAB.DEFAULT.btnDepth = "flat";
-  LAB.SYS.depthBase = [["ink", "Second ink"], ["white", "White"]];
+  LAB.SYS.depthBase = [["ink", "Second ink"], ["white", "White"], ["shade", "Own shade"]];
   LAB.SYS_DEFAULT.depthBase = "ink";
   LAB.DEFAULT.depthBase = "ink";
 
@@ -38,12 +40,14 @@
     var glow = neon ? ", 0 0 0 1px " + mix("var(--k-neon)", 30) + ", 0 0 8px " + mix("var(--k-neon)", 60) + ", 0 0 20px -2px " + mix("var(--k-neon)", 45) + ", inset 0 0 9px " + mix("var(--k-neon)", 32) : "";
     var glowP = neon ? ", 0 0 0 1px " + mix("var(--k-neon)", 30) + ", 0 0 14px " + mix("var(--k-neon)", 60) + ", 0 0 32px -2px " + mix("var(--k-neon)", 45) + ", inset 0 0 9px " + mix("var(--k-neon)", 32) : "";
     // the slabs' inks: the button's own, then the other one (secondaries swap, so the pair reads both ways), or
-    // white under every button when the base is white
-    var white = rc.depthBase === "white";
+    // white under every button when the base is white, or two darker cuts of the button's own ink (72% then 40% of
+    // it over the shadow) when the base is its own shade
+    var base = rc.depthBase || "ink", white = base === "white", shade = base === "shade";
     var own = neon ? "var(--k-neon)" : "var(--k-edge)";
-    var second = white ? "var(--t-light)" : neon ? "var(--lab-neon2, var(--t-offset))" : "var(--c-off, var(--t-offset))";
-    s += rule(X + is(SHAPED) + NOT, "--dp-1: " + own + "; --dp-2: " + second + ";");
-    if (!white) s += rule(X + is(F.sec) + NOT, "--dp-2: " + (neon ? "var(--t-accent)" : "var(--k-edge)") + ";");
+    var first = shade ? mix(own, 72, "var(--t-shadow)") : own;
+    var second = shade ? mix(own, 40, "var(--t-shadow)") : white ? "var(--t-light)" : neon ? "var(--lab-neon2, var(--t-offset))" : "var(--c-off, var(--t-offset))";
+    s += rule(X + is(SHAPED) + NOT, "--dp-1: " + first + "; --dp-2: " + second + ";");
+    if (!white && !shade) s += rule(X + is(F.sec) + NOT, "--dp-2: " + (neon ? "var(--t-accent)" : "var(--k-edge)") + ";");
     if (d === "stacked") {
       s += rule(A, "box-shadow: 0 3px 0 0 var(--dp-1), 0 6px 0 0 var(--dp-2)" + glow + "; transform: none; transition: transform 70ms ease, box-shadow 70ms ease;");
       s += rule(A + PRESS, "transform: translateY(6px); box-shadow: 0 0 0 0 var(--dp-1), 0 0 0 0 var(--dp-2)" + glowP + ";");

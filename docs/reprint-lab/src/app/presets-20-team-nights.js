@@ -12,8 +12,8 @@
     // v53 (owner: "more neon, less riso and hand-drawn, closer to the ball icon"): the name is lit neon tubes in the
     // icon's own inks (a pink script TRUE, an aqua 82), on a smooth stock; the icon keeps its print and stacked depth.
     { id: "team-nights-vice", name: "Heat Vice", line: "A neon sign over a South Beach sunset.",
-      note: "Pink and aqua on midnight, like the Vice jerseys: the name in neon tubes over a neon grid, a ball rising through the net. Glowing buttons stand on a stacked base, their own ink over white; wins print aqua and losses pink, and the votes and tags follow them; upright Big Shoulders type.",
-      rc: { neon: "more", btnDepth: "stacked", depthBase: "white", wl: "swap", votes: "wl", palette: "vice", ground: "night", layout: "inline", font: "yellowtail", font82: "bigshoulders", ink82: "a",
+      note: "Pink and aqua on midnight, like the Vice jerseys: the name in neon tubes over a neon grid, a ball rising through the net. Glowing buttons stand on a stacked base cut from their own ink, a deep shade over a deeper one; wins print aqua and losses pink, and the votes and tags follow them; upright Big Shoulders type.",
+      rc: { neon: "more", btnDepth: "stacked", depthBase: "shade", wl: "swap", votes: "wl", palette: "vice", ground: "night", layout: "inline", font: "yellowtail", font82: "bigshoulders", ink82: "a",
         wordTex: "neon", neonInk: "icon", tooth: 0,
         depth: "stack", concept: "hoop-sunrise", iconStyle: "print", backdrop: "grid", adds: ["star"],
         btn: "neon", card: "outline", chip: "ink", corners: "round", texture: "none", disp: "bigshoulders", body: "rubik", mono: "spacemono" } },

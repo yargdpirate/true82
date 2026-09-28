@@ -47,7 +47,7 @@ const RID_COOKIE = "t82_rid";
 const ID_RE = /^v1-[A-Za-z0-9-]{16,60}$/;
 const QID_RE = /^[a-z0-9][a-z0-9-]{2,78}$/;
 const RESPONSES = new Set(["yes", "no", "unsure"]);
-const SOURCES = new Set(["home_module", "results_prompt", "direct", "link", "session", "share", "card", "record"]);
+const SOURCES = new Set(["home_module", "home_more", "results_prompt", "direct", "link", "session", "share", "card", "record"]);
 const SESSION_SIZE = 5;
 
 const DEFAULT_RULES = {
@@ -388,8 +388,11 @@ async function handleGet(context) {
   // this rule governs algorithmic feeds and homepage/results recommendations.
   const voter = await voterKey(request, url.searchParams.get("sid"));
   const pinnedId = cleanQid(url.searchParams.get("q"));
+  // v60: a device's whole recent history rides along (answered, passed and merely shown; the owner: "we're trying
+  // to get it as much as possible that [repeats don't] happen"), so the cap is 160 and the skip runs in code below,
+  // clear of D1's bound-parameter limit.
   const excluded = String(url.searchParams.get("exclude") || "")
-    .split(",").map(cleanQid).filter(Boolean).slice(0, 48);
+    .split(",").map(cleanQid).filter(Boolean).slice(0, 160);
 
   const picked = [];
   const seen = new Set(excluded);
@@ -415,8 +418,6 @@ async function handleGet(context) {
 
   async function fillTier(tier) {
     if (picked.length >= SESSION_SIZE) return;
-    const skip = Array.from(seen).slice(0, 64);
-    const skipSql = skip.length ? `AND q.id NOT IN (${skip.map(() => "?").join(",")})` : "";
     // v47.16 VARIETY WITH A QUALITY FLOOR: the old score carried a 0-24
     // jitter that was too weak to reorder anything against a +60 starvation
     // term, so every new voter saw the same five in the same order. Now the
@@ -424,8 +425,9 @@ async function handleGet(context) {
     // jitter), a pool of the top 18 is cut, and the session draws from that
     // pool at random. Every session is a different hand dealt from the same
     // strong deck; a question ranked 40th on quality can never sneak in.
+    // v60: the rows this device has seen are skipped in code: the top 18 of the
+    // rest are always inside the top 18 + |seen| by score.
     const rows = await env.DB.prepare(`
-      SELECT * FROM (
         SELECT q.id, q.trait_id, q.player_name, q.season, q.season_label,
                q.prompt_override, q.status, t.display_name trait_name,
                t.short_definition definition,
@@ -445,12 +447,12 @@ async function handleGet(context) {
         LEFT JOIN trait_votes_v1 mine ON mine.question_id = q.id AND mine.voter_hash = ?
         WHERE q.status = 'active'
           AND ${tierPredicate(tier)}
-          ${skipSql}
         ORDER BY score DESC
-        LIMIT 18
-      ) ORDER BY RANDOM()`).bind(voter.hash, ...skip).all()
+        LIMIT ?`).bind(voter.hash, 18 + seen.size).all()
       .then((r) => r.results || []).catch(() => []);
-    for (const row of rows) {
+    const deck = rows.filter((row) => !seen.has(row.id)).slice(0, 18);
+    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const x = deck[i]; deck[i] = deck[j]; deck[j] = x; }
+    for (const row of deck) {
       if (picked.length >= SESSION_SIZE) break;
       if (!seen.has(row.id)) { picked.push(row); seen.add(row.id); }
     }
@@ -524,6 +526,17 @@ async function handleVote(context) {
   const rules = await loadRules(env.DB);
   const voter = await voterKey(request, body.sid);
   const now = Date.now();
+
+  // v60 THE MOCK DATABASE (_middleware.js): a test server's vote is counted in this reply only. The standing tally
+  // comes from the real database with this vote added, so the page reacts as it would live; nothing is written.
+  if (context.data && context.data.mockDb) {
+    const base = question ? await consensusFor(env.DB, question.id, rules) : snapshot(0, 0, 0, null, "unresolved", rules);
+    const yes = base.yes_count + (response === "yes" ? 1 : 0), no = base.no_count + (response === "no" ? 1 : 0);
+    const unsure = base.unsure_count + (response === "unsure" ? 1 : 0), share = yes + no > 0 ? yes / (yes + no) : null;
+    const consensus = snapshot(yes, no, unsure, share, base.status, rules);
+    return json({ ok: true, outcome: "counted", mock: true, voter_class: voter.klass, consensus,
+      vote: { response, answer_count: 1 }, display: displayFor(consensus, response, rules) });
+  }
 
   // Velocity fence: protects against scripts and refresh spam, never against
   // enthusiasm. A brigade of real fans each carries its own voter hash. Keyed

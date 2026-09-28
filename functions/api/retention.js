@@ -95,7 +95,8 @@ export async function onRequest(context) {
   try {
     const fields = Object.keys(row);
     const sql = `INSERT OR IGNORE INTO retention_events_v1 (${fields.join(",")}) VALUES (${fields.map(() => "?").join(",")})`;
-    await env.DB.prepare(sql).bind(...fields.map((k) => row[k])).run();
+    // v60: a test server's retention event is dropped (_middleware.js); the identity cookie still works there
+    if (!(context.data && context.data.mockDb)) await env.DB.prepare(sql).bind(...fields.map((k) => row[k])).run();
     const headers = {};
     if (!cookieId && bodyId) headers["set-cookie"] = `${RID_COOKIE}=${bodyId}; Max-Age=${MAX_AGE_SECONDS}; Path=/; Secure; HttpOnly; SameSite=Lax`;
     const signals = [];

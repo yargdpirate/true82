@@ -52,15 +52,17 @@ export async function onRequest(context) {
 
   if (!SLUG_RE.test(id)) return plain("not found", 404);
 
+  // v60 THE MOCK DATABASE (_middleware.js): a test server neither publishes an edition nor counts a view
+  const mock = !!(context.data && context.data.mockDb);
   if (request.method === "POST" && url.searchParams.get("open") === "1") {
-    if (!env.DB) return new Response(null, { status: 204, headers: noStoreHeaders() });
+    if (!env.DB || mock) return new Response(null, { status: 204, headers: noStoreHeaders() });
     try {
       await env.DB.prepare("UPDATE recaps SET views_human=views_human+1 WHERE id=?").bind(id).run();
     } catch (_) {}
     return new Response(null, { status: 204, headers: noStoreHeaders() });
   }
 
-  if (request.method === "POST") return publish(request, env, id);
+  if (request.method === "POST") return mock ? json({ ok: true, id, created: true, mock: true }, 201) : publish(request, env, id);
   if (request.method !== "GET" && request.method !== "HEAD") return plain("method", 405);
   if (!env.DB) return unavailablePage(request.method === "HEAD", 503);
 
@@ -79,7 +81,7 @@ export async function onRequest(context) {
     return new Response(null, { status: 200, headers: pageHeaders() });
   }
 
-  if (context.waitUntil) {
+  if (context.waitUntil && !mock) {
     context.waitUntil(env.DB.prepare("UPDATE recaps SET views_raw=views_raw+1 WHERE id=?").bind(id).run().catch(() => {}));
   }
   return new Response(renderEdition(row, url.origin), { status: 200, headers: pageHeaders() });

@@ -41,7 +41,7 @@ A finding always names the nearest token. `node tools/stylefix.js <file> --write
 
 ### Named shades (recipes over the roles)
 
-`accent-face` (keycap face), `accent-glow` (focus rings, hot meter steps), `good-soft` / `bad-soft` (good and bad as calm text), `good-top/face/edge/ink` and `bad-top/face` (the green and red keycaps), `bad-hi` (money going out), `warn` (money running low), `hot-hi`, `hot-glow`, `text-3` (disabled), `off-face/edge/ink` (a disabled keycap), `overlay-warm` (the Heat Check), `metal-deep`, `metal-dark`, and the Tribune's `news-ink`, `news-ink-2`, `news-red`.
+`accent-face` (keycap face), `accent-glow` (focus rings, hot meter steps), `accent-slab` / `accent-base` and `offset-slab` / `offset-base` (v60: a stacked neon button's two slabs, its own ink cut to 72% and 40% toward the shadow; look.css builds the same pair from each button's own ink), `good-soft` / `bad-soft` (good and bad as calm text), `good-top/face/edge/ink` and `bad-top/face` (the green and red keycaps), `bad-hi` (money going out), `warn` (money running low), `hot-hi`, `hot-glow`, `text-3` (disabled), `off-face/edge/ink` (a disabled keycap), `overlay-warm` (the Heat Check), `metal-deep`, `metal-dark`, and the Tribune's `news-ink`, `news-ink-2`, `news-red`.
 
 A shade is `[name, role, percent, partner]` in `SHADES` in `tools/theme-core.js`: the role mixed with its partner, computed ahead of time. Need a shade the theme lacks? Add a recipe there, run `node tools/theme.js`, use the new token.
 

@@ -18,8 +18,22 @@ const MD_PAGES = {
   "/can-you-go-82-0/": "/md/can-you-go-82-0.md"
 };
 
+// v60 THE MOCK DATABASE (the owner, 2026-09-27: test runs must not pollute his analytics; "I only want any reads on
+// /avocado from traffic originating at the specific domain true82.net, not the various other test server urls from
+// cloudflare"). Only true82.net (and www) writes to the database; a local dev server writes to its own local D1.
+// Every other host (the branch previews, <hash>.true82.pages.dev, the true82.pages.dev alias) runs on a mock: it
+// reads the real database, so a preview looks real, and its writes (events, retention, votes, Tribune editions and
+// their view counts) are accepted and dropped. Each writer reads context.data.mockDb; if this middleware ever did
+// not run, the flag is absent and writes land (production data is never the thing that fails closed).
+const LIVE_HOSTS = new Set(["true82.net", "www.true82.net"]);
+function writesLand(hostname) {
+  const h = String(hostname || "").toLowerCase();
+  return LIVE_HOSTS.has(h) || h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h.endsWith(".localhost");
+}
+
 export async function onRequest(context) {
   const { request, env, next } = context;
+  try { if (context.data) context.data.mockDb = !writesLand(new URL(request.url).hostname); } catch (e) {}
   if (request.method !== "GET" && request.method !== "HEAD") return next();
   const accept = request.headers.get("accept") || "";
   if (accept.indexOf("text/markdown") === -1) return next();

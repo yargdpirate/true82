@@ -256,7 +256,11 @@
       var r = P.reg[L.ink], c = clips ? clips[i] : null;
       if (c === 0) return;
       x.globalAlpha = P.TH.dark && L.ink === "blue" ? KEY_ON_DARK : 1;    // on dark stock the key ink is a glow, not the shadow
-      if (c) { x.save(); x.beginPath(); x.rect(c[0], c[1], c[2], c[3]); x.clip(); x.drawImage(L.c, r[0], r[1]); x.restore(); }
+      if (c) {                                                             // a clip is one rect or a list of them
+        x.save(); x.beginPath();
+        (Array.isArray(c[0]) ? c : [c]).forEach(function (q) { x.rect(q[0], q[1], q[2], q[3]); });
+        x.clip(); x.drawImage(L.c, r[0], r[1]); x.restore();
+      }
       else x.drawImage(L.c, r[0], r[1]);
     });
     x.globalAlpha = 1;
@@ -356,12 +360,12 @@
       if (x <= L.X1) return WL - SC * cr((x - L.X0) / (L.X1 - L.X0) * 82) + rough(x) * smoothstep(L.X0, L.X0 + 32, x);
       return lerp(yEnd, WL + 26 * vs, smoothstep(L.X1, L.X1 + 90, x)) + rough(x);
     }
-    // v53, the owner's gauge: the land and water fill with color only up to the win rate. The level
-    // sits wins/82 of the way from the foot of the frame to the ridge's highest point (82-0 fills it to
-    // the summit, 41-41 half way); above it the mountain is an empty outline and the lake runs dry.
-    var top = WL;
-    for (i = L.X0; i <= L.X1; i += 2) top = Math.min(top, front(i));
-    var fillY = L.FY1 - wp * (L.FY1 - top);
+    // The owner's gauge: the land and water fill with color only up to the win rate. v60 (the owner: "have
+    // the fill go from left to right instead of down to up"): the color runs in from the left edge of the
+    // frame and stops wins/82 of the way across, so 82-0 fills the whole picture, 41-41 the left half, and an
+    // 80-2 leaves a sliver of the right side an empty outline over a dry lake. (v53 to v59: it rose from the
+    // foot of the frame to the win rate of the ridge's height.)
+    var fillX = L.FX0 + wp * (L.FX1 - L.FX0);
     function U(x) { return clamp((x - L.X0) / (L.X1 - L.X0) * 82, 0, 82); }
     function far1(x) { return Math.min(WL - 10 * vs, WL - 64 * vs - 0.5 * SC * Math.max(0, avg(U(x), 7)) - 38 * vs * (1 - Math.abs(fbm(n2, x * 0.006, 4)))); }
     function far2(x) { return Math.min(WL - 30 * vs, WL - 118 * vs - 0.3 * SC * Math.max(0, avg(U(x), 14)) - 86 * vs * (1 - Math.abs(fbm(n3, x * 0.0045, 4)))); }
@@ -385,7 +389,7 @@
     for (var s = 1; s <= 7; s++) strata.push({ off: s * 21 * vs, n: noise1D(seed + 40 + s) });
     return { spec: spec, games: games, m: m, w: w, l: 82 - w, wp: wp, X: X, front: front, far1: far1, far2: far2, pal: pal,
       sr: sr, sx: sx, sy: sy, moon: moon, losses: losses, stars: stars, glints: glints, ripples: ripples, strata: strata,
-      top: top, fillY: fillY };
+      fillX: fillX };
   }
 
   function bake(P, D, L) { return bakeSteps(P, D, L).map(function (f) { return f(); }); }
@@ -451,9 +455,9 @@
         g2.restore();
       });
     }
-    // The land and water only print below the level (D.fillY: the win rate); the reveal clips these
-    // layers from the foot of the frame up, so the color rises into the outline the season just drew.
-    function levelClip(g) { g.beginPath(); g.rect(L.FX0 - 10, D.fillY, L.FX1 - L.FX0 + 20, L.FY1 - D.fillY + 10); g.clip(); }
+    // The land and water only print left of the fill's front (D.fillX: the win rate across the frame); the
+    // reveal clips these layers from the left edge on, so the color runs into the outline the season just drew.
+    function levelClip(g) { g.beginPath(); g.rect(L.FX0 - 10, L.FY0 - 10, D.fillX - L.FX0 + 10, L.FY1 - L.FY0 + 20); g.clip(); }
     function land(ink, fn) { return bakeLayer(P, ink, function (g) { g.save(); frameClip(g); levelClip(g); fn(g); g.restore(); strip(g, ink === LI ? "light" : ink); marks(g, 0.8); }); }
 
     var skyLight = function () { return sky(LI, function (g) {
@@ -538,15 +542,15 @@
     return [skyLight, skyPink, skyBlue, landLight, landPink, landBlue, shell];
   }
 
-  // The fill's surface: a thin line of the light ink across the land and water at level y (scene units).
-  function drawLevel(ctx, P, D, L, y) {
-    if (D.wp >= 1 || !(y < L.FY1 - 0.5)) return;
-    inkLive(ctx, P, D.pal.light, [L.FX0, y - 8, L.FX1, y + 8], function (g) {
+  // The fill's front: a thin upright line of the light ink down through the land and water at x (scene units).
+  function drawLevel(ctx, P, D, L, x) {
+    if (D.wp >= 1 || !(x > L.FX0 + 0.5)) return;
+    inkLive(ctx, P, D.pal.light, [x - 8, L.FY0, x + 8, L.FY1], function (g) {
       g.beginPath(); g.moveTo(L.FX0 - 10, L.FY1 + 10);
-      for (var x = L.FX0 - 10; x <= L.FX1 + 10; x += 2) g.lineTo(x, Math.min(D.front(x), L.WL));
+      for (var xx = L.FX0 - 10; xx <= L.FX1 + 10; xx += 2) g.lineTo(xx, Math.min(D.front(xx), L.WL));
       g.lineTo(L.FX1 + 10, L.FY1 + 10); g.closePath(); g.clip();
-      var h = 4 * Math.max(0.75, L.rs);
-      g.fillStyle = tone(1); g.fillRect(L.FX0, y - h / 2, L.FX1 - L.FX0, h);
+      var w = 4 * Math.max(0.75, L.rs);
+      g.fillStyle = tone(1); g.fillRect(x - w / 2, L.FY0, w, L.FY1 - L.FY0);
     });
   }
 
@@ -728,7 +732,7 @@
       P.print = cv(P.W, P.H);
       var pc = P.print.getContext("2d");
       composeTo(pc, P, layers, null);
-      drawLevel(pc, P, D, BANNER, D.fillY);
+      drawLevel(pc, P, D, BANNER, D.fillX);
       drawBannerTitle(pc, P, D, D.w, D.l);
     }
     function roster(alpha) {
@@ -738,7 +742,7 @@
     function still() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = "source-over"; ctx.drawImage(P.print, 0, 0); roster(1); }
     function rest() { if (reveal) return; if (defer && !played) { composeTo(ctx, P, layers, layers.map(function () { return 0; })); roster(0); } else still(); }
     // The reveal: the sky prints down, the season prints across (its line, its loss beads and the strip),
-    // then the color fills the land and water up to the win rate, then the names land.
+    // then the color runs across the land and water from the left to the win rate, then the names land.
     var T_SEASON = 0.62 + 82 * 0.018, T_FILL = 0.85;
     function frame() {
       if (!alive) return;
@@ -750,11 +754,12 @@
       for (i = 0; i < 3; i++) { var p = easeInOut((e - i * 0.16) / 0.42); clips.push(p <= 0 ? 0 : [0, 0, P.W, Math.ceil(P.H * p)]); }
       var gCount = clamp((e - 0.62) / 0.018, 0, 82), xr = gCount >= 82 ? P.W : Math.ceil(D.X(gCount) * P.k) + 1;
       var fp = 1 - Math.pow(1 - clamp((e - T_SEASON - 0.08) / T_FILL, 0, 1), 3);
-      var lvl = lerp(BANNER.FY1, D.fillY, fp), ly = Math.max(0, Math.floor(lvl * P.k));
-      for (i = 0; i < 3; i++) clips.push(e < 0.62 ? 0 : [0, ly, xr, P.H - ly]);   // the land and water fill up; the strip prints across
+      var fx = lerp(BANNER.FX0, D.fillX, fp), fxp = Math.max(0, Math.ceil(fx * P.k)), sy = Math.ceil((BANNER.FY1 + 6) * P.k);
+      // the land and water fill in from the left; the strip under them prints across with the season
+      for (i = 0; i < 3; i++) clips.push(e < 0.62 ? 0 : [[0, 0, fp > 0 ? fxp : 0, sy], [0, sy, xr, P.H - sy]]);
       clips.push(e < 0.62 ? 0 : [0, 0, xr, P.H]);                          // the season's line and its beads
       composeTo(ctx, P, layers, clips);
-      if (fp > 0) drawLevel(ctx, P, D, BANNER, lvl);
+      if (fp > 0) drawLevel(ctx, P, D, BANNER, fx);
       var n = Math.floor(gCount), w = 0;
       if (D.games) { for (i = 0; i < n; i++) w += D.games[i] ? 1 : 0; }
       else w = Math.round(D.w * n / 82);
@@ -820,7 +825,7 @@
         try {
           var out = cv(P.W, P.H), x = out.getContext("2d");
           composeTo(x, P, layers, null);
-          drawLevel(x, P, D, POSTER, D.fillY);
+          drawLevel(x, P, D, POSTER, D.fillX);
           drawPosterTitle(x, P, D, D.w, D.l);
           drawPosterFoot(x, P, spec);
           filterPixels(x, P.W, P.H, TH.filter);                       // the look's print filter (a negative on dark cards)
@@ -841,7 +846,7 @@
     var P = makePlate(W, BANNER.VW, BANNER.VH, spec.seed || 7, 2.35 * d, d, TH), D = derive(spec, BANNER), layers = bake(P, D, BANNER);
     var out = cv(P.W, P.H), g = out.getContext("2d");
     composeTo(g, P, layers, null);
-    drawLevel(g, P, D, BANNER, D.fillY);
+    drawLevel(g, P, D, BANNER, D.fillX);
     drawBannerTitle(g, P, D, D.w, D.l);
     var names = cv(P.W, P.H);
     drawRoster(names.getContext("2d"), TH, P.k, spec, BANNER, 1);
