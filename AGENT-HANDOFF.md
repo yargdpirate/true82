@@ -1,16 +1,49 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-**Current source of truth:** the GitHub repo. The v48 through v53 work lives on branch `c-code-clean` until it is merged to `main`.
+**Current source of truth:** the GitHub repo. Since 2026-09-27 (evening) `main` = `c-code-clean` = v59.6: the whole v48 to v59.6 line is LIVE on true82.net.
 
 **Date:** 2026-09-27
-**Build:** `v59.6`, pushed on branch `c-code-clean` (`BUILD_V = "v59.6"`; styles.css and app.js at `20260927-sigma-v59-6`, reel-riso.js at `20260927-tribune-v59-3`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). main and true82.net are untouched and still run v47: main auto-deploys, so never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
-**Most recent change:** section 00000o (read it first): v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v59.6`, pushed on branch `c-code-clean` (`BUILD_V = "v59.6"`; styles.css and app.js at `20260927-sigma-v59-6`, reel-riso.js at `20260927-tribune-v59-3`, look.css at `20260926-whitebase-v58-5`, sim-core.js, challenges.js and daily-core.js at `20260926-dailies-v58-4`, redraft-drafts.json at `20260926-realdraft-v58` via `REDRAFT_DATA_V`). The site WEARS the Heat Vice look (v52). Commits: `e857b6a` v51, `0f49b40` v51.1, `ac12743` v51.2, `657401c` v52, `d0cef45` v53, `2c32bd2` v54, `1c4b766` v55, `0563333` v56, `2abd068` v57, `c3b19e4` and `245a260` v58, `d1a6001`/`a10beb7` v58.1, `1c8cdde` v58.2, `df5091a` v58.3, `3d6e519` the 200 Dailies, `b6eb3c2` v58.4, v58.5 the white button base (00000i). MERGED: main was fast-forwarded to this line on 2026-09-27 at the owner's go ("playtested and we're g2g"); main auto-deploys, so still never push to it without the owner. Branch preview: https://c-code-clean.true82.pages.dev/. There is no v49 on this line: v49.x numbers belong to the `accounts-test` fork.
+**Most recent change:** section 00000p (read it first): v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000o. START HERE (2026-09-27, late): V59.4, the styled sigma on the aggregate value
+## 00000p. START HERE (2026-09-27, 18:15 MDT): V59.6 IS LIVE ON MAIN
+
+The owner, after playtesting the branch preview: "all good. prep the handoff so when it's read it's pushed to main.
+playetsted and we're g2g". Done: `main` was fast-forwarded to `c-code-clean` (v59.6; main had no commits of its own) and
+pushed, so true82.net deploys it by itself within minutes. From here, `main` and `c-code-clean` are the same line; keep
+working on `c-code-clean` and merge only on the owner's word.
+
+**What went live with it** (v47 to v59.6): everything in sections 000 to 00000o: the riso results and tag ballot
+(v50), the style system and Heat Vice (v51 to v52), the owner's tweak list (v53 to v57), THE REDRAFTED as Draft
+Night Do-Over with its real drafts (v55, v58, v59), the Daily archive (v56), the 200 new Dailies (POOL3), the new
+home (v59), the ink prints in the drafts (v59.1, v59.2), the steady Do-Over board, the month captions and the
+Tribune's one door (v59.3), the ΣV (v59.4 to v59.6).
+
+**The database is ready for it:** 0026 (his scout labels), 0027 (Hunted) and 0028 (accent names) were applied to
+D1 `true82` the same afternoon (section 00000k; the check read scout_yes 12770, scout_unsure 16451, hunted 1,
+unaccented 0, homepage 104).
+
+**Timing:** merged Sunday 2026-09-27 at 18:13 MDT, before `START3` (Monday 2026-09-28, Daily #79), so POOL3 starts on
+the day planned and no archive day is rewritten. (A player already past midnight elsewhere, UTC+6 and east, saw
+Monday's #79 from POOL2 for a few hours before the deploy landed; the archive shows POOL3's #79 for that day.)
+
+**First checks on true82.net after the deploy** (for the next session, or the owner): the footer reads v59.6; the
+home shows "Draft what wins" and votes in place; a Classic draft prints its coins and diamonds; results end with
+"See the Tribune article"; `https://true82.net/api/traits?op=labels&players=Kawhi%20Leonard~2019` returns scout
+tags (s:1).
+
+**Still open (the owner's, none blocking):**
+- A small server fix in functions/api/traits.js op=labels: names with a non-ASCII capital (Şengün, İlyasova,
+  Marčiulionis, Šarić, Abrines; 69 scout labels) never match (SQLite lower() is ASCII only). Section 00000k.
+- The iPhone SE toolbar spacing on the home (the vote buttons need a short scroll in Safari; section 00000l).
+- The favicon rework (00000g), the art bot clips in the ceremony (00000j, shelved for this ship), the deferred brief
+  items (00000h), branch previews sharing the production D1 (a Cloudflare setting).
+
+## 00000o. (2026-09-27, late) V59.4, the styled sigma on the aggregate value
 
 The owner: "Add a styled sigma sign to the aggregate player value on the results screen." The aggregate is the
 Scoring Card's Raw talent row (the sum of the five cards' V). Its amount is now "ΣV 12.7": a riso Σ in the display
