@@ -14,7 +14,13 @@
 "use strict";
 const fs = require("fs"), path = require("path"), { execFileSync } = require("child_process");
 const ROOT = path.join(__dirname, "..");
-const WRANGLER = process.env.WRANGLER || "/private/tmp/claude-501/-Users-ggz-true82/e9c38d0a-5a5c-4f39-bde5-b87ab002875b/scratchpad/wr/node_modules/.bin/wrangler";
+// wrangler: $WRANGLER, else an old session's local copy if it is still there, else npx wrangler@4 (signed in on the
+// owner's Mac; /private/tmp copies can vanish)
+const WR_LOCAL = "/private/tmp/claude-501/-Users-ggz-true82/e9c38d0a-5a5c-4f39-bde5-b87ab002875b/scratchpad/wr/node_modules/.bin/wrangler";
+const WRANGLER = process.env.WRANGLER || (fs.existsSync(WR_LOCAL) ? WR_LOCAL : null);
+function wrangler(args, opts) {
+  return WRANGLER ? wrangler(args, opts) : execFileSync("npx", ["--yes", "wrangler@4"].concat(args), opts);
+}
 const TRAITS = ["three-point-shooter", "super-three-point-shooter", "rim-pressurer", "off-ball-scorer", "tough-shot-maker", "playmaker",
   "iso-defender", "team-defender", "switchable-defender", "rim-protector", "clutch", "championship-number-one", "hunted",
   "ball-stopper", "ball-pounder", "foul-merchant", "stat-padder", "off-court-knucklehead"];
@@ -34,7 +40,7 @@ function readRows() {
     const out = execFileSync("sqlite3", ["-json", process.argv[i + 1], SQL.replace(/\s+/g, " ")], { maxBuffer: 1 << 28 }).toString();
     return out.trim() ? JSON.parse(out) : [];
   }
-  const out = execFileSync(WRANGLER, ["d1", "execute", "true82", "--remote", "--json", "--command", SQL.replace(/\s+/g, " ")],
+  const out = wrangler(["d1", "execute", "true82", "--remote", "--json", "--command", SQL.replace(/\s+/g, " ")],
     { cwd: require("os").tmpdir(), maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "ignore"] }).toString();
   const res = JSON.parse(out);
   if (!res[0] || !res[0].success) throw new Error("the D1 query failed");

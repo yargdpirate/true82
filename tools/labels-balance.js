@@ -10,7 +10,13 @@
 "use strict";
 const fs = require("fs"), path = require("path"), { execFileSync } = require("child_process");
 const ROOT = path.join(__dirname, "..");
-const WRANGLER = process.env.WRANGLER || "/private/tmp/claude-501/-Users-ggz-true82/e9c38d0a-5a5c-4f39-bde5-b87ab002875b/scratchpad/wr/node_modules/.bin/wrangler";
+// wrangler: $WRANGLER, else an old session's local copy if it is still there, else npx wrangler@4 (signed in on the
+// owner's Mac; /private/tmp copies can vanish)
+const WR_LOCAL = "/private/tmp/claude-501/-Users-ggz-true82/e9c38d0a-5a5c-4f39-bde5-b87ab002875b/scratchpad/wr/node_modules/.bin/wrangler";
+const WRANGLER = process.env.WRANGLER || (fs.existsSync(WR_LOCAL) ? WR_LOCAL : null);
+function wrangler(args, opts) {
+  return WRANGLER ? wrangler(args, opts) : execFileSync("npx", ["--yes", "wrangler@4"].concat(args), opts);
+}
 const SQL = "SELECT run_id, mode, ordinal, player, season, slot, source, challenge FROM events WHERE name = 'draft_pick' AND run_id IS NOT NULL AND mode IN ('classic','cap','pro')";
 
 const oi = process.argv.indexOf("--old");
@@ -19,7 +25,7 @@ const args = process.argv.slice(2).filter((a, i, all) => a !== "--old" && all[i 
 let picks;
 if (args[0]) picks = JSON.parse(fs.readFileSync(args[0], "utf8"));
 else {
-  const out = execFileSync(WRANGLER, ["d1", "execute", "true82", "--remote", "--json", "--command", SQL],
+  const out = wrangler(["d1", "execute", "true82", "--remote", "--json", "--command", SQL],
     { cwd: require("os").tmpdir(), maxBuffer: 1 << 30, stdio: ["ignore", "pipe", "ignore"] }).toString();
   picks = JSON.parse(out)[0].results;
   if (process.env.SAVE) fs.writeFileSync(process.env.SAVE, JSON.stringify(picks));
