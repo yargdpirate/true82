@@ -1,10 +1,15 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING: v64 IS ON THE PREVIEW, AWAITING HIS PLAYTEST.** `main` = v63.1, LIVE on true82.net (his merge landed
+> **FIRST THING: v64.1 IS ON THE PREVIEW, AWAITING HIS PLAYTEST.** `main` = v63.1, LIVE on true82.net (his merge landed
 > the evening of 2026-09-28; verified: origin/main = c-code-clean at b42fb83, true82.net serves `BUILD_V = "v63.1"`).
-> `c-code-clean` = v64 (section 00000x: his third playtest, which came in as VOICE NOTES; see below). Ask him: "v64 is
-> on the preview (https://c-code-clean.true82.pages.dev/). Did you playtest it? Then: time to go to main?" Merge only on
-> his word. The agent's push to `main` is blocked by the auto-mode permission guard (a production deploy), so the merge
+> `c-code-clean` = v64.1: v64 (section 00000x: his third playtest, which came in as VOICE NOTES) plus the speed pass
+> (section 00000y). Ask him: "v64.1 is on the preview (https://c-code-clean.true82.pages.dev/). Did you playtest it?
+> Then: time to go to main?" Merge only on his word.
+>
+> **NEW RULE SINCE v64.1 (read 00000y):** the versioned static files are cached by browsers for a YEAR. After editing
+> app.js, styles.css, look.css, sim-core.js, challenges.js, daily-core.js, reel-riso.js, results-riso.js, analytics.js,
+> retention-client.js, the masthead or site_data.json, run `node tools/cache-keys.js --stamp <new key>` (it rewrites
+> every page's ?v= for the changed files); `node test.js` fails until you do. Never hand-edit those ?v= keys. The agent's push to `main` is blocked by the auto-mode permission guard (a production deploy), so the merge
 > is his one command, run from the repo folder:
 > `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
 >
@@ -13,17 +18,93 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). `main` = v63.1, LIVE (merged 2026-09-28 at his "push"). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v64.1 (the speed pass, section 00000y) on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). `main` = v63.1, LIVE (merged 2026-09-28 at his "push"). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-28
-**Build:** `v64` on `c-code-clean` (`BUILD_V = "v64"`; app.js and styles.css at `20260928-v64` in index.html, styles.css at `20260928-v64` in bonuses/, traits/ and docs/style-guide.html too; sim-core.js, challenges.js, daily-core.js, reel-riso.js and results-riso.js still at `20260928-v63-1`; labels.json via `<meta name="t82-labels" content="20260928-tags">`; look.css at `20260927-v60`; engine `T82.VERSION` 14). v63.1 (live): app.js and styles.css at `20260928-v63-1`.
-**Most recent change:** section 00000x (read it first): v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14). v63.1 (live): app.js and styles.css at `20260928-v63-1`.
+**Most recent change:** section 00000y (read it first): v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000x. START HERE (2026-09-28, night): V64, THE OWNER'S THIRD PLAYTEST (HIS VOICE NOTES)
+## 00000y. START HERE (2026-09-28, night): V64.1, THE SPEED PASS (NO VISUAL CHANGE)
+
+**His words** (after v64's list): "then generally hunt for performance improvements, mostly around the home screen voting
+widget loading time, the game by game animation, but just generally how can we make this snappy for people with cheapo
+phones", then "without any NEGATIVE frontend impact that is; obviously faster responsiveness/loading time for lower end
+phone users is great; i just don't want to compromise anything to get there".
+
+**How it was measured** (scratchpad perf.js; a cheap phone: Chromium at 375x812 with the CPU slowed 4x or 6x and "Slow
+4G", 150ms round trips and 1.6 Mbps down, against the local site; medians of three):
+
+| | v64 | v64.1 |
+|---|---|---|
+| First visit: home drawn | 3.73s | 3.49s |
+| First visit: vote card shown | 4.28s | 3.66s |
+| First visit: game data ready (a draft can start) | 8.02s | 7.46s |
+| Return visit: first paint | 0.52s | 0.38s |
+| Return visit: home drawn | 0.63s | 0.44s |
+| Return visit: vote card shown | 1.56s | 0.86s |
+| Return visit: game data ready | 1.33s | 0.77s |
+| The reel at 6x: frames over 33ms / over 50ms / blocking time | 72 / 11 / 262ms | 27-44 / 2-4 / 69-146ms |
+| The reel at 4x: blocking time | 68-89ms | 0-33ms |
+
+### What changed
+1. **The vote card deals in one request** (functions/api/traits.js `featuredPick`, op=session `featured=1`; app.js
+   `tmSessionLoader`): the server pins the day's featured call itself (unless this device has seen it), where the card
+   asked op=featured and then op=session, one after the other. op=featured still works (a cached old app.js uses it).
+2. **The vote card's deal goes out beside the identity check** (app.js `tmStart`), not after it: a return visit's
+   identity cookie already rides along. Only a cookie restored from this device's storage just then
+   (`identity_source` "local_recovery") needs the check first, and that deal is dealt again. A first visit and the
+   regions without the cookie deal the same either way; op=session writes nothing. The card still waits for the check.
+3. **The masthead is a lossless WebP** (masthead.webp, 136KB for the PNG's 287KB, the same pixels, checked; Pillow
+   lossless), in a `<picture>` with the PNG as the fallback, on the home and the five info pages; `.brand-pic {
+   display: contents }` and its `<source>` hidden, so the logo lays out exactly as before (checked at 375 and 1280, the
+   home and the FAQ). Lossy encodes were smaller (54-68KB) but moved pixels on the neon's thin lines: not shipped.
+4. **A year-long immutable cache for the versioned files** (_headers; tools/cache-keys.js and tools/cache-keys.json;
+   test.js): a returning phone no longer revalidates 12 files (a round trip each before the page can draw) or the
+   2MB game data. The info pages' bare /styles.css and /look.css now carry keys too. THE RULE: after editing a listed
+   file, `node tools/cache-keys.js --stamp <key>` (it keys every changed file and rewrites every page's reference);
+   test.js fails on a changed file with an old key, a bare or stale reference, or a _headers list that drifts from the
+   manifest. labels.json and the HTML pages stay off the list (the weekly tag refresh rewrites labels.json and runs
+   test.js, which stays green). A quirk: the header parser dropped the LAST rule without a blank line after it; the
+   file ends with a blank line and a comment saying so.
+5. **The reel redoes only what moves** (reel-riso.js `drawStrip`, `dirtyRect`, `inkPass`, `inkPrint`): each ink keeps its
+   own canvas per month strip, and a frame re-screens only the rect around the stamps still moving (a win's pop within
+   1.7 dot radii, a loss's slam, cracks, splats and drips within 3.4), where every frame used to re-screen the whole
+   strip three times. The tones are still drawn whole and unclipped on one scratch (a clip anti-aliases a shape a hair
+   differently and the halftone turns a hair into a dot: found and fixed). ?risofull=1 is the QA switch back to the
+   whole-strip way. **Checked pixel for pixel**: `node tools/reel-qa.js` (and `ENGINE=webkit node tools/reel-qa.js`)
+   drives a scripted two-month reel on a mocked clock, both ways, and hashes every byte of every canvas on all 630
+   frames: 0 differ in Chromium and WebKit (and the old file from git matched too). A fresh WebKit renders the L's first
+   frames differently on its very first run whatever the code; the tool runs a warm-up first.
+6. **The giant L prints in idle moments** (reel-riso.js `Lplate`, `Llevel`, `Lready`): its 18 screened levels were
+   one 100-170ms freeze at the reel's start on a slow phone; now the plate and then each level print one per idle
+   moment (requestIdleCallback, or a 16ms timer on Safari), in the order a loss needs them, and a level a loss needs
+   first prints right then (the same pixels). As before, a loss before the moment the L would have been built has no L.
+
+### Looked at and left alone
+- The game data's indexing (sim-core `initDataCore`, 250ms at 4x): the engine's deterministic setup (seeds, replays);
+  not restructured. With the long cache it now runs right at boot on a return visit, before the vote card's reply.
+- A remaining ~60ms task at the reel's first stamps at 6x (pre-existing, also in v64) and the reel's opening (~100ms:
+  building the overlay and the style pass it forces): one-time work that has to happen.
+- Self-hosting the Google fonts would save the font CSS's extra connection on a first visit, but means downloading
+  the font files into the repo (ask him first); lazy-loading reel-riso.js and results-riso.js would save ~30KB on a
+  first visit but risks the reel falling back to plain chips on a slow connection. Neither done.
+- makeGrain rewritten with hoisted columns: identical output, no faster (V8 already optimizes it): reverted.
+
+### Checks
+test.js 138 (three new: the cache keys, the one-request deal, the reel's structure); style law clean; theme current;
+tools/reel-qa.js 0 differing frames in Chromium and WebKit; tools/home-qa.js flow (five votes, the stamp, Keep going
+to /bonuses/ with the count carried) and widths (no sideways scroll, both engines, 320-440); tools/results-qa.js
+results, hint and room; scratchpad v64-qa.js (Classic and Presti boards and the results callout, both engines, 320
+and 375). The live site is untouched (main = v63.1).
+
+### Calls he may overrule
+- None visual. The long cache is a process change for agents (the rule above), enforced by test.js.
+
+## 00000x. (2026-09-28, night): V64, THE OWNER'S THIRD PLAYTEST (HIS VOICE NOTES)
 
 **Where things stand.** `main` = v63.1, LIVE (his merge landed this evening; the post-merge checks: the footer, the
 Daily's quotes and the logo gap live, no console errors; the draft and the Scoring Card on the preview; a direct D1 read
@@ -2231,14 +2312,13 @@ No change to the generic position engine was needed. This is deliberately challe
 
 A previous regression occurred because fresh markup loaded against stale CSS. Treat cache keys as part of the deployment.
 
-Current `index.html` keys:
-
-- `styles.css?v=20260718-ui-v15`
-- `challenges.js?v=20260718-smallball-fix-v14`
-- `daily-core.js?v=20260718-smallball-fix-v14`
-- `app.js?v=20260718-ui-v15`
-
-When changing a browser-served JS/CSS file, bump the matching key in `index.html`.
+Since v64.1 the versioned static files are cached by browsers for a year (`_headers`, immutable), so a stale key is no
+longer harmless: returning players would keep the old file. The keys live in `tools/cache-keys.json` and every page
+carries them. After editing any listed file, run `node tools/cache-keys.js --stamp <key>` (for example
+`20261001-v65`): it gives every changed file the new key and rewrites every reference. `node test.js` fails on a
+changed file under an old key, on a bare or stale reference, and on a `_headers` list that drifts from the manifest.
+A new static file joins by adding it to the manifest and to `_headers`, then stamping. Bump `BUILD_V` in app.js in the
+same commit (the footer's version law), then stamp (app.js changes when you do).
 
 ---
 

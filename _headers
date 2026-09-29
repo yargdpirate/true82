@@ -18,3 +18,36 @@
 # The web app manifest (v57): the right type for every browser that asks for it.
 /manifest.webmanifest
   Content-Type: application/manifest+json
+
+# v64.1 (speed): the versioned static files never change under their ?v= key, so a returning phone keeps them a year
+# and never asks again (no revalidation round trip before the page can draw). The list is tools/cache-keys.json's:
+# every reference carries its key and a changed file gets a new one (node tools/cache-keys.js; test.js checks both
+# the keys and that this list matches). HTML pages and labels.json are never here: they keep revalidating.
+/app.js
+  Cache-Control: public, max-age=31536000, immutable
+/styles.css
+  Cache-Control: public, max-age=31536000, immutable
+/look.css
+  Cache-Control: public, max-age=31536000, immutable
+/sim-core.js
+  Cache-Control: public, max-age=31536000, immutable
+/challenges.js
+  Cache-Control: public, max-age=31536000, immutable
+/daily-core.js
+  Cache-Control: public, max-age=31536000, immutable
+/reel-riso.js
+  Cache-Control: public, max-age=31536000, immutable
+/results-riso.js
+  Cache-Control: public, max-age=31536000, immutable
+/analytics.js
+  Cache-Control: public, max-age=31536000, immutable
+/retention-client.js
+  Cache-Control: public, max-age=31536000, immutable
+/masthead.webp
+  Cache-Control: public, max-age=31536000, immutable
+/masthead.png
+  Cache-Control: public, max-age=31536000, immutable
+/site_data.json
+  Cache-Control: public, max-age=31536000, immutable
+
+# (keep this blank line and comment last: without them the header parser dropped the rule above it)

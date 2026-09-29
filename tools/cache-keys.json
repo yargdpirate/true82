@@ -1,0 +1,57 @@
+{
+  "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
+  "files": {
+    "app.js": {
+      "key": "20260928-v64-1",
+      "sha": "d0fa9e22f63307d7"
+    },
+    "styles.css": {
+      "key": "20260928-v64-1",
+      "sha": "5815057e4eb5d6d5"
+    },
+    "reel-riso.js": {
+      "key": "20260928-v64-1",
+      "sha": "39f14e6c25de0fb4"
+    },
+    "masthead.webp": {
+      "key": "20260928-v64-1",
+      "sha": "1b13a0e57fd7f58f"
+    },
+    "masthead.png": {
+      "key": "20260928-v64-1",
+      "sha": "983a7da5e8711e89"
+    },
+    "look.css": {
+      "key": "20260927-v60",
+      "sha": "c21c87911781c688"
+    },
+    "sim-core.js": {
+      "key": "20260928-v63-1",
+      "sha": "64677ed7ae8e1500"
+    },
+    "challenges.js": {
+      "key": "20260928-v63-1",
+      "sha": "436be317d223a918"
+    },
+    "daily-core.js": {
+      "key": "20260928-v63-1",
+      "sha": "b0138415fbf55bd1"
+    },
+    "results-riso.js": {
+      "key": "20260928-v63-1",
+      "sha": "b0a56dabe02e17d7"
+    },
+    "analytics.js": {
+      "key": "20260725-traits-v44",
+      "sha": "09a0142d4b93d368"
+    },
+    "retention-client.js": {
+      "key": "20260725-traits-v44",
+      "sha": "1776911fe1151377"
+    },
+    "site_data.json": {
+      "key": "sc-v42c",
+      "sha": "d91f72d594627b9e"
+    }
+  }
+}

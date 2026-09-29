@@ -321,6 +321,10 @@ button.t-chip:active, button.tchip:active, .tchip.expanded, .t-chip.pressed, .bt
   border-bottom: 2px solid var(--t-rule);
 }
 .brand-logo { display: block; width: 232px; max-width: 68%; height: auto; }
+/* v64.1 (speed): the masthead ships as a lossless WebP (the same pixels, 136KB for the PNG's 287KB) with the PNG as the
+   fallback; the <picture> wrapper takes no box of its own, so the logo lays out exactly as the bare <img> did */
+.brand-pic { display: contents; }
+.brand-pic > source { display: none; }   /* else, in the head's flex column, it is a zero-height item and takes a gap */
 .round-pips { display: flex; gap: 6px; }
 .round-pips:empty { display: none; }   /* no empty row (and no flex gap) under the masthead off the draft */
 .round-pips span {

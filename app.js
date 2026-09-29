@@ -2590,7 +2590,17 @@ function tmStart(again) {
   var mod = el("traitsModule");
   if (!mod || !window.fetch || !TM.loader) return;
   TM.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
-  traitsIdentityReady().then(function () { return TM.loader(); }).then(function (x) {
+  // v64.1 (speed): the deal goes out now, beside the identity check, not after it (on a return visit the identity
+  // cookie already rides along with it). The one case that needs the check's answer first is a cookie restored from
+  // this device's storage just now ("local_recovery": the early deal went without it), and that deal is dealt again.
+  // A first visit and a region without the cookie deal the same either way. The card still waits for the check.
+  var early = TM.loader();
+  early.catch(function () {});
+  traitsIdentityReady().then(function () {
+    var d = null;
+    try { d = typeof window.t82RetentionDebug === "function" ? window.t82RetentionDebug() : null; } catch (e) {}
+    return d && d.identitySource === "local_recovery" ? TM.loader() : early;
+  }).then(function (x) {
     if (!el("traitsModule")) return;
     // The API already tiers never-answered, answered-once, and exhausted questions. Keep that order
     // intact instead of independently hiding all standing votes, which would defeat the intentional
@@ -2647,24 +2657,20 @@ function tmExcludeIds(withShown) {
   lists.forEach(function (l) { for (var i = l.length - 1; i >= 0; i--) if (!have[l[i]]) { have[l[i]] = 1; out.push(l[i]); } });
   return out.slice(0, 150);
 }
+// v64.1 (speed): ONE request deals the card. The server pins the day's featured call itself (featured=1) unless this
+// device has seen it (the exclude list), where the card used to ask op=featured first and op=session after it: a whole
+// round trip the vote card waited out on every load. The fallbacks are as before.
 function tmSessionLoader() {
-  function deal(pin, ex) {
-    return fetch("/api/traits?op=session&sid=" + TM.sid + (pin ? "&q=" + encodeURIComponent(pin) : "") +
+  function deal(ex, featured) {
+    return fetch("/api/traits?op=session&sid=" + TM.sid + (featured ? "&featured=1" : "") +
       (ex.length ? "&exclude=" + ex.map(encodeURIComponent).join(",") : ""), { credentials: "same-origin" })
       .then(function (r) { return r.json(); });
   }
   function dealt(x) { return !!(x && x.ok && x.questions && x.questions.length); }
-  return fetch("/api/traits?op=featured", { credentials: "same-origin" })
-    .then(function (r) { return r.json(); })
-    .then(function (feat) {
-      var ex = tmExcludeIds(true);
-      var pin = feat && feat.ok && feat.question ? feat.question.id : "";
-      if (pin && ex.indexOf(pin) >= 0) pin = "";
-      return deal(pin, ex).then(function (x) {
-        if (dealt(x)) return x;
-        return deal("", tmExcludeIds(false)).then(function (y) { return dealt(y) ? y : deal("", []); });
-      });
-    });
+  return deal(tmExcludeIds(true), true).then(function (x) {
+    if (dealt(x)) return x;
+    return deal(tmExcludeIds(false)).then(function (y) { return dealt(y) ? y : deal([]); });
+  });
 }
 function wireBonusesModule() {
   TM.source = "home_module";
@@ -9285,7 +9291,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v64";
+var BUILD_V = "v64.1";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

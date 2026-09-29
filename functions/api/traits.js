@@ -303,26 +303,8 @@ async function handleGet(context) {
   if (op === "featured") {
     // One curated homepage question: editorially flagged pool, rotated by day
     // so the module changes between visits without ever going random-obscure.
-    const pool = await env.DB.prepare(`
-      SELECT q.id, m.slug, m.public_question,
-             COALESCE(c.eligible_votes, 0) ev, COALESCE(c.yes_share, 0.5) ys
-      FROM trait_question_meta_v1 m
-      JOIN trait_questions_v1 q ON q.id = m.question_id
-      JOIN traits_v1 t ON t.id = q.trait_id
-      LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
-      WHERE m.homepage_eligible = 1 AND m.active = 1 AND q.status = 'active'
-      ORDER BY q.editorial_priority DESC, m.slug
-      LIMIT 200`).all().then((r) => r.results || []).catch(() => []);
-    if (!pool.length) return json({ ok: false, reason: "no_questions" }, 200);
-    const day = Math.floor(Date.now() / 86400000);
-    const fresh = pool.filter((p) => Number(p.ev) < 5);
-    const live = pool.filter((p) => Number(p.ev) >= 5)
-      .sort((a, b) => Math.abs(a.ys - 0.5) - Math.abs(b.ys - 0.5)).slice(0, 8);
-    const pick = fresh.length && day % 2 === 0
-      ? fresh[Math.floor(day / 2) % fresh.length]
-      : live.length >= 3
-        ? live[Math.floor(day / 2) % live.length]
-        : pool[day % pool.length];
+    const pick = await featuredPick(env.DB);
+    if (!pick) return json({ ok: false, reason: "no_questions" }, 200);
     return json({ ok: true, question: { id: pick.id, slug: pick.slug, public_question: pick.public_question } });
   }
 
@@ -387,7 +369,14 @@ async function handleGet(context) {
   // A direct per-question page may still show its explicitly requested item;
   // this rule governs algorithmic feeds and homepage/results recommendations.
   const voter = await voterKey(request, url.searchParams.get("sid"));
-  const pinnedId = cleanQid(url.searchParams.get("q"));
+  // v64.1 (speed): featured=1 pins the day's featured call here, so the home card deals in ONE request instead of
+  // op=featured and then op=session. An explicit q wins; the exclude list below still drops the pin when this
+  // device has already seen it (the client did the same check before).
+  let pinnedId = cleanQid(url.searchParams.get("q"));
+  if (!pinnedId && url.searchParams.get("featured") === "1") {
+    const feat = await featuredPick(env.DB);
+    pinnedId = feat ? cleanQid(feat.id) : "";
+  }
   // v60: a device's whole recent history rides along (answered, passed and merely shown; the owner: "we're trying
   // to get it as much as possible that [repeats don't] happen"), so the cap is 160 and the skip runs in code below,
   // clear of D1's bound-parameter limit.
@@ -861,6 +850,31 @@ function parseCookies(raw) {
     if (k) out[k] = v;
   });
   return out;
+}
+
+// The day's featured homepage call (op=featured, and op=session with featured=1): the editorially flagged pool,
+// rotated by day so the card changes between visits without ever going random-obscure.
+async function featuredPick(db) {
+  const pool = await db.prepare(`
+    SELECT q.id, m.slug, m.public_question,
+           COALESCE(c.eligible_votes, 0) ev, COALESCE(c.yes_share, 0.5) ys
+    FROM trait_question_meta_v1 m
+    JOIN trait_questions_v1 q ON q.id = m.question_id
+    JOIN traits_v1 t ON t.id = q.trait_id
+    LEFT JOIN trait_consensus_v1 c ON c.question_id = q.id
+    WHERE m.homepage_eligible = 1 AND m.active = 1 AND q.status = 'active'
+    ORDER BY q.editorial_priority DESC, m.slug
+    LIMIT 200`).all().then((r) => r.results || []).catch(() => []);
+  if (!pool.length) return null;
+  const day = Math.floor(Date.now() / 86400000);
+  const fresh = pool.filter((p) => Number(p.ev) < 5);
+  const live = pool.filter((p) => Number(p.ev) >= 5)
+    .sort((a, b) => Math.abs(a.ys - 0.5) - Math.abs(b.ys - 0.5)).slice(0, 8);
+  return fresh.length && day % 2 === 0
+    ? fresh[Math.floor(day / 2) % fresh.length]
+    : live.length >= 3
+      ? live[Math.floor(day / 2) % live.length]
+      : pool[day % pool.length];
 }
 
 function cleanQid(v) {

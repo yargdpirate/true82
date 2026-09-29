@@ -814,5 +814,22 @@ if (fs.existsSync("site_data.json")) {
     [true, true, true, true, true, true, false]);
 }
 
+// v64.1 THE SPEED PASS: the versioned files are cached for a year (_headers), so every reference must carry the file's
+// key and a changed file must get a new key (node tools/cache-keys.js --stamp <key>), or returning players keep the
+// old file; the vote card deals in one request (featured=1); the reel's strips redo only the moving rect (checked
+// pixel for pixel against the whole-strip path in the browser, ?risofull=1) and the giant L prints in idle moments.
+{
+  const CK = require("./tools/cache-keys.js");
+  eq("v64.1 cache keys: every immutable file matches its stamped key, every page asks for it with that key, and _headers caches exactly those files",
+    CK.check(), []);
+  const TMJS = String(vm.runInContext("tmSessionLoader", ctx));
+  eq("v64.1 the vote card: one request deals the card with the featured call pinned server-side (no op=featured round trip first)",
+    [/featured=1/.test(TMJS), /op=featured/.test(TMJS)], [true, false]);
+  const REEL = fs.readFileSync("reel-riso.js", "utf8");
+  eq("v64.1 the reel: strips redo only the moving rect (with the whole-strip QA switch), and the L prints level by level (on demand when a loss needs one first)",
+    [/function dirtyRect\(S, t\)/.test(REEL), /risofull=1/.test(REEL), /function Llevel\(ink, i\)/.test(REEL), /requestIdleCallback/.test(REEL), !/function buildL\(/.test(REEL)],
+    [true, true, true, true, true]);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

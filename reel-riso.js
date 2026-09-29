@@ -182,15 +182,16 @@
     var P = { W: W, H: H, k: d, pitch: PITCH * d, rgb: TH.rgb, blend: TH.blend };
     P.grain = makeGrain(W, H, r);
     P.starve = makeStarve(W, H, r, d);
-    P.s = cv(W, H);
-    P.sg = P.s.getContext("2d", { willReadFrequently: true });
     return P;
   }
-  function screen(data, P, ink) {
+  // data covers the rect x0,y0,w,h of the plate (the whole plate when no rect is given); the screen and the grain are
+  // read at each pixel's plate position, so a rect screens exactly as it would inside the whole plate
+  function screen(data, P, ink, x0, y0, w, h) {
     var t = tileFor(ink, P.pitch), S = t.S, th = t.th, G = P.grain, W = P.W, H = P.H, sh = INKS[ink].sh, rgb = P.rgb[ink];
-    for (var y = 0; y < H; y++) {
-      var trow = (y % S) * S, grow = ((y + sh) % H) * W, i = y * W * 4;
-      for (var x = 0; x < W; x++, i += 4) {
+    if (w == null) { x0 = 0; y0 = 0; w = W; h = H; }
+    for (var y = y0; y < y0 + h; y++) {
+      var trow = (y % S) * S, grow = ((y + sh) % H) * W, i = (y - y0) * w * 4;
+      for (var x = x0; x < x0 + w; x++, i += 4) {
         var a = data[i + 3];
         if (a < 3) { data[i + 3] = 0; continue; }
         if (a / 255 >= th[trow + (x % S)] + G[grow + ((x + sh * 3) % W)] * 0.085) { data[i] = rgb[0]; data[i + 1] = rgb[1]; data[i + 2] = rgb[2]; data[i + 3] = 255; }
@@ -198,23 +199,48 @@
       }
     }
   }
-  // One ink over a whole small canvas: draw tone as alpha, screen it, punch the
-  // starve specks, then print it on (multiply on light stock, screen on dark)
-  // with that ink's registration offset.
-  function inkPass(ctx, P, ink, draw) {
-    var g = P.sg;
-    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
-    g.clearRect(0, 0, P.W, P.H);
-    g.setTransform(P.k, 0, 0, P.k, 0, 0); g.fillStyle = "#000"; g.strokeStyle = "#000";
-    draw(g);
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    var img = g.getImageData(0, 0, P.W, P.H);
-    screen(img.data, P, ink);
-    g.putImageData(img, 0, 0);
-    g.globalCompositeOperation = "destination-out"; g.drawImage(P.starve, 0, 0); g.globalCompositeOperation = "source-over";
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = P.blend;
-    ctx.drawImage(P.s, INKS[ink].reg[0] * P.k, INKS[ink].reg[1] * P.k);
-    ctx.restore();
+  // One ink over a month strip: draw tone as alpha, screen it, punch the starve specks. v64.1 (speed): each ink keeps
+  // its own canvas, so a frame can redo only the rect D (device px) where a stamp is still moving. The tones are still
+  // drawn over the whole strip, unclipped, on one shared scratch (vector work, cheap; a clip anti-aliases the shapes a
+  // hair differently, and the screen turns a hair into a dot), and only D is read, screened, written back and specked:
+  // the costly per-pixel part. The pixels are the ones a whole-strip pass makes (checked frame by frame, ?risofull=1).
+  function inkCanvas(S, ink) {
+    if (!S.inkC) S.inkC = {};
+    var c = S.inkC[ink];
+    if (!c) { c = cv(S.P.W, S.P.H); c.g = c.getContext("2d", { willReadFrequently: true }); S.inkC[ink] = c; }
+    return c;
+  }
+  function inkPass(S, ink, draw, D) {
+    var P = S.P, g = inkCanvas(S, ink).g;
+    if (!S.scr) { S.scr = cv(P.W, P.H); S.scr.g = S.scr.getContext("2d", { willReadFrequently: true }); }
+    var sg = S.scr.g, x0 = D ? D[0] : 0, y0 = D ? D[1] : 0, w = D ? D[2] : P.W, h = D ? D[3] : P.H;
+    sg.setTransform(1, 0, 0, 1, 0, 0); sg.globalAlpha = 1; sg.globalCompositeOperation = "source-over";
+    sg.clearRect(0, 0, P.W, P.H);
+    sg.setTransform(P.k, 0, 0, P.k, 0, 0); sg.fillStyle = "#000"; sg.strokeStyle = "#000";
+    draw(sg);
+    sg.setTransform(1, 0, 0, 1, 0, 0);
+    var img = sg.getImageData(x0, y0, w, h);
+    screen(img.data, P, ink, x0, y0, w, h);
+    g.putImageData(img, x0, y0);
+    g.save();
+    if (D) { g.beginPath(); g.rect(x0, y0, w, h); g.clip(); }
+    g.globalCompositeOperation = "destination-out"; g.drawImage(P.starve, 0, 0);
+    g.restore();
+  }
+  // Print the inks on (multiply on light stock, screen on dark), each with its registration offset, over the whole
+  // strip or only inside the rect C (device px, integer; the draws are the same, the clip just keeps them inside).
+  function inkPrint(S, anyW, anyL, C) {
+    var x = S.ctx, P = S.P;
+    x.save();
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
+    if (C) { x.beginPath(); x.rect(C[0], C[1], C[2], C[3]); x.clip(); x.clearRect(C[0], C[1], C[2], C[3]); }
+    else x.clearRect(0, 0, P.W, P.H);
+    x.globalCompositeOperation = P.blend;
+    ["sun", "pink", "scarlet"].forEach(function (ink) {
+      if ((ink === "sun" && !anyW) || (ink === "scarlet" && !anyL)) return;
+      x.drawImage(S.inkC[ink], INKS[ink].reg[0] * P.k, INKS[ink].reg[1] * P.k);
+    });
+    x.restore();
   }
 
   /* ---- stamp shapes ---- */
@@ -248,11 +274,32 @@
 
   /* ---- a month strip (module level, so strip() can print one on its own) ---- */
   function center(S, idx) { var c = idx % S.cols, r = Math.floor(idx / S.cols); return [S.pitch * (c + 0.5), S.pitch * (r + 0.5)]; }
-  function drawStrip(S, t) {
-    var x = S.ctx, R = S.pitch * 0.36, anyW = false, anyL = false;
-    x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, S.P.W, S.P.H);
-    S.dots.forEach(function (D) { if (D.win) anyW = true; else anyL = true; });
-    if (anyW) inkPass(x, S.P, "sun", function (g) {
+  // A stamp's reach from its center while it moves, in units of the dot radius R: a win's pop and rings stay inside
+  // 1.7R; a loss's slam (up to 2.9x), its cracks, splats and drips stay inside 3.4R.
+  var REACH_W = 1.7, REACH_L = 3.4, LIVE_W = 0.24, LIVE_L = 1.5;
+  // The rect (device px) holding every stamp still moving at t, or null when none is; "all" when it is most of the
+  // strip anyway. The windows match the dirtyUntil ones stamp() sets, so a stamp's last frames (settled) are drawn.
+  function dirtyRect(S, t) {
+    var R = S.pitch * 0.36, k = S.P.k, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    S.dots.forEach(function (D) {
+      if (t - D.t0 >= (D.win ? LIVE_W : LIVE_L)) return;
+      var c = center(S, D.idx), r = (D.win ? REACH_W : REACH_L) * R + 2;
+      if (c[0] - r < x0) x0 = c[0] - r; if (c[0] + r > x1) x1 = c[0] + r;
+      if (c[1] - r < y0) y0 = c[1] - r; if (c[1] + r > y1) y1 = c[1] + r;
+    });
+    if (x1 < x0) return null;
+    var X0 = Math.max(0, Math.floor(x0 * k) - 2), Y0 = Math.max(0, Math.floor(y0 * k) - 2);
+    var X1 = Math.min(S.P.W, Math.ceil(x1 * k) + 2), Y1 = Math.min(S.P.H, Math.ceil(y1 * k) + 2);
+    if (X1 <= X0 || Y1 <= Y0) return null;
+    if ((X1 - X0) * (Y1 - Y0) > 0.6 * S.P.W * S.P.H) return "all";
+    return [X0, Y0, X1 - X0, Y1 - Y0];
+  }
+  // D: redo only this rect (device px); none: the whole strip. The print covers D plus the inks' registration reach.
+  function drawStrip(S, t, Rd) {
+    var R = S.pitch * 0.36, anyW = false, anyL = false;
+    if (Rd === "all") Rd = null;
+    S.dots.forEach(function (Dt) { if (Dt.win) anyW = true; else anyL = true; });
+    if (anyW) inkPass(S, "sun", function (g) {
       S.dots.forEach(function (D) {
         if (!D.win) return;
         var c = center(S, D.idx), p = (t - D.t0) / 0.17, s = popScale(p);
@@ -262,8 +309,8 @@
           g.beginPath(); g.ellipse(c[0] - R * s * 0.34, c[1] - R * s * 0.36, R * s * 0.3, R * s * 0.11, -0.7, 0, TAU); g.fill(); g.restore();
         }
       });
-    });
-    inkPass(x, S.P, "pink", function (g) {
+    }, Rd);
+    inkPass(S, "pink", function (g) {
       S.dots.forEach(function (D) {
         var c = center(S, D.idx), e = t - D.t0;
         if (D.win) {
@@ -277,8 +324,8 @@
           drawCracks(g, D, c, R * s2);
         }
       });
-    });
-    if (anyL) inkPass(x, S.P, "scarlet", function (g) {
+    }, Rd);
+    if (anyL) inkPass(S, "scarlet", function (g) {
       S.dots.forEach(function (D) {
         if (D.win) return;
         var c = center(S, D.idx), e = t - D.t0, s = slamScale(e / 0.13), b = clamp(1 - e / 0.22, 0, 1);
@@ -291,7 +338,13 @@
         if (k > 0) D.splats.forEach(function (q) { circ(g, c[0] + Math.cos(q.a) * q.d * R, c[1] + Math.sin(q.a) * q.d * R, q.s * R * k); g.fill(); });
         drawCracks(g, D, c, R * s);
       });
-    });
+    }, Rd);
+    var C = null;
+    if (Rd) {                                  // the print: Rd plus the registration offsets (under 2.5 device px) and a pixel for smoothing
+      var pad = 4, X0 = Math.max(0, Rd[0] - pad), Y0 = Math.max(0, Rd[1] - pad);
+      C = [X0, Y0, Math.min(S.P.W, Rd[0] + Rd[2] + pad) - X0, Math.min(S.P.H, Rd[1] + Rd[3] + pad) - Y0];
+    }
+    inkPrint(S, anyW, anyL, C);
   }
   // A loss's drips, splats and cracks, seeded by the game so every reprint matches.
   function lossMarks(D, gi, cl) {
@@ -327,6 +380,8 @@
     var fx = fxC.getContext("2d"), fxW = 0, fxH = 0, fxDirty = false;
     // QA: ?risoslow=6 runs every effect (and the loss hold) 6x slower, for reviewing a loss frame by frame.
     var slowM = typeof location !== "undefined" && /[?&]risoslow=([0-9.]+)/.exec(location.search), SLOW = slowM ? clamp(parseFloat(slowM[1]) || 1, 1, 20) : 1;
+    // QA: ?risofull=1 redraws a whole month strip on every frame (the pre-v64.1 way), to check the moving-rect frames match it.
+    var FULL = typeof location !== "undefined" && /[?&]risofull=1(&|$)/.test(location.search);
     function now() { return clock() / SLOW; }
     var strips = [], parts = [], events = [], alive = true, raf = 0, bigL = null, last = now(), resizeT = 0, lastFlash = -1e9;
 
@@ -339,6 +394,7 @@
       S.P = makePlate(S.cssW, S.cssH, 900 + S.mi * 31, TH);
       S.canvas.width = S.P.W; S.canvas.height = S.P.H;
       S.ctx = S.canvas.getContext("2d");
+      S.inkC = null; S.scr = null;                    // a new plate: the ink canvases and the scratch start over
       S.needs = true;
     }
     function cardXY(S, idx) {
@@ -354,32 +410,49 @@
       }
     }
 
-    /* the giant L: nine coverage levels per plate, screened once; draining = stepping down them */
-    function buildL() {
+    /* the giant L: nine coverage levels per plate, screened once each; draining = stepping down them. v64.1 (speed):
+       the eighteen print one per idle moment instead of all in one go (a 100-170ms freeze at the reel's start on a
+       slow phone), in the order a loss needs them; a level a loss wants before its turn prints right then. */
+    var L_LEVELS = [0.96, 0.84, 0.72, 0.6, 0.48, 0.37, 0.27, 0.18, 0.1];
+    var Lready = false;                                        // from then on a loss prints its L
+    function Lplate() {
       if (bigL) return bigL;
-      var d = dpr(), F = 300, w = Math.round(F * 0.72), h = Math.round(F * 0.92), P = makePlate(w, h, 8203, TH);
-      var levels = [0.96, 0.84, 0.72, 0.6, 0.48, 0.37, 0.27, 0.18, 0.1], out = { w: w, h: h, scarlet: [], pink: [] };
-      ["scarlet", "pink"].forEach(function (ink) {
-        levels.forEach(function (c) {
-          var can = cv(P.W, P.H), g = can.getContext("2d", { willReadFrequently: true });
-          g.setTransform(d, 0, 0, d, 0, 0);
-          g.fillStyle = tone(c * (ink === "pink" ? 0.72 : 1));
-          g.font = "700 " + F + "px " + DISP; g.textAlign = "center"; g.fillText("L", w / 2, h * 0.86);
-          g.setTransform(1, 0, 0, 1, 0, 0);
-          var img = g.getImageData(0, 0, P.W, P.H);
-          screen(img.data, P, ink);
-          g.putImageData(img, 0, 0);
-          g.globalCompositeOperation = "destination-out"; g.drawImage(P.starve, 0, 0);
-          out[ink].push(can);
-        });
-      });
-      bigL = out;
-      return out;
+      var d = dpr(), F = 300, w = Math.round(F * 0.72), h = Math.round(F * 0.92);
+      bigL = { w: w, h: h, d: d, F: F, P: makePlate(w, h, 8203, TH), scarlet: [], pink: [] };
+      return bigL;
     }
-    // idle during the first month's lead, once the theme's display face has landed
+    function Llevel(ink, i) {
+      var L = Lplate();
+      if (L[ink][i]) return L[ink][i];
+      var P = L.P, d = L.d, c = L_LEVELS[i], can = cv(P.W, P.H), g = can.getContext("2d", { willReadFrequently: true });
+      g.setTransform(d, 0, 0, d, 0, 0);
+      g.fillStyle = tone(c * (ink === "pink" ? 0.72 : 1));
+      g.font = "700 " + L.F + "px " + DISP; g.textAlign = "center"; g.fillText("L", L.w / 2, L.h * 0.86);
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      var img = g.getImageData(0, 0, P.W, P.H);
+      screen(img.data, P, ink);
+      g.putImageData(img, 0, 0);
+      g.globalCompositeOperation = "destination-out"; g.drawImage(P.starve, 0, 0);
+      L[ink][i] = can;
+      return can;
+    }
+    function idle(fn) { if (typeof requestIdleCallback === "function") requestIdleCallback(fn, { timeout: 150 }); else setTimeout(fn, 16); }
+    // idle during the first month's lead, once the theme's display face has landed: from then on a loss prints its L
+    // (a loss before then has none, as ever)
     var faceP = document.fonts && document.fonts.load ? document.fonts.load("700 100px \"" + family(DISP) + "\"").catch(function () {}) : null;
     setTimeout(function () {
-      var go = function () { if (alive && !bigL) try { buildL(); } catch (e) { bigL = null; } };
+      var go = function () {
+        if (!alive || Lready) return;
+        Lready = true;
+        var jobs = [null];                                     // the plate first, then the levels in the order a loss needs them
+        L_LEVELS.forEach(function (c, i) { jobs.push(["scarlet", i], ["pink", i]); });
+        idle(function next() {
+          if (!alive || !jobs.length) return;
+          var j = jobs.shift();
+          try { if (j) Llevel(j[0], j[1]); else Lplate(); } catch (e) { /* cosmetic: a loss prints it when it needs it */ }
+          if (jobs.length) idle(next);
+        });
+      };
       if (faceP) faceP.then(go, go); else go();
     }, 320);
 
@@ -398,9 +471,11 @@
         fx.restore();
         return;
       }
-      if (!bigL || e < 0.07) return;                            // the L lands a beat after the slam
+      if (!Lready || e < 0.07) return;                          // the L lands a beat after the slam
       var p = e - 0.07, s = p < 0.14 ? 1 + 0.45 * Math.pow(1 - p / 0.14, 3) : 1;
-      var drain = clamp((p - 0.22) / Math.max(0.2, D - 0.5), 0, 1), lvl = Math.min(bigL.scarlet.length - 1, Math.floor(drain * bigL.scarlet.length));
+      var drain = clamp((p - 0.22) / Math.max(0.2, D - 0.5), 0, 1), lvl = Math.min(L_LEVELS.length - 1, Math.floor(drain * L_LEVELS.length));
+      var plPink, plScarlet;
+      try { plPink = Llevel("pink", lvl); plScarlet = Llevel("scarlet", lvl); } catch (err) { return; }   // printed now if the idle pass has not reached it
       var fade = e > D - 0.2 ? clamp((D - e) / 0.2, 0, 1) : 1;
       // The L and its caption take an open span above or below the wound, sized to
       // fit it, so they never print over the row that just lost. v51: below wins
@@ -415,8 +490,8 @@
       fx.save();
       fx.globalAlpha = fade; fx.globalCompositeOperation = TH.blend;
       fx.translate(cx, cy + sink); fx.rotate(rot); fx.scale(s * sc, s * sc);
-      fx.drawImage(bigL.pink[lvl], -bigL.w / 2 + 5, -bigL.h / 2 - 4, bigL.w, bigL.h);    // the plates miss each other
-      fx.drawImage(bigL.scarlet[lvl], -bigL.w / 2, -bigL.h / 2, bigL.w, bigL.h);
+      fx.drawImage(plPink, -bigL.w / 2 + 5, -bigL.h / 2 - 4, bigL.w, bigL.h);    // the plates miss each other
+      fx.drawImage(plScarlet, -bigL.w / 2, -bigL.h / 2, bigL.w, bigL.h);
       fx.restore();
       fx.save();
       fx.globalAlpha = fade; fx.globalCompositeOperation = TH.blend; fx.textAlign = "center";
@@ -485,7 +560,10 @@
       if (!alive) return;
       var t = now(), dt = Math.min(0.05, t - last);
       last = t;
-      strips.forEach(function (S) { if (S.needs || t < S.dirtyUntil) { S.needs = false; drawStrip(S, t); } });
+      strips.forEach(function (S) {
+        if (S.needs) { S.needs = false; drawStrip(S, t); }
+        else if (t < S.dirtyUntil) { var Rd = FULL ? null : dirtyRect(S, t); if (Rd || FULL) drawStrip(S, t, Rd); }
+      });
       parts.forEach(function (q) { q.age += dt; q.vx *= 1 - 1.2 * dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; });
       parts = parts.filter(function (q) { return q.age < q.life; });
       events = events.filter(function (E) { return t - E.t0 < E.dur; });
@@ -613,7 +691,7 @@
     S.cssW = Math.round(S.cols * pitch); S.cssH = Math.round(S.rows * pitch + pitch * 0.55);
     var d = opts.d || 2, r = mulberry((900 + S.mi * 31) >>> 0);
     var P = { W: Math.round(S.cssW * d), H: Math.round(S.cssH * d), k: d, pitch: PITCH * d, rgb: TH.rgb, blend: TH.blend };
-    P.grain = makeGrain(P.W, P.H, r); P.starve = makeStarve(P.W, P.H, r, d); P.s = cv(P.W, P.H); P.sg = P.s.getContext("2d", { willReadFrequently: true });
+    P.grain = makeGrain(P.W, P.H, r); P.starve = makeStarve(P.W, P.H, r, d);
     S.P = P; S.canvas = cv(P.W, P.H); S.ctx = S.canvas.getContext("2d");
     var cl = +opts.cl0 || 0;
     games.forEach(function (g, i) {
