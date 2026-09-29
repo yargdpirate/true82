@@ -642,7 +642,7 @@ function draftInk() {
   if (!n) return;
   G.inked = 0;
   var pips = el("drPips");
-  if (pips && pips.children[n - 1]) inkPrint(pips, pips.children[n - 1], "");
+  if (pips && pips.children[n - 1]) inkPrint(pips, pips.children[n - 1], "dia");   // v64: the big diamonds ring wider
   var rail = document.querySelector("#trayInner .lineup-rail");
   var coin = rail && rail.querySelector('.lineup-slot[data-pick="' + (n - 1) + '"] .ls-token');
   if (coin) inkPrint(rail, coin, "token");
@@ -1466,6 +1466,8 @@ function renderPips() {
   // utility bar's pips + PICK N OF 5 counter (2026-07-17 chrome rework). The
   // header is display:none while body.drafting, but keeping it painted costs
   // nothing and guards against a stale frame if the class ever lags a render.
+  // v64 (the owner: "we don't need that text ... I want the pick number taken away"): the diamonds are the count
+  // now, big, right on the mode panel; PICK N OF 5 stays in the markup for screen readers only (.du-count).
   var box = el("roundPips");
   var bar = el("drPips");
   var count = el("drPickCount");
@@ -1524,21 +1526,17 @@ function hoopMarkSvg() {
   '</svg>';
 }
 function bookIconSvg() {
-  // A drawn open book: ink cover, pale pages, faint text lines. It always sits
-  // on the gold keycap, so it prints in the keycap's own ink and highlight.
-  return '<svg class="mp-book" viewBox="0 0 26 22" aria-hidden="true" focusable="false">' +
-    '<path d="M13 3.4C11.2 1.8 8.5 1 5.4 1c-1.2 0-2.3.1-3.4.4-.6.1-1 .6-1 1.2v14.6c0 .8.8 1.4 1.6 1.2 1-.2 1.9-.3 2.8-.3 2.9 0 5.4.8 7.6 2.3 2.2-1.5 4.7-2.3 7.6-2.3.9 0 1.8.1 2.8.3.8.2 1.6-.4 1.6-1.2V2.6c0-.6-.4-1.1-1-1.2C22.9 1.1 21.8 1 20.6 1c-3.1 0-5.8.8-7.6 2.4z" style="fill:var(--t-accent-ink)"/>' +
-    '<path d="M12.1 4.6C10.6 3.5 8.4 2.9 5.9 2.9c-.9 0-1.8.1-2.7.3v13.1c.9-.2 1.8-.2 2.7-.2 2.3 0 4.4.5 6.2 1.5z" style="fill:var(--t-accent-hi)"/>' +
-    '<path d="M13.9 4.6c1.5-1.1 3.7-1.7 6.2-1.7.9 0 1.8.1 2.7.3v13.1c-.9-.2-1.8-.2-2.7-.2-2.3 0-4.4.5-6.2 1.5z" style="fill:var(--t-accent-hi)"/>' +
-    '<path d="M5.2 6.4c1.7-.2 3.3 0 4.8.6M5.2 9.2c1.7-.2 3.3 0 4.8.6M5.2 12c1.7-.2 3.3 0 4.8.6M16 7c1.5-.6 3.1-.8 4.8-.6M16 9.8c1.5-.6 3.1-.8 4.8-.6M16 12.6c1.5-.6 3.1-.8 4.8-.6" style="stroke:var(--t-accent-ink)" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".55"/>' +
-  '</svg>';
+  // v64 (the owner: HOW TO PLAY "is kind of owning the scenery ... obviously a button to click but a lot quieter"):
+  // the home link's line-drawn open book, in the quiet button's own ink (currentColor).
+  return '<svg class="mp-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+    '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>';
 }
 function draftUtilityHtml() {
   return '<div class="draft-utility" id="draftUtility">' +
     '<button class="du-exit" id="startOverBtn" type="button">\u2039 EXIT RUN</button>' +
     '<div class="du-mid">' +
       '<div class="round-pips du-pips ink-dias" id="drPips" aria-hidden="true"></div>' +
-      '<span class="du-count mono" id="drPickCount" aria-live="polite"></span>' +
+      '<span class="du-count sr-only" id="drPickCount" aria-live="polite"></span>' +
     '</div>' +
     '<span class="du-brandbox">' + hoopMarkSvg() + '</span>' +
   '</div>';
@@ -1568,8 +1566,9 @@ function modePanelHtml() {
     sub.push(baseName + " RULES");
     if (chShort) sub.push(esc(chShort));
   } else if (MODE === "cap") {
+    // v64 (the owner: cut the "skips" line): each skip button prints its own -$1M, the bank shows the cap, and
+    // HOW TO PLAY is right there, so the panel is just the name over the bank.
     idHtml = '<span class="mp-id">PRESTI MODE</span>';
-    sub.push("SALARY CAP \u00B7 SKIPS \u2212$1M");
   } else if (MODE === "pro") {
     idHtml = '<span class="mp-id">PRO MODE</span>';
     sub.push("NO STATS \u00B7 TAP \u25BE TO CHANGE SEASON");
@@ -1578,11 +1577,13 @@ function modePanelHtml() {
     sub.push("TAP THE YEAR \u25BE TO USE ANY SEASON");
   }
   // v29 (owner-directed, mockup-sourced; supersedes the V20 plaque doctrine):
-  // the bank is a flat charcoal SCOREBOARD in the same panel slot — thin
-  // amber outline like the price badges, no bronze, no gloss. Anatomy: BANK
-  // label, the balance (#bankAmt, still the loudest thing), a transient
-  // deduction chip (#bankDed — NOT #bankDelta; that id died with v19), and a
-  // segmented budget meter whose fill is proportional truth (#bankFill).
+  // the bank is a SCOREBOARD in the same panel slot. v64 (the owner: the bank
+  // "is the life blood of the mode" and should be "as prominent as the skip
+  // buttons"): it glows in the skip buttons' neon blue, flat (it is not a
+  // button). Anatomy: BANK label, the balance (#bankAmt, the loudest thing;
+  // tickBank flips it to each transaction in red), and a segmented budget
+  // meter whose fill is proportional truth (#bankFill). The v19-v63 corner
+  // chip (#bankDed) is gone: the flip shows the transaction full size.
   // G.meterMax pins the denominator to the run's starting cap at first
   // render, so challenge caps and reroll math can't skew the bar.
   var bankHtml = "";
@@ -1595,21 +1596,23 @@ function modePanelHtml() {
     var shownV = (typeof G.bankShown === "number") ? G.bankShown : G.budget;
     var bankPct = Math.max(0, Math.min(100, (shownV / G.meterMax) * 100));
     bankHtml = '<div class="mp-bank" id="mpBank"><span class="mpb-lab mono">BANK</span>' +
-      '<b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(shownV), true) + '</b>' +
-      '<span class="mpb-delta mono" id="bankDed" aria-hidden="true"></span>' +
+      '<b class="mpb-amt" id="bankAmt">' + mHtml(fmtM(shownV)) + '</b>' +
       '<div class="mpb-meter" aria-hidden="true"><i class="mpb-fill" id="bankFill" style="width:' + bankPct + '%"></i></div></div>';
   }
   var panelCls = 'mode-panel plq-frame plq-slim' + (MODE === "cap" ? ' cap-mode-panel' : '');
   return '<div class="' + panelCls + '" id="modePanel">' +
     '<div class="mp-left">' +
       '<div class="mp-row1">' + idHtml + '</div>' +
-      '<div class="mp-row2 mono">' + sub.join(" \u00B7 ") + '</div>' +
+      (sub.length ? '<div class="mp-row2 mono">' + sub.join(" \u00B7 ") + '</div>' : "") +
       targetHtml +
     '</div>' +
     bankHtml +
-    '<button class="mp-rules-btn presti-spin" id="rulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: the rules, today\u2019s twist, and how scoring works">' +
-      '<span class="mp-book-wrap">' + bookIconSvg() + '</span>' +
-      '<span class="mp-rules-text"><span class="mp-rules-main">HOW TO PLAY</span></span>' +
+    // v64: a quiet outline (styles.css .mp-rules): still plainly a button, no longer the loudest thing here. A plain
+    // button on purpose: look.css paints the old .mp-rules-btn and every .t-btn kind in neon; .tm-flat keeps the 3D
+    // decorator from stamping presti-spin (and its neon depth) back on.
+    '<button class="mp-rules tm-flat" id="rulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: the rules, today\u2019s twist, and how scoring works">' +
+      bookIconSvg() +
+      '<span class="mp-rules-main">How to play</span>' +
     '</button>' +
   '</div>';
 }
@@ -1682,7 +1685,7 @@ function initDraftViewport() {
   }
 }
 
-/* ---------- the bank ticker (v29.1 single-writer chaser) ----------
+/* ---------- the bank ticker (v29.1 single-writer chaser; v64 the flip) ----------
    AUDIT FIX (owner report: the count rubber-banded). Root cause, threefold:
    tickBank runs on EVERY draft re-render (the master render tail), the old
    ticker treated G.bankShown as "target accepted" instead of "currently
@@ -1690,19 +1693,33 @@ function initDraftViewport() {
    node. A re-render mid-count therefore snapped the markup to the final
    value, orphaned the live interval, and killed the count; skip-spam left
    rival intervals fighting over the same node; the rewind paint jumped the
-   number back up whenever a frame slipped in. New model:
-   - G.bankShown is the on-screen truth, updated on every paint; the panel
+   number back up whenever a frame slipped in. The model:
+   - G.bankShown is the on-screen balance, updated on every paint; the panel
      builder renders it, so re-renders have continuity instead of a snap.
-   - ONE writer: G.bankAnim. Every call clears it before starting another.
-   - The interval re-resolves el("bankAmt") each tick, so re-renders never
-     orphan the count; it dies only when the bank leaves the DOM or a new
-     game replaces G.
-   - A spend mid-count RETARGETS: the odometer chases the new balance from
-     wherever it is, monotonic, one direction per leg. The chip shows the
-     true transaction (new target minus previous target), not the leftover.
-   Steps stay integer and few (<=4 over ~380ms). Reduced motion: instant
-   paint, 240ms flash. Timing law: settle + flash clear inside ~560ms or
-   the walk's 600ms settle assert races. */
+   - ONE writer: G.bankAnim (the count) and G.bankFlipT (the flip). Every new
+     transaction clears both before starting over.
+   - The timers re-resolve el("bankAmt") each step, so re-renders never
+     orphan them; they die only when the bank leaves the DOM or a new game
+     replaces G. A re-render mid-flip puts the flip back on the fresh markup
+     (same transaction, no second slam).
+   - v64 THE FLIP (the owner: "briefly changes the overall bank from neon blue
+     to the number being deducted, to red"): a spend turns the whole bank red
+     and slams the transaction ("-$16M") in where the balance was, the meter
+     draining under it; then the balance counts down to the new amount as the
+     neon blue comes back. A refund flips green ("+$1M"). A spend mid-flip
+     RETARGETS: it flips to its own transaction (new target minus previous
+     target) and counts from the balance on display. Hold 480ms, count 4
+     steps over ~260ms, the ink settles ~160ms later: under a second. */
+var BANK_FLIP_MS = 480, BANK_COUNT_MS = 260, BANK_SETTLE_MS = 160;
+function bankFlipShow(d, slam) {
+  var n = el("bankAmt"), box = n && n.closest(".mp-bank");
+  if (!n || !box) return;
+  n.innerHTML = (d < 0 ? "−" : "+") + mHtml(fmtM(Math.abs(d)));
+  box.classList.remove(d < 0 ? "bank-up" : "bank-down");
+  box.classList.add("bank-flip", d < 0 ? "bank-down" : "bank-up");
+  n.classList.remove("bank-slam");
+  if (slam) { void n.offsetWidth; n.classList.add("bank-slam"); }
+}
 function tickBank() {
   if (MODE !== "cap" || !G || !el("bankAmt")) return;
   var g = G;
@@ -1715,70 +1732,72 @@ function tickBank() {
     box.classList.toggle("bank-mid", !low && to <= 15);
     box.classList.toggle("bank-zero", to === 0);
   }
+  var fillTo = function (v) {
+    var fill = el("bankFill");
+    if (fill) fill.style.width = Math.max(0, Math.min(100, (v / g.meterMax) * 100)) + "%";
+  };
   var paint = function (v) {
     var n = el("bankAmt");
     if (!n) return false;
-    n.innerHTML = mHtml(fmtM(v), true);
+    n.innerHTML = mHtml(fmtM(v));
+    n.classList.remove("bank-slam");
     g.bankShown = v;
-    var fill = el("bankFill");
-    if (fill) fill.style.width = Math.max(0, Math.min(100, (v / g.meterMax) * 100)) + "%";
+    fillTo(v);
     return true;
   };
   var stopAnim = function () {
     if (g.bankAnim) { clearInterval(g.bankAnim); g.bankAnim = null; }
+    if (g.bankFlipT) { clearTimeout(g.bankFlipT); g.bankFlipT = null; }
     if (g.bankFlashT) { clearTimeout(g.bankFlashT); g.bankFlashT = null; }
   };
   var clearFlash = function () {
     var n = el("bankAmt"), b = n && n.closest(".mp-bank");
-    if (b) b.classList.remove("bank-down", "bank-up");
+    if (b) b.classList.remove("bank-down", "bank-up", "bank-flip");
   };
   var shown = (typeof g.bankShown === "number") ? g.bankShown : to;
+  var busy = !!(g.bankAnim || g.bankFlipT);
+  if (busy && g.bankAnimTo === to) {
+    // a re-render mid-transaction: the flip goes back on the fresh markup; a count in flight carries on by itself
+    if (g.bankFlipT && g.bankFlipD) { bankFlipShow(g.bankFlipD, false); fillTo(to); }
+    else if (box && g.bankFlipD) box.classList.add(g.bankFlipD < 0 ? "bank-down" : "bank-up");
+    return;
+  }
   if (shown === to) {
     // settled, a money-free re-render, or a refund landing us back where the
     // display already sits: make sure no stale count or flash survives.
-    if (g.bankAnim) { stopAnim(); clearFlash(); }
+    if (busy) { stopAnim(); clearFlash(); }
     g.bankAnimTo = null;
+    g.bankFlipD = 0;
     paint(to);
     return;
   }
-  // The chip reports the TRANSACTION: against the previous target when a
-  // count is in flight (retarget), against the display when idle.
-  var prevTarget = (g.bankAnim && typeof g.bankAnimTo === "number") ? g.bankAnimTo : shown;
-  var chipD = to - prevTarget;
-  var ded = el("bankDed");
-  if (ded && chipD !== 0) {
-    ded.textContent = chipD < 0 ? "\u2212$" + (-chipD) + "M" : "+$" + chipD + "M";
-    ded.className = "mpb-delta mono show " + (chipD < 0 ? "neg" : "pos");
-    if (g.bankDedT) clearTimeout(g.bankDedT);
-    g.bankDedT = setTimeout(function () {
-      if (ded.isConnected) ded.className = "mpb-delta mono";
-    }, 900);
-  }
-  var dir = to < shown ? "bank-down" : "bank-up";
-  if (box) {
-    box.classList.remove(dir === "bank-down" ? "bank-up" : "bank-down");
-    box.classList.add(dir);
-  }
+  var prevTarget = (busy && typeof g.bankAnimTo === "number") ? g.bankAnimTo : shown;
+  var d = to - prevTarget;   // the transaction
   stopAnim();
   g.bankAnimTo = to;
-  if (prefersReduce()) {
-    paint(to);
-    g.bankAnimTo = null;
-    g.bankFlashT = setTimeout(function () { clearFlash(); g.bankFlashT = null; }, 240);
-    return;
-  }
-  var from = shown, d = to - from;
-  var STEPS = Math.min(4, Math.abs(d)), i = 0, iv = Math.round(380 / STEPS);
-  g.bankAnim = setInterval(function () {
+  g.bankFlipD = d || (to - shown);
+  bankFlipShow(g.bankFlipD, true);
+  fillTo(to);
+  g.bankFlipT = setTimeout(function () {
+    g.bankFlipT = null;
     if (g !== G || !el("bankAmt")) { stopAnim(); return; }   // new game or no bank on this screen
-    i++;
-    paint(i >= STEPS ? to : Math.round(from + (d * i) / STEPS));
-    if (i >= STEPS) {
-      stopAnim();
-      g.bankAnimTo = null;
-      g.bankFlashT = setTimeout(function () { clearFlash(); g.bankFlashT = null; }, 180);
-    }
-  }, iv);
+    var b = el("bankAmt").closest(".mp-bank");
+    if (b) b.classList.remove("bank-flip");                   // the ink eases back to the bank's own (CSS)
+    var from = shown, dd = to - from;
+    var STEPS = Math.max(1, Math.min(4, Math.abs(Math.round(dd)))), i = 0;
+    paint(from);
+    g.bankAnim = setInterval(function () {
+      if (g !== G || !el("bankAmt")) { stopAnim(); return; }
+      i++;
+      paint(i >= STEPS ? to : Math.round(from + (dd * i) / STEPS));
+      if (i >= STEPS) {
+        stopAnim();
+        g.bankAnimTo = null;
+        g.bankFlipD = 0;
+        g.bankFlashT = setTimeout(function () { clearFlash(); g.bankFlashT = null; }, BANK_SETTLE_MS);
+      }
+    }, Math.round(BANK_COUNT_MS / STEPS));
+  }, BANK_FLIP_MS);
 }
 
 /* ---------- the rules sheet ----------
@@ -1812,7 +1831,8 @@ var RULES_MODE = {
     "Player salaries vary greatly, with rip-offs, bargains, and bait choices included.",
     "Pay $1M to reroll decade, team, or player seasons within that combo. Unlimited rerolls, but every empty roster spot needs $1M held in reserve.",
     "Players are default sorted by salary; also sort by peak minutes played, A\u2013Z, or use the search box.",
-    "Occasional random perks when rerolling era/team/player: REFUND (green) gives your dollar back. FIRE SALE (fire gold) drops the next roll's player salaries by $2M."
+    "Occasional random perks when rerolling era/team/player: REFUND (green) gives your dollar back. FIRE SALE (fire gold) drops the next roll's player salaries by $2M.",
+    "No stats and no player tags on the cards. The tags still count, and your results show them."
   ],
   daily: [
     // the first line names prices only on a Presti board (rulesSheetHtml swaps in RULES_DAILY_CAP)
@@ -2333,15 +2353,55 @@ function inkPrint(host, mark, variant) {
 }
 function tmCountUp(node, to) {
   if (!node) return;
-  if (tmCalm() || !window.requestAnimationFrame) { node.textContent = to + "%"; return; }
+  // v64: the percent prints in two inks (.pb-ink), whose plates copy data-ink, so the count writes both
+  var put = function (txt) { node.textContent = txt; node.setAttribute("data-ink", txt); };
+  if (tmCalm() || !window.requestAnimationFrame) { put(to + "%"); return; }
   var t0 = null;
   function step(ts) {
     if (t0 === null) t0 = ts;
     var p = Math.min(1, (ts - t0) / 560), e = 1 - Math.pow(1 - p, 3);
-    node.textContent = Math.round(to * e) + "%";
+    put(Math.round(to * e) + "%");
     if (p < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
+}
+// v64 (the owner: the home card should get "the other exciting flare that we have on the dedicated voting screen", if it
+// costs the first load nothing): the vote room's rubber stamp. The answer slams onto the card in two inks at a tilt,
+// with a halftone ring and ink drops, and the card jolts under it; it lifts as the tally prints, and the percent prints
+// in two inks. Everything is built on the tap (nothing at load); the CSS is shared with /bonuses/ (styles.css .pb-*).
+var TM_STAMP = null;
+function tmConfettiHtml(n) {
+  var h = "";
+  for (var i = 0; i < n; i++) {
+    var a = (i / n) * Math.PI * 2 + (i % 2 ? 0.22 : -0.12), r = 80 + (i * 37 % 64);
+    h += '<i class="c' + (i % 4) + '" style="--dx:' + Math.round(Math.cos(a) * r) + "px;--dy:" + Math.round(Math.sin(a) * r * 0.8 - 22) +
+      "px;--s:" + (5 + (i * 13 % 5)) + "px;--dl:" + ((i % 5) * 0.02).toFixed(2) + 's"></i>';
+  }
+  return h;
+}
+function tmStampOn(resp) {
+  tmStampOff(true);
+  var card = document.querySelector("#traitsModule .hm-card");
+  if (!card || tmCalm()) return;
+  var word = resp === "yes" ? "YES" : resp === "no" ? "NO" : "IDK";
+  var st = document.createElement("div");
+  st.className = "pb-stamp " + (resp === "yes" ? "is-yes" : resp === "no" ? "is-no" : "is-unsure");
+  st.setAttribute("aria-hidden", "true");
+  st.innerHTML = '<i class="pb-ring"></i><span class="pb-conf">' + tmConfettiHtml(14) + "</span>" +
+    '<div class="pb-stamp-tilt"><b class="pb-ink" data-ink="' + word + '">' + word + "</b></div>";
+  card.appendChild(st);
+  tmReplay(card, "is-hit");
+  TM_STAMP = { el: st, t0: Date.now() };
+}
+function tmStampOff(now) {
+  var s = TM_STAMP;
+  TM_STAMP = null;
+  if (!s) return;
+  var wait = now ? 0 : Math.max(0, 480 - (Date.now() - s.t0));   // the stamp reads before it lifts, however fast the reply
+  setTimeout(function () {
+    s.el.classList.add("is-lift");
+    setTimeout(function () { if (s.el.parentNode) s.el.parentNode.removeChild(s.el); }, 380);
+  }, wait);
 }
 // The call, in the game's real rule (the server's live thresholds: 62% settles a yes, 38% a no,
 // once 25 votes are in; the pill on the results ballot reads the same numbers).
@@ -2407,6 +2467,7 @@ function tmVote(resp, btn) {
   btn.classList.add("pressed");
   el("tmErr").hidden = true;
   buzz(10);
+  tmStampOn(resp);
   var t0 = Date.now();
   fetch("/api/traits", {
     method: "POST", credentials: "same-origin",
@@ -2420,6 +2481,7 @@ function tmVote(resp, btn) {
   }).catch(function () { tmFailed(); });
 }
 function tmFailed(reason) {
+  tmStampOff(true);
   TM.busy = false;
   var mod = el("traitsModule");
   if (mod) mod.classList.remove("tm-locked");
@@ -2442,6 +2504,7 @@ function tmPass(btn) {
   btn.classList.add("pressed");
   el("tmErr").hidden = true;
   buzz(6);
+  tmStampOn("idk");
   tmSeenAdd(q.id);
   analyticsTrack("traits_vote", { surface: "traits", action: "pass", ordinal: TM.i + 1, challenge: q.id, source: TM.source, sid: TM.sid });
   fetch("/api/traits?op=result&q=" + encodeURIComponent(q.id) + "&sid=" + TM.sid, { credentials: "same-origin" })
@@ -2461,12 +2524,15 @@ function tmResult(q, resp, d, rules) {
   var call = tmCall(d, rules && rules.min_eligible_votes);
   var tally = el("tmTally");
   tally.textContent = "";
+  tmStampOff(false);
   if (call.pct != null) {
     var num = document.createElement("b");
-    num.className = "hm-pct" + (call.no ? " is-no" : "");
+    num.className = "hm-pct pb-ink" + (call.no ? " is-no" : "");   // v64: printed in two inks, like the vote room's
     num.textContent = "0%";
+    num.setAttribute("data-ink", "0%");
     tally.appendChild(num);
     tally.appendChild(document.createTextNode(call.text));
+    tmReplay(num, "pb-print");
     tmCountUp(num, call.pct);
   } else tally.textContent = call.text;
   el("tmYou").textContent = resp === "yes" ? "You said yes" : resp === "no" ? "You said no" : "You passed";
@@ -3791,7 +3857,8 @@ function trayHtml() {
 // (the engine's own reading, so it never disagrees with the Scoring Card). No tags loaded, no line.
 var LBL_ROLE_IDS = { iso: 1, clutch: 1, teamd: 1, rimplus: 1, tshot: 1 };
 function trayRolesHtml() {
-  if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
+  // Pro and (v64) Presti are drafted from memory: no tags on the board, so no tag roles in the tray either
+  if (!G || G.screen !== "draft" || MODE === "kaman" || MODE === "pro" || MODE === "cap" || !G.picks || G.picks.length < 3 || G.picks.length >= CFG.ROUNDS) return "";
   if (!window.T82 || !T82.labelTaxes || !T82.labelsReady()) return "";
   var lt = T82.labelTaxes(G, G.picks.map(function (p) { return p.row; }));
   var open = lt.rows.filter(function (r) { return r.amt > 0 && LBL_ROLE_IDS[r.id]; });   // roles only (not the pairs)
@@ -3962,7 +4029,8 @@ function capRowHtml(bestRow) {
         '<span class="pr-pos">' + bucketTag(row) + heightTag(row) + why + '</span>' +
         '<span class="cap-season">' + shortSeason(row[IDX.season]) + ' ' + esc(row[IDX.team]) + '</span>' +
       '</span>' +
-      boardTagsHtml(row) +
+      // v64 (the owner: "Presti mode needs to hide the player tags"): Presti is drafted from memory like Pro, so its
+      // cards show no tags; they still count, and the results cards show them
     '</span>' +
     '<span class="cap-cost">' + costHtml + '</span>' +
   '</div>';
@@ -4357,7 +4425,30 @@ function resultsLedgerHtml(e) {
     sizeLedgerHtml(e) +
     labelRowsHtml(e) +
     '<div class="ledger-row total"><span>Team score \u2192 net rating<span class="why">Score ' + fmt1(e.score) + " minus league baseline " + fmt1(BASELINE) + ".</span></span><span class=\"ledger-amt\">" + signed1(e.net) + "</span></div></div>" +
-    (e.labelsOn && labelsAsOf(e) ? '<p class="ledger-note t-small">Tag rows read the tags as of ' + labelsAsOf(e) + ". Think a tag is wrong? Tap it on the card above and vote.</p>" : "");
+    (e.labelsOn && labelsAsOf(e) ? ledgerFixHtml(labelsAsOf(e)) : "");
+}
+// v64 (the owner: "a prominent thing underneath the scoring card that says like did we get it wrong ... go back up and
+// add or remove whatever attribute from a player ... and then a button to click like an arrow" that scrolls to the
+// cards; his case: a five the game read as having no good defenders, with Isiah Thomas on it). It promises only what a
+// vote does: tags are votes, fixed on the cards above, and a score reads the frozen weekly tags (the stat rows, such
+// as the DBPM defense rows, are not votes). The arrow scrolls to Your five (wireLedgerFix).
+function ledgerFixHtml(asOf) {
+  return '<div class="hm-ht lf-ht"><div class="ledger-fix" id="ledgerFix">' +
+    '<p class="lf-head pb-ink" data-ink="DID WE GET ONE WRONG?">DID WE GET ONE WRONG?</p>' +
+    '<p class="lf-body">Player tags come from your votes. Missing a tag, or wearing a wrong one? Fix it on the cards: tap <b>+</b> to add a tag, or tap a tag to vote.</p>' +
+    '<button class="lf-go t-btn" type="button" id="ledgerFixBtn"><span class="lf-arrow" aria-hidden="true">\u2191</span> Fix a tag</button>' +
+    '<p class="lf-note t-small">Scores read the tags as of ' + asOf + ". Votes count from the next weekly update.</p>" +
+  "</div></div>";
+}
+function wireLedgerFix() {
+  var b = el("ledgerFixBtn");
+  if (!b) return;
+  b.addEventListener("click", function () {
+    var sec = document.querySelector(".traits-roster");
+    if (!sec) return;
+    var top = sec.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop || 0) - 8;
+    try { window.scrollTo({ top: Math.max(0, top), behavior: "smooth" }); } catch (e) { window.scrollTo(0, Math.max(0, top)); }
+  });
 }
 
 // Two-way profile: team offense = sum of pick OBPM, defense = sum of pick DBPM.
@@ -8713,7 +8804,8 @@ function renderResults(e, keepScroll) {
   // rewrite and the no-canvas fallback. The roster moved up under the hero
   // (owner fact: about half of finishers never scroll to it, so the first
   // ballot card has to sit above the fold); the two-way profile sits in the record card.
-  // The bottom "did we get it wrong" prompt is gone: the cards are the ballot.
+  // The cards are the ballot; v64 brings back a loud "did we get one wrong?" under the Scoring Card, whose arrow
+  // scrolls up to them (ledgerFixHtml).
   app().innerHTML = '<div class="rr">' +
     resultsTopBarHtml() +
     '<section class="board rr-board' + (daily ? " daily-framed" : "") + '" data-result-section="summary"><div class="goat-fw" id="wlFw" aria-hidden="true"></div>' +
@@ -8739,6 +8831,7 @@ function renderResults(e, keepScroll) {
 
   trackResultSections();
   wireBallot(picksInSlotOrder());
+  wireLedgerFix();
   mountResultsPrint(e, daily);
   el("tagGlossBtn").addEventListener("click", function () { ballotOpenGlossary("results"); });
 
@@ -9192,7 +9285,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v63.1";
+var BUILD_V = "v64";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

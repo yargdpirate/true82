@@ -69,7 +69,7 @@ nothing about the model is hardcoded in JS except the erf approximation
 
 | | classic | pro | cap "Presti" | kaman |
 |---|---|---|---|---|
-| Pool rows show | full stats + chips | name only | name + season + price | Kaman seasons |
+| Pool rows show | full stats + chips + player tags | name + season, no tags | name + season + price, no tags (v64) | Kaman seasons |
 | Season choice | player picks any season (year control) | locked random per player (`assignProSeasons`) | locked random per player, re-rollable | each season IS a pick |
 | Team/era skips | 1 + 1 per game | 1 + 1 per game | unlimited, $1 each | none |
 | Year rerolls | — | — | "Skip yrs" $1, whole board | — |
@@ -81,6 +81,8 @@ nothing about the model is hardcoded in JS except the erf approximation
 - **classic** — the teaching mode: full stat lines, badges/chips, pick any season.
 - **pro** — same pools, but each player is silently locked to a random season and
   no stats are shown; you're drafting from memory of who was good when.
+- **Pro and Presti hide the player tags** on the board and in the tray (Presti since v64, the owner's call:
+  both are drafted from memory). The tags still count in the score, and the results cards show them.
 - **kaman** — pool = every Chris Kaman season (one row per season,
   `KAMAN_SEASONS`), slots become C×5 (`capOf`), picks store no franchise/era,
   `renderKamanResults` declares 82-0 unconditionally and logs

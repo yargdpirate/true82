@@ -65,6 +65,7 @@
   --t-accent-base: #661D46;     /* accent 40% + shadow: a stacked button's base under an accent tube (its ink in deep shadow) */
   --t-offset-slab: #2F8FA8;     /* offset 72% + shadow: a stacked button's first slab under an offset tube */
   --t-offset-base: #1A4F5E;     /* offset 40% + shadow: a stacked button's base under an offset tube */
+  --t-offset-hi: #89DCF2;       /* offset 62% + light: an offset tube's own light: neon blue text (the Presti bank's balance, v64) */
   --t-good-soft: #80A39C;       /* good 33% + text-2: good as text on the ground (calm, not neon) */
   --t-good-top: #2C8861;        /* good 80% + ground: green keycap top */
   --t-good-face: #23744D;       /* good 70% + shadow: green keycap face */
@@ -100,12 +101,13 @@
   --t-print-dusk-rgb: 255 127 58; --t-print-night-rgb: 157 122 210; --t-shadow-rgb: 0 0 0; --t-light-rgb: 255 255 255;
   --t-accent-face-rgb: 218 62 152; --t-accent-glow-rgb: 255 109 192; --t-accent-slab-rgb: 184 52 127;
   --t-accent-base-rgb: 102 29 70; --t-offset-slab-rgb: 47 143 168; --t-offset-base-rgb: 26 79 94;
-  --t-good-soft-rgb: 128 163 156; --t-good-top-rgb: 44 136 97; --t-good-face-rgb: 35 116 77;
-  --t-good-edge-rgb: 23 76 51; --t-good-ink-rgb: 9 30 20; --t-bad-soft-rgb: 241 102 94; --t-bad-top-rgb: 255 105 94;
-  --t-bad-face-rgb: 222 79 68; --t-bad-hi-rgb: 255 138 129; --t-warn-rgb: 255 77 148; --t-hot-hi-rgb: 255 218 96;
-  --t-hot-glow-rgb: 255 188 117; --t-text-3-rgb: 99 95 116; --t-off-face-rgb: 56 46 81; --t-off-edge-rgb: 67 56 95;
-  --t-off-ink-rgb: 100 84 130; --t-overlay-warm-rgb: 34 14 35; --t-metal-deep-rgb: 94 73 132;
-  --t-metal-dark-rgb: 63 49 84; --t-news-ink-rgb: 28 22 42; --t-news-ink-2-rgb: 74 60 104; --t-news-red-rgb: 189 67 58;
+  --t-offset-hi-rgb: 137 220 242; --t-good-soft-rgb: 128 163 156; --t-good-top-rgb: 44 136 97;
+  --t-good-face-rgb: 35 116 77; --t-good-edge-rgb: 23 76 51; --t-good-ink-rgb: 9 30 20; --t-bad-soft-rgb: 241 102 94;
+  --t-bad-top-rgb: 255 105 94; --t-bad-face-rgb: 222 79 68; --t-bad-hi-rgb: 255 138 129; --t-warn-rgb: 255 77 148;
+  --t-hot-hi-rgb: 255 218 96; --t-hot-glow-rgb: 255 188 117; --t-text-3-rgb: 99 95 116; --t-off-face-rgb: 56 46 81;
+  --t-off-edge-rgb: 67 56 95; --t-off-ink-rgb: 100 84 130; --t-overlay-warm-rgb: 34 14 35;
+  --t-metal-deep-rgb: 94 73 132; --t-metal-dark-rgb: 63 49 84; --t-news-ink-rgb: 28 22 42;
+  --t-news-ink-2-rgb: 74 60 104; --t-news-red-rgb: 189 67 58;
   /* type */
   --t-disp: "Big Shoulders Display", "Barlow Condensed", "Arial Narrow", sans-serif;/* display: numbers, titles, buttons */
   --t-body: "Rubik", system-ui, sans-serif;                       /* running text */
@@ -2450,7 +2452,7 @@ main.content-page {
 .daily-strap .ds-rule { margin-top: 5px; font-size: .74rem; color: var(--t-text-2); line-height: 1.35; }
 .strap-tip { margin-top: 8px; }
 .ds-pill { font-family: var(--t-mono); font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
-  padding: 2px 7px 3px; border-radius: 2px; }
+  padding: 2px 7px 3px; border-radius: 2px; white-space: nowrap; }   /* v64: one line; with HOW TO PLAY beside it at 320 it drops under DAILY #N */
 .ds-pill.ds-off { color: var(--t-accent-ink); background: var(--t-accent); font-weight: 700; }
 .ds-pill.ds-prac { color: var(--t-text-2); border: 1px dashed var(--t-rule); }
 
@@ -2558,10 +2560,12 @@ main.content-page {
    the rules sheet. #app prefixes are the house specificity armor. */
 body.drafting .site-head { display: none; }
 
+/* v64 (the owner: the pick diamonds are the "visual stars of the scene": "way bigger ... hugging the classic mode
+   frame ... a tiny bit of padding", and no pick number): the bar drops its hairline and sits right on the mode panel,
+   and PICK N OF 5 is for screen readers only (.du-count is .sr-only in the markup). */
 #app .draft-utility {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-  gap: 8px; min-height: 46px; margin: 0 0 10px; padding: 0 0 8px;
-  border-bottom: 1px solid var(--t-line);
+  gap: 8px; min-height: 44px; margin: 0 0 7px; padding: 0;
 }
 #app .du-exit {
   justify-self: start; display: inline-flex; align-items: center; gap: 3px;
@@ -2571,9 +2575,7 @@ body.drafting .site-head { display: none; }
   background: none; border: 0; box-shadow: none; padding: 8px 8px 8px 0;
 }
 #app .du-exit:active { color: var(--t-accent); }
-.du-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
-.du-pips span { width: 11px; height: 11px; }
-.du-count { font-size: 8.5px; letter-spacing: 0.16em; color: var(--t-text-2); white-space: nowrap; }
+.du-mid { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 4px 0; }
 .du-brandbox { justify-self: end; display: inline-flex; }
 .du-brand { width: 24px; height: 27px; opacity: 0.9; }
 
@@ -2606,40 +2608,43 @@ body.drafting .site-head { display: none; }
 .mp-row2 .mp-cash { color: var(--t-accent); font-weight: 700; font-size: 13px; letter-spacing: 0.05em; }
 .mp-target { font-size: 9.5px; letter-spacing: 0.09em; color: var(--t-accent); }
 
-/* HOW TO PLAY: explicit, fully contained CTA so it reads as a normal button
-   in the draft panel rather than a floating icon treatment. */
-#app .mp-rules-btn {
+/* HOW TO PLAY (v64, the owner: it "is really pulling attention away from the rest of this screen ... make it more muted
+   but still clickable ... obviously a button to click but a lot quieter"): the style guide's quiet button as styles.css
+   draws it (the dim label in a bronze outline, no glow), compact, with the line-drawn book. It is a plain button (not
+   .t-btn): look.css restyles every shared kind, and its neon amount lights the quiet kind in the aqua neon, which here
+   would compete with the bank and the skips; .tm-flat keeps the 3D decorator off. It keeps its place beside the mode
+   name at every width, 320 included. */
+#app .mp-rules {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  min-height: 58px;
-  min-width: 132px;
-  max-width: 150px;
-  padding: 10px 13px 12px;
-  border-radius: 12px;
-  text-align: center;
-  white-space: nowrap;
-}
-#app .mp-rules-btn .mp-book-wrap {
-  width: 32px;
-  height: 32px;
+  gap: 6px;
+  min-height: 36px;
+  min-width: 0;
+  max-width: none;
+  padding: 6px 11px 7px;
+  border: 1.5px solid var(--t-rule);
   border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  background: rgb(var(--t-accent-ink-rgb) / .16);
-  box-shadow: inset 0 0 0 1px rgb(var(--t-accent-ink-rgb) / .22), inset 0 1px 0 rgb(var(--t-light-rgb) / .18);
+  background: transparent;
+  color: var(--t-text-2);
+  font-family: var(--t-disp);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 80ms ease, border-color 80ms ease, background-color 80ms ease;
 }
-#app .mp-rules-btn .mp-book { width: 24px; height: 20px; flex: none; }
-.mp-rules-text { display: flex; align-items: center; min-width: 0; line-height: 1; }
-.mp-rules-main { font-family: var(--t-disp); font-weight: 700; font-size: 16px; letter-spacing: 0.055em; white-space: nowrap; }
-@media (max-width: 349px) {
-  #app .mode-panel { flex-wrap: wrap; }
-  #app .mp-rules-btn { width: 100%; min-width: 0; justify-content: center; text-align: center; }
-}
+#app .mp-rules:not(:disabled):active { color: var(--t-text); border-color: var(--t-metal); background: rgb(var(--t-metal-rgb) / .12); }
+#app .mp-rules .mp-book { width: 15px; height: 15px; flex: none; }
+.mp-rules-main { font-family: var(--t-disp); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; white-space: nowrap; }
 
 /* ---------- the rules sheet ---------- */
 
@@ -3121,26 +3126,23 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
    in every mode, a pool that scrolls behind the tray with a continuation
    fade, and a full-screen Daily gate. House materials only. */
 
-/* ---------- rules button refinements ---------- */
-#app .mp-rules-btn {
-  align-items: center;
-  gap: 9px;
-  padding: 10px 13px 12px;
-  font-family: inherit;
-}
-#app .mp-rules-btn .mp-rules-main { font-size: 16px; white-space: nowrap; }
-#app .mp-rules-btn:focus-visible { outline: 2px solid rgb(var(--t-accent-glow-rgb) / .95); outline-offset: 3px; }
+/* ---------- rules button refinements (v64: its size lives with the quiet button above) ---------- */
+#app .mp-rules:focus-visible { outline: 2px solid rgb(var(--t-accent-glow-rgb) / .95); outline-offset: 3px; }
 
 /* ---------- the bank ---------- */
-/* v29 SCOREBOARD (owner-directed; supersedes the v17-v22 bronze plaque).
-   Flat charcoal, thin amber outline in the price-badge family, no gradient,
-   no gloss, no glow. Desktop: BANK / balance / segmented meter in a column.
-   The meter is ONE proportional fill (#bankFill, width = budget/meterMax)
-   under a notch overlay, so uneven balances render truthfully; notches are
-   painted in the box background color. States: .bank-mid soft orange,
-   .bank-low whistle red (slots-aware, set in tickBank), .bank-zero depleted.
-   bank-down / bank-up flash the amount + fill; no box scale, no casino. */
+/* v29 SCOREBOARD, v64 NEON (the owner: the bank "is the life blood of the mode" and should be "as prominent as the skip
+   buttons", with HOW TO PLAY quiet). The bank glows in the skip buttons' neon blue, flat, since it is not a button: a
+   1.5px tube with the same halo, the balance in the tube's own light. Desktop: BANK / balance / segmented meter in a
+   column; phones: one row. The meter is ONE proportional fill (#bankFill, width = budget/meterMax) under a notch
+   overlay painted in the box's own ground, so uneven balances render truthfully. One ink inks the tube, the label, the
+   balance and the fill: --bank-ink, its light --bank-hi, and its see-through steps --bank-a30 to --bank-a85 (premixed
+   from theme tokens, which keeps the style law), so each state is one rule: .bank-mid money running low, .bank-low and
+   .bank-zero red (slots-aware, set in tickBank), and THE FLIP (.bank-flip, set in tickBank): a spend turns the whole
+   bank red and slams the transaction in two inks; a refund turns it green; the neon eases back as the balance counts
+   down. */
 .mp-bank {
+  --bank-ink: var(--t-offset); --bank-hi: var(--t-offset-hi);
+  --bank-a30: rgb(var(--t-offset-rgb) / .3); --bank-a45: rgb(var(--t-offset-rgb) / .45); --bank-a60: rgb(var(--t-offset-rgb) / .6); --bank-a85: rgb(var(--t-offset-rgb) / .85);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3152,11 +3154,12 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
   padding: 8px 16px 9px;
   text-align: center;
   border-radius: 10px;
-  border: 1px solid rgb(var(--t-accent-rgb) / .55);
-  background: var(--t-ground-2);
-  box-shadow: inset 0 1px 0 rgb(var(--t-shadow-rgb) / .45), inset 0 0 0 1px rgb(var(--t-shadow-rgb) / .22);
+  border: 1.5px solid var(--bank-ink);
+  background: var(--t-ground);
+  box-shadow: 0 0 0 1px var(--bank-a30), 0 0 8px var(--bank-a60), 0 0 20px -2px var(--bank-a45), inset 0 0 9px var(--bank-a30);
   position: relative;
   overflow: hidden;
+  transition: border-color .25s ease, box-shadow .25s ease;
 }
 .mpb-lab {
   position: relative;
@@ -3164,21 +3167,23 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.28em;
-  color: rgb(var(--t-accent-rgb) / .78);
+  color: var(--bank-ink);
+  transition: color .25s ease, border-color .25s ease;
 }
 .mpb-amt {
   position: relative;
   z-index: 1;
+  display: inline-block;
   font-family: var(--t-disp);
   font-weight: 800;
   font-style: normal;
-  font-size: clamp(28px, 4vw, 36px);
+  font-size: clamp(30px, 4vw, 38px);
   line-height: 0.9;
   letter-spacing: 0.01em;
-  color: var(--t-accent);
+  color: var(--bank-hi);
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 0 rgb(var(--t-shadow-rgb) / .5);
-  transition: color 0.15s ease, transform 0.15s ease;
+  text-shadow: 0 0 6px var(--bank-a85), 0 0 14px var(--bank-a45);
+  transition: color .25s ease, text-shadow .25s ease;
 }
 .mpb-meter {
   position: relative;
@@ -3187,86 +3192,65 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
   height: 8px;
   margin-top: 2px;
   border-radius: 3px;
-  border: 1px solid rgb(var(--t-accent-rgb) / .35);
+  border: 1px solid var(--bank-a45);
   background: rgb(var(--t-shadow-rgb) / .38);
   overflow: hidden;
+  transition: border-color .25s ease;
 }
 .mpb-fill {
   position: absolute;
   top: 0; bottom: 0; left: 0;
-  background: var(--t-accent);
+  background: var(--bank-ink);
   border-radius: 2px;
-  transition: width 0.3s ease, background-color 0.18s ease;
+  box-shadow: 0 0 6px var(--bank-a60);
+  transition: width .42s cubic-bezier(.3, .7, .3, 1), background-color .25s ease;
 }
 .mpb-meter::after {
   content: "";
   position: absolute;
   inset: -1px 0;
-  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--t-ground-2) calc(10% - 2px) 10%);
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--t-ground) calc(10% - 2px) 10%);
   pointer-events: none;
 }
-.mpb-delta {
-  position: absolute;
-  top: 5px;
-  right: 9px;
-  z-index: 2;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  opacity: 0;
-  transform: translateY(3px);
-  transition: opacity 0.16s ease, transform 0.16s ease;
-  pointer-events: none;
+.mp-bank.bank-mid {
+  --bank-ink: var(--t-warn); --bank-hi: var(--t-warn);
+  --bank-a30: rgb(var(--t-warn-rgb) / .3); --bank-a45: rgb(var(--t-warn-rgb) / .45); --bank-a60: rgb(var(--t-warn-rgb) / .6); --bank-a85: rgb(var(--t-warn-rgb) / .85); }
+.mp-bank.bank-low, .mp-bank.bank-zero {
+  --bank-ink: var(--t-bad-soft); --bank-hi: var(--t-bad-soft);
+  --bank-a30: rgb(var(--t-bad-soft-rgb) / .3); --bank-a45: rgb(var(--t-bad-soft-rgb) / .45); --bank-a60: rgb(var(--t-bad-soft-rgb) / .6); --bank-a85: rgb(var(--t-bad-soft-rgb) / .85); }
+.mp-bank.bank-zero .mpb-amt { opacity: 0.85; }
+/* THE FLIP (v64, the owner: "briefly changes the overall bank from neon blue to the number being deducted to red"):
+   the ink snaps over (80ms) and eases back (the base .25s) */
+.mp-bank.bank-flip.bank-down {
+  --bank-ink: var(--t-bad); --bank-hi: var(--t-bad-hi);
+  --bank-a30: rgb(var(--t-bad-rgb) / .3); --bank-a45: rgb(var(--t-bad-rgb) / .45); --bank-a60: rgb(var(--t-bad-rgb) / .6); --bank-a85: rgb(var(--t-bad-rgb) / .85); }
+.mp-bank.bank-flip.bank-up {
+  --bank-ink: var(--t-good); --bank-hi: var(--t-good);
+  --bank-a30: rgb(var(--t-good-rgb) / .3); --bank-a45: rgb(var(--t-good-rgb) / .45); --bank-a60: rgb(var(--t-good-rgb) / .6); --bank-a85: rgb(var(--t-good-rgb) / .85); }
+.mp-bank.bank-flip, .mp-bank.bank-flip .mpb-lab, .mp-bank.bank-flip .mpb-amt, .mp-bank.bank-flip .mpb-meter { transition-duration: .08s; }
+/* the transaction slams in like a stamp (big, under, home) while the second ink, the aqua plate, lands off register
+   and snaps in: the riso print of the reel, the diamonds and the vote room */
+.mpb-amt.bank-slam { animation: bank-slam .34s cubic-bezier(.2, .9, .3, 1.25) both, bank-plate .56s cubic-bezier(.25, .9, .3, 1) both; }
+@keyframes bank-slam { 0% { opacity: 0; transform: scale(1.8); } 55% { opacity: 1; transform: scale(.9); } 100% { opacity: 1; transform: none; } }
+@keyframes bank-plate {
+  0%, 25% { text-shadow: 14px 9px 0 rgb(var(--t-offset-rgb) / 0), 0 0 12px var(--bank-a60); }
+  55% { text-shadow: -2px -1px 0 rgb(var(--t-offset-rgb) / .95), 0 0 12px var(--bank-a60); }
+  100% { text-shadow: 3px 2px 0 rgb(var(--t-offset-rgb) / .9), 0 0 12px var(--bank-a60); }
 }
-.mpb-delta.show { opacity: 1; transform: none; }
-.mpb-delta.neg { color: var(--t-bad-hi); }
-.mpb-delta.pos { color: var(--t-good-soft); }
-.mp-bank.bank-mid .mpb-amt { color: var(--t-warn); }
-.mp-bank.bank-mid .mpb-fill { background: var(--t-warn); }
-.mp-bank.bank-zero .mpb-amt { color: var(--t-bad-soft); opacity: 0.85; }
 .cap-mode-panel .mp-left { opacity: 0.92; }
-.cap-mode-panel .mp-rules-btn { transform: none; transform-origin: right center; justify-self: end; }
-.mp-bank.bank-down .mpb-amt { color: var(--t-bad-hi); transform: scale(1.05); }
-.mp-bank.bank-down .mpb-fill { background: var(--t-bad-hi); }
-.mp-bank.bank-up .mpb-amt { color: var(--t-good); transform: scale(1.05); }
-.mp-bank.bank-up .mpb-fill { background: var(--t-good); }
+.cap-mode-panel .mp-rules { justify-self: end; }
 @media (max-width: 640px) {
+  /* one row for the name and the quiet HOW TO PLAY (320 included), the bank full width under them */
   #app .cap-mode-panel {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "left rules"
       "bank bank";
-    align-items: start;
-    gap: 12px;
+    align-items: center;
+    gap: 10px 12px;
   }
-  #app .cap-mode-panel .mp-left {
-    grid-area: left;
-    align-self: start;
-  }
-  #app .cap-mode-panel .mp-rules-btn {
-    grid-area: rules;
-    align-self: start;
-    justify-self: end;
-    width: auto;
-    min-width: 118px;
-    max-width: 132px;
-    min-height: 58px;
-    padding: 9px 11px 11px;
-    justify-content: center;
-    transform: none;
-  }
-  #app .cap-mode-panel .mp-rules-btn .mp-book-wrap {
-    width: 28px;
-    height: 28px;
-  }
-  #app .cap-mode-panel .mp-rules-btn .mp-book {
-    width: 20px;
-    height: 17px;
-  }
-  #app .cap-mode-panel .mp-rules-btn .mp-rules-main {
-    font-size: 13px;
-    letter-spacing: 0.045em;
-  }
+  #app .cap-mode-panel .mp-left { grid-area: left; }
+  #app .cap-mode-panel .mp-rules { grid-area: rules; }
   #app .cap-mode-panel .mp-bank {
     grid-area: bank;
     width: 100%;
@@ -3276,24 +3260,19 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
     align-items: center;
     justify-content: flex-start;
     gap: 10px;
-    padding: 7px 12px 8px;
-    border-width: 1px;
+    padding: 8px 12px 9px;
     border-radius: 10px;
-    background: var(--t-ground-2);
-    box-shadow: inset 0 1px 0 rgb(var(--t-shadow-rgb) / .45), inset 0 0 0 1px rgb(var(--t-shadow-rgb) / .22);
   }
   #app .cap-mode-panel .mpb-lab {
-    font-size: 9px;
+    font-size: 9.5px;
     letter-spacing: 0.22em;
     padding: 3px 7px 4px;
-    border: 1px solid rgb(var(--t-accent-rgb) / .45);
+    border: 1px solid var(--bank-a60);
     border-radius: 6px;
     flex: 0 0 auto;
   }
   #app .cap-mode-panel .mpb-amt {
-    font-size: clamp(26px, 7.6vw, 32px);
-    line-height: 0.9;
-    text-shadow: 0 1px 0 rgb(var(--t-shadow-rgb) / .5);
+    font-size: clamp(28px, 8.6vw, 34px);
     flex: 0 0 auto;
   }
   #app .cap-mode-panel .mpb-meter {
@@ -3303,48 +3282,13 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
     margin-top: 0;
     align-self: center;
   }
-/* mobile meter: five fat segments, not ten slivers */  
+/* mobile meter: five fat segments, not ten slivers */
   #app .cap-mode-panel .mpb-meter::after {
-    background: repeating-linear-gradient(90deg, transparent 0 calc(20% - 2px), var(--t-ground-2) calc(20% - 2px) 20%);
+    background: repeating-linear-gradient(90deg, transparent 0 calc(20% - 2px), var(--t-ground) calc(20% - 2px) 20%);
   }
-  #app .cap-mode-panel .mpb-delta { top: 2px; right: 7px; font-size: 10px; }
 }
 @media (max-width: 420px) {
-  #app .cap-mode-panel .mp-rules-btn {
-    min-width: 108px;
-    max-width: 120px;
-    min-height: 54px;
-    padding: 8px 9px 10px;
-    gap: 7px;
-  }
-  #app .cap-mode-panel .mp-rules-btn .mp-book-wrap {
-    width: 26px;
-    height: 26px;
-  }
-  #app .cap-mode-panel .mp-rules-btn .mp-rules-main {
-    font-size: 12px;
-  }
-  #app .cap-mode-panel .mpb-amt {
-    font-size: clamp(24px, 8vw, 28px);
-  }
-  #app .cap-mode-panel .mp-bank { gap: 8px; padding: 6px 10px 7px; }
-}
-@media (max-width: 349px) {
-  #app .cap-mode-panel {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "left"
-      "rules"
-      "bank";
-  }
-  #app .cap-mode-panel .mp-rules-btn {
-    justify-self: stretch;
-    max-width: none;
-    width: 100%;
-    min-width: 0;
-    justify-content: center;
-    text-align: center;
-  }
+  #app .cap-mode-panel .mp-bank { gap: 8px; padding: 7px 10px 8px; }
 }
 
 /* ---------- skip buttons: label + cost chip (Presti) ---------- */
@@ -3427,20 +3371,37 @@ html[data-btn="neon"] #app#app .rd-team.is-clock .rd-otc { color: var(--t-accent
 
 /* ---------- year face: visible season control, spinnable text ---------- */
 .year-wrap { position: relative; display: inline-flex; max-width: 148px; }
+/* v64 (the owner: "we want the player years to be obviously clickable and also catch the eye with the down arrow still
+   being like red or hot pink ... the years should be the neon teal and the player [tags] the more muted purple ... we
+   want people to see that it's a player [season], not just a player"; his cases: Derrick Rose after the injury, LeBron
+   before he could shoot). The season wears the neon blue, its caret stays hot pink; the board's tags went quiet
+   (#app#app .board-tags below). A season that cannot change keeps the blue, without the frame or the caret. */
 .year-face {
   display: inline-flex; align-items: center; gap: 4px;
-  font-family: var(--t-mono); font-size: 11px; line-height: 1.3; color: var(--t-label);
-  background: var(--t-ground); border: 1px solid var(--t-rule); border-radius: 5px;
+  font-family: var(--t-mono); font-size: 11px; font-weight: 700; line-height: 1.3; color: var(--t-offset);
+  background: rgb(var(--t-offset-rgb) / .1); border: 1px solid rgb(var(--t-offset-rgb) / .6); border-radius: 5px;
+  box-shadow: 0 0 6px rgb(var(--t-offset-rgb) / .28);
   padding: 2px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.yf-caret { color: var(--t-accent); font-style: normal; font-weight: 400; font-size: 9px; }
-.year-face.year-fixed { border-color: transparent; background: none; padding-left: 0; color: var(--t-text-2); }
+.yf-caret { color: var(--t-accent); font-style: normal; font-weight: 700; font-size: 10px; }
+.year-face.year-fixed { border-color: transparent; background: none; box-shadow: none; padding-left: 0; color: var(--t-offset); }
+#app#app .cap-row .cap-season { color: var(--t-offset); font-weight: 700; }   /* Presti's locked season: the same blue */
 .year-wrap .year-sel {
   position: absolute; inset: 0; width: 100%; height: 100%;
   opacity: 0; margin: 0; padding: 0; border: 0; background: none;
   font-size: 16px;   /* iOS: no focus zoom */
 }
-.year-wrap:focus-within .year-face { border-color: var(--t-metal); color: var(--t-accent); }
+.year-wrap:focus-within .year-face { border-color: var(--t-offset); color: var(--t-offset-hi); }
+/* v64 the board's chips, quiet: the tags and Classic's engine chips (3PT, GRAVITY) print as outline chips in the muted
+   purple (a red outline for a bad tag), so the season is what catches the eye; the pool's legend matches them. The
+   results cards' tags (the ones you vote with) keep their ink. #app#app plus a class outranks look.css's ink chips. */
+#app#app .player-row .tchip, #app#app .pool-trait-legend .t-chip {
+  background: transparent; color: var(--t-label); box-shadow: inset 0 0 0 1px rgb(var(--t-label-rgb) / .55); }
+#app#app .player-row .tchip[data-tone="bad"], #app#app .pool-trait-legend .t-chip[data-tone="bad"] {
+  color: var(--t-bad-soft); box-shadow: inset 0 0 0 1px rgb(var(--t-bad-rgb) / .5); }
+#app#app .player-row .tchip:is(:active, .pressed, .flashed, .expanded) {
+  transform: none; background: rgb(var(--t-label-rgb) / .16); color: var(--t-text); }
+#app#app .player-row .tchip[data-tone="bad"]:is(:active, .pressed, .flashed, .expanded) { background: rgb(var(--t-bad-rgb) / .16); }
 
 /* ---------- draft viewport: the pool is the only scroller ---------- */
 body.drafting { height: 100vh; height: 100dvh; overflow: hidden; }
@@ -3496,7 +3457,6 @@ body.gating .gate-back {
   .pool-cue { animation: none; }
   .mpb-amt { transition: none; }
   .mpb-fill { transition: none; }
-  .mpb-delta { transition: opacity 0.12s ease; transform: none; }
 }
 
 /* ============ GATE DRAG CUE (2026-07-18, v18) ============
@@ -3533,11 +3493,7 @@ body.gating .gate-back {
    action, and the low-funds warning lives here on the plaque, going whistle
    when the balance nears the $1M-per-open-slot floor. tickBank's red/green
    pulse classes land on .mp-bank as before. */
-.mp-bank.bank-low .mpb-amt { color: var(--t-bad-soft); text-shadow: 0 1px 0 rgb(var(--t-shadow-rgb) / .5); }
-.mp-bank.bank-low .mpb-lab { color: var(--t-bad-soft); border-color: rgb(var(--t-bad-rgb) / .5); }
-.mp-bank.bank-low { border-color: rgb(var(--t-bad-rgb) / .55); }
-.mp-bank.bank-low .mpb-fill { background: var(--t-bad-soft); }
-.mp-bank.bank-low .mpb-meter { border-color: rgb(var(--t-bad-rgb) / .4); }
+/* (v64: .bank-low is one --bank-ink line in THE BANK block above) */
 
 /* ============ MOBILE VERTICAL DIET (2026-07-18, v21) ============
    Small screens were losing the entire pool below the fold: the bank plaque
@@ -3555,9 +3511,6 @@ body.gating .gate-back {
 /* 2. panel chrome */  
   #app .cap-mode-panel { gap: 8px 10px; }
   #app .mode-panel { padding: 10px 12px 11px; }
-  #app .cap-mode-panel .mp-rules-btn { min-height: 44px; padding: 7px 11px 9px; }
-  #app .cap-mode-panel .mp-rules-btn .mp-book-wrap { width: 22px; height: 22px; }
-  #app .cap-mode-panel .mp-rules-btn .mp-book { width: 17px; height: 14px; }
 
 /* 3. the ticket: long franchise names stop eating the screen */  
   .ticket-dec, .ticket-fr { font-size: clamp(22px, 6.8vw, 28px); }
@@ -3758,6 +3711,23 @@ body.gating .gate-back {
 /* v63: a height that would make a second small man in his unit (app.js heightTag) reads red, like a second TITLE #1 */
 .pr-ht.is-small { color: var(--t-bad-soft); }
 .ledger-note { margin: 8px 2px 0; color: var(--t-text-2); }
+/* v64 DID WE GET ONE WRONG? (the owner: "a prominent thing underneath the scoring card ... and then a button to click
+   like an arrow and it just automatically scroll you back up to the player cards"). An aqua neon card on the halftone
+   offset shadow of the home's doors, the question printed in two inks, the arrow button, the frozen-tags fine print.
+   app.js ledgerFixHtml / wireLedgerFix. */
+.hm-ht.lf-ht { --off: 6px; --r: var(--t-r-card); --dot: rgb(var(--t-offset-rgb) / .42); margin: 16px 6px 6px 0; }   /* the .hm-ht dot shadow, in the card's aqua */
+.ledger-fix { position: relative; padding: 14px 14px 12px; text-align: center;
+  border: 2px solid var(--t-offset); border-radius: var(--t-r-card);
+  background: radial-gradient(120% 90% at 50% 0%, rgb(var(--t-offset-rgb) / .12), transparent 70%), var(--t-ground);
+  box-shadow: 0 0 0 1px rgb(var(--t-offset-rgb) / .25), 0 0 16px rgb(var(--t-offset-rgb) / .32), inset 0 0 12px rgb(var(--t-offset-rgb) / .14); }
+.lf-head { display: inline-block; margin: 0 0 8px; font-family: var(--t-disp); font-weight: 900; font-size: clamp(22px, 7.6vw, 34px);
+  line-height: .95; letter-spacing: .03em; color: var(--t-text); white-space: nowrap; --p1: var(--t-accent); --p2: var(--t-offset); }
+.lf-body { margin: 0 auto 12px; max-width: 34em; font: 500 14.5px/1.42 var(--t-body); color: var(--t-text); }
+.lf-body b { color: var(--t-offset); font-weight: 700; }
+.lf-go { width: 100%; max-width: 320px; }
+.lf-arrow { display: inline-block; font-size: 1.2em; line-height: 1; animation: lf-nudge 1.1s ease-in-out .6s 3; }
+@keyframes lf-nudge { 0%, 100% { transform: none; } 45% { transform: translateY(-4px); } }
+.lf-note { margin: 10px 0 0; color: var(--t-text-2); }
 .trait-info-btn { appearance: none; -webkit-appearance: none; width: 27px; height: 27px; flex: 0 0 27px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 50%; background: linear-gradient(180deg, var(--t-accent), var(--t-accent-face)); color: var(--t-accent-ink);
   font-family: var(--t-body); font-style: italic; font-weight: 700; font-size: 16px; line-height: 1; cursor: pointer;
@@ -4182,7 +4152,33 @@ button.hm-mode:disabled { cursor: progress; }
 .ink-dias > i.on::before, .ink-dias > i.on::after, .ink-dias > span.done::before, .ink-dias > span.done::after { opacity: 1; }
 .ink-dias > span.now { border-color: var(--t-accent); background: none; box-shadow: 0 0 7px rgb(var(--t-accent-rgb) / .75); }
 .hm-dia { flex-shrink: 0; padding: 2px 3px 2px 4px; }
-.du-pips.ink-dias > span { width: 11px; height: 11px; }
+/* v64 (the owner: "make the diamonds bigger on the home screen widget"): the vote room's size (13px), the aqua plate
+   a size further off register */
+.hm-dia.ink-dias { gap: 11px; padding: 3px 5px 3px 4px; }
+.hm-dia.ink-dias > i { width: 13px; height: 13px; }
+.hm-dia.ink-dias > i::before { transform: translate(3px, 0); }
+.hm-dia.ink-dias > i::after { background-size: 3px 3px; }
+.hm-dia.ink-dias > .is-new::before { animation-name: ink-plate-md; }
+/* the narrowest phones (320): 12px on a tighter row, so the card's title still fits on one line beside them */
+@media (max-width: 359px) {
+  .hm-poll-head { gap: 6px; }
+  .hm-dia.ink-dias { gap: 6px; padding: 3px 3px; }
+  .hm-dia.ink-dias > i { width: 12px; height: 12px; }
+}
+@keyframes ink-plate-md { 0%, 25% { opacity: 0; transform: translate(12px, -5px); } 55% { opacity: 1; transform: translate(-2px, 1px); }
+  78% { transform: translate(4.5px, 0); } 100% { opacity: 1; transform: translate(3px, 0); } }
+/* v64 the draft's diamonds, big: they grow with the phone (15px at 320 to 21px from about 420), the outline and the
+   plates thicker, the halftone screen coarser to match */
+.du-pips.ink-dias { gap: clamp(9px, 2.9vw, 13px); }
+.du-pips.ink-dias > span { width: clamp(15px, 5vw, 21px); height: clamp(15px, 5vw, 21px); border-width: 2px; border-radius: 2.5px; }
+.du-pips.ink-dias > span::before, .du-pips.ink-dias > span::after { inset: -2px; border-radius: 2.5px; }
+.du-pips.ink-dias > span::before { transform: translate(3.5px, 0); }
+.du-pips.ink-dias > span::after { background: radial-gradient(circle, var(--t-accent-hi) 1px, transparent 1.5px) 0 0 / 3.6px 3.6px, var(--t-accent); }
+.du-pips.ink-dias > span.done { filter: drop-shadow(0 0 5px rgb(var(--t-accent-rgb) / .7)); }
+.du-pips.ink-dias > span.now { box-shadow: 0 0 10px rgb(var(--t-accent-rgb) / .75), inset 0 0 6px rgb(var(--t-accent-rgb) / .35); }
+.du-pips.ink-dias > .is-new::before { animation-name: ink-plate-lg; }
+@keyframes ink-plate-lg { 0%, 25% { opacity: 0; transform: translate(14px, -6px); } 55% { opacity: 1; transform: translate(-2.5px, 1.5px); }
+  78% { transform: translate(5.5px, 0); } 100% { opacity: 1; transform: translate(3.5px, 0); } }
 
 /* ---- THE INK PRINT (app.js inkPrint): the reward on every vote (v59) and every pick (v59.1). The key plate
    stamps down, the aqua plate lands off register and snaps in, a ring of halftone dots rolls out in both
@@ -4222,6 +4218,10 @@ button.hm-mode:disabled { cursor: progress; }
 /* a Do-Over roster slot's landing ring (v59.1): slot-sized */
 .ink-burst.is-slot { width: 66px; height: 66px; margin: -33px 0 0 -33px; }
 .ink-spray.is-slot { width: 72px; height: 72px; margin: -36px 0 0 -36px; }
+/* v64 a big draft diamond's ring (app.js draftInk "dia") */
+.ink-burst.is-dia { width: 78px; height: 78px; margin: -39px 0 0 -39px; background-size: 5px 5px; }
+.ink-burst.is-dia::after { background-size: 5px 5px; }
+.ink-spray.is-dia { width: 86px; height: 86px; margin: -43px 0 0 -43px; }
 @keyframes ink-ring { 0% { opacity: 1; transform: scale(.25); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.1); } }
 @keyframes ink-ring2 { 0% { opacity: 0; transform: translate(0, 0) scale(.85); } 30% { opacity: 1; transform: translate(3px, 3px) scale(.95); }
   100% { opacity: 0; transform: translate(1px, 1px) scale(1.04); } }
@@ -4253,6 +4253,68 @@ button.hm-mode:disabled { cursor: progress; }
 @keyframes hm-rise { from { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) {
   .hm *, .hm *::before, .hm *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------- v64 THE STAMP, SHARED (the owner: the home card gets "the other exciting flare that we have on the dedicated
+   voting screen", if it costs the first load nothing). Moved here from bonuses/index.html, which uses it as before:
+   a vote slams its answer onto the card as a two-ink rubber stamp at a tilt, with a halftone ring and ink drops, and the
+   card jolts under it (app.js tmStampOn on the home card, stampOn on the page); .pb-ink prints a word in two halftone
+   inks off register and .pb-print slams it in (the vote room's percent and masthead, the home card's percent, the
+   Scoring Card's DID WE GET ONE WRONG?). Built on the tap, never at load. Keyframes: rdp* above, ink-ring2. ---------- */
+.pb-ink{position:relative;isolation:isolate}
+.pb-ink::before,.pb-ink::after{content:attr(data-ink);position:absolute;left:0;top:0;right:0;z-index:-1;pointer-events:none;
+  color:transparent;-webkit-background-clip:text;background-clip:text;background-size:4px 4px;white-space:nowrap}
+.pb-ink::before{background-image:radial-gradient(circle,var(--p1,var(--t-accent)) 1.35px,transparent 1.85px);transform:translate(5px,5px)}
+.pb-ink::after{background-image:radial-gradient(circle,var(--p2,var(--t-offset)) 1.15px,transparent 1.65px);transform:translate(-3px,-2px);opacity:.85}
+.pb-print{animation:rdpSlam .34s cubic-bezier(.2,.9,.3,1.3) both}
+.pb-print::before{animation:rdpPlatePink .64s cubic-bezier(.25,.9,.3,1) both}
+.pb-print::after{animation:rdpPlateAqua .64s cubic-bezier(.25,.9,.3,1) .04s both}
+.pb-stamp{position:absolute;inset:0;z-index:6;display:grid;place-items:center;pointer-events:none;overflow:visible}
+.pb-stamp.is-yes{--k:var(--t-offset);--p1:var(--t-accent);--p2:var(--t-light)}
+.pb-stamp.is-no{--k:var(--t-accent);--p1:var(--t-offset);--p2:var(--t-light)}
+.pb-stamp.is-unsure{--k:var(--t-text-2);--p1:var(--t-accent);--p2:var(--t-offset)}
+.pb-stamp-tilt{transform:rotate(-9deg)}
+.pb-stamp b{display:block;padding:2px 14px 0;border:6px solid var(--k);border-radius:18px;color:var(--k);background:rgb(var(--t-ground-rgb) / .62);
+  font-family:var(--t-disp);font-weight:900;font-size:clamp(78px,24vw,112px);line-height:.95;letter-spacing:.04em;text-transform:uppercase;
+  text-shadow:0 0 26px rgb(var(--t-ground-rgb) / .8);box-shadow:0 0 0 3px rgb(var(--t-ground-rgb) / .5),0 16px 40px -12px rgb(var(--t-shadow-rgb) / .7);
+  animation:rdpSlam .3s cubic-bezier(.2,.9,.3,1.3) both}
+.pb-stamp.is-unsure b{font-size:clamp(52px,16vw,74px)}
+.pb-stamp b::before,.pb-stamp b::after{padding:inherit}
+.pb-stamp b::before{animation:rdpPlatePink .6s cubic-bezier(.25,.9,.3,1) both}
+.pb-stamp b::after{animation:rdpPlateAqua .6s cubic-bezier(.25,.9,.3,1) .04s both}
+.pb-ring{position:absolute;left:50%;top:50%;width:360px;height:360px;margin:-180px 0 0 -180px;border-radius:50%;opacity:0;pointer-events:none;
+  background-image:radial-gradient(circle,var(--k) 2.2px,transparent 2.8px);background-size:7px 7px;
+  -webkit-mask-image:radial-gradient(circle closest-side,transparent 50%,var(--fx-mask) 60%,var(--fx-mask) 80%,transparent 100%);
+  mask-image:radial-gradient(circle closest-side,transparent 50%,var(--fx-mask) 60%,var(--fx-mask) 80%,transparent 100%);
+  animation:rdpRing .86s cubic-bezier(.12,.75,.3,1) .04s both}
+.pb-ring::after{content:"";position:absolute;inset:0;border-radius:50%;opacity:0;
+  background-image:radial-gradient(circle,var(--p1) 2.2px,transparent 2.8px);background-size:7px 7px;
+  animation:ink-ring2 .86s cubic-bezier(.12,.75,.3,1) .1s both}
+.pb-conf{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none}
+.pb-conf i{position:absolute;left:calc(var(--s) / -2);top:calc(var(--s) / -2);width:var(--s);height:var(--s);border-radius:50%;opacity:0;
+  animation:rdpConf 1.1s cubic-bezier(.15,.7,.35,1) var(--dl) both}
+.pb-conf i.c0,.pb-conf i.c2{background:var(--t-accent)}
+.pb-conf i.c1{background:var(--t-offset)}
+.pb-conf i.c3{background:var(--t-light)}
+.pb-stamp.is-lift{animation:pbLift .36s ease-in both}
+@keyframes pbLift{to{opacity:0;transform:translateY(-30px) scale(.82)}}
+/* the home card: a smaller stamp and ring for a smaller card, and the same jolt and white halftone flash */
+.hm-card.is-hit { animation: rdpShake .34s ease both; }
+.hm-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, rgb(var(--t-light-rgb) / .9) 1.4px, transparent 2px) 0 0 / 6px 6px; }
+.hm-card.is-hit::after { animation: rdpRoom .36s ease-out both; }
+.hm-card .pb-stamp b { font-size: clamp(60px, 19vw, 88px); border-width: 5px; border-radius: 16px; padding: 2px 12px 0; }
+.hm-card .pb-stamp.is-unsure b { font-size: clamp(46px, 14vw, 64px); }
+.hm-card .pb-ring { width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+/* the percent prints in two inks, a size up so the plates read */
+.hm-pct.pb-ink { display: inline-block; font-size: 26px; line-height: 1; --p1: var(--t-accent); --p2: var(--t-light); }   /* inline-block: the slam's transform needs a box */
+.hm-pct.pb-ink.is-no { --p1: var(--t-offset); }
+.hm-pct.pb-ink::before, .hm-pct.pb-ink::after { background-size: 3px 3px; }
+.hm-pct.pb-ink::before { transform: translate(3px, 3px); }
+.hm-pct.pb-ink::after { transform: translate(-2px, -1px); }
+@media (prefers-reduced-motion: reduce) {
+  .pb-print, .pb-print::before, .pb-print::after { animation: none; }
+  .pb-print::before, .pb-print::after { opacity: 1; }
 }
 
 /* ---------- v59.1 THE PICK PRINTS (the owner: bring the home diamonds' energy to the draft) ----------

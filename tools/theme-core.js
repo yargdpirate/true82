@@ -82,6 +82,7 @@
     ["accent-base", "accent", 40, "shadow", "a stacked button's base under an accent tube (its ink in deep shadow)"],
     ["offset-slab", "offset", 72, "shadow", "a stacked button's first slab under an offset tube"],
     ["offset-base", "offset", 40, "shadow", "a stacked button's base under an offset tube"],
+    ["offset-hi", "offset", 62, "light", "an offset tube's own light: neon blue text (the Presti bank's balance, v64)"],
     ["good-soft", "good", 33, "text-2", "good as text on the ground (calm, not neon)"],
     ["good-top", "good", 80, "ground", "green keycap top"],
     ["good-face", "good", 70, "shadow", "green keycap face"],

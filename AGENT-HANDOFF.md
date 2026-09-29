@@ -1,26 +1,141 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING: CHECK WHETHER THE OWNER'S MERGE LANDED.** On 2026-09-28 (evening) he played v63.1 and said "push"
-> (to main). The agent's own push to `main` was blocked by the session's auto-mode permission guard (a production
-> deploy), so the merge was handed to him as one command to run from the repo folder:
+> **FIRST THING: v64 IS ON THE PREVIEW, AWAITING HIS PLAYTEST.** `main` = v63.1, LIVE on true82.net (his merge landed
+> the evening of 2026-09-28; verified: origin/main = c-code-clean at b42fb83, true82.net serves `BUILD_V = "v63.1"`).
+> `c-code-clean` = v64 (section 00000x: his third playtest, which came in as VOICE NOTES; see below). Ask him: "v64 is
+> on the preview (https://c-code-clean.true82.pages.dev/). Did you playtest it? Then: time to go to main?" Merge only on
+> his word. The agent's push to `main` is blocked by the auto-mode permission guard (a production deploy), so the merge
+> is his one command, run from the repo folder:
 > `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
-> Check it: `git fetch origin && git log --oneline -1 origin/main` shows the v63.1 commit or later (`94b5f2e`, or the
-> handoff commit on top of it), and https://true82.net/app.js carries `BUILD_V = "v63.1"` (the footer reads v63.1).
-> - **Landed:** run the post-merge checks below ("After the merge" in 00000w), then ask him what's next (the queue
->   is "Next, in order" in 00000w: the manual rework on Celia Hodent's method is first).
-> - **Not landed:** give him the command above again, one step at a time if he wants, then run the same checks.
+>
+> **His voice notes:** when he says "my voice notes" or "my reminders" he means the **Pineapple** list in Apple
+> Reminders (iCloud, readable from this Mac with `osascript -l JavaScript`; the memory `apple-reminders-access` has the
+> one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
+> the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v63.1, the owner's second playtest list (section 00000w: one ball capped at 6 with the Banjos folded in, the painting shuffle, no ball meter, Presti's $26 ceiling and its luck gem, the iPhone zoom fix for the run-it-back bug, spacing, the Daily's quotes), on v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). He said "push" on 2026-09-28: once his merge runs, `main` = `c-code-clean` = v63.1, LIVE on true82.net; until then `main` = v60.1 (section 00000q). Migration 0029 IS applied to the live D1; v61.1 to v63.1 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). `main` = v63.1, LIVE (merged 2026-09-28 at his "push"). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-28
-**Build:** `v63.1` on `c-code-clean` (`BUILD_V = "v63.1"`; sim-core.js, challenges.js, daily-core.js, app.js, styles.css, reel-riso.js and results-riso.js at `20260928-v63-1`; labels.json via `<meta name="t82-labels" content="20260928-tags">` in index.html; look.css at `20260927-v60`; engine `T82.VERSION` 14). v60.1 (live): app.js at `20260927-v60-1`.
-**Most recent change:** section 00000w (read it first): v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v64` on `c-code-clean` (`BUILD_V = "v64"`; app.js and styles.css at `20260928-v64` in index.html, styles.css at `20260928-v64` in bonuses/, traits/ and docs/style-guide.html too; sim-core.js, challenges.js, daily-core.js, reel-riso.js and results-riso.js still at `20260928-v63-1`; labels.json via `<meta name="t82-labels" content="20260928-tags">`; look.css at `20260927-v60`; engine `T82.VERSION` 14). v63.1 (live): app.js and styles.css at `20260928-v63-1`.
+**Most recent change:** section 00000x (read it first): v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000w. START HERE (2026-09-28, evening): V63.1, THE OWNER'S SECOND PLAYTEST
+## 00000x. START HERE (2026-09-28, night): V64, THE OWNER'S THIRD PLAYTEST (HIS VOICE NOTES)
+
+**Where things stand.** `main` = v63.1, LIVE (his merge landed this evening; the post-merge checks: the footer, the
+Daily's quotes and the logo gap live, no console errors; the draft and the Scoring Card on the preview; a direct D1 read
+was refused by the permission guard, but the public Presti counter ticked 16,112 to 16,114 while the agent worked, so
+live games save). `c-code-clean` = v64 (this). Preview: https://c-code-clean.true82.pages.dev/ (mock database).
+
+**Where the list came from.** Seven voice notes in his Pineapple reminders list, 3:01 to 5:20 PM MDT, decoded against
+the app and read back to him (the three 11 AM notes were v63's list; the 6:00 PM note is not about the game). He then
+said: "build it"; "yes cut the 'skips' text"; "perhaps the bank animation could briefly change the overall bank from neon
+blue to the number being deducted to red, something of that vibe, do what looks best"; and, mid-build, "make sure to also
+review the desktop iteration of the bank/rulebook which is subtly different in design". The decoded notes:
+1. (3:01, a marked-up screenshot) the pick diamonds at the top: no PICK N OF 5 text, "way bigger", "hugging the classic
+   mode frame ... a tiny bit of padding", the "visual stars of the scene"; HOW TO PLAY "is kind of owning the scenery":
+   "obviously a button to click but a lot quieter"; swap the colors: the season (year menu) neon teal with its down
+   arrow still hot pink, the tags ("player characteristics") the muted purple.
+2. (3:02) why: people pick Derrick Rose after the injury, or LeBron before he could shoot; at a glance they see a
+   player, not a player-season.
+3. (3:09) a prominent "did we get it wrong?" under the Scoring Card with an arrow button that scrolls back up to the
+   cards to add or remove a tag (his case: a five the game read as having no good defenders, with Isiah Thomas on it).
+4. (3:10) the home vote card: bigger diamonds, and "the other exciting flare that we have on the dedicated voting
+   screen" if it does not hurt the first load.
+5. (5:09) Presti hides the player tags.
+6. (5:19) Presti: HOW TO PLAY and the bank are "flipped": the bank ("the life blood of the mode") as prominent as the
+   skip buttons, HOW TO PLAY quiet.
+7. (5:20) Presti: an animation for the bank getting spent ("the money draining out is important for people playing for
+   the first time"); the "SALARY CAP · SKIPS -$1M" line under the name is cut off on his phone: two lines, or cut it.
+   (Not reproducible in Chromium or WebKit at 320 to 430; cut, at his word.)
+
+### What shipped
+- **The pick diamonds** (app.js `draftUtilityHtml`, `renderPips`, `draftInk`; styles.css `.draft-utility`,
+  `.du-pips.ink-dias`): the bar lost its hairline and sits 7px over the mode panel; the diamonds grow with the phone
+  (15px squares at 320 to 21px from about 420, with a thicker outline, a coarser halftone and their own plate keyframe
+  `ink-plate-lg`); PICK N OF 5 stays in the markup for screen readers (`.sr-only`, aria-live); a pick's ring is the new
+  `ink-burst.is-dia` size. Every mode (one bar).
+- **HOW TO PLAY, quiet** (`bookIconSvg`, `modePanelHtml`; styles.css `#app .mp-rules`): a plain outline button: the dim
+  label (`--t-text-2`) in a bronze rule (`--t-rule`), no glow, 36px tall, the home link's line-drawn book. It is
+  deliberately NOT a `.t-btn`: look.css paints the old `.mp-rules-btn` class and every `.t-btn` kind in neon (the look's
+  "neon amount" lights even the quiet kind in aqua, 6-id specificity), and `.tm-flat` keeps the 3D decorator from
+  stamping `presti-spin` back on. It keeps its place beside the mode name at every width (the old full-width row at 349px
+  and under is gone, in the Classic panel and the Presti panel alike); the rules sheet opens as before.
+- **The season, teal; the tags, quiet** (styles.css `.year-face`, `#app#app .player-row .tchip`, `.pool-trait-legend`):
+  the season pill wears the neon blue with a faint halo, its caret stays hot pink; a fixed season (no menu) and
+  Presti's locked `.cap-season` are the same blue. Every chip on a draft card (the tags and Classic's engine 3PT and
+  GRAVITY) prints as an outline chip in the muted purple (a bad tag in a red outline), and the pool legend matches. The
+  results cards' tags, the ones you vote with, keep their ink.
+- **Presti, from memory** (`capRowHtml`, `trayRolesHtml`, `RULES_MODE.cap`): no tags on Presti's cards and no "Still
+  missing" tag roles in its tray, like Pro; the tags still count and the results cards show them (docs/MODES.md). The
+  pool's (i) legend hides itself with no chips. Checked: no board copy leans on seeing a label tag in Presti (every
+  "tag" in the board copy is a position or a price tag).
+- **Presti's panel** (`modePanelHtml`): the "SALARY CAP · SKIPS -$1M" line is gone (each skip button prints its -$1M;
+  a Daily or a challenge keeps its "PRESTI RULES · ..." line); no empty status row.
+- **The bank, neon** (styles.css THE BANK block, rewritten): a flat neon tube in the skip buttons' blue (the new theme
+  shade `--t-offset-hi`, offset 62% + light, is the balance's light; tools/theme-core.js, `node tools/theme.js`). One
+  ink drives the tube, label, balance and fill (`--bank-ink`, `--bank-hi`, `--bank-a30`..`--bank-a85`, premixed from
+  theme tokens per state so the style law holds): money running low (`bank-mid`) and red (`bank-low`, `bank-zero`) are
+  one rule each. Desktop keeps its column (BANK / balance / meter between the name and HOW TO PLAY), phones the row.
+- **THE FLIP** (app.js `tickBank`, `bankFlipShow`, `BANK_FLIP_MS` 480, `BANK_COUNT_MS` 260, `BANK_SETTLE_MS` 160): a
+  spend turns the whole bank red (`.bank-flip.bank-down`) and slams the transaction ("-$9M") in where the balance was,
+  in two inks (`bank-slam` + `bank-plate`: the aqua plate lands off register and snaps in), the meter draining under it;
+  then the neon eases back while the balance counts down; a refund flips green ("+$1M"). Under a second. A re-render
+  mid-flip puts the flip back on the fresh markup without a second slam; a spend mid-flip retargets. The old corner chip
+  (`#bankDed`, `.mpb-delta`) is gone. The v29.1 comment's "walk's 600ms settle assert" was an out-of-repo harness; the
+  flip settles in about 900ms.
+- **DID WE GET ONE WRONG?** (`ledgerFixHtml`, `wireLedgerFix`; styles.css `.ledger-fix`): under the Scoring Card, an
+  aqua neon card on the halftone dot shadow (`.hm-ht.lf-ht`), the question printed in two inks (`.pb-ink`), "Player tags
+  come from your votes. Missing a tag, or wearing a wrong one? Fix it on the cards: tap + to add a tag, or tap a tag to
+  vote.", a pink "↑ FIX A TAG" button that smooth-scrolls to Your five (the first card's printed "+" hint is right
+  there), and "Scores read the tags as of <date>. Votes count from the next weekly update." It replaces the old small
+  ledger note and promises only what a vote does (the backcourt and wing defense rows grade DBPM, not tags).
+- **The home card** (styles.css `.hm-dia.ink-dias`; app.js `tmStampOn`, `tmStampOff`, `tmConfettiHtml`, `tmCountUp`):
+  the diamonds are the vote room's 13px (12px at 320, where the title keeps its one line); a vote slams its answer
+  (YES, NO, IDK) onto the card as the vote room's two-ink rubber stamp with the halftone ring and drops, the card jolts
+  with the white halftone flash, the stamp lifts as the tally prints (at least 480ms), and the percent prints in two inks
+  at 26px. Built on the tap, nothing at load; prefers-reduced-motion lands the end state. The stamp's CSS (`.pb-ink`,
+  `.pb-print`, `.pb-stamp`, `.pb-ring`, `.pb-conf`, `pbLift`) moved from bonuses/index.html into styles.css and both use
+  it (checked: the vote room's stamp frames look as before, tools/results-qa.js room).
+- The Daily pill ("1 OFFICIAL ATTEMPT") never breaks across lines (with HOW TO PLAY beside it at 320 it drops under
+  DAILY #N).
+
+### Checks
+test.js 135 (eight new v64 checks, including the flip on a stand-in bank: the red transaction and the slam, the drain to
+82%, no second slam on a re-render, the count down to the balance, the flash clearing, a green refund); style law clean;
+theme block current. Chromium and WebKit at 320 and 375 (scratchpad v64-qa.js): no sideways scroll on the Classic and
+Presti boards and the results, HOW TO PLAY beside the mode name, the diamonds clear of EXIT RUN, the callout's heading on
+one line, no page errors. tools/home-qa.js widths (320/375/390/440, both engines): no sideways scroll. In the browser pane
+(local site-api3, :8791): the stamp frozen mid-slam on the home card, the flip frozen mid-hold at 375 and at 700
+(desktop column), the rules sheet from the new button with the new Presti line, the callout's arrow landing on Your
+five, the Presti Daily's panel at 320.
+
+### Calls he may overrule
+- HOW TO PLAY as a dim bronze outline (not the look's aqua quiet button); the Classic panel keeps "TAP THE YEAR ▾ TO USE
+  ANY SEASON".
+- The diamonds' size (15 to 21px) and the bar with no hairline.
+- The tags' muted purple as OUTLINE chips (the literal swap of the season's old ink), the engine chips muted with them;
+  the fixed season in blue too.
+- The flip's timing (a 480ms hold) and its two-ink slam; a refund flips green.
+- The callout's copy and its pink button (RUN IT BACK below it is aqua).
+- The home stamp says IDK for a pass (the vote room says UNSURE for its own vote).
+
+### What to playtest
+A Classic draft: the big diamonds on the panel, the quiet HOW TO PLAY, the blue seasons with pink carets, the purple
+tags. Presti: no tags, no skips line, the neon bank; draft a player and watch the flip; skip a team (-$1M flips too).
+Finish: DID WE GET ONE WRONG? and its arrow. The home card: vote, and watch the stamp. Desktop: the Presti panel's
+column bank.
+
+### Next, in order
+1. His playtest of v64 on the preview, then his merge command (above).
+2. The manual rework on Celia Hodent's method (00000v), once he says go.
+3. Record the tag rows and the v62-v63.1 taxes on game_complete (a migration) to watch live firing.
+4. For any future tax: `node tools/champions.js` and `node tools/labels-balance.js` (00000w).
+
+## 00000w. (2026-09-28, evening): V63.1, THE OWNER'S SECOND PLAYTEST
 
 **Where things stand.** `c-code-clean` = v63.1 (this) on v63, v62.2, v62.1, v62, v61.1: all go live together. He
 played v63.1 and said "push"; his merge command is at the top of this file (the agent's push to main was blocked by

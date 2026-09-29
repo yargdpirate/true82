@@ -744,5 +744,75 @@ if (fs.existsSync("site_data.json")) {
     [R.banjoBoard.order, R.banjoBoard.noMaybe], [[["ISO-D", "CLUTCH", "KNUCK"], ["TEAM-D", "RIM-P"], ["ISO-D", "KNUCK"]], true]);
 }
 
+// v64 THE THIRD PLAYTEST (the owner's voice notes, 2026-09-28): the draft bar's diamonds carry the count (PICK N OF 5
+// for screen readers only), a quiet HOW TO PLAY, Presti without the "skips" line and without tags (board and tray), the
+// bank's flip, DID WE GET ONE WRONG? under the Scoring Card, the home card's bigger diamonds and the vote room's stamp.
+{
+  const V = vm.runInContext(`(function () {
+    var keepG = G, keepMode = MODE, keepDoc = document, keepST = setTimeout, o = {};
+    MODE = "cap"; G = { ch: null, screen: "draft", picks: [], budget: 50, meterMax: 50, round: 1 };
+    var panel = modePanelHtml();
+    o.presti = [/SKIPS/.test(panel), /mp-row2/.test(panel), /class="mp-rules tm-flat"/.test(panel), /presti-spin|mp-rules-btn|t-btn/.test(panel),
+      /id="bankAmt"/.test(panel), /bankDed/.test(panel)];
+    MODE = "classic"; G = { ch: null, screen: "draft", picks: [], round: 1 };
+    var cpanel = modePanelHtml(), bar = draftUtilityHtml();
+    o.classic = [/TAP THE YEAR/.test(cpanel), /class="mp-rules tm-flat"/.test(cpanel), /class="du-count sr-only"[^>]*aria-live="polite"/.test(bar)];
+    // Presti is drafted from memory: its card builder prints no tags, and the tray names no tag roles (Pro was already so)
+    MODE = "cap"; G = { ch: null, screen: "draft", picks: [{}, {}, {}], round: 4 };
+    o.tags = [/boardTagsHtml\\(/.test(String(capRowHtml)), trayRolesHtml(), /inkPrint\\(pips, pips\\.children\\[n - 1\\], "dia"\\)/.test(String(draftInk))];
+    o.fix = ledgerFixHtml("Sep 28");
+    // THE FLIP on a stand-in bank: a spend flips to the transaction in red and drains the meter; a re-render mid-flip keeps
+    // it without a second slam; then the neon comes back and the balance counts down to the new amount; a refund flips green
+    var timers = {}, tid = 0;
+    setTimeout = function (fn) { timers[++tid] = fn; return tid; };
+    clearTimeout = function (id) { delete timers[id]; };
+    setInterval = function (fn) { timers[++tid] = fn; return tid; };
+    clearInterval = function (id) { delete timers[id]; };
+    function cls() { var s = {}; return { add: function () { for (var i = 0; i < arguments.length; i++) s[arguments[i]] = 1; },
+      remove: function () { for (var i = 0; i < arguments.length; i++) delete s[arguments[i]]; },
+      toggle: function (c, on) { if (on === undefined) on = !s[c]; if (on) s[c] = 1; else delete s[c]; return on; },
+      contains: function (c) { return !!s[c]; }, list: function () { return Object.keys(s).filter(function (c) { return /flip|down|up|slam/.test(c); }).sort(); } }; }
+    var box = { classList: cls() }, amt = { innerHTML: "", classList: cls(), offsetWidth: 1, closest: function () { return box; } }, fill = { style: {} };
+    document = { getElementById: function (id) { return id === "bankAmt" ? amt : id === "bankFill" ? fill : null; },
+      querySelector: function () { return null; }, addEventListener: function () {} };
+    function txt() { return amt.innerHTML.replace(/<[^>]+>/g, ""); }
+    MODE = "cap"; G = { budget: 41, bankShown: 50, meterMax: 50, picks: [{}] };
+    tickBank();
+    o.flip = [txt(), box.classList.list(), amt.classList.contains("bank-slam"), fill.style.width, G.bankShown];
+    amt.classList.remove("bank-slam");
+    tickBank();
+    o.again = [txt(), amt.classList.contains("bank-slam")];
+    var hold = G.bankFlipT; timers[hold](); delete timers[hold];
+    for (var n = 0; n < 8 && G.bankAnim; n++) timers[G.bankAnim]();
+    o.counted = [txt(), G.bankShown, box.classList.list()];
+    Object.keys(timers).forEach(function (id) { var f = timers[id]; delete timers[id]; f(); });
+    o.settled = box.classList.list();
+    G.budget = 42; tickBank();
+    o.refund = [txt(), box.classList.list()];
+    document = keepDoc; setTimeout = keepST; MODE = keepMode; G = keepG;
+    return o;
+  })()`, ctx);
+  eq("v64 Presti's panel: no SALARY CAP · SKIPS line (no empty status row), the quiet HOW TO PLAY (a plain .mp-rules, never the neon kinds), the bank, no corner chip",
+    V.presti, [false, false, true, false, true, false]);
+  eq("v64 the draft bar: Classic keeps its status line and the quiet HOW TO PLAY; PICK N OF 5 is for screen readers only (still announced)",
+    V.classic, [true, true, true]);
+  eq("v64 Presti hides the tags: its cards print none, the tray names no tag roles; a pick's diamond rings the big-diamond size",
+    V.tags, [false, "", true]);
+  eq("v64 DID WE GET ONE WRONG?: the question in two inks, the + and a tag to vote, the arrow button, the frozen-tags date",
+    [/pb-ink" data-ink="DID WE GET ONE WRONG\?"/.test(V.fix), /tap <b>\+<\/b> to add a tag, or tap a tag to vote/.test(V.fix), /id="ledgerFixBtn"/.test(V.fix),
+      /\u2191/.test(V.fix), /tags as of Sep 28\. Votes count from the next weekly update/.test(V.fix)], [true, true, true, true, true]);
+  eq("v64 the bank's flip: a $9M pick flips the bank red to \u2212$9M with a slam and drains the meter to 82%, the balance still $50M underneath",
+    V.flip, ["\u2212$9M", ["bank-down", "bank-flip"], true, "82%", 50]);
+  eq("v64 the bank's flip: a re-render mid-flip keeps the transaction and does not slam again", V.again, ["\u2212$9M", false]);
+  eq("v64 the bank's flip: the neon comes back and the balance counts down to $41M; then the flash clears; a refund flips green to +$1M",
+    [V.counted, V.settled, V.refund], [["$41M", 41, ["bank-down"]], [], ["+$1M", ["bank-flip", "bank-up"]]]);
+  const BONUSES = fs.readFileSync("bonuses/index.html", "utf8");
+  eq("v64 styles: the home card's diamonds at 13px (12px at 320), the draft's big diamonds, the bank's one ink and its flip, the stamp shared from styles.css (not the page), no corner chip",
+    [/\.hm-dia\.ink-dias > i \{ width: 13px; height: 13px; \}/.test(STYLES), /\.hm-dia\.ink-dias > i \{ width: 12px; height: 12px; \}/.test(STYLES),
+      /\.du-pips\.ink-dias > span \{ width: clamp\(15px, 5vw, 21px\)/.test(STYLES), /\.mp-bank \{\n  --bank-ink: var\(--t-offset\);/.test(STYLES),
+      /\.mp-bank\.bank-flip\.bank-down \{/.test(STYLES), /\.pb-stamp\{/.test(STYLES) && !/\.pb-stamp\{/.test(BONUSES), /mpb-delta/.test(STYLES)],
+    [true, true, true, true, true, true, false]);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

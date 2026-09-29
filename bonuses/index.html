@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script id="t82BonusPreload"></script>
-<link rel="stylesheet" href="/styles.css?v=20260927-v60">
+<link rel="stylesheet" href="/styles.css?v=20260928-v64">
 <link rel="stylesheet" href="/look.css?v=20260927-v60">
 <style>
 /* Player Bonuses (v51): this page wears the site's theme (styles.css: the
@@ -104,16 +104,8 @@ a.qx-btn[hidden]{display:none}
    rdpPlateAqua, rdpRing, rdpConf, rdpShake, ink-*). prefers-reduced-motion lands every end state at once. ---------- */
 .pb-mast{position:relative;isolation:isolate;display:inline-block;margin:4px 0 12px;padding-right:40px;font-family:var(--t-disp);font-weight:800;
   font-size:clamp(34px,10.6vw,46px);line-height:.9;letter-spacing:.03em;text-transform:uppercase;color:var(--t-text);white-space:nowrap}
-.pb-ink{position:relative;isolation:isolate}
-.pb-ink::before,.pb-ink::after{content:attr(data-ink);position:absolute;left:0;top:0;right:0;z-index:-1;pointer-events:none;
-  color:transparent;-webkit-background-clip:text;background-clip:text;background-size:4px 4px;white-space:nowrap}
-.pb-ink::before{background-image:radial-gradient(circle,var(--p1,var(--t-accent)) 1.35px,transparent 1.85px);transform:translate(5px,5px)}
-.pb-ink::after{background-image:radial-gradient(circle,var(--p2,var(--t-offset)) 1.15px,transparent 1.65px);transform:translate(-3px,-2px);opacity:.85}
 .pb-mast.pb-ink::before{background-size:3.5px 3.5px;transform:translate(4px,4px)}
 .pb-mast.pb-ink::after{background-size:3.5px 3.5px;transform:translate(-2px,-2px)}
-.pb-print{animation:rdpSlam .34s cubic-bezier(.2,.9,.3,1.3) both}
-.pb-print::before{animation:rdpPlatePink .64s cubic-bezier(.25,.9,.3,1) both}
-.pb-print::after{animation:rdpPlateAqua .64s cubic-bezier(.25,.9,.3,1) .04s both}
 /* the meter: the running count in the display face, the set's diamonds */
 .pb-meter{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 2px 14px}
 .pb-meter[hidden]{display:none}
@@ -136,35 +128,7 @@ html[data-card] .wrap :is(#pb-k#pb-k,.pb-card){background:linear-gradient(rgb(va
 .card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
   background:radial-gradient(circle,rgb(var(--t-light-rgb) / .9) 1.4px,transparent 2px) 0 0 / 6px 6px}
 .card.is-hit::after{animation:rdpRoom .36s ease-out both}
-.pb-stamp{position:absolute;inset:0;z-index:6;display:grid;place-items:center;pointer-events:none;overflow:visible}
-.pb-stamp.is-yes{--k:var(--t-offset);--p1:var(--t-accent);--p2:var(--t-light)}
-.pb-stamp.is-no{--k:var(--t-accent);--p1:var(--t-offset);--p2:var(--t-light)}
-.pb-stamp.is-unsure{--k:var(--t-text-2);--p1:var(--t-accent);--p2:var(--t-offset)}
-.pb-stamp-tilt{transform:rotate(-9deg)}
-.pb-stamp b{display:block;padding:2px 14px 0;border:6px solid var(--k);border-radius:18px;color:var(--k);background:rgb(var(--t-ground-rgb) / .62);
-  font-family:var(--t-disp);font-weight:900;font-size:clamp(78px,24vw,112px);line-height:.95;letter-spacing:.04em;text-transform:uppercase;
-  text-shadow:0 0 26px rgb(var(--t-ground-rgb) / .8);box-shadow:0 0 0 3px rgb(var(--t-ground-rgb) / .5),0 16px 40px -12px rgb(var(--t-shadow-rgb) / .7);
-  animation:rdpSlam .3s cubic-bezier(.2,.9,.3,1.3) both}
-.pb-stamp.is-unsure b{font-size:clamp(52px,16vw,74px)}
-.pb-stamp b::before,.pb-stamp b::after{padding:inherit}
-.pb-stamp b::before{animation:rdpPlatePink .6s cubic-bezier(.25,.9,.3,1) both}
-.pb-stamp b::after{animation:rdpPlateAqua .6s cubic-bezier(.25,.9,.3,1) .04s both}
-.pb-ring{position:absolute;left:50%;top:50%;width:360px;height:360px;margin:-180px 0 0 -180px;border-radius:50%;opacity:0;pointer-events:none;
-  background-image:radial-gradient(circle,var(--k) 2.2px,transparent 2.8px);background-size:7px 7px;
-  -webkit-mask-image:radial-gradient(circle closest-side,transparent 50%,var(--fx-mask) 60%,var(--fx-mask) 80%,transparent 100%);
-  mask-image:radial-gradient(circle closest-side,transparent 50%,var(--fx-mask) 60%,var(--fx-mask) 80%,transparent 100%);
-  animation:rdpRing .86s cubic-bezier(.12,.75,.3,1) .04s both}
-.pb-ring::after{content:"";position:absolute;inset:0;border-radius:50%;opacity:0;
-  background-image:radial-gradient(circle,var(--p1) 2.2px,transparent 2.8px);background-size:7px 7px;
-  animation:ink-ring2 .86s cubic-bezier(.12,.75,.3,1) .1s both}
-.pb-conf{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none}
-.pb-conf i{position:absolute;left:calc(var(--s) / -2);top:calc(var(--s) / -2);width:var(--s);height:var(--s);border-radius:50%;opacity:0;
-  animation:rdpConf 1.1s cubic-bezier(.15,.7,.35,1) var(--dl) both}
-.pb-conf i.c0,.pb-conf i.c2{background:var(--t-accent)}
-.pb-conf i.c1{background:var(--t-offset)}
-.pb-conf i.c3{background:var(--t-light)}
-.pb-stamp.is-lift{animation:pbLift .36s ease-in both}
-@keyframes pbLift{to{opacity:0;transform:translateY(-30px) scale(.82)}}
+/* (v64: the stamp itself, .pb-stamp/.pb-ring/.pb-conf, and the two-ink print, .pb-ink/.pb-print, live in styles.css: the home card slams it too) */
 /* the result prints: the percent in two inks, the verdict stamped on, the tally rolled in */
 .pb-res{outline:none}
 .pb-early{font-family:var(--t-mono);font-size:12px;letter-spacing:.24em;color:var(--t-text-2);margin:0 0 6px}
@@ -186,8 +150,7 @@ html[data-card] .wrap :is(#pb-k#pb-k,.pb-card){background:linear-gradient(rgb(va
 .pb-done-burst{position:absolute;left:34%;top:26px;--k:var(--t-accent);--p1:var(--t-offset)}
 .pb-empty .q{font-size:30px}
 @media (prefers-reduced-motion:reduce){
-  .pb-print,.pb-print::before,.pb-print::after,.card.is-hit,.card.is-hit::after,.pb-res .pb-up,.pb-verdict .r-chip,.pb-done-burst *{animation:none}
-  .pb-print::before,.pb-print::after{opacity:1}
+  .card.is-hit,.card.is-hit::after,.pb-res .pb-up,.pb-verdict .r-chip,.pb-done-burst *{animation:none}
   .skel .sk{animation:none}
 }
 </style>
