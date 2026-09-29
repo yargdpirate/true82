@@ -3458,51 +3458,63 @@ function renderIntro() {
   // button (the name in the display face, a plain line under it) on a dotted halftone offset shadow.
   // Pink is the core game (Classic, Presti), aqua the side modes. Classic is the only thing that
   // glows. The Daily keeps its played state: the record, CHALLENGE A FRIEND first, the practice run second.
-  var hmStreak = dailyStreak >= 2 ? " \u00B7 " + dailyStreak + "-day streak" : "";
+  // v65, the owner's "Final title" boards: the title art moved to the page head (index.html, with HOW TO PLAY), and the
+  // doors below it keep one type scale (14, 16, 20, 28, 32). Classic alone, full width; Presti and the Daily as twin
+  // tiles whose two-line titles always sit side by side; Draft Night Do-Over as a dashed BETA row; then the vote card.
+  // Nothing glows but the logo. The Daily keeps its played state: the record, CHALLENGE A FRIEND first, the practice
+  // run second.
+  var hmTwo = function (a, b) { return '<span class="hm-t"><span>' + a + "</span><span>" + b + "</span></span>"; };
+  var hmStreak = dailyStreak >= 2 ? '<span class="hm-streak">' + dailyStreak + "-day streak</span>" : "";
+  // The Daily's event badge (v65): one optional label on the day's board (daily-core.js DAILY_BADGES), none on a
+  // normal day. A test build previews one with ?badge=Opening%20night.
+  var dailyBadge = dailyBoard && dailyBoard.badge ? String(dailyBoard.badge) : "";
+  if (dailyBoard && document.documentElement.hasAttribute("data-title-lab")) {
+    var qBadge = /[?&]badge=([^&]*)/.exec(location.search);
+    if (qBadge) { try { dailyBadge = decodeURIComponent(qBadge[1].replace(/\+/g, " ")); } catch (e) { dailyBadge = ""; } dailyBadge = dailyBadge.slice(0, 22) || "Opening night"; }
+  }
+  var badgeHtml = dailyBadge ? '<span class="hm-badge">' + esc(dailyBadge) + "</span>" : "";
   var thirdSlotHtml;
   if (dailyBoard && dailyOfficial) {
     thirdSlotHtml =
-      '<div class="hm-ht hm-mid is-cyan" id="homeDaily">' +
+      '<div class="hm-ht hm-tile is-cyan" id="homeDaily">' +
         '<div class="hm-mode hm-played" role="group" aria-label="The Daily #' + dailyBoard.num + ', played">' +
-          '<span class="hm-t">The Daily #' + dailyBoard.num + ' <span class="hm-rec">\u2713 ' + dailyOfficial.wins + "-" + (82 - dailyOfficial.wins) + "</span></span>" +
-          '<span class="hm-acts">' +
+          hmTwo("The Daily", "#" + dailyBoard.num) +
+          '<span class="hm-under">' +
+            '<span class="hm-rec">✓ ' + dailyOfficial.wins + "-" + (82 - dailyOfficial.wins) + "</span>" +
             '<button class="hm-act tm-flat" id="dailyChallengeBtn" type="button" data-share-label="Challenge a friend">Challenge a friend</button>' +
-            '<span class="hm-sep" aria-hidden="true">\u00B7</span>' +
             '<button class="hm-act is-quiet tm-flat" id="dailyPracticeBtn" type="button">Run it back</button>' +
-          "</span>" +
+          "</span>" + badgeHtml +
         "</div>" +
       "</div>";
   } else if (dailyBoard) {
     thirdSlotHtml =
-      '<div class="hm-ht hm-mid is-cyan" id="homeDaily">' +
+      '<div class="hm-ht hm-tile is-cyan" id="homeDaily">' +
         '<button class="hm-mode tm-flat" id="startDaily" type="button">' +
-          '<span class="hm-t">The Daily #' + dailyBoard.num + "</span>" +
-          '<span class="hm-s">\u201C' + esc(dailyBoard.name) + "\u201D" + hmStreak + "</span>" +   // v63.1: the board's name in quotes (the owner)
+          hmTwo("The Daily", "#" + dailyBoard.num) +
+          '<span class="hm-under"><span class="hm-s">“' + esc(dailyBoard.name) + "”</span>" + hmStreak + "</span>" +   // v63.1: the board's name in quotes (the owner)
+          badgeHtml +
         "</button>" +
       "</div>";
   } else {
-    thirdSlotHtml = '<div class="hm-ht hm-mid is-cyan"><button class="hm-mode tm-flat" id="startPro" type="button">' +
-      '<span class="hm-t">Pro</span><span class="hm-s">Pick the best seasons from memory</span></button></div>';
+    thirdSlotHtml = '<div class="hm-ht hm-tile is-cyan"><button class="hm-mode tm-flat" id="startPro" type="button">' +
+      hmTwo("Pro", "mode") + '<span class="hm-s">Pick the best seasons from memory</span></button></div>';
   }
   app().innerHTML =
     '<section class="hm" id="home">' +
-      '<header class="hm-mast">' +
-        // v63 (the owner: the tagline "takes away from the pretty logo"): "Draft what wins" moved into HOW TO PLAY, so
-        // the logo leads the home screen; the heading stays for screen readers. Kaman's egg moved to the logo.
-        '<h1 class="sr-only" id="introTitle">TRUE 82: draft what wins</h1>' +
-        '<button class="hm-howto tm-flat" id="homeRulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: a short demo and the basics">' +
-          '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
-            '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>' +
-          "<span>How to play</span></button>" +
-      "</header>" +
+      // v63 (the owner: the tagline "takes away from the pretty logo"): "Draft what wins" lives in HOW TO PLAY, so the
+      // logo leads the home screen; the heading stays for screen readers.
+      '<h1 class="sr-only" id="introTitle">TRUE 82: draft what wins</h1>' +
       '<div class="hm-stack">' +
         '<div class="hm-ht hm-hero"><button class="hm-mode tm-flat" id="startClassic" type="button">' +
-          '<span class="hm-t">Classic</span><span class="hm-s">Start here \u00B7 Full stats</span></button></div>' +
-        '<div class="hm-ht hm-mid is-pink"><button class="hm-mode tm-flat" id="startCap" type="button">' +
-          '<span class="hm-t">Presti mode</span><span class="hm-s">Experts only \u00B7 Salary cap &amp; stats from memory</span></button></div>' +
-        thirdSlotHtml +
-        '<div class="hm-ht hm-quiet"><button class="hm-mode tm-flat" id="startRedraft" type="button">' +
-          '<span class="hm-t">Draft Night Do-Over</span><span class="hm-s">Re-pick a real NBA draft class</span></button></div>' +
+          '<span class="hm-t">Classic</span><span class="hm-s">Start here · Full stats</span></button></div>' +
+        '<div class="hm-twins">' +
+          '<div class="hm-ht hm-tile is-pink"><button class="hm-mode tm-flat" id="startCap" type="button">' +
+            hmTwo("Presti", "mode") + '<span class="hm-s">Experts only · Salary cap &amp; stats from memory</span></button></div>' +
+          thirdSlotHtml +
+        "</div>" +
+        '<div class="hm-beta"><button class="hm-mode tm-flat" id="startRedraft" type="button">' +
+          '<span class="hm-chip">Beta</span>' +
+          '<span class="hm-bt"><span class="hm-t">Draft Night Do-Over</span><span class="hm-s">Re-pick a real NBA draft class</span></span></button></div>' +
         traitsModuleHtml() +
       "</div>" +
       // Past Dailies, renamed and moved under the vote card (the owner's mock): a quiet text link.
@@ -3563,7 +3575,9 @@ function renderIntro() {
     PENDING_FN = fn;
     if (btn) btn.disabled = true;
   }
-  el("homeRulesBtn").addEventListener("click", function () { openRulesSheet({ home: true }); });
+  // v65: HOW TO PLAY lives in the page head (index.html), outside #app, so it is wired once
+  var howBtn = el("homeRulesBtn");
+  if (howBtn && !howBtn.__wired) { howBtn.__wired = 1; howBtn.addEventListener("click", function () { openRulesSheet({ home: true }); }); }
   el("startRedraft").addEventListener("click", function () { openRedrafted("home"); });
   if (el("dailyArchiveBtn")) el("dailyArchiveBtn").addEventListener("click", function () {
     analyticsTrack("feature_select", { surface: "home", action: "daily_archive" });
@@ -3693,8 +3707,9 @@ function renderIntro() {
   }
 
   // kaman left the menu — five quick taps on the logo bring Him back (v63: the tagline that carried the egg is gone
-  // from the home; the logo lives outside #app, so it is wired once and only listens on the home screen)
-  var logo = document.querySelector(".site-head .brand-logo");
+  // from the home; the logo lives outside #app, so it is wired once and only listens on the home screen). v65: the
+  // whole title art (either treatment, or the old masthead) listens.
+  var logo = document.querySelector(".site-head .brand-art") || document.querySelector(".site-head .brand-logo");
   if (logo && !logo.__kaman) {
     logo.__kaman = 1;
     logo.addEventListener("click", function () {
@@ -9291,7 +9306,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v64.1";
+var BUILD_V = "v65";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

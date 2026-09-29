@@ -156,6 +156,15 @@
      id in place (never insert or delete: the rotation is modulo the length),
      keep the manifest entry, and give the new id DAILY_COPY s and g.
      Every id passed tools/daily-audit.js (node tools/daily-audit.js 300 pool3). */
+  /* ---------- v65 THE DAILY'S EVENT BADGE ----------
+     One optional label for a special day's board (an opening-night Daily, say), printed as a small aqua badge at the
+     bottom of the home's Daily tile. The key is the day's date (the player's own calendar day, like every key here);
+     no entry means no badge, which is every normal day. The label is display only: it never changes the board, its
+     seed or its replay. Keep it short (about 16 letters fit the tile at 320px). Example:
+       "2026-10-20": "Opening night"   */
+  var DAILY_BADGES = {
+  };
+
   var START3 = "2026-09-28";
   var POOL3 = [
     // week 1 (Mon Sep 28)
@@ -1044,7 +1053,7 @@
     }
     return { key: key, num: dayNum(key), seed: seedFor(key),
              ch: core.ch, base: core.base, name: core.name, blurb: core.blurb,
-             short: core.short, gate: core.gate };
+             short: core.short, gate: core.gate, badge: DAILY_BADGES[key] || null };
   }
 
   /* ---------- the verdict (screen-only, never in the paste) ----------

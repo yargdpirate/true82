@@ -66,6 +66,8 @@
   --t-offset-slab: #2F8FA8;     /* offset 72% + shadow: a stacked button's first slab under an offset tube */
   --t-offset-base: #1A4F5E;     /* offset 40% + shadow: a stacked button's base under an offset tube */
   --t-offset-hi: #89DCF2;       /* offset 62% + light: an offset tube's own light: neon blue text (the Presti bank's balance, v64) */
+  --t-accent-pale: #FFC4E6;     /* accent-hi 50% + light: an accent tube's own light: pale neon pink text (the home's CLASSIC, v65) */
+  --t-accent-mist: #F1D5E6;     /* paper-2 85% + accent-hi: pink-white text on a pink door (the line under CLASSIC, v65) */
   --t-good-soft: #80A39C;       /* good 33% + text-2: good as text on the ground (calm, not neon) */
   --t-good-top: #2C8861;        /* good 80% + ground: green keycap top */
   --t-good-face: #23744D;       /* good 70% + shadow: green keycap face */
@@ -101,13 +103,13 @@
   --t-print-dusk-rgb: 255 127 58; --t-print-night-rgb: 157 122 210; --t-shadow-rgb: 0 0 0; --t-light-rgb: 255 255 255;
   --t-accent-face-rgb: 218 62 152; --t-accent-glow-rgb: 255 109 192; --t-accent-slab-rgb: 184 52 127;
   --t-accent-base-rgb: 102 29 70; --t-offset-slab-rgb: 47 143 168; --t-offset-base-rgb: 26 79 94;
-  --t-offset-hi-rgb: 137 220 242; --t-good-soft-rgb: 128 163 156; --t-good-top-rgb: 44 136 97;
-  --t-good-face-rgb: 35 116 77; --t-good-edge-rgb: 23 76 51; --t-good-ink-rgb: 9 30 20; --t-bad-soft-rgb: 241 102 94;
-  --t-bad-top-rgb: 255 105 94; --t-bad-face-rgb: 222 79 68; --t-bad-hi-rgb: 255 138 129; --t-warn-rgb: 255 77 148;
-  --t-hot-hi-rgb: 255 218 96; --t-hot-glow-rgb: 255 188 117; --t-text-3-rgb: 99 95 116; --t-off-face-rgb: 56 46 81;
-  --t-off-edge-rgb: 67 56 95; --t-off-ink-rgb: 100 84 130; --t-overlay-warm-rgb: 34 14 35;
-  --t-metal-deep-rgb: 94 73 132; --t-metal-dark-rgb: 63 49 84; --t-news-ink-rgb: 28 22 42;
-  --t-news-ink-2-rgb: 74 60 104; --t-news-red-rgb: 189 67 58;
+  --t-offset-hi-rgb: 137 220 242; --t-accent-pale-rgb: 255 196 230; --t-accent-mist-rgb: 241 213 230;
+  --t-good-soft-rgb: 128 163 156; --t-good-top-rgb: 44 136 97; --t-good-face-rgb: 35 116 77;
+  --t-good-edge-rgb: 23 76 51; --t-good-ink-rgb: 9 30 20; --t-bad-soft-rgb: 241 102 94; --t-bad-top-rgb: 255 105 94;
+  --t-bad-face-rgb: 222 79 68; --t-bad-hi-rgb: 255 138 129; --t-warn-rgb: 255 77 148; --t-hot-hi-rgb: 255 218 96;
+  --t-hot-glow-rgb: 255 188 117; --t-text-3-rgb: 99 95 116; --t-off-face-rgb: 56 46 81; --t-off-edge-rgb: 67 56 95;
+  --t-off-ink-rgb: 100 84 130; --t-overlay-warm-rgb: 34 14 35; --t-metal-deep-rgb: 94 73 132;
+  --t-metal-dark-rgb: 63 49 84; --t-news-ink-rgb: 28 22 42; --t-news-ink-2-rgb: 74 60 104; --t-news-red-rgb: 189 67 58;
   /* type */
   --t-disp: "Big Shoulders Display", "Barlow Condensed", "Arial Narrow", sans-serif;/* display: numbers, titles, buttons */
   --t-body: "Rubik", system-ui, sans-serif;                       /* running text */
@@ -344,19 +346,18 @@ body.drafting #app { padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
 body.drafting.has-pick #app { padding-bottom: calc(176px + env(safe-area-inset-bottom)); }
 body.drafting .site-foot { display: none; }
 
-.site-foot {
-  max-width: 560px;
+.site-foot {   /* v65: 13px mono throughout (the owner's home boards), the rule full-bleed, the text in a 528px column */
   margin: 0 auto;
-  padding: 12px 16px 20px;
+  padding: 16px max(16px, calc(50% - 264px)) 20px;
   border-top: 1px solid var(--t-line);
   font-family: var(--t-mono);
-  font-size: 9px;
-  line-height: 1.35;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--t-text-2);
 }
 .site-foot p { margin: 4px 0; }
-.site-foot .games-count { font-size: 11px; letter-spacing: 0.04em; color: var(--t-label); margin: 0 0 3px; }
-.site-foot .foot-stats { font-size: 11px; letter-spacing: 0.04em; color: var(--t-label); margin: 0 0 12px; }
+.site-foot .games-count { font-size: 13px; letter-spacing: 0.02em; color: var(--t-label); margin: 0 0 4px; }
+.site-foot .foot-stats { font-size: 13px; letter-spacing: 0.02em; color: var(--t-label); margin: 0 0 12px; }
 .site-foot #footStats:empty { display: none; }/* no zero-state gap before the nav */   
 .site-foot .foot-seg { white-space: nowrap; }/* stat line wraps at the pipes, never mid-stat */   
 .site-foot details.legal summary {
@@ -365,8 +366,8 @@ body.drafting .site-foot { display: none; }
   display: inline-flex;
   align-items: center;
   padding: 4px 0;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--t-text-2);
   -webkit-user-select: none;
@@ -380,7 +381,7 @@ body.drafting .site-foot { display: none; }
   transition: transform 0.15s ease;
 }
 .site-foot details.legal[open] summary::before { transform: rotate(90deg); }
-.site-foot details.legal p { margin: 8px 0 0; font-size: var(--t-fs-data); line-height: 1.5; }   /* v51: readable (it inherited the footer's 9px) */
+.site-foot details.legal p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; }   /* v51: readable (it inherited the footer's 9px) */
 .site-foot a { color: var(--t-text); text-decoration: underline; }
 
 .loading-state { padding: 48px 0; text-align: center; }
@@ -1563,9 +1564,9 @@ button.more-modes:disabled,
   gap: 6px 18px;
   margin: 0 0 12px;
   font-family: var(--t-mono);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 .site-links a { color: var(--t-text); text-decoration: underline; text-underline-offset: 3px; opacity: 0.9; }
 .site-links a:hover { opacity: 1; color: var(--t-accent); }
@@ -3980,119 +3981,153 @@ body.bt-open .t-toast.on { transform: translate(-50%, 0); }
   .rr .bt-glove { animation: none; }
 }
 
-/* ---------- v59 THE HOME: Halftone v2 (the owner's redesign; AGENT-HANDOFF section 00000l) ----------
-   "Draft what wins" over three brightness tiers of two-line doors, each standing on a dotted halftone
-   offset shadow (the riso print's dot, not a glow or a keycap lip), then the vote card, which votes in
-   place. Pink is the core game (Classic, Presti), aqua the side modes; Classic is the only thing that
-   glows. Every button here is custom-skinned: each carries .tm-flat so the 3D decorator leaves it
-   alone, and look.css targets none of these classes. */
+/* ---------- v65 THE HOME: the owner's "Final title" boards (AGENT-HANDOFF section 00000z; v59's Halftone v2 before) ----------
+   One type scale (14, 16, 20, 28, 32, and the footer's 13 mono) and nothing glows but the logo. The page head holds the
+   top bar (HOW TO PLAY, a slot kept for the account button) and the title art (index.html). Then the doors, each on a
+   dotted halftone offset shadow: Classic full width; Presti and the Daily as twin tiles; Draft Night Do-Over as a
+   dashed BETA row; the vote card, which votes in place. Every button here is custom-skinned: each carries .tm-flat so
+   the 3D decorator leaves it alone, and look.css targets none of these classes. The boards' colors are the theme's own
+   read off an iPhone screenshot (Display P3): their #EC56AC is --t-accent, #68C2E6 is --t-offset, and so on. */
 .hm { max-width: 440px; margin: 0 auto; overflow-x: clip; }
 .hm [hidden] { display: none !important; }
-/* the masthead on the home screen: the same art, the mock's size, no rule under it */
-/* (#app#app outranks look.css's doubled-id masthead rule; a browser without :has() keeps today's masthead) */
-body:has(#app#app > .hm) .site-head { border-bottom-color: transparent; padding-bottom: 0; }
-body:has(#app#app > .hm) #app { padding-top: 0; }   /* v63.1 (the owner: "even less padding between true 82 logo and how to play link") */
-/* v63 (the owner: the tagline "takes away from the pretty logo"): with "Draft what wins" moved into HOW TO PLAY, the
-   logo leads the home screen at nearly the full width of a phone */
-body:has(#app#app > .hm) .brand-logo { width: min(400px, 96%); max-width: none; -webkit-user-select: none; user-select: none; }
-.hm-mast { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; }
-.hm-howto { appearance: none; -webkit-appearance: none; margin: 0; padding: 2px 10px 6px; border: 0; background: none;
-  cursor: pointer; display: inline-flex; align-items: center; gap: 7px; color: rgb(var(--t-offset-rgb) / .9);
-  font: 500 15px/1.2 var(--t-body); -webkit-tap-highlight-color: transparent; }
-.hm-howto span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px;
-  text-decoration-color: rgb(var(--t-offset-rgb) / .55); }
-.hm-howto:active { color: var(--t-offset); }
+
+/* -- the page head while the home is up: its static stand-in before app.js runs, and before #app is even parsed (the
+   head's script lets the browser lay out early, and a masthead laid out then would download for nothing). #app#app
+   outranks look.css's masthead rules. A browser without :has() keeps today's masthead, with HOW TO PLAY over it on
+   every screen. -- */
+.hm-top { display: flex; align-items: center; justify-content: space-between; align-self: stretch; height: 44px; margin: 0 -6px; }
+body:has(#app#app):not(:has(#app#app > :is(.hm, #staticIntro))) .hm-top { display: none; }
+.hm-howto { appearance: none; -webkit-appearance: none; margin: 0; padding: 0; height: 44px; border: 0; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; color: rgb(var(--t-text-rgb) / .8); font: 600 14px/1 var(--t-body);
+  -webkit-tap-highlight-color: transparent; }
+.hm-howto svg { flex: none; width: 18px; height: 18px; }
+.hm-howto:active { color: var(--t-text); }
 .hm-howto:focus-visible { outline: 2px solid var(--t-offset); outline-offset: 2px; border-radius: 8px; }
+.hm-acct { width: 44px; height: 44px; }   /* the account button's place (nothing built there yet) */
+.brand-art { display: contents; }   /* off the home: no box of its own, the masthead lays out as before */
+.ht { display: none; }
+body:has(#app#app > :is(.hm, #staticIntro)) #app { padding-top: 0; padding-bottom: 24px; }
+html[data-title] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .site-head {
+  --tw: min(100vw, 440px);   /* the title art's width: the phone's, edge to edge */
+  max-width: 472px; padding: 4px 16px 0; gap: 0; align-items: stretch; border-bottom: 0; }
+html[data-title] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .brand-art {
+  display: block; width: var(--tw); margin: 4px 0 0 calc(50% - var(--tw) / 2); -webkit-user-select: none; user-select: none; }
+html[data-title] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .brand-logo { display: none; }
+.ht img { display: block; height: auto; mix-blend-mode: screen; -webkit-user-drag: none; }   /* the art is printed on black: screen drops it */
+/* Title 1, the stacked lockup: the hoop, 120px at 390 and nudged 6px right (its stripe shadow trails right, so a
+   centered box puts the ball left of center), over the full-width wordmark, overlapping it by 14px; 28px to Classic */
+html[data-title="lockup"] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .ht-lockup { display: block; padding-bottom: 28px; }
+.ht-hoop { position: relative; left: 1.54%; width: 30.77%; aspect-ratio: 420 / 409; margin: 0 auto; }
+.ht-word { position: relative; width: 100%; aspect-ratio: 1252 / 438; margin-top: -3.59%; }
+/* Title 2, the wide logo on its extended floor. The box is the mock's crop (the logo's 1212 x 356 screenshot space,
+   97.4% of the width) cut where Classic starts, at crop y 507 (at 390: 159px down, 52px under the hoop). The floor
+   hangs out of it behind Classic, which paints over it. The logo sits in the crop where the reference preview has it
+   (registered: x 11, y 12, 1198 wide); the floor is the handoff's SVG in the same space (top y 310, 454 tall). */
+html[data-title="floor"] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .ht-floor { display: block; }
+.ht-floor { position: relative; width: 97.44%; aspect-ratio: 1212 / 507; margin: 0 auto; }
+.ht-logo { position: absolute; left: .908%; top: 2.367%; width: 98.85%; aspect-ratio: 1500 / 420; }
+.ht-grid { position: absolute; left: 0; top: 61.14%; width: 100%; aspect-ratio: 1212 / 454; pointer-events: none; }
 
-/* the stack: its right side is 6px roomier than its left so the offset dots never touch the edge */
-.hm-stack { display: flex; flex-direction: column; gap: 18px; padding: 10px 10px 0 4px; }
-@media (max-width: 380px) { .hm-stack { padding: 8px 6px 0 0; gap: 16px; } }
-
-/* the halftone offset shadow: the wrapper prints a block of dots down and right of its door */
-.hm-ht { position: relative; --off: 5px; --r: var(--t-r-btn); --dot: rgb(var(--t-accent-rgb) / .6); }
+/* -- the doors -- */
+.hm-stack { display: flex; flex-direction: column; }
+.hm-stack > .hm-twins { margin-top: 12px; }
+.hm-stack > .hm-beta { margin-top: 14px; }
+.hm-stack > .hm-poll { margin-top: 32px; }
+/* the halftone offset shadow: the wrapper prints a block of dots (1px on a 4px grid) down and right of its door */
+.hm-ht { position: relative; --off: 5px; --r: 16px; --dot: rgb(var(--t-accent-rgb) / .45); }
 .hm-ht::before { content: ""; position: absolute; left: var(--off); top: var(--off);
   right: calc(var(--off) * -1); bottom: calc(var(--off) * -1); border-radius: var(--r); pointer-events: none;
-  background-image: radial-gradient(circle, var(--dot) 1.3px, transparent 1.75px); background-size: 5px 5px; }
-
-/* a door: the mode's name in the display face, a plain line under it */
-.hm-mode { position: relative; appearance: none; -webkit-appearance: none; margin: 0; width: 100%; min-height: var(--h, 60px);
-  padding: 4px 12px 5px; border: var(--bw, 2px) solid var(--c); border-radius: var(--r); overflow: hidden;
-  background: linear-gradient(rgb(var(--t-overlay-rgb) / .38), rgb(var(--t-overlay-rgb) / .38)), var(--t-ground);
-  color: var(--ct); font: inherit; text-align: center; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.5px); background-size: 4px 4px; }
+/* a door: its name in the display face, a plain line under it, over a fill of faint dots in its own ink */
+.hm-mode { position: relative; appearance: none; -webkit-appearance: none; margin: 0; width: 100%; padding: 0 12px;
+  border: var(--bw, 2px) solid var(--c); border-radius: var(--r); color: var(--ct); font: inherit; text-align: center; cursor: pointer;
+  background: radial-gradient(circle, var(--fill, transparent) 1px, transparent 1.5px) 0 0 / 5px 5px,
+    linear-gradient(rgb(var(--t-overlay-rgb) / .38), rgb(var(--t-overlay-rgb) / .38)), var(--t-ground);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent; transition: transform .12s ease, filter .2s ease; }
-/* the door's own ink: dots rising from its bottom edge */
-.hm-mode::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background-image: radial-gradient(circle, var(--fill, transparent) 1.2px, transparent 1.65px); background-size: 5px 5px;
-  -webkit-mask-image: linear-gradient(to top, var(--fx-mask), transparent var(--fade, 65%));
-  mask-image: linear-gradient(to top, var(--fx-mask), transparent var(--fade, 65%)); }
-.hm-t { position: relative; font-family: var(--t-disp); font-weight: 800; line-height: 1; letter-spacing: .07em; text-transform: uppercase; }
-.hm-s { position: relative; font: 500 12.5px/1.25 var(--t-body); color: rgb(var(--t-text-rgb) / .74); }
+.hm-t { font-family: var(--t-disp); font-weight: 700; line-height: 1; text-transform: uppercase; }
+.hm-t > span { display: block; }
+.hm-s { font: 500 14px/1.3 var(--t-body); }
 button.hm-mode:active { transform: translate(3px, 3px); }   /* a press sinks the door into its own dots */
 button.hm-mode:disabled { cursor: progress; }
 .hm-mode:focus-visible { outline: 2px solid var(--t-text); outline-offset: 3px; }
 @media (hover: hover) { button.hm-mode:hover { filter: brightness(1.12); } }
-
-/* tier 1, Classic: the hook, and the only thing that glows (a slow neon breath) */
-.hm-hero { --off: 6px; --r: 16px; --dot: rgb(var(--t-accent-rgb) / .8); }
-.hm-hero .hm-mode { --h: 72px; --bw: 2.5px; --c: var(--t-accent); --ct: var(--t-text); --fill: rgb(var(--t-accent-rgb) / .5); --fade: 88%;
-  background: radial-gradient(120% 90% at 50% 0%, rgb(var(--t-accent-rgb) / .14), transparent 70%),
-    linear-gradient(rgb(var(--t-overlay-rgb) / .3), rgb(var(--t-overlay-rgb) / .3)), var(--t-ground);
-  box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .25), 0 0 18px rgb(var(--t-accent-rgb) / .42), inset 0 0 14px rgb(var(--t-accent-rgb) / .2);
-  animation: hm-breathe 5.5s ease-in-out 1.2s infinite; }
-.hm-hero .hm-t { font-size: 38px; letter-spacing: .085em;
-  text-shadow: 0 0 3px rgb(var(--t-accent-rgb) / 1), 0 0 10px rgb(var(--t-accent-rgb) / .75), 0 0 22px rgb(var(--t-accent-rgb) / .45); }
-.hm-hero .hm-s { font-size: 13px; color: rgb(var(--t-text-rgb) / .9); }
-@keyframes hm-breathe {
-  0%, 100% { box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .25), 0 0 18px rgb(var(--t-accent-rgb) / .42), inset 0 0 14px rgb(var(--t-accent-rgb) / .2); }
-  50% { box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .35), 0 0 26px rgb(var(--t-accent-rgb) / .55), inset 0 0 18px rgb(var(--t-accent-rgb) / .28); }
-}
-/* tier 2: Presti (pink) and the Daily (aqua) */
-.hm-mid .hm-mode { --h: 58px; --bw: 2px; }
-.hm-mid .hm-t { font-size: 27px; }
-.hm-mid.is-pink { --dot: rgb(var(--t-accent-rgb) / .58); }
-.hm-mid.is-pink .hm-mode { --c: var(--t-accent); --ct: var(--t-accent); --fill: rgb(var(--t-accent-rgb) / .3); }
-.hm-mid.is-cyan { --dot: rgb(var(--t-offset-rgb) / .45); }
-.hm-mid.is-cyan .hm-mode { --c: var(--t-offset); --ct: var(--t-offset); --fill: rgb(var(--t-offset-rgb) / .3); }
-/* tier 3, Draft Night Do-Over: quiet */
-.hm-quiet { --off: 4px; --dot: rgb(var(--t-offset-rgb) / .26); }
-.hm-quiet .hm-mode { --h: 54px; --bw: 1.5px; --c: rgb(var(--t-offset-rgb) / .5); --ct: rgb(var(--t-offset-rgb) / .86); }
-.hm-quiet .hm-t { font-size: 24px; }
-.hm-quiet .hm-s { font-size: 12px; color: rgb(var(--t-text-rgb) / .58); }
+/* Classic, the front door: full width, 72px, its own pink dots and an inner glow, no outer one */
+.hm-hero { --off: 6px; --dot: rgb(var(--t-accent-rgb) / .55); }
+.hm-hero .hm-mode { --bw: 2.5px; --c: var(--t-accent); height: 72px; gap: 4px;
+  background: radial-gradient(circle, rgb(var(--t-accent-rgb) / .28) 1px, transparent 1.5px) 0 0 / 5px 5px,
+    linear-gradient(rgb(var(--t-accent-rgb) / .07), rgb(var(--t-accent-rgb) / .07)),
+    linear-gradient(rgb(var(--t-overlay-rgb) / .4), rgb(var(--t-overlay-rgb) / .4)), var(--t-ground);
+  box-shadow: inset 0 0 14px rgb(var(--t-accent-rgb) / .22); }
+.hm-hero .hm-t { font-size: 32px; letter-spacing: .06em; color: var(--t-accent-pale); }
+.hm-hero .hm-s { font-weight: 600; color: var(--t-accent-mist); }
+/* Presti and the Daily: twin tiles of one height (at least 140px), their two-line titles always side by side */
+.hm-twins { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.hm-tile { display: flex; }
+.hm-tile .hm-mode { flex: 1; min-height: 140px; justify-content: flex-start; gap: 8px; padding: 14px 12px; }
+.hm-tile .hm-t { font-size: 28px; letter-spacing: .05em; }
+.hm-tile.is-pink .hm-mode { --c: var(--t-accent); --ct: var(--t-accent); --fill: rgb(var(--t-accent-rgb) / .16); }
+.hm-tile.is-pink .hm-s { color: rgb(var(--t-text-rgb) / .72); }
+.hm-tile.is-cyan { --dot: rgb(var(--t-offset-rgb) / .45); }
+.hm-tile.is-cyan .hm-mode { --c: var(--t-offset); --ct: var(--t-offset); --fill: rgb(var(--t-offset-rgb) / .14); gap: 0; padding-bottom: 0; }
+/* the Daily's board name centers in the room between "#80" and the tile's border (not its padding); on a special day
+   the badge sits 12px above the border and the name centers between "#80" and the badge */
+.hm-under { flex: 1; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 0; }
+.hm-tile.is-cyan .hm-s { color: rgb(var(--t-text-rgb) / .92); }
+.hm-streak { font: 500 14px/1.3 var(--t-body); color: var(--t-text-2); }
+.hm-badge { flex: none; display: inline-flex; align-items: center; height: 20px; margin-bottom: 12px; padding: 0 8px; border-radius: 6px;
+  background: var(--t-offset); color: var(--t-ground); font: 700 14px/1 var(--t-disp); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
 /* the Daily once today is played: the record, CHALLENGE A FRIEND first, the practice run second */
-.hm-played { cursor: default; gap: 5px; }
-.hm-rec { font-family: var(--t-mono); font-weight: 700; font-size: 13px; letter-spacing: .02em; color: var(--t-text); vertical-align: 4px; margin-left: 4px; }
-.hm-acts { position: relative; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px 8px; }
+.hm-played { cursor: default; }
+.hm-rec { margin-bottom: 2px; font: 700 20px/1 var(--t-disp); letter-spacing: .04em; color: var(--t-text); }
 .hm-act { appearance: none; -webkit-appearance: none; margin: 0; padding: 3px 2px; border: 0; background: none; cursor: pointer;
-  font: 600 13px/1.2 var(--t-body); color: var(--t-offset); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.hm-act.is-quiet { font-weight: 500; color: rgb(var(--t-text-rgb) / .7); }
+  font: 600 14px/1.25 var(--t-body); color: var(--t-offset); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.hm-act.is-quiet { font-weight: 500; color: rgb(var(--t-text-rgb) / .72); }
 .hm-act:focus-visible { outline: 2px solid var(--t-offset); outline-offset: 2px; border-radius: 4px; }
-.hm-sep { color: rgb(var(--t-text-rgb) / .4); font-size: 13px; }
-.hm .daily-stale { margin: -8px 0 0; }
+/* a Daily link from a time zone already on tomorrow's board: its note spans both tiles */
+.hm-twins > .daily-stale { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 1.35; }
+/* Draft Night Do-Over: the quiet BETA row, dashed, no fill and no shadow */
+.hm-beta .hm-mode { flex-direction: row; gap: 12px; height: 58px; border: 1.5px dashed rgb(var(--t-offset-rgb) / .5); border-radius: 14px; background: none; }
+.hm-chip { flex: none; display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1.5px solid rgb(var(--t-offset-rgb) / .5);
+  border-radius: 6px; font: 700 14px/1 var(--t-disp); letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--t-offset-rgb) / .86); }
+.hm-bt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; text-align: left; }
+.hm-beta .hm-t { font-size: 20px; letter-spacing: .05em; color: rgb(var(--t-offset-rgb) / .86); }
+.hm-beta .hm-s { color: var(--t-text-2); }
+/* the footer on this page: its rule a hair under the theme's line, and the contact address in near-white, calm (no
+   neon: on the home only the logo glows). #app#app outranks look.css's link and rule inks. */
+html[data-card] #app#app ~ .site-foot { border-top-color: rgb(var(--t-line-rgb) / .75); }
+html[data-btn] #app#app ~ .site-foot .games-count a { color: rgb(var(--t-text-rgb) / .92); text-shadow: none; text-decoration-color: rgb(var(--t-text-rgb) / .35); }
+/* the test build's Title 1 / Title 2 pill (index.html; never on true82.net), bottom-left, on the home only */
+.title-pill { position: fixed; z-index: 60; left: calc(10px + env(safe-area-inset-left)); bottom: calc(10px + env(safe-area-inset-bottom));
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; margin: 0; padding: 0 14px; cursor: pointer;
+  border: 1.5px solid rgb(var(--t-text-rgb) / .3); border-radius: var(--t-r-chip); background: rgb(var(--t-overlay-rgb) / .9);
+  color: var(--t-text-3); font: 600 14px/1 var(--t-body); -webkit-tap-highlight-color: transparent; }
+html[data-title="lockup"] .title-pill [data-t="lockup"], html[data-title="floor"] .title-pill [data-t="floor"] { color: var(--t-text); }
+body:not(:has(#app#app > .hm)) .title-pill { display: none; }
 
 /* ---- the vote card ---- */
-.hm-poll { --off: 6px; --r: 18px; --dot: rgb(var(--t-text-2-rgb) / .22); }
-.hm-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px;
-  border: 1.5px solid rgb(var(--t-text-rgb) / .16); border-radius: 18px;
+.hm-poll { --off: 6px; --r: 18px; --dot: rgb(var(--t-text-2-rgb) / .38); }
+.hm-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 18px;
+  border: 1.5px solid rgb(var(--t-text-rgb) / .18); border-radius: 18px;
   background: linear-gradient(rgb(var(--t-ground-2-rgb) / .42), rgb(var(--t-ground-2-rgb) / .42)), var(--t-ground); }
-.hm-poll-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 18px; }
-.hm-poll-title { margin: 0; font: 600 14.5px/1.2 var(--t-body); color: var(--t-accent-glow); }
-.hm-q { display: flex; flex-direction: column; gap: 6px; }
-.hm-name { font: 600 16px/1.2 var(--t-body); color: var(--t-text); overflow-wrap: anywhere; }
-.hm-season { margin-top: 1px; font: 500 12.5px/1.25 var(--t-body); color: var(--t-text-2); }
-.hm-trait { font: 600 19px/1.2 var(--t-body); color: var(--t-text); overflow-wrap: anywhere; }
-.hm-votes { display: flex; gap: 12px; margin-top: 4px; }
+.hm-poll-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 20px; }
+.hm-poll-title { margin: 0; font: 700 16px/1.2 var(--t-body); color: var(--t-accent); }
+.hm-q { display: flex; flex-direction: column; gap: 8px; }
+.hm-name { font: 600 16px/1.25 var(--t-body); color: rgb(var(--t-text-rgb) / .92); overflow-wrap: anywhere; }
+.hm-season { margin-top: 2px; font: 500 14px/1.3 var(--t-body); color: var(--t-text-2); }
+.hm-trait { font: 700 20px/1.25 var(--t-body); color: var(--t-text); overflow-wrap: anywhere; }
+.hm-votes { display: flex; gap: 10px; margin-top: 4px; }
 .hm-votes .hm-ht { --off: 4px; --r: 12px; flex: 1 1 0; min-width: 0; }
 .hm-votes .is-idk { flex: 0 0 56px; }
-.hm-vb, .hm-next { position: relative; appearance: none; -webkit-appearance: none; margin: 0; padding: 0; width: 100%; height: 46px;
+.hm-vb, .hm-next { position: relative; appearance: none; -webkit-appearance: none; margin: 0; padding: 0; width: 100%; height: 48px;
   border: 2px solid var(--c); border-radius: 12px; cursor: pointer; color: var(--c);
   background: linear-gradient(rgb(var(--t-overlay-rgb) / .38), rgb(var(--t-overlay-rgb) / .38)), var(--t-ground);
-  font-family: var(--t-disp); font-weight: 800; font-size: 26px; letter-spacing: .07em; text-transform: uppercase;
+  font-family: var(--t-disp); font-weight: 700; font-size: 20px; letter-spacing: .08em; text-transform: uppercase;
   -webkit-tap-highlight-color: transparent; transition: transform .1s ease, opacity .15s ease; }
 .hm-votes .is-yes, .hm .is-next { --c: var(--t-offset); --dot: rgb(var(--t-offset-rgb) / .45); }
-.hm-votes .is-no { --c: var(--t-accent); --dot: rgb(var(--t-accent-rgb) / .58); }
-.hm-votes .is-idk { --c: rgb(var(--t-text-2-rgb) / .85); --dot: rgb(var(--t-text-2-rgb) / .22); }
-.hm-votes .is-idk .hm-vb { font-size: 18px; letter-spacing: .04em; }
+.hm-votes .is-no { --c: var(--t-accent); --dot: rgb(var(--t-accent-rgb) / .45); }
+.hm-votes .is-idk { --c: var(--t-text-3); --dot: rgb(var(--t-text-2-rgb) / .22); }
+.hm-votes .is-idk .hm-vb { font-size: 16px; letter-spacing: .04em; color: rgb(var(--t-text-2-rgb) / .94); }
 .hm-vb:active, .hm-vb.pressed, .hm-next:not(:disabled):active { transform: translate(3px, 3px); }
 .is-yes .hm-vb.pressed { background: linear-gradient(rgb(var(--t-offset-rgb) / .22), rgb(var(--t-offset-rgb) / .22)), var(--t-ground); }
 .is-no .hm-vb.pressed { background: linear-gradient(rgb(var(--t-accent-rgb) / .22), rgb(var(--t-accent-rgb) / .22)), var(--t-ground); }
@@ -4101,7 +4136,6 @@ button.hm-mode:disabled { cursor: progress; }
 .hm-poll.tm-locked .hm-vb:not(.pressed) { opacity: .45; }
 .hm-vb:focus-visible, .hm-next:focus-visible { outline: 2px solid var(--t-text); outline-offset: 3px; }
 .hm .is-next { --off: 4px; --r: 12px; margin-top: 2px; }
-.hm-next { font-size: 25px; }
 .hm-next:disabled { opacity: .6; cursor: progress; }
 /* the tally: the bar in both inks (aqua yes from the left, pink no), the call, what you said */
 .hm-res, .hm-done { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
@@ -4114,30 +4148,30 @@ button.hm-mode:disabled { cursor: progress; }
 .hm-bar b::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 5px; border-radius: 3px; opacity: 0;
   background: var(--t-light); box-shadow: 0 0 8px rgb(var(--t-light-rgb) / .8); }
 .hm-tally { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px;
-  font: 500 13.5px/1.3 var(--t-body); color: var(--t-text); }
-.hm-pct { font-family: var(--t-disp); font-weight: 800; font-size: 20px; letter-spacing: .02em; color: var(--t-offset);
+  font: 500 14px/1.3 var(--t-body); color: var(--t-text); }
+.hm-pct { font-family: var(--t-disp); font-weight: 700; font-size: 20px; letter-spacing: .02em; color: var(--t-offset);
   font-variant-numeric: tabular-nums; }
 .hm-pct.is-no { color: var(--t-accent); }
 .hm-you { color: var(--t-text-2); }
 .hm-link { appearance: none; -webkit-appearance: none; margin: 0; padding: 6px 10px; border: 0; background: none; cursor: pointer;
-  font: 500 13px/1.3 var(--t-body); color: var(--t-text-2); text-decoration: underline; text-decoration-thickness: 1px;
+  font: 500 14px/1.3 var(--t-body); color: var(--t-text-2); text-decoration: underline; text-decoration-thickness: 1px;
   text-underline-offset: 3px; -webkit-tap-highlight-color: transparent; }
 .hm-link:active { color: var(--t-text); }
 .hm-link:focus-visible { outline: 2px solid var(--t-text); outline-offset: 2px; border-radius: 6px; }
 .hm-share { align-self: center; margin-top: 2px; }
-.hm-err { margin: 2px 0 0; font: 500 13px/1.3 var(--t-body); color: var(--t-accent-glow); }
+.hm-err { margin: 2px 0 0; font: 500 14px/1.3 var(--t-body); color: var(--t-accent-glow); }
 .hm-done-t { margin: 0; font: 600 20px/1.25 var(--t-body); color: var(--t-text); }
-.hm-done-s { margin: 0; font: 500 13.5px/1.35 var(--t-body); color: var(--t-text-2); }
-.hm-archive { display: flex; justify-content: center; padding: 18px 0 0; }
-.hm-archive .hm-link { font-size: 14px; }
-/* the narrowest phones (320): each door's line and the card's title stay on one line */
+.hm-done-s { margin: 0; font: 500 14px/1.35 var(--t-body); color: var(--t-text-2); }
+/* the Daily archive: a quiet link 24px under the card, a 44px tap */
+.hm-archive { display: flex; justify-content: center; padding: 24px 0 0; }
+.hm-archive .hm-link { min-height: 44px; padding: 0 12px; font: 600 16px/1 var(--t-body); color: rgb(var(--t-text-rgb) / .72);
+  text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+/* the narrowest phones (320): the card's title still fits on one line beside its diamonds (the scale's 14, a hair
+   less padding) */
 @media (max-width: 359px) {
-  .hm-mode { padding-left: 8px; padding-right: 8px; }
-  .hm-s { font-size: 11.5px; }
-  .hm-hero .hm-s { font-size: 12.5px; }
-  .hm-poll-head { gap: 8px; }
-  .hm-poll-title { font-size: 13.5px; }
-  .hm-dia { gap: 5px; }
+  .hm-card { padding: 16px 14px; }
+  .hm-poll-title { font-size: 14px; }
+  .hm-poll-head { gap: 6px; }
 }
 
 /* ---- THE INK DIAMONDS: one per call on the home card (v59), one per pick in the draft's bar (v59.1).
@@ -4311,7 +4345,7 @@ button.hm-mode:disabled { cursor: progress; }
 .hm-card .pb-stamp.is-unsure b { font-size: clamp(46px, 14vw, 64px); }
 .hm-card .pb-ring { width: 300px; height: 300px; margin: -150px 0 0 -150px; }
 /* the percent prints in two inks, a size up so the plates read */
-.hm-pct.pb-ink { display: inline-block; font-size: 26px; line-height: 1; --p1: var(--t-accent); --p2: var(--t-light); }   /* inline-block: the slam's transform needs a box */
+.hm-pct.pb-ink { display: inline-block; font-size: 28px; line-height: 1; --p1: var(--t-accent); --p2: var(--t-light); }   /* inline-block: the slam's transform needs a box */
 .hm-pct.pb-ink.is-no { --p1: var(--t-offset); }
 .hm-pct.pb-ink::before, .hm-pct.pb-ink::after { background-size: 3px 3px; }
 .hm-pct.pb-ink::before { transform: translate(3px, 3px); }

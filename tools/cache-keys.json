@@ -2,12 +2,12 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20260928-v64-1",
-      "sha": "d0fa9e22f63307d7"
+      "key": "20260929-v65",
+      "sha": "53eddf9d7c5cfe34"
     },
     "styles.css": {
-      "key": "20260928-v64-1",
-      "sha": "5815057e4eb5d6d5"
+      "key": "20260929-v65",
+      "sha": "3142aac6ff6dbd2d"
     },
     "reel-riso.js": {
       "key": "20260928-v64-1",
@@ -34,8 +34,8 @@
       "sha": "436be317d223a918"
     },
     "daily-core.js": {
-      "key": "20260928-v63-1",
-      "sha": "b0138415fbf55bd1"
+      "key": "20260929-v65",
+      "sha": "8d29f488b59787ff"
     },
     "results-riso.js": {
       "key": "20260928-v63-1",
@@ -52,6 +52,22 @@
     "site_data.json": {
       "key": "sc-v42c",
       "sha": "d91f72d594627b9e"
+    },
+    "home-hoop.webp": {
+      "key": "20260929-v65",
+      "sha": "d648c8610b3dd645"
+    },
+    "home-wordmark.webp": {
+      "key": "20260929-v65",
+      "sha": "4fe8a3d8d0b3b48f"
+    },
+    "home-logo.webp": {
+      "key": "20260929-v65",
+      "sha": "61a3146df8761656"
+    },
+    "home-floor.svg": {
+      "key": "20260929-v65",
+      "sha": "7eb099e1553c0e78"
     }
   }
 }

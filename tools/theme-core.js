@@ -83,6 +83,8 @@
     ["offset-slab", "offset", 72, "shadow", "a stacked button's first slab under an offset tube"],
     ["offset-base", "offset", 40, "shadow", "a stacked button's base under an offset tube"],
     ["offset-hi", "offset", 62, "light", "an offset tube's own light: neon blue text (the Presti bank's balance, v64)"],
+    ["accent-pale", "accent-hi", 50, "light", "an accent tube's own light: pale neon pink text (the home's CLASSIC, v65)"],
+    ["accent-mist", "paper-2", 85, "accent-hi", "pink-white text on a pink door (the line under CLASSIC, v65)"],
     ["good-soft", "good", 33, "text-2", "good as text on the ground (calm, not neon)"],
     ["good-top", "good", 80, "ground", "green keycap top"],
     ["good-face", "good", 70, "shadow", "green keycap face"],
