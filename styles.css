@@ -2505,6 +2505,7 @@ main.content-page {
   margin: 0 0 2px; color: var(--t-text); }
 .gate-var { margin: 22px auto 0; max-width: 460px; padding: 14px 16px 15px; text-align: center; }
 .gate-var-label { font-size: 0.62rem; letter-spacing: 0.22em; color: var(--t-accent); margin: 0 0 8px; }
+.gate-var-label .gate-fit { letter-spacing: 0.14em; }   /* v66: its own spacing, so it scales with the fitted size (app.js fitGateText) */
 .gate-var-name { font-family: var(--t-disp); font-size: 1.18rem; letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--t-text); margin: 0 0 5px; }
 .gate-var-body { font-size: 0.92rem; line-height: 1.5; color: var(--t-text-2); margin: 0; }
@@ -4096,6 +4097,14 @@ button.hm-mode:disabled { cursor: progress; }
    neon: on the home only the logo glows). #app#app outranks look.css's link and rule inks. */
 html[data-card] #app#app ~ .site-foot { border-top-color: rgb(var(--t-line-rgb) / .75); }
 html[data-btn] #app#app ~ .site-foot .games-count a { color: rgb(var(--t-text-rgb) / .92); text-shadow: none; text-decoration-color: rgb(var(--t-text-rgb) / .35); }
+
+/* ---------- v66 THE TEST DAY'S BANNER (app.js TEST_DAY: a test build opened with ?day=YYYY-MM-DD; never on
+   true82.net). Printed on the light paper so it can never pass for part of the game. ---------- */
+.test-day { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 12px; padding: 8px 16px;
+  background: var(--t-paper); color: var(--t-ink); font: 500 14px/1.3 var(--t-body); text-align: center; }
+.test-day b { font-weight: 700; }
+.test-day-reset { appearance: none; -webkit-appearance: none; margin: 0; padding: 5px 12px; cursor: pointer;
+  border: 1.5px solid var(--t-ink); border-radius: var(--t-r-chip); background: none; color: var(--t-ink); font: 700 14px/1 var(--t-body); }
 
 /* ---- the vote card ---- */
 .hm-poll { --off: 6px; --r: 18px; --dot: rgb(var(--t-text-2-rgb) / .38); }

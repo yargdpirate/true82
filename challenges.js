@@ -490,15 +490,19 @@
         return { frs: [S.picks[0].fr] }; } },
     { id: "rivalry", name: "The Rivalry", base: "cap",
       blurb: "Celtics and Lakers. That's the whole board. Pick a side — or don't, you coward.",
+      reelFrs: ["CELTICS", "LAKERS"],   // v66: the ticket reel spins only these
       deal: function () { return { frs: ["CELTICS", "LAKERS"] }; } },
     { id: "texas_triangle", name: "The Texas Triangle", base: "classic",
       blurb: "Mavericks, Rockets, Spurs. Everything's bigger, including the spacing tax.",
+      reelFrs: ["MAVERICKS", "ROCKETS", "SPURS"],   // v66: the ticket reel spins only these
       deal: function () { return { frs: ["MAVERICKS", "ROCKETS", "SPURS"] }; } },
     { id: "california_love", name: "California Love", base: "classic",
       blurb: "Lakers, Clippers, Warriors, Kings. The whole board has beach access.",
+      reelFrs: ["LAKERS", "CLIPPERS", "WARRIORS", "KINGS"],   // v66: the ticket reel spins only these
       deal: function () { return { frs: ["LAKERS", "CLIPPERS", "WARRIORS", "KINGS"] }; } },
     { id: "expansion_class", name: "The Expansion Class", base: "cap",
       blurb: "Only franchises born after 1988. No dynasties, no banners, no help.",
+      reelFrs: ["HEAT", "MAGIC", "TIMBERWOLVES", "RAPTORS", "GRIZZLIES", "PELICANS", "HORNETS"],   // v66: the ticket reel spins only these
       deal: function () { return { frs: ["HEAT", "MAGIC", "TIMBERWOLVES", "RAPTORS", "GRIZZLIES", "PELICANS", "HORNETS"] }; } },
 
     /* ═══════════ DRAFT-ORDER PUZZLES (stateful picks) ═══════════ */
@@ -641,6 +645,7 @@
       filter: function (row, t) { return row[t.IDX.season] % 4 === 0; } },
     { id: "blind_california", name: "Blind California", base: "pro",
       blurb: "The four California franchises, from memory. Showtime, Lob City, the Splash era — unlabeled.",
+      reelFrs: ["LAKERS", "CLIPPERS", "WARRIORS", "KINGS"],   // v66: the ticket reel spins only these
       deal: function () { return { frs: ["LAKERS", "CLIPPERS", "WARRIORS", "KINGS"] }; } },
     /* ---------- 2026-07-18 additions (manifest doctrine v2: append-only) ----------
        Shipped ids above are IMMUTABLE: past daily boards and beat-links replay
@@ -1780,7 +1785,18 @@
         var p1 = person(S.picks[0].row, t); return !!p1 && Math.abs(me.first - p1.first) <= 1; },
       deal: function (S, t) {
         if (!S.picks.length) return null;
-        var p1 = person(S.picks[0].row, t); return p1 ? { decs: cohortDecs(t, p1.first) } : null; } }
+        var p1 = person(S.picks[0].row, t); return p1 ? { decs: cohortDecs(t, p1.first) } : null; } },
+
+    /* ═══════════ THE SPECIAL DAYS (v66): one-off boards pinned to a date by daily-core.js OVERRIDES, never in a
+       rotation. Each deals only the franchises playing that night (the owner: "to match the IRL" games). ═══════════ */
+    { id: "opening_night", name: "Opening Night", base: "classic",
+      blurb: "Only the six franchises playing on opening night: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs.",
+      reelFrs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"],   // v66: the ticket reel spins only these
+      deal: function () { return { frs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"] }; } },
+    { id: "primetime", name: "Primetime", base: "classic",
+      blurb: "Only the four franchises on the primetime slate: Cavaliers, 76ers, Nuggets, Thunder.",
+      reelFrs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"],   // v66: the ticket reel spins only these
+      deal: function () { return { frs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"] }; } }
   ];
 
   var byId = {};

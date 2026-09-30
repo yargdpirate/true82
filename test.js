@@ -337,7 +337,10 @@ eq("section headers: head() builds one component with the context's variant",
   eq("POOL3: exactly 200 unique ids", [P3.length, new Set(P3).size], [200, 200]);
   eq("POOL3: every id is in the manifest and new (not in POOL, POOL2 or the 99 entries shipped before it)",
     P3.filter(id => !CH.byId[id] || OLD.has(id) || EARLIER.has(id)), []);
-  eq("POOL3: the manifest's new section is exactly the pool, no orphan boards", CH.CHALLENGES.slice(cut).map(c => c.id).sort(), P3.slice().sort());
+  // v66: the special days' boards sit after the pool in the manifest, each pinned to its date by OVERRIDES
+  const SPECIAL = Object.keys(D.OVERRIDES).filter(k => k >= D.START3).map(k => D.OVERRIDES[k]).filter(id => P3.indexOf(id) < 0);
+  eq("POOL3: the manifest's new section is exactly the pool and the special days, no orphan boards",
+    CH.CHALLENGES.slice(cut).map(c => c.id).sort(), P3.concat(SPECIAL).sort());
   eq("POOL3: every id has daily copy, s and g", P3.filter(id => !(D.DAILY_COPY[id] && D.DAILY_COPY[id].s && D.DAILY_COPY[id].g)), []);
   const DASH = /[–—]/;
   eq("POOL3: zero em or en dashes in every new name, blurb, s and g (copy law)",
@@ -365,6 +368,52 @@ eq("section headers: head() builds one component with the context's variant",
     });
     eq("POOL3: 20 quick bot drafts on every board, zero dead runs", dead, []);
   }
+}
+
+// ---------- v66 THE SPECIAL DAYS and THE TEST DAY ----------
+// Opening Night (10/20) and Primetime (10/22) take their dates from POOL3 without moving any other day; 10/20's Presti
+// board moves to 10/21 so no three days in a row share a base mode. A test build's ?day= moves "today" only.
+{
+  const pctx = { Math, Date, console, JSON, URLSearchParams };
+  vm.createContext(pctx);
+  vm.runInContext(fs.readFileSync("challenges.js", "utf8"), pctx);
+  vm.runInContext(fs.readFileSync("daily-core.js", "utf8"), pctx);
+  const D = pctx.T82DAILY, CH = pctx.T82CH, P3 = D.POOL3;
+  const at = k => { const b = D.boardFor(k); return [b.num, b.ch && b.ch.id, b.base, b.name]; };
+  const p3 = k => P3[(D.dayNum(k) - D.dayNum(D.START3)) % P3.length];
+  eq("special days: #101 Opening Night and #103 Primetime, both Classic; Backcourt Mates moved to #102",
+    ["2026-10-20", "2026-10-21", "2026-10-22"].map(at),
+    [[101, "opening_night", "classic", "Opening Night"], [102, "backcourt_mates", "cap", "Backcourt Mates"], [103, "primetime", "classic", "Primetime"]]);
+  eq("special days: every other day keeps its POOL3 board (the rotation does not shift)",
+    ["2026-10-19", "2026-10-23", "2026-11-01", "2027-04-15"].map(k => D.boardFor(k).ch.id), ["2026-10-19", "2026-10-23", "2026-11-01", "2027-04-15"].map(p3));
+  eq("special days: the franchises dealt (Sonics years count for the Thunder in the data)",
+    ["opening_night", "primetime"].map(id => CH.byId[id].deal().frs),
+    [["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"], ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"]]);
+  const DASH = /[–—]/;
+  eq("special days: copy for the status row and the gate, no em or en dashes",
+    ["opening_night", "primetime"].filter(id => { const c = CH.byId[id], d = D.DAILY_COPY[id] || {}; return !d.s || !d.g || DASH.test([c.name, c.blurb, d.s, d.g].join(" ")); }), []);
+  const bases = []; for (let k = D.START3, i = 0; i < P3.length; k = D.shiftKey(k, 1), i++) bases.push(D.boardFor(k).base);
+  eq("the schedule as it will play (POOL3 plus the special days): never the same base mode three days running",
+    bases.filter((b, i) => i >= 2 && b === bases[i - 1] && b === bases[i - 2]).length, 0);
+  const real = D.dayKey();
+  D.setTestDay("2026-10-20");
+  const during = [D.dayKey(), D.dayKey(new Date(2026, 0, 5, 12).getTime()), D.boardFor(D.dayKey()).ch.id];
+  D.setTestDay("not-a-day"); const bad = D.dayKey();
+  D.setTestDay(null);
+  eq("the test day: moves today only (an explicit date is untouched), ignores a malformed day, and clears",
+    [during, bad, D.dayKey()], [["2026-10-20", "2026-01-05", "opening_night"], real, real]);
+  if (fs.existsSync("site_data.json")) {
+    const AUD = require("./tools/daily-audit.js");
+    const env = AUD.load(__dirname), bot = AUD.makeBot(env, {}), dead = [];
+    ["opening_night", "primetime"].forEach(id => {
+      const ch = env.T82CH.byId[id];
+      for (let g = 1; g <= 60; g++) if (bot(ch.base, ch, 911000 + g * 11).dead) { dead.push(id); break; }
+    });
+    eq("special days: 60 quick bot drafts on each board, zero dead runs", dead, []);
+  }
+  const app = fs.readFileSync("app.js", "utf8");
+  eq("the test day is set only off true82.net (app.js checks the host before reading ?day=)",
+    /if \(!window\.T82DAILY \|\| !T82DAILY\.setTestDay \|\| !offLiveHost\(\)\) return null;/.test(app), true);
 }
 
 // ---------- v55 THE REDRAFTED on the real player data (skipped when site_data.json is absent) ----------

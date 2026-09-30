@@ -1015,11 +1015,11 @@ function animCrest(img, landing) {
 // Warmed sample of real crest data-URIs to flash through during a spin (decoys are
 // unchained from the outcome). Built + decode-warmed once; reused every spin.
 var CREST_POOL = null;
-function crestPool(fr) {
-  if (fr) {                                // era reroll: only THIS team's logos, across its decades
-    var arr = [], seenF = {};
-    for (var d = 0; d < DECADES.length; d++) {
-      var c = CRESTS[key(fr, DECADES[d])];
+function crestPool(fr, frs) {
+  if (fr || frs) {                         // era reroll: only THIS team's logos, across its decades (v66: or a board's teams)
+    var arr = [], seenF = {}, list = fr ? [fr] : frs;
+    for (var f = 0; f < list.length; f++) for (var d = 0; d < DECADES.length; d++) {
+      var c = CRESTS[key(list[f], DECADES[d])];
       if (c && !seenF[c]) { seenF[c] = 1; arr.push(c); var im0 = new Image(); im0.src = c; }
     }
     return arr.length ? arr : null;
@@ -1136,7 +1136,10 @@ function spinReels(anim) {
     return SPIN;
   }
   var decDecoys = DECADES.map(decLabel);
-  var frDecoys  = FRANCHISES.map(titleCase);
+  // v66: a board that deals only certain franchises (challenges.js reelFrs: Opening Night, the Texas Triangle...) spins
+  // only those names and crests, so a filmed spin never flashes a team the day cannot deal
+  var onlyFrs = G && G.ch && G.ch.reelFrs && G.ch.reelFrs.length ? G.ch.reelFrs : null;
+  var frDecoys  = (onlyFrs || FRANCHISES).map(titleCase);
 
   // clip the roll into a single-line reel-window while values fly past
   var roll = (decNode || frNode) ? (decNode || frNode).parentNode : null;
@@ -1160,7 +1163,7 @@ function spinReels(anim) {
   if (artNode) {
     crestLand = slot * STAGGER + SPIN;
     var eraOnly = anim.dec && !anim.fr;   // team is fixed -> flash only this franchise's logos
-    var cpool = crestPool(eraOnly ? G.cur.fr : null);
+    var cpool = crestPool(eraOnly ? G.cur.fr : null, onlyFrs);
     runReel(artNode, cpool || [artNode.src], artNode.src, 0, crestLand, function () { buzz(18); }, setImg, animCrest);
   }
   return crestLand;
@@ -3468,8 +3471,7 @@ function renderIntro() {
   // The Daily's event badge (v65): one optional label on the day's board (daily-core.js DAILY_BADGES), none on a
   // normal day. A test build previews one with ?badge=Opening%20night.
   var dailyBadge = dailyBoard && dailyBoard.badge ? String(dailyBoard.badge) : "";
-  var offLive = !/^(www\.)?true82\.net$/i.test(String(location.hostname || ""));   // a test build or a local server
-  if (dailyBoard && offLive) {
+  if (dailyBoard && offLiveHost()) {   // a test build or a local server
     var qBadge = /[?&]badge=([^&]*)/.exec(location.search);
     if (qBadge) { try { dailyBadge = decodeURIComponent(qBadge[1].replace(/\+/g, " ")); } catch (e) { dailyBadge = ""; } dailyBadge = dailyBadge.slice(0, 22) || "Opening night"; }
   }
@@ -9036,6 +9038,28 @@ var SHARE_REF = (function () {   // ?ref=<5-char id> attribution from a Tribune 
    the Pro button, untouched. daily-core.js owns the doctrine (seed, pool,
    grade, official-run law); app.js only wires screens. */
 var DAILY_GATE_PENDING = null;    // set during intro wiring, fired at the end of renderIntro
+// v66 THE TEST DAY (the owner: test the special Dailies "before the day of deployment"): on a test build (anywhere but
+// true82.net) ?day=YYYY-MM-DD makes that day "today" for the whole site: the home's Daily, its gate, the run, the
+// results, the share link and the archive, exactly as a player will get them that day. Its runs keep their own local
+// record (daily-core lsKey), so a test never marks a real day played; a banner across the top says so and can start
+// the test over. true82.net ignores the parameter.
+function offLiveHost() { return !/^(www\.)?true82\.net$/i.test(String(location.hostname || "")); }
+var TEST_DAY = (function () {
+  try {
+    if (!window.T82DAILY || !T82DAILY.setTestDay || !offLiveHost()) return null;
+    var m = /[?&]day=(\d{4}-\d{2}-\d{2})(?:&|$)/.exec(location.search);
+    return m && T82DAILY.validKey(m[1]) ? T82DAILY.setTestDay(m[1]) : null;
+  } catch (e) { return null; }
+})();
+if (TEST_DAY) (function () {
+  var bar = document.createElement("div");
+  bar.className = "test-day"; bar.setAttribute("role", "status");
+  bar.innerHTML = "<span>Test day: <b>" + esc(dailyDayLabel(TEST_DAY)) + "</b> · Daily #" + T82DAILY.dayNum(TEST_DAY) +
+    " · nothing here counts</span>" +
+    '<button class="test-day-reset tm-flat" type="button">Start over</button>';
+  bar.querySelector("button").addEventListener("click", function () { T82DAILY.clearTestRecord(); location.reload(); });
+  document.body.insertBefore(bar, document.body.firstChild);
+})();
 var DAILY_LINK = (function () {   // ?d=YYYYMMDD&w=&n= beat-my-five landing; consumed by the first intro render
   try {
     if (!window.T82DAILY) return null;
@@ -9132,6 +9156,56 @@ function renderDailyArchive() {
     renderDailyGate(b, null, "daily-practice:" + b.num, { archive: true });
   });
 }
+// v66 (the owner: the Daily start screen's text "as big as possible and still fit on one line"): each one-line text
+// on the gate takes the largest size at which it still fits its line. The rules under THE DAILY share one size (the
+// longest sets it), the date line, the variation's label and the board's name each take their own, between a floor
+// and a ceiling.
+// Under the floor (a replay's longer rules), the CSS size stands and the text wraps as before. Refit once the fonts
+// land and when the phone turns.
+function fitOneLine(nodes, room, lo, hi) {
+  var REF = 100, widest = 0;
+  nodes.forEach(function (n) { n.style.fontSize = REF + "px"; n.style.whiteSpace = "nowrap"; });
+  nodes.forEach(function (n) {
+    var r = document.createRange(); r.selectNodeContents(n);
+    widest = Math.max(widest, r.getBoundingClientRect().width);
+  });
+  var size = widest && room > 0 ? Math.floor(REF * room / widest * 0.97 * 10) / 10 : 0;
+  if (size < lo) { nodes.forEach(function (n) { n.style.fontSize = ""; n.style.whiteSpace = ""; }); return 0; }
+  size = Math.min(hi, size);
+  nodes.forEach(function (n) { n.style.fontSize = size + "px"; });
+  return size;
+}
+function fitGateText() {
+  var gate = document.querySelector("#app .gate");
+  if (!gate) return;
+  function room(n) { var cs = getComputedStyle(n); return n.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); }
+  // a line that still spills (a rounding, a margin) steps down until its box holds it
+  function hold(box, text, size, lo) {
+    while (size > lo && box.scrollWidth > box.clientWidth) { size -= 0.25; text.style.fontSize = size + "px"; }
+  }
+  var eb = gate.querySelector(".gate-eyebrow");   // "THE DAILY #101 · TUE, OCT 20": a three-digit day grew past 320
+  if (eb) { var ez = fitOneLine([eb], room(eb), 8, 13); if (ez) hold(eb, eb, ez, 8); }
+  var law = [].slice.call(gate.querySelectorAll(".gate-law p"));
+  if (law.length) {
+    var ls = fitOneLine(law, room(law[0]), 12, 24);
+    if (ls) law.forEach(function (p) { hold(p, p, ls, 12); });
+  }
+  var lbl = gate.querySelector(".gate-var-label"), lblText = lbl && lbl.querySelector(".gate-fit"), info = el("gateInfo");
+  if (lblText) {
+    lbl.style.whiteSpace = "";
+    var ic = info ? getComputedStyle(info) : null;
+    var beside = info ? info.getBoundingClientRect().width + parseFloat(ic.marginLeft) + parseFloat(ic.marginRight) + 6 : 0;
+    var lz = fitOneLine([lblText], room(lbl) - beside, 8, 13);
+    if (lz) { lbl.style.whiteSpace = "nowrap"; hold(lbl, lblText, lz, 8); }
+  }
+  var nm = gate.querySelector(".gate-var-name");
+  if (nm) { var nz = fitOneLine([nm], room(nm), 16, 34); if (nz) hold(nm, nm, nz, 16); }
+}
+(function () {
+  var t = 0;
+  if (window.addEventListener) window.addEventListener("resize", function () { clearTimeout(t); t = setTimeout(fitGateText, 120); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitGateText);
+})();
 function renderDailyGate(board, target, variantTag, opts) {
   opts = opts || {};
   var archive = !!opts.archive;   // v56: a past board from the archive (or a past-dated challenge link)
@@ -9165,7 +9239,7 @@ function renderDailyGate(board, target, variantTag, opts) {
             '<p>Compare with friends to see who knows ball.</p>') +
       '</div>' +
       '<div class="gate-var plq-frame plq-slim">' +
-        '<p class="gate-var-label mono">' + (archive ? "THAT DAY\u2019S VARIATION" : "TODAY\u2019S VARIATION") + ' \u00B7 ' + baseName.toUpperCase() + ' MODE' +
+        '<p class="gate-var-label mono"><span class="gate-fit">' + (archive ? "THAT DAY\u2019S VARIATION" : "TODAY\u2019S VARIATION") + ' \u00B7 ' + baseName.toUpperCase() + ' MODE</span>' +
           ' <button class="cap-info" id="gateInfo" aria-expanded="false" aria-label="How ' + baseName + ' Mode works">i</button></p>' +
         '<p class="gate-var-name">' + esc(board.name) + '</p>' +
         '<p class="gate-var-body">' + esc(board.gate || board.blurb || "") + '</p>' +
@@ -9184,6 +9258,8 @@ function renderDailyGate(board, target, variantTag, opts) {
       // v58: the archive's second door, quiet, under today's start (the home page keeps the first)
       (!archive && board.num > 1 ? '<button class="t-btn gate-past" data-kind="text" data-size="sm" id="gatePastBtn" type="button">Daily archive</button>' : "") +
     '</section>';
+  fitGateText();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitGateText);   // a first screen may beat its fonts
   el("gateBack").addEventListener("click", function () {
     analyticsTrack("daily_gate_exit", { mode: board.base, variant: variantTag || ("daily:" + board.num), daily_num: board.num, action: archive ? "archive_back" : "back" });
     if (archive) renderDailyArchive(); else renderIntro();
@@ -9307,7 +9383,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v65.3";
+var BUILD_V = "v66";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

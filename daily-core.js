@@ -38,7 +38,12 @@
 
   /* ---------- day math (all local-time, string keys) ---------- */
   function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  // v66: a test build's pretend "today" (app.js sets it from ?day=YYYY-MM-DD, never on true82.net), so a special
+  // day's board can be played start to finish before it arrives. Only today moves; any explicit date is untouched.
+  var TEST_DAY = null;
+  function setTestDay(key) { TEST_DAY = (key && /^\d{4}-\d{2}-\d{2}$/.test(String(key))) ? String(key) : null; return TEST_DAY; }
   function dayKey(now) {
+    if (now == null && TEST_DAY) return TEST_DAY;
     var d = now != null ? new Date(now) : new Date();
     return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
   }
@@ -123,7 +128,15 @@
     // 2026-07-18 shipped small_ball_apoc, whose C slot was fillable only via
     // name-collision ghosts. Swapped mid-day for the fixed build of the same
     // fantasy. Morning officials stand; the board simply became playable.
-    "2026-07-18": "small_ball_five"
+    "2026-07-18": "small_ball_five",
+    // v66 THE SPECIAL DAYS (the owner, 2026-09-29): two Classic boards drawn only from the franchises playing that
+    // night, "to match the IRL" games. They bump what POOL3 had planned: 10/20's Presti board (Backcourt Mates)
+    // moves back a day to 10/21 so there are never four Classic days in a row (10/19 Board Meeting is Classic too),
+    // which bumps 10/21's The Worst Year; 10/22's Pass It On (Pro) is bumped. Both come back when POOL3 loops
+    // (2027-04-16 onward). The rotation itself is untouched: every other day keeps its board.
+    "2026-10-20": "opening_night",     // #101, Tue: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs
+    "2026-10-21": "backcourt_mates",   // #102, Wed: moved back from 10/20
+    "2026-10-22": "primetime"          // #103, Thu: Cavaliers, 76ers, Nuggets, Thunder
   };
   var POOL2 = [
     // week 1
@@ -160,7 +173,7 @@
      One optional label for a special day's board (an opening-night Daily, say), printed as a small aqua badge at the
      bottom of the home's Daily tile. The key is the day's date (the player's own calendar day, like every key here);
      no entry means no badge, which is every normal day. The label is display only: it never changes the board, its
-     seed or its replay. Keep it short (about 16 letters fit the tile at 320px). Example:
+     seed or its replay. Keep it short (13 letters, like OPENING NIGHT, fit the tile at 320px). Example:
        "2026-10-20": "Opening night"   */
   var DAILY_BADGES = {
   };
@@ -282,6 +295,12 @@
     california_love: {
       s: "Lakers, Clippers, Warriors, Kings only.",
       g: "Four California franchises, any era, full stats, one skip of each. Team skips shuffle the coastline. Showtime, Lob City, and the Splash era all count. The whole board has beach access." },
+    opening_night: {
+      s: "Opening night's six teams. Nothing else.",
+      g: "Every board comes from the six franchises playing on opening night: the Celtics, Pistons, 76ers, Knicks, Thunder and Spurs, any era, full stats. The SuperSonics years count for the Thunder, the ABA years for the Spurs. Team skips rotate through the six." },
+    primetime: {
+      s: "Cavaliers, 76ers, Nuggets, Thunder only.",
+      g: "Every board comes from the four franchises on the primetime slate: the Cavaliers, 76ers, Nuggets and Thunder, any era, full stats. The SuperSonics years count for the Thunder, the ABA years for the Nuggets. Team skips rotate through the four." },
     expansion_class: {
       s: "Only franchises born after 1988.",
       g: "Heat, Magic, Wolves, Raptors, Grizzlies, Pelicans, Hornets: the expansion class, with Presti pricing. No dynasties to lean on and shorter histories to mine, so scout the seasons that actually mattered." },
@@ -1148,13 +1167,17 @@
      every call still returns sane values and the mode plays normally. */
   var LS_KEY = "t82_daily1";
   var KEEP_DAYS = 400;
+  // v66: a test day (setTestDay) keeps its own record, so testing a future board never marks a real day played or
+  // moves the real streak; clearTestRecord() starts the test over.
+  function lsKey() { return TEST_DAY ? LS_KEY + "_test" : LS_KEY; }
+  function clearTestRecord() { try { g.localStorage && g.localStorage.removeItem(LS_KEY + "_test"); } catch (e) {} }
   var store = {
     get: function () {
-      try { return JSON.parse((g.localStorage && g.localStorage.getItem(LS_KEY)) || "null"); }
+      try { return JSON.parse((g.localStorage && g.localStorage.getItem(lsKey())) || "null"); }
       catch (e) { return null; }
     },
     set: function (obj) {
-      try { g.localStorage && g.localStorage.setItem(LS_KEY, JSON.stringify(obj)); return true; }
+      try { g.localStorage && g.localStorage.setItem(lsKey(), JSON.stringify(obj)); return true; }
       catch (e) { return false; }
     }
   };
@@ -1235,6 +1258,7 @@
     EPOCH: EPOCH, GAMES: GAMES, POOL: POOL,
     POOL2: POOL2, START2: START2, POOL3: POOL3, START3: START3,
     DAILY_COPY: DAILY_COPY, MODE_TIP: MODE_TIP,
+    OVERRIDES: OVERRIDES, DAILY_BADGES: DAILY_BADGES, setTestDay: setTestDay, clearTestRecord: clearTestRecord,
     dayKey: dayKey, dayNum: dayNum, validKey: validKey, shiftKey: shiftKey,
     hash32: hash32, seedFor: seedFor, boardFor: boardFor,
     verdict: verdict, signedNet: signedNet,
