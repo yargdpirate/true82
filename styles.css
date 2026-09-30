@@ -4158,12 +4158,12 @@ html[data-btn] #app#app ~ .site-foot .games-count a { color: rgb(var(--t-text-rg
 .hm-archive { display: flex; justify-content: center; padding: 24px 0 0; }
 .hm-archive .hm-link { min-height: 44px; padding: 0 12px; font: 600 16px/1 var(--t-body); color: rgb(var(--t-text-rgb) / .72);
   text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
-/* the narrowest phones (320): the card's title still fits on one line beside its diamonds (the scale's 14, a hair
-   less padding) */
-@media (max-width: 359px) {
+/* phones under 390 (the iPhone SE and mini at 375, down to 320): the card's title stays on one line beside its
+   diamonds (the scale's 14 and a hair less padding; at 320 the diamonds shrink too, in THE INK DIAMONDS below) */
+@media (max-width: 389px) {
   .hm-card { padding: 16px 14px; }
   .hm-poll-title { font-size: 14px; }
-  .hm-poll-head { gap: 6px; }
+  .hm-poll-head { gap: 8px; }
 }
 
 /* ---- THE INK DIAMONDS: one per call on the home card (v59), one per pick in the draft's bar (v59.1).

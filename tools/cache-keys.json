@@ -2,12 +2,12 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20260929-v65-1",
-      "sha": "d25f946bbc5f2732"
+      "key": "20260929-v65-2",
+      "sha": "590109f434f6e666"
     },
     "styles.css": {
-      "key": "20260929-v65-1",
-      "sha": "355c29960ad215d4"
+      "key": "20260929-v65-2",
+      "sha": "12edc4c165509508"
     },
     "reel-riso.js": {
       "key": "20260928-v64-1",

@@ -1,7 +1,7 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
 > **FIRST THING: v65.1 WENT TO MAIN ON 2026-09-29** at the owner's "Go with title 2 ... then go live to main"
-> (section 00000z, "v65.1"). It carried v64 and v64.1 live with it (they were waiting on `c-code-clean`). Confirm with
+> (section 00000z, "v65.1"), then v65.2 (a one-line fix for 360-389px phones) right after. It carried v64 and v64.1 live with it (they were waiting on `c-code-clean`). Confirm with
 > the read-only checks in 00000z ("After the merge"); if something is wrong, the undo is his, one step in the
 > Cloudflare dashboard (Workers & Pages, then true82, then Deployments: on the v63.1 production deployment,
 > "Rollback to this deployment"). `main`, `c-code-clean` and `home-titles` all point at the same commit.
@@ -19,7 +19,7 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v65.1, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v65.2, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-29
 **Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
@@ -50,9 +50,13 @@ space between classic and the bottom of the basketball icon. Then go live to mai
 - **Live:** `home-titles` fast-forwarded onto `c-code-clean`, then his merge command's steps to `main` (v64 and v64.1
   went live with it).
 
+- **v65.2 (same hour):** the live check at 375 caught "Help balance the game" wrapping to two lines between 360 and
+  389px (v65's narrow rule covered only 320-359; v64.1 fit there at 14.5px). Under 390 the card now takes the scale's
+  14px title and 16px/14px padding: one line at 320, 340, 360, 375, 390, 414 and 430 in Chromium and WebKit.
+
 ### After the merge (the checks; all read-only)
-1. `curl -s "https://true82.net/app.js?v=20260929-v65-1" | grep -o 'BUILD_V = "[^"]*"'` prints v65.1; the footer reads
-   v65.1.
+1. `curl -s "https://true82.net/app.js?v=20260929-v65-2" | grep -o 'BUILD_V = "[^"]*"'` prints v65.2; the footer reads
+   v65.2.
 2. `curl -sI "https://true82.net/home-logo.webp?v=20260929-v65"` shows `image/webp` and the year-long immutable cache.
 3. 00000y's checks 2 and 3 (the long cache, the vote card's one request) still hold.
 4. Look, do not write: the true82.net home once at 375 in the browser pane (the title, the doors, the vote card).
