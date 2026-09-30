@@ -412,28 +412,45 @@ eq("section headers: head() builds one component with the context's variant",
       for (let g = 1; g <= 60; g++) if (bot(ch.base, ch, 911000 + g * 11).dead) { dead.push(id); break; }
     });
     eq("special days: 60 quick bot drafts on each board, zero dead runs", dead, []);
-    // the star eras: every ticket dealt, and every skip, stays on the board's list (sim-core allow.pairs)
+    // the star eras: every ticket dealt, and every skip, stays on the board's list (sim-core allow.pairs); a deep cut
+    // only in rounds 2 and 3
     const off = [];
     ["opening_night", "doubleheader", "primetime"].forEach(id => {
-      const ch = env.T82CH.byId[id], pairs = ch.deal().pairs;
+      const ch = env.T82CH.byId[id], star = ch.deal.star, deep = ch.deal.deep;
+      const okAt = (k, round) => star.indexOf(k) >= 0 || ((round === 2 || round === 3) && deep.indexOf(k) >= 0);
       for (let sd = 1; sd <= 150; sd++) {
         const S = env.T82.newState("classic", 424200 + sd * 17, ch);
         if (env.T82.dealRound(S) === "done") { off.push(id + " nodeal"); break; }
-        const seen = [S.cur.fr + "|" + S.cur.dec];
-        env.T82.skipTeam(S); seen.push(S.cur.fr + "|" + S.cur.dec);
-        env.T82.skipEra(S); seen.push(S.cur.fr + "|" + S.cur.dec);
-        for (let r = 1; r < 5; r++) { S.round = r; env.T82.dealRound(S); seen.push(S.cur.fr + "|" + S.cur.dec); }
-        seen.forEach(k => { if (pairs.indexOf(k) < 0) off.push(id + " " + k); });
+        const seen = [[S.cur.fr + "|" + S.cur.dec, 1]];
+        for (let r = 2; r <= 5; r++) {
+          env.T82.dealRound(S); seen.push([S.cur.fr + "|" + S.cur.dec, r]);
+          if (r === 2) { env.T82.skipTeam(S); seen.push([S.cur.fr + "|" + S.cur.dec, r]); }
+          if (r === 3) { env.T82.skipEra(S); seen.push([S.cur.fr + "|" + S.cur.dec, r]); }
+        }
+        seen.forEach(([k, r]) => { if (!okAt(k, r)) off.push(id + " " + k + " round " + r); });
       }
     });
-    eq("special days: 150 seeded deals with a team skip and an era skip each, every ticket a listed star era", off, []);
-    const D2 = env.T82DAILY, day = k => { const b = D2.boardFor(k), S = env.T82.newState(b.base, b.seed, b.ch); env.T82.dealRound(S); return S.cur.fr + "|" + S.cur.dec; };
-    eq("special days: the chosen seeds open on the '00s Celtics (10/20), the '00s Heat (10/21) and the '10s Thunder (10/22) for everyone",
-      [day("2026-10-20"), day("2026-10-21"), day("2026-10-22")], ["CELTICS|2000", "HEAT|2000", "THUNDER|2010"]);
+    eq("special days: 150 seeded deals with skips each, every ticket a star era (a deep cut only in rounds 2 and 3)", off, []);
+    eq("special days: two team skips, one era skip", ["opening_night", "doubleheader", "primetime"].map(id => { const S = env.T82.newState("classic", 1, env.T82CH.byId[id]); return [S.teamSkips, S.eraSkips]; }),
+      [[2, 1], [2, 1], [2, 1]]);
+    // the path of a player who never skips (the best value each round, as the slots allow): everyone's, day by day
+    const D2 = env.T82DAILY, path = k => { const b = D2.boardFor(k), T = env.T82, S = T.newState(b.base, b.seed, b.ch), tk = []; T.dealRound(S);
+      for (let r = 0; r < 5; r++) { tk.push(S.cur.fr + "|" + S.cur.dec); let best = null;
+        env.t.POOLS.get(T.key(S, S.cur.fr, S.cur.dec)).forEach((r0, nm) => { if (S.drafted.has(nm)) return; const row = T.resolveRow(S, nm);
+          if (!row || !T.rowDraftable(S, row) || !T.rowOpenBuckets(S, row).length) return; if (!best || T.valueOf(S, row) > best.v) best = { nm, v: T.valueOf(S, row), b: T.rowOpenBuckets(S, row)[0] }; });
+        T.applyPick(S, best.nm, null, best.b); if (r < 4) T.dealRound(S); }
+      return tk; };
+    const P20 = path("2026-10-20"), P21 = path("2026-10-21"), P22 = path("2026-10-22");
+    eq("special days: the chosen paths (a no-skip player's five tickets)", [P20, P21, P22], [
+      ["CELTICS|2000", "PISTONS|1970", "SPURS|2020", "KNICKS|1990", "THUNDER|2010"],
+      ["LAKERS|1990", "WARRIORS|1980", "TIMBERWOLVES|2010", "HEAT|2000", "WARRIORS|2020"],
+      ["76ERS|1980", "THUNDER|1970", "CAVALIERS|2010", "NUGGETS|2020", "76ERS|2000"]]);
+    eq("special days: each path carries exactly one deep cut, in round 2", [[P20, "opening_night"], [P21, "doubleheader"], [P22, "primetime"]].map(([p, id]) =>
+      p.map((k, i) => env.T82CH.byId[id].deal.deep.indexOf(k) >= 0 ? i + 1 : 0).filter(Boolean)), [[2], [2], [2]]);
   }
   eq("special days: only 10/20, 10/21 and 10/22 carry a chosen seed; every other day's seed is its date's hash",
     [D.boardFor("2026-10-20").seed, D.boardFor("2026-10-21").seed, D.boardFor("2026-10-22").seed, D.boardFor("2026-10-23").seed === D.seedFor("2026-10-23"), Object.keys(D.SEED_OVERRIDES).sort()],
-    [3741835439, 3943279318, 522141823, true, ["2026-10-20", "2026-10-21", "2026-10-22"]]);
+    [2696998625, 3675641764, 2501072727, true, ["2026-10-20", "2026-10-21", "2026-10-22"]]);
   eq("special days: both open their list on OBPM (the stars lead each ticket); every other board keeps its default",
     [CH.byId.opening_night.sortMode, CH.byId.doubleheader.sortMode, CH.byId.primetime.sortMode, CH.CHALLENGES.filter(c => c.sortMode).map(c => c.id).sort()],
     ["obpm", "obpm", "obpm", ["doubleheader", "opening_night", "primetime"]]);

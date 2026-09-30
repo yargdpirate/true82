@@ -1,11 +1,15 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING: v66.3 IS LIVE ON MAIN (2026-09-29, night, at the owner's "Just merge now"; section 000000).** The
-> season's first three nights are special Dailies, each a Classic board of that night's national-TV franchises in their
-> star eras on chosen rolls: 10/20 Opening Night (#101), 10/21 Doubleheader (#102), 10/22 Primetime (#103). An
-> influencer will film the game that week. Test any of them early on a preview with ?day=YYYY-MM-DD. If something is
-> wrong after a deploy, the undo is his, one step in the Cloudflare dashboard (Workers & Pages, then true82, then
-> Deployments: "Rollback to this deployment" on the previous production deployment).
+> **FIRST THING (2026-09-29, late night): v66.4 IS LIVE ON MAIN; section 000000 has everything.** The season's first
+> three nights are special Dailies built for first-timers (an influencer films the game that week): 10/20 Opening Night
+> (#101), 10/21 Doubleheader (#102), 10/22 Primetime (#103). Each is a Classic board of that night's national-TV
+> franchises in their star eras, with ONE deep cut in round 2 or 3 and two team skips, on rolls chosen by a crowd
+> simulation (tools/daily-crowd.js) so first-timers draft stars they know without everyone drafting the same five.
+> Nothing is pending on his side. Test any day early on a preview: `?day=YYYY-MM-DD` (see 000000). The standing
+> chores: after each Monday tag refresh (10/5, 10/12, 10/19) lands on `c-code-clean`, fast-forward `main` at his word
+> ("merge"); his queued question about traffic and analytics (000000, "Next") is not started. If a deploy goes wrong,
+> the undo is his, one step in the Cloudflare dashboard (Workers & Pages, then true82, then Deployments: "Rollback to
+> this deployment" on the previous production deployment).
 >
 > His merge command, for next time (from the repo folder):
 > `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
@@ -27,17 +31,17 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v66.3, LIVE (the three special days in their star eras on chosen seeds, their lists opening on OBPM, the start screen's fitted text, the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v66.4, LIVE (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-29
 **Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
-**Most recent change:** section 000000: v66, the special days (Opening Night, Primetime), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Most recent change:** section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 000000. START HERE (2026-09-29, night): V66, THE SPECIAL DAYS, THE START SCREEN'S TEXT, THE TEST DAY (c-code-clean)
+## 000000. START HERE (2026-09-29, night): V66 TO V66.4, THE LAUNCH WEEK'S SPECIAL DAILIES, THE START SCREEN'S TEXT, THE TEST DAY (LIVE)
 
 **His words:** "we need to plan 2 special dailies - make sure to bump out what was currently planned. -10/20, "Opening
 Night": Classic mode. Only teams in rotation are Boston, Detroit, Philly, NY Knicks, OKC, Spurs (to match the IRL
@@ -46,6 +50,38 @@ pirmetime games). Also generally for the daily start screen text we want the fon
 still fit on one line. Make sure the pill we had to test logo options is fully rooted out. Find a way I can test those
 2 modes before the day of deployment; an influencer will release a video of him playing my game and everything needs
 to be perfect." Plus a note for another turn (below, "Next").
+
+### v66.4: one deep cut, two team skips, crowd-chosen rolls (read first; LIVE)
+**His words** (after v66.3): "for the classic ones, you've accomplished them making it easy to pick the superstars, but
+it's so easy that I think everyone is going to have the exact same team, plus or minus one player ... maybe we need to
+insert one boring year into there to make them use skips or give them the opportunity to fail. What are some other
+ideas?" Then, on the recommendation (a deep cut, tension in the path, an extra skip; not hiding the stars): "Do it.
+Then hand-off. Great job thank you".
+- **The measurement** (tools/daily-crowd.js, new; its header explains the model): 900 simulated players a day (40%
+  casual: the first five rows, the biggest name; 40% fans: twelve rows, names they rate; 20% experts: by value; weak
+  tickets make some skip). On v66.3's rolls the most common five was 10% (10/20), 24% (10/21) and 41% (10/22) of the
+  crowd, two random players shared 2.6, 3.0 and 3.3 of 5, and 58% of 10/22 went 82-0 (records 80/82/82: no way to
+  fail). Hiding the stars (list order) barely moved it in the model: people find LeBron anyway.
+- **The fix** (challenges.js THE SPECIAL DAYS and its `specialDeal(frs, star, deep)` helper): every round deals the
+  star eras; rounds 2 and 3 may also deal a DEEP CUT, a lesser era of the same franchises hiding a gem a casual fan
+  does not know (Opening Night: '80s Spurs (Alvin Robertson over Gervin), '80s Sonics, '70s Knicks (Frazier), '70s
+  Pistons (Lanier); Doubleheader: '80s Warriors (Sleepy Floyd over Mullin), '90s Wolves (young KG), '00s and '70s
+  Warriors; Primetime: '80s Nuggets (Fat Lever over English), '90s and '80s Cavaliers, '90s Nuggets, plus bare ones,
+  '70s Nuggets (Bobby Jones), '70s Cavaliers, '70s Sonics, because its gems alone left it too easy). `cfg: {
+  TEAM_SKIPS: 2 }` on all three. A skip re-rolls every later ticket, so skippers' paths split from the crowd's.
+- **The rolls** (daily-core SEED_OVERRIDES, chosen by `node tools/daily-crowd.js search`): each no-skip path carries
+  the night's headliners and exactly one deep cut, in round 2, and was the least alike of its candidates.
+  10/20 2696998625: '00s Celtics > '70s Pistons > '20s Spurs > '90s Knicks > '10s Thunder.
+  10/21 3675641764: '90s Lakers > '80s Warriors > '10s Wolves > '00s Heat > '20s Warriors.
+  10/22 2501072727: '80s 76ers > '70s Sonics > '10s Cavaliers > '20s Nuggets > '00s 76ers (SGA's Thunder sits out:
+  every path with LeBron, Jokic and SGA stayed too alike; LeBron and Jokic kept).
+  The crowd now (900 each): the most common five 11%, 4%, 10%; two players share 1.7, 1.7, 2.0 of 5; records
+  66/75/80, 46/73/80, 62/76/81; about 4-6% go 82-0 (300-player runs). A value-picking bot through the real screens:
+  79-3, 81-1, 81-1. The random-seed audit (skippers): 0 dead.
+- **Copy:** the gate says each board is star eras with "one exception: round 2 or 3 brings a deep cut, a lesser era
+  hiding a gem. Find him or skip it: two team skips today." The draft's status line: "... STAR ERAS, ONE DEEP CUT."
+- **Tests** (test.js 153): the three paths, one deep cut each (round 2), deep cuts only in rounds 2-3 across 150 seeded
+  deals with skips, two team skips, the seeds, the list sorts.
 
 ### v66.3: the third night, Doubleheader (10/21), and all of it LIVE (read first)
 **His words** (asked whether 10/21 should be star-seeded too, whether 10/22 being a Thursday was right, and when to go
@@ -152,17 +188,22 @@ test day (home tile, gate, five picks, the reel, results "THE DAILY #101 · OFFI
 every ticket is from the day's franchises, and that the real record is untouched. `tools/home-qa.js flow` passes.
 
 ### Next, in order
-1. **He tests both links, then his merge command, well before 2026-10-20** (the specials are not live until then).
-   The Monday tag refreshes (10/5, 10/12, 10/19) land on c-code-clean too and ride the same merge.
-2. His calls above (the bump, badges, 10/22's date, Bobby Jones).
+1. **The Monday tag refreshes** (10/5, 10/12, 10/19) land on `c-code-clean`; at his "merge", fast-forward `main` (the
+   top's command; poll the HTML for the new keys, never a new key itself, before checking files).
+2. **He may play the three days early** on a preview: https://c-code-clean.true82.pages.dev/?day=2026-10-20 (and
+   -21, -22). Anything he wants changed is one of: the board lists or deep cuts (challenges.js THE SPECIAL DAYS), the
+   copy (daily-core DAILY_COPY), the rolls (SEED_OVERRIDES; re-search with tools/daily-crowd.js), the date (OVERRIDES).
 3. **His note for another turn (not started):** "make sure it can handle high traffic: is there any obvious issue
    with the architecture if 1k people play in a day? 10k? 100k? Perhaps any useless or unused analytics being
    collected that the avocado subpage does nothing with? Or that are not actionable data or not worth the cost of
    collection?" Start from functions/api/event.js (every event is a D1 insert), functions/api/traits.js (the vote
-   card's session deal on every home view), functions/api/stats.js (the footer's counts, a D1 aggregate per page
+   card's session deal on every home view), functions/api/stats.js (the footer's counts: a D1 aggregate per page
    view?), functions/avocado.js (what the dashboard actually reads), analytics.js and retention-client.js (what the
-   client sends), the Cloudflare free-tier limits (Functions requests a day, D1 rows written and read a day), and
-   the influencer spike (one video can bring 10k+ in an hour).
+   client sends), Cloudflare's free-tier limits (Functions requests a day, D1 rows written and read a day), and the
+   influencer spike the launch week may bring (one video can mean 10k+ in an hour).
+4. **Open calls, his to make if he wants:** Bobby Jones slottable at C (the engine keys positions by name; a 2008
+   namesake played C: fix = CAREER_BUCKETS by person, sim-core, every mode); no aqua badge on the three tiles
+   (DAILY_BADGES empty); "Doubleheader" as 10/21's name; after 10/22 the rotation "can get more difficult" as planned.
 
 ## 00000z. START HERE (2026-09-29): V65 AND V65.1, THE HOME'S TITLE ART (TITLE 2 PICKED), LIVE ON MAIN
 

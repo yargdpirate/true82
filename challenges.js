@@ -253,6 +253,14 @@
     return (X.COH[first] = Object.keys(decs).map(Number).sort(function (a, b) { return a - b; }));
   }
 
+  // v66.4 the special days' deal: star eras every round; in rounds 2 and 3 the deep cuts too (S.round is the round being
+  // dealt, and the same during that round's skips). Called without a state (tests, tools), it names the star eras.
+  function specialDeal(frs, star, deep) {
+    var both = star.concat(deep);
+    var f = function (S) { return { frs: frs, pairs: S && (S.round === 2 || S.round === 3) ? both : star }; };
+    f.star = star; f.deep = deep;
+    return f;
+  }
   var CHALLENGES = [
 
     /* ═══════════ THE ECONOMY (cap) — money is the mechanic ═══════════ */
@@ -1788,44 +1796,64 @@
         var p1 = person(S.picks[0].row, t); return p1 ? { decs: cohortDecs(t, p1.first) } : null; } },
 
     /* ═══════════ THE SPECIAL DAYS (v66): one-off boards pinned to a date by daily-core.js OVERRIDES, never in a
-       rotation. Each deals only the franchises playing that night (the owner: "to match the IRL" games), and only
-       their STAR ERAS (the owner: first-timers should "know who these players are" and be "excited to be drafting
-       stars", while it is never "one obvious answer"): a ticket makes the list when a casual fan knows at least two of
-       its names, or one megastar with real help (sim-core allow.pairs; skips stay on the list too). Out: every '70s
-       ticket (older fans' names, one star at most), the '00s Knicks, the '80s and '90s Cavaliers and Nuggets, the '10s
-       and '20s Pistons. So each board runs '80s to '20s, one decade a round as the deal prefers fresh ones. ═══════════ */
+       rotation: the season's first three nights, each dealing only the franchises in that night's national games (the
+       owner: "to match the IRL" games). Every round deals their STAR ERAS (first-timers "excited to be drafting stars"
+       they know): a ticket makes that list when a casual fan knows at least two of its names, or one megastar with
+       real help. v66.4 (the owner: "so easy that I think everyone is going to have the exact same team"): rounds 2 and
+       3 may also deal a DEEP CUT, a lesser era of the same franchises hiding a great player casual fans do not know,
+       and the day's chosen path (daily-core SEED_OVERRIDES) carries exactly one. A player digs for the gem, takes the
+       famous name and pays for it, or skips, and a skip re-rolls every later ticket, so the crowd's paths split; a
+       second team skip on these days. The lists: sim-core allow.pairs (the deal and both skips obey it). ═══════════ */
     { id: "opening_night", name: "Opening Night", base: "classic",
-      blurb: "The six franchises playing on opening night, in their star eras: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs.",
-      reelFrs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"],   // v66: the ticket reel spins only these
-      reelDecs: [1980, 1990, 2000, 2010, 2020],
+      blurb: "The six franchises playing on opening night, in their star eras, with one deep cut: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs.",
+      reelFrs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"],   // the ticket reel spins only these
+      reelDecs: [1970, 1980, 1990, 2000, 2010, 2020],
       sortMode: "obpm",   // the list opens on OBPM, so each ticket's stars lead it (by minutes, KG was 13th on the opener)
-      deal: function () { return { frs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"], pairs: [
+      cfg: { TEAM_SKIPS: 2 },
+      deal: specialDeal(["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"], [
         "CELTICS|1980", "CELTICS|2000", "CELTICS|2010", "CELTICS|2020",        // Bird and McHale; KG, Pierce, Allen; Kyrie, IT; Tatum
         "PISTONS|1980", "PISTONS|1990", "PISTONS|2000",                          // the Bad Boys; Grant Hill; Billups and the Wallaces
         "76ERS|1980", "76ERS|1990", "76ERS|2000", "76ERS|2010", "76ERS|2020",  // Barkley, Moses, Dr. J; Iverson; Embiid, Simmons, Maxey
         "KNICKS|1980", "KNICKS|1990", "KNICKS|2010", "KNICKS|2020",            // Ewing, Bernard King; Ewing's Knicks; Melo; Brunson
         "THUNDER|1990", "THUNDER|2000", "THUNDER|2010", "THUNDER|2020",        // Payton and Kemp; Ray Allen; KD, Russ, Harden; SGA
-        "SPURS|1990", "SPURS|2000", "SPURS|2010", "SPURS|2020"] }; } },        // Robinson; Duncan, Parker, Manu; Kawhi; Wemby
+        "SPURS|1990", "SPURS|2000", "SPURS|2010", "SPURS|2020"], [             // Robinson; Duncan, Parker, Manu; Kawhi; Wemby
+        "SPURS|1980",     // Alvin Robertson, the gem, over George Gervin
+        "THUNDER|1980",   // the Sonics of Jack Sikma, Gus Williams, Dennis Johnson
+        "KNICKS|1970",    // Walt Frazier
+        "PISTONS|1970"]) },   // Bob Lanier
     { id: "doubleheader", name: "Doubleheader", base: "classic",
-      blurb: "The four franchises in the second night's doubleheader, in their star eras: Timberwolves, Heat, Warriors, Lakers.",
-      reelFrs: ["TIMBERWOLVES", "HEAT", "WARRIORS", "LAKERS"],   // v66: the ticket reel spins only these
-      reelDecs: [1980, 1990, 2000, 2010, 2020],
-      sortMode: "obpm",   // the list opens on OBPM, so each ticket's stars lead it
-      deal: function () { return { frs: ["TIMBERWOLVES", "HEAT", "WARRIORS", "LAKERS"], pairs: [
+      blurb: "The four franchises in the second night's doubleheader, in their star eras, with one deep cut: Timberwolves, Heat, Warriors, Lakers.",
+      reelFrs: ["TIMBERWOLVES", "HEAT", "WARRIORS", "LAKERS"],
+      reelDecs: [1970, 1980, 1990, 2000, 2010, 2020],
+      sortMode: "obpm",
+      cfg: { TEAM_SKIPS: 2 },
+      deal: specialDeal(["TIMBERWOLVES", "HEAT", "WARRIORS", "LAKERS"], [
         "TIMBERWOLVES|2000", "TIMBERWOLVES|2010", "TIMBERWOLVES|2020",         // KG's MVP team; Love, Butler, Towns; Anthony Edwards
         "HEAT|2000", "HEAT|2010", "HEAT|2020",                                 // Wade, Shaq, Mourning; LeBron, Wade, Bosh; Butler, Bam
         "WARRIORS|1990", "WARRIORS|2010", "WARRIORS|2020",                     // Run TMC, Webber; Curry, Durant, Klay, Draymond; Curry
-        "LAKERS|1980", "LAKERS|1990", "LAKERS|2000", "LAKERS|2010", "LAKERS|2020"] }; } },   // Magic, Kareem; Shaq, Kobe; LeBron; Luka, AD
+        "LAKERS|1980", "LAKERS|1990", "LAKERS|2000", "LAKERS|2010", "LAKERS|2020"], [   // Magic, Kareem; Shaq, Kobe; LeBron; Luka, AD
+        "WARRIORS|1980",       // Sleepy Floyd, the gem, over Chris Mullin
+        "TIMBERWOLVES|1990",   // a young Kevin Garnett
+        "WARRIORS|2000",       // Baron Davis's We Believe Warriors
+        "WARRIORS|1970"]) },   // Rick Barry
     { id: "primetime", name: "Primetime", base: "classic",
-      blurb: "The four franchises on the primetime slate, in their star eras: Cavaliers, 76ers, Nuggets, Thunder.",
-      reelFrs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"],   // v66: the ticket reel spins only these
-      reelDecs: [1980, 1990, 2000, 2010, 2020],
-      sortMode: "obpm",   // the list opens on OBPM, so each ticket's stars lead it (by minutes, KG was 13th on the opener)
-      deal: function () { return { frs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"], pairs: [
+      blurb: "The four franchises on the primetime slate, in their star eras, with one deep cut: Cavaliers, 76ers, Nuggets, Thunder.",
+      reelFrs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"],
+      reelDecs: [1970, 1980, 1990, 2000, 2010, 2020],
+      sortMode: "obpm",
+      cfg: { TEAM_SKIPS: 2 },
+      deal: specialDeal(["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"], [
         "CAVALIERS|2000", "CAVALIERS|2010", "CAVALIERS|2020",                    // LeBron; LeBron, Kyrie, Love; Mitchell, Mobley
         "76ERS|1980", "76ERS|1990", "76ERS|2000", "76ERS|2010", "76ERS|2020",  // Barkley, Moses, Dr. J; Iverson; Embiid, Simmons, Maxey
         "NUGGETS|2000", "NUGGETS|2010", "NUGGETS|2020",                          // Melo, Iverson, Billups; Jokic, Melo; Jokic, Murray
-        "THUNDER|1990", "THUNDER|2000", "THUNDER|2010", "THUNDER|2020"] }; } }  // Payton and Kemp; Ray Allen; KD, Russ, Harden; SGA
+        "THUNDER|1990", "THUNDER|2000", "THUNDER|2010", "THUNDER|2020"], [     // Payton and Kemp; Ray Allen; KD, Russ, Harden; SGA
+        "NUGGETS|1980",     // Fat Lever, the gem, over Alex English
+        "CAVALIERS|1990",   // Terrell Brandon over Mark Price
+        "CAVALIERS|1980",   // Larry Nance, Ron Harper, Mark Price
+        "NUGGETS|1990",     // Dikembe Mutombo, Michael Adams
+        "NUGGETS|1970",     // Bobby Jones, the gem, over David Thompson
+        "CAVALIERS|1970",   // a bare one: skip it or find Jim Brewer
+        "THUNDER|1970"]) }  // the Sonics of Gus Williams and Dennis Johnson
   ];
 
   var byId = {};

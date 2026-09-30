@@ -140,20 +140,24 @@
     "2026-10-21": "doubleheader",      // #102, Wed: Timberwolves-Heat, Warriors-Lakers
     "2026-10-22": "primetime"          // #103, Thu: Cavaliers-76ers, Nuggets-Thunder
   };
-  // v66: a special day's rolls, chosen (the owner: first-timers "excited to be drafting stars", "but it can't just be
-  // basically one obvious answer"). Each seed was picked from 12,000 candidates on the board's star eras: the five
-  // tickets everyone is dealt (unless they skip) are all top-tier, span five decades, and the opener is a marquee
-  // ticket; simulated players still make 110-120 different fives and a fan who drafts the biggest names averages
-  // 64-75 wins. Replays, archive and beat-links read the same seed through boardFor. Example paths:
-  //   10/20: '00s Celtics > '10s Thunder > '20s Spurs > '80s Pistons > '90s Knicks (value-perfect play 78; 5% of
-  //          solid players go 82-0; fans 75)
-  //   10/21: '00s Heat > '90s Lakers > '20s Timberwolves > '10s Warriors > '80s Lakers (value-perfect 81; 21%; fans 78:
-  //          the easiest of the three, the franchises' star eras being that deep: of 12,000 seeds none went under 21%)
-  //   10/22: '10s Thunder > '80s 76ers > '00s Cavaliers > '20s Nuggets > '90s 76ers (value-perfect 82; 20%; fans 64)
+  // v66.4: a special day's rolls, chosen by simulating the crowd (the owner: stars people know, but not "everyone ...
+  // the exact same team plus or minus one player"). A model of 900 players (casual ones who read the first rows and
+  // take the biggest name, fans who take the names they rate, experts who pick by value; weak tickets make some skip)
+  // played every candidate path. Each chosen path carries the night's headliners and exactly one deep cut in round 2
+  // or 3, and was the least alike among its candidates. Replays, archive and beat-links read the same seed via
+  // boardFor. The live v66.3 rolls had 10%, 24% and 41% of players on one identical five, sharing 2.6-3.3 of 5, with
+  // 58% of 10/22 at 82-0. These (the scratchpad crowd model, 300 players each):
+  //   10/20: '00s Celtics > '70s Pistons (deep: Bob Lanier) > '20s Spurs > '90s Knicks > '10s Thunder: the most common
+  //          five 11%, two players share 1.8 of 5, 6% go 82-0, records 66/75/80
+  //   10/21: '90s Lakers > '80s Warriors (deep: Sleepy Floyd over Chris Mullin) > '10s Timberwolves > '00s Heat > '20s
+  //          Warriors: 4%, 1.7 of 5, 5% at 82-0, records 46/73/80
+  //   10/22: '80s 76ers > '70s Sonics (deep) > '10s Cavaliers > '20s Nuggets > '00s 76ers: 12%, 2.0 of 5, 4% at 82-0,
+  //          records 62/77/81 (the deep cuts that only hid good players were not enough there: the bare '70s eras are
+  //          on its list for that)
   var SEED_OVERRIDES = {
-    "2026-10-20": 3741835439,
-    "2026-10-21": 3943279318,
-    "2026-10-22": 522141823
+    "2026-10-20": 2696998625,
+    "2026-10-21": 3675641764,
+    "2026-10-22": 2501072727
   };
   var POOL2 = [
     // week 1
@@ -313,14 +317,14 @@
       s: "Lakers, Clippers, Warriors, Kings only.",
       g: "Four California franchises, any era, full stats, one skip of each. Team skips shuffle the coastline. Showtime, Lob City, and the Splash era all count. The whole board has beach access." },
     opening_night: {
-      s: "Opening night's six teams, star eras only.",
-      g: "Every board is a star era of one of the six franchises playing on opening night: the Celtics, Pistons, 76ers, Knicks, Thunder and Spurs, the '80s through today, full stats. The SuperSonics years count for the Thunder. A skip always lands on another star era." },
+      s: "Opening night's six teams: star eras, one deep cut.",
+      g: "Every board is a star era of one of the six franchises playing on opening night: the Celtics, Pistons, 76ers, Knicks, Thunder and Spurs, full stats. The SuperSonics years count for the Thunder. One exception: round 2 or 3 brings a deep cut, a lesser era hiding a gem. Find him or skip it: two team skips today." },
     doubleheader: {
-      s: "Wolves, Heat, Warriors, Lakers: star eras.",
-      g: "Every board is a star era of one of the four franchises in the second night's doubleheader: the Timberwolves, Heat, Warriors and Lakers, the '80s through today, full stats. A skip always lands on another star era." },
+      s: "Wolves, Heat, Warriors, Lakers: star eras, one deep cut.",
+      g: "Every board is a star era of one of the four franchises in the second night's doubleheader: the Timberwolves, Heat, Warriors and Lakers, full stats. One exception: round 2 or 3 brings a deep cut, a lesser era hiding a gem. Find him or skip it: two team skips today." },
     primetime: {
-      s: "Cavaliers, 76ers, Nuggets, Thunder: star eras.",
-      g: "Every board is a star era of one of the four franchises on the primetime slate: the Cavaliers, 76ers, Nuggets and Thunder, the '80s through today, full stats. The SuperSonics years count for the Thunder. A skip always lands on another star era." },
+      s: "Cavaliers, 76ers, Nuggets, Thunder: star eras, one deep cut.",
+      g: "Every board is a star era of one of the four franchises on the primetime slate: the Cavaliers, 76ers, Nuggets and Thunder, full stats. The SuperSonics years count for the Thunder. One exception: round 2 or 3 brings a deep cut, a lesser era hiding a gem. Find him or skip it: two team skips today." },
     expansion_class: {
       s: "Only franchises born after 1988.",
       g: "Heat, Magic, Wolves, Raptors, Grizzlies, Pelicans, Hornets: the expansion class, with Presti pricing. No dynasties to lean on and shorter histories to mine, so scout the seasons that actually mattered." },

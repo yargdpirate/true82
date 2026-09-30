@@ -2,8 +2,8 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20260929-v66-3",
-      "sha": "3a0d1a70953ffd67"
+      "key": "20260929-v66-4",
+      "sha": "c8481cb5e0c393ba"
     },
     "styles.css": {
       "key": "20260929-v66",
@@ -30,12 +30,12 @@
       "sha": "82ab37ada25544aa"
     },
     "challenges.js": {
-      "key": "20260929-v66-3",
-      "sha": "fbd2aa3508f10dd6"
+      "key": "20260929-v66-4",
+      "sha": "90630de13724d821"
     },
     "daily-core.js": {
-      "key": "20260929-v66-3",
-      "sha": "c58183d05bca82f2"
+      "key": "20260929-v66-4",
+      "sha": "1be0def6927ff448"
     },
     "results-riso.js": {
       "key": "20260928-v63-1",
