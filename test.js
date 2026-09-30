@@ -432,6 +432,18 @@ eq("section headers: head() builds one component with the context's variant",
   eq("special days: only 10/20 and 10/22 carry a chosen seed; every other day's seed is its date's hash",
     [D.boardFor("2026-10-20").seed, D.boardFor("2026-10-22").seed, D.boardFor("2026-10-21").seed === D.seedFor("2026-10-21"), Object.keys(D.SEED_OVERRIDES).sort()],
     [3741835439, 522141823, true, ["2026-10-20", "2026-10-22"]]);
+  eq("special days: both open their list on OBPM (the stars lead each ticket); every other board keeps its default",
+    [CH.byId.opening_night.sortMode, CH.byId.primetime.sortMode, CH.CHALLENGES.filter(c => c.sortMode).map(c => c.id).sort()],
+    ["obpm", "obpm", ["opening_night", "primetime"]]);
+  {
+    // the OBPM and DBPM sorts rank a cameo (under 500 minutes) after every real season
+    const X = vm.runInContext("IDX", ctx), mk = (name, ob, mp) => { const r = []; r[X.name] = name; r[X.obpm] = ob; r[X.dbpm] = ob; r[X.mp] = mp; return r; };
+    const rows = [mk("Cameo", 9.5, 60), mk("Star", 6.1, 2800), mk("Starter", 1.2, 1900), mk("Short", 3, 499)];
+    vm.runInContext("G = { sortMode: 'obpm' };", ctx);
+    ctx.__rows = rows; vm.runInContext("sortPoolRows(__rows);", ctx);
+    eq("the OBPM sort: a 60-minute +9.5 and a 499-minute +3 rank after the real seasons", rows.map(r => r[X.name]), ["Star", "Starter", "Cameo", "Short"]);
+    vm.runInContext("G = null;", ctx);
+  }
   const app = fs.readFileSync("app.js", "utf8");
   eq("the test day is set only off true82.net (app.js checks the host before reading ?day=)",
     /if \(!window\.T82DAILY \|\| !T82DAILY\.setTestDay \|\| !offLiveHost\(\)\) return null;/.test(app), true);

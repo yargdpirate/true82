@@ -1,6 +1,6 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING: v66.1 (THE SPECIAL DAYS, STAR ERAS, CHOSEN SEEDS) IS ON `c-code-clean` ONLY, NOT LIVE (2026-09-29, night; section 000000).**
+> **FIRST THING: v66.2 (THE SPECIAL DAYS, STAR ERAS, CHOSEN SEEDS, STARS FIRST) IS ON `c-code-clean` ONLY, NOT LIVE (2026-09-29, night; section 000000).**
 > Opening Night (10/20, #101) and Primetime (10/22, #103) exist only on the preview until his merge runs, and it MUST
 > run before 2026-10-20: an influencer will film the game. He tests them on the preview first with the test-day links
 > in 000000. `main` = v65.3 (the new home, LIVE; section 00000z). If something is wrong after a deploy, the undo is his,
@@ -27,7 +27,7 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v66.1 (the special days in their star eras on chosen seeds, the start screen's fitted text, the test day; 000000), NOT live. `main` = v65.3, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v66.2 (the special days in their star eras on chosen seeds, their lists opening on OBPM, the start screen's fitted text, the test day; 000000), NOT live. `main` = v65.3, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-29
 **Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
@@ -73,6 +73,12 @@ some level of challenge."
   players make about 200 different fives, 2% (10/20) and 22% (10/22) of them 82-0; value-perfect play is 78 and 82.
   Through the real screens a value bot went 82-0 on both days. The random-seed audit (skippers' paths): 0 dead,
   records 78/81/82 and 79/81/82.
+- **v66.2, the stars lead each list.** The list sorts by minutes by default, which hid the headliners: Kevin Garnett
+  was 13th on the 10/20 opener, and Wembanyama, Barkley ('90s) and Dr. J were out of their tickets' top four. Both
+  boards now open on the OBPM sort (challenges.js `sortMode`, app.js newGame), and the OBPM and DBPM sorts rank a season
+  under 500 minutes after every real one (app.js `METRIC_MIN_MP`, sortPoolRows, applyMetricYears): only the boards that
+  keep cameos (challenges) can have one, so the regular draft sorts as before. The first names now: KG, Pierce, Allen;
+  Durant, Westbrook, George, Harden; Wembanyama; Isiah; Ewing; Barkley, Dr. J, Moses; LeBron; Jokic, Murray.
 - **His follow-up, not built:** "after these three days ... it can get more difficult". The boards after 10/22 are the
   POOL3 rotation as planned. 10/21 (Backcourt Mates, Presti) is not star-seeded; ask if he meant it too.
 

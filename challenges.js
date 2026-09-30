@@ -1798,6 +1798,7 @@
       blurb: "The six franchises playing on opening night, in their star eras: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs.",
       reelFrs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"],   // v66: the ticket reel spins only these
       reelDecs: [1980, 1990, 2000, 2010, 2020],
+      sortMode: "obpm",   // the list opens on OBPM, so each ticket's stars lead it (by minutes, KG was 13th on the opener)
       deal: function () { return { frs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"], pairs: [
         "CELTICS|1980", "CELTICS|2000", "CELTICS|2010", "CELTICS|2020",        // Bird and McHale; KG, Pierce, Allen; Kyrie, IT; Tatum
         "PISTONS|1980", "PISTONS|1990", "PISTONS|2000",                          // the Bad Boys; Grant Hill; Billups and the Wallaces
@@ -1809,6 +1810,7 @@
       blurb: "The four franchises on the primetime slate, in their star eras: Cavaliers, 76ers, Nuggets, Thunder.",
       reelFrs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"],   // v66: the ticket reel spins only these
       reelDecs: [1980, 1990, 2000, 2010, 2020],
+      sortMode: "obpm",   // the list opens on OBPM, so each ticket's stars lead it (by minutes, KG was 13th on the opener)
       deal: function () { return { frs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"], pairs: [
         "CAVALIERS|2000", "CAVALIERS|2010", "CAVALIERS|2020",                    // LeBron; LeBron, Kyrie, Love; Mitchell, Mobley
         "76ERS|1980", "76ERS|1990", "76ERS|2000", "76ERS|2010", "76ERS|2020",  // Barkley, Moses, Dr. J; Iverson; Embiid, Simmons, Maxey

@@ -507,6 +507,8 @@ function newGame(mode, seed, challenge, opts) {
     }
   } catch (e) {}
   G = T82.newState(MODE, seed, challenge || null);
+  // v66: a board may open its list on another sort (the special days: OBPM, so the stars lead each ticket)
+  if (challenge && challenge.sortMode && MODE === "classic") G.sortMode = challenge.sortMode;
   G.analyticsInitialCap = G.maxCap;
   if (opts && opts.social) G.social = opts.social;   // THE DAILY: {key,num,name,chId,target} rides the run
   if (opts && opts.practice != null) G.analyticsPractice = opts.practice ? 1 : 0;
@@ -1219,14 +1221,17 @@ function poolMaxMin(name) {
   if (arr) for (var i = 0; i < arr.length; i++) { var v = arr[i][IDX.mp]; if (v > m) m = v; }
   return m;
 }
+var METRIC_MIN_MP = 500;   // v66: the least minutes a season needs to rank on its OBPM or DBPM
 function sortPoolRows(rows) {
   var mode = G.sortMode || "min";
   if (mode === "az") {
     rows.sort(cmpName);
-  } else if (mode === "obpm") {
-    rows.sort(function (a, b) { return (b[IDX.obpm] - a[IDX.obpm]) || cmpName(a, b); });
-  } else if (mode === "dbpm") {
-    rows.sort(function (a, b) { return (b[IDX.dbpm] - a[IDX.dbpm]) || cmpName(a, b); });
+  } else if (mode === "obpm" || mode === "dbpm") {
+    // v66: a cameo (under 500 minutes, only on boards that keep the whole pool) ranks after every real season, so a
+    // 60-minute OBPM of +9 never tops a star (the special days opened on this sort)
+    var mi = mode === "obpm" ? IDX.obpm : IDX.dbpm;
+    var mk = function (r) { return r[mi] - (r[IDX.mp] < METRIC_MIN_MP ? 1000 : 0); };
+    rows.sort(function (a, b) { return (mk(b) - mk(a)) || cmpName(a, b); });
   } else if (mode === "cost") {
     var dir = (G.costDir === "asc") ? 1 : -1;   // default desc = most money first
     rows.sort(function (a, b) {
@@ -1257,6 +1262,8 @@ function applyMetricYears(force) {
     if (!force && G.yearByName[name] != null) return;
     var arr = T82.poolYearsEligible(G, name);
     if (!arr || !arr.length) return;
+    var real = arr.filter(function (r) { return r[IDX.mp] >= METRIC_MIN_MP; });   // v66: a real season over a cameo's
+    if (real.length) arr = real;
     var best = arr[0];
     for (var i = 1; i < arr.length; i++) if (arr[i][metric] > best[metric]) best = arr[i];
     G.yearByName[name] = best[IDX.season];
@@ -9383,7 +9390,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v66.1";
+var BUILD_V = "v66.2";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {
