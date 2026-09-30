@@ -1135,7 +1135,7 @@ function spinReels(anim) {
     if (artNode) reveal("flapArt");
     return SPIN;
   }
-  var decDecoys = DECADES.map(decLabel);
+  var decDecoys = (G && G.ch && G.ch.reelDecs && G.ch.reelDecs.length ? G.ch.reelDecs : DECADES).map(decLabel);   // v66: a board's own eras
   // v66: a board that deals only certain franchises (challenges.js reelFrs: Opening Night, the Texas Triangle...) spins
   // only those names and crests, so a filmed spin never flashes a team the day cannot deal
   var onlyFrs = G && G.ch && G.ch.reelFrs && G.ch.reelFrs.length ? G.ch.reelFrs : null;
@@ -9383,7 +9383,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v66";
+var BUILD_V = "v66.1";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

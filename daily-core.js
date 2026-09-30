@@ -138,6 +138,18 @@
     "2026-10-21": "backcourt_mates",   // #102, Wed: moved back from 10/20
     "2026-10-22": "primetime"          // #103, Thu: Cavaliers, 76ers, Nuggets, Thunder
   };
+  // v66: a special day's rolls, chosen (the owner: first-timers "excited to be drafting stars", "but it can't just be
+  // basically one obvious answer"). Each seed was picked from 12,000 candidates on the board's star eras: the five
+  // tickets everyone is dealt (unless they skip) are all top-tier, span five decades, and the opener is a marquee
+  // ticket; simulated players still make 110-120 different fives and a fan who drafts the biggest names averages
+  // 64-75 wins. Replays, archive and beat-links read the same seed through boardFor. Example paths:
+  //   10/20: '00s Celtics > '10s Thunder > '20s Spurs > '80s Pistons > '90s Knicks (value-perfect play 78; 5% of
+  //          solid players go 82-0; fans 75)
+  //   10/22: '10s Thunder > '80s 76ers > '00s Cavaliers > '20s Nuggets > '90s 76ers (value-perfect 82; 20%; fans 64)
+  var SEED_OVERRIDES = {
+    "2026-10-20": 3741835439,
+    "2026-10-22": 522141823
+  };
   var POOL2 = [
     // week 1
     "golden_age", "loyalty", "stoppers", "time_machine", "inflation", "blind_nineties", "seven_seconds",
@@ -296,11 +308,11 @@
       s: "Lakers, Clippers, Warriors, Kings only.",
       g: "Four California franchises, any era, full stats, one skip of each. Team skips shuffle the coastline. Showtime, Lob City, and the Splash era all count. The whole board has beach access." },
     opening_night: {
-      s: "Opening night's six teams. Nothing else.",
-      g: "Every board comes from the six franchises playing on opening night: the Celtics, Pistons, 76ers, Knicks, Thunder and Spurs, any era, full stats. The SuperSonics years count for the Thunder, the ABA years for the Spurs. Team skips rotate through the six." },
+      s: "Opening night's six teams, star eras only.",
+      g: "Every board is a star era of one of the six franchises playing on opening night: the Celtics, Pistons, 76ers, Knicks, Thunder and Spurs, the '80s through today, full stats. The SuperSonics years count for the Thunder. A skip always lands on another star era." },
     primetime: {
-      s: "Cavaliers, 76ers, Nuggets, Thunder only.",
-      g: "Every board comes from the four franchises on the primetime slate: the Cavaliers, 76ers, Nuggets and Thunder, any era, full stats. The SuperSonics years count for the Thunder, the ABA years for the Nuggets. Team skips rotate through the four." },
+      s: "Cavaliers, 76ers, Nuggets, Thunder: star eras.",
+      g: "Every board is a star era of one of the four franchises on the primetime slate: the Cavaliers, 76ers, Nuggets and Thunder, the '80s through today, full stats. The SuperSonics years count for the Thunder. A skip always lands on another star era." },
     expansion_class: {
       s: "Only franchises born after 1988.",
       g: "Heat, Magic, Wolves, Raptors, Grizzlies, Pelicans, Hornets: the expansion class, with Presti pricing. No dynasties to lean on and shorter histories to mine, so scout the seasons that actually mattered." },
@@ -1070,7 +1082,7 @@
       var pick = POOL[hash32("pick|" + key) % POOL.length];   // legacy hash: history replays untouched
       core = (pick && pick.id) ? coreForId(pick.id) : vanillaBoard(pick && pick.base);
     }
-    return { key: key, num: dayNum(key), seed: seedFor(key),
+    return { key: key, num: dayNum(key), seed: SEED_OVERRIDES[key] || seedFor(key),
              ch: core.ch, base: core.base, name: core.name, blurb: core.blurb,
              short: core.short, gate: core.gate, badge: DAILY_BADGES[key] || null };
   }
@@ -1258,7 +1270,7 @@
     EPOCH: EPOCH, GAMES: GAMES, POOL: POOL,
     POOL2: POOL2, START2: START2, POOL3: POOL3, START3: START3,
     DAILY_COPY: DAILY_COPY, MODE_TIP: MODE_TIP,
-    OVERRIDES: OVERRIDES, DAILY_BADGES: DAILY_BADGES, setTestDay: setTestDay, clearTestRecord: clearTestRecord,
+    OVERRIDES: OVERRIDES, SEED_OVERRIDES: SEED_OVERRIDES, DAILY_BADGES: DAILY_BADGES, setTestDay: setTestDay, clearTestRecord: clearTestRecord,
     dayKey: dayKey, dayNum: dayNum, validKey: validKey, shiftKey: shiftKey,
     hash32: hash32, seedFor: seedFor, boardFor: boardFor,
     verdict: verdict, signedNet: signedNet,

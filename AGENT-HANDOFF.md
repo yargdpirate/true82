@@ -1,6 +1,6 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING: v66 (THE SPECIAL DAYS) IS ON `c-code-clean` ONLY, NOT LIVE (2026-09-29, night; section 000000).**
+> **FIRST THING: v66.1 (THE SPECIAL DAYS, STAR ERAS, CHOSEN SEEDS) IS ON `c-code-clean` ONLY, NOT LIVE (2026-09-29, night; section 000000).**
 > Opening Night (10/20, #101) and Primetime (10/22, #103) exist only on the preview until his merge runs, and it MUST
 > run before 2026-10-20: an influencer will film the game. He tests them on the preview first with the test-day links
 > in 000000. `main` = v65.3 (the new home, LIVE; section 00000z). If something is wrong after a deploy, the undo is his,
@@ -27,7 +27,7 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v66 (the special days, the start screen's fitted text, the test day; 000000), NOT live. `main` = v65.3, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v66.1 (the special days in their star eras on chosen seeds, the start screen's fitted text, the test day; 000000), NOT live. `main` = v65.3, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-29
 **Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
@@ -47,9 +47,38 @@ still fit on one line. Make sure the pill we had to test logo options is fully r
 2 modes before the day of deployment; an influencer will release a video of him playing my game and everything needs
 to be perfect." Plus a note for another turn (below, "Next").
 
+### v66.1: star eras on chosen seeds (read first)
+**His words:** "seed both of these so that you tend to get ... the highest quality eras and team combinations. It doesn't
+have to be like the absolute top ones, but for people who are playing this for the first time ... I want everyone to
+know who these players are to be excited to be drafting stars ... after these three days have passed ... it can get
+more difficult ... with the caveat that it can't just be basically one obvious answer for everyone. It does need to have
+some level of challenge."
+- **Star eras only** (challenges.js `pairs` on both boards; sim-core `allow.pairs` and `pairAllowed`, used by the deal
+  and both skips). A ticket is on the list when a casual fan knows at least two of its names, or one megastar with real
+  help: 24 of Opening Night's 36 franchise-decades, 15 of Primetime's 24 (the lists and the reasons are comments in
+  challenges.js). Out: every '70s ticket, the '00s Knicks, the '80s and '90s Cavaliers and Nuggets, the '10s and '20s
+  Pistons. Each board now runs '80s to '20s. The gate copy says "star eras" and that a skip always lands on another.
+  `reelDecs` keeps the decade reel on the board's decades too.
+- **The engine change is inert elsewhere:** checked against the committed sim-core on all 302 boards x 30 seeds (deals,
+  a team skip, an era skip, the RNG draw counts): only these two boards differ. No VERSION bump (nothing played uses it);
+  the hook's doc says so.
+- **Chosen seeds** (daily-core `SEED_OVERRIDES`, read by boardFor, so replays, the archive and beat-links agree). From
+  12,000 candidate seeds each: the five tickets everyone is dealt (unless they skip) are all top-tier, span five
+  decades, and the opener is marquee (on camera). 10/20: '00s Celtics (KG, Pierce, Allen, Rondo) > '10s Thunder > '20s
+  Spurs (Wembanyama) > '80s Pistons > '90s Knicks; the 76ers sit out. 10/22: '10s Thunder (Durant, Westbrook, Harden,
+  George) > '80s 76ers > '00s Cavaliers (LeBron) > '20s Nuggets (Jokic) > '90s 76ers.
+- **Variety and challenge, simulated on the day's own seed** (scratchpad daysim.js: a "fan" who drafts the biggest
+  names, a "loose" player choosing among the top four by value, a value-perfect "sharp" one): fans make 32 different
+  fives (the most common 5%) and average 76 (10/20) and 65 (10/22) wins, the one-ball tax biting star-stackers; loose
+  players make about 200 different fives, 2% (10/20) and 22% (10/22) of them 82-0; value-perfect play is 78 and 82.
+  Through the real screens a value bot went 82-0 on both days. The random-seed audit (skippers' paths): 0 dead,
+  records 78/81/82 and 79/81/82.
+- **His follow-up, not built:** "after these three days ... it can get more difficult". The boards after 10/22 are the
+  POOL3 rotation as planned. 10/21 (Backcourt Mates, Presti) is not star-seeded; ask if he meant it too.
+
 ### What shipped (on c-code-clean; NOT on main)
 1. **Two special boards** (challenges.js "THE SPECIAL DAYS", after POOL3; daily-core.js DAILY_COPY and OVERRIDES):
-   `opening_night` (Classic; CELTICS, PISTONS, 76ERS, KNICKS, THUNDER, SPURS) on 2026-10-20 (#101), `primetime` (Classic;
+   (v66; v66.1 narrowed them to star eras, above) `opening_night` (Classic; CELTICS, PISTONS, 76ERS, KNICKS, THUNDER, SPURS) on 2026-10-20 (#101), `primetime` (Classic;
    CAVALIERS, 76ERS, NUGGETS, THUNDER) on 2026-10-22 (#103). The data runs 1974 on, so each franchise has six decades;
    the SuperSonics years count for the Thunder, the ABA years for the Spurs and Nuggets (the gate copy says so).
 2. **The bump.** POOL3 had 10/20 Backcourt Mates (Presti), 10/21 The Worst Year (Classic), 10/22 Pass It On (Pro).

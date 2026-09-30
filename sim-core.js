@@ -18,7 +18,10 @@
    CHALLENGE HOOK (weeklies): S.ch = { id, name, blurb, base,
      filter(row, t)  -> bool     pool eligibility (who exists this week)
      pick(S, row, slot) -> bool  stateful legality at pick time
-     deal(S) -> {decs?, frs?}    constrain era/franchise dealing
+     deal(S) -> {decs?, frs?, pairs?}  constrain era/franchise dealing; pairs (v66, optional): the only
+                                 "FRANCHISE|decade" tickets the board deals, its skips included (the special
+                                 days' star eras). Absent on every other board, so they draw exactly as before:
+                                 no VERSION bump (only unplayed boards use it)
      price(row, t) -> number     (2026-09-26, optional) Presti price multiplier for
                                  that season, applied before the mispricing pass;
                                  absent = 1, so older boards price and draw exactly
@@ -396,6 +399,8 @@ function randFranchise(S, dec, avoid) {
 }
 
 function pick1(S, arr) { return arr[rndi(S, arr.length)]; }
+// v66: a board's deal may name the only franchise-decade tickets it deals (allow.pairs); without it, every pair
+function pairAllowed(allow, S, fr, dec) { return !(allow && allow.pairs) || allow.pairs.indexOf(key(S, fr, dec)) !== -1; }
 
 // Eligible seasons for a player in the current team/era: the >785-minute floor that
 // gates the regular draft. Kaman and challenges keep the full set. Shared by the pro
@@ -1104,6 +1109,7 @@ function initDataCore(data) {
     var allow = (S.ch && S.ch.deal) ? S.ch.deal(S, T.t) : null;
     return list.filter(function (f) {
       if (allow && allow.frs && allow.frs.indexOf(f) === -1) return false;
+      if (!pairAllowed(allow, S, f, S.cur.dec)) return false;
       return f !== S.cur.fr && !S.seenFr.has(f) && !S.seenPairs.has(key(S, f, S.cur.dec)) && poolHasEligible(S, f, S.cur.dec);
     });
   }
@@ -1111,6 +1117,7 @@ function initDataCore(data) {
     var allow = (S.ch && S.ch.deal) ? S.ch.deal(S, T.t) : null;
     return DECADES.filter(function (d) {
       if (allow && allow.decs && allow.decs.indexOf(d) === -1) return false;
+      if (!pairAllowed(allow, S, S.cur.fr, d)) return false;
       return d !== S.cur.dec && (S.mode === "cap" || !S.seenDec.has(d)) && !S.seenPairs.has(key(S, S.cur.fr, d)) && poolHasEligible(S, S.cur.fr, d);
     });
   }
@@ -1166,7 +1173,7 @@ function initDataCore(data) {
       if (allow && allow.frs) eras = eras.filter(function (d) {   // never burn tries on an era none of the allowed wear
         var fl = FR_BY_DEC.get(d) || [];
         for (var fi = 0; fi < fl.length; fi++)
-          if (allow.frs.indexOf(fl[fi]) !== -1 && poolHasEligible(S, fl[fi], d)) return true;
+          if (allow.frs.indexOf(fl[fi]) !== -1 && pairAllowed(allow, S, fl[fi], d) && poolHasEligible(S, fl[fi], d)) return true;
         return false;
       });
       var fresh = eras.filter(function (d) { return !S.seenDec.has(d); });
@@ -1175,7 +1182,7 @@ function initDataCore(data) {
       var dec = pick1(S, avail);
       var fr;
       if (allow && allow.frs) {
-        var frl = (FR_BY_DEC.get(dec) || []).filter(function (f) { return allow.frs.indexOf(f) !== -1 && poolHasEligible(S, f, dec); });
+        var frl = (FR_BY_DEC.get(dec) || []).filter(function (f) { return allow.frs.indexOf(f) !== -1 && pairAllowed(allow, S, f, dec) && poolHasEligible(S, f, dec); });
         if (!frl.length) { if (tries > 40) { S.done = true; return "done"; } continue; }
         var frfresh = frl.filter(function (f) { return !S.seenFr.has(f); });
         fr = pick1(S, frfresh.length ? frfresh : frl);

@@ -1788,15 +1788,32 @@
         var p1 = person(S.picks[0].row, t); return p1 ? { decs: cohortDecs(t, p1.first) } : null; } },
 
     /* ═══════════ THE SPECIAL DAYS (v66): one-off boards pinned to a date by daily-core.js OVERRIDES, never in a
-       rotation. Each deals only the franchises playing that night (the owner: "to match the IRL" games). ═══════════ */
+       rotation. Each deals only the franchises playing that night (the owner: "to match the IRL" games), and only
+       their STAR ERAS (the owner: first-timers should "know who these players are" and be "excited to be drafting
+       stars", while it is never "one obvious answer"): a ticket makes the list when a casual fan knows at least two of
+       its names, or one megastar with real help (sim-core allow.pairs; skips stay on the list too). Out: every '70s
+       ticket (older fans' names, one star at most), the '00s Knicks, the '80s and '90s Cavaliers and Nuggets, the '10s
+       and '20s Pistons. So each board runs '80s to '20s, one decade a round as the deal prefers fresh ones. ═══════════ */
     { id: "opening_night", name: "Opening Night", base: "classic",
-      blurb: "Only the six franchises playing on opening night: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs.",
+      blurb: "The six franchises playing on opening night, in their star eras: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs.",
       reelFrs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"],   // v66: the ticket reel spins only these
-      deal: function () { return { frs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"] }; } },
+      reelDecs: [1980, 1990, 2000, 2010, 2020],
+      deal: function () { return { frs: ["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"], pairs: [
+        "CELTICS|1980", "CELTICS|2000", "CELTICS|2010", "CELTICS|2020",        // Bird and McHale; KG, Pierce, Allen; Kyrie, IT; Tatum
+        "PISTONS|1980", "PISTONS|1990", "PISTONS|2000",                          // the Bad Boys; Grant Hill; Billups and the Wallaces
+        "76ERS|1980", "76ERS|1990", "76ERS|2000", "76ERS|2010", "76ERS|2020",  // Barkley, Moses, Dr. J; Iverson; Embiid, Simmons, Maxey
+        "KNICKS|1980", "KNICKS|1990", "KNICKS|2010", "KNICKS|2020",            // Ewing, Bernard King; Ewing's Knicks; Melo; Brunson
+        "THUNDER|1990", "THUNDER|2000", "THUNDER|2010", "THUNDER|2020",        // Payton and Kemp; Ray Allen; KD, Russ, Harden; SGA
+        "SPURS|1990", "SPURS|2000", "SPURS|2010", "SPURS|2020"] }; } },        // Robinson; Duncan, Parker, Manu; Kawhi; Wemby
     { id: "primetime", name: "Primetime", base: "classic",
-      blurb: "Only the four franchises on the primetime slate: Cavaliers, 76ers, Nuggets, Thunder.",
+      blurb: "The four franchises on the primetime slate, in their star eras: Cavaliers, 76ers, Nuggets, Thunder.",
       reelFrs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"],   // v66: the ticket reel spins only these
-      deal: function () { return { frs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"] }; } }
+      reelDecs: [1980, 1990, 2000, 2010, 2020],
+      deal: function () { return { frs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"], pairs: [
+        "CAVALIERS|2000", "CAVALIERS|2010", "CAVALIERS|2020",                    // LeBron; LeBron, Kyrie, Love; Mitchell, Mobley
+        "76ERS|1980", "76ERS|1990", "76ERS|2000", "76ERS|2010", "76ERS|2020",  // Barkley, Moses, Dr. J; Iverson; Embiid, Simmons, Maxey
+        "NUGGETS|2000", "NUGGETS|2010", "NUGGETS|2020",                          // Melo, Iverson, Billups; Jokic, Melo; Jokic, Murray
+        "THUNDER|1990", "THUNDER|2000", "THUNDER|2010", "THUNDER|2020"] }; } }  // Payton and Kemp; Ray Allen; KD, Russ, Harden; SGA
   ];
 
   var byId = {};

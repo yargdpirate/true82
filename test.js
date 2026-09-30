@@ -410,7 +410,28 @@ eq("section headers: head() builds one component with the context's variant",
       for (let g = 1; g <= 60; g++) if (bot(ch.base, ch, 911000 + g * 11).dead) { dead.push(id); break; }
     });
     eq("special days: 60 quick bot drafts on each board, zero dead runs", dead, []);
+    // the star eras: every ticket dealt, and every skip, stays on the board's list (sim-core allow.pairs)
+    const off = [];
+    ["opening_night", "primetime"].forEach(id => {
+      const ch = env.T82CH.byId[id], pairs = ch.deal().pairs;
+      for (let sd = 1; sd <= 150; sd++) {
+        const S = env.T82.newState("classic", 424200 + sd * 17, ch);
+        if (env.T82.dealRound(S) === "done") { off.push(id + " nodeal"); break; }
+        const seen = [S.cur.fr + "|" + S.cur.dec];
+        env.T82.skipTeam(S); seen.push(S.cur.fr + "|" + S.cur.dec);
+        env.T82.skipEra(S); seen.push(S.cur.fr + "|" + S.cur.dec);
+        for (let r = 1; r < 5; r++) { S.round = r; env.T82.dealRound(S); seen.push(S.cur.fr + "|" + S.cur.dec); }
+        seen.forEach(k => { if (pairs.indexOf(k) < 0) off.push(id + " " + k); });
+      }
+    });
+    eq("special days: 150 seeded deals with a team skip and an era skip each, every ticket a listed star era", off, []);
+    const D2 = env.T82DAILY, day = k => { const b = D2.boardFor(k), S = env.T82.newState(b.base, b.seed, b.ch); env.T82.dealRound(S); return S.cur.fr + "|" + S.cur.dec; };
+    eq("special days: the chosen seeds open on the '00s Celtics (10/20) and the '10s Thunder (10/22) for everyone",
+      [day("2026-10-20"), day("2026-10-22")], ["CELTICS|2000", "THUNDER|2010"]);
   }
+  eq("special days: only 10/20 and 10/22 carry a chosen seed; every other day's seed is its date's hash",
+    [D.boardFor("2026-10-20").seed, D.boardFor("2026-10-22").seed, D.boardFor("2026-10-21").seed === D.seedFor("2026-10-21"), Object.keys(D.SEED_OVERRIDES).sort()],
+    [3741835439, 522141823, true, ["2026-10-20", "2026-10-22"]]);
   const app = fs.readFileSync("app.js", "utf8");
   eq("the test day is set only off true82.net (app.js checks the host before reading ?day=)",
     /if \(!window\.T82DAILY \|\| !T82DAILY\.setTestDay \|\| !offLiveHost\(\)\) return null;/.test(app), true);
