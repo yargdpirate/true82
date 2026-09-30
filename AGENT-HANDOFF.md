@@ -1,21 +1,13 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **v65 LIVES ON ITS OWN BRANCH, `home-titles` (2026-09-29, section 00000z).** The owner's new home screen, with two
-> title treatments to flip on the test build, preview at https://home-titles.true82.pages.dev/ ("a graphics update to
-> the preview for now"). `c-code-clean` was left at v64.1 on purpose, so his merge command below still ships v64.1
-> alone. v65 joins `c-code-clean` once he has picked Title 1 or Title 2 (the steps are in 00000z).
+> **FIRST THING: v65.1 WENT TO MAIN ON 2026-09-29** at the owner's "Go with title 2 ... then go live to main"
+> (section 00000z, "v65.1"). It carried v64 and v64.1 live with it (they were waiting on `c-code-clean`). Confirm with
+> the read-only checks in 00000z ("After the merge"); if something is wrong, the undo is his, one step in the
+> Cloudflare dashboard (Workers & Pages, then true82, then Deployments: on the v63.1 production deployment,
+> "Rollback to this deployment"). `main`, `c-code-clean` and `home-titles` all point at the same commit.
 >
-> **FIRST THING: CHECK WHETHER THE OWNER'S MERGE OF v64.1 LANDED.** On 2026-09-29 he asked whether this handoff was
-> ready "before deploy", so he was about to run his merge command (the agent's own push to `main` is blocked by the
-> auto-mode permission guard: a production deploy). It runs from the repo folder:
+> His merge command, for next time (from the repo folder):
 > `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
-> Check it: `git fetch origin && git log --oneline -3 origin/main` shows the v64.1 commit (`933a845`) or the handoff
-> commit on top of it, and `curl -s "https://true82.net/app.js?v=20260928-v64-1" | grep -o 'BUILD_V = "[^"]*"'`
-> prints `v64.1` (true82.net's footer reads v64.1).
-> - **Landed:** run "After the merge" in 00000y (read-only checks), tell him the result in plain words, then ask what's
->   next ("Next, in order" in 00000y).
-> - **Not landed** (origin/main still at b42fb83, v63.1): ask whether he played v64.1 on the preview
->   (https://c-code-clean.true82.pages.dev/), then give him the command above again, one step at a time if he wants.
 >
 > **NEW RULE SINCE v64.1 (read 00000y):** the versioned static files are cached by browsers for a YEAR. After editing
 > app.js, styles.css, look.css, sim-core.js, challenges.js, daily-core.js, reel-riso.js, results-riso.js, analytics.js,
@@ -27,17 +19,44 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `home-titles` = v65 (the new home, two titles to flip; 00000z), one commit on `c-code-clean`. `c-code-clean` = v64.1 (the speed pass, section 00000y) on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). `main` = v63.1, LIVE (merged 2026-09-28 at his "push"); v64.1 goes live when his merge runs (he was about to, 2026-09-29: check first, see the top). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v65.1, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-29
-**Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14). v63.1 (live): app.js and styles.css at `20260928-v63-1`.
-**Most recent change:** section 00000z: v65, the home's title art, on its own branch. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
+**Most recent change:** section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 00000z. START HERE (2026-09-29): V65, THE HOME'S TITLE ART, TWO TREATMENTS TO FLIP (branch `home-titles`)
+## 00000z. START HERE (2026-09-29): V65 AND V65.1, THE HOME'S TITLE ART (TITLE 2 PICKED), LIVE ON MAIN
+
+### v65.1: his pick, the lift, and live (read this part first; v65 as built for the test is below it)
+**His words** (after the v65 preview): "Go with title 2. But first move all the buttons etc up 1/3rd of the empty
+space between classic and the bottom of the basketball icon. Then go live to main."
+- **Title 2 only.** Title 1 is deleted (home-hoop.webp, home-wordmark.webp, their CSS, keys and `_headers` rules), and
+  so is the test toggle: the `<head>` script, `html[data-title]`, `?title=`, the pill and the `data-src` loader. The
+  logo and floor are plain `src` images now (the logo `fetchpriority="high"`), so they paint with or without
+  JavaScript. The `?badge=` preview stays, off true82.net only (app.js `offLive`).
+- **The lift.** The ball's hoop ends at crop y 340.3 (measured on the 5x print: 106.7px down the title at 390) and the
+  mock put Classic at crop y 507 (159px): a 52px gap. A third of it is 17.4px, so the title's box now ends at crop y
+  451.4 (`.ht { aspect-ratio: 1212 / 451.4 }`): at 390, Classic starts 141.5px into the title (193.5px from the top),
+  35px under the hoop, and everything below follows. The logo and floor are placed by margins (they scale with the
+  width, not the box's height), so they did not move: checked pixel for pixel against v65 above the new Classic top.
+- **Checks:** test.js 138, style law, theme, keys (`20260929-v65-1` on app.js and styles.css); 320 to 430 in
+  Chromium and WebKit, no sideways scroll, equal tiles, no errors; only home-logo.webp and home-floor.svg download on
+  the home, the masthead only off it; How to play, Kaman's five taps on the logo, the archive screen's masthead;
+  `tools/home-qa.js flow` passes.
+- **Live:** `home-titles` fast-forwarded onto `c-code-clean`, then his merge command's steps to `main` (v64 and v64.1
+  went live with it).
+
+### After the merge (the checks; all read-only)
+1. `curl -s "https://true82.net/app.js?v=20260929-v65-1" | grep -o 'BUILD_V = "[^"]*"'` prints v65.1; the footer reads
+   v65.1.
+2. `curl -sI "https://true82.net/home-logo.webp?v=20260929-v65"` shows `image/webp` and the year-long immutable cache.
+3. 00000y's checks 2 and 3 (the long cache, the vote card's one request) still hold.
+4. Look, do not write: the true82.net home once at 375 in the browser pane (the title, the doors, the vote card).
+
 
 **His words:** "picking up true82 project ... then i have a main screen visual update, attached", then "this is meant as
 a graphics update to the preview for now". The package: `~/Downloads/true82-home-handoff.zip` (HANDOFF.md, the hoop and

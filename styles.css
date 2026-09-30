@@ -3987,12 +3987,13 @@ body.bt-open .t-toast.on { transform: translate(-50%, 0); }
    dotted halftone offset shadow: Classic full width; Presti and the Daily as twin tiles; Draft Night Do-Over as a
    dashed BETA row; the vote card, which votes in place. Every button here is custom-skinned: each carries .tm-flat so
    the 3D decorator leaves it alone, and look.css targets none of these classes. The boards' colors are the theme's own
-   read off an iPhone screenshot (Display P3): their #EC56AC is --t-accent, #68C2E6 is --t-offset, and so on. */
+   read off an iPhone screenshot (Display P3): their #EC56AC is --t-accent, #68C2E6 is --t-offset, and so on. The owner
+   picked Title 2 of the two title treatments (2026-09-29); Title 1 and the test build's toggle are gone. */
 .hm { max-width: 440px; margin: 0 auto; overflow-x: clip; }
 .hm [hidden] { display: none !important; }
 
 /* -- the page head while the home is up: its static stand-in before app.js runs, and before #app is even parsed (the
-   head's script lets the browser lay out early, and a masthead laid out then would download for nothing). #app#app
+   browser may lay out early, and a masthead laid out then would download for nothing). #app#app
    outranks look.css's masthead rules. A browser without :has() keeps today's masthead, with HOW TO PLAY over it on
    every screen. -- */
 .hm-top { display: flex; align-items: center; justify-content: space-between; align-self: stretch; height: 44px; margin: 0 -6px; }
@@ -4007,26 +4008,24 @@ body:has(#app#app):not(:has(#app#app > :is(.hm, #staticIntro))) .hm-top { displa
 .brand-art { display: contents; }   /* off the home: no box of its own, the masthead lays out as before */
 .ht { display: none; }
 body:has(#app#app > :is(.hm, #staticIntro)) #app { padding-top: 0; padding-bottom: 24px; }
-html[data-title] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .site-head {
+body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .site-head {
   --tw: min(100vw, 440px);   /* the title art's width: the phone's, edge to edge */
   max-width: 472px; padding: 4px 16px 0; gap: 0; align-items: stretch; border-bottom: 0; }
-html[data-title] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .brand-art {
+body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .brand-art {
   display: block; width: var(--tw); margin: 4px 0 0 calc(50% - var(--tw) / 2); -webkit-user-select: none; user-select: none; }
-html[data-title] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .brand-logo { display: none; }
-.ht img { display: block; height: auto; mix-blend-mode: screen; -webkit-user-drag: none; }   /* the art is printed on black: screen drops it */
-/* Title 1, the stacked lockup: the hoop, 120px at 390 and nudged 6px right (its stripe shadow trails right, so a
-   centered box puts the ball left of center), over the full-width wordmark, overlapping it by 14px; 28px to Classic */
-html[data-title="lockup"] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .ht-lockup { display: block; padding-bottom: 28px; }
-.ht-hoop { position: relative; left: 1.54%; width: 30.77%; aspect-ratio: 420 / 409; margin: 0 auto; }
-.ht-word { position: relative; width: 100%; aspect-ratio: 1252 / 438; margin-top: -3.59%; }
-/* Title 2, the wide logo on its extended floor. The box is the mock's crop (the logo's 1212 x 356 screenshot space,
-   97.4% of the width) cut where Classic starts, at crop y 507 (at 390: 159px down, 52px under the hoop). The floor
-   hangs out of it behind Classic, which paints over it. The logo sits in the crop where the reference preview has it
-   (registered: x 11, y 12, 1198 wide); the floor is the handoff's SVG in the same space (top y 310, 454 tall). */
-html[data-title="floor"] body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .ht-floor { display: block; }
-.ht-floor { position: relative; width: 97.44%; aspect-ratio: 1212 / 507; margin: 0 auto; }
-.ht-logo { position: absolute; left: .908%; top: 2.367%; width: 98.85%; aspect-ratio: 1500 / 420; }
-.ht-grid { position: absolute; left: 0; top: 61.14%; width: 100%; aspect-ratio: 1212 / 454; pointer-events: none; }
+body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .brand-logo { display: none; }
+/* the title (the owner's Title 2): the wide logo on its extended floor. The box is the mock's crop (the logo's
+   1212 x 356 screenshot space, 97.4% of the width) cut where Classic starts. The mock put Classic at crop y 507, 52px
+   under the ball's hoop at 390 (its bottom is at y 340.3); the owner lifted everything a third of that gap, so the
+   box ends at y 451.4 (at 390: Classic 141.5px down, 35px under the hoop). The floor hangs out of the box behind
+   Classic, which paints over it. The logo sits in the crop where the reference preview has it (registered: x 11,
+   y 12, 1198 wide); the floor is the handoff's SVG in the same space (top y 310, 454 tall). Their offsets are
+   margins, which scale with the width, so the box's height moves only the doors. */
+body:is(:not(:has(#app#app)), :has(#app#app > :is(.hm, #staticIntro))) .ht { display: block; }
+.ht { position: relative; width: 97.44%; aspect-ratio: 1212 / 451.4; margin: 0 auto; }
+.ht img { position: absolute; left: 0; top: 0; display: block; height: auto; mix-blend-mode: screen; -webkit-user-drag: none; }   /* printed on black: screen drops it */
+.ht-logo { width: 98.85%; aspect-ratio: 1500 / 420; margin: .99% 0 0 .908%; }
+.ht-grid { width: 100%; aspect-ratio: 1212 / 454; margin-top: 25.58%; pointer-events: none; }
 
 /* -- the doors -- */
 .hm-stack { display: flex; flex-direction: column; }
@@ -4097,13 +4096,6 @@ button.hm-mode:disabled { cursor: progress; }
    neon: on the home only the logo glows). #app#app outranks look.css's link and rule inks. */
 html[data-card] #app#app ~ .site-foot { border-top-color: rgb(var(--t-line-rgb) / .75); }
 html[data-btn] #app#app ~ .site-foot .games-count a { color: rgb(var(--t-text-rgb) / .92); text-shadow: none; text-decoration-color: rgb(var(--t-text-rgb) / .35); }
-/* the test build's Title 1 / Title 2 pill (index.html; never on true82.net), bottom-left, on the home only */
-.title-pill { position: fixed; z-index: 60; left: calc(10px + env(safe-area-inset-left)); bottom: calc(10px + env(safe-area-inset-bottom));
-  display: inline-flex; align-items: center; gap: 6px; height: 36px; margin: 0; padding: 0 14px; cursor: pointer;
-  border: 1.5px solid rgb(var(--t-text-rgb) / .3); border-radius: var(--t-r-chip); background: rgb(var(--t-overlay-rgb) / .9);
-  color: var(--t-text-3); font: 600 14px/1 var(--t-body); -webkit-tap-highlight-color: transparent; }
-html[data-title="lockup"] .title-pill [data-t="lockup"], html[data-title="floor"] .title-pill [data-t="floor"] { color: var(--t-text); }
-body:not(:has(#app#app > .hm)) .title-pill { display: none; }
 
 /* ---- the vote card ---- */
 .hm-poll { --off: 6px; --r: 18px; --dot: rgb(var(--t-text-2-rgb) / .38); }

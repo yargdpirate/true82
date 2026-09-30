@@ -3468,7 +3468,8 @@ function renderIntro() {
   // The Daily's event badge (v65): one optional label on the day's board (daily-core.js DAILY_BADGES), none on a
   // normal day. A test build previews one with ?badge=Opening%20night.
   var dailyBadge = dailyBoard && dailyBoard.badge ? String(dailyBoard.badge) : "";
-  if (dailyBoard && document.documentElement.hasAttribute("data-title-lab")) {
+  var offLive = !/^(www\.)?true82\.net$/i.test(String(location.hostname || ""));   // a test build or a local server
+  if (dailyBoard && offLive) {
     var qBadge = /[?&]badge=([^&]*)/.exec(location.search);
     if (qBadge) { try { dailyBadge = decodeURIComponent(qBadge[1].replace(/\+/g, " ")); } catch (e) { dailyBadge = ""; } dailyBadge = dailyBadge.slice(0, 22) || "Opening night"; }
   }
@@ -9306,7 +9307,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v65";
+var BUILD_V = "v65.1";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

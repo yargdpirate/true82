@@ -4,25 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#16122B">
-<script>
-/* v65 the home's title art (AGENT-HANDOFF 00000z): Title 1, the stacked lockup ("lockup", the default), or Title 2,
-   the wide logo on its extended floor ("floor"). Only on a test build (anywhere but true82.net): ?title=lockup|floor
-   picks one and this browser remembers it, and the Title 1 / Title 2 pill flips it. The live site always shows the
-   default. Set here, before the first paint, so the art never swaps; with no JavaScript the old masthead stays. */
-(function (d) {
-  var t = "lockup";
-  try {
-    var h = String(location.hostname || "").toLowerCase();
-    if (h !== "true82.net" && h !== "www.true82.net") {
-      d.setAttribute("data-title-lab", "");
-      var q = /[?&]title=(lockup|floor)(?:&|$)/.exec(location.search);
-      if (q) { t = q[1]; try { localStorage.setItem("t82-title", t); } catch (e) {} }
-      else { try { var s = localStorage.getItem("t82-title"); if (s === "lockup" || s === "floor") t = s; } catch (e) {} }
-    }
-  } catch (e) {}
-  d.setAttribute("data-title", t);
-})(document.documentElement);
-</script>
 <meta name="t82-build" content="v47">
 <meta name="t82-labels" content="20260928-tags">
 <link rel="canonical" href="https://true82.net/">
@@ -80,7 +61,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260929-v65">
+<link rel="stylesheet" href="styles.css?v=20260929-v65-1">
 <link rel="stylesheet" href="look.css?v=20260927-v60">
 <style id="t82-live-hide">
   /* LIVE LANE ONLY. app.js and styles.css are byte-identical to the
@@ -108,43 +89,12 @@
     <span class="hm-acct" aria-hidden="true"></span>
   </div>
   <!-- the masthead everywhere else (lazy: the home shows its title art instead, so it never downloads there); on the
-       home, the title art: Title 1 (hoop over wordmark) or Title 2 (the logo over its extended floor). Its images carry
-       data-src and the script below fetches only the showing title's. Five quick taps anywhere here start Kaman. -->
+       home, the title art (v65, the owner's Title 2): the logo over its grid floor, which runs on down behind Classic.
+       Five quick taps anywhere here start Kaman. -->
   <div class="brand-art">
     <picture class="brand-pic"><source srcset="masthead.webp?v=20260928-v64-1" type="image/webp"><img class="brand-logo" src="masthead.png?v=20260928-v64-1" alt="TRUE 82" width="900" height="252" decoding="async" loading="lazy"></picture>
-    <span class="ht ht-lockup"><img class="ht-hoop" data-src="home-hoop.webp?v=20260929-v65" alt="" width="420" height="409" decoding="async"><img class="ht-word" data-src="home-wordmark.webp?v=20260929-v65" alt="TRUE 82" width="1252" height="438" decoding="async"></span>
-    <span class="ht ht-floor"><img class="ht-logo" data-src="home-logo.webp?v=20260929-v65" alt="TRUE 82" width="1500" height="420" decoding="async"><img class="ht-grid" data-src="home-floor.svg?v=20260929-v65" alt="" width="1212" height="454" decoding="async"></span>
+    <span class="ht"><img class="ht-logo" src="home-logo.webp?v=20260929-v65" alt="TRUE 82" width="1500" height="420" decoding="async" fetchpriority="high"><img class="ht-grid" src="home-floor.svg?v=20260929-v65" alt="" width="1212" height="454" decoding="async"></span>
   </div>
-  <script>
-  /* fetch the showing title's art now, at high priority; the other only if the test pill flips to it */
-  (function (d) {
-    window.T82TITLE = function (t) {
-      d.setAttribute("data-title", t);
-      var imgs = document.querySelectorAll(".ht-" + t + " img[data-src]");
-      for (var i = 0; i < imgs.length; i++) {
-        try { imgs[i].fetchPriority = "high"; } catch (e) {}
-        imgs[i].src = imgs[i].getAttribute("data-src"); imgs[i].removeAttribute("data-src");
-      }
-    };
-    window.T82TITLE(d.getAttribute("data-title") || "lockup");
-    // the TEST BUILD's pill (never on true82.net: data-title-lab is set only off it), bottom-left, home only (CSS)
-    if (!d.hasAttribute("data-title-lab")) return;
-    document.addEventListener("DOMContentLoaded", function () {
-      var b = document.createElement("button");
-      b.type = "button"; b.className = "title-pill tm-flat"; b.setAttribute("aria-label", "Test build: switch the title art");
-      b.innerHTML = '<span data-t="lockup">Title 1</span><span aria-hidden="true">/</span><span data-t="floor">Title 2</span>';
-      b.addEventListener("click", function () {
-        var t = d.getAttribute("data-title") === "floor" ? "lockup" : "floor";
-        window.T82TITLE(t);
-        try { localStorage.setItem("t82-title", t); } catch (e) {}
-        try {   // a ?title= in the address would undo the flip on reload: it follows the pill
-          if (/[?&]title=/.test(location.search)) history.replaceState(history.state, "", location.search.replace(/([?&]title=)(lockup|floor)/, "$1" + t) + location.hash);
-        } catch (e) {}
-      });
-      document.body.appendChild(b);
-    });
-  })(document.documentElement);
-  </script>
   <div class="round-pips" id="roundPips" aria-hidden="true"></div>
 </header>
 
@@ -195,7 +145,7 @@
 <script src="sim-core.js?v=20260928-v63-1" defer></script>
 <script src="challenges.js?v=20260928-v63-1" defer></script>
 <script src="daily-core.js?v=20260929-v65" defer></script>
-<script src="app.js?v=20260929-v65" defer></script>
+<script src="app.js?v=20260929-v65-1" defer></script>
 <script src="reel-riso.js?v=20260928-v64-1" defer></script>
 <script src="results-riso.js?v=20260928-v63-1" defer></script>
 </body>

@@ -49,10 +49,6 @@
   Cache-Control: public, max-age=31536000, immutable
 /site_data.json
   Cache-Control: public, max-age=31536000, immutable
-/home-hoop.webp
-  Cache-Control: public, max-age=31536000, immutable
-/home-wordmark.webp
-  Cache-Control: public, max-age=31536000, immutable
 /home-logo.webp
   Cache-Control: public, max-age=31536000, immutable
 /home-floor.svg
