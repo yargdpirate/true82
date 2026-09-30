@@ -1,13 +1,20 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
 > **FIRST THING: v65.1 WENT TO MAIN ON 2026-09-29** at the owner's "Go with title 2 ... then go live to main"
-> (section 00000z, "v65.1"), then v65.2 (a one-line fix for 360-389px phones) right after. It carried v64 and v64.1 live with it (they were waiting on `c-code-clean`). Confirm with
+> (section 00000z, "v65.1"), then v65.2 (a one-line fix for 360-389px phones) and v65.3 (app.js re-keyed: see the NEW RULE below) right after. It carried v64 and v64.1 live with it (they were waiting on `c-code-clean`). Confirm with
 > the read-only checks in 00000z ("After the merge"); if something is wrong, the undo is his, one step in the
 > Cloudflare dashboard (Workers & Pages, then true82, then Deployments: on the v63.1 production deployment,
 > "Rollback to this deployment"). `main`, `c-code-clean` and `home-titles` all point at the same commit.
 >
 > His merge command, for next time (from the repo folder):
 > `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
+>
+> **NEVER ASK FOR A NEW ?v= KEY BEFORE THE PAGE THAT LINKS IT IS LIVE (learned on v65.2).** While a deploy is still
+> going out, `true82.net/app.js?v=<new key>` is answered by the OLD deployment (the static server ignores the query)
+> with the year-long immutable header, and Cloudflare's edge keeps that old file under the new key (seen: `cf-cache-
+> status: HIT`, the v65.1 file at v65.2's key). To confirm a deploy, poll the HTML (it revalidates) until it carries the
+> new key, and only then fetch the file. If it happens anyway, re-key the file (bump and stamp) and push again: v65.3
+> did exactly that. The poisoned URL (app.js?v=20260929-v65-2) is simply never linked again.
 >
 > **NEW RULE SINCE v64.1 (read 00000y):** the versioned static files are cached by browsers for a YEAR. After editing
 > app.js, styles.css, look.css, sim-core.js, challenges.js, daily-core.js, reel-riso.js, results-riso.js, analytics.js,
@@ -19,7 +26,7 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v65.2, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v65.3, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-29
 **Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
@@ -54,9 +61,13 @@ space between classic and the bottom of the basketball icon. Then go live to mai
   389px (v65's narrow rule covered only 320-359; v64.1 fit there at 14.5px). Under 390 the card now takes the scale's
   14px title and 16px/14px padding: one line at 320, 340, 360, 375, 390, 414 and 430 in Chromium and WebKit.
 
+- **v65.3:** only a re-key of app.js (BUILD_V v65.3, key `20260929-v65-3`), because a check fetched v65.2's app.js
+  key before that deploy was out and the edge cached the old file under it (the rule at the top).
+
 ### After the merge (the checks; all read-only)
-1. `curl -s "https://true82.net/app.js?v=20260929-v65-2" | grep -o 'BUILD_V = "[^"]*"'` prints v65.2; the footer reads
-   v65.2.
+1. First `curl -s https://true82.net/ | grep -o 'app.js?v=[^"]*'` shows `20260929-v65-3`; only then
+   `curl -s "https://true82.net/app.js?v=20260929-v65-3" | grep -o 'BUILD_V = "[^"]*"'` prints v65.3, and the footer
+   reads v65.3.
 2. `curl -sI "https://true82.net/home-logo.webp?v=20260929-v65"` shows `image/webp` and the year-long immutable cache.
 3. 00000y's checks 2 and 3 (the long cache, the vote card's one request) still hold.
 4. Look, do not write: the true82.net home once at 375 in the browser pane (the title, the doors, the vote card).

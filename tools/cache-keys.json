@@ -2,8 +2,8 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20260929-v65-2",
-      "sha": "590109f434f6e666"
+      "key": "20260929-v65-3",
+      "sha": "e20993721b4fba45"
     },
     "styles.css": {
       "key": "20260929-v65-2",
