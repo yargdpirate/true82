@@ -371,8 +371,8 @@ eq("section headers: head() builds one component with the context's variant",
 }
 
 // ---------- v66 THE SPECIAL DAYS and THE TEST DAY ----------
-// Opening Night (10/20) and Primetime (10/22) take their dates from POOL3 without moving any other day; 10/20's Presti
-// board moves to 10/21 so no three days in a row share a base mode. A test build's ?day= moves "today" only.
+// Opening Night (10/20), Doubleheader (10/21) and Primetime (10/22) take their dates from POOL3 without moving any other
+// day, each dealing only its franchises' star eras on a chosen seed. A test build's ?day= moves "today" only.
 {
   const pctx = { Math, Date, console, JSON, URLSearchParams };
   vm.createContext(pctx);
@@ -381,20 +381,22 @@ eq("section headers: head() builds one component with the context's variant",
   const D = pctx.T82DAILY, CH = pctx.T82CH, P3 = D.POOL3;
   const at = k => { const b = D.boardFor(k); return [b.num, b.ch && b.ch.id, b.base, b.name]; };
   const p3 = k => P3[(D.dayNum(k) - D.dayNum(D.START3)) % P3.length];
-  eq("special days: #101 Opening Night and #103 Primetime, both Classic; Backcourt Mates moved to #102",
+  eq("special days: #101 Opening Night, #102 Doubleheader, #103 Primetime, all Classic",
     ["2026-10-20", "2026-10-21", "2026-10-22"].map(at),
-    [[101, "opening_night", "classic", "Opening Night"], [102, "backcourt_mates", "cap", "Backcourt Mates"], [103, "primetime", "classic", "Primetime"]]);
+    [[101, "opening_night", "classic", "Opening Night"], [102, "doubleheader", "classic", "Doubleheader"], [103, "primetime", "classic", "Primetime"]]);
   eq("special days: every other day keeps its POOL3 board (the rotation does not shift)",
     ["2026-10-19", "2026-10-23", "2026-11-01", "2027-04-15"].map(k => D.boardFor(k).ch.id), ["2026-10-19", "2026-10-23", "2026-11-01", "2027-04-15"].map(p3));
   eq("special days: the franchises dealt (Sonics years count for the Thunder in the data)",
-    ["opening_night", "primetime"].map(id => CH.byId[id].deal().frs),
-    [["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"], ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"]]);
+    ["opening_night", "doubleheader", "primetime"].map(id => CH.byId[id].deal().frs),
+    [["CELTICS", "PISTONS", "76ERS", "KNICKS", "THUNDER", "SPURS"], ["TIMBERWOLVES", "HEAT", "WARRIORS", "LAKERS"], ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"]]);
   const DASH = /[–—]/;
   eq("special days: copy for the status row and the gate, no em or en dashes",
-    ["opening_night", "primetime"].filter(id => { const c = CH.byId[id], d = D.DAILY_COPY[id] || {}; return !d.s || !d.g || DASH.test([c.name, c.blurb, d.s, d.g].join(" ")); }), []);
-  const bases = []; for (let k = D.START3, i = 0; i < P3.length; k = D.shiftKey(k, 1), i++) bases.push(D.boardFor(k).base);
-  eq("the schedule as it will play (POOL3 plus the special days): never the same base mode three days running",
-    bases.filter((b, i) => i >= 2 && b === bases[i - 1] && b === bases[i - 2]).length, 0);
+    ["opening_night", "doubleheader", "primetime"].filter(id => { const c = CH.byId[id], d = D.DAILY_COPY[id] || {}; return !d.s || !d.g || DASH.test([c.name, c.blurb, d.s, d.g].join(" ")); }), []);
+  // the launch week's three Classic nights (after 10/19's Classic Board Meeting) are the owner's deliberate exception
+  const days = [], bases = []; for (let k = D.START3, i = 0; i < P3.length; k = D.shiftKey(k, 1), i++) { days.push(k); bases.push(D.boardFor(k).base); }
+  const LAUNCH = ["2026-10-20", "2026-10-21", "2026-10-22"];
+  eq("the schedule as it will play (POOL3 plus the special days): never the same base mode three days running, the launch week excepted",
+    bases.filter((b, i) => i >= 2 && b === bases[i - 1] && b === bases[i - 2] && ![days[i], days[i - 1], days[i - 2]].some(k => LAUNCH.includes(k))).length, 0);
   const real = D.dayKey();
   D.setTestDay("2026-10-20");
   const during = [D.dayKey(), D.dayKey(new Date(2026, 0, 5, 12).getTime()), D.boardFor(D.dayKey()).ch.id];
@@ -405,14 +407,14 @@ eq("section headers: head() builds one component with the context's variant",
   if (fs.existsSync("site_data.json")) {
     const AUD = require("./tools/daily-audit.js");
     const env = AUD.load(__dirname), bot = AUD.makeBot(env, {}), dead = [];
-    ["opening_night", "primetime"].forEach(id => {
+    ["opening_night", "doubleheader", "primetime"].forEach(id => {
       const ch = env.T82CH.byId[id];
       for (let g = 1; g <= 60; g++) if (bot(ch.base, ch, 911000 + g * 11).dead) { dead.push(id); break; }
     });
     eq("special days: 60 quick bot drafts on each board, zero dead runs", dead, []);
     // the star eras: every ticket dealt, and every skip, stays on the board's list (sim-core allow.pairs)
     const off = [];
-    ["opening_night", "primetime"].forEach(id => {
+    ["opening_night", "doubleheader", "primetime"].forEach(id => {
       const ch = env.T82CH.byId[id], pairs = ch.deal().pairs;
       for (let sd = 1; sd <= 150; sd++) {
         const S = env.T82.newState("classic", 424200 + sd * 17, ch);
@@ -426,15 +428,15 @@ eq("section headers: head() builds one component with the context's variant",
     });
     eq("special days: 150 seeded deals with a team skip and an era skip each, every ticket a listed star era", off, []);
     const D2 = env.T82DAILY, day = k => { const b = D2.boardFor(k), S = env.T82.newState(b.base, b.seed, b.ch); env.T82.dealRound(S); return S.cur.fr + "|" + S.cur.dec; };
-    eq("special days: the chosen seeds open on the '00s Celtics (10/20) and the '10s Thunder (10/22) for everyone",
-      [day("2026-10-20"), day("2026-10-22")], ["CELTICS|2000", "THUNDER|2010"]);
+    eq("special days: the chosen seeds open on the '00s Celtics (10/20), the '00s Heat (10/21) and the '10s Thunder (10/22) for everyone",
+      [day("2026-10-20"), day("2026-10-21"), day("2026-10-22")], ["CELTICS|2000", "HEAT|2000", "THUNDER|2010"]);
   }
-  eq("special days: only 10/20 and 10/22 carry a chosen seed; every other day's seed is its date's hash",
-    [D.boardFor("2026-10-20").seed, D.boardFor("2026-10-22").seed, D.boardFor("2026-10-21").seed === D.seedFor("2026-10-21"), Object.keys(D.SEED_OVERRIDES).sort()],
-    [3741835439, 522141823, true, ["2026-10-20", "2026-10-22"]]);
+  eq("special days: only 10/20, 10/21 and 10/22 carry a chosen seed; every other day's seed is its date's hash",
+    [D.boardFor("2026-10-20").seed, D.boardFor("2026-10-21").seed, D.boardFor("2026-10-22").seed, D.boardFor("2026-10-23").seed === D.seedFor("2026-10-23"), Object.keys(D.SEED_OVERRIDES).sort()],
+    [3741835439, 3943279318, 522141823, true, ["2026-10-20", "2026-10-21", "2026-10-22"]]);
   eq("special days: both open their list on OBPM (the stars lead each ticket); every other board keeps its default",
-    [CH.byId.opening_night.sortMode, CH.byId.primetime.sortMode, CH.CHALLENGES.filter(c => c.sortMode).map(c => c.id).sort()],
-    ["obpm", "obpm", ["opening_night", "primetime"]]);
+    [CH.byId.opening_night.sortMode, CH.byId.doubleheader.sortMode, CH.byId.primetime.sortMode, CH.CHALLENGES.filter(c => c.sortMode).map(c => c.id).sort()],
+    ["obpm", "obpm", "obpm", ["doubleheader", "opening_night", "primetime"]]);
   {
     // the OBPM and DBPM sorts rank a cameo (under 500 minutes) after every real season
     const X = vm.runInContext("IDX", ctx), mk = (name, ob, mp) => { const r = []; r[X.name] = name; r[X.obpm] = ob; r[X.dbpm] = ob; r[X.mp] = mp; return r; };

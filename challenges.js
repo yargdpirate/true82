@@ -1806,6 +1806,16 @@
         "KNICKS|1980", "KNICKS|1990", "KNICKS|2010", "KNICKS|2020",            // Ewing, Bernard King; Ewing's Knicks; Melo; Brunson
         "THUNDER|1990", "THUNDER|2000", "THUNDER|2010", "THUNDER|2020",        // Payton and Kemp; Ray Allen; KD, Russ, Harden; SGA
         "SPURS|1990", "SPURS|2000", "SPURS|2010", "SPURS|2020"] }; } },        // Robinson; Duncan, Parker, Manu; Kawhi; Wemby
+    { id: "doubleheader", name: "Doubleheader", base: "classic",
+      blurb: "The four franchises in the second night's doubleheader, in their star eras: Timberwolves, Heat, Warriors, Lakers.",
+      reelFrs: ["TIMBERWOLVES", "HEAT", "WARRIORS", "LAKERS"],   // v66: the ticket reel spins only these
+      reelDecs: [1980, 1990, 2000, 2010, 2020],
+      sortMode: "obpm",   // the list opens on OBPM, so each ticket's stars lead it
+      deal: function () { return { frs: ["TIMBERWOLVES", "HEAT", "WARRIORS", "LAKERS"], pairs: [
+        "TIMBERWOLVES|2000", "TIMBERWOLVES|2010", "TIMBERWOLVES|2020",         // KG's MVP team; Love, Butler, Towns; Anthony Edwards
+        "HEAT|2000", "HEAT|2010", "HEAT|2020",                                 // Wade, Shaq, Mourning; LeBron, Wade, Bosh; Butler, Bam
+        "WARRIORS|1990", "WARRIORS|2010", "WARRIORS|2020",                     // Run TMC, Webber; Curry, Durant, Klay, Draymond; Curry
+        "LAKERS|1980", "LAKERS|1990", "LAKERS|2000", "LAKERS|2010", "LAKERS|2020"] }; } },   // Magic, Kareem; Shaq, Kobe; LeBron; Luka, AD
     { id: "primetime", name: "Primetime", base: "classic",
       blurb: "The four franchises on the primetime slate, in their star eras: Cavaliers, 76ers, Nuggets, Thunder.",
       reelFrs: ["CAVALIERS", "76ERS", "NUGGETS", "THUNDER"],   // v66: the ticket reel spins only these

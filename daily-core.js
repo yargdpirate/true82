@@ -129,14 +129,16 @@
     // name-collision ghosts. Swapped mid-day for the fixed build of the same
     // fantasy. Morning officials stand; the board simply became playable.
     "2026-07-18": "small_ball_five",
-    // v66 THE SPECIAL DAYS (the owner, 2026-09-29): two Classic boards drawn only from the franchises playing that
-    // night, "to match the IRL" games. They bump what POOL3 had planned: 10/20's Presti board (Backcourt Mates)
-    // moves back a day to 10/21 so there are never four Classic days in a row (10/19 Board Meeting is Classic too),
-    // which bumps 10/21's The Worst Year; 10/22's Pass It On (Pro) is bumped. Both come back when POOL3 loops
-    // (2027-04-16 onward). The rotation itself is untouched: every other day keeps its board.
-    "2026-10-20": "opening_night",     // #101, Tue: Celtics, Pistons, 76ers, Knicks, Thunder, Spurs
-    "2026-10-21": "backcourt_mates",   // #102, Wed: moved back from 10/20
-    "2026-10-22": "primetime"          // #103, Thu: Cavaliers, 76ers, Nuggets, Thunder
+    // v66 THE SPECIAL DAYS (the owner, 2026-09-29): the season's first three nights, each a Classic board drawn only
+    // from the franchises in that night's national games, "to match the IRL" slate (checked against the NBA's
+    // 2026-27 schedule: 10/20 NBC's tripleheader, 10/21 and 10/22 ESPN's doubleheaders), in their star eras, for the
+    // first-timers the owner expects that week. They bump POOL3's Backcourt Mates (10/20), The Worst Year (10/21)
+    // and Pass It On (10/22), which come back when POOL3 loops (2027-04-16 onward); every other day keeps its board.
+    // With 10/19's Board Meeting that is four Classic days in a row: the launch week's deliberate exception to the
+    // three-running law (test.js exempts these dates only).
+    "2026-10-20": "opening_night",     // #101, Tue: Celtics-Pistons, 76ers-Knicks, Thunder-Spurs
+    "2026-10-21": "doubleheader",      // #102, Wed: Timberwolves-Heat, Warriors-Lakers
+    "2026-10-22": "primetime"          // #103, Thu: Cavaliers-76ers, Nuggets-Thunder
   };
   // v66: a special day's rolls, chosen (the owner: first-timers "excited to be drafting stars", "but it can't just be
   // basically one obvious answer"). Each seed was picked from 12,000 candidates on the board's star eras: the five
@@ -145,9 +147,12 @@
   // 64-75 wins. Replays, archive and beat-links read the same seed through boardFor. Example paths:
   //   10/20: '00s Celtics > '10s Thunder > '20s Spurs > '80s Pistons > '90s Knicks (value-perfect play 78; 5% of
   //          solid players go 82-0; fans 75)
+  //   10/21: '00s Heat > '90s Lakers > '20s Timberwolves > '10s Warriors > '80s Lakers (value-perfect 81; 21%; fans 78:
+  //          the easiest of the three, the franchises' star eras being that deep: of 12,000 seeds none went under 21%)
   //   10/22: '10s Thunder > '80s 76ers > '00s Cavaliers > '20s Nuggets > '90s 76ers (value-perfect 82; 20%; fans 64)
   var SEED_OVERRIDES = {
     "2026-10-20": 3741835439,
+    "2026-10-21": 3943279318,
     "2026-10-22": 522141823
   };
   var POOL2 = [
@@ -310,6 +315,9 @@
     opening_night: {
       s: "Opening night's six teams, star eras only.",
       g: "Every board is a star era of one of the six franchises playing on opening night: the Celtics, Pistons, 76ers, Knicks, Thunder and Spurs, the '80s through today, full stats. The SuperSonics years count for the Thunder. A skip always lands on another star era." },
+    doubleheader: {
+      s: "Wolves, Heat, Warriors, Lakers: star eras.",
+      g: "Every board is a star era of one of the four franchises in the second night's doubleheader: the Timberwolves, Heat, Warriors and Lakers, the '80s through today, full stats. A skip always lands on another star era." },
     primetime: {
       s: "Cavaliers, 76ers, Nuggets, Thunder: star eras.",
       g: "Every board is a star era of one of the four franchises on the primetime slate: the Cavaliers, 76ers, Nuggets and Thunder, the '80s through today, full stats. The SuperSonics years count for the Thunder. A skip always lands on another star era." },

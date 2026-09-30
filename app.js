@@ -9390,7 +9390,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v66.2";
+var BUILD_V = "v66.3";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

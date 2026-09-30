@@ -1,11 +1,11 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING: v66.2 (THE SPECIAL DAYS, STAR ERAS, CHOSEN SEEDS, STARS FIRST) IS ON `c-code-clean` ONLY, NOT LIVE (2026-09-29, night; section 000000).**
-> Opening Night (10/20, #101) and Primetime (10/22, #103) exist only on the preview until his merge runs, and it MUST
-> run before 2026-10-20: an influencer will film the game. He tests them on the preview first with the test-day links
-> in 000000. `main` = v65.3 (the new home, LIVE; section 00000z). If something is wrong after a deploy, the undo is his,
-> one step in the Cloudflare dashboard (Workers & Pages, then true82, then Deployments: "Rollback to this deployment"
-> on the previous production deployment).
+> **FIRST THING: v66.3 IS LIVE ON MAIN (2026-09-29, night, at the owner's "Just merge now"; section 000000).** The
+> season's first three nights are special Dailies, each a Classic board of that night's national-TV franchises in their
+> star eras on chosen rolls: 10/20 Opening Night (#101), 10/21 Doubleheader (#102), 10/22 Primetime (#103). An
+> influencer will film the game that week. Test any of them early on a preview with ?day=YYYY-MM-DD. If something is
+> wrong after a deploy, the undo is his, one step in the Cloudflare dashboard (Workers & Pages, then true82, then
+> Deployments: "Rollback to this deployment" on the previous production deployment).
 >
 > His merge command, for next time (from the repo folder):
 > `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
@@ -27,7 +27,7 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v66.2 (the special days in their star eras on chosen seeds, their lists opening on OBPM, the start screen's fitted text, the test day; 000000), NOT live. `main` = v65.3, LIVE (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v66.3, LIVE (the three special days in their star eras on chosen seeds, their lists opening on OBPM, the start screen's fitted text, the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-09-29
 **Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
@@ -46,6 +46,23 @@ pirmetime games). Also generally for the daily start screen text we want the fon
 still fit on one line. Make sure the pill we had to test logo options is fully rooted out. Find a way I can test those
 2 modes before the day of deployment; an influencer will release a video of him playing my game and everything needs
 to be perfect." Plus a note for another turn (below, "Next").
+
+### v66.3: the third night, Doubleheader (10/21), and all of it LIVE (read first)
+**His words** (asked whether 10/21 should be star-seeded too, whether 10/22 being a Thursday was right, and when to go
+live): "1. Yes 2. Fine unless I got the date wrong 3. Just merge now".
+- **The dates are right** (the NBA's 2026-27 schedule, checked on the web): 10/20 NBC's opening tripleheader
+  (Celtics-Pistons, 76ers at Knicks, Thunder at Spurs); 10/22 ESPN's Thursday doubleheader (Cavaliers at 76ers,
+  Nuggets at Thunder); 10/21 ESPN's Wednesday doubleheader (Timberwolves at Heat, with Giannis's Heat and LaMelo's
+  Wolves debuts; Warriors at Lakers).
+- **10/21 is now Doubleheader** (challenges.js `doubleheader`: Classic; TIMBERWOLVES, HEAT, WARRIORS, LAKERS; 14 star
+  eras: Wolves '00s-'20s, Heat '00s-'20s, Warriors '90s, '10s, '20s, Lakers '80s-'20s), replacing the Presti puzzle
+  Backcourt Mates (the home screen calls Presti "Experts only", wrong for first-timers); it waits for POOL3's loop with
+  The Worst Year and Pass It On. 10/19-10/22 are four Classic days: the launch week's exception, exempted in test.js.
+- **Its seed** 3943279318: '00s Heat (Wade, Shaq, Mourning) > '90s Lakers (Magic, Shaq, Kobe) > '20s Wolves (Edwards,
+  Towns) > '10s Warriors (Curry, Durant, Klay, Draymond) > '80s Lakers (Kareem, Worthy). The easiest of the three:
+  loose players 21% perfect (none of 12,000 seeds went under 21%: those franchises' star eras are that deep), fans 77,
+  about 194 different fives. The random-seed audit: 0 dead, 80/82/82.
+- **Merged** v66.2 first (the moment he said merge), then v66.3 after its checks (test.js 150, UI playthrough, lists).
 
 ### v66.1: star eras on chosen seeds (read first)
 **His words:** "seed both of these so that you tend to get ... the highest quality eras and team combinations. It doesn't
@@ -79,8 +96,8 @@ some level of challenge."
   under 500 minutes after every real one (app.js `METRIC_MIN_MP`, sortPoolRows, applyMetricYears): only the boards that
   keep cameos (challenges) can have one, so the regular draft sorts as before. The first names now: KG, Pierce, Allen;
   Durant, Westbrook, George, Harden; Wembanyama; Isiah; Ewing; Barkley, Dr. J, Moses; LeBron; Jokic, Murray.
-- **His follow-up, not built:** "after these three days ... it can get more difficult". The boards after 10/22 are the
-  POOL3 rotation as planned. 10/21 (Backcourt Mates, Presti) is not star-seeded; ask if he meant it too.
+- **His follow-up:** "after these three days ... it can get more difficult". The boards after 10/22 are the POOL3 rotation
+  as planned. (10/21 became Doubleheader in v66.3.)
 
 ### What shipped (on c-code-clean; NOT on main)
 1. **Two special boards** (challenges.js "THE SPECIAL DAYS", after POOL3; daily-core.js DAILY_COPY and OVERRIDES):
