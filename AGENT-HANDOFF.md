@@ -1,5 +1,12 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-01, evening): THE ART LIBRARY (v67) IS ON BRANCH `art-variety`, NOT LIVE. Read section 0000000.**
+> The owner asked for "a Louvre" of riso art: many versions of the reel's loss L, the ledger dots, the results picture,
+> special 82-0 pictures, Hot Hand effects and the Presti REFUND / FIRE SALE pop-ups. The system and about 80 pieces
+> are built and on the preview; his Art Lab is https://art-variety.true82.pages.dev/docs/art-lab/ . He will paste back
+> an `ART-LAB PICKS v1` code (loves, cuts, and "yes, but" notes). `main` and `c-code-clean` are untouched (v66.4 live).
+> The session stopped because his weekly usage was at 91%: production may have been cut off mid-run (0000000, "Pending").
+
 > **FIRST THING (2026-09-29, late night): v66.4 IS LIVE ON MAIN; section 000000 has everything.** The season's first
 > three nights are special Dailies built for first-timers (an influencer films the game that week): 10/20 Opening Night
 > (#101), 10/21 Doubleheader (#102), 10/22 Primetime (#103). Each is a Classic board of that night's national-TV
@@ -40,6 +47,79 @@
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
+
+## 0000000. START HERE (2026-10-01): V67, THE ART LIBRARY (BRANCH art-variety, NOT LIVE)
+
+**His words (2026-09-30):** the reel's giant L "gets pretty stale seeing the same L over again ... I want a ton of
+different variations ... if you saw 10 in a row, you're getting 10 different of them", the same for "that mountain
+picture" and "the little dots"; the only limit: no performance cost "even on SE level phones". Then, leaving it
+overnight: "1. make sure all animations use the riso engine - within that constraint go crazy. make sure it's obvious
+it's an L ... maintain at least a tangential color scheme match to the standard game as the base Vice colors clash hard
+with a lot of other combos. Make the art until it's no longer inspired ... 2. make the successful 82-0 results screen
+art the extra special ones ... so much better than 81-1 3. remake the hot hand sequence art in several different ways
+too, inc. emoji animations 4. remake the icons that pop up when you get the special lucky modifiers on presti eg the
+fire sale and refund ... a Louvre of whatever you can creatively create ... then we'll pick the cream of the crop
+later." On 2026-10-01 he asked for the lab's asterisk ("yes, but this needs to change" notes): done.
+
+**Where:** branch `art-variety` (pushed; preview https://art-variety.true82.pages.dev/ , lab /docs/art-lab/). Commits:
+8f6fe38 (the foundation), e4d499e (the first wing, the FX layer, the lab), 55771f5 (the lab's asterisk). Later art files
+may sit uncommitted in the working tree (the production run was still writing when the session stopped): check
+`git status`.
+
+**How it works (read these, in this order):** art/CONTRACT.md (the spec: registry, bags, kit K, budgets, laws),
+art/CONTRACT-FX.md (Hot Hand, perks, 82-0 fireworks, perfect scenes), art/README.md (how to add a look, the harness),
+art/CRAFT.md + art/swatches.png (the riso craft on the indigo stock: which ink pairs sing), art/CONCEPTS.md (the
+owner's rules and every brief).
+- Each look is ONE small file: art/loss, art/dots, art/scene (a scene with `perfect: true` is 82-0 only), art/hot,
+  art/perk, art/goat. art-core.js (`T82ART`) deals each kind from a per-device shuffle bag (every look once before a
+  repeat) and lazy-loads only the dealt files when a draft starts: a season downloads the same few KB whatever the
+  library's size. art-index.js is GENERATED (`node tools/art-index.js`), art/enabled.json switches a look off in the
+  game (it stays in the lab).
+- The built-ins are today's look, pixel-identical to v66.4: `classic` loss and dots (reel-riso.js), `lake`
+  (results-riso.js), and riso versions of the old emoji sprays as `classic` hot/perk/goat (riso-fx.js).
+- riso-fx.js (`T82FX`): one full-screen riso layer, only while an effect plays; emoji are printed as ink separations
+  (K.emoji). app.js calls it at the Heat Check's wheel lock and verdicts, REFUND / FIRE SALE, and every 82-0 volley; any
+  failure falls back to the old emoji effect.
+- 82-0 prints only from the perfect bag; a Hot Hand save from 81-1 to 82-0 reprints the results picture as one.
+- QA levers (test builds only, never true82.net): `?art=loss:id+id2,dots:id,scene:id,perfect:id,hot:id,perk:id,goat:id`,
+  `?perk=refund|sale` (the run's first paid Presti spin), `?force82=1`, plus the old `?clutch=1`, `?midhot=1`.
+- tools/art-qa.mjs renders and times any look (`node tools/art-qa.mjs <kind> <id> --out DIR [--quick] [--webkit]`;
+  `all <kind>` for side-by-side rows); docs/art-lab/qa.html?watch=<kind>:<id> plays one live.
+- The owner's lab: docs/art-lab/ (index.html, lab.js, lab.css): tabs THE L / DOTS / PICTURE / 82-0 / HOT HAND / PERKS,
+  PLAY 10 IN A ROW, heart / X / asterisk note on every look, YOUR PICKS -> a copyable `ART-LAB PICKS v1` code. It reads
+  art/ledger.json (critic tiers and notes) when present.
+
+**What exists (2026-10-01 17:20):** loss 33, dots 18, scene 15 (3 of them 82-0: summit, constellation, rafters), hot 6,
+perk 6, goat 4, counting files on disk. Built and tested: everything in e4d499e except the pieces marked untested in
+its message's run. Parked (oversize, unfinished, in the old session's scratchpad, gone): art/scene/goatpeak.js and
+art/hot/comicheat.js (re-author them).
+
+### Pending, in order
+1. **Finish production.** Briefs not yet built at 17:20 (some may have landed since; recompute by comparing the ids
+   in art/CONCEPTS.md's tables with the files in art/*): loss: neon dotstack shatter burn bulbs brick anvil balloon
+   splitflap zoom bolt chalk gameover dominoes pow tumble frost smoke meteor stitch sand flatline drain slots copier hand
+   vinyl moire fountain knockout linescreen extrude ripple setoff showthrough bauhaus swiss opart ukiyoe zine; scenes:
+   forest canyon farmland aurora coaster reef terraces clouds planet bridge island kirigami topo mars skate highway
+   shanshui seismo; perfect: parade sunrise goatpeak kintsugi; hot: match thermo comicheat phoenix; perk: jackpot
+   ticker. The recipe that worked: one author agent per 4-5 briefs (sonnet is fine), each iterating with the harness
+   and reading its contact sheets, then a critic per kind (tiers A/B/C, concrete fixes), polishers, and an index step
+   that writes art/ledger.json.
+2. **Critique the whole library** if the run did not reach it (art/ledger.json missing = not done): near-duplicates,
+   weak or fake-looking pieces (rendered, not printed), "not obviously an L".
+3. **FX checks** if not done: the Hot Hand at every tier (?clutch=1, ?midhot=1), ?perk=refund|sale, ?force82=1, the
+   81-1 to 82-0 save swapping the picture, fallbacks with riso-fx.js blocked, in Chromium and WebKit at 320-375.
+4. **The quiet certification** (nothing else running): pixel identity of classic/lake against 53d0a88 with no art dealt
+   (the foundation proved it; re-prove after all the edits), and every look's harness timing at 4x (budgets in the
+   contracts; the prep-job budget is ~8 ms throttled since the review fixes).
+5. **Release to the preview:** `node tools/art-index.js` -> `node tools/cache-keys.js --stamp <key>` ->
+   `node tools/art-index.js --check` -> `node test.js` (190 passed at 55771f5) -> `node tools/style-law.js` -> commit ->
+   push art-variety -> poll the HTML for the new key (never fetch a new ?v= key first).
+6. **His picks:** he pastes `ART-LAB PICKS v1`: cuts go to art/enabled.json `off` (or are deleted), "yes, but" notes
+   are fixes to make, loves stay. Merging to c-code-clean and main only at his word (his merge command is below).
+
+**Lessons:** a 5-hour usage window lasted about 1.5 hours with ten Opus agents rendering at once; the overnight run
+was cut off three times. Author agents on sonnet stretched it. Resume from what is on disk (authors were told to start
+from an existing file), and keep the critics on the stronger model.
 
 ## 000000. START HERE (2026-09-29, night): V66 TO V66.4, THE LAUNCH WEEK'S SPECIAL DAILIES, THE START SCREEN'S TEXT, THE TEST DAY (LIVE)
 
