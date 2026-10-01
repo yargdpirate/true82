@@ -13,16 +13,22 @@
    The built-in looks (the classic L and dots in reel-riso.js, the lake in results-riso.js) register themselves with
    builtin: true and ride in the bags like any variant.
 
+   Part two (art/CONTRACT-FX.md): the owner's Heat Check, Presti perk and 82-0 firework effects come in many looks too,
+   so three more kinds ride the same registry, loader and bags: hot, perk and goat (riso-fx.js plays them). And an
+   82-0 season gets its own pictures: a scene with perfect: true is dealt only from the perfect bag (deal("scene", 1,
+   { perfect: true })), never for anything less, and an ordinary deal never hands one out, so 82-0 prints like
+   nothing an 81-1 can earn.
+
    Nothing here runs on its own: no download before a draft starts, no timers, and no document access until load()
    is called. Every storage call is wrapped (in private mode the bags live in memory for the visit). ES5, like the
    engines; test.js runs the bag logic in node, where there is no window or document. */
 var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : (function () {
   "use strict";
-  var KINDS = ["loss", "dots", "scene"];
+  var KINDS = ["loss", "dots", "scene", "hot", "perk", "goat"];   // part two: the Heat Check, the Presti perks, 82-0
   var ID = /^[a-z0-9-]+$/;                           // a variant's id is its file's name
   var LOAD_MS = 8000;                                // a file that has not arrived by then is skipped (the built-in plays)
   var LIVE_HOST = /^(www\.)?true82\.net$/i;          // app.js's offLiveHost: QA forcing never works on the real site
-  var REG = { loss: {}, dots: {}, scene: {} };       // kind -> id -> def (variants and built-ins)
+  var REG = { loss: {}, dots: {}, scene: {}, hot: {}, perk: {}, goat: {} };   // kind -> id -> def (variants and built-ins)
   var INDEX = [], BYKEY = {};                        // art-index.js's entries, and each one by "kind/id"
   var PENDING = {}, WAIT = {}, FAILED = {};          // "kind/id" -> a load in flight, its finisher, a load that failed
   var MEM = {}, SOLO = {};                           // the bags when the device will not keep them (private mode)
@@ -50,7 +56,7 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   function index(list) {
     INDEX = (isArr(list) ? list : []).filter(function (en) {
       return en && isKind(en.kind) && isId(en.id) && typeof en.file === "string" && !!en.file;
-    }).map(function (en) { return { kind: en.kind, id: en.id, name: String(en.name || en.id), file: en.file, on: en.on === true }; });
+    }).map(function (en) { return { kind: en.kind, id: en.id, name: String(en.name || en.id), file: en.file, on: en.on === true, perfect: en.perfect === true }; });
     BYKEY = {};
     INDEX.forEach(function (en) { if (!has(BYKEY, en.kind + "/" + en.id)) BYKEY[en.kind + "/" + en.id] = en; });
     return INDEX.length;
@@ -59,16 +65,31 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   // every index entry of a kind, loaded or not, on or off (the lab shows them all)
   function catalog(kind) {
     return INDEX.filter(function (en) { return en.kind === kind; }).map(function (en) {
-      return { kind: en.kind, id: en.id, name: en.name, file: en.file, on: en.on };
+      return { kind: en.kind, id: en.id, name: en.name, file: en.file, on: en.on, perfect: en.perfect };
     });
   }
-  // the ids a bag deals: the index's "on" entries plus the built-ins the engines registered
-  function enabled(kind) {
+  // part two: an 82-0 look (art-index.js reads perfect: true from the file without running it; a registered def
+  // that says so counts too, for a look the lab loads by hand)
+  function isPerfect(kind, id) {
+    var en = isKind(kind) && typeof id === "string" ? entry(kind, id) : null, def = get(kind, id);
+    return !!((en && en.perfect) || (def && def.perfect === true));
+  }
+  // builtin: true counts only for the engines' own looks (the classic L and dots, the lake; a kind with none reserved
+  // here: a def no index entry names). A variant file that copies the flag stays a variant: art/enabled.json still
+  // switches it off.
+  var BUILTIN = { loss: "classic", dots: "classic", scene: "lake" };
+  function isBuiltin(kind, id) {
+    var def = get(kind, id);
+    return !!def && def.builtin === true && (has(BUILTIN, kind) ? BUILTIN[kind] === id : !entry(kind, id));
+  }
+  // the ids a bag deals: the index's "on" entries plus the built-ins the engines registered. The perfect looks are a
+  // bag of their own: enabled(kind) never lists one, enabled(kind, { perfect: true }) lists only them.
+  function enabled(kind, opts) {
     if (!isKind(kind)) return [];
-    var out = [], id;
+    var want = !!(opts && opts.perfect), out = [], id;
     INDEX.forEach(function (en) { if (en.kind === kind && en.on) out.push(en.id); });
-    for (id in REG[kind]) if (has(REG[kind], id) && REG[kind][id] && REG[kind][id].builtin === true) out.push(id);
-    return uniq(out);
+    for (id in REG[kind]) if (has(REG[kind], id) && isBuiltin(kind, id)) out.push(id);
+    return uniq(out).filter(function (x) { return isPerfect(kind, x) === want; });
   }
 
   /* ---- the loader ---- */
@@ -121,11 +142,14 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   }
 
   /* ---- the shuffle bags ----
-     One bag per kind on this device (localStorage "t82-art-bag-<kind>"): { k: the ids it was drawn from, b: cycles }.
+     One bag per kind on this device (localStorage "t82-art-bag-<kind>"; the 82-0 scenes "t82-art-bag-scene-perfect"):
+     { k: the ids it was drawn from, b: cycles }.
      Each cycle is one shuffle of every enabled id, so every look plays once before any repeats; the first cycle is the
      one in progress, the rest were drawn ahead so a peek stays stable (what app.js loaded is what plays). A new cycle
-     never starts with the look that played last. A look switched off (or deleted) leaves the bag; a look added since
-     the bag was drawn joins the cycle in progress, so a growing library shows up the next season, not cycles later. */
+     never starts with the look that played last. A dealt look that never arrived moves on as if used (skip), so one
+     that cannot load on this device never freezes the bag. A look switched off (or deleted) leaves the bag; a look
+     added since the bag was drawn joins the cycle in progress, so a growing library shows up the next season, not
+     cycles later. */
   function store() { try { return typeof localStorage !== "undefined" && localStorage ? localStorage : null; } catch (err) { return null; } }
   function readKey(k) {
     if (!SOLO[k]) { try { var s = store(), v = s ? s.getItem(k) : null; if (v != null) return v; } catch (err) {} }
@@ -164,39 +188,69 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
       var c = bag.b[0], inC = setOf(c);
       fresh.forEach(function (id) { if (!has(inC, id)) c.splice(rnd(c.length + 1), 0, id); });
     }
+    seams(bag.b);
     bag.k = on.slice();
   }
+  // No look twice running where two cycles meet: a cycle that opens with the look the one before it ends on swaps its
+  // head away, and a one-look cycle that repeats it merges into it (a bag that piled up a look that never arrived).
+  function seams(b) {
+    for (var i = 1, p, c, j, t; i < b.length; i++) {
+      p = b[i - 1]; c = b[i];
+      if (c[0] !== p[p.length - 1]) continue;
+      if (c.length === 1) { b.splice(i--, 1); continue; }
+      j = 1 + rnd(c.length - 1); t = c[0]; c[0] = c[j]; c[j] = t;
+    }
+  }
+  // part two: the perfect looks keep a bag of their own ("t82-art-bag-scene-perfect"), so an 82-0 never draws an
+  // ordinary scene and an ordinary season never draws an 82-0 one; the ordinary bag's key is unchanged
+  function bagName(kind, perfect) { return perfect ? kind + "-perfect" : kind; }
   // PEEK the next n ids of this device's bag (refilling as needed). Consumes nothing: two deals in a row agree.
-  function deal(kind, n) {
+  // opts.perfect: deal from the perfect bag (the 82-0 scenes) instead.
+  function deal(kind, n, opts) {
     n = Math.max(0, Math.floor(+n || 0));
-    var on = enabled(kind);
+    var on = enabled(kind, opts), name = bagName(kind, !!(opts && opts.perfect));
     if (!n || !on.length) return [];
-    var bag = readBag(kind), flat, c;
+    var bag = readBag(name), flat, c;
     tidy(bag, on);
     flat = [].concat.apply([], bag.b);
     while (flat.length < n) {
-      c = shuffled(on, flat.length ? flat[flat.length - 1] : readLast(kind));
+      c = shuffled(on, flat.length ? flat[flat.length - 1] : readLast(name));
       bag.b.push(c);
       flat = flat.concat(c);
     }
-    writeBag(kind, bag);
+    writeBag(name, bag);
     return flat.slice(0, n);
   }
-  // A look actually played: take it out of the bag (its first place in line) and remember it as the last one.
-  function used(kind, id) {
+  // A look actually played: take it out of the bag (its first place in line) and remember it as the last one. A
+  // perfect look leaves the perfect bag on its own (opts.perfect, true or false, names the bag outright).
+  function used(kind, id, opts) {
     if (!isKind(kind) || !isId(id)) return;
-    var bag = readBag(kind), i, at;
+    var name = bagName(kind, opts && typeof opts.perfect === "boolean" ? opts.perfect : isPerfect(kind, id));
+    var bag = readBag(name), i, at;
     for (i = 0; i < bag.b.length; i++) { at = bag.b[i].indexOf(id); if (at >= 0) { bag.b[i].splice(at, 1); break; } }
     bag.b = bag.b.filter(nonEmpty);
-    writeBag(kind, bag);
-    writeKey(lastKey(kind), id);
+    writeBag(name, bag);
+    writeKey(lastKey(name), id);
+  }
+  // A dealt look that did not play because it was not there: its file failed, timed out or never registered on this
+  // device (a load-time throw, syntax an old iPhone cannot parse), or the engine had switched it off. It moves on like
+  // a used one (it comes back next cycle, and a fresh cycle does not open with it), so a look that cannot load here
+  // never sits at the head of the bag and freezes it. A file still loading keeps its place (it plays next time).
+  // The reel reports its skips (opts.onSkip), app.js the print's scene. Returns whether the look moved on.
+  function skip(kind, id, opts) {
+    if (!isKind(kind) || !isId(id) || PENDING[kind + "/" + id]) return false;
+    used(kind, id, opts);
+    return true;
   }
 
   /* ---- QA ----
      On a test build (any host but true82.net and www.true82.net), ?art=loss:seal,dots:balls,scene:skyline forces
-     those looks; loss:a+b+c plays a, b and c in turn. Returns the ids, or null. The live site ignores it. */
-  function forced(kind) {
-    if (!isKind(kind)) return null;
+     those looks; loss:a+b+c plays a, b and c in turn. Returns the ids, or null. The live site ignores it.
+     Part two: the FX kinds too (hot:x, perk:y, goat:z), and perfect:w forces the 82-0 scene: forced("perfect"), or
+     forced("scene", { perfect: true }); a plain forced("scene") never returns the perfect list. */
+  function forced(kind, opts) {
+    if (kind === "scene" && opts && opts.perfect) kind = "perfect";
+    if (!isKind(kind) && kind !== "perfect") return null;
     try {
       var loc = typeof location !== "undefined" ? location : null;
       if (!loc || LIVE_HOST.test(String(loc.hostname || ""))) return null;
@@ -214,6 +268,6 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   }
 
   return { add: add, get: get, index: index, catalog: catalog, enabled: enabled, load: load, deal: deal, used: used,
-    forced: forced, KINDS: KINDS.slice(), LOAD_MS: LOAD_MS, version: "v67" };
+    skip: skip, forced: forced, perfect: isPerfect, KINDS: KINDS.slice(), LOAD_MS: LOAD_MS, version: "v67" };
 })();
 if (typeof window !== "undefined" && window) window.T82ART = T82ART;

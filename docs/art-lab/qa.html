@@ -28,11 +28,13 @@
   <h1 class="t-head" data-head="title">Art QA</h1>
   <p class="qa-note">The bench for the art variants (art/CONTRACT.md). Run <code>node tools/art-qa.mjs loss &lt;id&gt;</code> (or dots, scene, all, baseline) from the repo for the contact sheets and the budgets.</p>
   <p class="qa-note">Watch one here: <code>?watch=loss:classic</code> (the three loss moments, looped), <code>?watch=dots:classic</code> (a season's ledger), <code>?watch=scene:lake</code> (the print's reveal).</p>
+  <p class="qa-note">The FX looks (art/CONTRACT-FX.md, riso-fx.js) on the game's own screens: <code>node tools/art-qa.mjs hot &lt;id&gt;</code> (or perk, goat; <code>classic</code> for the built-in, <code>all</code> side by side), and here <code>?watch=hot:classic</code> (the seven Heat Check beats in turn), <code>?watch=perk:classic</code>, <code>?watch=goat:classic</code> (the 82-0 volley).</p>
 </main>
-<script src="/art-core.js?v=20260930-v67" defer></script>
-<script src="/art-index.js?v=20260930-v67" defer></script>
-<script src="/reel-riso.js?v=20260930-v67" defer></script>
-<script src="/results-riso.js?v=20260930-v67" defer></script>
+<script src="/art-core.js?v=20261001-v67" defer></script>
+<script src="/art-index.js?v=20261001-v67" defer></script>
+<script src="/reel-riso.js?v=20261001-v67" defer></script>
+<script src="/results-riso.js?v=20261001-v67" defer></script>
+<script src="/riso-fx.js?v=20261001-v67" defer></script>
 <script>
 /* window.T82QA: the bench's building blocks. Everything here is scripted, deterministic and on a clock the caller owns
    (the engines' opts.clock), so a frame at e = 0.35 s is the same frame on every run and every machine. Nothing in
@@ -87,13 +89,14 @@
   function run(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v); return a; }
   // The three loss moments every loss variant must read in (art/CONTRACT.md, the timeline): the season's first loss
   // after a 12-game streak (the longest hold, 1.7 s), loss 5 of a great year in February (low in the card, so the
-  // hero takes the span ABOVE the wound; 1.05 s), and the 14th loss of a bad year (the last heavy one), fast: the
-  // pace a bad season plays at (0.45 s). The hero sits below the wound in the other two.
+  // hero takes the span ABOVE the wound; 1.05 s), and the 14th loss of a bad year (the last heavy one) at the
+  // fastest pace the game's reelPace() deals a heavy loss (0.42: 0.29 s, its shortest over every record). The hero
+  // sits below the wound in the other two.
   var CASES = {
     streak: { key: "streak", label: "first loss, after 12 straight", games: season(run(12, 1).concat([0]), 66, 11), gi: 12, pace: 1 },
     mid: { key: "mid", label: "mid-season loss of a great year", games: (function () {
       var g = run(82, 1); [7, 16, 27, 41, 58, 75].forEach(function (i) { g[i] = 0; }); return g; })(), gi: 58, pace: 1 },
-    late: { key: "late", label: "14th loss of a bad year, fast", games: season([1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0], 20, 13), gi: 20, pace: 0.643 }
+    late: { key: "late", label: "14th loss of a bad year, fast", games: season([1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0], 20, 13), gi: 20, pace: 0.42 }
   };
   // The dots ledger: streaks of 10, 20 and 30, loss runs of 2 and 3, a 70-12 year.
   var LEDGER = [].concat(run(10, 1), [0], run(20, 1), [0, 0], run(30, 1), [0, 0, 0], run(3, 1), [0], run(2, 1), [0, 0], run(4, 1), [0], [1], [0, 0]);
@@ -436,6 +439,144 @@
     });
   }
 
+  /* ---- the FX layer (riso-fx.js, art/CONTRACT-FX.md): the Heat Check, the Presti perks and 82-0 print over the game's
+     own screens, so the bench builds each screen from the game's classes and puts the anchor where the game does: the
+     heat label mid-screen (a tier's beat), the verdict stamp (the save and no save; ev.area is its card), the three cost buttons
+     near the bottom (the perks), the results' W/L box (82-0). The layer runs on the bench clock in manual mode. ---- */
+  var FX_SCREEN = { cold: ["COLD", 0], warm: ["WARM", 1], hot: ["HOT", 2], fire: ["ON FIRE", 3], nova: ["SUPERNOVA", 4], save: ["SUPERNOVA", 4], miss: ["WARM", 1] };
+  var FX_NAMES = ["Curry", "Jordan", "James", "Duncan", "O'Neal"];
+  var fxS = { root: null, plan: [], fired: 0, t0: 0, kind: "", id: "", slot: "", anchor: null, durs: [] };
+  function fxHeat(slot) {
+    var s = FX_SCREEN[slot] || FX_SCREEN.fire, lvl = s[1], verdict = slot === "save" || slot === "miss", i, segs = "", names = "";
+    for (i = 0; i < 5; i++) segs += '<div class="hh-seg lvl' + i + (i <= lvl ? " fill" : "") + (i === lvl ? " lit result" : "") + '"></div>';
+    for (i = 0; i < 15; i++) names += '<div class="hh-name' + (i === 6 ? " hot" : "") + '">' + FX_NAMES[i % 5] + "</div>";
+    var ov = document.createElement("div");
+    ov.className = "hh-overlay in lit" + (slot === "save" ? " won" : slot === "miss" ? " missed" : "");
+    ov.innerHTML = '<button class="hh-skip" type="button">skip →</button><div class="hh-card"><div class="goat-fw" id="hhFw" aria-hidden="true"></div>' +
+      '<div class="hh-eyebrow hh-clutch">You’re 81–0 and down entering the 4th quarter. Clutch heroics to go undefeated?</div>' +
+      '<div class="hh-stage"><div class="hh-step on"><div class="hh-window"><div class="hh-strip" style="transform:translateY(-270px)">' + names + '</div><span class="hh-payline"></span></div></div>' +
+      '<div class="hh-step on"><div class="hh-heat">' + segs + '</div><div class="hh-heatlabel lvl' + lvl + '" id="hhHeatLabel">' + s[0] + "</div></div>" +
+      '<div class="hh-step' + (verdict ? " on" : "") + '"><div class="hh-net' + (slot === "save" ? " over" : "") + '">' + (slot === "save" ? "+11.8" : "+9.4") + '</div><div class="hh-netcap">NET RATING</div>' +
+      '<div class="hh-bar"><span class="hh-fill" style="transform:scaleX(0.9878)"></span></div></div>' +
+      '<div class="hh-verdict' + (verdict ? " on" : "") + '"><div class="hh-stamp' + (slot === "miss" ? " miss" : "") + '">' + (slot === "save" ? "82–0" : "81–1") + '</div><div class="hh-netcap">FINAL RECORD</div></div></div></div>';
+    document.body.appendChild(ov);
+    return { root: ov, anchor: ov.querySelector(slot === "save" || slot === "miss" ? ".hh-stamp" : "#hhHeatLabel") };   // app.js: the verdicts at the stamp
+  }
+  function fxPerk(slot) {
+    var on = slot === "sale" ? "firesale" : "refunded", txt = slot === "sale" ? "FIRE SALE" : "REFUND!", root = document.createElement("div");
+    root.className = "qa-fx-perk";
+    root.style.cssText = "position:fixed;left:0;right:0;bottom:96px;padding:0 16px;";
+    root.innerHTML = '<div class="ticket-actions">' + [0, 1, 2].map(function () { return '<button class="skip-btn presti-spin ' + on + '" type="button">' + txt + "</button>"; }).join("") + "</div>";
+    document.body.appendChild(root);
+    return { root: root, anchor: root.querySelector(".ticket-actions") };
+  }
+  function fxResults() {
+    var root = document.createElement("div"), b = banner(printSpec(record(82), { pal: "golden" }), { cssW: 343 }), img = new Image();
+    root.className = "rr";
+    root.style.cssText = "padding:56px 16px 0;";
+    root.innerHTML = '<section class="board rr-board"><div class="goat-fw" id="wlFw" aria-hidden="true"></div><p class="eyebrow">CLASSIC MODE</p>' +
+      '<div class="rr-print qa-fx-print"></div><div class="big-label">net rating +14.8</div><div class="res-comp">Greatest of all GOATs</div><div class="rr-twoway" style="min-height:150px"></div>' +
+      '<button class="btn btn-primary btn-block presti-spin rr-share elite-result" type="button">SHARE</button></section>';
+    img.src = b.canvas.toDataURL("image/png"); img.style.cssText = "display:block;width:100%;height:auto;";
+    root.querySelector(".qa-fx-print").appendChild(img);
+    document.body.appendChild(root);
+    return { root: root, anchor: root.querySelector("#wlFw"), ready: img.decode ? img.decode().catch(function () {}) : Promise.resolve() };
+  }
+  function fxClear() {
+    if (window.T82FX) window.T82FX.stop();
+    if (fxS.root) fxS.root.remove();
+    fxS.root = null; fxS.plan = []; fxS.fired = 0; fxS.durs = [];
+    document.getElementById("qaNotes").style.display = "";
+    animsFinish();
+  }
+  function fxRect(el) { var r = el.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; }
+  function fxSettle() { var c = window.T82FX && T82FX.qa.layer(); if (c && c.width) try { c.getContext("2d").getImageData(0, 0, 1, 1); } catch (e) { /* zero size */ } }
+  // The beat on the bench: the game's screen, the look primed (every prep step timed, as the idle pass would run them),
+  // then play(). o.plan: [[delay s, seed], ...] beats to fire (the goat burst fires in the game's sequences: fireGoats
+  // is nine bursts 0.18 s apart); default one beat at 0. Resolves { durs, jobs, rect, state, end }.
+  function fxStart(kind, id, slot, o) {
+    o = o || {};
+    fxClear();
+    var F = window.T82FX;
+    if (!F) return Promise.reject(new Error("riso-fx.js did not load (no window.T82FX)"));
+    F.qa.setup({ clock: clock.now, manual: true });
+    var sc = kind === "hot" ? fxHeat(slot) : kind === "perk" ? fxPerk(slot) : fxResults();
+    document.getElementById("qaNotes").style.display = "none";
+    window.scrollTo(0, 0);
+    fxS.root = sc.root; fxS.anchor = sc.anchor; fxS.kind = kind; fxS.id = id; fxS.slot = slot;
+    fxS.plan = (o.plan || [[0, 1000 + slot.length * 31]]).slice().sort(function (a, b) { return a[0] - b[0]; });
+    return Promise.resolve(sc.ready).then(function () {
+      animsFinish();                                  // the screen's own entrances are over when the beat lands
+      F.use(kind, id);
+      F.prime(kind, id);
+      var jobs = [], warm = [], peak = 0, i;
+      for (i = 0; i < 4000; i++) {                    // the engine's own warm-ups (once a page) apart from the pack's jobs
+        var a = realNow(), ran = F.qa.runJob(), ms = realNow() - a;
+        if (!ran) break;
+        (ran === "warm" ? warm : jobs).push(ms);
+        peak = Math.max(peak, F.qa.state().canvasBytes);
+      }
+      fxS.t0 = clock.t;
+      fxFire(0);
+      F.qa.frame(); fxSettle();
+      var st = F.qa.state(), end = 0;
+      fxS.plan.forEach(function (p, k) { end = Math.max(end, p[0] + (fxS.durs[k] || fxS.durs[0] || 0) / 1000); });
+      return { durs: fxS.durs.slice(), jobs: jobs, warm: warm, peak: Math.max(peak, st.canvasBytes), rect: fxRect(sc.anchor), state: st, end: end, plan: fxS.plan };
+    });
+  }
+  function fxFire(e) {                               // the planned beats due by e, each at its own moment on the clock
+    var F = window.T82FX;
+    while (fxS.fired < fxS.plan.length && fxS.plan[fxS.fired][0] <= e + 1e-9) {
+      var p = fxS.plan[fxS.fired++];
+      clock.t = fxS.t0 + p[0];
+      fxS.durs.push(F.play(fxS.kind, fxS.slot, fxS.anchor, { id: fxS.id, seed: p[1], big: fxS.kind === "goat" }));
+      animsHold();
+    }
+  }
+  // the bench at e seconds after the first beat: a frame drawn there (its cost timed with its pixels finished)
+  function fxTo(e) {
+    var F = window.T82FX;
+    fxFire(e);
+    clock.t = fxS.t0 + e;
+    animsScrub();
+    var a = realNow(), on = F.qa.frame();
+    fxSettle();
+    var ms = realNow() - a;
+    return { ms: ms, on: on, state: F.qa.state() };
+  }
+  // every 60 fps frame from 0 to the end of the last beat (plus a frame after it: the layer must be gone)
+  function fxRun(to) {
+    var out = [], st = null, peak = 0, plates = 0, layer = 0;
+    for (var f = 1; f / 60 <= to + 1e-9; f++) {
+      var r = fxTo(f / 60);
+      out.push(r.ms); st = r.state;
+      peak = Math.max(peak, st.canvasBytes + st.layerBytes); plates = Math.max(plates, st.canvasBytes); layer = Math.max(layer, st.layerBytes);
+    }
+    var after = fxTo(to + 0.1).state;
+    return { frames: out, peak: peak, plates: plates, layer: layer, last: st, after: after };
+  }
+  // ?watch=hot:<id> plays its seven beats in turn on the wall clock; perk:<id> both; goat:<id> the 82-0 sequence
+  function fxWatch(kind, id) {
+    var slots = { hot: ["cold", "warm", "hot", "fire", "nova", "save", "miss"], perk: ["refund", "sale"], goat: ["burst"] }[kind], k = 0;
+    return load(kind, id, "/art/" + kind + "/" + id + ".js").then(function (r) {
+      if (!r.ok && id !== "classic") { document.getElementById("qaNotes").insertAdjacentHTML("beforeend", '<p class="qa-note">' + (r.error || "not registered") + "</p>"); return; }
+      (function next() {
+        var slot = slots[k++ % slots.length], plan = kind === "goat" ? [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (i) { return [i * 0.18, 400 + i]; }) : null;
+        clock.t = realNow() / 1000;
+        fxStart(kind, id, slot, { plan: plan }).then(function (s) {
+          var stop = clock.t + s.end + 0.6;
+          (function f() {
+            clock.t = realNow() / 1000;
+            fxFire(clock.t - fxS.t0);
+            window.T82FX.qa.frame();
+            if (clock.t < stop) requestAnimationFrame(f); else next();
+          })();
+        });
+      })();
+    });
+  }
+  var FXQA = { start: fxStart, to: fxTo, run: fxRun, clear: fxClear, watch: fxWatch, screens: FX_SCREEN };
+
   window.T82QA = {
     now: realNow, clock: clock, ready: ready, caps: caps, BUILTIN: BUILTIN, MONTHS: MONTHS,
     CASES: CASES, LEDGER: LEDGER, RECORDS: RECORDS, record: record, wins: wins, monthOf: monthOf,
@@ -443,6 +584,9 @@
     anims: { finish: animsFinish, hold: animsHold, scrub: animsScrub },
     watch: watch
   };
+  window.T82QA.fx = FXQA;
+  var fm = /[?&]watch=(hot|perk|goat):([a-z0-9-]+)/.exec(location.search);
+  if (fm) ready.then(function () { fxWatch(fm[1], fm[2]); });
   var wm = /[?&]watch=(loss|dots|scene):([a-z0-9-]+)/.exec(location.search);
   if (wm) ready.then(function () { watch(wm[1], wm[2]); });
 })();

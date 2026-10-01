@@ -2,16 +2,16 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20260930-v67",
-      "sha": "9f72c09f56e873bb"
+      "key": "20261001-v67",
+      "sha": "16e8688830424513"
     },
     "styles.css": {
       "key": "20260929-v66",
       "sha": "7f146eb9a74d620c"
     },
     "reel-riso.js": {
-      "key": "20260930-v67",
-      "sha": "e80b18aab655f54a"
+      "key": "20261001-v67",
+      "sha": "ec10a9365467c33e"
     },
     "masthead.webp": {
       "key": "20260928-v64-1",
@@ -38,8 +38,8 @@
       "sha": "1be0def6927ff448"
     },
     "results-riso.js": {
-      "key": "20260930-v67",
-      "sha": "c515fb2b6cd5ff7d"
+      "key": "20261001-v67",
+      "sha": "36ffc16090d28520"
     },
     "analytics.js": {
       "key": "20260725-traits-v44",
@@ -62,24 +62,288 @@
       "sha": "7eb099e1553c0e78"
     },
     "art-core.js": {
-      "key": "20260930-v67",
-      "sha": "29f9dca9a8e33c3c"
+      "key": "20261001-v67",
+      "sha": "bb0818130247af1c"
     },
     "art-index.js": {
-      "key": "20260930-v67",
-      "sha": "35b349dff5dc9379"
+      "key": "20261001-v67",
+      "sha": "a26dc083cb414ad1"
+    },
+    "riso-fx.js": {
+      "key": "20261001-v67",
+      "sha": "4a2b8ebca6b3da26"
+    },
+    "art/loss/bigtype.js": {
+      "key": "20261001-v67",
+      "sha": "46231733bcf24264"
+    },
+    "art/loss/blot.js": {
+      "key": "20261001-v67",
+      "sha": "cadc1a3b155c83f6"
+    },
+    "art/loss/brayer.js": {
+      "key": "20261001-v67",
+      "sha": "93698b87533e0f40"
+    },
+    "art/loss/brush.js": {
+      "key": "20261001-v67",
+      "sha": "3525a10002109ee1"
+    },
+    "art/loss/crumple.js": {
+      "key": "20261001-v67",
+      "sha": "58ec768d7899dbd5"
+    },
+    "art/loss/fold.js": {
+      "key": "20261001-v67",
+      "sha": "f2aa2480ad8529fc"
+    },
+    "art/loss/gangrun.js": {
+      "key": "20261001-v67",
+      "sha": "55022454e2f44c5b"
+    },
+    "art/loss/ghosting.js": {
+      "key": "20261001-v67",
+      "sha": "304b76ef29524404"
+    },
+    "art/loss/headline.js": {
+      "key": "20261001-v67",
+      "sha": "43a63d37a0717009"
+    },
+    "art/loss/marbling.js": {
+      "key": "20261001-v67",
+      "sha": "7d6ba9fef6693cc6"
+    },
+    "art/loss/melt.js": {
+      "key": "20261001-v67",
+      "sha": "abe950ca8df2040e"
+    },
+    "art/loss/misfeed.js": {
+      "key": "20261001-v67",
+      "sha": "6dac2af0b3abc93c"
+    },
+    "art/loss/overprint.js": {
+      "key": "20261001-v67",
+      "sha": "93798c96f0b1bee5"
+    },
+    "art/loss/polaroid.js": {
+      "key": "20261001-v67",
+      "sha": "f06c9ddada390255"
+    },
+    "art/loss/ransom.js": {
+      "key": "20261001-v67",
+      "sha": "4b522c1b351c6709"
+    },
+    "art/loss/receipt.js": {
+      "key": "20261001-v67",
+      "sha": "a49cb61dfd5f8b08"
+    },
+    "art/loss/rundry.js": {
+      "key": "20261001-v67",
+      "sha": "9bab63b2a916a786"
+    },
+    "art/loss/scratch.js": {
+      "key": "20261001-v67",
+      "sha": "6c014158be34bd67"
     },
     "art/loss/seal.js": {
-      "key": "20260930-v67",
-      "sha": "844452f6ded897dc"
+      "key": "20261001-v67",
+      "sha": "01b3353802639abc"
+    },
+    "art/loss/separation.js": {
+      "key": "20261001-v67",
+      "sha": "8d0a29ab4937bfed"
+    },
+    "art/loss/spill.js": {
+      "key": "20261001-v67",
+      "sha": "01954c991514c4bb"
+    },
+    "art/loss/square.js": {
+      "key": "20261001-v67",
+      "sha": "84f34b3e59c3ad48"
+    },
+    "art/loss/squeegee.js": {
+      "key": "20261001-v67",
+      "sha": "ac5b219b1bf32a6e"
+    },
+    "art/loss/sticker.js": {
+      "key": "20261001-v67",
+      "sha": "36e06907e3d4fb39"
+    },
+    "art/loss/tape.js": {
+      "key": "20261001-v67",
+      "sha": "34ddcb18b4273437"
+    },
+    "art/loss/tear.js": {
+      "key": "20261001-v67",
+      "sha": "039565d25ca49195"
+    },
+    "art/loss/testsheet.js": {
+      "key": "20261001-v67",
+      "sha": "cee2a4bc59cd70f7"
+    },
+    "art/loss/trim.js": {
+      "key": "20261001-v67",
+      "sha": "39a048bc456fd54a"
+    },
+    "art/loss/typewriter.js": {
+      "key": "20261001-v67",
+      "sha": "659ffa362db5bac3"
+    },
+    "art/loss/woodtype.js": {
+      "key": "20261001-v67",
+      "sha": "62e0bd4941b64ff5"
+    },
+    "art/dots/arrows.js": {
+      "key": "20261001-v67",
+      "sha": "7ad3c5f9d0550000"
     },
     "art/dots/balls.js": {
       "key": "20260930-v67",
       "sha": "8567ed6c55b1e5d4"
     },
+    "art/dots/bolts.js": {
+      "key": "20261001-v67",
+      "sha": "f63e97e87a7f9804"
+    },
+    "art/dots/checks.js": {
+      "key": "20261001-v67",
+      "sha": "7f37d4fb7adfcbb4"
+    },
+    "art/dots/dagger.js": {
+      "key": "20261001-v67",
+      "sha": "e91d818790a98d39"
+    },
+    "art/dots/diamonds.js": {
+      "key": "20261001-v67",
+      "sha": "94e0325e7f52ee5a"
+    },
+    "art/dots/drops.js": {
+      "key": "20261001-v67",
+      "sha": "034993333cd51356"
+    },
+    "art/dots/letters.js": {
+      "key": "20261001-v67",
+      "sha": "dbbf5258cd89e05d"
+    },
+    "art/dots/moons.js": {
+      "key": "20261001-v67",
+      "sha": "1027c96e886af6b8"
+    },
+    "art/dots/pixels.js": {
+      "key": "20261001-v67",
+      "sha": "4f7f5a2f7911659a"
+    },
+    "art/dots/prints.js": {
+      "key": "20261001-v67",
+      "sha": "a5a665dc772e7fac"
+    },
+    "art/dots/stars.js": {
+      "key": "20261001-v67",
+      "sha": "b5174d6ce7eb789c"
+    },
+    "art/dots/suns.js": {
+      "key": "20261001-v67",
+      "sha": "d26cdbb6f391582f"
+    },
+    "art/dots/tally.js": {
+      "key": "20261001-v67",
+      "sha": "e6baf9a424241b42"
+    },
+    "art/scene/alpine.js": {
+      "key": "20261001-v67",
+      "sha": "36ba1109a38f3fab"
+    },
+    "art/scene/constellation.js": {
+      "key": "20261001-v67",
+      "sha": "82ae4991c5817452"
+    },
+    "art/scene/dunes.js": {
+      "key": "20261001-v67",
+      "sha": "2156d26e62997827"
+    },
+    "art/scene/glacier.js": {
+      "key": "20261001-v67",
+      "sha": "ae23ab03f41af48c"
+    },
+    "art/scene/lighthouse.js": {
+      "key": "20261001-v67",
+      "sha": "888f195edc300b10"
+    },
+    "art/scene/rafters.js": {
+      "key": "20261001-v67",
+      "sha": "cd46c93dce34bb6c"
+    },
+    "art/scene/ridgelines.js": {
+      "key": "20261001-v67",
+      "sha": "85a593774f324a22"
+    },
+    "art/scene/savanna.js": {
+      "key": "20261001-v67",
+      "sha": "860c80f1dda855c8"
+    },
     "art/scene/skyline.js": {
       "key": "20260930-v67",
       "sha": "4654561aaa0aac4f"
+    },
+    "art/scene/summit.js": {
+      "key": "20261001-v67",
+      "sha": "e5b75399b71d2caf"
+    },
+    "art/scene/volcano.js": {
+      "key": "20261001-v67",
+      "sha": "e97be202ea999af9"
+    },
+    "art/scene/wave.js": {
+      "key": "20261001-v67",
+      "sha": "e81efae12013fe8b"
+    },
+    "art/hot/arcade.js": {
+      "key": "20261001-v67",
+      "sha": "801be7e91bc1315d"
+    },
+    "art/hot/emojifire.js": {
+      "key": "20261001-v67",
+      "sha": "fecf9f732d501147"
+    },
+    "art/hot/jam.js": {
+      "key": "20261001-v67",
+      "sha": "c331f6be52f95c1c"
+    },
+    "art/perk/emojicash.js": {
+      "key": "20261001-v67",
+      "sha": "d2209d44a6fbab09"
+    },
+    "art/perk/halftone.js": {
+      "key": "20261001-v67",
+      "sha": "5e583e4cd4a27a07"
+    },
+    "art/perk/moneyprint.js": {
+      "key": "20261001-v67",
+      "sha": "f86d8ad31b0dcbdc"
+    },
+    "art/perk/register.js": {
+      "key": "20261001-v67",
+      "sha": "ff5675a7a1e9e96e"
+    },
+    "art/perk/stamps.js": {
+      "key": "20261001-v67",
+      "sha": "470192b27a31ebfb"
+    },
+    "art/goat/banner82.js": {
+      "key": "20261001-v67",
+      "sha": "f325d600c8c82c78"
+    },
+    "art/goat/emojigoat.js": {
+      "key": "20261001-v67",
+      "sha": "bd39d188f5b4e550"
+    },
+    "art/goat/shells.js": {
+      "key": "20261001-v67",
+      "sha": "e75ae723cd7ef85f"
+    },
+    "art/goat/tickertape.js": {
+      "key": "20261001-v67",
+      "sha": "2fba51b3ccf1ef75"
     }
   }
 }

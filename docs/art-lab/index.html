@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" data-btn="neon" data-card="outline" data-chip="ink" data-corners="round" data-texture="none" data-ground="night" data-lab-mast-ink="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#16122B">
+<title>Art Lab · TRUE 82</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- The game's own theme. lab.js checks the game's index.html for newer keys and swaps these if the release moved them. -->
+<link rel="stylesheet" href="../../styles.css?v=20260929-v66" data-lab-key="styles.css">
+<link rel="stylesheet" href="../../look.css?v=20260927-v60" data-lab-key="look.css">
+<link rel="stylesheet" href="lab.css">
+</head>
+<body class="lab">
+<div class="lab-wrap">
+  <header class="lab-top">
+    <div class="lab-brand">
+      <h1 class="t-head" data-head="title">Art Lab</h1>
+      <span class="lab-date" id="labStamp">Tonight's art</span>
+    </div>
+    <p class="lab-lede">Play every look. <svg class="lab-ico is-love" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.4-4.5-9.5-9.1C1 8.6 3.1 5 6.6 5c2.1 0 3.6 1.2 5.4 3.2C13.8 6.2 15.3 5 17.4 5 20.9 5 23 8.6 21.5 11.9 19.4 16.5 12 21 12 21z"/></svg> <b>loves it</b>, <svg class="lab-ico is-cut" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg> <b>cuts it</b>, anything you leave alone stays. YOUR PICKS turns your marks into a code for Claude.</p>
+    <nav class="lab-tabs" id="labTabs" role="tablist" aria-label="The art"></nav>
+  </header>
+  <main id="labMain"></main>
+</div>
+
+<div class="lab-bar" id="labBar">
+  <div class="lab-bar-in">
+    <div class="lab-bar-sum"><b>YOUR PICKS</b><span id="labBarCount">Nothing marked yet</span></div>
+    <button class="t-btn" type="button" id="labOpenPicks">SEE THE CODE</button>
+  </div>
+</div>
+<div class="t-backdrop" id="labBackdrop"></div>
+<section class="t-sheet lab-sheet" id="labSheet" role="dialog" aria-modal="true" aria-labelledby="labSheetTitle">
+  <div class="t-grab"></div>
+  <h2 class="t-head" data-head="title" id="labSheetTitle">Your picks</h2>
+  <p class="t-small">Copy this and paste it to Claude. Hearts get kept and favored, Xs get cut, and anything unmarked stays in the game.</p>
+  <pre class="lab-code" id="labCode"></pre>
+  <button class="t-btn" type="button" id="labCopy">COPY THE CODE</button>
+  <div class="lab-sheet-foot">
+    <button class="t-btn" data-kind="text" type="button" id="labClear">CLEAR ALL PICKS</button>
+    <button class="t-btn" data-kind="text" type="button" id="labClose">CLOSE</button>
+  </div>
+</section>
+<div class="t-toast lab-toast" id="labToast" role="status" aria-live="polite"></div>
+<script src="lab.js"></script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+/* The Art Lab (docs/art-lab/index.html): the owner's page for tonight's art (v67). It wears the game's own theme
+   (styles.css, look.css) and builds from the shared pieces (.t-btn, .t-card, .t-sheet, .t-toast, .t-head),
+   so it feels like the game on his phone. Layout and the lab's own controls only; the style law applies here too:
+   colors are theme tokens, fonts are --t-disp / --t-body / --t-mono. Phone first: 320 to 430 px, 44 px taps. */
+
+html { overflow-x: hidden; }
+@supports (overflow: clip) { html { overflow-x: clip; } }   /* clip: no sideways scroll, even by script */
+body.lab { min-height: 100vh; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+.lab-wrap { max-width: 560px; margin: 0 auto; padding: 0 16px; }
+
+/* ---- the top: the name, one line of how-to, the six tabs ---- */
+.lab-top { padding: calc(12px + env(safe-area-inset-top)) 0 2px; }
+.lab-brand { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.lab-brand .t-head { margin: 0; font-size: 30px; }
+.lab-date { font-family: var(--t-mono); font-size: var(--t-fs-label); letter-spacing: 0.14em; color: var(--t-label); text-transform: uppercase; }
+.lab-lede { margin: 4px 0 10px; font-size: var(--t-fs-small); line-height: 1.45; color: var(--t-text-2); }
+.lab-lede b { color: var(--t-text); font-weight: 600; }
+.lab-ico { display: inline-block; width: 1em; height: 1em; vertical-align: -0.14em; }
+.lab-lede .lab-ico.is-love { color: var(--t-accent); }
+.lab-lede .lab-ico.is-cut { color: var(--t-bad); }
+
+.lab-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 12px; }
+@media (min-width: 540px) { .lab-tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.lab-tab { position: relative; min-height: 46px; padding: 6px 4px 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border: 1.5px solid var(--t-rule); border-radius: var(--t-r-btn); background: transparent; color: var(--t-text-2);
+  font-family: var(--t-disp); font-weight: 700; font-size: 16px; letter-spacing: 0.06em; line-height: 1.05; text-transform: uppercase; }
+.lab-tab small { font-family: var(--t-mono); font-weight: 400; font-size: 10px; letter-spacing: 0.08em; color: var(--t-text-3); }
+.lab-tab[aria-selected="true"] { border-color: var(--t-accent); color: var(--t-accent-pale); background: rgb(var(--t-accent-rgb) / .12);
+  text-shadow: 0 0 8px rgb(var(--t-accent-rgb) / .7); }
+.lab-tab[aria-selected="true"] small { color: var(--t-accent-hi); text-shadow: none; }
+.lab-tab:active { transform: translateY(2px); }
+
+/* ---- a pane: its intro, its stage, its controls, its list ---- */
+.lab-pane[hidden] { display: none; }
+.lab-intro { margin: 0 0 12px; font-size: var(--t-fs-small); line-height: 1.45; color: var(--t-text-2); }
+.lab-empty { margin: 0 0 14px; padding: 14px; border: 1.5px dashed var(--t-rule); border-radius: var(--t-r-card);
+  font-size: var(--t-fs-small); line-height: 1.45; color: var(--t-text-2); }
+.lab-empty b { display: block; margin-bottom: 4px; font-family: var(--t-disp); font-weight: 700; font-size: 18px; letter-spacing: 0.05em; color: var(--t-text); text-transform: uppercase; }
+.lab-h { margin: 22px 0 10px; }
+.lab-row { display: flex; gap: 8px; margin: 0 0 10px; }
+.lab-row > .t-btn { flex: 1 1 0; min-width: 0; padding-left: 8px; padding-right: 8px; font-size: 16px; }
+.lab-note { margin: -4px 0 12px; font-family: var(--t-mono); font-size: 11px; line-height: 1.5; color: var(--t-text-3); }
+
+/* a row of choices (duration, record, light, year): one is on */
+.lab-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; margin: 0 0 12px; }
+.lab-seg-lab { margin: 0 0 6px; }
+.lab-seg button { min-height: 46px; padding: 5px 4px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border: 1.5px solid var(--t-rule); border-radius: var(--t-r-btn); color: var(--t-text-2);
+  font-family: var(--t-disp); font-weight: 700; font-size: 17px; letter-spacing: 0.04em; line-height: 1.05; text-transform: uppercase; }
+.lab-seg button small { font-family: var(--t-mono); font-weight: 400; font-size: 9.5px; letter-spacing: 0.06em; color: var(--t-text-3); }
+.lab-seg button[aria-pressed="true"] { border-color: var(--t-offset); color: var(--t-offset-hi); background: rgb(var(--t-offset-rgb) / .12); }
+.lab-seg button[aria-pressed="true"] small { color: var(--t-offset-hi); }
+
+/* ---- the stage: a real reel card, in the page instead of over it ---- */
+.lab-stage { position: relative; margin: 0 0 10px; }
+.lab-stage .reel-overlay, .lab-mini .reel-overlay { position: relative; inset: auto; z-index: 1; display: block; padding: 0; background: none; }
+.lab-stage .reel-card, .lab-stage .reel-overlay.riso .reel-card { width: 100%; max-height: none; min-height: 0;
+  height: 520px; height: clamp(340px, calc(100vh - 240px), 540px); height: clamp(340px, calc(100svh - 240px), 540px); }
+.lab-mini { margin: 10px 0 2px; }
+.lab-mini .reel-card, .lab-mini .reel-overlay.riso .reel-card { width: 100%; max-height: none; min-height: 0; height: 228px; }
+.lab-mini .reel-act { animation: none; }
+.lab-off { display: flex; align-items: center; justify-content: center; min-height: 160px; padding: 16px; text-align: center;
+  border: 1px solid var(--t-rule); border-radius: max(12px, var(--t-r-card)); color: var(--t-text-2); font-size: var(--t-fs-small); }
+
+/* what is playing, under the card: its name, its line, love / cut, the next one */
+.lab-now { margin: 0 0 14px; padding: 2px 2px 14px; border-bottom: 1px dashed var(--t-rule); }
+.lab-now-top { display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.lab-now-count { margin-left: auto; font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--t-label); white-space: nowrap; }
+.lab-now-name { margin: 2px 0 0; font-family: var(--t-disp); font-weight: 700; font-size: 26px; line-height: 1.02; letter-spacing: 0.03em; text-transform: uppercase; color: var(--t-text); }
+.lab-now-by { margin: 4px 0 0; height: 2.9em; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-size: var(--t-fs-small); line-height: 1.45; color: var(--t-text-2); }   /* two lines, so the hearts stay over the picks bar; the tile has it all */
+.lab-now-acts { display: grid; grid-template-columns: 1fr 1fr 48px 48px; gap: 6px; margin-top: 10px; }
+.lab-now-acts .lab-mk { width: auto; }
+.lab-now-try { display: inline-block; margin-top: 8px; }
+
+/* ---- a look's tile ---- */
+.lab-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 720px) { .lab-list.is-two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lab-tile { position: relative; min-width: 0; padding: 10px 10px 10px 12px; transition: border-color 0.15s ease, opacity 0.15s ease; }
+/* the look's card owns the border (look.css), so a tile's state rides a ring of its own on top of it */
+.lab-tile::after { content: ""; position: absolute; inset: -2px; border: 2px solid transparent; border-radius: var(--t-r-card); pointer-events: none; }
+.lab-tile.is-playing::after { border-color: var(--t-offset); }
+.lab-tile.is-love::after { border-color: var(--t-accent); box-shadow: 0 0 0 1px rgb(var(--t-accent-rgb) / .45), 0 0 14px rgb(var(--t-accent-rgb) / .35); }
+.lab-tile.is-cut::after { border-color: var(--t-bad); border-style: dashed; }
+.lab-tile.is-cut .lab-tile-main, .lab-tile.is-cut .lab-art, .lab-tile.is-cut .lab-ledger, .lab-tile.is-cut .lab-mock { opacity: 0.42; }
+.lab-tile-main { display: block; width: 100%; min-height: 44px; text-align: left; color: var(--t-text); padding: 2px 0; }
+.lab-tile-main:active .lab-name { color: var(--t-accent-hi); }
+.lab-tile-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lab-name { font-family: var(--t-disp); font-weight: 700; font-size: 20px; line-height: 1.05; letter-spacing: 0.04em; text-transform: uppercase; }
+.lab-play { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 4px 8px 3px; border: 1px solid rgb(var(--t-offset-rgb) / .6); border-radius: var(--t-r-chip);
+  font-family: var(--t-mono); font-size: 10.5px; letter-spacing: 0.1em; color: var(--t-offset-hi); white-space: nowrap; }
+.lab-tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.lab-under { margin-top: 8px; }
+.lab-under .t-btn { width: 100%; }
+
+.lab-by { display: block; margin-top: 3px; font-size: var(--t-fs-small); line-height: 1.4; color: var(--t-text-2); }
+.lab-memo { display: block; margin-top: 4px; font-family: var(--t-mono); font-size: 11px; line-height: 1.45; color: var(--t-label); }
+.lab-tag { display: inline-flex; align-items: center; min-height: 20px; padding: 2px 7px 1px; border: 1px solid var(--t-rule); border-radius: var(--t-r-chip);
+  font-family: var(--t-mono); font-size: 10.5px; letter-spacing: 0.1em; line-height: 1.2; color: var(--t-text-2); white-space: nowrap; }
+.lab-tag.is-a { border-color: var(--t-hot); color: var(--t-hot-hi); box-shadow: 0 0 8px rgb(var(--t-hot-rgb) / .3); }
+.lab-tag.is-b { border-color: var(--t-label); color: var(--t-label); }
+.lab-tag.is-off { border-style: dashed; color: var(--t-text-3); }
+.lab-tag.is-bad { border-color: var(--t-bad); color: var(--t-bad-soft); }
+.lab-tag[hidden] { display: none; }
+.lab-try { display: inline-flex; align-items: center; min-height: 32px; font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--t-text-2);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgb(var(--t-text-rgb) / .3); }
+.lab-try:active { color: var(--t-accent); }
+.lab-try[hidden] { display: none; }
+.lab-tries { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+
+/* love / cut: a heart and an X, 44 px, side by side in the tile's corner */
+.lab-marks { display: flex; gap: 6px; }
+.lab-mk { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto;
+  border: 1.5px solid var(--t-rule); border-radius: var(--t-r-btn); color: var(--t-text-2);
+  font-family: var(--t-disp); font-weight: 700; font-size: 16px; letter-spacing: 0.06em; }
+.lab-mk svg { width: 22px; height: 22px; display: block; }
+.lab-mk .lab-fill { fill: none; }
+.lab-mk.is-love[aria-pressed="true"] { border-color: var(--t-accent); color: var(--t-accent); background: rgb(var(--t-accent-rgb) / .16); }
+.lab-mk.is-love[aria-pressed="true"] .lab-fill { fill: currentColor; }
+.lab-mk.is-cut[aria-pressed="true"] { border-color: var(--t-bad); color: var(--t-bad); background: rgb(var(--t-bad-rgb) / .16); }
+.lab-mk:active { transform: translateY(2px); }
+.lab-mk.pop { animation: labPop 0.32s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes labPop { 0% { transform: scale(0.7); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+/* ---- the dots: a settled season under each set ---- */
+.lab-ledger { margin: 8px 0 0; padding: 8px 8px 4px; background: var(--t-print-paper); border: 1px solid var(--t-line); border-radius: var(--t-r-card); }
+.lab-ledger .riso-strip { margin: 0 0 3px; }
+.lab-ledger-wait { min-height: 120px; display: flex; align-items: center; justify-content: center; font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--t-text-3); }
+
+/* ---- the picture: a banner per scene ---- */
+.lab-art { position: relative; display: block; width: 100%; margin: 0 0 10px; padding: 0; border-radius: 2px; overflow: hidden; background: var(--t-print-paper); }
+.lab-art img, .lab-art canvas.lab-still { display: block; width: 100%; height: auto; }
+.lab-art > [hidden] { display: none; }
+.lab-art-wait { aspect-ratio: 1000 / 660; display: flex; align-items: center; justify-content: center; font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--t-text-3); }
+.lab-art .rr { margin: 0; }
+.lab-art .rr .rr-print { margin: 0; }
+.lab-art-tap { position: absolute; right: 8px; bottom: 8px; padding: 4px 8px 3px; border-radius: var(--t-r-chip); background: rgb(var(--t-overlay-rgb) / .72);
+  font-family: var(--t-mono); font-size: 10.5px; letter-spacing: 0.1em; color: var(--t-text); pointer-events: none; }
+.lab-art.is-live .lab-art-tap { display: none; }
+.lab-art.is-stale img, .lab-art.is-stale canvas { opacity: 0.35; }
+.lab-art.is-stale .lab-art-tap { font-size: 0; }
+.lab-art.is-stale .lab-art-tap::after { content: "REPRINTING\2026"; font-size: 10.5px; }
+
+/* ---- the FX mocks: the Heat Check label, the W/L box, the three cost buttons ---- */
+.lab-mock { position: relative; margin: 10px 0 8px; padding: 14px 12px 12px; border-radius: var(--t-r-card);
+  background: radial-gradient(120% 90% at 50% 32%, var(--t-overlay-warm), var(--t-overlay)); text-align: center; overflow: visible; }
+.lab-mock.is-hh { padding: 4px 4px 8px; background: none; }
+.lab-mock .hh-card { gap: 10px; max-width: none; }
+.lab-hh-slot { min-height: 36px; display: flex; align-items: center; justify-content: center; }
+.lab-mock .hh-netcap { font-family: var(--t-mono); font-size: 10.5px; letter-spacing: 0.14em; color: var(--t-label); }
+.lab-mock .goat-fw { position: absolute; inset: -20px; pointer-events: none; z-index: 4; overflow: visible; }
+.lab-status { min-height: 16px; margin: 6px 0 0; font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--t-label); text-align: center; }
+.lab-wl { padding: 18px 12px 14px; background: var(--t-ground-2); border: 1px solid var(--t-rule); }
+.lab-wl .lab-wl-rec { font-family: var(--t-disp); font-weight: 800; font-size: 64px; line-height: 0.95; letter-spacing: 0.02em; color: var(--t-accent); }
+.lab-wl .lab-wl-cap { margin-top: 4px; font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--t-label); text-transform: uppercase; }
+.lab-wl .lab-pt { position: absolute; width: 1px; height: 1px; pointer-events: none; }
+.lab-cost { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 8px; }
+.lab-cost .skip-btn { display: flex; align-items: center; justify-content: space-between; gap: 5px; width: 100%; min-height: 42px; padding: 8px 7px 9px; pointer-events: none; }
+.lab-cost .skip-btn .sk-lab { font-size: 13px; }
+.lab-cost .skip-btn.refunded, .lab-cost .skip-btn.firesale { justify-content: center; font-family: var(--t-disp); font-size: 15px; letter-spacing: 0.08em; }
+@media (max-width: 379px) {
+  .lab-cost { grid-template-columns: 1fr 1fr; }
+  .lab-cost .skip-btn:last-child { grid-column: 1 / -1; }
+}
+.lab-beats { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; margin: 0 0 6px; }
+.lab-beats .t-btn { min-height: 44px; padding: 6px 2px 7px; font-size: 14px; letter-spacing: 0.03em; }
+.lab-beats .lab-wide { grid-column: 1 / -1; }
+.lab-today { border-style: dashed; }
+.lab-today .lab-name { color: var(--t-text-2); }
+
+/* ---- the next tab, at the foot of each pane ---- */
+.lab-foot-note { margin: 16px 0 0; }
+.lab-next { display: flex; width: 100%; margin: 12px 0 0; }
+
+/* ---- the picks bar (always there) and its sheet ---- */
+.lab-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 800; background: rgb(var(--t-ground-rgb) / .96); border-top: 1px solid var(--t-rule);
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); }
+.lab-bar-in { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+.lab-bar-sum { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.lab-bar-sum b { font-family: var(--t-disp); font-weight: 700; font-size: 18px; letter-spacing: 0.06em; line-height: 1.05; color: var(--t-text); }
+.lab-bar-sum span { display: flex; gap: 10px; font-family: var(--t-mono); font-size: 12px; color: var(--t-text-2); white-space: nowrap; }
+.lab-bar-sum .lab-n-love { color: var(--t-accent-hi); }
+.lab-bar-sum .lab-n-cut { color: var(--t-bad-soft); }
+.lab-bar .t-btn { flex: 0 0 auto; min-height: 46px; padding: 8px 14px 9px; font-size: 16px; }
+.lab-sheet h2 { margin: 2px 0 6px; }
+.lab-code { margin: 8px 0 12px; padding: 12px; max-height: 42vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  background: var(--t-ground); border: 1px solid var(--t-rule); border-radius: var(--t-r-card);
+  font-family: var(--t-mono); font-size: 12px; line-height: 1.55; color: var(--t-text); -webkit-user-select: text; user-select: text; }
+.lab-sheet .t-btn { width: 100%; }
+.lab-sheet-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
+.lab-toast { white-space: normal; max-width: calc(100vw - 32px); text-align: center; bottom: calc(86px + env(safe-area-inset-bottom)); }

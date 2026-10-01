@@ -2,7 +2,7 @@
    it, a big L in the middle) drops in at an angle, bites the card with a squash, ink squeezes out at its rim, then the
    rubber peels up and away and leaves a slipped, smudged impression that dries off the card. Distinct from the classic
    L in material (rubber, not a letter), entrance (a tilted drop, not a pop), exit (a lift and a dry, not a drain) and
-   composition (a seal). Its masses are screened in prep (five jobs); a frame is at most four drawImages. */
+   composition (a seal). Its masses are screened in prep (eight short jobs); a frame is at most four drawImages. */
 (function () {
   "use strict";
   var TAU = Math.PI * 2, S = 240, C = S / 2;            // the plate, in css px; the seal is centered on it
@@ -86,8 +86,20 @@
         function () { st.imp = K.screen(st.P, "loss", function (g) { seal(K, g, 1); }); },
         function () { st.rub = K.screen(st.P, "pop", function (g) { seal(K, g, 0.82); }); },
         function () { st.ooze = K.screen(st.P, "loss", function (g) { ooze(K, g); }); },
-        function () { st.smear = K.screen(st.P, "loss", function (g) { smear(K, g); }); }
+        band(0), band(1), band(2), band(3)
       ];
+      // the smear (five copies of the seal: one job too long for an iPhone, which runs prep between two frames) in
+      // four bands on device-pixel edges, each joined into the first: the same print (bar a few stray dots)
+      function band(i) {
+        return function () {
+          var k = st.P.k, y0 = Math.round(i * S / 4 * k) / k, y1 = Math.round((i + 1) * S / 4 * k) / k;
+          var c = K.screen(st.P, "loss", function (g) { g.beginPath(); g.rect(0, y0, S, y1 - y0); g.clip(); smear(K, g); });
+          if (!i) { st.smear = c; return; }
+          var x = st.smear.getContext("2d");
+          x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.drawImage(c, 0, 0);
+          c.width = 0; c.height = 0;
+        };
+      }
     },
     hit: function (K, E) {
       K.hitClassic(E);

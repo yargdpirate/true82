@@ -148,8 +148,9 @@ swatches.png sections 2 (every pair, solid and at 0.5), 3 (pairs as the classic 
 - **Key on the dark stock is a low glow** (the results engine prints it at 55% alpha on dark); under 0.3 coverage it
   nearly vanishes. A deep tone, a shadow plate, a keyline: never a hero.
 - **FX inks** (CONTRACT-FX): hot #FFD54A pairs with orange (fire), gold (a lemon core) and pink (hot peach); good
-  #32A66E with aqua (electric cyan) and light. hot + aqua and hot + violet wash out. riso-fx.js is not written yet:
-  the sheet screens hot at 0 and good at 34 degrees, an assumption.
+  #32A66E with aqua (electric cyan) and light. hot + aqua and hot + violet wash out. riso-fx.js screens hot at 68
+  degrees (34 off orange, 22 off gold, 54 off pink), good at 22 and you at 79 (the swatch sheet assumed 0 and 34 for
+  hot and good). good sits 4 degrees off `win` (18): never overlap those two at mid coverage.
 
 ## 2. Color decisions
 - **A loss:** the pink hero (prepped solid, or live 0.81 to 0.88) plus at most two of key (a tonal shadow: the best),

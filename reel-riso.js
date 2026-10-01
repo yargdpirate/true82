@@ -80,9 +80,16 @@
     night: { role: "print-night", ang: [1, 2], reg: [-0.9, -1.0], sh: 353, opt: "pop" },
     dusk:  { role: "print-dusk",  ang: [3, 2], reg: [0.9, -1.2],  sh: 503, opt: "loss" },
     light: { role: "light",       ang: [2, 3], reg: [-0.6, 1.1],  sh: 157, opt: "win" },
-    stock: { role: "print-paper", ang: [1, 4], reg: [1.0, 0.6],   sh: 263 }
+    stock: { role: "print-paper", ang: [1, 4], reg: [1.0, 0.6],   sh: 263 },
+    // v67 part two (art/CONTRACT-FX.md): the FX layer's three (riso-fx.js: the Heat Check, the Presti perks, 82-0).
+    // hot (fire gold, a gain) at 68 degrees sits 34 off dusk, 22 off gold and 54 off the loss pink, its three partners in
+    // a flame; good (money green) at 22 sits 23 off pop and 34 off light, its partners in a refund; you at 79 sits 34
+    // off pop and 65 off the loss pink. Every theme has these three tokens; the borrow is only a guard.
+    hot:   { role: "hot",         ang: [2, 5], reg: [1.1, 0.5],   sh: 601, opt: "gold" },
+    good:  { role: "good",        ang: [5, 2], reg: [-1.0, -0.6], sh: 677, opt: "win" },
+    you:   { role: "you",         ang: [1, 5], reg: [0.5, -1.15], sh: 739, opt: "pop" }
   };
-  var INK_ORDER = ["win", "pop", "loss", "key", "gold", "night", "dusk", "light", "stock"];
+  var INK_ORDER = ["win", "pop", "loss", "key", "gold", "night", "dusk", "light", "stock", "hot", "good", "you"];
   function parseColor(s) {
     s = String(s || "").trim();
     var m = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
@@ -189,7 +196,9 @@
     return tiles[key];
   }
   var pats = {};
-  function inkPattern(ctx, ink, pitch, cov, rgb) {
+  // one repeat of the ink's screen at a coverage (device px; cached): the pattern below, and K.tile for riso-fx.js's
+  // flash, which prints it as a page background instead of filling a whole screen of canvas every frame
+  function inkTile(ink, pitch, cov, rgb) {
     var q = Math.round(clamp(cov, 0, 1) * 16), key = ink + rgb.join(",") + "@" + pitch.toFixed(3) + "#" + q, tile = pats[key];
     if (!tile) {
       var t = tileFor(ink, pitch), S = t.S, c = q / 16;
@@ -199,6 +208,10 @@
       tx.putImageData(img, 0, 0);
       pats[key] = tile;
     }
+    return tile;
+  }
+  function inkPattern(ctx, ink, pitch, cov, rgb) {
+    var tile = inkTile(ink, pitch, cov, rgb);
     var pat = ctx.createPattern(tile, "repeat");
     if (pat.setTransform && ctx.getTransform) pat.setTransform(ctx.getTransform().inverse());   // pinned: dots never swim
     return pat;
@@ -291,7 +304,7 @@
   }
   // Print the plates on (multiply on light stock, screen on dark), each with its ink's registration offset, over the whole
   // strip or only inside the rect C (device px, integer; the draws are the same, the clip just keeps them inside).
-  // Plate a (the win plate) prints only once the month has a win, plate c (the loss plate) once it has a loss.
+  // Classic's plate a (the win plate) prints only once the month has a win, plate c (the loss plate) once it has a loss.
   function inkPrint(S, anyW, anyL, C) {
     var x = S.ctx, P = S.P, ds = S.ds;
     x.save();
@@ -378,6 +391,9 @@
       if (Dt.win) anyW = true; else anyL = true;
       Dt.lastRow = Math.floor(Dt.idx / S.cols) === last; Dt.pitch = S.pitch;      // fresh every print: a resize moves both
     });
+    // classic's plate a inks only wins and its plate c only losses, so it skips their empty passes; a dot set's plates
+    // may ink any stamp (art/CONTRACT.md), so all three print from the month's first stamp, live and in strip() alike
+    if (def !== CLASSIC_DOTS) { anyW = true; anyL = true; }
     if (anyW && def.a) platePass(S, "a", t, R, Rd);
     if (def.b) platePass(S, "b", t, R, Rd);
     if (anyL && def.c) platePass(S, "c", t, R, Rd);
@@ -598,7 +614,8 @@
     var r = def.reach || {}, l = def.live || {}, k = def.inks || {};
     ds.def = def; ds.id = id;
     ds.reach = { w: num(r.w, REACH_W, 0.5, 6), l: num(r.l, REACH_L, 0.5, 6) };          // capped: a moving rect stays a rect
-    ds.live = { w: num(l.w, LIVE_W, 0, 3), l: num(l.l, LIVE_L, 0, 3) };
+    // at least 0.1 s: the strip redraws a stamp only inside its window, so a window under a frame never prints it
+    ds.live = { w: num(l.w, LIVE_W, 0.1, 3), l: num(l.l, LIVE_L, 0.1, 3) };
     ds.inks = { a: INKS[k.a] ? k.a : "win", b: INKS[k.b] ? k.b : "pop", c: INKS[k.c] ? k.c : "loss" };
   }
   // a stamp re-marked by classic (a dot set that threw): only the game's facts survive
@@ -629,10 +646,14 @@
     var K = {
       TH: TH, d: dpr(), blend: TH.blend, inks: INK_ORDER.slice(), reduced: reducedMotion(),
       rgb: function (ink) { return TH.rgb[inkOf(ink)].slice(); },
+      // the ink's own registration offset in css px (the drum's miss: the ledger's plates, and K.sprite in riso-fx.js)
+      reg: function (ink) { return INKS[inkOf(ink)].reg.slice(); },
       tone: tone,
       // a halftone pattern of the ink at coverage cov, pinned to the device pixels of g's CURRENT transform: take it
       // right before the fill, after your translate/rotate/scale, and the dots stay still while the shape moves
       pat: function (ink, cov, g) { ink = inkOf(ink); return inkPattern(g || g0, ink, PITCH * dpr(), cov, TH.rgb[ink]); },
+      // the canvas K.pat repeats (device px; shared and cached: read it, never draw on it)
+      tile: function (ink, cov) { ink = inkOf(ink); return inkTile(ink, PITCH * dpr(), cov, TH.rgb[ink]); },
       plate: function (cssW, cssH, seed) { return makePlate(cssW, cssH, seed, TH); },
       screen: function (P, ink, draw) { return screenCanvas(P, inkOf(ink), draw); },
       // one canvas per coverage, printed one job at a time: out[i] stays null until out.jobs[i] runs; out.at(i) prints
@@ -672,6 +693,8 @@
        dots     the dot set's id for the whole season (default classic)
        onUse    function (kind, id): a listed loss id when its moment plays (even if it then falls back), and the dot
                 set once, at the season's first stamp (only an id the reel actually got from opts and found)
+       onSkip   function (kind, id): a listed loss id passed over because it is not registered (or is off), and a dot
+                set from opts that did not resolve (app.js: T82ART.skip, so a look that never arrives moves on in the bag)
        clock    QA: function returning seconds; replaces the reel's clock
        manual   QA: no requestAnimationFrame loop and no idle scheduling. The reel then has frame() (one frame at the
                 clock's current time) and the prep runs only through qa.runJob() (or at a loss, all at once) */
@@ -684,7 +707,7 @@
     opts = opts || {};
     var TH = readTheme(opts.root), RGB = TH.rgb;
     var MANUAL = !!opts.manual, CLOCK = typeof opts.clock === "function" ? opts.clock : clock;
-    var onUse = typeof opts.onUse === "function" ? opts.onUse : null;
+    var onUse = typeof opts.onUse === "function" ? opts.onUse : null, onSkip = typeof opts.onSkip === "function" ? opts.onSkip : null;
     builtins();
 
     ov.classList.add("riso");
@@ -861,7 +884,8 @@
       idle(function next() {
         chain = false;
         if (!alive) return;
-        if (step() && pending()) { chain = true; idle(next); }
+        // a prep throw inside step() refreshes the window and kicks a chain of its own: then this one ends here
+        if (step() && pending() && !chain) { chain = true; idle(next); }
       });
     }
     function openGate() { gate = true; KIT.ready = true; refresh(); }
@@ -876,13 +900,25 @@
       }, 320);
     }
     function takeLoss() {                            // the next heavy loss's unit: the next playable listed id, or classic
-      while (LP < PLAN.length) { var i = LP++, u = unitAt(i); if (u) return { u: u, id: PLAN[i], listed: true }; }
+      while (LP < PLAN.length) {
+        var i = LP++, u = unitAt(i);
+        if (u) return { u: u, id: PLAN[i], listed: true };
+        skipped("loss", PLAN[i]);                    // not here (or off): the app moves it on in the bag
+      }
       return { u: classicU, id: "classic", listed: false };
+    }
+    function skipped(kind, id) { if (onSkip) { try { onSkip(kind, id); } catch (err) { /* the bag is the app's business */ } } }
+    // A dealt look whose file lands after the window was drawn (a slow phone, a slow network) joins it at the next
+    // stamp, so its prep runs in idle time, not all at once inside its slam. A few registry lookups; never without a list.
+    function lateArrivals() {
+      if (!gate || LP >= PLAN.length) return;
+      var w = lookahead();
+      for (var k = 0; k < Math.max(w.length, WIN.length); k++) if (w[k] !== WIN[k]) { refresh(); return; }
     }
     // A variant that throws (in prep, hit, veil, draw or caption) is off for the session: its units are freed and any
     // moment it is playing carries on as classic. Classic's own throws are swallowed, as ever (a frame without its L).
     function lossFail(x, err) {
-      if (x.def === CLASSIC_LOSS || x.def.builtin) return;
+      if (x.def === CLASSIC_LOSS) return;            // the engine's own (a variant that says builtin: true is still a variant)
       var id = x.id;
       kill("loss", id, err);
       Object.keys(UNITS).forEach(function (i) { var u = UNITS[i]; if (u.id === id) { u.dead = true; if (!u.playing) drop(u); } });
@@ -955,15 +991,16 @@
     }
 
     /* ---- the dot set (art/CONTRACT.md, "A dot set") ---- */
-    // A set's stamp must be still (its last pose) by one frame before its live window ends: the strip stops redrawing a
-    // stamp then, and the settled ledger must match strip()'s reprint pixel for pixel (tools/art-qa.mjs checks it).
+    // A set's stamp must be still (its last pose) by 0.05 s before its live window ends (a frame on a slow phone): the
+    // strip stops redrawing a stamp then, and the settled ledger must match strip()'s reprint pixel for pixel
+    // (tools/art-qa.mjs checks it at 60 fps).
     var DS = { K: KIT, used: false, fail: dotsFail };
     setDots(DS, CLASSIC_DOTS, "classic");
     function dotsFirst() {                           // the season's first stamp: the set is chosen once, for the season
       if (DS.used) return;
       DS.used = true;
       var id = typeof opts.dots === "string" ? opts.dots : null, def = id ? dotsDef(id) : null;
-      if (!def) return;
+      if (!def) { if (id) skipped("dots", id); return; }
       if (def !== CLASSIC_DOTS) setDots(DS, def, id);
       if (onUse) { try { onUse("dots", id); } catch (err) { /* the bag is the app's business */ } }
     }
@@ -1077,6 +1114,7 @@
       if (!S) throw new Error("reel row has no strip");
       var t = now(), D = { idx: idx, win: win, t0: info.instant ? -1e6 : t, streak: info.streak || 0, gi: info.gi, cl: info.cl };
       tNow = t;
+      lateArrivals();
       dotsFirst();
       D = markDot(DS, D);
       S.dots.push(D);

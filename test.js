@@ -978,10 +978,58 @@ if (fs.existsSync("site_data.json")) {
     const disk = {}, A = library(visit(disk), SEVEN), p1 = A.deal("loss", 5), p2 = A.deal("loss", 5), p3 = library(visit(disk), SEVEN).deal("loss", 5);
     A.used("loss", p1[0]);
     const after = A.deal("loss", 4);
-    A.used("loss", p1[2]);                                                    // the reel skipped p1[1] (its file never came)
+    A.used("loss", p1[2]);                                                    // the reel passed over p1[1] (not reported here)
     const skipped = A.deal("loss", 3);
-    eq("art bags: deal only peeks (twice in a row, and on the next visit, the same looks); used takes the look that played, and a skipped look keeps its place",
+    eq("art bags: deal only peeks (twice in a row, and on the next visit, the same looks); used takes only the look that played",
       [same(p1, p2), same(p2, p3), same(after, p1.slice(1, 5)), same(skipped, [p1[1], p1[3], p1[4]])], [true, true, true, true]);
+  }
+  {
+    // A look whose file never registers on this device (a 404, a throw at load, syntax an old iPhone cannot parse): the
+    // reel reports it (onSkip) and so does the print, and T82ART.skip moves it on. Before, nothing consumed it: it piled
+    // up at the head of the bag, froze the one-a-season bags (dots, scene) on it and filled the loss deal with it.
+    let most = 0, held = 0, lead2 = 0, leads = 0;
+    const plays = {};
+    for (let trial = 0; trial < 40; trial++) {
+      const disk = {}, dd = {};
+      let prev = null;
+      for (let season = 0; season < 10; season++) {
+        const A = library(visit(disk), ["a", "b", "c", "x"]), d = A.deal("loss", 14);
+        most = Math.max(most, d.filter((id) => id === "x").length);
+        if (d[0] === "x") leads++;                                            // frozen at the head: about 9 seasons in 10
+        let n = 0;
+        for (const id of d) { if (n === 6) break; if (id === "x") A.skip("loss", id); else { A.used("loss", id); n++; plays[id] = (plays[id] || 0) + 1; } }
+        held = Math.max(held, [].concat(...JSON.parse(disk["t82-art-bag-loss"]).b).filter((id) => id === "x").length);
+        const B = visit(dd);                                                  // a one-a-season bag dealt the same kind of look
+        B.index(["p", "q", "x"].map((id) => entry("dots", id))); B.add("dots", "classic", { builtin: true });
+        const h = B.deal("dots", 1)[0];
+        if (h === "x") { B.skip("dots", h); if (prev === "x") lead2++; } else B.used("dots", h);
+        prev = h;
+      }
+    }
+    const counts = Object.values(plays);
+    const pile = { "t82-art-bag-loss": JSON.stringify({ k: ["a", "b", "c", "x", "classic"], b: [["x"], ["x"], ["x"], ["x", "a", "b", "c", "classic"]] }) };
+    const P = library(visit(pile), ["a", "b", "c", "x"]).deal("loss", 9);
+    // a file still on the way keeps its place (it plays next time): a page with a document, where load() is in flight
+    const c = { Math, JSON, console, location: { hostname: "localhost", search: "" }, setTimeout: () => 0, clearTimeout: () => {},
+      document: { createElement: () => ({ setAttribute() {} }), head: { appendChild() {} }, querySelector: () => null } };
+    vm.createContext(c); vm.runInContext(ART_CORE, c);
+    const S = library(c.T82ART, ["a", "b", "x"]), before = S.deal("loss", 4);
+    S.load("loss", ["x"]);
+    const kept = S.skip("loss", "x"), still = S.deal("loss", 4);
+    eq("art bags: a look that never arrives moves on (T82ART.skip): it never piles up in the loss deal or leads a one-a-season bag twice running; " +
+      "a stored pile-up merges away; one still loading keeps its place",
+      [leads / 400 < 0.35, most <= 4, held <= 4, lead2, Math.max(...counts) - Math.min(...counts) <= 40, P.filter((id) => id === "x").length <= 3,
+        P.every((id, i) => !i || id !== P[i - 1]), kept, same(before, still)],
+      [true, true, true, 0, true, true, true, false, true]);
+    const E = library(visit({}), ["a"], [entry("loss", "evil", false)]);
+    E.add("loss", "evil", { builtin: true }); E.add("loss", "lab", { builtin: true });   // a copied flag; a file the lab loads by hand
+    const R2 = fs.readFileSync("reel-riso.js", "utf8"), A2 = fs.readFileSync("app.js", "utf8");
+    eq("art bags: builtin: true counts only for the engines' own ids (a variant that copies it is still switched off), and the reel and the print report a look that never arrived",
+      [E.enabled("loss").includes("evil"), E.enabled("loss").includes("lab"), E.enabled("loss").includes("classic"),
+        /skipped\("loss", PLAN\[i\]\)/.test(R2), /if \(id\) skipped\("dots", id\)/.test(R2), /if \(x\.def === CLASSIC_LOSS\) return;/.test(R2),
+        /onSkip: function \(kind, id\) \{ setTimeout\(function \(\) \{ try \{ if \(T82ART\.skip\) T82ART\.skip\(kind, id\);/.test(A2),
+        /T82ART\.skip\("scene", G\.art\.scene\)/.test(A2)],
+      [false, false, true, true, true, true, true, true]);
   }
   {
     const disk = {}, ids = ["a", "b", "c", "d"];
@@ -1048,7 +1096,7 @@ if (fs.existsSync("site_data.json")) {
   const Q = wiring(kit("preview.true82.pages.dev", "?art=loss:seal+drip,scene:skyline"));
   eq("art wiring: a test build's ?art= wins (loss:seal+drip plays seal, drip, seal...); the dot set still comes from the bag",
     [Q.classic[0].slice(0, 4), Q.classic[0].length, Q.classic[2], ["balls", "classic"].includes(Q.classic[1])], [["seal", "drip", "seal", "drip"], 14, "skyline", true]);
-  eq("art wiring: the print's scene is settled once a run (one still loading prints the lake and stays in the bag; a Heat Check reprint keeps it)",
+  eq("art wiring: the print's scene is settled once a run (one not there yet prints the lake and moves on in the bag unless still loading; a Heat Check reprint keeps it)",
     [W.early, W.settled, W.ready], [null, null, "skyline"]);
   eq("art wiring: without art-core.js nothing changes (no deal on the run, the reel's create() and the print's spec exactly as before)",
     vm.runInContext(`(function () { var keepG = G, keepMode = MODE; G = { ch: null }; MODE = "classic"; artDealRun();
@@ -1068,9 +1116,233 @@ if (fs.existsSync("site_data.json")) {
   const bad = [AI.parse('T82ART.add("loss", "sea1", { name: "x" });', "loss", "seal.js"), AI.parse('T82ART.add("dots", "seal", { name: "x" });', "loss", "seal.js"),
     AI.parse('T82ART.add("loss", "seal", { by: "no name" });', "loss", "seal.js"), AI.parse('T82ART.add("loss", "classic", { name: "x" });', "loss", "classic.js")];
   eq("art files: the index fails loudly on a wrong id, a wrong kind, a missing name, or a built-in's id", bad.map((f) => f.errors.length > 0), [true, true, true, true]);
-  eq("art files: each one is under its size budget (a loss look 10 KB, a dot set 6 KB, a scene 16 KB; art/CONTRACT.md law 6)",
-    FILES.filter((f) => f.bytes > AI.BUDGET[f.kind] * 1024).map((f) => f.rel + " is " + (f.bytes / 1024).toFixed(1) + " KB"), []);
+  // law 5: newer syntax is a SyntaxError on an older iPhone (iOS 15), where the file then never registers
+  const es5ok = '(function () { "use strict"; var r = /a+/g, h = x ? .5 : 1, o = { get v() { return 1; }, class: 1 };\n' +
+    '  p.catch(function (e) {}); T82ART.add("loss", "seal", { name: "x", draw: function (K, E, e) { return a / b / c; } }); })();';
+  const modern = ['let a = 1;', 'var f = (a) => a;', 'var s = `x`;', 'var b = a?.b ?? 1;', 'var o = { f() {} };', 'f(...a);', 'var r = /(?<=AT )[A-Z]+/;', 'function f(a = 1) {}']
+    .map((s) => AI.parse('(function () { "use strict"; ' + s + ' T82ART.add("loss", "seal", { name: "x", draw: function () {} }); })();', "loss", "seal.js"));
+  eq("art files: the index refuses post-ES5 syntax (law 5: let/const, arrows, template strings, ?. and ??, shorthand methods, spread, regex lookbehind, " +
+    "default parameters) and a variant that sets builtin; plain ES5 passes",
+    [AI.parse(es5ok, "loss", "seal.js").errors, modern.map((f) => f.errors.some((x) => /is not ES5/.test(x))),
+      AI.parse('T82ART.add("loss", "seal", { name: "x", builtin: true, draw: function () {} });', "loss", "seal.js").errors.some((x) => /builtin/.test(x))],
+    [[], modern.map(() => true), true]);
+  eq("art files: each one is under its size budget (a loss look 10 KB, a dot set 6 KB, a scene 16 KB; art/CONTRACT.md law 6; " +
+    "a hot pack 14, a perk pack 10, a goat pack 8, an 82-0 scene 20: art/CONTRACT-FX.md)",
+    FILES.filter((f) => f.bytes > AI.budgetOf(f) * 1024).map((f) => f.rel + " is " + (f.bytes / 1024).toFixed(1) + " KB"), []);
   eq("art files: zero em-dashes in their strings (copy law)", FILES.filter((f) => f.dash).map((f) => f.rel), []);
+}
+
+// v67 PART TWO (art/CONTRACT-FX.md): the owner's Heat Check, Presti perk and 82-0 firework looks ride the same registry
+// and bags as the art variants (riso-fx.js plays them), and an 82-0 season prints only from its own bag of perfect
+// scenes ("so much better than 81-1"). The bags, the index, the QA levers and the game's fallbacks are pure: pinned here.
+{
+  const ART_CORE = fs.readFileSync("art-core.js", "utf8");
+  const visit = (disk, host, search) => {
+    const c = { Math, JSON, console, location: { hostname: host == null ? "localhost" : host, search: search || "" } };
+    if (disk === "private") c.localStorage = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("denied"); } };
+    else if (disk) c.localStorage = { getItem: (k) => (k in disk ? disk[k] : null), setItem: (k, v) => { disk[k] = String(v); } };
+    vm.createContext(c);
+    vm.runInContext(ART_CORE, c);
+    return c.T82ART;
+  };
+  const entry = (kind, id, on, perfect) => ({ kind, id, name: id, file: "art/" + kind + "/" + id + ".js?v=t", on: on !== false, perfect: perfect === true });
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  // the new kinds' bags: one look per run, every look once before any repeats, never twice running, an off look never
+  let cycles = true, twice = 0, offDealt = false, apart = true;
+  ["hot", "perk", "goat"].forEach((kind) => {
+    for (let trial = 0; trial < 40; trial++) {
+      const disk = {}, seq = [];
+      for (let run = 0; run < 12; run++) {
+        const A = visit(disk);
+        A.index(["a", "b", "c", "d", "e"].map((id) => entry(kind, id)).concat([entry(kind, "x", false)]));
+        const d = A.deal(kind, 1)[0];
+        if (d === "x") offDealt = true;
+        A.used(kind, d); seq.push(d);
+      }
+      for (let i = 0; i + 5 <= seq.length; i += 5) if (new Set(seq.slice(i, i + 5)).size !== 5) cycles = false;
+      for (let i = 1; i < seq.length; i++) if (seq[i] === seq[i - 1]) twice++;
+      if (Object.keys(disk).some((k) => /^t82-art-bag-/.test(k) && k !== "t82-art-bag-" + kind)) apart = false;
+    }
+  });
+  eq("fx bags: the Heat Check, perk and 82-0 firework looks deal like the art variants (each once before any repeats, never twice running, never an off one), each kind in its own bag",
+    [cycles, twice, offDealt, apart], [true, 0, false, true]);
+
+  // the perfect scenes: a bag of their own, both ways
+  const perfLib = (A) => {
+    A.index([entry("scene", "skyline"), entry("scene", "harbor"), entry("scene", "summit", true, true), entry("scene", "rafters", true, true), entry("scene", "parade", false, true)]);
+    A.add("scene", "lake", { builtin: true });
+    return A;
+  };
+  let crossed = 0;
+  const ordSeen = new Set(), perfSeen = new Set();
+  for (let t = 0; t < 60; t++) {
+    const disk = {};
+    for (let run = 0; run < 6; run++) {
+      const A = perfLib(visit(disk)), o = A.deal("scene", 3), p = A.deal("scene", 3, { perfect: true });
+      o.forEach((id) => { ordSeen.add(id); if (["summit", "rafters", "parade"].includes(id)) crossed++; });
+      p.forEach((id) => { perfSeen.add(id); if (!["summit", "rafters"].includes(id)) crossed++; });
+      A.used("scene", o[0]); A.used("scene", p[0]);
+    }
+  }
+  eq("fx perfect scenes: an ordinary deal never hands out a perfect scene, a perfect deal never an ordinary one (nor the lake), and an off perfect scene is never dealt",
+    [crossed, [...ordSeen].sort(), [...perfSeen].sort()], [0, ["harbor", "lake", "skyline"], ["rafters", "summit"]]);
+  {
+    const disk = {}, A = perfLib(visit(disk)), o1 = A.deal("scene", 3), p1 = A.deal("scene", 2, { perfect: true });
+    A.used("scene", p1[0]);                                   // an 82-0 printed: only the perfect bag moves
+    const o2 = A.deal("scene", 3), p2 = A.deal("scene", 1, { perfect: true });
+    A.used("scene", o1[0]);                                   // an ordinary season printed: only the ordinary bag moves
+    const p3 = A.deal("scene", 1, { perfect: true }), o3 = A.deal("scene", 2);
+    const P = perfLib(visit("private")), d = P.deal("scene", 2, { perfect: true });
+    P.used("scene", d[0]);
+    eq("fx perfect scenes: used() takes a perfect scene from the perfect bag only and an ordinary one from the ordinary bag only (the ordinary bag keeps its v67 key); private mode keeps both in memory",
+      [same(o1, o2), p2[0] === p1[1], p3[0] === p2[0], same(o3, o1.slice(1, 3)), "t82-art-bag-scene" in disk, "t82-art-bag-scene-perfect" in disk,
+        disk["t82-art-last-scene-perfect"] === p1[0], P.deal("scene", 1, { perfect: true })[0] === d[1], P.enabled("scene", { perfect: true }).sort().join()],
+      [true, true, true, true, true, true, true, true, "rafters,summit"]);
+  }
+
+  // ?art= for the new kinds and the 82-0 scene (test builds only)
+  const fq = (host, q, kind, opts) => visit({}, host, q).forced(kind, opts);
+  const QS = "?art=hot:jam+solar,perk:stamps,goat:shells,perfect:summit,scene:skyline";
+  eq("fx QA: ?art= forces hot, perk, goat and the 82-0 scene (perfect:id) on a test build; scene: never answers for the perfect bag; true82.net ignores it",
+    [fq("localhost", QS, "hot"), fq("localhost", QS, "perk"), fq("localhost", QS, "goat"), fq("localhost", QS, "perfect"), fq("localhost", QS, "scene", { perfect: true }),
+      fq("localhost", QS, "scene"), fq("localhost", "?art=scene:skyline", "scene", { perfect: true }), fq("true82.net", QS, "hot"), fq("www.true82.net", QS, "perfect")],
+    [["jam", "solar"], ["stamps"], ["shells"], ["summit"], ["summit"], ["skyline"], null, null, null]);
+
+  // the index (tools/art-index.js): the new folders, perfect: true read without running the file, the budgets
+  const AI = require("./tools/art-index.js"), pp = (src, kind, base) => AI.parse(src, kind, base);
+  const summit = pp('T82ART.add("scene", "summit", { name: "The Summit", perfect: true, layers: function () { return { perfect: false }; } });', "scene", "summit.js");
+  const nested = pp('T82ART.add("scene", "x", { name: "X", layers: function () { var o = { perfect: true }; return o; } });', "scene", "x.js");
+  const notLit = pp('/* perfect: true */ T82ART.add("scene", "y", { name: "Y", perfect: !0 });', "scene", "y.js");
+  const quoted = pp('T82ART.add("scene", "q", { "perfect": true, name: "Q" });', "scene", "q.js");
+  const onGoat = pp('T82ART.add("goat", "g", { name: "G", perfect: true });', "goat", "g.js");
+  const hot = pp('T82ART.add("hot", "jam", { name: "Heating Up", slots: {} });', "hot", "jam.js");
+  const wrong = pp('T82ART.add("perk", "jam", { name: "x" });', "hot", "jam.js");
+  eq("fx index: art/hot, art/perk and art/goat are scanned; perfect: true is read without running the file (a literal true on the def itself only), and only a scene may say it",
+    [["hot", "perk", "goat"].every((k) => AI.KINDS.includes(k)), summit.perfect, nested.perfect, notLit.perfect, quoted.perfect, onGoat.errors.length > 0, hot.errors.length, wrong.errors.length > 0],
+    [true, true, false, false, true, true, 0, true]);
+  eq("fx index: the budgets (a hot pack 14 KB, a perk pack 10, a goat pack 8, an 82-0 scene 20, an ordinary scene still 16)",
+    [AI.budgetOf(hot), AI.budgetOf({ kind: "perk" }), AI.budgetOf(onGoat), AI.budgetOf(summit), AI.budgetOf(nested)], [14, 10, 8, 20, 16]);
+  {
+    const txt = AI.text([{ kind: "scene", id: "skyline", name: "Skyline", file: "art/scene/skyline.js?v=k", on: true, perfect: false },
+      { kind: "scene", id: "summit", name: "The Summit", file: "art/scene/summit.js?v=k", on: true, perfect: true },
+      { kind: "hot", id: "jam", name: "Heating Up", file: "art/hot/jam.js?v=k", on: true, perfect: false }]);
+    const c = { Math, JSON, console, location: { hostname: "localhost", search: "" } };
+    vm.createContext(c); vm.runInContext(ART_CORE, c); vm.runInContext(txt, c);
+    const A = c.T82ART;
+    eq("fx index: the generated art-index.js carries perfect: true (only on the 82-0 scenes), and art-core.js deals each from its own bag",
+      [(txt.match(/perfect: true/g) || []).length, /"skyline"[^\n]*perfect/.test(txt), A.enabled("scene"), A.enabled("scene", { perfect: true }), A.enabled("hot"), A.catalog("scene").map((e) => e.perfect)],
+      [1, false, ["skyline"], ["summit"], ["jam"], [false, true]]);
+  }
+
+  // the game's wiring (app.js): the deal, the 82-0 picture, the fallbacks and the QA levers
+  const fxRun = (A, fx, body) => {
+    ctx.window.T82ART = A; ctx.T82ART = A; ctx.window.T82 = ctx.T82;
+    if (fx) { ctx.window.T82FX = fx; ctx.T82FX = fx; }
+    try { return vm.runInContext("(function () { var keepG = G, keepMode = MODE, out = {}; try {" + body + "} finally { G = keepG; MODE = keepMode; } return out; })()", ctx); }
+    finally { delete ctx.window.T82ART; delete ctx.T82ART; delete ctx.window.T82; delete ctx.window.T82FX; delete ctx.T82FX; }
+  };
+  const fxLib = (host, q) => {
+    const A = visit({}, host, q);
+    A.index([entry("hot", "jam"), entry("perk", "stamps"), entry("goat", "shells"), entry("scene", "skyline"), entry("scene", "summit", true, true)]);
+    A.add("scene", "lake", { builtin: true });
+    return A;
+  };
+  const D = fxRun(fxLib(), { play() { return 0; } }, `
+    function run(mode, g) { MODE = mode; G = g; artDealRun(); return G.art ? [G.art.hot, G.art.perk, G.art.goat, G.art.perfect] : null; }
+    out.presti = run("cap", { ch: null }); out.classic = run("classic", { ch: null }); out.daily = run("classic", { ch: null, social: { key: "k" } });
+    out.pro = run("pro", { ch: null }); out.kaman = run("kaman", { ch: null });
+    T82ART.add("scene", "skyline", {}); T82ART.add("scene", "summit", { perfect: true });
+    G = { art: { loss: [], dots: null, scene: "skyline", perfect: "summit" } };
+    out.print = [resultsPrintScene(), resultsPrintPerfect()];`);
+  const N = fxRun(fxLib(), null, `MODE = "cap"; G = { ch: null }; artDealRun(); out.d = [G.art.hot, G.art.perk, G.art.goat, G.art.perfect];`);
+  eq("fx wiring: a Presti run deals one Heat Check, one perk and one goat look plus an 82-0 scene; the other modes the goat look and the 82-0 scene; Kaman nothing; " +
+    "without riso-fx.js no FX look is dealt (nothing downloads, the bags stay put) but the 82-0 scene still is",
+    [D.presti, D.classic, D.daily, D.pro, D.kaman, N.d],
+    [["jam", "stamps", "shells", "summit"], [null, null, "shells", "summit"], [null, null, "shells", "summit"], [null, null, "shells", "summit"], null, [null, null, null, "summit"]]);
+  eq("fx wiring: the print's 82-0 picture is the run's perfect scene and anything less its ordinary one", D.print, ["skyline", "summit"]);
+  const forcedRun = fxRun(fxLib("preview.pages.dev", "?art=hot:solar,perfect:parade"), { play() { return 0; } }, `MODE = "cap"; G = { ch: null }; artDealRun(); out.d = [G.art.hot, G.art.perfect, ["skyline", "lake"].indexOf(G.art.scene) >= 0];`);
+  eq("fx wiring: a test build's ?art=hot:id,perfect:id wins over the bags (the ordinary scene still comes from its bag)", forcedRun.d, ["solar", "parade", true]);
+
+  const calls = [];
+  const FXM = {
+    mode: "ok",
+    play(kind, slot, anchor, o) { calls.push([kind, slot, !!o.big, o.id]); if (this.mode === "throw") throw new Error("boom"); if (this.mode === "zero") return 0; return 900; },
+    prime(kind, id) { calls.push(["prime", kind, id]); }, use(kind, id) { calls.push(["use", kind, id]); }, stop() { calls.push(["stop"]); }
+  };
+  const fxBody = (mode) => `
+    var fell = [], used = [], keepUsed = T82ART.used, keepST = setTimeout, keepSpray = sprayFromEl, keepNova = supernovaErupt;
+    T82ART.used = function (k, id) { used.push(k + "/" + id); };
+    setTimeout = function (fn) { fn(); return 0; };
+    sprayFromEl = function (el, em) { fell.push("spray " + em.join("")); };
+    supernovaErupt = function () { fell.push("plumes"); };
+    try {
+      T82ART.add("perk", "stamps", { name: "x" }); T82ART.add("hot", "jam", { name: "x" });
+      MODE = "cap"; G = { art: { hot: "jam", perk: "stamps", goat: "shells" } };
+      ${mode ? "window.T82FX.mode = '" + mode + "';" : ""}
+      out.ms = fxPlay("perk", "refund", {}, { label: "REFUND" }, function () { fell.push("cash"); });
+      out.again = fxPlay("perk", "sale", {}, {}, function () { fell.push("arrows"); });
+      out.unloaded = fxPlay("goat", "burst", {}, {}, function () { fell.push("goats"); });
+      out.noAnchor = fxPlay("perk", "refund", null, {}, function () { fell.push("cash, no buttons"); });
+      [0, 1, 2, 3, 4].forEach(function (i) { hhLockFx(i, {}); });
+      out.fell = fell; out.used = used;
+    } finally { T82ART.used = keepUsed; setTimeout = keepST; sprayFromEl = keepSpray; supernovaErupt = keepNova; }`;
+  const none = fxRun(fxLib(), null, fxBody(null));
+  eq("fx fallbacks: without riso-fx.js every moment plays the old emoji effect (the cash and arrow sprays, the ON FIRE spray, the SUPERNOVA plumes) and books no look",
+    [none.ms, none.fell, none.used], [0, ["cash", "arrows", "goats", "cash, no buttons", "spray \uD83D\uDD25", "plumes"], []]);
+  calls.length = 0;
+  const ok = fxRun(fxLib(), FXM, fxBody("ok"));
+  eq("fx wiring: with riso-fx.js the run's look plays instead of the emoji (a look whose file is not in yet: riso-fx.js's classic one), each tier at its own slot (only SUPERNOVA big), and a dealt look leaves the bag once, when it first plays",
+    [ok.ms, ok.fell, ok.used, calls.filter((c) => c[0] === "hot").map((c) => c[1] + (c[2] ? "!" : "")), calls.filter((c) => c[0] !== "hot").map((c) => c[0] + "/" + c[3])],
+    [900, ["cash, no buttons"], ["perk/stamps", "hot/jam"], ["cold", "warm", "hot", "fire", "nova!"], ["perk/stamps", "perk/stamps", "goat/classic"]]);
+  const thrown = fxRun(fxLib(), FXM, fxBody("throw")), zero = fxRun(fxLib(), FXM, fxBody("zero"));
+  const OLD = ["cash", "arrows", "goats", "cash, no buttons", "spray \uD83D\uDD25", "plumes"];
+  eq("fx fallbacks: a call that throws or plays nothing (0 ms: no reel kit, no canvas) plays the old emoji effect exactly once, and books no look",
+    [thrown.fell, thrown.used, zero.fell, zero.used], [OLD, [], OLD, []]);
+  calls.length = 0; FXM.mode = "ok";
+  const stops = fxRun(fxLib(), FXM, `
+    G = { art: { perk: "stamps", hot: "jam", goat: null } }; T82ART.add("perk", "stamps", { name: "x" }); T82ART.add("hot", "jam", { name: "x" });
+    FX_UNTIL = 0; out.idle = fxStop(true); out.gen0 = FX_GEN;
+    fxPlay("perk", "refund", {}, {}, null); out.playing = fxStop(true); out.after = fxStop(true); out.always = fxStop(); out.gen1 = FX_GEN;
+    fxPrime(["hot", "perk", "goat"]);`);
+  eq("fx wiring: SKIP and entering the results stop riso-fx.js only while something prints, leaving the results always does; a prime goes to each look whose file is in",
+    [stops.idle, stops.playing, stops.after, stops.always, stops.gen1 - stops.gen0, calls.filter((c) => c[0] === "stop").length, calls.filter((c) => c[0] === "prime").map((c) => c[1] + "/" + c[2])],
+    [false, true, false, true, 3, 2, ["hot/jam", "perk/stamps"]]);
+  const APP = fs.readFileSync("app.js", "utf8");
+  eq("fx wiring: the game calls the looks where the emoji used to play (the wheel's lock and the verdicts in both Heat Checks, REFUND and FIRE SALE, every 82-0 volley, the reel's 82-0 finale), stops them on SKIP and screen changes, and an 82-0 prints the perfect scene, the save's reprint too",
+    [(APP.match(/hhLockFx\(segIdx, label\);/g) || []).length, (APP.match(/fxPlay\("hot", "save"/g) || []).length, (APP.match(/fxPlay\("hot", "miss"/g) || []).length,
+      /fxPlay\("perk", "refund", acts/.test(APP), /fxPlay\("perk", "sale", acts/.test(APP), /fxPlay\("goat", "burst", box/.test(APP), /fireGoats\(rc, true\)/.test(APP),
+      /sprayFromEl\(document\.querySelector\("\.ticket-actions"\)/.test(APP), /if \(segIdx === 4\) supernovaErupt\(label\);\n\s+else if/.test(APP.replace(/function hhLockFx[\s\S]*?\n\}/, "")),
+      /function newGame[^\n]*\n(?:[^\n]*\n){0,5}\s+fxStop\(\);/.test(APP), /function renderIntro\(\) \{\n  fxStop\(\);/.test(APP), /if \(fxStop\(true\)\) fxPrime\(\["hot", "goat"\]\);\n  if \(MODE === "kaman"\)/.test(APP),
+      /var scene = wins >= CFG\.GAMES_IN_SEASON \? resultsPrintPerfect\(\) : resultsPrintScene\(\);/.test(APP), /RESULTS_PRINT_SPEC\.scene !== was/.test(APP)],
+    [2, 2, 2, true, true, true, true, false, false, true, true, true, true, true]);
+
+  // the QA levers (test builds only): ?perk= lands the run's first paid Presti spin on that perk; ?force82= the record
+  ctx.location = { hostname: "true82.net", search: "?perk=refund&force82=1" };
+  const live = vm.runInContext(`[qaFlag(/[?&]perk=(refund|sale)(?:&|$)/), qaFlag(/[?&]force82=(1|81|save)(?:&|$)/)]`, ctx);
+  ctx.location = { hostname: "preview.true82.pages.dev", search: "?perk=sale&force82=save" };
+  const test = vm.runInContext(`[qaFlag(/[?&]perk=(refund|sale)(?:&|$)/), qaFlag(/[?&]force82=(1|81|save)(?:&|$)/)]`, ctx);
+  ctx.location = { search: "" };
+  const lev = vm.runInContext(`(function () {
+    var keepG = G, keepMode = MODE, keepP = FORCE_PERK, keep82 = FORCE_82, out = {};
+    try {
+      MODE = "cap"; FORCE_PERK = "refund";
+      G = { budget: 9, maxCap: 9, refundFlash: null, fireSale: true, fireSaleFlash: "skipEra" }; qaPerk("skipEra"); qaPerk("skipEra");
+      out.refund = [G.budget, G.maxCap, G.refundFlash, G.fireSale, G.fireSaleFlash];
+      FORCE_PERK = "sale"; G = { budget: 9, maxCap: 9, refundFlash: "skipTeam", fireSale: false, fireSaleFlash: null }; qaPerk("skipTeam");
+      out.sale = [G.budget, G.maxCap, G.refundFlash, G.fireSale, G.fireSaleFlash];
+      MODE = "classic"; G = { budget: 9, maxCap: 9 }; qaPerk("skipTeam"); out.classic = G.refundFlash || null;
+      var games = [], e = { winTally: 60 }, s = { games: games, wins: 60, losses: 22 };
+      for (var i = 0; i < 82; i++) games.push(i % 4 !== 0);
+      FORCE_82 = "1"; qaForceSeason(e, s); out.perfect = [e.winTally, s.wins, s.losses, games.every(Boolean)];
+      FORCE_82 = "81"; qaForceSeason(e, s); out.one = [e.winTally, s.wins, s.losses, games.indexOf(false) >= 68];
+      FORCE_82 = null; e.winTally = 50; qaForceSeason(e, s); out.off = e.winTally;
+    } finally { G = keepG; MODE = keepMode; FORCE_PERK = keepP; FORCE_82 = keep82; }
+    return out;
+  })()`, ctx);
+  eq("fx QA levers: ?perk= and ?force82= are ignored on true82.net and read on a test build; ?perk= lands the run's first paid Presti spin on the real perk (once a run, Presti only); ?force82= makes the record 82-0 or 81-1",
+    [live, test, lev.refund, lev.sale, lev.classic, lev.perfect, lev.one, lev.off],
+    [[null, null], ["sale", "save"], [10, 10, "skipEra", false, null], [8, 8, null, true, "skipTeam"], null, [82, 82, 0, true], [81, 81, 1, true], 50]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

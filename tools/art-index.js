@@ -11,15 +11,19 @@
      3. node tools/art-index.js --check     passes: the stamp rewrote the index's keys exactly as step 1 would write them
    A look the game should stop dealing (the lab still shows it): add "<kind>/<id>" to "off" in art/enabled.json and
    run step 1. It fails loudly on a file whose id is not its name, whose kind is not its folder, that has no literal
-   name, or that takes a built-in's id (the classic L and dots, the lake). */
+   name, or that takes a built-in's id (the classic L and dots, the lake).
+   Part two (art/CONTRACT-FX.md): art/hot, art/perk and art/goat (the riso FX layer's packs) are listed the same way,
+   and a scene whose def says perfect: true (a literal true, read without running the file) is an 82-0 scene: its
+   entry carries perfect: true, so the game deals it only for an 82-0 season, from its own bag. */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
 const ROOT = path.join(__dirname, "..");
-const KINDS = ["loss", "dots", "scene"];
-const BUILTIN = { loss: ["classic"], dots: ["classic"], scene: ["lake"] };   // they live inside the engines
-const BUDGET = { loss: 10, dots: 6, scene: 16 };                              // KB of unminified source (law 6)
+const KINDS = ["loss", "dots", "scene", "hot", "perk", "goat"];
+const BUILTIN = { loss: ["classic"], dots: ["classic"], scene: ["lake"], hot: ["classic"], perk: ["classic"], goat: ["classic"] };   // they live inside the engines (riso-fx.js's classic looks too)
+const BUDGET = { loss: 10, dots: 6, scene: 16, hot: 14, perk: 10, goat: 8 };   // KB of unminified source (law 6; part two's budgets)
+const BUDGET_PERFECT = 20;                                                     // an 82-0 scene: more inks, more layers, its live motion
 const INDEX = "art-index.js", ENABLED = "art/enabled.json", MANIFEST = path.join(__dirname, "cache-keys.json");
-const ART_FILE = /^art\/(loss|dots|scene)\/[^/]+\.js$/;
+const ART_FILE = /^art\/(loss|dots|scene|hot|perk|goat)\/[^/]+\.js$/;
 const ID = /^[a-z0-9-]+$/;
 
 // Comments become spaces (offsets stay put) and every string literal is listed with its value, so a comment that
@@ -48,14 +52,121 @@ function lex(src) {
   return { code, strs };
 }
 
+// Law 5 (ES5, like the engines). A file in newer syntax passes Chromium and today's Safari but is a SyntaxError on an
+// older iPhone (the first iPhone SE stops at iOS 15): there the whole file never registers. This walks the file's
+// tokens (comments, strings and regex literals read as such) and names each newer form with its line: let/const,
+// arrows, template strings, classes and the other reserved words, spread and rest, ?. and ??, **, default and
+// destructured parameters, destructuring, shorthand and computed object keys, for...of, generators and async,
+// trailing commas in calls, binary/octal/BigInt/separated numbers, \u{...}, regex flags past g/i/m, lookbehind and
+// named groups. The engines pass it as they are.
+function es5(src) {
+  const out = [], toks = [], at = (i) => src.slice(0, i).split("\n").length;
+  const bad = (i, what) => { if (out.length < 6) out.push("line " + at(i) + ": " + what); };
+  const P = ["...", "?.", "??=", "??", "=>", "**=", "**", "||=", "&&=", ">>>=", "===", "!==", ">>>", "<<=", ">>=", "==", "!=", "<=", ">=",
+    "&&", "||", "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<", ">>"];
+  const NEW = { "...": "spread or rest (...)", "?.": "optional chaining (?.)", "??": "?? (nullish)", "??=": "??=", "=>": "an arrow function (=>)",
+    "**": "the ** operator", "**=": "**=", "||=": "||=", "&&=": "&&=" };
+  const RESERVED = /^(?:let|const|class|enum|export|extends|import|super|yield)$/;
+  const EXPR = /^(?:return|typeof|instanceof|in|of|new|delete|void|throw|case|yield|await)$/;   // an expression follows these
+  const STMT = /^(?:if|for|while|switch|catch|function|with|do|else|try|finally|var|break|continue)$/;
+  const name0 = (ch) => /[A-Za-z_$\\]/.test(ch) || ch > "\x7f", name1 = (ch) => /[\w$\\]/.test(ch) || ch > "\x7f";
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i], d = src[i + 1], prev = toks[toks.length - 1];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === "/" && d === "/") { const e = src.indexOf("\n", i); i = e < 0 ? src.length : e; continue; }
+    if (c === "/" && d === "*") { const e = src.indexOf("*/", i + 2); i = e < 0 ? src.length : e + 2; continue; }
+    if (c === '"' || c === "'" || c === "`") {
+      let j = i + 1;
+      while (j < src.length && src[j] !== c && (c === "`" || src[j] !== "\n")) j += src[j] === "\\" ? 2 : 1;
+      if (c === "`") bad(i, "a template string (`...`)");
+      else if (/\\u\{/.test(src.slice(i, j))) bad(i, "a \\u{...} escape");
+      toks.push({ t: "s", v: c, i }); i = j + 1; continue;
+    }
+    if (c === "/" && (!prev || (prev.t === "p" && !/^(?:\)|\]|\+\+|--)$/.test(prev.v)) || (prev.t === "n" && (EXPR.test(prev.v) || /^(?:do|else)$/.test(prev.v))))) {
+      let j = i + 1, cls = false;
+      for (; j < src.length && src[j] !== "\n"; j++) {
+        if (src[j] === "\\") { j++; continue; }
+        if (src[j] === "[") cls = true; else if (src[j] === "]") cls = false; else if (src[j] === "/" && !cls) break;
+      }
+      const body = src.slice(i + 1, j);
+      let k = j + 1;
+      while (k < src.length && name1(src[k])) k++;
+      const flags = src.slice(j + 1, k);
+      if (/[^gim]/.test(flags)) bad(i, "the regex flag " + flags.replace(/[gim]/g, "") + " (ES5 has g, i and m)");
+      if (/(?:^|[^\\])\(\?<[=!]/.test(body)) bad(i, "a regex lookbehind, (?<= or (?<! (Safari 16.4)");
+      else if (/(?:^|[^\\])\(\?<[A-Za-z_$]/.test(body)) bad(i, "a named regex group (?<name>)");
+      toks.push({ t: "r", v: "/", i }); i = k; continue;
+    }
+    if (/[0-9]/.test(c) || (c === "." && /[0-9]/.test(d))) {
+      let j = i;
+      while (j < src.length && (name1(src[j]) || src[j] === "." || (/[+-]/.test(src[j]) && /^[0-9.]+[eE]$/.test(src.slice(i, j))))) j++;
+      const num = src.slice(i, j);
+      if (/^0[bBoO]/.test(num)) bad(i, "a binary or octal literal (" + num + ")");
+      else if (/_/.test(num)) bad(i, "a numeric separator (" + num + ")");
+      else if (/n$/.test(num)) bad(i, "a BigInt (" + num + ")");
+      toks.push({ t: "#", v: num, i }); i = j; continue;
+    }
+    if (name0(c)) {
+      let j = i;
+      while (j < src.length && name1(src[j])) j++;
+      if (/\\u\{/.test(src.slice(i, j))) bad(i, "a \\u{...} escape");
+      toks.push({ t: "n", v: src.slice(i, j), i }); i = j; continue;
+    }
+    let p = P.find((s) => src.startsWith(s, i)) || c;
+    if (p === "?." && /[0-9]/.test(src[i + 2] || "")) p = "?";               // a ? .5 : 1 is a conditional
+    toks.push({ t: "p", v: p, i }); i += p.length;
+  }
+  // the second pass: each token in its place. A brace is an object after an operator or an expression keyword,
+  // otherwise a block; a paren after function (or a function's name) or catch holds parameters
+  const stack = [];
+  const after = (o) => { for (let k = o, n = 0; k < toks.length; k++) { n += toks[k].v === "(" ? 1 : toks[k].v === ")" ? -1 : 0; if (!n) return toks[k + 1] && toks[k + 1].v; } return null; };
+  for (let k = 0; k < toks.length; k++) {
+    const T = toks[k], B = toks[k - 1], N = toks[k + 1], top = stack[stack.length - 1], v = T.v;
+    const key = top && top.c === "obj" && B && B.t === "p" && (B.v === "{" || B.v === ",");   // where an object's key goes
+    if (T.t === "p" && NEW[v]) bad(T.i, NEW[v]);
+    if (T.t === "n") {
+      if (RESERVED.test(v) && !(B && B.t === "p" && B.v === ".") && !(key && N && N.v === ":")) bad(T.i, "\"" + v + "\" (a reserved word in ES5)");
+      if (v === "async" && N && N.t === "n" && N.v === "function") bad(T.i, "an async function");
+      if (v === "of" && top && top.c === "for" && B && ((B.t === "n" && B.v !== "var") || B.v === "]" || B.v === "}")) bad(T.i, "for...of");
+      if (v === "function" && N && N.v === "*") bad(T.i, "a generator (function*)");
+      if (v === "var" && N && (N.v === "{" || N.v === "[")) bad(N.i, "a destructuring var");
+    }
+    if (key) {
+      if (T.v === "[") bad(T.i, "a computed key ([...]: in an object)");
+      else if (T.v === "*") bad(T.i, "a generator method");
+      else if (T.t === "n" && STMT.test(v)) { /* a statement in a block read as an object (case 1: { if (x) ... }) */ }
+      else if ((T.t === "n" || T.t === "s" || T.t === "#") && N && N.v === "(" && after(k + 1) === "{") bad(T.i, "a shorthand method (" + v + "() {...})");
+      else if (T.t === "n" && N && (N.v === "," || N.v === "}")) bad(T.i, "a shorthand property ({ " + v + " })");
+    }
+    if (T.t !== "p") continue;
+    if (v === "," && N && N.v === ")") bad(T.i, "a trailing comma before )");
+    if (top && top.c === "par" && (v === "{" || v === "[" || v === "=")) bad(T.i, v === "=" ? "a default parameter" : "a destructured parameter");
+    if (v === "{") {
+      const obj = B && ((B.t === "p" && !/^(?:\)|\]|\}|;|\{|=>)$/.test(B.v)) || (B.t === "n" && EXPR.test(B.v)));
+      stack.push({ c: obj ? "obj" : "blk" });
+    } else if (v === "(") {
+      const B2 = toks[k - 2], fn = B && B.t === "n" && !(B2 && B2.v === ".") && (/^(?:function|catch)$/.test(B.v) || (B2 && B2.v === "function"));
+      stack.push({ c: fn ? "par" : B && B.v === "for" ? "for" : "grp" });
+    } else if (v === "[") stack.push({ c: B && (B.t === "n" || B.t === "s" || B.v === ")" || B.v === "]") && !(B.t === "n" && EXPR.test(B.v)) ? "idx" : "arr" });
+    else if (v === "}" || v === ")" || v === "]") {
+      const s = stack.pop();
+      if (v === "]" && s && s.c === "arr" && N && N.v === "=" ) bad(T.i, "a destructuring assignment ([...] =)");
+    }
+  }
+  return out;
+}
+
 // one variant file: what T82ART.add says about it, read without running it
 function read(kind, base) { return parse(fs.readFileSync(path.join(ROOT, "art", kind, base), "utf8"), kind, base); }
 function parse(src, kind, base) {
   const rel = "art/" + kind + "/" + base, id = base.replace(/\.js$/, ""), errors = [], L = lex(src);
-  const f = { kind, id, rel, name: null, bytes: Buffer.byteLength(src, "utf8"), errors,
+  const f = { kind, id, rel, name: null, perfect: false, bytes: Buffer.byteLength(src, "utf8"), errors,
     dash: L.strs.some((s) => /\u2014/.test(s.val) || /\\u2014/i.test(s.raw)) };
   if (!ID.test(id)) errors.push(rel + ": the file's name is the variant's id: lowercase letters, digits and hyphens only");
   if (BUILTIN[kind].indexOf(id) >= 0) errors.push(rel + ": \"" + id + "\" is a built-in's id (it lives in the engine); pick another name");
+  es5(src).forEach((p) => errors.push(rel + ": " + p + " is not ES5 (law 5: an iPhone on iOS 15 or older cannot parse the file, so the look never loads there)"));
+  if (/\.builtin\s*=[^=]/.test(L.code)) errors.push(rel + ": builtin is the engines' own flag (the classic L and dots, the lake); a variant never sets it");
   // T82ART.add(...), window.T82ART.add(...), or a local name for it (var A = window.T82ART; A.add(...))
   const names = ["T82ART"], alias = /\b([A-Za-z_$][\w$]*)\s*=\s*[^;,=][^;,]*\bT82ART\b/g;
   let a;
@@ -76,22 +187,29 @@ function parse(src, kind, base) {
   f.name = nameIn(L, open);
   if (f.name == null) errors.push(rel + ": the def needs name: \"...\" as a plain string (the lab's label, 2 or 3 words)");
   else if (!f.name.trim()) errors.push(rel + ": the def's name is empty");
+  if (keyIn(L, open, "builtin", () => true) === true) errors.push(rel + ": builtin is the engines' own flag (the classic L and dots, the lake); a variant never sets it");
+  f.perfect = perfectIn(L, open);
+  if (f.perfect && kind !== "scene") errors.push(rel + ": perfect: true is for scenes only (an 82-0 print, art/CONTRACT-FX.md)");
   return f;
 }
 // the object's own name: "..." (depth 1 only, so a nested { name } inside a layer never counts)
-function nameIn(L, open) {
-  const code = L.code, at = {};
+function nameIn(L, open) { return keyIn(L, open, "name", valueAt); }
+// part two: perfect: true at depth 1 (a literal true; anything else is an ordinary scene)
+function perfectIn(L, open) { return keyIn(L, open, "perfect", (L2, at, code, from) => /^\s*:\s*true\b/.test(code.slice(from))) === true; }
+// the def's own key (depth 1 only), handed to read(L, at, code, the offset just after the key)
+function keyIn(L, open, key, read) {
+  const code = L.code, at = {}, bare = new RegExp("^" + key + "\\s*:");
   L.strs.forEach((s) => { at[s.at] = s; });
   let depth = 0, prev = "";
   for (let i = open; i < code.length; i++) {
     if (at[i]) {
-      if (depth === 1 && (prev === "{" || prev === ",") && /^\s*:/.test(code.slice(at[i].end)) && at[i].val === "name") return valueAt(L, at, code, at[i].end);
+      if (depth === 1 && (prev === "{" || prev === ",") && /^\s*:/.test(code.slice(at[i].end)) && at[i].val === key) return read(L, at, code, at[i].end);
       i = at[i].end - 1; prev = '"'; continue;
     }
     const c = code[i];
     if (c === "{" || c === "[" || c === "(") depth++;
     else if (c === "}" || c === "]" || c === ")") { if (--depth === 0) return null; }
-    else if (depth === 1 && (prev === "{" || prev === ",") && /^name\s*:/.test(code.slice(i, i + 12))) return valueAt(L, at, code, i + 4);
+    else if (depth === 1 && (prev === "{" || prev === ",") && bare.test(code.slice(i, i + key.length + 8))) return read(L, at, code, i + key.length);
     if (!/\s/.test(c)) prev = c;
   }
   return null;
@@ -102,7 +220,7 @@ function valueAt(L, at, code, from) {
   return s && s.raw[0] !== "`" ? s.val : null;
 }
 
-// every variant file on disk, in a fixed order (loss, dots, scene; then by id)
+// every variant file on disk, in a fixed order (KINDS: loss, dots, scene, hot, perk, goat; then by id)
 function scan() {
   const out = [];
   KINDS.forEach((kind) => {
@@ -133,10 +251,11 @@ function syncManifest(m, files) {
 }
 function text(entries) {
   const rows = entries.map((e) => "    { kind: " + JSON.stringify(e.kind) + ", id: " + JSON.stringify(e.id) + ", name: " + JSON.stringify(e.name) +
-    ", file: " + JSON.stringify(e.file) + ", on: " + e.on + " }");
-  return "/* GENERATED by node tools/art-index.js from art/loss, art/dots and art/scene: never hand-edit (art/CONTRACT.md).\n" +
-    "   One entry per variant file; \"on\" = the game deals it (art/enabled.json lists the ones that are off; the lab shows\n" +
-    "   them all). Each file's ?v= key is the cache-key manifest's: node tools/cache-keys.js --stamp <key> rewrites it. */\n" +
+    ", file: " + JSON.stringify(e.file) + ", on: " + e.on + (e.perfect ? ", perfect: true" : "") + " }");
+  return "/* GENERATED by node tools/art-index.js from art/<kind>/ (loss, dots, scene, hot, perk, goat): never hand-edit\n" +
+    "   (art/CONTRACT.md, art/CONTRACT-FX.md). One entry per variant file; \"on\" = the game deals it (art/enabled.json lists\n" +
+    "   the ones that are off; the lab shows them all); \"perfect\" = an 82-0 scene, dealt from its own bag. Each file's\n" +
+    "   ?v= key is the cache-key manifest's: node tools/cache-keys.js --stamp <key> rewrites it. */\n" +
     "(function () {\n  \"use strict\";\n  if (typeof T82ART === \"undefined\" || !T82ART || !T82ART.index) return;\n" +
     (rows.length ? "  T82ART.index([\n" + rows.join(",\n") + "\n  ]);\n" : "  T82ART.index([]);\n") + "})();\n";
 }
@@ -146,7 +265,7 @@ function build() {
   files.forEach((f) => f.errors.forEach((e) => errors.push(e)));
   const off = offList(files, errors), m = syncManifest(loadManifest(), files);
   const entries = files.filter((f) => !f.errors.length).map((f) => ({ kind: f.kind, id: f.id, name: f.name,
-    file: f.rel + "?v=" + m.files[f.rel].key, on: off.indexOf(f.kind + "/" + f.id) < 0 }));
+    file: f.rel + "?v=" + m.files[f.rel].key, on: off.indexOf(f.kind + "/" + f.id) < 0, perfect: f.perfect === true }));
   return { files, errors, entries, manifest: m, text: text(entries) };
 }
 function check() {
@@ -165,7 +284,8 @@ function write() {
   const p = path.join(ROOT, INDEX);
   const changed = !fs.existsSync(p) || fs.readFileSync(p, "utf8") !== b.text;
   if (changed) fs.writeFileSync(p, b.text);
-  const per = KINDS.map((k) => b.entries.filter((e) => e.kind === k).length + " " + k).join(", ");
+  const perfects = b.entries.filter((e) => e.perfect).length;
+  const per = KINDS.map((k) => b.entries.filter((e) => e.kind === k).length + " " + k).join(", ") + (perfects ? " (" + perfects + " of them 82-0)" : "");
   const unkeyed = b.entries.filter((e) => /\?v=$/.test(e.file)).length;
   console.log("art index: " + per + (changed ? " (art-index.js rewritten)" : " (no change)") +
     (unkeyed ? "; " + unkeyed + " new file(s) need a key: node tools/cache-keys.js --stamp <key>" : ""));
@@ -178,4 +298,6 @@ if (require.main === module) {
     console.log("art index: current (every art file listed and keyed in the manifest, nothing stale)");
   } else write();
 }
-module.exports = { check, build, scan, parse, lex, KINDS, BUILTIN, BUDGET, INDEX };
+// a file's size budget in KB (law 6): its kind's, or an 82-0 scene's
+function budgetOf(f) { return f.kind === "scene" && f.perfect ? BUDGET_PERFECT : BUDGET[f.kind]; }
+module.exports = { check, build, scan, parse, lex, es5, text, budgetOf, KINDS, BUILTIN, BUDGET, BUDGET_PERFECT, INDEX };

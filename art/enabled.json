@@ -1,4 +1,4 @@
 {
-  "about": "The art variants the game does NOT deal, as \"<kind>/<id>\" (e.g. \"loss/seal\"); every other file in art/loss, art/dots and art/scene is dealt, and the lab shows them all. After an edit: node tools/art-index.js (test.js fails until the index is current).",
+  "about": "The art variants the game does NOT deal, as \"<kind>/<id>\" (e.g. \"loss/seal\"); every other file in art/loss, art/dots, art/scene, art/hot, art/perk and art/goat is dealt (a perfect: true scene only for an 82-0), and the lab shows them all. After an edit: node tools/art-index.js (test.js fails until the index is current).",
   "off": []
 }

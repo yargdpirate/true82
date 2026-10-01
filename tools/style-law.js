@@ -24,13 +24,18 @@ const ROOT = path.join(__dirname, "..");
 
 /* ---- what the law covers ---- */
 const CSS_FILES = ["styles.css"];
+// stylesheets that ride on styles.css's theme (no block of their own): the same law, and every token they read must be
+// in the theme (v67: the owner's Art Lab, docs/art-lab/, wears the game's theme)
+const GRAFT_CSS = ["docs/art-lab/lab.css"];
 // browser JS that builds UI (canvas modules may use pure black, and only as a coverage mask)
 const JS_FILES = ["app.js", "results-riso.js", "reel-riso.js", "analytics.js", "retention-client.js", "challenges.js", "daily-core.js", "sim-core.js",
-  "art-core.js", "art-index.js"];
-const MASK_OK = { "results-riso.js": 1, "reel-riso.js": 1 };
+  "art-core.js", "art-index.js", "riso-fx.js",   // v67 part two: riso-fx.js, the shared riso FX layer (art/CONTRACT-FX.md)
+  "docs/art-lab/lab.js"];                          // v67: the Art Lab (docs/art-lab/), the owner's page for picking looks
+const MASK_OK = { "results-riso.js": 1, "reel-riso.js": 1, "riso-fx.js": 1 };
 // v67 the art variants (art/CONTRACT.md, law 1): every art/**/*.js is canvas code held to the engines' rule (black only
 // as a coverage mask), and stricter: a bare named color ("white", "red") is a finding too. The kit's ink names are
-// not colors here ("gold", "pink", "blue", "orange", "teal" name the theme's inks: K.pat("gold", .5)).
+// not colors here ("gold", "pink", "blue", "orange", "teal" name the theme's inks: K.pat("gold", .5)). That covers
+// part two's folders too (art/hot, art/perk, art/goat and the 82-0 scenes: the walk takes every folder under art/).
 const KIT_INKS = { loss: 1, pop: 1, win: 1, key: 1, gold: 1, night: 1, dusk: 1, light: 1, stock: 1, pink: 1, blue: 1, sun: 1, orange: 1, teal: 1 };
 function artFiles() {
   const out = [], walk = (rel) => {
@@ -48,7 +53,8 @@ function isArt(rel) { return /^art\//.test(rel); }
 const ART_FIX = { use: "a kit ink: K.pat(ink, cov) or K.rgb(ink); black only as a mask, K.tone(a) (art/CONTRACT.md, the kit)" };
 // pages: their <style> blocks and style="" attributes (<meta theme-color> and the favicon are browser chrome, not styles)
 const HTML_FILES = ["index.html", "404.html", "bonuses/index.html", "traits/index.html", "faq/index.html", "how-it-works/index.html",
-  "can-you-go-82-0/index.html", "what-is-bpm/index.html", "docs/style-guide.html", "docs/art-lab/qa.html"];
+  "can-you-go-82-0/index.html", "what-is-bpm/index.html", "docs/style-guide.html", "docs/art-lab/qa.html",
+  "docs/art-lab/index.html"];
 
 /* ---- color math, for "the nearest token" ---- */
 function lin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
@@ -164,6 +170,15 @@ function checkCSSFile(rel, findings) {
   const used = (after.match(/var\(\s*--(?:t|fx)-[a-z0-9-]+/g) || []).map(s => s.replace(/var\(\s*/, ""));
   Array.from(new Set(used)).forEach(n => { if (!defined[n]) findings.push({ file: rel, line: lineOf(css, css.indexOf(n, blk.b)), kind: "token", lit: n + " is not in the theme", fix: { use: "a token from the theme block" } }); });
 }
+function checkGraftCSS(rel, findings) {
+  const full = path.join(ROOT, rel);
+  if (!fs.existsSync(full)) return;
+  const css = fs.readFileSync(full, "utf8"), defined = {};
+  cssFindings(css, rel, 1).forEach(f => findings.push(f));
+  (T.block().match(/--(?:t|fx)-[a-z0-9-]+(?=\s*:)/g) || []).forEach(n => defined[n] = 1);
+  const used = (blankComments(css).match(/var\(\s*--(?:t|fx)-[a-z0-9-]+/g) || []).map(s => s.replace(/var\(\s*/, ""));
+  Array.from(new Set(used)).forEach(n => { if (!defined[n]) findings.push({ file: rel, line: lineOf(css, css.indexOf(n)), kind: "token", lit: n + " is not in the theme", fix: { use: "a token from the theme block" } }); });
+}
 function checkJSFile(rel, findings) {
   const full = path.join(ROOT, rel);
   if (!fs.existsSync(full)) return;
@@ -217,6 +232,7 @@ function check(onlyFiles) {
     return findings;
   }
   CSS_FILES.forEach(f => checkCSSFile(f, findings));
+  GRAFT_CSS.forEach(f => checkGraftCSS(f, findings));
   JS_FILES.concat(artFiles()).forEach(f => checkJSFile(f, findings));
   HTML_FILES.forEach(f => checkHTMLFile(f, findings));
   return findings;

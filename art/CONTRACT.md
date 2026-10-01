@@ -40,8 +40,9 @@ same commit.
 - `art/loss/<id>.js`, `art/dots/<id>.js`, `art/scene/<id>.js`: ONE variant per file. The file is an IIFE that calls
   `T82ART.add(kind, id, def)` exactly once and touches no other global. `id` = the file's name, `[a-z0-9-]`. The
   generator reads the files without running them and refuses (writes nothing, exits 1) a file whose id is not its
-  name, whose kind is not its folder, that calls add more or less than once, whose def has no plain-string `name`, or
-  that takes a built-in's id (`loss/classic`, `dots/classic`, `scene/lake` are reserved). It accepts
+  name, whose kind is not its folder, that calls add more or less than once, whose def has no plain-string `name`,
+  that takes a built-in's id (`loss/classic`, `dots/classic`, `scene/lake` are reserved), that sets `builtin`, or
+  that is not ES5 (law 5: it names each newer form with its line). It accepts
   `T82ART.add(...)`, `window.T82ART.add(...)` or a local name for it (`var A = window.T82ART; A.add(...)`), with the
   def an object literal or a `var` set to one in the same file.
 - `art/enabled.json`: `{ "about": "...", "off": ["kind/id", ...] }`, the looks the game does NOT deal (the lab still
@@ -49,11 +50,12 @@ same commit.
   `node tools/art-index.js`.
 - The built-ins live inside the engines (`classic` loss and `classic` dots in reel-riso.js, `lake` in results-riso.js)
   and register themselves with `builtin: true` (at load, and again when a reel or print starts if art-core.js arrived
-  later). The engines work exactly as before when art-core.js is missing: `T82RISO.create(ov, season)` with no opts
-  prints every frame of v66.4 pixel for pixel, and a print spec without `scene` prints the lake pixel for pixel. (One
-  deliberate change, v67: at a few grid widths, 263, 308-309, 323-324, 338-339 px and the like, a floating-point slip
-  laid a 15-game month out as 14 columns and one; it now prints one row of 15. The owner's 375 px phone, a 307 px
-  grid, and 320 px, a 254 px grid, are unchanged.)
+  later). The flag counts only for those three ids: a variant def that copies it is still a variant (art/enabled.json
+  switches it off, and a throw turns it off). The engines work exactly as before when art-core.js is missing:
+  `T82RISO.create(ov, season)` with no opts prints every frame of v66.4 pixel for pixel, and a print spec without
+  `scene` prints the lake pixel for pixel. (One deliberate change, v67: at a few grid widths, 263, 308-309, 323-324,
+  338-339 px and the like, a floating-point slip laid a 15-game month out as 14 columns and one; it now prints one row
+  of 15. The owner's 375 px phone, a 307 px grid, and 320 px, a 254 px grid, are unchanged.)
 - `_headers`: Cloudflare Pages allows at most 100 header rules, so the art files share ONE wildcard rule (`/art/*`:
   the year-long immutable cache), never one rule per file (`tools/cache-keys.js` flags a rule of its own). Everything
   under art/ is cached that way once deployed, docs and PNGs included: keep living pages (labs) outside art/.
@@ -71,7 +73,8 @@ T82ART.get(kind, id)        the def, or null (own properties only: an id like "c
 T82ART.index(list)          art-index.js calls it once; keeps the valid entries { kind, id, name, file, on }
                             (on counts only when it is exactly true). Returns how many it kept.
 T82ART.catalog(kind)        copies of every index entry of a kind: on or off, loaded or not (the lab lists them)
-T82ART.enabled(kind)        the ids a bag deals: the index's "on" entries plus the registered built-ins
+T82ART.enabled(kind)        the ids a bag deals: the index's "on" entries plus the registered built-ins (builtin: true
+                            counts only for loss/classic, dots/classic and scene/lake)
 T82ART.load(kind, ids)      Promise -> the requested ids that are registered when it settles. ids: an id or an
                             array. For each id that is in the index and not yet registered it injects
                             <script async data-t82-art="kind/id" src=file?v=key> (the file resolved against
@@ -81,6 +84,11 @@ T82ART.load(kind, ids)      Promise -> the requested ids that are registered whe
                             the visit. Never rejects. Never loads anything on its own.
 T82ART.deal(kind, n)        PEEK the next n ids of this device's shuffle bag (consumes nothing: two deals agree)
 T82ART.used(kind, id)       consume: take the first occurrence of id out of the bag and remember it as last-used
+T82ART.skip(kind, id)       a dealt look that did not play because it was not there (its file failed, timed out or
+                            never registered; or the engine had turned it off): it moves on exactly as used() does (it
+                            comes back next cycle, and a fresh cycle does not open with it), so a look that cannot load
+                            on this device never sits at the head of the bag. A file still loading keeps its place
+                            (returns false). The reel reports its skips through opts.onSkip, app.js the print's scene.
 T82ART.forced(kind)         QA: the ids ?art= forces on a test build, or null (below)
 T82ART.KINDS, .LOAD_MS, .version ("v67")
 ```
@@ -93,7 +101,9 @@ stable) and `t82-art-last-<kind>` the last-used id.
   last-used one when the bag is empty): no look twice running at a seam.
 - On every deal, ids switched off or deleted leave every cycle at once; ids new since the bag was drawn are inserted
   at random into the cycle in progress and the cycles drawn ahead are redrawn (so a growing library shows up next
-  season, and a bag drawn when only the built-in existed does not lead every cycle with it).
+  season, and a bag drawn when only the built-in existed does not lead every cycle with it). Where two cycles meet
+  the same look never plays twice running: a cycle that opens with the look the one before it ends on swaps its head
+  away, and a one-look cycle that repeats it merges into it.
 - Every storage call is wrapped. In private mode, or when a write fails, the bag lives in memory for the visit and
   reads stop trusting the stale stored copy.
 - Cost (M1, unthrottled, median): deal 0.06 ms / used 0.007 ms at 30 looks; 0.82 / 0.13 ms at 1,000. The stored bag
@@ -115,13 +125,15 @@ first id). The live site ignores it.
 2. **The fetch:** 1.4 s after the draft starts (after the first ticket's slot reels land), in requestIdleCallback
    where the browser has it (iPhones do not: at once there), `T82ART.load` for the dealt ids. Nothing is fetched
    before a draft starts, so the home page and the first paint never pay for art. A built-in fetches nothing.
-3. **The reel:** `T82RISO.create(ov, season, { loss: G.art.loss.slice(), dots: G.art.dots, onUse })`, where `onUse`
-   books `T82ART.used(kind, id)` one tick later (setTimeout 0: the engine calls it inside an animation frame, and a
-   phone's storage write must not land there). Without art-core.js (no `G.art`) app.js makes the old two-argument
-   call. What the engine does with the list: "A loss moment" and "A dot set" below.
+3. **The reel:** `T82RISO.create(ov, season, { loss: G.art.loss.slice(), dots: G.art.dots, onUse, onSkip })`, where
+   `onUse` books `T82ART.used(kind, id)` and `onSkip` books `T82ART.skip(kind, id)`, each one tick later (setTimeout
+   0: the engine calls them inside an animation frame, and a phone's storage write must not land there). Without
+   art-core.js (no `G.art`) app.js makes the old two-argument call. What the engine does with the list: "A loss
+   moment" and "A dot set" below.
 4. **The results print:** `resultsPrintSpec()` adds `scene: id` only when `resultsPrintScene()` returns one: the dealt
    scene if it is registered at the run's first print, settled once a run on `G.art.print` (so a Heat Check reprint
-   and the poster keep the same scene); a scene that has not arrived prints the lake and stays in the bag. Without
+   and the poster keep the same scene); a scene that has not arrived prints the lake and goes to `T82ART.skip` (it
+   moves on in the bag unless its file is still loading). Without
    art-core.js the spec has no `scene` key at all (byte-identical to v66.4's). `pal` is unchanged (the paintings bag).
    `mountResultsPrint()` calls `T82ART.used("scene", id)` once a run, after the mount succeeds. It fires even when
    the scene then throws and the lake prints instead: a broken look must not sit at the head of the bag every season.
@@ -151,7 +163,8 @@ T82ART.add("loss", "seal", {
 - **The order of a frame** (on the card's effects canvas, `K.g`): every moment's veil, then the rings, then the
   sparks, then each moment's hero (`draw`) and caption. The engine saves the canvas state around each call and places
   `K.box` before each one.
-- **E** (the event): `t0, dur` (seconds the cursor holds: about 0.4 to 2.2; it scales with the season's pace),
+- **E** (the event): `t0, dur` (seconds the cursor holds: about 0.29 to 2.14 over every record the game can deal; it
+  scales with the season's pace, app.js's `reelPace()`),
   `first` (the season's first loss), `lossNo` (1-14), `lossRun`, `prevStreak`, `x, y` (the wound: the stamp's center
   in card CSS px), `seed` (per game: `((gi + 3) * 7919) >>> 0`; replays match), `sub, sub2` (the caption lines, from
   `lossCopy`), `city`, `date`.
@@ -166,15 +179,22 @@ T82ART.add("loss", "seal", {
 - **K.ready** is true once the theme's display face has loaded (the engine's gate opens about 0.32 s into the reel):
   classic draws no L before then, and a hero set in the display face should wait for it too.
 - **The timeline:** the hero reads by `e = 0.25` and is gone by `e = E.dur` (`K.fade(E, e)` gives the classic 0.2 s
-  fade-out multiplier). It must read at both ends of the duration range: a 0.45 s moment late in a bad season and a
-  1.9 s moment that kills a long streak.
+  fade-out multiplier, from `E.dur - 0.2`). It must read at both ends of the duration range: a 0.29 s moment late in
+  a bad season (the game's fastest heavy loss: the fade starts at `e = 0.09`, so the hero must have landed by then;
+  classic's L lands at 0.07) and a 1.7 to 2.1 s moment that kills a long streak. The harness plays 1.7, 1.05 and
+  0.29 s and reads each at `e = 0.25`, the fast one at `e = 0.09`.
 - **Prep:** expensive work (screening a big mass into halftone dots) happens before the moment, in idle time. `prep(K)`
   returns an array of jobs (functions, no arguments) that fill `K.st` (the moment's own state object). The rules:
   - The prep body runs together with the first job, in the same idle step; a job may push more jobs onto the
     returned array. `K.box` is null during prep: print at a fixed size and scale when drawing.
-  - The engine keeps a window of at most THREE moments (the next heavy losses whose looks are registered, in play
-    order), runs ONE job per idle moment (requestIdleCallback, or 16 ms timeouts where there is none), the window's
-    first moment first, and runs any missing job synchronously if a loss arrives first.
+  - The engine keeps a window of at most THREE moments ahead (the next heavy losses whose looks are registered, in
+    play order), runs ONE job per idle moment (requestIdleCallback, or a 16 ms timeout where there is none: every
+    iPhone, so there a job runs between two of the reel's frames and must fit beside one; hence the job budget), the
+    window's first moment first, and runs any missing job synchronously if a loss arrives first. The moment playing
+    keeps its unit until it ends, so during a moment FOUR variant units can be held at once (the one playing and three
+    ahead), beside classic's levels once classic has printed (the bag deals classic like any look, so most seasons).
+  - At every stamp the engine looks for dealt looks that registered since the window was drawn (a file that landed
+    late), so their prep still runs in idle time and not all at once inside their slam.
   - When the dealt list runs out the rest of the season is classic, but the classic fallback joins the window only
     once it is the very next moment (a dealt season never prints a classic L it will not play). A dealt `"classic"`
     preps in its turn like any look. Classic's eighteen levels are kept for the reel's whole life.
@@ -185,12 +205,14 @@ T82ART.add("loss", "seal", {
     width and height 0), and on destroy. Each listed moment is its own unit with its own `K` and `K.st`, even when the
     same id is dealt twice.
 - **The list:** each heavy loss takes the next listed id that resolves: `"classic"`, or a registered def with a `draw`
-  function that has not been turned off. An id that does not resolve (not loaded yet, unknown, or off) is skipped and
-  stays in the bag. **onUse("loss", id)** fires when a listed id's moment starts, even if it then fails and plays as
-  classic (so a broken look does not sit at the head of the bag); never for the unlisted classic fallback.
+  function that has not been turned off. An id that does not resolve (not loaded yet, unknown, or off) is skipped:
+  **onSkip("loss", id)** fires for it (app.js: `T82ART.skip`, so it moves on in the bag unless its file is still
+  loading). **onUse("loss", id)** fires when a listed id's moment starts, even if it then fails and plays as classic
+  (so a broken look does not sit at the head of the bag); never for the unlisted classic fallback.
 - **Robustness:** every variant call is wrapped. A throw in prep, hit, veil, draw or caption turns the variant off for
   the session (its units are freed; a moment it is playing carries on as classic; a throw mid-frame resets the card's
-  canvas, whatever state the variant left on it). A variant that died in prep before its turn is skipped like an unregistered id.
+  canvas, whatever state the variant left on it). A variant that died in prep before its turn is skipped like an
+  unregistered id. Only the engine's own classic is exempt: a def that says `builtin: true` is still a variant.
 - **Rules:** the loss ink (`"loss"`) dominates; secondary inks from `pop`, `key`, `night`, `light`, `stock`. Never the
   win ink or gold for a loss's hero (gold is a hot streak, aqua is a win). At least four in five variants keep the
   letter L as the anchor (any material, letterform, construction); the rest may say LOSS another unmistakable way
@@ -203,10 +225,11 @@ T82ART.add("dots", "balls", {
   name, by,
   reach: { w: 1.7, l: 3.4 },   // how far (in dot radii R) a stamp's ink reaches from its center while it moves
                                //   (default shown; each clamped to 0.5..6)
-  live:  { w: 0.24, l: 1.5 },  // seconds a win / a loss keeps moving after its stamp (default shown; 0..3)
+  live:  { w: 0.24, l: 1.5 },  // seconds a win / a loss keeps moving after its stamp (default shown; 0.1..3)
   inks:  { a: "win", b: "pop", c: "loss" },   // optional; the plates' inks, any reel ink (default shown)
   marks: function (K, D) { ... },             // optional; seeded per-game details stored on D, once per stamp (default:
-                                              //   classic's drips, splats and cracks for a loss)
+                                              //   classic's drips, splats and cracks for a loss); D has no lastRow
+                                              //   or pitch yet
   a: function (K, g, D, c, R, e) { ... },     // plate a's tone for one stamp (black alpha = coverage)
   b: function (K, g, D, c, R, e) { ... },     // at least one of a, b, c; a missing plate prints nothing
   c: function (K, g, D, c, R, e) { ... },
@@ -216,9 +239,11 @@ T82ART.add("dots", "balls", {
 ```
 
 - Each plate function is called for EVERY stamp of the month (wins and losses, settled ones too) in that plate's
-  pass, on every print of the strip, so keep it cheap. `g` is a scratch context in strip CSS px; lay tone (`K.tone`).
-  `D`: `{ idx, win, t0, streak, gi, cl, lastRow, pitch }` plus whatever `marks` stored (`lastRow`: the stamp sits in
-  the month's last row; `pitch`: the cell size in CSS px; both refreshed on every print). There is no `D.rnd`: seed
+  pass, on every print of the strip from the month's first stamp, so keep it cheap; any plate may ink any stamp.
+  `g` is a scratch context in strip CSS px; lay tone (`K.tone`). `D`: `{ idx, win, t0, streak, gi, cl }` plus
+  whatever `marks` stored; the plate functions also see `lastRow` (the stamp sits in the month's last row) and
+  `pitch` (the cell size in CSS px), set on D before every print (a resize moves both), so `marks`, which runs once at
+  the stamp before the first print, does not have them. There is no `D.rnd`: seed
   from `D.gi` in `marks` (`K.rand(((D.gi + 1) * 2654435761) >>> 0)`). `c` = the stamp's center `[x, y]` (strip CSS
   px), `R` = the dot radius (`pitch * 0.36`, about 6 to 10 px on a phone), `e` = seconds since the stamp (about 1e6
   when settled).
@@ -227,10 +252,13 @@ T82ART.add("dots", "balls", {
   get the reel's kit (`K.ring`, `K.spark`, `K.shake`; `K.flash` never fires outside a heavy loss's hit).
 - **The set is chosen once**, at the season's first stamp: `opts.dots` if it resolves (a registered def with at least
   one plate function, not turned off), else classic. **onUse("dots", id)** fires then, once, when the id came from
-  opts and resolved (an explicit `"classic"` too).
-- **Still before live ends:** a stamp must reach its final pose at least one frame before its live window ends (the
-  strip stops redrawing it then, and the settled ledger must match `T82RISO.strip()`'s reprint pixel for pixel; the
-  harness checks it). Stay inside `reach`: ink outside it leaves stale dots behind in the live strip.
+  opts and resolved (an explicit `"classic"` too); **onSkip("dots", id)** when it came from opts and did not.
+- **Still before live ends:** a stamp must reach its final pose by 0.05 s before its live window ends (that is a
+  frame on a slow phone; the engine keeps `live` at 0.1 s or more, since the strip redraws a stamp only inside its
+  window and a window shorter than a frame never prints it). The strip stops redrawing the stamp when its window ends,
+  and the settled ledger must match `T82RISO.strip()`'s reprint pixel for pixel (the harness checks it on a 60 fps
+  clock, so it only catches a stamp still moving in the last 1/60 s: keep the 0.05 s yourself). Stay inside `reach`:
+  ink outside it leaves stale dots behind in the live strip.
 - **Robustness:** a throw anywhere in a set (marks, a plate, win, lossHit) switches the whole season to classic, the
   stamps already down too (they are re-marked and reprinted at once). `T82RISO.strip({ ..., dots: id })` falls back
   the same way.
@@ -285,8 +313,8 @@ T82ART.add("scene", "skyline", {
 - **Robustness:** every scene call is wrapped (derive, layers, each draw, body: dry-run once when the print is
   prepared, then guarded every frame). A throw retires the scene for the visit and that print falls back to the lake;
   a poster whose scene throws mid-bake starts over as the lake.
-- **Perfect scenes** (`perfect: true`, art/CONTRACT-FX.md: dealt only for an 82-0) are not wired yet: today's bag and
-  app.js would deal one for any season. Add none until that part lands (the harness already prints one as 82-0 only).
+- **Perfect scenes** (`perfect: true`): an 82-0 season's own pictures, dealt from their own bag and printed only for
+  an 82-0 (anything less prints the lake). They take more layers, a title and a live part: art/CONTRACT-FX.md.
 - **Rules:** the season's line is the picture's dominant silhouette, readable at 320 px; every loss is marked on it;
   the gauge holds; it works in the BANNER and the POSTER, in all its lights, on dark stock (screen) and light stock
   (multiply). Vector drawing only: no per-pixel loops in a scene (the engine screens).
@@ -344,12 +372,12 @@ motion.
 ## The QA hooks (both engines; the harness and the lab use them, the game never does)
 
 - `T82RISO.create(ov, season, opts)`: `opts.root` (the element whose theme to print in), `opts.loss`, `opts.dots`,
-  `opts.onUse` (above), `opts.clock` (a function returning seconds; replaces performance.now; ?risoslow still divides
-  it), `opts.manual` (no requestAnimationFrame loop and no idle scheduling; the gate opens at once, so load the faces
-  first). Returns `{ openMonth, stamp, closeMonth, finale, destroy, qa }`, plus `frame()` (one frame at the clock's
-  time) when manual. `qa.runJob()` runs ONE pending prep step (a face warm-up, or one job) and returns true, or false
-  when nothing is pending; `qa.state()` -> `{ prepped (ids), canvasBytes (classic's plus every live variant's),
-  pending (steps, warm-ups included), window, playing, next, dots, off (["kind:id"]), ready }`.
+  `opts.onUse`, `opts.onSkip` (above), `opts.clock` (a function returning seconds; replaces performance.now;
+  ?risoslow still divides it), `opts.manual` (no requestAnimationFrame loop and no idle scheduling; the gate opens at
+  once, so load the faces first). Returns `{ openMonth, stamp, closeMonth, finale, destroy, qa }`, plus `frame()`
+  (one frame at the clock's time) when manual. `qa.runJob()` runs ONE pending prep step (a face warm-up, or one job)
+  and returns true, or false when nothing is pending; `qa.state()` -> `{ prepped (ids), canvasBytes (classic's plus
+  every live variant's), pending (steps, warm-ups included), window, playing, next, dots, off (["kind:id"]), ready }`.
 - `T82RISO.strip({ root, games, streaks, gi0, cl0, mi, cssW, d, dots })` -> one settled month strip (the Reprint Lab
   and the harness's match check). `T82RISO.kit(root, g)`, `T82RISO.inks`, `T82RISO.version` ("v67").
 - `T82PRINT.mount(host, spec, { defer, root, clock, manual })` -> `{ play, update, rebuild, destroy, scene, frame? }`
@@ -369,15 +397,22 @@ motion.
 4. **Deterministic:** randomness only from `K.rand(seed)` with E.seed, D.seed or D.gi, so a replay prints the same.
    No Math.random, no Date.
 5. **ES5, like the engines:** an IIFE, `"use strict"`, `var` and `function`; no modules, classes, let/const, arrow
-   functions or template strings.
+   functions, template strings, spread, `?.`, `??`, shorthand methods, default parameters or newer regex (lookbehind,
+   named groups, flags past g/i/m). A file in newer syntax passes Chromium and today's WebKit (so the harness cannot
+   see it) but is a SyntaxError on an older iPhone (the first iPhone SE stops at iOS 15): there it never registers.
+   `node tools/art-index.js` refuses it, naming each form and its line (test.js runs the check).
 6. **Budgets.** tools/art-qa.mjs measures them in Chromium on the owner's M1 with the CPU throttled 4x (a stand-in
    well below an iPhone SE), 375x812 at 2x; every ratio is to the built-in measured the same way in the same run
    (the built-in is timed before and after the variants and pooled). A frame's ms is the whole frame (`frame()` plus
    finishing its pixels). KB = 1024 bytes, MB = 1024 KB.
    - **A loss moment:** a frame (ledger + veil + hero + caption + particles, the whole frame) no slower than 1.5x
-     classic's on average and 2x at the 95th percentile; each prep job at most 25 ms (its median over every reel that
-     ran it); all jobs together at most 1.5x classic's total; at most 12 MB of canvases in `K.st` at its peak (aim for
-     half: the window can hold three variants at once). Classic's eighteen levels (17.3 MB) are the exception: they are
+     classic's on average and 2x at the 95th percentile; each prep job at most 1.5x classic's longest job (its median
+     over every reel that ran it; classic's longest is 5.3 ms, so about 8 ms: iPhones have no requestIdleCallback, so
+     there a job runs on a 16 ms timer between two of the reel's frames, and a 25 ms job drops one or two of them:
+     split big work into more jobs); all jobs together at most 1.5x classic's total; at most 12 MB of canvases in
+     `K.st` at its peak (aim for half: during a moment the engine can hold four variant units at once, the one playing
+     and three ahead, beside classic's 17.3 MB, which most seasons print since the bag deals classic like any look:
+     17.3 + 4 x 12 = 65 MB at the cap, 41 MB at half). Classic's eighteen levels (17.3 MB) are the exception: they are
      the reference and are kept for the whole reel. The harness also reports "the moment alone" (the frame less a
      moment that draws nothing) for information.
    - **A dot set:** a moving strip frame (only frames inside a stamp's live window) at most 1.5x classic's; the
@@ -385,8 +420,8 @@ motion.
    - **A scene:** the banner's bake at most 1.25x lake's, with lake baked in the scene's first light; the reveal's
      frames at most 1.25x.
    - **File size:** loss at most 10 KB, dots 6 KB, scene 16 KB (unminified source; test.js checks it).
-   - **The baselines** (`node tools/art-qa.mjs all`, 2026-09-30, 2 reps; absolute ms move about 20% between runs on a
-     shared machine, so only same-run ratios are judged):
+   - **The baselines** (`node tools/art-qa.mjs all`, 2026-09-30, 2 reps, the fast moment then 0.45 s; absolute ms
+     move about 20% between runs on a shared machine, so only same-run ratios are judged):
 
      | built-in | at 4x throttle on the M1 |
      |---|---|
@@ -394,8 +429,8 @@ motion.
      | classic dots | moving strip frame 3.2 ms avg, 6.5 ms p95; the settled season 29.0 ms |
      | lake | banner bake 151 ms (golden, the mean of 82-0, 64-18, 41-41, 20-62); mount 157 ms; reveal frame 27.1 ms avg, 44.6 ms p95 |
 
-     So a loss variant's frame may average up to about 20 ms and each prep job 25 ms, a dot set's moving frame about
-     4.8 ms, a scene's bake about 190 ms (the poster bakes one layer per task, so the page never locks up).
+     So a loss variant's frame may average up to about 20 ms and each prep job about 8 ms, a dot set's moving frame
+     about 4.8 ms, a scene's bake about 190 ms (the poster bakes one layer per task, so the page never locks up).
    - **Also checked:** it played (onUse named it, the engine had it playing, it was not turned off); no console errors
      and no engine warnings; a dot set's live ledger equals its `strip()` reprint; WebKit (`--webkit`): no errors, and
      it printed itself.

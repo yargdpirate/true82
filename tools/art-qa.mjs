@@ -11,6 +11,9 @@
      node tools/art-qa.mjs all [kind]       every variant (art-index.js, plus files not indexed yet), the built-ins too,
                                             an index.html of every sheet and number, and rows of all of them side by side
      node tools/art-qa.mjs baseline         the built-ins alone (classic, classic, lake): the reference numbers
+     node tools/art-qa.mjs hot|perk|goat <id>   an FX pack (art/CONTRACT-FX.md) on the game's own screens: every slot's
+                                            frames, its frame and prep costs at 4x against the absolute budgets;
+                                            <id> classic for the built-in, all for every pack of the kind side by side
    Options:
      --out DIR       where it all lands (default <tmp>/t82-art-qa/<mode>[-<id>]): report.json, index.html, the PNGs
      --webkit        also run each variant in WebKit, unthrottled: console errors and fallbacks (Safari-only breakage)
@@ -51,7 +54,9 @@ const BUILTIN = { loss: "classic", dots: "classic", scene: "lake" };
 const KB = 1024, MB = 1024 * 1024;
 // art/CONTRACT.md, the laws, 6 (Budgets)
 const BUDGET = {
-  loss: { frameAvg: 1.5, frameP95: 2, jobMs: 25, prepTotal: 1.5, canvasBytes: 12 * MB, fileBytes: 10 * KB },
+  // jobMax: each prep job against classic's longest (iPhones have no requestIdleCallback: a job runs on a 16 ms timer
+  // between the reel's frames, so it must fit beside one)
+  loss: { frameAvg: 1.5, frameP95: 2, jobMax: 1.5, prepTotal: 1.5, canvasBytes: 12 * MB, fileBytes: 10 * KB },
   dots: { frame: 1.5, settled: 1.5, fileBytes: 6 * KB },
   scene: { bake: 1.25, reveal: 1.25, fileBytes: 16 * KB },
   perfect: { bake: 1.5, reveal: 1.25, fileBytes: 20 * KB }        // art/CONTRACT-FX.md: a perfect scene prints 82-0 only
@@ -59,6 +64,9 @@ const BUDGET = {
 // the loss moment's fixed times (seconds after the slam); each case adds its last frame and one just after it ends
 const LOSS_TIMES = [0, 0.05, 0.1, 0.18, 0.25, 0.35, 0.5, 0.7, 0.9, 1.1, 1.3];
 const LOSS_CASES = ["streak", "mid", "late"];
+// the read check's frame: e = 0.25 s, or in a moment too short for that (late: 0.29 s, the game's fastest heavy loss)
+// its last frame at full ink, before K.fade's 0.2 s fade-out starts
+const readTime = (dur) => Math.min(0.25, Math.max(0.07, Math.round((dur - 0.2) * 100) / 100));
 const WIN_TIMES = [0, 0.03, 0.06, 0.1, 0.15, 0.24];
 const DROP_TIMES = [0, 0.05, 0.1, 0.2, 0.35, 0.6, 1.0, 1.5];
 const REVEAL_TIMES = [0.1, 0.4, 0.8, 1.3, 1.8, 2.3, 2.8, 3.4];
@@ -84,11 +92,12 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 function usage(code) {
   const src = fs.readFileSync(fileURLToPath(import.meta.url), "utf8");
-  console.log(src.slice(src.indexOf("/*") + 2, src.indexOf("*/")).split("\n").slice(0, 25).join("\n"));
+  console.log(src.slice(src.indexOf("/*") + 2, src.indexOf("*/")).split("\n").slice(0, 28).join("\n"));
   process.exit(code);
 }
 const MODE = pos[0];
-if (!MODE || !["loss", "dots", "scene", "all", "baseline"].includes(MODE)) usage(2);
+if (!MODE || !["loss", "dots", "scene", "all", "baseline", "hot", "perk", "goat"].includes(MODE)) usage(2);
+if (["hot", "perk", "goat"].includes(MODE) && !/^[a-z0-9-]+$/.test(pos[1] || "")) { console.error("art-qa: " + MODE + " needs a pack id ([a-z0-9-]+), classic or all"); process.exit(2); }
 if (KINDS.includes(MODE) && !/^[a-z0-9-]+$/.test(pos[1] || "")) { console.error("art-qa: " + MODE + " needs a variant id ([a-z0-9-]+)"); process.exit(2); }
 if (MODE === "all" && pos[1] && !KINDS.includes(pos[1])) { console.error("art-qa: all takes a kind: loss, dots or scene"); process.exit(2); }
 const OUT = opt.out || path.join(os.tmpdir(), "t82-art-qa", MODE + (pos[1] ? "-" + pos[1] : ""));
@@ -334,7 +343,22 @@ function pgRevealTo(e) {
   window.T82QA.clock.t = t;
   return true;
 }
-async function pgSceneTime({ id, pal, records }) {
+// a perfect scene's live motion (art/CONTRACT-FX.md): the mounted print on the bench clock to e seconds after play(),
+// every 60 fps frame drawn; on = what frame() said last (true while the reveal or the live motion still runs); a
+// checksum of the print's pixels, so the harness can tell motion from a still
+function pgLiveTo(e) {
+  const Q = window.T82QA, m = window.__qp, t = window.__qpT0 + e;
+  let on = null;
+  while (Q.clock.t < t - 1e-9) { Q.clock.t = Math.min(t, Q.clock.t + 1 / 60); on = m.M.frame(); }
+  let sum = 0;
+  m.host.querySelectorAll("canvas").forEach((c) => {
+    if (!c.width || !c.height) return;
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    for (let i = 0; i < d.length; i += 4) sum = (sum * 31 + d[i] + d[i + 1] * 7 + d[i + 2] * 13 + d[i + 3]) >>> 0;
+  });
+  return { on, sum };
+}
+async function pgSceneTime({ id, pal, records, live }) {
   const Q = window.T82QA, bake = [], printed = [];
   for (const w of records || Q.RECORDS) {
     const spec = Q.printSpec(Q.record(w), { scene: id, pal }), t = Q.now();
@@ -346,10 +370,11 @@ async function pgSceneTime({ id, pal, records }) {
   await new Promise((r) => setTimeout(r, 120));
   m.M.play();
   const frames = m.until(Q.clock.t + 3.4).map((f) => f.ms);
+  const liveFrames = live ? m.until(Q.clock.t + live).map((f) => f.ms) : [];   // a perfect scene's few seconds of motion
   const mountMs = m.mountMs;
   if (m.M.scene) printed.push(m.M.scene);
   m.destroy();
-  return { bake, frames, mountMs, printed };
+  return { bake, frames, liveFrames, mountMs, printed };
 }
 
 /* ---------- the browser ---------- */
@@ -438,7 +463,10 @@ async function lossRender(id, dir, o) {
     if (!L.ok) { res.loadError = L.error || "did not register"; Object.assign(res, takeNotes(page)); await page.close(); return res; }
     res.def = L.def;
     const st = await ev(page, pgLossStart, { id, kase }, T_RENDER), dur = st.hold / 1000;
+    const readAt = readTime(dur), rowAt = dur - 0.2 >= 0.35 ? 0.35 : readAt;
     const times = LOSS_TIMES.filter((e) => e < dur - 0.02).map((e) => [e, "e = " + e.toFixed(2)]);
+    if (!times.some((x) => x[0] === readAt)) times.push([readAt, "e = " + readAt.toFixed(2) + " (read)"]);
+    times.sort((a, b) => a[0] - b[0]);
     times.push([Math.max(0, dur - 1 / 60), "last " + (dur - 1 / 60).toFixed(2)], [dur + 0.1, "after +0.10"]);   // the last frame a 60 fps phone shows
     const cells = [];
     let uses = [], seen = false, off = [];
@@ -449,9 +477,9 @@ async function lossRender(id, dir, o) {
       if (o.shots === false) continue;
       const png = await shot(page, st.rect, 4);
       cells.push({ src: dataURL(png), label, w: Math.round(st.rect.width + 8) });
-      if (e === 0.35) res.frames[kase] = png;                                    // the side-by-side row's frame
-      if (e === 0.25) {                                                          // the read check's frame, at full pixels
-        const ff = path.join(dir, "loss-" + id + "-" + kase + "-e025.png");
+      if (e === rowAt) res.frames[kase] = png;                                   // the side-by-side row's frame
+      if (e === readAt) {                                                        // the read check's frame, at full pixels
+        const ff = path.join(dir, "loss-" + id + "-" + kase + "-e" + String(Math.round(readAt * 100)).padStart(3, "0") + ".png");
         fs.writeFileSync(ff, png);
         res.full = (res.full || []).concat([ff]);
       }
@@ -463,27 +491,27 @@ async function lossRender(id, dir, o) {
     res.uses.push(...uses);
     await page.close();
     if (o.shots === false) continue;
-    const C = { streak: "the season's first loss, after 12 straight", mid: "loss 5 of a 76-6 year, low in the card", late: "loss 14 of a 20-62 year, fast" }[kase];
+    const C = { streak: "the season's first loss, after 12 straight", mid: "loss 5 of a 76-6 year, low in the card", late: "loss 14 of a 20-62 year, at the game's fastest pace (its read frame: e = " + readAt.toFixed(2) + ")" }[kase];
     const file = path.join(dir, "loss-" + id + "-" + kase + ".png");
     await sheet(file, { title: "loss \u00B7 " + id + " \u00B7 " + kase, sub: C + "; the moment holds " + dur.toFixed(2) + " s. Frames at e seconds after the slam, cropped to the card (375 x 812 phone).",
       sections: [{ cols: 3, cells }] });
     res.images.push(file);
   }
   if (o.shots === false || res.loadError) return res;
-  // the smallest phone the owner checks: each moment's 0.25 s frame (the read check) at 320 x 568
+  // the smallest phone the owner checks: each moment's read frame (e = 0.25 s; the fast one's last full-ink frame) at 320 x 568
   const cells = [];
   for (const kase of LOSS_CASES) {
     const page = await bench(await ctxSmall());
     await loadVariant(page, "loss", id);
-    const st = await ev(page, pgLossStart, { id, kase }, T_RENDER);
-    await ev(page, pgStepTo, 0.25, T_RENDER);
-    cells.push({ src: dataURL(await shot(page, st.rect, 4)), label: kase, sub: "e = 0.25", w: Math.round(st.rect.width + 8) });
+    const st = await ev(page, pgLossStart, { id, kase }, T_RENDER), readAt = readTime(st.hold / 1000);
+    await ev(page, pgStepTo, readAt, T_RENDER);
+    cells.push({ src: dataURL(await shot(page, st.rect, 4)), label: kase, sub: "e = " + readAt.toFixed(2), w: Math.round(st.rect.width + 8) });
     const notes = takeNotes(page);
     res.errors.push(...notes.errors.map((x) => "320: " + x)); res.warnings.push(...notes.warnings.map((x) => "320: " + x));
     await page.close();
   }
   const f320 = path.join(dir, "loss-" + id + "-320.png");
-  await sheet(f320, { title: "loss \u00B7 " + id + " \u00B7 320 wide", sub: "The three moments at e = 0.25 s on a 320 x 568 phone: is it an L (or LOSS) at a glance?", sections: [{ cols: 3, cells }] });
+  await sheet(f320, { title: "loss \u00B7 " + id + " \u00B7 320 wide", sub: "The three moments at their read frame (e = 0.25 s; the 0.29 s moment just before its fade) on a 320 x 568 phone: is it an L (or LOSS) at a glance?", sections: [{ cols: 3, cells }] });
   res.images.push(f320);
   return res;
 }
@@ -573,9 +601,9 @@ function lossVerdict(id, mIn, b, render, bytes) {
     v.push(budget("frameAvg", "frame avg \u2264 1.5x classic", m.frame.avg, b.frame.avg, ratio(m.frame.avg, b.frame.avg), B.frameAvg, "ms"));
     v.push(budget("frameP95", "frame p95 \u2264 2x classic", m.frame.p95, b.frame.p95, ratio(m.frame.p95, b.frame.p95), B.frameP95, "ms"));
     v.push(budget("prepTotal", "prep total \u2264 1.5x classic", m.prepTotal, b.prepTotal, ratio(m.prepTotal, b.prepTotal), B.prepTotal, "ms"));
+    v.push(budget("jobMax", "each prep job \u2264 1.5x classic's longest (its median)", m.jobs.max, b.jobs.max, ratio(m.jobs.max, b.jobs.max), B.jobMax, "ms"));
   }
   if (m) {
-    v.push(abs("jobMs", "each prep job \u2264 25 ms (its median)", m.jobs.max, B.jobMs, "ms", id === BUILTIN.loss));
     v.push(abs("canvas", "canvases \u2264 12 MB", m.canvasPeak, B.canvasBytes, "bytes", id === BUILTIN.loss));
   }
   if (bytes != null) v.push(abs("file", "file \u2264 10 KB", bytes, B.fileBytes, "bytes"));
@@ -687,6 +715,20 @@ async function sceneRender(id, dir, o) {
     await ev(page, pgRevealTo, e, T_RENDER);
     if (o.shots !== false) reveal.push({ src: dataURL(await shot(page, rect)), label: "e = " + e.toFixed(1), w: 375 });
   }
+  // a perfect scene that declares live: its motion after the reveal, then the still it must come to rest on
+  const liveDur = perfect && L.def && L.def.live && +L.def.live.dur > 0 ? +L.def.live.dur : 0, liveCells = [];
+  if (liveDur) {
+    const end = REVEAL_TIMES[REVEAL_TIMES.length - 1], times = [0.15, 0.3, 0.45, 0.6, 0.75, 0.9].map((k) => Math.round((end + liveDur * k) * 100) / 100), sums = [];
+    times.push(Math.round((end + liveDur + 1) * 100) / 100, Math.round((end + liveDur + 1.6) * 100) / 100);
+    let on = null;
+    for (const e of times) {
+      const r = await ev(page, pgLiveTo, e, T_RENDER);
+      sums.push(r.sum); on = r.on;
+      if (o.shots !== false) liveCells.push({ src: dataURL(await shot(page, rect)), label: "e = " + e.toFixed(1), sub: e > end + liveDur ? "after" : "live", w: 375 });
+    }
+    const n = sums.length;
+    res.live = { dur: liveDur, moved: new Set(sums.slice(0, n - 2)).size > 1, still: sums[n - 1] === sums[n - 2], running: on };
+  }
   const notes = takeNotes(page);
   res.errors.push(...notes.errors); res.warnings.push(...notes.warnings);
   await page.close();
@@ -703,21 +745,21 @@ async function sceneRender(id, dir, o) {
   const cells = b.banners.map((x) => ({ src: x.url, label: x.w + "\u2013" + (82 - x.w), sub: x.pal + (x.scene && x.scene !== id ? " (printed " + x.scene + ")" : ""), w: 375 }));
   const file = path.join(dir, "scene-" + id + ".png");
   await sheet(file, { title: "scene \u00B7 " + id + (perfect ? " (perfect: 82-0 only)" : ""), sub: "The results banner at the phone's width (375 px), one row per record, one column per light; the full-size PNGs sit beside this sheet. " + (b.sameAsLake ? "WARNING: the lake printed instead (it fell back)." : ""),
-    sections: [{ cols: lights.length, cells }, { title: "the reveal (" + w + "-" + (82 - w) + ", " + lights[0] + ")", note: "Frames at e seconds after play().", cols: 2, cells: reveal }] });
+    sections: [{ cols: lights.length, cells }, { title: "the reveal (" + w + "-" + (82 - w) + ", " + lights[0] + ")", note: "Frames at e seconds after play().", cols: 2, cells: reveal }].concat(liveCells.length ? [{ title: "the live motion (" + liveDur + " s, then still)", note: "After the reveal; the last two frames must match (a still print).", cols: 2, cells: liveCells }] : []) });
   res.images.unshift(file);
   res.frames = { banner: fromDataURL(b.banners[perfect ? 0 : Math.min(b.banners.length - 1, lights.length)].url) };   // 64-18 (or 82-0) in its first light
   return res;
 }
 // the built-in is timed in each variant's first light too, so a ratio compares the same painting
-async function sceneTiming(ids, reps, pals, perfect) {
-  perfect = perfect || {};
-  const P = await timingPass("scene", ids, reps, { measure: (page, id) => ev(page, pgSceneTime, { id, pal: pals[id], records: perfect[id] ? [82] : null }, T_TIME) });
+async function sceneTiming(ids, reps, pals, perfect, lives) {
+  perfect = perfect || {}; lives = lives || {};
+  const P = await timingPass("scene", ids, reps, { measure: (page, id) => ev(page, pgSceneTime, { id, pal: pals[id], records: perfect[id] ? [82] : null, live: lives[id] || 0 }, T_TIME) });
   const out = {};
   ids.forEach((id) => {
     const runs = P.got[id], fell = [...new Set([].concat(...runs.map((r) => r.printed || [])).filter((x) => x !== id))];
     if (fell.length && !P.bad[id]) P.bad[id] = "the timing pass printed " + fell.join(", ") + " instead";   // its numbers would be lake's
     out[id] = { loadError: P.bad[id] || (runs.length ? null : "not measured"), bake: r2(pct(runs.map((r) => mean(r.bake)), 0.5)), mount: r2(pct(runs.map((r) => r.mountMs), 0.5)),
-      frame: stats([].concat(...runs.map((r) => r.frames))), noise: spread(runs.map((r) => mean(r.bake))), errors: P.notes[id].errors, warnings: P.notes[id].warnings };
+      frame: stats([].concat(...runs.map((r) => r.frames))), live: stats([].concat(...runs.map((r) => r.liveFrames || []))), noise: spread(runs.map((r) => mean(r.bake))), errors: P.notes[id].errors, warnings: P.notes[id].warnings };
   });
   return out;
 }
@@ -729,6 +771,11 @@ function sceneVerdict(id, m, b, render, bytes) {
   }
   if (bytes != null) v.push(abs("file", "file \u2264 " + B.fileBytes / KB + " KB", bytes, B.fileBytes, "bytes"));
   if (render && id !== BUILTIN.scene) v.push({ key: "printed", label: "it printed (not lake's fallback)", value: render.loadError ? "did not load" : render.sameAsLake ? "the lake printed instead" : "yes", pass: !render.loadError && render.sameAsLake === false });
+  if (render && render.live) {                    // art/CONTRACT-FX.md: a perfect scene's live frames, then a still
+    if (m && m.live && m.live.n) v.push(abs("live", "live frame \u2264 12 ms avg (its few seconds)", m.live.avg, 12, "ms"));
+    v.push({ key: "liveMoved", label: "the live motion moves after the reveal", value: render.live.moved ? "yes" : "the print did not change", pass: !!render.live.moved });
+    v.push({ key: "liveStill", label: "then it stops on a still frame", value: render.live.still ? "yes" : "still moving " + (render.live.dur + 1.6).toFixed(1) + " s after the reveal", pass: !!render.live.still });
+  }
   return v;
 }
 
@@ -753,6 +800,237 @@ async function webkitErrors(targets) {
   ctx = saved;
   await wb.close();
   return out;
+}
+
+/* ---------- the FX kinds (art/CONTRACT-FX.md): hot, perk and goat packs on the riso FX layer (riso-fx.js) ----------
+   Each slot plays on the game's own screen, which the bench builds from the game's classes with the anchor where the
+   game puts it (T82QA.fx): the heat label mid-screen for a tier, the verdict stamp for the save and no save (the save
+   spreads over ev.area, the stamp's card), the three cost buttons near the bottom for a perk, the results' W/L box for 82-0, whose burst plays
+   as the game fires it (fireGoats: nine bursts 0.18 s apart, so up to nine on screen at once). A contact sheet per
+   pack (a row per slot, the frames across its dur, then one after it: the layer must be gone), each slot's middle
+   frame at full pixels and at 320 wide, the timing at the throttle (every 60 fps frame of each slot with its pixels
+   finished, each prep job from a cold page, the plates' canvas bytes), console errors, and in WebKit that it printed
+   itself. The budgets are absolute (CONTRACT-FX "Budgets"). `<kind> all` checks every pack of the kind, side by side. */
+const FX_KINDS = ["hot", "perk", "goat"];
+const FX_SLOTS = { hot: ["cold", "warm", "hot", "fire", "nova", "save", "miss"], perk: ["refund", "sale"], goat: ["burst"] };
+const FX_BUDGET = { frameAvg: 8, frameP95: 16, jobMs: 25, plateBytes: 16 * MB, fileBytes: { hot: 14 * KB, perk: 10 * KB, goat: 8 * KB } };
+const FX_FRAMES = 10;                              // frames per slot on the sheet, spread over its dur
+const fxPlan = (kind) => (kind === "goat" ? [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => [i * 0.18, 400 + i]) : null);
+async function pgFxStart(a) {
+  const s = await window.T82QA.fx.start(a.kind, a.id, a.slot, { plan: a.plan });
+  return { durs: s.durs, jobs: s.jobs, warm: s.warm || [], rect: s.rect, end: s.end, state: s.state };
+}
+function pgFxTo(e) { const r = window.T82QA.fx.to(e); return { ms: r.ms, on: r.on, running: r.state.running, off: r.state.off, layer: r.state.layer, loop: r.state.loop }; }
+function pgFxRun(end) {
+  const r = window.T82QA.fx.run(end);
+  return { frames: r.frames, plates: r.plates, layer: r.layer, idle: !r.after.layer && !r.after.loop && !r.after.running.length };
+}
+async function fxRender(kind, id, dir, o) {
+  const res = { images: [], errors: [], warnings: [], slots: {}, full: [], frames: {} };
+  const page = await bench(ctx);
+  const L = id === "classic" ? { ok: true, def: null } : await loadVariant(page, kind, id);
+  if (!L.ok) { res.loadError = L.error || "did not register"; Object.assign(res, takeNotes(page)); await page.close(); return res; }
+  res.def = L.def || await page.evaluate(({ kind }) => { const d = window.T82ART && T82ART.get(kind, "classic"); return d ? { name: d.name, by: d.by } : null; }, { kind });
+  const rows = [];
+  for (const slot of FX_SLOTS[kind]) {
+    const st = await ev(page, pgFxStart, { kind, id, slot, plan: fxPlan(kind) }, T_RENDER), cells = [];
+    const times = [];
+    for (let k = 0; k < FX_FRAMES; k++) times.push(Math.round(st.end * (k + 0.5) / FX_FRAMES * 100) / 100);
+    times.push(Math.round((st.end + 0.1) * 100) / 100);
+    let played = false, off = [], gone = null;
+    for (let k = 0; k < times.length; k++) {
+      const r = await ev(page, pgFxTo, times[k], T_RENDER);
+      off = r.off;
+      if (k < times.length - 1 && r.running.some((x) => x.id === id && x.kind === kind)) played = true;
+      if (k === times.length - 1) gone = !r.layer && !r.loop;
+      if (o.shots === false) continue;
+      const png = await page.screenshot({ animations: "allow", caret: "hide" });
+      cells.push({ src: dataURL(png), label: k === times.length - 1 ? "after" : "e " + times[k].toFixed(2), w: 170 });
+      if (k === Math.floor(FX_FRAMES * 0.4)) {          // the slot's hold, at full pixels, for a close look
+        const ff = path.join(dir, "fx-" + kind + "-" + id + "-" + slot + ".png");
+        fs.writeFileSync(ff, png);
+        res.full.push(ff);
+        res.frames[slot] = png;
+      }
+    }
+    res.slots[slot] = { durs: st.durs, end: st.end, played: played && !off.includes(kind + ":" + id), off, gone };
+    if (o.shots !== false) rows.push({ title: slot + " · " + (st.durs[0] / 1000).toFixed(2) + " s" + (st.durs.length > 1 ? " × " + st.durs.length + " (the game's sequence)" : ""), cols: times.length, cells });
+  }
+  const notes = takeNotes(page);
+  res.errors.push(...notes.errors); res.warnings.push(...notes.warnings);
+  await page.close();
+  if (o.shots === false) return res;
+  const file = path.join(dir, "fx-" + kind + "-" + id + ".png");
+  await sheet(file, { title: kind + " · " + id, sub: "Each slot on the game's own screen (375 x 812), frames spread over its dur, then one after it (the layer must be gone). " +
+    (kind === "goat" ? "The burst fires as fireGoats does: nine, 0.18 s apart, in the W/L box." : kind === "perk" ? "The anchor is the three cost buttons." : "Tiers at the heat label; the save and no save at the verdict stamp (the save fills its card, ev.area)."), sections: rows });
+  res.images.push(file);
+  // the smallest phone: each slot's hold frame at 320 x 568
+  const small320 = await bench(await ctxSmall()), cells = [];
+  if (id !== "classic") await loadVariant(small320, kind, id);
+  for (const slot of FX_SLOTS[kind]) {
+    const st = await ev(small320, pgFxStart, { kind, id, slot, plan: fxPlan(kind) }, T_RENDER), e = Math.round(st.end * (Math.floor(FX_FRAMES * 0.4) + 0.5) / FX_FRAMES * 100) / 100;
+    await ev(small320, pgFxTo, e, T_RENDER);
+    cells.push({ src: dataURL(await small320.screenshot({ animations: "allow", caret: "hide" })), label: slot, sub: "e " + e.toFixed(2), w: 160 });
+  }
+  const n320 = takeNotes(small320);
+  res.errors.push(...n320.errors.map((x) => "320: " + x)); res.warnings.push(...n320.warnings.map((x) => "320: " + x));
+  await small320.close();
+  const f320 = path.join(dir, "fx-" + kind + "-" + id + "-320.png");
+  await sheet(f320, { title: kind + " · " + id + " · 320 wide", sub: "Each slot's hold frame on a 320 x 568 phone.", sections: [{ cols: cells.length, cells }] });
+  res.images.push(f320);
+  return res;
+}
+// a fresh throttled page per rep; the first slot's prep is the cold one (a new page, as in the game); each slot then
+// plays every 60 fps frame of its dur
+async function fxTiming(kind, id, reps) {
+  const out = { slots: {}, jobs: [], coldJobs: [], warm: [], plates: 0, layer: 0, idle: true, errors: [], warnings: [] };
+  const byJob = [];
+  for (let rep = 0; rep < reps; rep++) {
+    const page = await bench(ctx, { throttle: opt.throttle });
+    try {
+      if (id !== "classic") { const L = await loadVariant(page, kind, id); if (!L.ok) { out.loadError = L.error || "did not register"; break; } }
+      let first = true;
+      for (const slot of FX_SLOTS[kind]) {
+        const st = await ev(page, pgFxStart, { kind, id, slot, plan: fxPlan(kind) }, T_TIME);
+        st.jobs.forEach((ms, j) => { (byJob[j] = byJob[j] || []).push(ms); });
+        if (first && rep === 0) out.coldJobs = st.jobs.map(r2);
+        if (st.warm.length) out.warm.push(...st.warm.map(r2));   // the engine's once-a-page warm-ups: reported, not the pack's
+        first = false;
+        const r = await ev(page, pgFxRun, st.end, T_TIME);
+        const s = out.slots[slot] || (out.slots[slot] = { frames: [] });
+        s.frames.push(...r.frames);
+        out.plates = Math.max(out.plates, r.plates); out.layer = Math.max(out.layer, r.layer);
+        if (!r.idle) out.idle = false;
+      }
+      const n = takeNotes(page);
+      out.errors.push(...n.errors.map((x) => "timing: " + x)); out.warnings.push(...n.warnings.map((x) => "timing: " + x));
+    } catch (e) { out.loadError = "timing: " + String(e && e.message || e).split("\n")[0]; }
+    await page.close().catch(() => {});
+  }
+  out.jobs = byJob.map((a) => r2(pct(a, 0.5)));          // each job's median over every prep that ran it
+  Object.keys(out.slots).forEach((k) => { out.slots[k] = stats(out.slots[k].frames); });
+  return out;
+}
+function fxVerdict(kind, id, m, render, bytes) {
+  const B = FX_BUDGET, v = [];
+  if (m && !m.loadError) {
+    FX_SLOTS[kind].forEach((slot) => {
+      const s = m.slots[slot];
+      if (!s) return;
+      v.push(abs("avg-" + slot, slot + ": frame avg ≤ 8 ms", s.avg, B.frameAvg, "ms"));
+      v.push(abs("p95-" + slot, slot + ": frame p95 ≤ 16 ms", s.p95, B.frameP95, "ms"));
+    });
+    v.push(abs("jobMs", "each prep job ≤ 25 ms (its median)", m.jobs.length ? Math.max(...m.jobs) : 0, B.jobMs, "ms"));
+    v.push(abs("plates", "the pack's plates ≤ 16 MB", m.plates, B.plateBytes, "bytes"));
+    v.push({ key: "idle", label: "idle costs nothing: the layer and its loop are gone after every slot", value: m.idle ? "yes" : "the layer stayed", pass: !!m.idle });
+  }
+  if (bytes != null) v.push(abs("file", "file ≤ " + B.fileBytes[kind] / KB + " KB", bytes, B.fileBytes[kind], "bytes"));
+  if (render && !render.loadError) {
+    const missed = FX_SLOTS[kind].filter((s) => !render.slots[s] || !render.slots[s].played);
+    if (id !== "classic") v.push({ key: "played", label: "every slot printed itself (not classic's fallback)", value: missed.length ? "classic played " + missed.join(", ") : "yes", pass: !missed.length });
+    const stuck = FX_SLOTS[kind].filter((s) => render.slots[s] && render.slots[s].gone === false);
+    v.push({ key: "gone", label: "the layer is off the page once the slot ends", value: stuck.length ? "still up after " + stuck.join(", ") : "yes", pass: !stuck.length });
+  } else if (render) v.push({ key: "played", label: "it loaded", value: render.loadError, pass: false });
+  return v;
+}
+async function fxMain() {
+  const t0 = Date.now(), kind = MODE, srv = await serve(opt.root, opt.port);
+  BASE = "http://127.0.0.1:" + srv.port + "/";
+  browser = await PW.chromium.launch();
+  ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2 });
+  let report;
+  try {
+    const ids = [];
+    if (pos[1] === "all") {
+      ids.push("classic");
+      const lister = await bench(ctx);
+      (await lister.evaluate((k) => (window.T82ART && T82ART.catalog ? T82ART.catalog(k) : []).map((e) => e.id), kind)).forEach((x) => { if (!ids.includes(x)) ids.push(x); });
+      await lister.close();
+      const dir = path.join(opt.root, "art", kind);
+      if (fs.existsSync(dir)) fs.readdirSync(dir).filter((f) => /^[a-z0-9-]+\.js$/.test(f)).map((f) => f.slice(0, -3)).forEach((x) => { if (!ids.includes(x)) ids.push(x); });
+    } else {
+      if (pos[1] !== "classic" && !fileOf(kind, pos[1])) throw new Error("there is no " + kind + " pack " + pos[1] + ": no art/" + kind + "/" + pos[1] + ".js under " + opt.root);
+      ids.push(pos[1]);
+    }
+    log("art-qa: " + kind + " " + ids.join(", ") + "; out " + OUT);
+    const dir = path.join(OUT, kind), variants = [];
+    fs.mkdirSync(dir, { recursive: true });
+    for (const id of ids) {
+      log("art-qa: " + kind + " " + id + ": pictures");
+      let R, m = null;
+      try { R = await fxRender(kind, id, dir, {}); } catch (e) { R = { loadError: "the bench could not finish it: " + String(e && e.message || e).split("\n")[0], errors: [], warnings: [], images: [], slots: {}, full: [] }; await closeOpen(); }
+      if (!opt.quick) {
+        log("art-qa: " + kind + " " + id + ": timing at " + opt.throttle + "x, " + opt.reps + " reps");
+        try { m = await fxTiming(kind, id, opt.reps); } catch (e) { m = { loadError: "the timing pass failed: " + String(e && e.message || e).split("\n")[0], errors: [], warnings: [] }; await closeOpen(); }
+      }
+      const f = id === "classic" ? null : fileOf(kind, id), bytes = f ? fs.statSync(f).size : null;
+      const budgets = fxVerdict(kind, id, m, R, bytes);
+      const errors = [].concat(R.errors || [], m && m.errors || [], R.loadError ? ["did not load: " + R.loadError] : [], m && m.loadError ? [m.loadError] : []);
+      const warnings = [].concat(R.warnings || [], m && m.warnings || []);
+      budgets.push({ key: "errors", label: "no console errors", value: errors.length, pass: errors.length === 0 });
+      const retired = warnings.filter((w) => ENGINE_WARN.test(w));
+      budgets.push({ key: "warnings", label: "no engine warnings (a throw retires it)", value: retired.length, pass: retired.length === 0 });
+      const parts = [];
+      if (m && !m.loadError) {
+        parts.push(FX_SLOTS[kind].map((s) => m.slots[s] ? s + " " + fmtMs(m.slots[s].avg) + "/" + fmtMs(m.slots[s].p95) : s + " n/a").join(", ") + " (avg/p95)");
+        parts.push("prep " + m.jobs.length + " jobs, max " + fmtMs(m.jobs.length ? Math.max(...m.jobs) : 0) + " (cold page " + fmtMs(m.coldJobs.length ? Math.max(...m.coldJobs) : 0) + "; the engine's warm-ups, once a page, max " + fmtMs(m.warm.length ? Math.max(...m.warm) : 0) + ")", "plates " + fmtB(m.plates) + ", layer " + fmtB(m.layer));
+      }
+      if (bytes != null) parts.push(fmtB(bytes));
+      parts.push(errors.length + " errors");
+      const def = R.def || {};
+      const v = { kind, id, builtin: id === "classic", name: def.name || id, by: def.by || "", file: f, fileBytes: bytes, budgets, timing: m,
+        render: { slots: R.slots }, errors, warnings, images: R.images || [], full: R.full || [], frames: R.frames || {}, summary: parts.join("; "), notes: [] };
+      variants.push(v);
+    }
+    if (opt.webkit) {
+      log("art-qa: WebKit pass");
+      let wb = null;
+      try { wb = await PW.webkit.launch(); } catch (e) { variants.forEach((v) => { v.webkitErrors = ["WebKit did not launch: " + e.message]; }); }
+      if (wb) {
+        const saved = ctx;
+        ctx = await wb.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2 });
+        for (const v of variants) {
+          try {
+            const r = await fxRender(kind, v.id, dir, { shots: false });
+            const fell = v.id === "classic" || r.loadError ? [] : FX_SLOTS[kind].filter((s) => !r.slots[s] || !r.slots[s].played).map((s) => "classic played " + s);
+            v.webkitErrors = r.errors.concat(r.warnings.filter((w) => ENGINE_WARN.test(w)).map((w) => "warning: " + w), r.loadError ? ["did not load: " + r.loadError] : [], fell);
+          } catch (e) { v.webkitErrors = ["the WebKit pass threw: " + String(e && e.message || e).split("\n")[0]]; await closeOpen(); }
+        }
+        ctx = saved;
+        await wb.close();
+      }
+      variants.forEach((v) => { const e = v.webkitErrors || []; v.budgets.push({ key: "webkit", label: "WebKit: no errors, and it printed itself", value: e.length ? e.length + " problems" : "clean", pass: e.length === 0 }); });
+    }
+    variants.forEach((v) => { v.pass = !v.budgets.some((x) => x.pass === false); });
+    const rows = [];
+    if (variants.length > 1) {                          // every pack side by side: each slot's hold frame
+      const f = path.join(OUT, "row-" + kind + ".png");
+      await sheet(f, { title: "every " + kind + " pack", sub: "Each pack's hold frame, a row per slot.", sections: FX_SLOTS[kind].map((s) => ({ title: s, cols: variants.length,
+        cells: variants.filter((v) => v.frames[s]).map((v) => ({ src: dataURL(v.frames[s]), label: v.id, w: 170 })) })) });
+      rows.push(f);
+    }
+    variants.forEach((v) => { delete v.frames; });
+    report = { tool: "tools/art-qa.mjs", when: new Date().toISOString(), mode: MODE + " " + pos[1], root: opt.root, engine: "riso-fx " + kind, throttle: opt.throttle, reps: opt.reps,
+      quick: opt.quick, seconds: Math.round((Date.now() - t0) / 1000), budgets: FX_BUDGET, passed: variants.filter((v) => v.pass).length, failed: variants.filter((v) => !v.pass).length, rows, variants };
+    fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify(report, null, 1));
+    const idx = writeIndex(report);
+    log("");
+    variants.forEach((v) => {
+      log((v.pass ? "PASS " : "FAIL ") + kind + " " + v.id + (v.builtin ? " (built-in)" : "") + ": " + v.summary);
+      v.budgets.filter((b) => b.pass === false).forEach((b) => log("     FAIL " + b.label + ": " + fmtNum(b.value, b.unit)));
+      v.errors.slice(0, 4).forEach((e) => log("     error: " + e.slice(0, 200)));
+      v.images.forEach((f) => log("     " + f));
+    });
+    rows.forEach((f) => log("row: " + f));
+    log("report: " + path.join(OUT, "report.json"));
+    log("index:  " + idx + "  (" + report.seconds + " s)");
+  } finally {
+    for (const k in sheetCtx) await sheetCtx[k].close().catch(() => {});
+    if (small) await Promise.resolve(small).then((c) => c.close()).catch(() => {});
+    await browser.close().catch(() => {});
+    await srv.close();
+  }
+  process.exit(report.variants.some((v) => !v.pass) ? 1 : 0);
 }
 
 /* ---------- the report ---------- */
@@ -800,6 +1078,7 @@ function fmtNum(v, unit) { return unit === "bytes" ? fmtB(v) : unit === "ms" ? f
 
 /* ---------- the run ---------- */
 async function main() {
+  if (FX_KINDS.includes(MODE)) return fxMain();    // the FX layer's packs run on their own bench (below the scene's)
   const t0 = Date.now();
   const srv = await serve(opt.root, opt.port);
   BASE = "http://127.0.0.1:" + srv.port + "/";
@@ -863,7 +1142,9 @@ async function main() {
         else {
           const pals = {}, perfect = {}, key = (id) => pals[id] + (perfect[id] ? "+82" : "");
           ids.forEach((id) => { pals[id] = (renders[id] && renders[id].lights || ["golden"])[0]; perfect[id] = !!(renders[id] && renders[id].perfect); });
-          timing = await sceneTiming(ids, opt.reps, pals, perfect);
+          const lives = {};
+          ids.forEach((id) => { lives[id] = renders[id] && renders[id].live ? renders[id].live.dur : 0; });
+          timing = await sceneTiming(ids, opt.reps, pals, perfect, lives);
           // lake again for every painting a variant is timed in that the plain run did not cover (its first light; a
           // perfect scene's 82-0), so each ratio compares the same picture
           const L = BUILTIN.scene, need = [...new Set(ids.filter((id) => id !== L).map(key).filter((k) => k !== key(L)))];
@@ -894,7 +1175,7 @@ async function main() {
         const entry = lists[kind].find((e) => e.id === id) || {};
         const def = R && R.def || {};
         const v = { kind, id, builtin: id === BUILTIN[kind], on: entry.on !== false, name: def.name || entry.name || id, by: def.by || "", file: f, fileBytes: bytes,
-          budgets: verdict, timing: m, render: R ? { cases: R.cases, months: R.months, lights: R.lights, perfect: R.perfect, sameAsLake: R.sameAsLake, posterMs: R.posterMs, uses: R.uses, off: R.off } : null,
+          budgets: verdict, timing: m, render: R ? { cases: R.cases, months: R.months, lights: R.lights, perfect: R.perfect, sameAsLake: R.sameAsLake, posterMs: R.posterMs, uses: R.uses, off: R.off, live: R.live } : null,
           errors, warnings, images: R ? R.images : [], full: R && (R.banners || R.full) || [] };
         v.pass = !verdict.some((x) => x.pass === false);
         v.notes = [];
@@ -928,7 +1209,7 @@ async function main() {
         if (kind === "loss") {
           for (const k of LOSS_CASES) {
             const fk = path.join(OUT, "row-loss-" + k + ".png");
-            await sheet(fk, { title: "every loss \u00B7 " + k, sub: "Each variant's frame at e = 0.35 s.", sections: [{ cols: 4, cells: list.filter((x) => x.frames[k]).map((x) => ({ src: dataURL(x.frames[k]), label: x.id, sub: x.played && x.played[k] === false ? "(classic played)" : "", w: 260 })) }] });
+            await sheet(fk, { title: "every loss \u00B7 " + k, sub: "Each variant's frame at e = 0.35 s (the 0.29 s moment: its read frame).", sections: [{ cols: 4, cells: list.filter((x) => x.frames[k]).map((x) => ({ src: dataURL(x.frames[k]), label: x.id, sub: x.played && x.played[k] === false ? "(classic played)" : "", w: 260 })) }] });
             rows.push(fk);
           }
         } else if (kind === "dots") {
@@ -974,7 +1255,8 @@ function summarize(kind, v, b) {
     if (v.render && v.render.cases) parts.push("holds " + LOSS_CASES.map((k) => v.render.cases[k] ? (v.render.cases[k].hold / 1000).toFixed(2) + " s" : "?").join("/"));
   } else if (kind === "dots") {
     if (m && !m.loadError) parts.push("moving frame " + fmtMs(m.frame.avg) + " avg, " + fmtMs(m.frame.p95) + " p95 (" + m.frame.n + " frames)", "settled season " + fmtMs(m.settled));
-  } else if (m && !m.loadError) parts.push("bake " + fmtMs(m.bake) + (m.painting ? " (" + m.painting.replace("+82", ", 82-0") + ")" : ""), "mount " + fmtMs(m.mount), "reveal frame " + fmtMs(m.frame.avg) + " avg, " + fmtMs(m.frame.p95) + " p95");
+  } else if (m && !m.loadError) parts.push("bake " + fmtMs(m.bake) + (m.painting ? " (" + m.painting.replace("+82", ", 82-0") + ")" : ""), "mount " + fmtMs(m.mount), "reveal frame " + fmtMs(m.frame.avg) + " avg, " + fmtMs(m.frame.p95) + " p95" +
+    (m.live && m.live.n ? "; live frame " + fmtMs(m.live.avg) + " avg, " + fmtMs(m.live.p95) + " p95" : ""));
   if (v.fileBytes != null) parts.push(fmtB(v.fileBytes));
   if (m && m.noise != null) parts.push("noise \u00B1" + Math.round(m.noise * 50) + "%");
   parts.push(v.errors.length + " errors");

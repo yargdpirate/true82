@@ -235,25 +235,28 @@
   }
   // Draw one ink's tone as alpha over the whole plate, screen it into dots,
   // punch the starve specks, keep the result as a layer.
-  function bakeLayer(P, ink, draw) {
-    var c = cv(P.W, P.H), g = c.getContext("2d", { willReadFrequently: true });
+  // box (device px [x, y, w, h], optional): a perfect scene's small layer, drawn and screened only there.
+  function bakeLayer(P, ink, draw, box) {
+    var c = cv(P.W, P.H), g = c.getContext("2d", { willReadFrequently: true }), r = box || [0, 0, P.W, P.H];
+    if (box) { g.beginPath(); g.rect(r[0], r[1], r[2], r[3]); g.clip(); }
     g.setTransform(P.k, 0, 0, P.k, 0, 0);
     g.fillStyle = "#000"; g.strokeStyle = "#000";
     draw(g);
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
-    var img = g.getImageData(0, 0, P.W, P.H);
-    screenData(img.data, P, 0, 0, P.W, P.H, ink);
-    g.putImageData(img, 0, 0);
+    var img = g.getImageData(r[0], r[1], r[2], r[3]);
+    screenData(img.data, P, r[0], r[1], r[2], r[3], ink);
+    g.putImageData(img, r[0], r[1]);
     g.globalCompositeOperation = "destination-out"; g.drawImage(P.starve, 0, 0); g.globalCompositeOperation = "source-over";
     return { c: c, ink: ink };
   }
   var KEY_ON_DARK = 0.55;
-  function composeTo(x, P, layers, clips) {
+  function composeTo(x, P, layers, clips, base) {
     x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
-    x.drawImage(P.paper, 0, 0);
+    x.drawImage(base || P.paper, 0, 0);                                    // base: paper with layers already on it
     x.globalCompositeOperation = P.TH.blend;
     layers.forEach(function (L, i) {
       var r = P.reg[L.ink], c = clips ? clips[i] : null;
+      if (L.reg) r = [r[0] + L.reg[0], r[1] + L.reg[1]];                  // a perfect scene's second hit of an ink
       if (c === 0) return;
       x.globalAlpha = P.TH.dark && L.ink === "blue" ? KEY_ON_DARK : 1;    // on dark stock the key ink is a glow, not the shadow
       if (c) {                                                             // a clip is one rect or a list of them
@@ -412,6 +415,15 @@
      the record, and a scene that throws prints the lake instead: never a broken results page. ---- */
   var ROLES = { sky: 1, land: 1, line: 1 }, SCENE_INKS = { light: 1, pink: 1, blue: 1, sun: 1, orange: 1, teal: 1 };
   var STRIP_INKS = ["light", "pink", "blue"], LIGHTS = ["golden", "dusk", "night"], MAX_LAYERS = 8;
+  // v67 (art/CONTRACT-FX.md, "Perfect scenes"): a scene with perfect: true prints ONLY an 82-0, so it may spend more
+  // (ten layers, a second hit of an ink off register, a champion's title, a few seconds of live motion after the
+  // reveal). The owner: 82-0 has to feel "so much better than 81-1".
+  var MAX_PERFECT = 10, T_SLAM = 0.16;
+  function perfectSeason(spec) {
+    if (!spec) return false;
+    if (spec.games && spec.games.length === 82) { for (var i = 0; i < 82; i++) if (!spec.games[i]) return false; return true; }
+    return Math.round(+spec.wins) === 82;
+  }
 
   /* ---- the engine's share of every layer ---- */
   function frameClip(g, L) { g.beginPath(); g.rect(L.FX0, L.FY0, L.FX1 - L.FX0, L.FY1 - L.FY0); g.clip(); }
@@ -459,6 +471,8 @@
   // One scene layer as a plate. E is the engine's copy of the season (the scene draws from its own copy, D),
   // first = this layer carries the marks (and, on land, the strip) for its ink: once per role per ink.
   function bakeSceneLayer(P, E, L, ly, first) {
+    var b = ly.box && !first ? ly.box : null, x0, y0;                   // never a box on a layer that carries the marks
+    if (b) { x0 = clamp(Math.floor(b[0] * P.k) - 4, 0, P.W); y0 = clamp(Math.floor(b[1] * P.k) - 4, 0, P.H); b = [x0, y0, Math.max(1, clamp(Math.ceil(b[2] * P.k) + 4, 0, P.W) - x0), Math.max(1, clamp(Math.ceil(b[3] * P.k) + 4, 0, P.H) - y0)]; }
     var out = bakeLayer(P, ly.ink === "light" ? E.pal.light : ly.ink, function (g) {
       g.save(); frameClip(g, L);
       if (ly.role === "land") levelClip(g, E, L);
@@ -466,8 +480,9 @@
       g.restore();
       if (first && ly.role === "land") strip(g, P, E, L, ly.ink);
       if (first) marks(g, L, 0.8);
-    });
+    }, b || undefined);
     out.role = ly.role;
+    if (ly.reg) out.reg = ly.reg;
     return out;
   }
 
@@ -629,16 +644,22 @@
     try {
       def = T82ART.get("scene", id);
       if (!def || typeof def.layers !== "function") return LAKE_ENTRY;
+      if (def.perfect === true && !perfectSeason(spec)) return LAKE_ENTRY;   // a perfect scene never prints less than 82-0
       lights = (Array.isArray(def.lights) ? def.lights : []).filter(function (k) { return LIGHTS.indexOf(k) >= 0; });
     } catch (e) { retire(id, e); return LAKE_ENTRY; }
     return { id: id, def: def, lights: lights.length ? lights : LIGHTS };
   }
-  function scenes() {
+  // opts.perfect: true lists only the perfect scenes (82-0 only; no lake), false only the ordinary ones (the lake
+  // first); without it, every registered scene as before.
+  function scenes(opts) {
     registerLake();
-    var out = ["lake"], A = window.T82ART;
+    var want = opts && typeof opts.perfect === "boolean" ? opts.perfect : null, out = want === true ? [] : ["lake"], A = window.T82ART;
     try {
       if (A && typeof A.catalog === "function" && typeof A.get === "function") {
-        (A.catalog("scene") || []).forEach(function (en) { if (en && en.id && out.indexOf(en.id) < 0 && A.get("scene", en.id)) out.push(en.id); });
+        (A.catalog("scene") || []).forEach(function (en) {
+          var def = en && en.id && out.indexOf(en.id) < 0 ? A.get("scene", en.id) : null;
+          if (def && (want === null || (def.perfect === true) === want)) out.push(en.id);
+        });
       }
     } catch (e) {}
     return out;
@@ -653,11 +674,17 @@
     for (k in E.pal) D.pal[k] = E.pal[k];
     var K = sceneKit(P, E, d);
     if (typeof def.derive === "function") def.derive(K, D, L);
-    var list = def.layers(K, P, D, L);
-    if (!Array.isArray(list) || !list.length || list.length > MAX_LAYERS) throw new Error("layers() must return 1 to " + MAX_LAYERS + " layers");
+    var list = def.layers(K, P, D, L), perfect = def !== LAKE && def.perfect === true, max = perfect ? MAX_PERFECT : MAX_LAYERS;
+    if (!Array.isArray(list) || !list.length || list.length > max) throw new Error("layers() must return 1 to " + max + " layers");
     list = list.map(function (ly) {
       if (!ly || !ROLES[ly.role] || !SCENE_INKS[ly.ink] || typeof ly.draw !== "function") throw new Error("every layer needs an ink, a role and draw()");
-      return { ink: ly.ink, role: ly.role, draw: ly.draw };
+      var out = { ink: ly.ink, role: ly.role, draw: ly.draw };
+      // a perfect scene's layer may print a second hit of its ink: reg [dx, dy] more off register, in css px like
+      // the inks' own offsets (a double-hit gold sun: two gold layers, one a pixel or two off the other)
+      if (perfect && Array.isArray(ly.reg)) out.reg = [clamp(+ly.reg[0] || 0, -6, 6) * d, clamp(+ly.reg[1] || 0, -6, 6) * d];
+      // and may say where it prints (box: scene units [x0, y0, x1, y1]), so a small plate screens only that much
+      if (perfect && Array.isArray(ly.box) && ly.box.length >= 4 && ly.box.every(isFinite)) out.box = ly.box.slice(0, 4);
+      return out;
     });
     // the strip prints in a land layer of each of its three inks: a scene that skips one gets a blank one
     STRIP_INKS.forEach(function (ink) {
@@ -674,7 +701,59 @@
       if (own && !retired[S.id]) { try { own(g, D, L); return; } catch (e) { retire(S.id, e); } }
       lakeBody(g, E, L);
     }
-    return { id: S.id, D: D, E: E, jobs: jobs, body: body };
+    var out = { id: S.id, D: D, E: E, jobs: jobs, body: body };
+    if (perfect) { out.perfect = true; perfectParts(out, def, K, P, L); }
+    return out;
+  }
+  // A perfect scene's title and live part, each printed through a press: press(ink, box, draw) screens the tone
+  // that draw(g) lays inside box (scene units [x0, y0, x1, y1]) into that ink's dots, off register like every
+  // plate, and prints it in the stock's blend. Both print onto sheets of their own, once (sheets(), a bake step):
+  // the title lands whole at the reveal's last game, and the live part's still (its frame at t = dur) is what the
+  // print keeps after the motion and what the poster prints.
+  function press(x, P, E, clipL, onBox) {
+    return function (ink, box, draw) {
+      var name = ink === "light" ? E.pal.light : ink;
+      if (!SCENE_INKS[ink] || !INKS[name] || !Array.isArray(box) || box.length < 4 || typeof draw !== "function") throw new Error("press(ink, box, draw): an ink, a box and draw()");
+      if (onBox) onBox(box);
+      inkLive(x, P, name, box, clipL ? function (g) { frameClip(g, clipL); draw(g); } : draw);
+    };
+  }
+  function perfectParts(S, def, K, P, L) {
+    var title = typeof def.title === "function" ? def.title : null, lv = def.live;
+    S.live = lv && typeof lv.draw === "function" ? { dur: clamp(+lv.dur || 0, 0.5, 12), draw: lv.draw } : null;
+    S.K = K; S.L = L;
+    if (!title && !S.live) return;
+    S.sheets = function () {
+      var E = S.E, spec = E.spec, c, g;
+      if (title) {
+        c = cv(P.W, P.H); S.titleBox = null;
+        g = press(c.getContext("2d"), P, E, null, function (b) {
+          var u = S.titleBox;
+          S.titleBox = u ? [Math.min(u[0], b[0]), Math.min(u[1], b[1]), Math.max(u[2], b[2]), Math.max(u[3], b[3])] : b.slice(0, 4);
+        });
+        // what the plain title prints, for the champion's: the zone, the real record (the engine's), the mode
+        g.box = L === POSTER ? [20, 20, 980, 182] : [16, 8, 984, 160]; g.poster = L === POSTER;
+        g.record = recText(E.w, E.l); g.context = spec.context || ""; g.comp = spec.comp || "";
+        // the width of text in a font (sizes in scene units), so each press can take a tight box
+        g.measure = function (font, text) { var m = P.sg; m.save(); m.font = font; var w = m.measureText(String(text)).width; m.restore(); return w; };
+        title(K, P, S.D, L, g);
+        if (!S.titleBox) throw new Error("title() printed nothing");
+        S.titleC = c;
+      }
+      if (S.live) { c = cv(P.W, P.H); S.live.draw(K, P, S.D, L, S.live.dur, press(c.getContext("2d"), P, E, L)); S.stillC = c; }
+    };
+  }
+  // a sheet onto the print, in the stock's blend (screen and multiply are associative: the same as printing it there)
+  function sheet(x, P, c) {
+    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = P.TH.blend;
+    x.drawImage(c, 0, 0); x.restore();
+  }
+  // the champion's title lands when the season's last game prints: a press coming down (T_SLAM, the only time the
+  // print is scaled) from the title's middle
+  function slamTitle(x, P, S, e) {
+    var p = clamp(e / T_SLAM, 0, 1), s = 1 + 0.1 * (1 - p) * (1 - p), b = S.titleBox, cx = (b[0] + b[2]) / 2 * P.k, cy = (b[1] + b[3]) / 2 * P.k;
+    x.save(); x.setTransform(s, 0, 0, s, cx * (1 - s), cy * (1 - s)); x.globalAlpha = 1; x.globalCompositeOperation = P.TH.blend;
+    x.drawImage(S.titleC, 0, 0); x.restore();
   }
   function prepare(P, spec, L, d) {
     var S = sceneFor(spec);
@@ -686,7 +765,7 @@
   function bakeScene(P, spec, L, d) {
     var S = prepare(P, spec, L, d);
     if (S.id !== "lake") {
-      try { S.layers = S.jobs.map(run); return S; } catch (e) { retire(S.id, e); S = prepWith(P, spec, L, d, LAKE_ENTRY); }
+      try { S.layers = S.jobs.map(run); if (S.sheets) S.sheets(); return S; } catch (e) { retire(S.id, e); S = prepWith(P, spec, L, d, LAKE_ENTRY); }
     }
     S.layers = S.jobs.map(run);
     return S;
@@ -858,6 +937,9 @@
   // draws the reveal at the clock's time (it returns true while the reveal is still running).
   // The returned object's scene is the id of the scene that actually printed ("lake" when spec.scene was not
   // registered or failed).
+  // v67: a perfect scene's live part runs after the reveal on the same clock (and frame(), which then returns true
+  // until it ends); without opts.manual it stops early, on its still, when the page is hidden or the print scrolls
+  // out of view.
   function mount(host, spec, opts) {
     if (killed() || !host || !supported()) return null;
     opts = opts || {};
@@ -883,12 +965,13 @@
         played = false; play();
       },
       rebuild: function () { if (!alive) return; build(); rest(); },          // the theme changed (the lab)
-      destroy: function () { alive = false; if (raf) cancelAnimationFrame(raf); clearTimeout(resizeT); window.removeEventListener("resize", onResize); },
+      destroy: function () { alive = false; if (raf) cancelAnimationFrame(raf); clearTimeout(resizeT); window.removeEventListener("resize", onResize); live = null; unwatch(); },
       scene: "lake"
     };
-    if (manual) api.frame = function () { frame(); return !!reveal; };
+    if (manual) api.frame = function () { frame(); return !!(reveal || live); };
 
     function build() {
+      live = null; unwatch();
       var cssW = Math.round(host.getBoundingClientRect().width) || 340, d = dpr();
       var W = Math.max(64, Math.min(1240, Math.round(cssW * d)));
       lastW = cssW;
@@ -901,7 +984,9 @@
       var pc = P.print.getContext("2d");
       composeTo(pc, P, layers, null);
       drawLevel(pc, P, E, BANNER, E.fillX, S.body);
-      drawBannerTitle(pc, P, E, E.w, E.l);
+      if (S.titleC) sheet(pc, P, S.titleC); else drawBannerTitle(pc, P, E, E.w, E.l);
+      // a live part prints over the finished print (P.base) and leaves its still on P.print
+      if (S.stillC) { P.base = cv(P.W, P.H); P.base.getContext("2d").drawImage(P.print, 0, 0); sheet(pc, P, S.stillC); }
     }
     function roster(alpha) {
       nctx.setTransform(1, 0, 0, 1, 0, 0); nctx.clearRect(0, 0, names.width, names.height);
@@ -916,7 +1001,7 @@
     function frame() {
       if (!alive) return;
       raf = 0;
-      if (!reveal) { still(); return; }
+      if (!reveal) { if (live) liveFrame(); else still(); return; }
       var t = now();
       if (reveal.t0 == null) reveal.t0 = t;
       var e = t - reveal.t0, clips = [], i;
@@ -933,15 +1018,79 @@
         else if (ly.role === "land") clips.push(e < 0.62 ? 0 : [[0, 0, fp > 0 ? fxp : 0, sy], [0, sy, xr, P.H - sy]]);
         else clips.push(e < 0.62 ? 0 : [0, 0, xr, P.H]);                  // the season's line and its loss marks
       });
-      composeTo(ctx, P, layers, clips);
+      // a perfect scene (up to ten layers): once its sky has printed down, the paper and the sky compose once into
+      // a sheet of their own, and every later frame starts from it
+      var base = null;
+      if (S.perfect && e >= (nSky - 1) * stag + 0.42) {
+        if (!P.sky) { P.sky = cv(P.W, P.H); composeTo(P.sky.getContext("2d"), P, layers, layers.map(function (ly) { return ly.role === "sky" ? null : 0; })); }
+        base = P.sky;
+        clips = clips.map(function (c, j) { return layers[j].role === "sky" ? 0 : c; });
+      }
+      composeTo(ctx, P, layers, clips, base);
       if (fp > 0) drawLevel(ctx, P, E, BANNER, fx, S.body);
       var n = Math.floor(gCount), w = 0;
       if (E.games) { for (i = 0; i < n; i++) w += E.games[i] ? 1 : 0; }
       else w = Math.round(E.w * n / 82);
-      drawBannerTitle(ctx, P, E, w, n - w);
+      if (S.titleC && gCount >= 82) slamTitle(ctx, P, S, e - T_SEASON);   // a perfect scene: the champion's title lands
+      else drawBannerTitle(ctx, P, E, w, n - w);
       var tNames = T_SEASON + 0.08 + T_FILL * 0.7;
       roster(clamp((e - tNames) / 0.35, 0, 1));                            // the names land as the fill settles
-      if (e > T_SEASON + 0.08 + T_FILL + 0.05 && e > tNames + 0.36) { reveal = null; still(); return; }
+      if (e > T_SEASON + 0.08 + T_FILL + 0.05 && e > tNames + 0.36) { reveal = null; P.sky = null; if (liveOn()) liveFrame(); else still(); return; }
+      if (!manual) raf = requestAnimationFrame(frame);
+    }
+    // v67, a perfect scene's live part (art/CONTRACT-FX.md): after the reveal, its few seconds of motion print in
+    // small boxes over the finished print, each frame putting back last frame's boxes from P.base first, and then
+    // the print rests on its still (P.print). Nobody watching (the page hidden, the print scrolled away, destroy())
+    // ends it on the still at once: no loop runs for a print no one can see.
+    var live = null, io = null, onVis = null;
+    function unwatch() {
+      if (io) { io.disconnect(); io = null; }
+      if (onVis) { document.removeEventListener("visibilitychange", onVis); onVis = null; }
+    }
+    function liveOff() {
+      unwatch();
+      if (!live) return;
+      live = null;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (alive && !reveal) still();
+    }
+    function liveOn() {
+      if (!S.live || !P.base || retired[S.id] || reduced() || document.hidden) return false;
+      live = { t0: null, rects: [] };
+      if (!manual) {
+        if (window.IntersectionObserver) {
+          io = new IntersectionObserver(function (en) { if (en.length && !en[en.length - 1].isIntersecting) liveOff(); });
+          io.observe(host);
+        }
+        onVis = function () { if (document.hidden) liveOff(); };
+        document.addEventListener("visibilitychange", onVis);
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      ctx.drawImage(P.base, 0, 0);
+      roster(1);
+      return true;
+    }
+    function liveFrame() {
+      var t = now();
+      if (live.t0 == null) live.t0 = t;
+      var e = t - live.t0, jobs = [], rects = [], i, j;
+      if (e >= S.live.dur || document.hidden) { liveOff(); return; }
+      try {
+        S.live.draw(S.K, P, S.D, BANNER, e, function (ink, box, draw) { jobs.push([ink, box, draw]); });
+        // the boxes this frame prints into, in device px with room for the inks' offsets
+        for (i = 0; i < jobs.length; i++) {
+          var b = jobs[i][1], m = 8;
+          if (!Array.isArray(b) || b.length < 4) continue;
+          var x0 = Math.max(0, Math.floor(b[0] * P.k) - m), y0 = Math.max(0, Math.floor(b[1] * P.k) - m);
+          var x1 = Math.min(P.W, Math.ceil(b[2] * P.k) + m), y1 = Math.min(P.H, Math.ceil(b[3] * P.k) + m);
+          if (x1 > x0 && y1 > y0) rects.push([x0, y0, x1 - x0, y1 - y0]);
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+        [live.rects, rects].forEach(function (list) { for (j = 0; j < list.length; j++) { var r = list[j]; ctx.drawImage(P.base, r[0], r[1], r[2], r[3], r[0], r[1], r[2], r[3]); } });
+        live.rects = rects;
+        var pr = press(ctx, P, E, BANNER);
+        for (i = 0; i < jobs.length; i++) pr(jobs[i][0], jobs[i][1], jobs[i][2]);
+      } catch (err) { retire(S.id, err); liveOff(); return; }
       if (!manual) raf = requestAnimationFrame(frame);
     }
     function play() {
@@ -981,8 +1130,8 @@
       } catch (e) { cb(null); return; }
       next();
       function next() {
-        if (idx < S.jobs.length) {
-          try { layers.push(S.jobs[idx++]()); }
+        if (idx < S.jobs.length || (S.sheets && !S.titleC && !S.stillC)) {   // a perfect scene's sheets: one more task
+          try { if (idx < S.jobs.length) layers.push(S.jobs[idx++]()); else S.sheets(); }
           catch (e) {
             if (S.id === "lake") { cb(null); return; }
             retire(S.id, e);                                           // a scene that throws: start over as the lake
@@ -996,7 +1145,8 @@
           var out = cv(P.W, P.H), x = out.getContext("2d"), E = S.E;
           composeTo(x, P, layers, null);
           drawLevel(x, P, E, POSTER, E.fillX, S.body);
-          drawPosterTitle(x, P, E, E.w, E.l);
+          if (S.titleC) sheet(x, P, S.titleC); else drawPosterTitle(x, P, E, E.w, E.l);
+          if (S.stillC) sheet(x, P, S.stillC);                         // a perfect scene's live part, as its still
           drawPosterFoot(x, P, spec);
           filterPixels(x, P.W, P.H, TH.filter);                       // the look's print filter (a negative on dark cards)
           drawRoster(x, TH, P.k, spec, POSTER, 1);
@@ -1018,7 +1168,8 @@
     var out = cv(P.W, P.H), g = out.getContext("2d");
     composeTo(g, P, S.layers, null);
     drawLevel(g, P, E, BANNER, E.fillX, S.body);
-    drawBannerTitle(g, P, E, E.w, E.l);
+    if (S.titleC) sheet(g, P, S.titleC); else drawBannerTitle(g, P, E, E.w, E.l);
+    if (S.stillC) sheet(g, P, S.stillC);
     var names = cv(P.W, P.H);
     drawRoster(names.getContext("2d"), TH, P.k, spec, BANNER, 1);
     return { print: out, names: names, filter: TH.filter, scene: S.id };
@@ -1026,6 +1177,7 @@
   function fontsFor(root) { try { return fontsReady(readTheme(root)); } catch (e) { return Promise.resolve(); } }
 
   registerLake();
-  // scenes(): the scene ids registered now (the lake first), for the lab and the QA harness
+  // scenes(): the scene ids registered now (the lake first), for the lab and the QA harness; scenes({ perfect: true }):
+  // the 82-0 ones
   window.T82PRINT = { mount: mount, poster: poster, print: print, scenes: scenes, fonts: fontsFor, paper: paperDataURL, theme: readTheme, version: "v67" };
 })();
