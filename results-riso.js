@@ -336,7 +336,9 @@
     X0: 80, X1: 920, strip: { wTop: 1075, wH: 29, base: 1105, lTop: 1107, lH: 29, tick: 1140, lab: 1172 }, stars: 160, rip: 230,
     roster: { x: 76, y: 290, lh: 76, size: 62, w: 600, slot: true } };
 
-  function derive(spec, L) {
+  // The season in scene units, the same for every scene (D in art/CONTRACT.md). lights = the paintings the
+  // scene was drawn for (the lake prints all three).
+  function derive(spec, L, lights) {
     var games = spec.games && spec.games.length === 82 ? spec.games : null;
     var m = [0], w = 0, i;
     if (games) { for (i = 0; i < 82; i++) { if (games[i]) w++; m.push(w - (i + 1 - w)); } }
@@ -379,6 +381,8 @@
       night: { key: "night", light: "teal", top: [[0, 0.9], [0.7, 0.7], [1, 0.5]], band: [[0, 0.05], [1, 0.2]], waterB: [[0, 0.55], [1, 0.82]], ridgeB: 0.95, ridgeP: 0.62, sr: 0 }
     };
     var pal = PAL[spec.pal] || (wp >= 0.72 ? PAL.golden : wp >= 0.45 ? PAL.dusk : PAL.night);
+    // v67: a scene prints only in the paintings it was drawn for; one it lacks prints in its first (its default)
+    if (lights && lights.indexOf(pal.key) < 0) pal = PAL[lights[0]];
     var sr = pal.sr * L.rs;
     var sx = clamp(lerp(X(peak), 500, 0.35), 190, 810), sy = Math.min(WL - sr * 0.45, WL - (wp - 0.5) * 2 * (WL - L.FY0 - sr - 14));
     var moon = { x: 740, y: L.FY0 + (WL - L.FY0) * 0.3, r: 57 * L.rs };
@@ -395,62 +399,95 @@
     for (var s = 1; s <= 7; s++) strata.push({ off: s * 21 * vs, n: noise1D(seed + 40 + s) });
     return { spec: spec, games: games, m: m, w: w, l: 82 - w, wp: wp, X: X, front: front, far1: far1, far2: far2, pal: pal,
       sr: sr, sx: sx, sy: sy, moon: moon, losses: losses, stars: stars, glints: glints, ripples: ripples, strata: strata,
-      fillX: fillX };
+      fillX: fillX, seed: seed, peak: peak };
   }
 
-  function bake(P, D, L) { return bakeSteps(P, D, L).map(function (f) { return f(); }); }
-  // The six plates as separate tasks: sky in the light ink, pink and blue,
-  // then the land, water and strip in the same three.
-  function bakeSteps(P, D, L) {
-    var pal = D.pal, LI = pal.light, WL = L.WL, X = D.X, sh = L.strip, i;
-    function frameClip(g) { g.beginPath(); g.rect(L.FX0, L.FY0, L.FX1 - L.FX0, L.FY1 - L.FY0); g.clip(); }
+  /* ---- v67: scenes ----
+     The owner (2026-09-30) wants many pictures of a season, not the same mountains every time (art/CONTRACT.md).
+     The picture over the record is a SCENE: the lake below is the built-in, and the art library adds more, one
+     file each (art/scene/<id>.js), dealt one per season from a shuffle bag. A scene only paints. It hands back at
+     most eight layers of tone, each with an ink and a role, and the engine does everything else the same way for
+     every scene: it screens each layer into its ink's dots, clips it to the frame, prints the registration marks
+     and the 82-game strip, keeps the gauge, and reveals each layer by its role. So a scene can never misprint
+     the record, and a scene that throws prints the lake instead: never a broken results page. ---- */
+  var ROLES = { sky: 1, land: 1, line: 1 }, SCENE_INKS = { light: 1, pink: 1, blue: 1, sun: 1, orange: 1, teal: 1 };
+  var STRIP_INKS = ["light", "pink", "blue"], LIGHTS = ["golden", "dusk", "night"], MAX_LAYERS = 8;
+
+  /* ---- the engine's share of every layer ---- */
+  function frameClip(g, L) { g.beginPath(); g.rect(L.FX0, L.FY0, L.FX1 - L.FX0, L.FY1 - L.FY0); g.clip(); }
+  // The owner's gauge: the land and water only print left of the fill's front (D.fillX: the win rate across
+  // the frame); the reveal clips these layers from the left edge on, so the color runs into the outline the
+  // season just drew.
+  function levelClip(g, D, L) { g.beginPath(); g.rect(L.FX0 - 10, L.FY0 - 10, D.fillX - L.FX0 + 10, L.FY1 - L.FY0 + 20); g.clip(); }
+  function marks(g, L, t) {                               // registration marks at the frame corners
+    g.save(); g.strokeStyle = tone(t); g.lineWidth = 1.4; g.beginPath();
+    [[L.FX0, L.FY0, -1, -1], [L.FX1, L.FY0, 1, -1], [L.FX0, L.FY1, -1, 1], [L.FX1, L.FY1, 1, 1]].forEach(function (c) {
+      g.moveTo(c[0] + c[2] * 8, c[1]); g.lineTo(c[0] + c[2] * 22, c[1]); g.moveTo(c[0], c[1] + c[3] * 8); g.lineTo(c[0], c[1] + c[3] * 22);
+    });
+    g.stroke(); g.restore();
+  }
+  // The exact record under the picture: wins in the light ink, losses in pink, the month ticks in blue.
+  function strip(g, P, D, L, ink) {
+    var X = D.X, sh = L.strip, bw = (L.X1 - L.X0) / 82 * 0.6, i;
+    if (D.games) {
+      if (ink === "light") { g.fillStyle = tone(0.95); for (i = 0; i < 82; i++) if (D.games[i]) g.fillRect(X(i + 0.5) - bw / 2, sh.wTop, bw, sh.wH); }
+      if (ink === "pink") {
+        g.fillStyle = tone(0.95);
+        for (i = 0; i < 82; i++) { var cx = X(i + 0.5) - bw / 2; if (D.games[i]) g.fillRect(cx, sh.wTop, bw, 3.2); else g.fillRect(cx, sh.lTop, bw, sh.lH); }
+        if (D.spec.saved != null && D.spec.saved >= 0) {  // the game the Heat Check saved wears a ring
+          g.strokeStyle = tone(0.95); g.lineWidth = 3;
+          circle(g, X(D.spec.saved + 0.5), sh.wTop + sh.wH / 2, sh.wH * 0.72); g.stroke();
+        }
+      }
+    }
+    if (ink === "blue") {
+      g.fillStyle = tone(0.8); g.fillRect(X(0), sh.base - 1, X(82) - X(0), 1.6);
+      g.strokeStyle = tone(0.85); g.lineWidth = 1.4; g.fillStyle = tone(0.9);
+      var cum = 0; g.beginPath(); g.moveTo(X(0), sh.tick); g.lineTo(X(0), sh.tick + 12);
+      MONTHS.forEach(function (mo) {
+        var x0 = X(cum); cum += mo[1]; var x1 = X(cum);
+        g.moveTo(x1, sh.tick); g.lineTo(x1, sh.tick + 12);
+        g.font = "600 " + (L === POSTER ? 12 : 24) + "px " + P.TH.mono; spacedText(g, mo[0], (x0 + x1) / 2, sh.lab, L === POSTER ? 1.8 : 2.4, "center");
+      });
+      g.stroke();
+      if (!D.games) {
+        g.font = "600 " + (L === POSTER ? 13 : 19) + "px " + P.TH.mono;
+        spacedText(g, "PROJECTED OVER 82 GAMES", 500, sh.base - 10, 3, "center");
+      }
+    }
+  }
+  // One scene layer as a plate. E is the engine's copy of the season (the scene draws from its own copy, D),
+  // first = this layer carries the marks (and, on land, the strip) for its ink: once per role per ink.
+  function bakeSceneLayer(P, E, L, ly, first) {
+    var out = bakeLayer(P, ly.ink === "light" ? E.pal.light : ly.ink, function (g) {
+      g.save(); frameClip(g, L);
+      if (ly.role === "land") levelClip(g, E, L);
+      ly.draw(g);
+      g.restore();
+      if (first && ly.role === "land") strip(g, P, E, L, ly.ink);
+      if (first) marks(g, L, 0.8);
+    });
+    out.role = ly.role;
+    return out;
+  }
+
+  /* ---- the built-in scene: the lake (v50 to v66, unchanged) ----
+     Mountains over a lake: the waterline is .500, the record is the ridge, every loss a bead on it. The sky
+     prints in the light ink, pink and blue; then the land, the water and its reflections in the same three;
+     then the season's line. It draws through the same code path as any scene in the library. */
+  function lakeLayers(K, P, D, L) {
+    var pal = D.pal, WL = L.WL, X = D.X;
     function skyShape(g) { g.beginPath(); g.moveTo(L.FX0 - 10, L.FY0 - 10); g.lineTo(L.FX0 - 10, WL); for (var x = L.FX0 - 10; x <= L.FX1 + 10; x += 2) g.lineTo(x, Math.min(D.front(x), WL)); g.lineTo(L.FX1 + 10, WL); g.lineTo(L.FX1 + 10, L.FY0 - 10); g.closePath(); }
     function ridgeFill(g, fn, base) { g.beginPath(); g.moveTo(L.FX0 - 10, base); for (var x = L.FX0 - 10; x <= L.FX1 + 10; x += 2) g.lineTo(x, Math.min(fn(x), base)); g.lineTo(L.FX1 + 10, base); g.closePath(); }
     function subFill(g, fn) { g.beginPath(); g.moveTo(L.FX0 - 10, WL); for (var x = L.FX0 - 10; x <= L.FX1 + 10; x += 2) g.lineTo(x, Math.max(fn(x), WL)); g.lineTo(L.FX1 + 10, WL); g.closePath(); }
     function reflFill(g, fn, k) { g.beginPath(); g.moveTo(L.FX0 - 10, WL); for (var x = L.FX0 - 10; x <= L.FX1 + 10; x += 2) g.lineTo(x, WL + (WL - Math.min(fn(x), WL)) * k); g.lineTo(L.FX1 + 10, WL); g.closePath(); }
     function ridgeLine(g, fn) { var on = false; for (var x = L.FX0 - 10; x <= L.FX1 + 10; x += 2) { var y = fn(x); if (y < WL) { if (!on) { g.moveTo(x, y); on = true; } else g.lineTo(x, y); } else on = false; } }
     function sunDisc(g, fill) { if (pal.key === "night") return; circle(g, D.sx, D.sy, D.sr); if (fill) g.fill(); }
-    function marks(g, t) {                               // registration marks at the frame corners
-      g.save(); g.strokeStyle = tone(t); g.lineWidth = 1.4; g.beginPath();
-      [[L.FX0, L.FY0, -1, -1], [L.FX1, L.FY0, 1, -1], [L.FX0, L.FY1, -1, 1], [L.FX1, L.FY1, 1, 1]].forEach(function (c) {
-        g.moveTo(c[0] + c[2] * 8, c[1]); g.lineTo(c[0] + c[2] * 22, c[1]); g.moveTo(c[0], c[1] + c[3] * 8); g.lineTo(c[0], c[1] + c[3] * 22);
-      });
-      g.stroke(); g.restore();
-    }
-    function strip(g, ink) {
-      var bw = (L.X1 - L.X0) / 82 * 0.6;
-      if (D.games) {
-        if (ink === "light") { g.fillStyle = tone(0.95); for (i = 0; i < 82; i++) if (D.games[i]) g.fillRect(X(i + 0.5) - bw / 2, sh.wTop, bw, sh.wH); }
-        if (ink === "pink") {
-          g.fillStyle = tone(0.95);
-          for (i = 0; i < 82; i++) { var cx = X(i + 0.5) - bw / 2; if (D.games[i]) g.fillRect(cx, sh.wTop, bw, 3.2); else g.fillRect(cx, sh.lTop, bw, sh.lH); }
-          if (D.spec.saved != null && D.spec.saved >= 0) {  // the game the Heat Check saved wears a ring
-            g.strokeStyle = tone(0.95); g.lineWidth = 3;
-            circle(g, X(D.spec.saved + 0.5), sh.wTop + sh.wH / 2, sh.wH * 0.72); g.stroke();
-          }
-        }
-      }
-      if (ink === "blue") {
-        g.fillStyle = tone(0.8); g.fillRect(X(0), sh.base - 1, X(82) - X(0), 1.6);
-        g.strokeStyle = tone(0.85); g.lineWidth = 1.4; g.fillStyle = tone(0.9);
-        var cum = 0; g.beginPath(); g.moveTo(X(0), sh.tick); g.lineTo(X(0), sh.tick + 12);
-        MONTHS.forEach(function (mo) {
-          var x0 = X(cum); cum += mo[1]; var x1 = X(cum);
-          g.moveTo(x1, sh.tick); g.lineTo(x1, sh.tick + 12);
-          g.font = "600 " + (L === POSTER ? 12 : 24) + "px " + P.TH.mono; spacedText(g, mo[0], (x0 + x1) / 2, sh.lab, L === POSTER ? 1.8 : 2.4, "center");
-        });
-        g.stroke();
-        if (!D.games) {
-          g.font = "600 " + (L === POSTER ? 13 : 19) + "px " + P.TH.mono;
-          spacedText(g, "PROJECTED OVER 82 GAMES", 500, sh.base - 10, 3, "center");
-        }
-      }
-    }
     function beads(g, knockOnly) {
       if (knockOnly) { knock(g, function (g2) { D.losses.forEach(function (j) { circle(g2, X(j + 1), D.front(X(j + 1)), 7 * L.rs); g2.fill(); }); }); return; }
       D.losses.forEach(function (j) { var y = D.front(X(j + 1)); g.fillStyle = tone(y > WL ? 0.55 : 0.95); circle(g, X(j + 1), y, (y > WL ? 3.4 : 4.3) * Math.max(0.8, L.rs)); g.fill(); });
     }
-    function sky(ink, fn) { return bakeLayer(P, ink, function (g) { g.save(); frameClip(g); skyShape(g); g.clip(); fn(g); g.restore(); marks(g, 0.8); }); }
+    function sky(fn) { return function (g) { skyShape(g); g.clip(); fn(g); }; }
     function water(g, stops) { g.fillStyle = vgrad(g, WL, L.FY1, stops); g.fillRect(L.FX0, WL, L.FX1 - L.FX0, L.FY1 - WL); }
     function ripplesKnock(g, k) { knock(g, function (g2) { D.ripples.forEach(function (w) { g2.globalAlpha = w.a * k; ellipse(g2, w.x, w.y, w.rx, w.ry); g2.fill(); }); }); }
     function strata(g) {
@@ -461,12 +498,11 @@
         g2.restore();
       });
     }
-    // The land and water only print left of the fill's front (D.fillX: the win rate across the frame); the
-    // reveal clips these layers from the left edge on, so the color runs into the outline the season just drew.
-    function levelClip(g) { g.beginPath(); g.rect(L.FX0 - 10, L.FY0 - 10, D.fillX - L.FX0 + 10, L.FY1 - L.FY0 + 20); g.clip(); }
-    function land(ink, fn) { return bakeLayer(P, ink, function (g) { g.save(); frameClip(g); levelClip(g); fn(g); g.restore(); strip(g, ink === LI ? "light" : ink); marks(g, 0.8); }); }
+    // The season's line and its loss beads, in the pop ink, never clipped by the level: they print with
+    // the season, so the empty part of the picture still shows the shape the fill is climbing.
+    function sunkLine(g) { var on = false; for (var x = L.X0; x <= L.FX1 + 10; x += 2) { var y = D.front(x); if (y > WL + 1) { if (!on) { g.moveTo(x, y); on = true; } else g.lineTo(x, y); } else on = false; } }
 
-    var skyLight = function () { return sky(LI, function (g) {
+    var skyLight = sky(function (g) {
       if (pal.key !== "night") {
         var gr = g.createRadialGradient(D.sx, D.sy, D.sr * 0.7, D.sx, D.sy, 440 * L.rs);
         gr.addColorStop(0, tone(0.68)); gr.addColorStop(0.3, tone(0.38)); gr.addColorStop(0.65, tone(0.1)); gr.addColorStop(1, tone(0));
@@ -481,8 +517,8 @@
         knock(g, function (g2) { circle(g2, D.moon.x, D.moon.y, D.moon.r); g2.fill(); });
       }
       g.fillStyle = tone(pal.key === "night" ? 0.16 : 0.08); ridgeFill(g, D.far2, WL); g.fill();
-    }); };
-    var skyPink = function () { return sky("pink", function (g) {
+    });
+    var skyPink = sky(function (g) {
       g.fillStyle = vgrad(g, L.FY0, WL, pal.band); g.fillRect(L.FX0, L.FY0, L.FX1 - L.FX0, WL - L.FY0);
       if (pal.key !== "night") {
         g.save(); sunDisc(g, false); g.clip(); knock(g, function (g2) { g2.fillRect(0, 0, L.VW, L.VH); });
@@ -491,8 +527,8 @@
       } else knock(g, function (g2) { circle(g2, D.moon.x, D.moon.y, D.moon.r); g2.fill(); });
       g.fillStyle = tone(pal.key === "night" ? 0.2 : 0.14); ridgeFill(g, D.far2, WL); g.fill();
       g.fillStyle = tone(pal.key === "night" ? 0.3 : 0.24); ridgeFill(g, D.far1, WL); g.fill();
-    }); };
-    var skyBlue = function () { return sky("blue", function (g) {
+    });
+    var skyBlue = sky(function (g) {
       g.fillStyle = vgrad(g, L.FY0, WL, pal.top); g.fillRect(L.FX0, L.FY0, L.FX1 - L.FX0, WL - L.FY0);
       if (pal.key !== "night") knockRadial(g, D.sx, D.sy, 420 * L.rs, 0.9);
       else {
@@ -503,8 +539,8 @@
       }
       g.fillStyle = tone(pal.key === "night" ? 0.45 : 0.2); ridgeFill(g, D.far2, WL); g.fill();
       g.fillStyle = tone(pal.key === "night" ? 0.62 : 0.34); ridgeFill(g, D.far1, WL); g.fill();
-    }); };
-    var landLight = function () { return land(LI, function (g) {
+    });
+    function landLight(g) {
       if (pal.key !== "night") {
         var gr = g.createRadialGradient(D.sx, D.sy, 20, D.sx, D.sy, 430 * L.rs); gr.addColorStop(0, tone(0.9)); gr.addColorStop(1, tone(0));
         g.strokeStyle = gr; g.lineWidth = 5 * Math.max(0.7, L.rs); g.lineJoin = "round"; g.beginPath(); ridgeLine(g, D.front); g.stroke();
@@ -514,8 +550,8 @@
       ripplesKnock(g, 0.5);
       knock(g, function (g2) { ridgeFill(g2, D.front, WL); g2.fill(); });
       beads(g, true);
-    }); };
-    var landPink = function () { return land("pink", function (g) {
+    }
+    function landPink(g) {
       water(g, [[0, pal.key === "night" ? 0.16 : 0.42], [1, 0.2]]);
       g.fillStyle = tone(pal.ridgeP * 0.42); reflFill(g, D.front, 0.55); g.fill();
       g.fillStyle = tone(0.3); subFill(g, D.front); g.fill();
@@ -523,8 +559,8 @@
       g.fillStyle = tone(pal.ridgeP); ridgeFill(g, D.front, WL); g.fill();
       strata(g);
       beads(g, true);
-    }); };
-    var landBlue = function () { return land("blue", function (g) {
+    }
+    function landBlue(g) {
       water(g, pal.waterB);
       g.fillStyle = tone(pal.ridgeB * 0.5); reflFill(g, D.front, 0.55); g.fill();
       g.fillStyle = tone(0.34); subFill(g, D.front); g.fill();
@@ -533,28 +569,135 @@
       g.fillStyle = tone(pal.ridgeB); ridgeFill(g, D.front, WL); g.fill();
       strata(g);
       beads(g, true);
-    }); };
-    // The season's line and its loss beads, in the pop ink, never clipped by the level: they print with
-    // the season, so the empty part of the picture still shows the shape the fill is climbing.
-    function sunkLine(g) { var on = false; for (var x = L.X0; x <= L.FX1 + 10; x += 2) { var y = D.front(x); if (y > WL + 1) { if (!on) { g.moveTo(x, y); on = true; } else g.lineTo(x, y); } else on = false; } }
-    var shell = function () { return bakeLayer(P, "pink", function (g) {
-      g.save(); frameClip(g);
+    }
+    function shell(g) {
       g.lineJoin = "round"; g.lineCap = "round";
       g.strokeStyle = tone(1); g.lineWidth = 5.4 * Math.max(0.72, L.rs); g.beginPath(); ridgeLine(g, D.front); g.stroke();
       g.strokeStyle = tone(0.5); g.lineWidth = 2.2 * Math.max(0.72, L.rs); g.beginPath(); sunkLine(g); g.stroke();
       beads(g, false);
-      g.restore();
-    }); };
-    return [skyLight, skyPink, skyBlue, landLight, landPink, landBlue, shell];
+    }
+    return [
+      { ink: "light", role: "sky", draw: skyLight }, { ink: "pink", role: "sky", draw: skyPink }, { ink: "blue", role: "sky", draw: skyBlue },
+      { ink: "light", role: "land", draw: landLight }, { ink: "pink", role: "land", draw: landPink }, { ink: "blue", role: "land", draw: landBlue },
+      { ink: "pink", role: "line", draw: shell }
+    ];
+  }
+  // The fill's front line runs down through the land and the water: everything under the ridge (or the .500 line).
+  function lakeBody(g, D, L) {
+    g.beginPath(); g.moveTo(L.FX0 - 10, L.FY1 + 10);
+    for (var xx = L.FX0 - 10; xx <= L.FX1 + 10; xx += 2) g.lineTo(xx, Math.min(D.front(xx), L.WL));
+    g.lineTo(L.FX1 + 10, L.FY1 + 10); g.closePath();
+  }
+  var LAKE = { name: "Lake", by: "Mountains over a lake: the record is the ridge, every loss a bead on it, the sun's height the win rate.",
+    lights: LIGHTS.slice(), builtin: true, layers: lakeLayers, body: lakeBody };
+  var LAKE_ENTRY = { id: "lake", def: LAKE, lights: LIGHTS };
+
+  /* ---- the kit a scene draws with (art/CONTRACT.md, "The kit"). Tone only: black at an alpha is coverage,
+     the engine turns it into the layer's ink. ---- */
+  function sceneKit(P, D, d) {
+    var TH = P.TH;
+    return {
+      d: d, k: P.k, TH: TH,
+      rgb: function (ink) { var c = P.rgb[ink === "light" ? D.pal.light : ink]; return c ? [c[0], c[1], c[2]] : null; },
+      tone: tone, rand: mulberry, noise1D: noise1D, fbm: fbm, lerp: lerp, clamp: clamp, smooth: smoothstep, ease: easeInOut,
+      vgrad: vgrad, circle: circle, ellipse: ellipse, knock: knock, knockRadial: knockRadial, spacedText: spacedText, seams: seamPaths,
+      font: function (weight, px, face) { return weight + " " + px + "px " + (face === "mono" ? TH.mono : TH.cond); },
+      // y = fn(x) traced from x0 to x1 (lineTo; the first point too, so it can continue a path or start one)
+      trace: function (g, fn, x0, x1, step) { var s = step || 2, x; for (x = x0; x < x1; x += s) g.lineTo(x, fn(x)); g.lineTo(x1, fn(x1)); }
+    };
   }
 
-  // The fill's front: a thin upright line of the light ink down through the land and water at x (scene units).
-  function drawLevel(ctx, P, D, L, x) {
-    if (D.wp >= 1 || !(x > L.FX0 + 0.5)) return;
-    inkLive(ctx, P, D.pal.light, [x - 8, L.FY0, x + 8, L.FY1], function (g) {
-      g.beginPath(); g.moveTo(L.FX0 - 10, L.FY1 + 10);
-      for (var xx = L.FX0 - 10; xx <= L.FX1 + 10; xx += 2) g.lineTo(xx, Math.min(D.front(xx), L.WL));
-      g.lineTo(L.FX1 + 10, L.FY1 + 10); g.closePath(); g.clip();
+  /* ---- finding, preparing and baking a print's scene ---- */
+  var retired = {}, lakeListed = false;
+  function registerLake() {                              // the lab and the shuffle bag see the lake like any scene
+    if (lakeListed || !window.T82ART || typeof T82ART.add !== "function") return;
+    lakeListed = true;
+    try { if (typeof T82ART.get !== "function" || !T82ART.get("scene", "lake")) T82ART.add("scene", "lake", LAKE); } catch (e) {}
+  }
+  // A scene that throws prints the lake from then on, for the rest of the visit (one warning, for QA).
+  function retire(id, e) {
+    if (retired[id]) return;
+    retired[id] = true;
+    try { console.warn("[t82] art scene:" + id + " is off for this session (the lake prints instead):", e && e.message ? e.message : e); } catch (x) {}
+  }
+  // spec.scene, when it is registered and has not failed; otherwise the lake (an unregistered id just waits:
+  // it may still be loading, and it stays in the bag).
+  function sceneFor(spec) {
+    registerLake();
+    var id = spec && spec.scene, def, lights;
+    if (typeof id !== "string" || id === "lake" || retired[id] || !window.T82ART || typeof T82ART.get !== "function") return LAKE_ENTRY;
+    try {
+      def = T82ART.get("scene", id);
+      if (!def || typeof def.layers !== "function") return LAKE_ENTRY;
+      lights = (Array.isArray(def.lights) ? def.lights : []).filter(function (k) { return LIGHTS.indexOf(k) >= 0; });
+    } catch (e) { retire(id, e); return LAKE_ENTRY; }
+    return { id: id, def: def, lights: lights.length ? lights : LIGHTS };
+  }
+  function scenes() {
+    registerLake();
+    var out = ["lake"], A = window.T82ART;
+    try {
+      if (A && typeof A.catalog === "function" && typeof A.get === "function") {
+        (A.catalog("scene") || []).forEach(function (en) { if (en && en.id && out.indexOf(en.id) < 0 && A.get("scene", en.id)) out.push(en.id); });
+      }
+    } catch (e) {}
+    return out;
+  }
+  // One print's scene, ready to bake: the season in the scene's lights (E, the engine's own copy, which no scene
+  // can touch: the strip, the gauge and the title read it), the scene's geometry on D, its layers as bake jobs
+  // (one per layer; the poster bakes one per tick so the page never locks up) and the fill line's region.
+  function prepWith(P, spec, L, d, S) {
+    var def = S.def, E = derive(spec, L, S.lights), D = {}, k;
+    for (k in E) D[k] = E[k];
+    D.m = E.m.slice(); D.games = E.games && E.games.slice(); D.losses = E.losses.slice(); D.pal = {};
+    for (k in E.pal) D.pal[k] = E.pal[k];
+    var K = sceneKit(P, E, d);
+    if (typeof def.derive === "function") def.derive(K, D, L);
+    var list = def.layers(K, P, D, L);
+    if (!Array.isArray(list) || !list.length || list.length > MAX_LAYERS) throw new Error("layers() must return 1 to " + MAX_LAYERS + " layers");
+    list = list.map(function (ly) {
+      if (!ly || !ROLES[ly.role] || !SCENE_INKS[ly.ink] || typeof ly.draw !== "function") throw new Error("every layer needs an ink, a role and draw()");
+      return { ink: ly.ink, role: ly.role, draw: ly.draw };
+    });
+    // the strip prints in a land layer of each of its three inks: a scene that skips one gets a blank one
+    STRIP_INKS.forEach(function (ink) {
+      if (!list.some(function (ly) { return ly.role === "land" && ly.ink === ink; })) list.push({ ink: ink, role: "land", draw: function () {} });
+    });
+    var seen = {}, jobs = list.map(function (ly) {
+      var key = ly.role + ":" + ly.ink, first = ly.role !== "line" && STRIP_INKS.indexOf(ly.ink) >= 0 && !seen[key];
+      if (first) seen[key] = true;
+      return function () { return bakeSceneLayer(P, E, L, ly, first); };
+    });
+    var own = def !== LAKE && typeof def.body === "function" ? def.body : null;
+    if (own) { var g = P.sg; g.save(); try { g.beginPath(); own(g, D, L); } finally { g.restore(); } }   // a dry run: a body that throws fails here
+    function body(g) {
+      if (own && !retired[S.id]) { try { own(g, D, L); return; } catch (e) { retire(S.id, e); } }
+      lakeBody(g, E, L);
+    }
+    return { id: S.id, D: D, E: E, jobs: jobs, body: body };
+  }
+  function prepare(P, spec, L, d) {
+    var S = sceneFor(spec);
+    if (S !== LAKE_ENTRY) { try { return prepWith(P, spec, L, d, S); } catch (e) { retire(S.id, e); } }
+    return prepWith(P, spec, L, d, LAKE_ENTRY);
+  }
+  function run(f) { return f(); }
+  // The whole print at once (the banner): a scene that throws while baking is retired and the lake bakes instead.
+  function bakeScene(P, spec, L, d) {
+    var S = prepare(P, spec, L, d);
+    if (S.id !== "lake") {
+      try { S.layers = S.jobs.map(run); return S; } catch (e) { retire(S.id, e); S = prepWith(P, spec, L, d, LAKE_ENTRY); }
+    }
+    S.layers = S.jobs.map(run);
+    return S;
+  }
+
+  // The fill's front: a thin upright line of the light ink at x (scene units), down through the scene's body
+  // (the lake's: the land and the water under the ridge).
+  function drawLevel(ctx, P, E, L, x, body) {
+    if (E.wp >= 1 || !(x > L.FX0 + 0.5)) return;
+    inkLive(ctx, P, E.pal.light, [x - 8, L.FY0, x + 8, L.FY1], function (g) {
+      g.beginPath(); body(g); g.clip();
       var w = 4 * Math.max(0.75, L.rs);
       g.fillStyle = tone(1); g.fillRect(x - w / 2, L.FY0, w, L.FY1 - L.FY0);
     });
@@ -710,9 +853,16 @@
   // opts.defer: start on blank paper and wait for play(), so a print that
   // mounts under the Tribune never flashes finished before it prints in.
   // opts.root: the element whose theme to print in (default: the page).
+  // QA (tools/art-qa.mjs, the lab): opts.clock, a function returning seconds, times the reveal instead of the
+  // page's clock; opts.manual runs no animation frames of its own, and the returned object gains frame(), which
+  // draws the reveal at the clock's time (it returns true while the reveal is still running).
+  // The returned object's scene is the id of the scene that actually printed ("lake" when spec.scene was not
+  // registered or failed).
   function mount(host, spec, opts) {
     if (killed() || !host || !supported()) return null;
-    var defer = !!(opts && opts.defer) && !reduced(), root = opts && opts.root;
+    opts = opts || {};
+    var defer = !!opts.defer && !reduced(), root = opts.root;
+    var now = typeof opts.clock === "function" ? opts.clock : clock, manual = !!opts.manual;
     var TH = readTheme(root);
     var canvas = document.createElement("canvas");
     canvas.className = "rr-print-canvas";
@@ -723,7 +873,20 @@
     names.setAttribute("aria-hidden", "true");
     host.appendChild(names);
     var ctx = canvas.getContext("2d"), nctx = names.getContext("2d");
-    var P = null, D = null, layers = null, cur = spec, alive = true, raf = 0, reveal = null, played = false, lastW = 0, resizeT = 0;
+    var P = null, S = null, E = null, layers = null, cur = spec, alive = true, raf = 0, reveal = null, played = false, lastW = 0, resizeT = 0;
+    var api = {
+      play: play,
+      update: function (next) {
+        if (!alive) return;
+        cur = next; build();
+        if (reduced()) { still(); return; }
+        played = false; play();
+      },
+      rebuild: function () { if (!alive) return; build(); rest(); },          // the theme changed (the lab)
+      destroy: function () { alive = false; if (raf) cancelAnimationFrame(raf); clearTimeout(resizeT); window.removeEventListener("resize", onResize); },
+      scene: "lake"
+    };
+    if (manual) api.frame = function () { frame(); return !!reveal; };
 
     function build() {
       var cssW = Math.round(host.getBoundingClientRect().width) || 340, d = dpr();
@@ -733,13 +896,12 @@
       P = makePlate(W, BANNER.VW, BANNER.VH, cur.seed || 7, 2.35 * d * Math.max(0.8, W / (cssW * d)), d, TH);
       canvas.width = P.W; canvas.height = P.H; names.width = P.W; names.height = P.H;
       canvas.style.width = "100%"; canvas.style.aspectRatio = BANNER.VW + " / " + BANNER.VH;
-      D = derive(cur, BANNER);
-      layers = bake(P, D, BANNER);
+      S = bakeScene(P, cur, BANNER, d); E = S.E; layers = S.layers; api.scene = S.id;
       P.print = cv(P.W, P.H);
       var pc = P.print.getContext("2d");
       composeTo(pc, P, layers, null);
-      drawLevel(pc, P, D, BANNER, D.fillX);
-      drawBannerTitle(pc, P, D, D.w, D.l);
+      drawLevel(pc, P, E, BANNER, E.fillX, S.body);
+      drawBannerTitle(pc, P, E, E.w, E.l);
     }
     function roster(alpha) {
       nctx.setTransform(1, 0, 0, 1, 0, 0); nctx.clearRect(0, 0, names.width, names.height);
@@ -747,40 +909,47 @@
     }
     function still() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = "source-over"; ctx.drawImage(P.print, 0, 0); roster(1); }
     function rest() { if (reveal) return; if (defer && !played) { composeTo(ctx, P, layers, layers.map(function () { return 0; })); roster(0); } else still(); }
-    // The reveal: the sky prints down, the season prints across (its line, its loss beads and the strip),
-    // then the color runs across the land and water from the left to the win rate, then the names land.
+    // The reveal, by role: the sky layers print down one after another, the season prints across (the line
+    // layers: its line and its loss marks; and the strip), then the color runs across the land layers from the
+    // left to the win rate, then the names land.
     var T_SEASON = 0.62 + 82 * 0.018, T_FILL = 0.85;
     function frame() {
       if (!alive) return;
       raf = 0;
       if (!reveal) { still(); return; }
-      var t = clock();
+      var t = now();
       if (reveal.t0 == null) reveal.t0 = t;
       var e = t - reveal.t0, clips = [], i;
-      for (i = 0; i < 3; i++) { var p = easeInOut((e - i * 0.16) / 0.42); clips.push(p <= 0 ? 0 : [0, 0, P.W, Math.ceil(P.H * p)]); }
-      var gCount = clamp((e - 0.62) / 0.018, 0, 82), xr = gCount >= 82 ? P.W : Math.ceil(D.X(gCount) * P.k) + 1;
+      var gCount = clamp((e - 0.62) / 0.018, 0, 82), xr = gCount >= 82 ? P.W : Math.ceil(E.X(gCount) * P.k) + 1;
       var fp = 1 - Math.pow(1 - clamp((e - T_SEASON - 0.08) / T_FILL, 0, 1), 3);
-      var fx = lerp(BANNER.FX0, D.fillX, fp), fxp = Math.max(0, Math.ceil(fx * P.k)), sy = Math.ceil((BANNER.FY1 + 6) * P.k);
-      // the land and water fill in from the left; the strip under them prints across with the season
-      for (i = 0; i < 3; i++) clips.push(e < 0.62 ? 0 : [[0, 0, fp > 0 ? fxp : 0, sy], [0, sy, xr, P.H - sy]]);
-      clips.push(e < 0.62 ? 0 : [0, 0, xr, P.H]);                          // the season's line and its beads
+      var fx = lerp(BANNER.FX0, E.fillX, fp), fxp = Math.max(0, Math.ceil(fx * P.k)), sy = Math.ceil((BANNER.FY1 + 6) * P.k);
+      // the sky layers start 0.16 s apart (three of them, the lake's); more or fewer share the same 0.32 s
+      var nSky = 0, k = 0;
+      layers.forEach(function (ly) { if (ly.role === "sky") nSky++; });
+      var stag = nSky > 1 ? 0.16 * 2 / (nSky - 1) : 0;
+      layers.forEach(function (ly) {
+        if (ly.role === "sky") { var p = easeInOut((e - k++ * stag) / 0.42); clips.push(p <= 0 ? 0 : [0, 0, P.W, Math.ceil(P.H * p)]); }
+        // the land and water fill in from the left; the strip under them prints across with the season
+        else if (ly.role === "land") clips.push(e < 0.62 ? 0 : [[0, 0, fp > 0 ? fxp : 0, sy], [0, sy, xr, P.H - sy]]);
+        else clips.push(e < 0.62 ? 0 : [0, 0, xr, P.H]);                  // the season's line and its loss marks
+      });
       composeTo(ctx, P, layers, clips);
-      if (fp > 0) drawLevel(ctx, P, D, BANNER, fx);
+      if (fp > 0) drawLevel(ctx, P, E, BANNER, fx, S.body);
       var n = Math.floor(gCount), w = 0;
-      if (D.games) { for (i = 0; i < n; i++) w += D.games[i] ? 1 : 0; }
-      else w = Math.round(D.w * n / 82);
-      drawBannerTitle(ctx, P, D, w, n - w);
+      if (E.games) { for (i = 0; i < n; i++) w += E.games[i] ? 1 : 0; }
+      else w = Math.round(E.w * n / 82);
+      drawBannerTitle(ctx, P, E, w, n - w);
       var tNames = T_SEASON + 0.08 + T_FILL * 0.7;
       roster(clamp((e - tNames) / 0.35, 0, 1));                            // the names land as the fill settles
       if (e > T_SEASON + 0.08 + T_FILL + 0.05 && e > tNames + 0.36) { reveal = null; still(); return; }
-      raf = requestAnimationFrame(frame);
+      if (!manual) raf = requestAnimationFrame(frame);
     }
     function play() {
       if (!alive || played) return;
       played = true;
       if (reduced() || document.hidden) { still(); return; }   // nobody is watching: print it finished
       reveal = { t0: null };
-      if (!raf) raf = requestAnimationFrame(frame);
+      if (!raf && !manual) raf = requestAnimationFrame(frame);
     }
     function onResize() {
       clearTimeout(resizeT);
@@ -795,17 +964,7 @@
     window.addEventListener("resize", onResize);
     host.classList.add("printed");
     fontsReady(TH).then(function () { if (!alive) return; build(); rest(); });
-    return {
-      play: play,
-      update: function (next) {
-        if (!alive) return;
-        cur = next; build();
-        if (reduced()) { still(); return; }
-        played = false; play();
-      },
-      rebuild: function () { if (!alive) return; build(); rest(); },          // the theme changed (the lab)
-      destroy: function () { alive = false; if (raf) cancelAnimationFrame(raf); clearTimeout(resizeT); window.removeEventListener("resize", onResize); }
-    };
+    return api;
   }
 
   /* ---- the share poster ----
@@ -813,26 +972,31 @@
      then handed back as a JPEG blob. */
   function poster(spec, cb, opts) {
     if (killed() || !supported()) { cb(null); return; }
-    var P, D, layers = [], steps = [], idx = 0, TH;
+    var P, S, layers = [], idx = 0, TH;
     try { TH = readTheme(opts && opts.root); } catch (e) { cb(null); return; }
     fontsReady(TH).then(function () {
       try {
         P = makePlate(1080, POSTER.VW, POSTER.VH, spec.seed || 7, 4.2, 1.6, TH);
-        D = derive(spec, POSTER);
-        steps = bakeSteps(P, D, POSTER);
+        S = prepare(P, spec, POSTER, 1.6);
       } catch (e) { cb(null); return; }
       next();
       function next() {
-        if (idx < steps.length) {
-          try { layers.push(steps[idx++]()); } catch (e) { cb(null); return; }
+        if (idx < S.jobs.length) {
+          try { layers.push(S.jobs[idx++]()); }
+          catch (e) {
+            if (S.id === "lake") { cb(null); return; }
+            retire(S.id, e);                                           // a scene that throws: start over as the lake
+            try { S = prepWith(P, spec, POSTER, 1.6, LAKE_ENTRY); } catch (e2) { cb(null); return; }
+            layers = []; idx = 0;
+          }
           setTimeout(next, 16);
           return;
         }
         try {
-          var out = cv(P.W, P.H), x = out.getContext("2d");
+          var out = cv(P.W, P.H), x = out.getContext("2d"), E = S.E;
           composeTo(x, P, layers, null);
-          drawLevel(x, P, D, POSTER, D.fillX);
-          drawPosterTitle(x, P, D, D.w, D.l);
+          drawLevel(x, P, E, POSTER, E.fillX, S.body);
+          drawPosterTitle(x, P, E, E.w, E.l);
           drawPosterFoot(x, P, spec);
           filterPixels(x, P.W, P.H, TH.filter);                       // the look's print filter (a negative on dark cards)
           drawRoster(x, TH, P.k, spec, POSTER, 1);
@@ -844,21 +1008,24 @@
   }
 
   /* ---- a finished banner in one call, in any theme (the Reprint Lab reprints frozen pages with it) ----
-     opts = { root (theme element), width (device px, default 780), dpr }. Returns { print, names, filter }:
-     the print canvas (show it through filter) and the roster layer that sits on top of it. */
+     opts = { root (theme element), width (device px, default 780), dpr }. Returns { print, names, filter, scene }:
+     the print canvas (show it through filter), the roster layer that sits on top of it, and the id of the
+     scene that printed. */
   function print(spec, opts) {
     opts = opts || {};
     var TH = readTheme(opts.root), d = opts.dpr || 2, W = Math.max(64, Math.min(1240, Math.round(opts.width || 780)));
-    var P = makePlate(W, BANNER.VW, BANNER.VH, spec.seed || 7, 2.35 * d, d, TH), D = derive(spec, BANNER), layers = bake(P, D, BANNER);
+    var P = makePlate(W, BANNER.VW, BANNER.VH, spec.seed || 7, 2.35 * d, d, TH), S = bakeScene(P, spec, BANNER, d), E = S.E;
     var out = cv(P.W, P.H), g = out.getContext("2d");
-    composeTo(g, P, layers, null);
-    drawLevel(g, P, D, BANNER, D.fillX);
-    drawBannerTitle(g, P, D, D.w, D.l);
+    composeTo(g, P, S.layers, null);
+    drawLevel(g, P, E, BANNER, E.fillX, S.body);
+    drawBannerTitle(g, P, E, E.w, E.l);
     var names = cv(P.W, P.H);
     drawRoster(names.getContext("2d"), TH, P.k, spec, BANNER, 1);
-    return { print: out, names: names, filter: TH.filter };
+    return { print: out, names: names, filter: TH.filter, scene: S.id };
   }
   function fontsFor(root) { try { return fontsReady(readTheme(root)); } catch (e) { return Promise.resolve(); } }
 
-  window.T82PRINT = { mount: mount, poster: poster, print: print, fonts: fontsFor, paper: paperDataURL, theme: readTheme, version: "v51" };
+  registerLake();
+  // scenes(): the scene ids registered now (the lake first), for the lab and the QA harness
+  window.T82PRINT = { mount: mount, poster: poster, print: print, scenes: scenes, fonts: fontsFor, paper: paperDataURL, theme: readTheme, version: "v67" };
 })();

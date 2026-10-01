@@ -2,16 +2,16 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20260929-v66-4",
-      "sha": "c8481cb5e0c393ba"
+      "key": "20260930-v67",
+      "sha": "9f72c09f56e873bb"
     },
     "styles.css": {
       "key": "20260929-v66",
       "sha": "7f146eb9a74d620c"
     },
     "reel-riso.js": {
-      "key": "20260928-v64-1",
-      "sha": "39f14e6c25de0fb4"
+      "key": "20260930-v67",
+      "sha": "e80b18aab655f54a"
     },
     "masthead.webp": {
       "key": "20260928-v64-1",
@@ -38,8 +38,8 @@
       "sha": "1be0def6927ff448"
     },
     "results-riso.js": {
-      "key": "20260928-v63-1",
-      "sha": "b0a56dabe02e17d7"
+      "key": "20260930-v67",
+      "sha": "c515fb2b6cd5ff7d"
     },
     "analytics.js": {
       "key": "20260725-traits-v44",
@@ -60,6 +60,26 @@
     "home-floor.svg": {
       "key": "20260929-v65",
       "sha": "7eb099e1553c0e78"
+    },
+    "art-core.js": {
+      "key": "20260930-v67",
+      "sha": "29f9dca9a8e33c3c"
+    },
+    "art-index.js": {
+      "key": "20260930-v67",
+      "sha": "35b349dff5dc9379"
+    },
+    "art/loss/seal.js": {
+      "key": "20260930-v67",
+      "sha": "844452f6ded897dc"
+    },
+    "art/dots/balls.js": {
+      "key": "20260930-v67",
+      "sha": "8567ed6c55b1e5d4"
+    },
+    "art/scene/skyline.js": {
+      "key": "20260930-v67",
+      "sha": "4654561aaa0aac4f"
     }
   }
 }

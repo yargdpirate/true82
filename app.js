@@ -522,6 +522,7 @@ function newGame(mode, seed, challenge, opts) {
   startEvent.surface = opts && opts.surface ? opts.surface : (G.social ? (/^daily-link:/.test(G.analyticsVariant) ? "referral" : "daily") : "home");
   startEvent.action = "start";
   analyticsTrack("game_start", startEvent);
+  artDealRun();   // v67: this run's art looks, dealt now and fetched in the background while the player drafts
   nextRound(true);
 }
 function nextRound(animate) {
@@ -7893,7 +7894,7 @@ function showResults() {
   // touches. Daily boards, challenges, and pro stay analytic until their
   // own adaptations. The arming op "ss" rides the action stream so replays
   // realize identically.
-  if ((MODE === "classic" || MODE === "cap") && !G.social && !G.ch && window.T82 && T82.simSeason) {
+  if (seasonReelPlays()) {
     T82.armSeasonSim(G);
     var season = T82.simSeason(G, e);
     e.expWins = e.winTally;
@@ -8291,7 +8292,8 @@ function showSeasonReel(season, e, done, midTrigger) {
   // any throw drops back to the W/L chips below (QA: ?riso=0 forces chips).
   var riso = null, ff = false, winRun = 0, lossRun = 0;
   function risoOff(err) { riso = null; if (typeof console !== "undefined" && console.warn) console.warn("[t82] riso reel off:", err); }
-  try { if (window.T82RISO && T82RISO.create) riso = T82RISO.create(ov, season); } catch (err) { risoOff(err); }
+  // v67: the run's dealt art (its loss looks in play order and its dot set); without art-core.js, exactly as before
+  try { if (window.T82RISO && T82RISO.create) { var artOpts = artReelOpts(); riso = artOpts ? T82RISO.create(ov, season, artOpts) : T82RISO.create(ov, season); } } catch (err) { risoOff(err); }
   function risoCall(fn) { if (!riso) return 0; try { return fn() || 0; } catch (err) { risoOff(err); return 0; } }
   // v51: one pace for the whole season, so every record finishes at the same moment (see REEL_END_MS)
   var PACE = reelPace(season.games, riso && window.T82RISO ? T82RISO.holdFor : null, reelEndMs());
@@ -8611,6 +8613,60 @@ function resultsPrintPal() {
   if (G) G.printPal = pal;
   return pal;
 }
+/* ---------- v67 THE ART VARIANTS (art-core.js, art/CONTRACT.md) ----------
+   The owner (2026-09-30): the giant L "gets pretty stale seeing the same L over again"; he wants many looks, ten in a
+   row all different, for the L, the reel's win and loss dots and the results mountain, with nothing slower on an
+   iPhone SE. Each look is its own small file, and this device's shuffle bags (T82ART.deal) say which come next. A
+   draft deals its run's looks the moment it starts and fetches just those in the background while the player
+   drafts, so the home page never pays for art and the reel finds them ready. G.art keeps the deal for the whole run:
+   the reel, the results print, its Heat Check reprint and the poster all use the same looks. A look leaves the bag
+   only when it actually plays (T82ART.used). No art-core.js, or a look that never arrives: the built-in looks (the
+   classic L and dots, the lake), exactly as before. The paintings bag above is separate and unchanged. */
+var ART_LOSS_N = 14;   // the season's heavy losses (heavy() in reel-riso.js: losses 1 to 14 get the big moment)
+// the reel plays only for a standalone Classic or Presti run; every other mode goes straight to the print
+function seasonReelPlays() { return (MODE === "classic" || MODE === "cap") && !G.social && !G.ch && !!(window.T82 && T82.simSeason); }
+function artDealRun() {
+  var A = window.T82ART;
+  if (!G || !A || !A.deal || MODE === "kaman") return;   // Kaman has no reel and no print
+  var art;
+  try {
+    var reel = seasonReelPlays();
+    art = G.art = { loss: reel ? artPick(A, "loss", ART_LOSS_N) : [], dots: reel ? artPick(A, "dots", 1)[0] || null : null,
+      scene: artPick(A, "scene", 1)[0] || null };
+  } catch (err) { G.art = null; return; }
+  function fetchArt() {
+    try {
+      if (art.loss.length) A.load("loss", art.loss);
+      if (art.dots) A.load("dots", [art.dots]);
+      if (art.scene) A.load("scene", [art.scene]);
+    } catch (err) { /* cosmetic: the built-ins play */ }
+  }
+  // after the first ticket's slot reels have landed (about a second, spinReels), in idle time where the browser has
+  // it (iPhones have no requestIdleCallback): the downloads never share a frame with the spin
+  setTimeout(function () {
+    if (typeof requestIdleCallback === "function") requestIdleCallback(fetchArt, { timeout: 1000 }); else fetchArt();
+  }, 1400);
+}
+// one kind's deal: a test build's ?art= wins (loss:a+b plays a, b, a, b...), otherwise a peek at this device's bag
+function artPick(A, kind, n) {
+  var f = A.forced ? A.forced(kind) : null, out = [];
+  if (f && f.length) { for (var i = 0; i < n; i++) out.push(f[i % f.length]); return out; }
+  return A.deal(kind, n);
+}
+// the reel's art: the run's loss looks in play order, its dot set, and the bag's bookkeeping when a look plays (just
+// after the frame that slams it: a phone's storage write never lands inside the animation)
+function artReelOpts() {
+  if (!G || !G.art || !window.T82ART) return null;
+  return { loss: G.art.loss.slice(), dots: G.art.dots,
+    onUse: function (kind, id) { setTimeout(function () { try { T82ART.used(kind, id); } catch (err) {} }, 0); } };
+}
+// the print's scene, settled once a run (a Heat Check reprint keeps it): the dealt one if its file has arrived,
+// otherwise the lake, and a scene that never arrived stays in the bag for next time
+function resultsPrintScene() {
+  if (!G || !G.art || !G.art.scene || !window.T82ART) return null;
+  if (G.art.print === undefined) G.art.print = T82ART.get("scene", G.art.scene) ? G.art.scene : null;
+  return G.art.print;
+}
 function resultsPrintSpec(e, daily, winsNow) {
   var games = e.season && e.season.games && e.season.games.length === CFG.GAMES_IN_SEASON
     ? e.season.games.map(function (g) { return g ? 1 : 0; }) : null;
@@ -8627,11 +8683,14 @@ function resultsPrintSpec(e, daily, winsNow) {
   var roster = picks.map(function (en) { return { slot: en.p.slot, name: String(en.p.row[IDX.name]), yr: "'" + String(en.p.row[IDX.season]).slice(-2) }; });
   var net = typeof G.hotNewNet === "number" ? G.hotNewNet : e.net;
   var context = daily ? "THE DAILY #" + G.social.num : (MODE === "cap" ? "PRESTI MODE" : MODE === "pro" ? "PRO MODE" : "CLASSIC MODE");
-  return {
+  var spec = {
     games: games, wins: wins, saved: saved, context: context, names: names, roster: roster, net: signed1(net),
     comp: wins >= CFG.GAMES_IN_SEASON ? "Greatest of all GOATs" : shareCompFor(wins, false),
     seed: reelHash(names.join("|") + "#" + wins), pal: resultsPrintPal()
   };
+  var scene = resultsPrintScene();   // v67: the run's scene (none: the lake, as before)
+  if (scene) spec.scene = scene;
+  return spec;
 }
 function mountResultsPrint(e, daily) {
   RESULTS_POSTER = null;
@@ -8643,6 +8702,8 @@ function mountResultsPrint(e, daily) {
   host.setAttribute("data-spec", JSON.stringify(RESULTS_PRINT_SPEC));   // the print's recipe rides the page (the Reprint Lab reprints it in any look)
   RESULTS_PRINT = printCall(function () { return window.T82PRINT ? T82PRINT.mount(host, RESULTS_PRINT_SPEC, { defer: canWatch }) : null; });
   if (!RESULTS_PRINT) return;
+  // v67: the scene leaves this device's bag once it has printed (once a run: the Heat Check reprint is the same print)
+  if (RESULTS_PRINT_SPEC.scene && G.art && !G.art.sceneUsed) { G.art.sceneUsed = true; try { T82ART.used("scene", RESULTS_PRINT_SPEC.scene); } catch (err) {} }
   RESULTS_PRINT_HOLDS = RESULTS_PRINT_SPEC; RESULTS_PRINT_SHOWN = false;
   var board = host.closest ? host.closest(".rr-board") : null;
   if (board) board.classList.add("printed");                 // the print carries the mode line; the eyebrow steps aside
@@ -9390,7 +9451,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v66.4";
+var BUILD_V = "v67";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

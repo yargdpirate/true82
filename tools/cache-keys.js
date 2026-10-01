@@ -8,14 +8,20 @@
      node tools/cache-keys.js --stamp K  give every file whose content CHANGED the key K (and key any bare reference):
                                          rewrites the references in the pages below and records the new fingerprints
    A file joins by adding it to the manifest (key and sha may start empty) and running --stamp. HTML pages and
-   labels.json (the weekly tag refresh rewrites it) are never on the list; they keep revalidating. */
+   labels.json (the weekly tag refresh rewrites it) are never on the list; they keep revalidating.
+   v67 the art variants: every art/<kind>/<id>.js is in the manifest too (node tools/art-index.js adds and drops them)
+   and art-index.js, which names them all, is one of the pages below, so a changed variant is keyed like any file.
+   _headers gives them all ONE wildcard rule (/art/*: Cloudflare Pages allows 100 rules), never a rule per file. */
 "use strict";
 const fs = require("fs"), path = require("path"), crypto = require("crypto");
 const ROOT = path.join(__dirname, "..");
 const MANIFEST = path.join(__dirname, "cache-keys.json");
 // every file that may reference a listed file (app.js holds site_data.json's key)
 const PAGES = ["index.html", "404.html", "bonuses/index.html", "traits/index.html", "faq/index.html", "how-it-works/index.html",
-  "can-you-go-82-0/index.html", "what-is-bpm/index.html", "docs/style-guide.html", "app.js"];
+  "can-you-go-82-0/index.html", "what-is-bpm/index.html", "docs/style-guide.html", "app.js", "art-index.js",
+  "docs/art-lab/qa.html"];   // v67: the art bench (tools/art-qa.mjs) loads the engines and the theme like a game page
+// v67: the folders whose files share one wildcard rule in _headers instead of a rule each
+const WILDCARDS = ["art/"];
 
 function sha(file) { return crypto.createHash("sha256").update(fs.readFileSync(path.join(ROOT, file))).digest("hex").slice(0, 16); }
 function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
@@ -31,6 +37,7 @@ function check() {
     if (sha(file) !== want.sha) findings.push(file + " changed since its key " + want.key + " was stamped: run node tools/cache-keys.js --stamp <new key>");
     let seen = 0;
     PAGES.forEach((page) => {
+      if (!fs.existsSync(path.join(ROOT, page))) return;   // art-index.js before its first run (tools/art-index.js writes it)
       const src = fs.readFileSync(path.join(ROOT, page), "utf8");
       let r;
       const re = refRe(file);
@@ -46,23 +53,38 @@ function check() {
   const rule = /^\/(\S+)\n\s+Cache-Control:\s*public, max-age=31536000, immutable\s*$/gm;
   let h;
   while ((h = rule.exec(H))) immutable[h[1]] = 1;
-  Object.keys(m.files).forEach((file) => { if (!immutable[file]) findings.push("_headers gives " + file + " no immutable Cache-Control rule"); });
-  Object.keys(immutable).forEach((file) => { if (!m.files[file]) findings.push("_headers caches " + file + " for a year but tools/cache-keys.json does not key it"); });
+  const wild = (file) => WILDCARDS.filter((dir) => file.indexOf(dir) === 0)[0];
+  Object.keys(m.files).forEach((file) => {
+    const dir = wild(file);
+    if (dir ? !immutable[dir + "*"] : !immutable[file]) findings.push("_headers gives " + file + " no immutable Cache-Control rule" + (dir ? " (its folder's one rule is /" + dir + "*)" : ""));
+  });
+  Object.keys(immutable).forEach((file) => {
+    if (/\*$/.test(file)) { if (WILDCARDS.indexOf(file.slice(0, -1)) < 0) findings.push("_headers caches /" + file + " for a year; only " + WILDCARDS.map((d) => "/" + d + "*").join(", ") + " may use a wildcard"); }
+    else if (wild(file)) findings.push("_headers gives " + file + " a rule of its own; its folder shares one: /" + wild(file) + "*");
+    else if (!m.files[file]) findings.push("_headers caches " + file + " for a year but tools/cache-keys.json does not key it");
+  });
   return findings;
 }
 
 function stamp(key) {
   if (!/^[A-Za-z0-9._-]+$/.test(key || "")) { console.error("usage: node tools/cache-keys.js --stamp <key>  (letters, digits, . _ -)"); process.exit(2); }
   const m = load(), changed = [];
-  Object.keys(m.files).forEach((file) => {
-    const now = sha(file), entry = m.files[file];
-    if (now !== entry.sha || !entry.key) { entry.key = key; entry.sha = now; changed.push(file); }
-    PAGES.forEach((page) => {
-      const p = path.join(ROOT, page), src = fs.readFileSync(p, "utf8");
-      const out = src.replace(refRe(file), (all, q, slash) => q + slash + file + "?v=" + entry.key);
-      if (out !== src) fs.writeFileSync(p, out);
+  // A page can be a keyed file itself (app.js holds site_data.json's key; art-index.js holds every variant's), so
+  // keying one file can change a file this pass already fingerprinted: repeat until a pass changes nothing.
+  for (let pass = 0, moved = true; moved && pass < 5; pass++) {
+    moved = false;
+    Object.keys(m.files).forEach((file) => {
+      const now = sha(file), entry = m.files[file];
+      if (now !== entry.sha || !entry.key) { entry.key = key; entry.sha = now; moved = true; if (changed.indexOf(file) < 0) changed.push(file); }
+      PAGES.forEach((page) => {
+        const p = path.join(ROOT, page);
+        if (!fs.existsSync(p)) return;
+        const src = fs.readFileSync(p, "utf8");
+        const out = src.replace(refRe(file), (all, q, slash) => q + slash + file + "?v=" + entry.key);
+        if (out !== src) { fs.writeFileSync(p, out); moved = true; }
+      });
     });
-  });
+  }
   fs.writeFileSync(MANIFEST, JSON.stringify(m, null, 2) + "\n");
   console.log(changed.length ? "stamped " + key + " on: " + changed.join(", ") : "no file changed; every reference now carries its key");
 }
@@ -74,4 +96,4 @@ if (require.main === module) {
   if (f.length) { console.log(f.join("\n")); process.exit(1); }
   console.log("cache keys: every file matches its key and every reference carries it");
 }
-module.exports = { check, stamp, PAGES };
+module.exports = { check, stamp, PAGES, WILDCARDS };

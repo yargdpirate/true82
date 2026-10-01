@@ -932,5 +932,146 @@ if (fs.existsSync("site_data.json")) {
     [true, true, true, true, true]);
 }
 
+// v67 THE ART VARIANTS (art-core.js, tools/art-index.js, art/CONTRACT.md): the owner wants many looks for the reel's
+// giant L, its win and loss dots and the results mountain, ten in a row all different, at no cost on an iPhone SE.
+// Each look is one small file that this device's shuffle bag deals; the bags, the QA switch and the game's wiring are
+// pure, so they are pinned here (the downloads themselves are browser-only).
+{
+  const ART_CORE = fs.readFileSync("art-core.js", "utf8");
+  // one visit to the site: art-core.js in a fresh sandbox; the disk persists across visits like a phone's storage
+  const visit = (disk, host, search) => {
+    const c = { Math, JSON, console, location: { hostname: host == null ? "localhost" : host, search: search || "" } };
+    if (disk === "private") c.localStorage = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("denied"); } };
+    else if (disk) c.localStorage = { getItem: (k) => (k in disk ? disk[k] : null), setItem: (k, v) => { if (disk.full) throw new Error("full"); disk[k] = String(v); } };
+    vm.createContext(c);
+    vm.runInContext(ART_CORE, c);
+    return c.T82ART;
+  };
+  const entry = (kind, id, on) => ({ kind, id, name: id, file: "art/" + kind + "/" + id + ".js?v=t", on: on !== false });
+  const library = (A, ids, more) => { A.index(ids.map((id) => entry("loss", id)).concat(more || [])); A.add("loss", "classic", { builtin: true }); return A; };
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const SEVEN = ["a", "b", "c", "d", "e", "f", "g"];
+
+  // a season plays 1 to 4 looks of a peek of 4, in order; the bag must hold across seasons and visits
+  let cycles = true, twice = 0;
+  for (let trial = 0; trial < 80; trial++) {
+    const disk = {}, seq = [];
+    for (let season = 0; season < 14; season++) {
+      const A = library(visit(disk), SEVEN), d = A.deal("loss", 4);
+      d.slice(0, 1 + (trial + season) % 4).forEach((id) => { A.used("loss", id); seq.push(id); });
+    }
+    for (let i = 0; i + 8 <= seq.length; i += 8) if (new Set(seq.slice(i, i + 8)).size !== 8) cycles = false;
+    for (let i = 1; i < seq.length; i++) if (seq[i] === seq[i - 1]) twice++;
+  }
+  eq("art bags: every enabled look (the built-in classic too) plays once before any repeats, across refills and visits; never the same look twice running",
+    [cycles, twice], [true, 0]);
+  let lastFirst = 0, aheadFirst = 0;
+  for (let t = 0; t < 150; t++) {
+    const disk = {}, A = library(visit(disk), ["a", "b"]), whole = A.deal("loss", 3);
+    whole.slice(0, 3).forEach((id) => A.used("loss", id));                 // the cycle runs out and the next begins
+    if (library(visit(disk), ["a", "b"]).deal("loss", 1)[0] === whole[2]) lastFirst++;
+    const ahead = library(visit({}), ["a", "b", "c"]).deal("loss", 12);   // cycles of 4 drawn ahead for a long peek
+    if (ahead[4] === ahead[3] || ahead[8] === ahead[7]) aheadFirst++;
+  }
+  eq("art bags: a refill never starts with the look that played last (also when a long peek draws cycles ahead)", [lastFirst, aheadFirst], [0, 0]);
+  {
+    const disk = {}, A = library(visit(disk), SEVEN), p1 = A.deal("loss", 5), p2 = A.deal("loss", 5), p3 = library(visit(disk), SEVEN).deal("loss", 5);
+    A.used("loss", p1[0]);
+    const after = A.deal("loss", 4);
+    A.used("loss", p1[2]);                                                    // the reel skipped p1[1] (its file never came)
+    const skipped = A.deal("loss", 3);
+    eq("art bags: deal only peeks (twice in a row, and on the next visit, the same looks); used takes the look that played, and a skipped look keeps its place",
+      [same(p1, p2), same(p2, p3), same(after, p1.slice(1, 5)), same(skipped, [p1[1], p1[3], p1[4]])], [true, true, true, true]);
+  }
+  {
+    const disk = {}, ids = ["a", "b", "c", "d"];
+    let A = library(visit(disk), ids, [entry("loss", "x", false)]), seen = new Set();
+    for (let n = 0; n < 30; n++) { const d = A.deal("loss", 3); d.forEach((id) => seen.add(id)); A.used("loss", d[0]); }
+    A = library(visit(disk), ["a", "c", "d"], [entry("loss", "b", false)]);   // b switched off, x deleted: both leave the bag
+    const later = [];
+    for (let n = 0; n < 12; n++) { const d = A.deal("loss", 2); later.push(...d); A.used("loss", d[0]); }
+    eq("art bags: a look that is off is never dealt, and one switched off or deleted later leaves a stored bag at once",
+      [seen.has("x"), later.includes("b") || later.includes("x"), new Set(later).size], [false, false, 4]);
+    const d2 = {}, B = library(visit(d2), ["a", "b", "c"]), cyc = B.deal("loss", 3);
+    B.used("loss", cyc[0]);
+    const grown = library(visit(d2), ["a", "b", "c", "n"]).deal("loss", 4);   // the cycle's 3 left, plus the new one
+    let leads = 0;
+    for (let t = 0; t < 120; t++) {   // a bag drawn when only the built-in existed (14 cycles of one), then the library ships
+      const d3 = {}, C = visit(d3);
+      C.add("loss", "classic", { builtin: true }); C.deal("loss", 14);
+      const seq = library(visit(d3), SEVEN).deal("loss", 24);
+      if (seq[8] === "classic" && seq[16] === "classic") leads++;
+    }
+    eq("art bags: a look added mid-cycle joins the cycle in progress (a growing library shows up next season), and a look already shown waits; " +
+      "cycles drawn before the library grew are redrawn (the classic L does not lead every one)",
+      [grown.includes("n"), grown.includes(cyc[0]), new Set(grown).size, leads < 24], [true, false, 4, true]);
+  }
+  {
+    const P = visit("private"), d = library(P, SEVEN).deal("loss", 3);
+    P.used("loss", d[0]);
+    const full = { "t82-art-bag-loss": JSON.stringify({ k: ["a", "b"], b: [["a", "b"]] }) }, F = library(visit(full), ["a", "b"]);
+    full.full = true;                                                         // the stored bag can no longer be written
+    const f1 = F.deal("loss", 1)[0]; F.used("loss", f1);
+    eq("art bags: private mode (storage refused) and a full disk keep a working bag in memory for the visit",
+      [d.length, same(P.deal("loss", 2), d.slice(1, 3)), F.deal("loss", 1)[0] !== f1], [3, true, true]);
+  }
+  const forcedOn = (host, q, kind) => visit({}, host, q).forced(kind || "loss");
+  eq("art QA: ?art= is ignored on true82.net and www.true82.net, and honored on a test build (a+b in turn, an escaped + too, the other kinds)",
+    [forcedOn("true82.net", "?art=loss:seal"), forcedOn("www.true82.net", "?art=loss:seal"), forcedOn("WWW.True82.net", "?art=loss:seal"),
+      forcedOn("localhost", "?art=loss:seal+drip,dots:balls"), forcedOn("t82.pages.dev", "?x=1&art=dots:balls,loss:seal%2Bdrip&y=2"),
+      forcedOn("localhost", "?art=dots:balls"), forcedOn("localhost", "?art=loss:seal,dots:balls,scene:skyline", "scene"), forcedOn("localhost", "?art=loss:BAD!")],
+    [null, null, null, ["seal", "drip"], ["seal", "drip"], null, ["skyline"], null]);
+
+  // the game's wiring (app.js): a run deals its looks at the draft's start, the reel and the print use that deal
+  // (in a browser window is the global; here the engine is a global only, so the reel's window.T82 check gets a hand)
+  const wiring = (A) => { ctx.window.T82ART = A; ctx.T82ART = A; ctx.window.T82 = ctx.T82; try { return vm.runInContext(`(function () {
+      var keepG = G, keepMode = MODE, out = {};
+      function run(mode, g) { MODE = mode; G = g; artDealRun(); return G.art ? [G.art.loss, G.art.dots, G.art.scene] : null; }
+      out.classic = run("classic", { ch: null }); out.reel = artReelOpts();
+      var keepST = setTimeout; setTimeout = function (fn) { fn(); return 0; };   // onUse books the look just after the frame
+      out.reel.onUse("loss", out.classic[0][0]); setTimeout = keepST; out.afterUse = T82ART.deal("loss", 13);
+      out.presti = run("cap", { ch: null }); out.daily = run("classic", { ch: null, social: { key: "k" } });
+      out.pro = run("pro", { ch: null }); out.board = run("classic", { ch: { id: "t" } }); out.kaman = run("kaman", { ch: null });
+      G = { art: { loss: [], dots: null, scene: "skyline" } }; out.early = resultsPrintScene(); T82ART.add("scene", "skyline", {}); out.settled = resultsPrintScene();
+      G = { art: { loss: [], dots: null, scene: "skyline" } }; out.ready = resultsPrintScene();
+      G = keepG; MODE = keepMode;
+      return out;
+    })()`, ctx); } finally { delete ctx.window.T82ART; delete ctx.T82ART; delete ctx.window.T82; } };
+  const kit = (host, q) => { const A = library(visit({}, host, q), ["a", "b", "c", "d", "e"], [entry("dots", "balls"), entry("scene", "skyline")]);
+    A.add("dots", "classic", { builtin: true }); A.add("scene", "lake", { builtin: true }); return A; };
+  const W = wiring(kit("true82.net", "?art=loss:seal+drip,scene:skyline")), shape = (r) => r && [r[0].length, !!r[1], !!r[2]];
+  eq("art wiring: a Classic or Presti run deals 14 loss looks, a dot set and a scene; the Daily, Pro and the boards (no reel) only a scene; Kaman nothing",
+    [shape(W.classic), shape(W.presti), shape(W.daily), shape(W.pro), shape(W.board), W.kaman], [[14, true, true], [14, true, true], [0, false, true], [0, false, true], [0, false, true], null]);
+  eq("art wiring: the reel gets the run's loss looks in play order and its dot set; a look that plays leaves the bag (onUse); true82.net ignores ?art=",
+    [W.reel && same(W.reel.loss, W.classic[0]), W.reel && W.reel.dots === W.classic[1], same(W.afterUse, W.classic[0].slice(1)), W.classic[0].includes("seal")],
+    [true, true, true, false]);
+  const Q = wiring(kit("preview.true82.pages.dev", "?art=loss:seal+drip,scene:skyline"));
+  eq("art wiring: a test build's ?art= wins (loss:seal+drip plays seal, drip, seal...); the dot set still comes from the bag",
+    [Q.classic[0].slice(0, 4), Q.classic[0].length, Q.classic[2], ["balls", "classic"].includes(Q.classic[1])], [["seal", "drip", "seal", "drip"], 14, "skyline", true]);
+  eq("art wiring: the print's scene is settled once a run (one still loading prints the lake and stays in the bag; a Heat Check reprint keeps it)",
+    [W.early, W.settled, W.ready], [null, null, "skyline"]);
+  eq("art wiring: without art-core.js nothing changes (no deal on the run, the reel's create() and the print's spec exactly as before)",
+    vm.runInContext(`(function () { var keepG = G, keepMode = MODE; G = { ch: null }; MODE = "classic"; artDealRun();
+      var r = [G.art === undefined, artReelOpts(), resultsPrintScene()]; G = keepG; MODE = keepMode; return r; })()`, ctx),
+    [true, null, null]);
+  const APP = fs.readFileSync("app.js", "utf8");
+  eq("art wiring: the deal runs where a draft begins (newGame), the reel passes it to T82RISO.create, the spec carries the scene, the print marks it used",
+    [/analyticsTrack\("game_start", startEvent\);\n  artDealRun\(\);/.test(APP), /T82RISO\.create\(ov, season, artOpts\)/.test(APP), /if \(scene\) spec\.scene = scene;/.test(APP),
+      /T82ART\.used\("scene", RESULTS_PRINT_SPEC\.scene\)/.test(APP), /if \(seasonReelPlays\(\)\) \{\n    T82\.armSeasonSim\(G\);/.test(APP)],
+    [true, true, true, true, true]);
+
+  // the library on disk (tools/art-index.js): listed, keyed, named right, small, and in the copy law
+  const AI = require("./tools/art-index.js"), FILES = AI.scan();
+  eq("art index: art-index.js is current (every art file listed and keyed in tools/cache-keys.json, nothing stale; run node tools/art-index.js)", AI.check(), []);
+  eq("art files: each one's id is its file's name and its kind is its folder (art/<kind>/<id>.js), with a plain-string name",
+    FILES.filter((f) => f.errors.length).map((f) => f.errors.join("; ")), []);
+  const bad = [AI.parse('T82ART.add("loss", "sea1", { name: "x" });', "loss", "seal.js"), AI.parse('T82ART.add("dots", "seal", { name: "x" });', "loss", "seal.js"),
+    AI.parse('T82ART.add("loss", "seal", { by: "no name" });', "loss", "seal.js"), AI.parse('T82ART.add("loss", "classic", { name: "x" });', "loss", "classic.js")];
+  eq("art files: the index fails loudly on a wrong id, a wrong kind, a missing name, or a built-in's id", bad.map((f) => f.errors.length > 0), [true, true, true, true]);
+  eq("art files: each one is under its size budget (a loss look 10 KB, a dot set 6 KB, a scene 16 KB; art/CONTRACT.md law 6)",
+    FILES.filter((f) => f.bytes > AI.BUDGET[f.kind] * 1024).map((f) => f.rel + " is " + (f.bytes / 1024).toFixed(1) + " KB"), []);
+  eq("art files: zero em-dashes in their strings (copy law)", FILES.filter((f) => f.dash).map((f) => f.rel), []);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

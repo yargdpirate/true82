@@ -25,11 +25,30 @@ const ROOT = path.join(__dirname, "..");
 /* ---- what the law covers ---- */
 const CSS_FILES = ["styles.css"];
 // browser JS that builds UI (canvas modules may use pure black, and only as a coverage mask)
-const JS_FILES = ["app.js", "results-riso.js", "reel-riso.js", "analytics.js", "retention-client.js", "challenges.js", "daily-core.js", "sim-core.js"];
+const JS_FILES = ["app.js", "results-riso.js", "reel-riso.js", "analytics.js", "retention-client.js", "challenges.js", "daily-core.js", "sim-core.js",
+  "art-core.js", "art-index.js"];
 const MASK_OK = { "results-riso.js": 1, "reel-riso.js": 1 };
+// v67 the art variants (art/CONTRACT.md, law 1): every art/**/*.js is canvas code held to the engines' rule (black only
+// as a coverage mask), and stricter: a bare named color ("white", "red") is a finding too. The kit's ink names are
+// not colors here ("gold", "pink", "blue", "orange", "teal" name the theme's inks: K.pat("gold", .5)).
+const KIT_INKS = { loss: 1, pop: 1, win: 1, key: 1, gold: 1, night: 1, dusk: 1, light: 1, stock: 1, pink: 1, blue: 1, sun: 1, orange: 1, teal: 1 };
+function artFiles() {
+  const out = [], walk = (rel) => {
+    const dir = path.join(ROOT, rel);
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir).sort().forEach((b) => {
+      const r = rel + "/" + b, st = fs.statSync(path.join(ROOT, r));
+      if (st.isDirectory()) walk(r); else if (/\.js$/.test(b)) out.push(r);
+    });
+  };
+  walk("art");
+  return out;
+}
+function isArt(rel) { return /^art\//.test(rel); }
+const ART_FIX = { use: "a kit ink: K.pat(ink, cov) or K.rgb(ink); black only as a mask, K.tone(a) (art/CONTRACT.md, the kit)" };
 // pages: their <style> blocks and style="" attributes (<meta theme-color> and the favicon are browser chrome, not styles)
 const HTML_FILES = ["index.html", "404.html", "bonuses/index.html", "traits/index.html", "faq/index.html", "how-it-works/index.html",
-  "can-you-go-82-0/index.html", "what-is-bpm/index.html", "docs/style-guide.html"];
+  "can-you-go-82-0/index.html", "what-is-bpm/index.html", "docs/style-guide.html", "docs/art-lab/qa.html"];
 
 /* ---- color math, for "the nearest token" ---- */
 function lin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
@@ -154,19 +173,24 @@ function checkJSFile(rel, findings) {
   while ((m = HEX.exec(src))) {
     const q = src[m.index - 1];
     if (!/["'(\s,:=]/.test(q || "")) continue;                     // an id selector like "#app" never starts with a hex run AND a quote... keep literal-looking ones only
-    if (MASK_OK[rel] && /^#000$/.test(m[0])) continue;
+    if ((MASK_OK[rel] || isArt(rel)) && /^#000$/.test(m[0])) continue;
     out(rel, src, m.index, m[0]);
   }
   const F = /\b(?:rgba?|hsla?)\(\s*\d/g;
   while ((m = F.exec(src))) {
     const call = src.slice(m.index, src.indexOf(")", m.index) + 1);
-    if (MASK_OK[rel] && /^rgba?\(\s*0\s*,\s*0\s*,\s*0\s*[,)]/.test(call)) continue;
+    if ((MASK_OK[rel] || isArt(rel)) && /^rgba?\(\s*0\s*,\s*0\s*,\s*0\s*[,)]/.test(call)) continue;
     out(rel, src, m.index, call);
+  }
+  if (isArt(rel)) {
+    const N = /(["'])([a-z]+)\1/g;
+    while ((m = N.exec(src))) if (NAMED[m[2]] && !KIT_INKS[m[2]]) out(rel, src, m.index, m[0]);
   }
   // fonts: no family names in font strings or font-family declarations
   const FONT = /font-family\s*:\s*['"]?[A-Z][^;'"]*|["'](?:\d{3}\s+)?(?:italic\s+)?[\d.]+px\s+["']?(?:Barlow|IBM Plex|Georgia|Arial|Helvetica|DM Serif)/g;
   while ((m = FONT.exec(src))) findings.push({ file: rel, line: lineOf(src, m.index), kind: "font", lit: m[0].slice(0, 60), fix: { use: "a theme face: var(--t-disp|body|mono) in CSS, or read --t-disp / --t-mono in canvas code" } });
-  function out(file, s, i, lit) { findings.push({ file, line: lineOf(s, i), kind: "color", lit, fix: suggest(lit) }); }
+  // a variant draws only in the kit's inks, so its fix is the kit, never a CSS token
+  function out(file, s, i, lit) { findings.push({ file, line: lineOf(s, i), kind: "color", lit, fix: isArt(file) ? ART_FIX : suggest(lit) }); }
 }
 function checkHTMLFile(rel, findings) {
   const full = path.join(ROOT, rel);
@@ -193,7 +217,7 @@ function check(onlyFiles) {
     return findings;
   }
   CSS_FILES.forEach(f => checkCSSFile(f, findings));
-  JS_FILES.forEach(f => checkJSFile(f, findings));
+  JS_FILES.concat(artFiles()).forEach(f => checkJSFile(f, findings));
   HTML_FILES.forEach(f => checkHTMLFile(f, findings));
   return findings;
 }
@@ -201,7 +225,7 @@ function format(f) {
   const fix = f.fix && f.fix.use ? "  ->  " + f.fix.use + (f.fix.de != null && f.fix.de > 0.5 ? "  (closest, off by " + f.fix.de.toFixed(1) + ")" : "") : "";
   return f.file + ":" + f.line + "  " + f.kind + "  " + f.lit + fix;
 }
-module.exports = { check, format, suggest, suggestFont, cssFindings, parseLit };
+module.exports = { check, format, suggest, suggestFont, cssFindings, parseLit, artFiles };
 
 if (require.main === module) {
   const files = process.argv.slice(2).filter(a => !a.startsWith("--"));

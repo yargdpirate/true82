@@ -53,5 +53,15 @@
   Cache-Control: public, max-age=31536000, immutable
 /home-floor.svg
   Cache-Control: public, max-age=31536000, immutable
+/art-core.js
+  Cache-Control: public, max-age=31536000, immutable
+/art-index.js
+  Cache-Control: public, max-age=31536000, immutable
+
+# v67 the art variants (art/CONTRACT.md): every art/<kind>/<id>.js is keyed in tools/cache-keys.json like the files
+# above, but they share this ONE rule (Cloudflare Pages allows at most 100 header rules, and the library will hold
+# hundreds of files). test.js checks that no art file gets a rule of its own.
+/art/*
+  Cache-Control: public, max-age=31536000, immutable
 
 # (keep this blank line and comment last: without them the header parser dropped the rule above it)

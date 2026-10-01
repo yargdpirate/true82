@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en" data-btn="neon" data-card="outline" data-chip="ink" data-corners="round" data-texture="none" data-ground="night" data-lab-mast-ink="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Art QA · TRUE 82</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css?v=20260929-v66">
+<link rel="stylesheet" href="/look.css?v=20260927-v60">
+<style>
+/* The art bench: a bare page that wears the game's theme and runs the two print engines with nothing of the game
+   around them. tools/art-qa.mjs drives it (the variant budgets in art/CONTRACT.md); a person can watch one variant
+   play here too (?watch=, below). Layout only; the style law applies to this block too. */
+.qa-stage { position: relative; }
+.qa-rr { width: 375px; }
+.qa-rr .rr-print { margin: 0; }
+.qa { max-width: 560px; margin: 0 auto; padding: 18px 16px 60px; }
+.qa-note { font-family: var(--t-mono); font-size: 11px; line-height: 1.5; color: var(--t-text-2); margin: 6px 0; }
+.qa-note code { color: var(--t-label); }
+</style>
+</head>
+<body>
+<div class="qa-stage" id="qaStage"></div>
+<main class="qa" id="qaNotes">
+  <h1 class="t-head" data-head="title">Art QA</h1>
+  <p class="qa-note">The bench for the art variants (art/CONTRACT.md). Run <code>node tools/art-qa.mjs loss &lt;id&gt;</code> (or dots, scene, all, baseline) from the repo for the contact sheets and the budgets.</p>
+  <p class="qa-note">Watch one here: <code>?watch=loss:classic</code> (the three loss moments, looped), <code>?watch=dots:classic</code> (a season's ledger), <code>?watch=scene:lake</code> (the print's reveal).</p>
+</main>
+<script src="/art-core.js?v=20260930-v67" defer></script>
+<script src="/art-index.js?v=20260930-v67" defer></script>
+<script src="/reel-riso.js?v=20260930-v67" defer></script>
+<script src="/results-riso.js?v=20260930-v67" defer></script>
+<script>
+/* window.T82QA: the bench's building blocks. Everything here is scripted, deterministic and on a clock the caller owns
+   (the engines' opts.clock), so a frame at e = 0.35 s is the same frame on every run and every machine. Nothing in
+   here measures a budget: tools/art-qa.mjs does that, with these blocks. */
+(function () {
+  "use strict";
+  var realNow = performance.now.bind(performance);    // timings read this one, whatever a shim does to performance.now
+
+  /* ---- app.js's reel, mirrored (showSeasonReel, placeSquare, reelDate): the same DOM, months and cursor ---- */
+  var MONTHS = [["OCT", 5], ["NOV", 15], ["DEC", 15], ["JAN", 15], ["FEB", 11], ["MAR", 15], ["APR", 6]];
+  var TICK = 48, LEAD0 = 650, LEAD = 960, OPEN = 140, CLOSE = 120;       // ms, scaled by the season's pace
+  var CITIES = ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cleveland", "Dallas", "Denver", "Detroit",
+    "Golden State", "Houston", "Indiana", "Los Angeles", "Memphis", "Miami", "Milwaukee", "Minnesota", "New Orleans",
+    "New York", "Oklahoma City", "Orlando", "Philadelphia", "Phoenix", "Portland", "Sacramento", "San Antonio",
+    "Toronto", "Utah", "Washington"];
+  var BUILTIN = { loss: "classic", dots: "classic", scene: "lake" };    // the contract's built-ins, inside the engines
+
+  function mulberry(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function monthOf(gi) { var g = gi, mi = 0; while (mi < MONTHS.length - 1 && g >= MONTHS[mi][1]) { g -= MONTHS[mi][1]; mi++; } return [mi, g]; }
+  function reelDate(gi) {
+    var p = monthOf(gi), mi = p[0], n = MONTHS[mi][1], first = mi === 0 ? 21 : 1, last = mi === 0 ? 31 : mi === 6 ? 12 : mi === 4 ? 27 : 29;
+    var mo = MONTHS[mi][0];
+    return mo.charAt(0) + mo.slice(1).toLowerCase() + " " + (n === 1 ? first : Math.round(first + p[1] * (last - first) / (n - 1)));
+  }
+  function city(gi) { return CITIES[(gi * 7 + 3) % CITIES.length]; }
+
+  /* ---- the clock the engines run on (opts.clock), in seconds; the bench moves it, never the wall ---- */
+  var clock = { t: 100, now: function () { return clock.t; } };
+
+  /* ---- the seasons the bench prints: fixed, so every run and every variant meets the same games ---- */
+  function wins(games) { var w = 0; for (var i = 0; i < games.length; i++) w += games[i] ? 1 : 0; return w; }
+  // n games with exactly w wins, shuffled by seed
+  function shuffled(n, w, seed) {
+    var g = [], i, r = mulberry(seed >>> 0);
+    for (i = 0; i < n; i++) g.push(i < w ? 1 : 0);
+    for (i = n - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)), t = g[i]; g[i] = g[j]; g[j] = t; }
+    return g;
+  }
+  function record(w, seed) { return shuffled(82, w, seed == null ? 82 + w * 977 : seed); }
+  // a fixed head of games, the rest of the 82 shuffled to a total of w wins
+  function season(head, w, seed) { var n = 82 - head.length; return head.concat(shuffled(n, clamp(w - wins(head), 0, n), seed)); }
+  function run(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v); return a; }
+  // The three loss moments every loss variant must read in (art/CONTRACT.md, the timeline): the season's first loss
+  // after a 12-game streak (the longest hold, 1.7 s), loss 5 of a great year in February (low in the card, so the
+  // hero takes the span ABOVE the wound; 1.05 s), and the 14th loss of a bad year (the last heavy one), fast: the
+  // pace a bad season plays at (0.45 s). The hero sits below the wound in the other two.
+  var CASES = {
+    streak: { key: "streak", label: "first loss, after 12 straight", games: season(run(12, 1).concat([0]), 66, 11), gi: 12, pace: 1 },
+    mid: { key: "mid", label: "mid-season loss of a great year", games: (function () {
+      var g = run(82, 1); [7, 16, 27, 41, 58, 75].forEach(function (i) { g[i] = 0; }); return g; })(), gi: 58, pace: 1 },
+    late: { key: "late", label: "14th loss of a bad year, fast", games: season([1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0], 20, 13), gi: 20, pace: 0.643 }
+  };
+  // The dots ledger: streaks of 10, 20 and 30, loss runs of 2 and 3, a 70-12 year.
+  var LEDGER = [].concat(run(10, 1), [0], run(20, 1), [0, 0], run(30, 1), [0, 0, 0], run(3, 1), [0], run(2, 1), [0, 0], run(4, 1), [0], [1], [0, 0]);
+  // The scene's records: the perfect year, a great one, a coin flip, a lost one.
+  var RECORDS = [82, 64, 41, 20];
+
+  /* ---- variants: what there is, and loading one ---- */
+  function art() { return window.T82ART || null; }
+  function list(kind) {
+    var A = art(), out = [], b = BUILTIN[kind], def = A && A.get(kind, b);
+    out.push({ kind: kind, id: b, name: def && def.name || b, by: def && def.by || "", builtin: true, on: true, file: null });
+    if (A && A.catalog) A.catalog(kind).forEach(function (e) {
+      if (e.id !== b) out.push({ kind: kind, id: e.id, name: e.name || e.id, by: "", builtin: false, on: e.on !== false, file: e.file });
+    });
+    return out;
+  }
+  // Resolves { ok, via, def }. A file not in art-index.js yet (before node tools/art-index.js) loads straight from
+  // `file` (/art/<kind>/<id>.js), so an author can check a new variant before indexing it.
+  function load(kind, id, file) {
+    var A = art();
+    if (!A) return Promise.resolve({ ok: false, via: "none", error: "art-core.js did not load (no window.T82ART)" });
+    var done = function (via) { var d = A.get(kind, id); return { ok: !!d, via: via, def: d ? describe(d) : null }; };
+    if (A.get(kind, id)) return Promise.resolve(done("registered"));
+    var inIndex = A.catalog && A.catalog(kind).some(function (e) { return e.id === id; });
+    if (inIndex) return A.load(kind, [id]).then(function () { return done("index"); }, function () { return done("index"); });
+    if (!file) return Promise.resolve({ ok: false, via: "none", error: kind + " " + id + " is not in art-index.js" });
+    return new Promise(function (res) {
+      var s = document.createElement("script");
+      s.src = file + (file.indexOf("?") < 0 ? "?" : "&") + "qa=" + Date.now();
+      s.onload = function () { res(done("file")); };
+      s.onerror = function () { res({ ok: false, via: "file", error: "could not load " + file }); };
+      document.head.appendChild(s);
+    });
+  }
+  // the plain-data parts of a def (its functions stay in the page)
+  function describe(d) {
+    var o = {};
+    Object.keys(d).forEach(function (k) { var v = d[k]; if (typeof v !== "function") o[k] = v; else o[k] = "fn"; });
+    return o;
+  }
+
+  /* ---- a frame's whole cost: Chromium records canvas drawing and rasterizes it later, several frames at once when
+     nothing paints in between, so a bare frame() looks nearly free and every eighth one looks huge. Reading one pixel
+     from each of the engine's canvases makes the frame finish its drawing then and there, as the phone's next paint
+     would, so a frame's ms is the whole frame (the drawing calls and their pixels). ---- */
+  function settle(root) {
+    var cs = root.querySelectorAll("canvas");
+    for (var i = 0; i < cs.length; i++) { try { cs[i].getContext("2d").getImageData(0, 0, 1, 1); } catch (e) { /* a zero-size canvas */ } }
+  }
+
+  /* ---- Web Animations (the shake, the flash, the jolts) run on the page's own timeline; the bench pins each one to
+     the engine clock instead, so a screenshot at e shows the card where the player would see it ---- */
+  var held = [];
+  function animsFinish() {
+    document.getAnimations().forEach(function (a) { try { a.finish(); } catch (e) { a.cancel(); } });
+    held = [];
+  }
+  function animsHold() {
+    document.getAnimations().forEach(function (a) {
+      if (a.__qa) return;
+      a.__qa = 1; a.pause(); held.push({ a: a, born: clock.t });
+    });
+  }
+  function animsScrub() {
+    held.forEach(function (h) { try { h.a.currentTime = Math.max(0, (clock.t - h.born) * 1000); } catch (e) { /* finished */ } });
+  }
+
+  /* ---- the reel: app.js's overlay at its real size, on the bench clock ----
+     o = { games (82 x 0/1), loss: [ids], dots: id, pace, clOffset (added to each info.cl: 14 keeps every loss light,
+           so a dots measure meets no loss moment), live ({ w, l }: the dot set's windows, for each frame's busy flag),
+           hold (pin the Web Animations to the clock: without it a shake started inside one long scripted run never
+           moves, since the page's own timeline only advances between tasks, and the card stays tilted) } */
+  function reel(o) {
+    o = o || {};
+    var games = o.games || LEDGER, pace = o.pace || 1, clOff = o.clOffset || 0;
+    var ov = document.createElement("div");
+    ov.className = "reel-overlay";
+    ov.innerHTML = '<div class="reel-card"><div class="reel-head">' +
+      '<span class="t-head reel-eyebrow" data-head="eyebrow">The season \u00B7 game by game</span>' +
+      '<span class="reel-run mono" id="reelRun">0\u20130</span>' +
+      '<button class="reel-skip mono t-btn" data-kind="quiet" data-size="sm" id="reelSkip" type="button">SKIP \u2192</button></div>' +
+      '<div class="reel-acts" id="reelActs"></div></div>';
+    document.body.appendChild(ov);
+    var card = ov.querySelector(".reel-card"), acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
+    var uses = [], w = wins(games);
+    var R = window.T82RISO.create(ov, { games: games, wins: w, losses: games.length - w }, {
+      loss: o.loss || [], dots: o.dots || BUILTIN.dots, clock: clock.now, manual: true,
+      onUse: function (kind, id) { uses.push(kind + ":" + id); }
+    });
+    if (!R) { ov.remove(); throw new Error("T82RISO.create returned null (riso off, or no canvas)"); }
+    var h = { ov: ov, card: card, acts: acts, R: R, uses: uses, games: games, pace: pace, gi: 0, cw: 0, cl: 0, streak: 0, lossRun: 0,
+      mi: -1, row: null, recEl: null, left: 0, mw: 0, ml: 0, start: 0, live: [], next: clock.t, holdAnims: !!o.hold };
+    function openMonth() {
+      h.mi++; h.start = h.gi; h.mw = 0; h.ml = 0; h.left = MONTHS[h.mi][1];
+      var row = document.createElement("div");
+      row.className = "reel-act";
+      row.innerHTML = '<div class="reel-mo-line"><span class="reel-mo">' + MONTHS[h.mi][0] + '</span><span class="reel-mo-rec mono">0\u20130</span></div>' +
+        '<div class="reel-grid"></div><p class="reel-note reel-note-pending"></p>';
+      acts.appendChild(row);
+      h.row = row; h.recEl = row.querySelector(".reel-mo-rec");
+      R.openMonth(row, h.mi, MONTHS[h.mi][1]);
+      acts.scrollTop = acts.scrollHeight;
+    }
+    function closeMonth() {
+      if (!h.row || h.row.__closed) return;
+      h.row.__closed = true;
+      var note = h.row.querySelector(".reel-note");
+      // app.js pins one of the month's losses on one of your five; the bench prints a stand-in of the same size
+      note.innerHTML = h.ml === 0 && h.mw > 0 ? '<span class="riso-swept mono">SWEPT</span>' : '<b class="reel-blame">Curry</b> shot 4 for 19.';
+      note.classList.remove("reel-note-pending");
+      R.closeMonth(h.row, h.mi, h.mw, h.ml);
+      acts.scrollTop = acts.scrollHeight;
+    }
+    function timedFrame() {
+      if (h.holdAnims) animsScrub();                // the jolts where a player would see them now (the engine reads layout)
+      var t = realNow();
+      R.frame();
+      settle(ov);
+      var ms = realNow() - t, busy = false;
+      h.live = h.live.filter(function (s) { return clock.t - s.t0 < s.until; });
+      busy = h.live.length > 0;
+      if (h.holdAnims) animsHold();
+      return { t: clock.t, ms: ms, busy: busy };
+    }
+    // the next stamp, at the clock's time, as placeSquare does it; a new month opens first when the last one is full
+    h.stamp = function (instant) {
+      if (h.gi >= games.length) throw new Error("the season is over");
+      if (h.mi < 0 || h.left === 0) { closeMonth(); openMonth(); }
+      var win = !!games[h.gi], prev = h.streak;
+      if (win) { h.cw++; h.mw++; h.streak++; h.lossRun = 0; } else { h.cl++; h.ml++; h.lossRun++; h.streak = 0; }
+      runEl.textContent = h.cw + "\u2013" + h.cl;
+      h.recEl.textContent = h.mw + "\u2013" + h.ml;
+      var info = { gi: h.gi, cw: h.cw, cl: h.cl + clOff, streak: h.streak, prevStreak: prev, lossRun: h.lossRun,
+        city: city(h.gi), date: reelDate(h.gi), instant: !!instant, pace: pace };
+      var t = realNow(), hold = R.stamp(h.row, h.gi - h.start, win, info) || 0, ms = realNow() - t;
+      var s = { gi: h.gi, idx: h.gi - h.start, mi: h.mi, win: win, info: info, hold: hold, ms: ms, t0: clock.t };
+      if (!instant) h.live.push({ t0: clock.t, until: win ? (o.live || {}).w || 0.24 : (o.live || {}).l || 1.5 });
+      if (h.holdAnims && !instant) animsHold();
+      h.gi++; h.left--;
+      return s;
+    };
+    // every game before gi, settled at once (the cursor's fast path); then one frame prints them
+    h.instantTo = function (gi) {
+      while (h.gi < gi) h.stamp(true);
+      acts.scrollTop = acts.scrollHeight;
+      return h.frame();
+    };
+    h.frame = function () { return timedFrame(); };
+    // Moves the clock to t (seconds), drawing a frame on every 1/fps tick it crosses. Returns those frames.
+    h.until = function (t, fps) {
+      var dt = 1 / (fps || 60), out = [];
+      if (h.next < clock.t) h.next = clock.t;
+      while (h.next <= t + 1e-9) { clock.t = h.next; h.next += dt; out.push(timedFrame()); }
+      clock.t = Math.max(clock.t, t);
+      if (h.holdAnims) animsScrub();
+      return out;
+    };
+    // app.js's cursor from here to game gi: month leads, ticks, each loss's hold; frames all along
+    h.play = function (gi, fps) {
+      var out = [], add = function (sec) { out.push.apply(out, h.until(clock.t + sec, fps)); };
+      while (h.gi < Math.min(gi, games.length)) {
+        if (h.mi < 0 || h.left === 0) {
+          if (h.mi < 0) add(LEAD0 * pace / 1000);
+          else { add(CLOSE * pace / 1000); closeMonth(); add((LEAD - CLOSE) * pace / 1000); }
+          openMonth(); add(OPEN * pace / 1000);
+        }
+        var s = h.stamp(false);
+        add(((h.left === 0 ? 0 : TICK) * pace + s.hold) / 1000);
+      }
+      if (h.gi >= games.length) { add(CLOSE * pace / 1000); closeMonth(); }
+      return out;
+    };
+    // a stamp's center and dot radius in page px (mirrors reel-riso.js's layout() and colsFor(): pitch = width / 15,
+    // 17 to 27, the grid's layout width, and a hair of slack in the column count)
+    h.cell = function (gi) {
+      var p = monthOf(gi), row = acts.querySelectorAll(".reel-act")[p[0]], cvs = row && row.querySelector("canvas"), grid = row && row.querySelector(".reel-grid");
+      if (!cvs) return null;
+      var gw = Math.max(120, Math.round(grid.clientWidth || grid.getBoundingClientRect().width || 300));
+      var pitch = clamp(gw / 15, 17, 27), cols = Math.max(1, Math.min(MONTHS[p[0]][1], Math.floor(gw / pitch + 1e-6))), rc = cvs.getBoundingClientRect();
+      var k = rc.width / Math.round(cols * pitch), c = p[1] % cols, r = Math.floor(p[1] / cols);
+      return { x: rc.left + pitch * (c + 0.5) * k, y: rc.top + pitch * (r + 0.5) * k, R: pitch * 0.36 * k, pitch: pitch * k };
+    };
+    h.rect = function () { var r = card.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; };
+    h.close = closeMonth;
+    h.destroy = function () { try { R.destroy(); } catch (e) { /* cosmetic */ } ov.remove(); animsFinish(); };
+    return h;
+  }
+  // The engine queues a variant's prep once the faces have landed; run every job now, timing each.
+  // Resolves { jobs: [ms], peak (canvas bytes), waited (ms before the queue filled) }.
+  function prep(h, maxWait) {
+    var q = h.R.qa;
+    if (!q) return Promise.resolve({ jobs: [], peak: 0, waited: 0, none: true });
+    var t0 = realNow();
+    return new Promise(function (res) {
+      (function poll() {
+        var st = q.state() || {};
+        if ((st.ready === false || st.prepped === false) && realNow() - t0 < (maxWait || 2500)) { setTimeout(poll, 25); return; }
+        var jobs = [], peak = st.canvasBytes || 0;
+        for (var i = 0; i < 2000; i++) {
+          var a = realNow(), ran = q.runJob(), ms = realNow() - a;
+          if (!ran) break;
+          jobs.push(ms);
+          peak = Math.max(peak, (q.state() || {}).canvasBytes || 0);
+        }
+        res({ jobs: jobs, peak: peak, waited: realNow() - t0, state: q.state() });
+      })();
+    });
+  }
+
+  /* ---- the results print ---- */
+  var ROSTER = [{ slot: "G", name: "Stephen Curry", yr: "'16" }, { slot: "G", name: "Michael Jordan", yr: "'96" },
+    { slot: "F", name: "LeBron James", yr: "'13" }, { slot: "F", name: "Tim Duncan", yr: "'03" }, { slot: "C", name: "Shaquille O'Neal", yr: "'00" }];
+  // the spec app.js's resultsPrintSpec builds, for a fixed five
+  function printSpec(games, o) {
+    o = o || {};
+    var w = games ? wins(games) : o.wins, net = (w - 41) * 0.36;
+    return { games: games, wins: w, saved: null, context: o.context || "CLASSIC MODE",
+      names: ROSTER.map(function (r) { return r.yr + " " + r.name.split(" ").pop(); }), roster: ROSTER,
+      net: (net >= 0 ? "+" : "\u2212") + Math.abs(net).toFixed(1), comp: w >= 82 ? "Greatest of all GOATs" : w >= 60 ? "Better than the '86 Celtics" : "",
+      seed: 4000 + w * 13, pal: o.pal || "golden", scene: o.scene || BUILTIN.scene };
+  }
+  // The finished banner as the page shows it (the print through the look's filter, the names on top) on one canvas,
+  // and the scene that actually printed (a scene that throws prints the lake).
+  function banner(spec, o) {
+    o = o || {};
+    var d = o.dpr || 2, out = T82PRINT.print(spec, { width: Math.round((o.cssW || 375) * d), dpr: d });
+    var c = document.createElement("canvas"), g = c.getContext("2d");
+    c.width = out.print.width; c.height = out.print.height;
+    if (out.filter && out.filter !== "none" && "filter" in g) g.filter = out.filter;
+    g.drawImage(out.print, 0, 0);
+    g.filter = "none";
+    g.drawImage(out.names, 0, 0);
+    return { canvas: c, scene: out.scene || null };
+  }
+  // the share poster, as a data URL (null when it fails soft)
+  function poster(spec) {
+    return new Promise(function (res) {
+      var t = realNow();
+      T82PRINT.poster(spec, function (blob) {
+        if (!blob) { res(null); return; }
+        var fr = new FileReader();
+        fr.onload = function () { res({ url: fr.result, ms: realNow() - t, bytes: blob.size }); };
+        fr.onerror = function () { res(null); };
+        fr.readAsDataURL(blob);
+      });
+    });
+  }
+  // the banner on the results page: a 375px host (the phone's width), mounted on the bench clock
+  function mountPrint(spec, o) {
+    o = o || {};
+    var stage = document.getElementById("qaStage"), wrap = document.createElement("div"), host = document.createElement("div");
+    wrap.className = "rr qa-rr"; host.className = "rr-print";
+    wrap.style.width = (o.cssW || 375) + "px";
+    wrap.appendChild(host); stage.appendChild(wrap);
+    var t = realNow(), M = T82PRINT.mount(host, spec, { clock: clock.now, manual: true, defer: o.defer !== false }), ms = realNow() - t;
+    if (!M) { wrap.remove(); throw new Error("T82PRINT.mount returned null (riso off, or no canvas)"); }
+    var h = { host: host, M: M, mountMs: ms, next: clock.t };
+    h.frame = function () { var a = realNow(); M.frame(); settle(host); return realNow() - a; };
+    h.until = function (t, fps) {
+      var dt = 1 / (fps || 60), out = [];
+      if (h.next < clock.t) h.next = clock.t;
+      while (h.next <= t + 1e-9) { clock.t = h.next; h.next += dt; out.push({ t: clock.t, ms: h.frame() }); }
+      clock.t = Math.max(clock.t, t);
+      return out;
+    };
+    h.rect = function () { var r = host.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; };
+    h.destroy = function () { try { M.destroy(); } catch (e) { /* cosmetic */ } wrap.remove(); };
+    return h;
+  }
+
+  /* ---- what the engines on this page can do (the bench needs opts.clock, opts.manual and frame()) ---- */
+  function caps() {
+    var c = { art: !!art(), artShim: !!(art() && art().__shim), index: 0, reel: !!window.T82RISO, print: !!window.T82PRINT,
+      reelVersion: window.T82RISO && T82RISO.version, printVersion: window.T82PRINT && T82PRINT.version, reelHooks: false, printHooks: false,
+      fonts: !!(document.fonts && document.fonts.check && document.fonts.check("700 40px \"Big Shoulders Display\"") && document.fonts.check("400 12px \"Space Mono\"")) };
+    if (c.art && art().catalog) ["loss", "dots", "scene"].forEach(function (k) { c.index += art().catalog(k).length; });
+    if (c.reel) {
+      try { var h = reel({ games: LEDGER }); c.reelHooks = typeof h.R.frame === "function" && !!h.R.qa; h.destroy(); } catch (e) { c.reelError = String(e && e.message || e); }
+    }
+    if (c.print) {
+      try { var p = mountPrint(printSpec(record(50), {}), { cssW: 120 }); c.printHooks = typeof p.M.frame === "function"; p.destroy(); } catch (e) { c.printError = String(e && e.message || e); }
+    }
+    return c;
+  }
+  var ready = new Promise(function (res) {
+    var go = function () {
+      var faces = document.fonts && document.fonts.load ? Promise.all(["700 100px \"Big Shoulders Display\"", "400 20px \"Space Mono\"", "700 20px \"Space Mono\"", "400 16px Rubik"].map(function (f) {
+        return document.fonts.load(f).catch(function () {});
+      })) : Promise.resolve();
+      var fonts = window.T82PRINT && T82PRINT.fonts ? T82PRINT.fonts() : Promise.resolve();
+      Promise.all([faces, fonts, document.fonts ? document.fonts.ready : null]).then(function () { res(true); }, function () { res(true); });
+    };
+    if (document.readyState === "complete") go(); else window.addEventListener("load", go);
+  });
+
+  /* ---- ?watch=kind:id plays one variant here in real time, looped (the clock follows the wall) ---- */
+  function watch(kind, id) {
+    var notes = document.getElementById("qaNotes"), stop = false, file = "/art/" + kind + "/" + id + ".js";
+    if (kind === "scene") notes.style.display = "none";
+    function realClock() { clock.t = realNow() / 1000; }
+    function loop(step) { (function f() { if (stop) return; realClock(); step(); requestAnimationFrame(f); })(); }
+    return load(kind, id, file).then(function (r) {
+      if (!r.ok) { notes.insertAdjacentHTML("beforeend", '<p class="qa-note">' + (r.error || "not registered") + "</p>"); return; }
+      if (kind === "loss") {
+        var keys = ["streak", "mid", "late"], k = 0, h = null, end = 0;
+        loop(function () {
+          if (!h || clock.t > end) {
+            if (h) h.destroy();
+            var C = CASES[keys[k++ % 3]];
+            h = reel({ games: C.games, loss: [id], pace: C.pace });
+            h.instantTo(C.gi);
+            end = clock.t + 0.6 + (h.stamp(false).hold / 1000) + 0.9;
+          }
+          h.R.frame();
+        });
+      } else if (kind === "dots") {
+        // app.js's cursor on the wall clock: a tick per game, each loss's hold, a lead between months
+        realClock();
+        var hd = reel({ games: LEDGER, dots: id, loss: ["classic"] }), due = clock.t + LEAD0 / 1000;
+        loop(function () {
+          while (hd.gi < LEDGER.length && clock.t >= due) {
+            var s = hd.stamp(false);
+            due += ((hd.left === 0 ? LEAD + OPEN : TICK) * hd.pace + s.hold) / 1000;
+            if (hd.gi >= LEDGER.length) hd.close();
+          }
+          hd.R.frame();
+        });
+      } else {
+        var w = 0, pm = null, again = 0;
+        loop(function () {
+          if (!pm || clock.t > again) {
+            if (pm) pm.destroy();
+            var spec = printSpec(record(RECORDS[w % 4]), { scene: id, pal: (r.def && r.def.lights || ["golden", "dusk", "night"])[w % 3] });
+            w++;
+            pm = mountPrint(spec, {}); pm.M.play(); again = clock.t + 5;
+          }
+          pm.M.frame();
+        });
+      }
+    });
+  }
+
+  window.T82QA = {
+    now: realNow, clock: clock, ready: ready, caps: caps, BUILTIN: BUILTIN, MONTHS: MONTHS,
+    CASES: CASES, LEDGER: LEDGER, RECORDS: RECORDS, record: record, wins: wins, monthOf: monthOf,
+    list: list, load: load, reel: reel, prep: prep, printSpec: printSpec, banner: banner, poster: poster, mountPrint: mountPrint,
+    anims: { finish: animsFinish, hold: animsHold, scrub: animsScrub },
+    watch: watch
+  };
+  var wm = /[?&]watch=(loss|dots|scene):([a-z0-9-]+)/.exec(location.search);
+  if (wm) ready.then(function () { watch(wm[1], wm[2]); });
+})();
+</script>
+</body>
+</html>
