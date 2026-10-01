@@ -18,6 +18,7 @@ body.lab { min-height: 100vh; padding-bottom: calc(84px + env(safe-area-inset-bo
 .lab-ico { display: inline-block; width: 1em; height: 1em; vertical-align: -0.14em; }
 .lab-lede .lab-ico.is-love { color: var(--t-accent); }
 .lab-lede .lab-ico.is-cut { color: var(--t-bad); }
+.lab-lede .lab-ast { color: var(--t-hot); font-size: 1.15em; }
 
 .lab-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 12px; }
 @media (min-width: 540px) { .lab-tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
@@ -69,7 +70,7 @@ body.lab { min-height: 100vh; padding-bottom: calc(84px + env(safe-area-inset-bo
 .lab-now-name { margin: 2px 0 0; font-family: var(--t-disp); font-weight: 700; font-size: 26px; line-height: 1.02; letter-spacing: 0.03em; text-transform: uppercase; color: var(--t-text); }
 .lab-now-by { margin: 4px 0 0; height: 2.9em; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   font-size: var(--t-fs-small); line-height: 1.45; color: var(--t-text-2); }   /* two lines, so the hearts stay over the picks bar; the tile has it all */
-.lab-now-acts { display: grid; grid-template-columns: 1fr 1fr 48px 48px; gap: 6px; margin-top: 10px; }
+.lab-now-acts { display: grid; grid-template-columns: 1fr 1fr 48px 48px 48px; gap: 6px; margin-top: 10px; }
 .lab-now-acts .lab-mk { width: auto; }
 .lab-now-try { display: inline-block; margin-top: 8px; }
 
@@ -118,6 +119,8 @@ body.lab { min-height: 100vh; padding-bottom: calc(84px + env(safe-area-inset-bo
 .lab-mk.is-love[aria-pressed="true"] { border-color: var(--t-accent); color: var(--t-accent); background: rgb(var(--t-accent-rgb) / .16); }
 .lab-mk.is-love[aria-pressed="true"] .lab-fill { fill: currentColor; }
 .lab-mk.is-cut[aria-pressed="true"] { border-color: var(--t-bad); color: var(--t-bad); background: rgb(var(--t-bad-rgb) / .16); }
+.lab-mk.is-note[aria-pressed="true"] { border-color: var(--t-hot); color: var(--t-hot); background: rgb(var(--t-hot-rgb) / .14); }
+.lab-mk.is-note[aria-expanded="true"] { border-color: var(--t-hot); color: var(--t-hot-hi); }
 .lab-mk:active { transform: translateY(2px); }
 .lab-mk.pop { animation: labPop 0.32s cubic-bezier(.2, 1.6, .4, 1); }
 @keyframes labPop { 0% { transform: scale(0.7); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
@@ -181,6 +184,7 @@ body.lab { min-height: 100vh; padding-bottom: calc(84px + env(safe-area-inset-bo
 .lab-bar-sum span { display: flex; gap: 10px; font-family: var(--t-mono); font-size: 12px; color: var(--t-text-2); white-space: nowrap; }
 .lab-bar-sum .lab-n-love { color: var(--t-accent-hi); }
 .lab-bar-sum .lab-n-cut { color: var(--t-bad-soft); }
+.lab-bar-sum .lab-n-note { color: var(--t-hot-hi); }
 .lab-bar .t-btn { flex: 0 0 auto; min-height: 46px; padding: 8px 14px 9px; font-size: 16px; }
 .lab-sheet h2 { margin: 2px 0 6px; }
 .lab-code { margin: 8px 0 12px; padding: 12px; max-height: 42vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
@@ -189,3 +193,17 @@ body.lab { min-height: 100vh; padding-bottom: calc(84px + env(safe-area-inset-bo
 .lab-sheet .t-btn { width: 100%; }
 .lab-sheet-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
 .lab-toast { white-space: normal; max-width: calc(100vw - 32px); text-align: center; bottom: calc(86px + env(safe-area-inset-bottom)); }
+
+/* the asterisk's note: "yes, but this needs to change", typed under the look (16 px so an iPhone never zooms in) */
+.lab-notebox { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.lab-note-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lab-note-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--t-mono); font-size: 11px; letter-spacing: 0.1em; color: var(--t-hot-hi); }
+.lab-note-done { flex: 0 0 auto; min-height: 36px; padding: 0 12px; border: 1.5px solid var(--t-rule); border-radius: var(--t-r-btn);
+  font-family: var(--t-disp); font-weight: 700; font-size: 15px; letter-spacing: 0.06em; color: var(--t-text-2); }
+.lab-notetext { display: block; width: 100%; box-sizing: border-box; min-height: 84px; padding: 10px 12px; resize: vertical;
+  font-family: var(--t-body); font-size: 16px; line-height: 1.4; color: var(--t-text); background: var(--t-ground-3);
+  border: 1.5px solid var(--t-rule); border-radius: var(--t-r-btn); }
+.lab-notetext::placeholder { color: var(--t-text-3); }
+.lab-notetext:focus { outline: none; border-color: var(--t-hot); }
+.lab-tile.is-noted .lab-name::after { content: " *"; color: var(--t-hot); }

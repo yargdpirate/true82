@@ -12,7 +12,7 @@
 <!-- The game's own theme. lab.js checks the game's index.html for newer keys and swaps these if the release moved them. -->
 <link rel="stylesheet" href="../../styles.css?v=20260929-v66" data-lab-key="styles.css">
 <link rel="stylesheet" href="../../look.css?v=20260927-v60" data-lab-key="look.css">
-<link rel="stylesheet" href="lab.css">
+<link rel="stylesheet" href="lab.css?v=20261001-notes">
 </head>
 <body class="lab">
 <div class="lab-wrap">
@@ -21,7 +21,7 @@
       <h1 class="t-head" data-head="title">Art Lab</h1>
       <span class="lab-date" id="labStamp">Tonight's art</span>
     </div>
-    <p class="lab-lede">Play every look. <svg class="lab-ico is-love" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.4-4.5-9.5-9.1C1 8.6 3.1 5 6.6 5c2.1 0 3.6 1.2 5.4 3.2C13.8 6.2 15.3 5 17.4 5 20.9 5 23 8.6 21.5 11.9 19.4 16.5 12 21 12 21z"/></svg> <b>loves it</b>, <svg class="lab-ico is-cut" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg> <b>cuts it</b>, anything you leave alone stays. YOUR PICKS turns your marks into a code for Claude.</p>
+    <p class="lab-lede">Play every look. <svg class="lab-ico is-love" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.4-4.5-9.5-9.1C1 8.6 3.1 5 6.6 5c2.1 0 3.6 1.2 5.4 3.2C13.8 6.2 15.3 5 17.4 5 20.9 5 23 8.6 21.5 11.9 19.4 16.5 12 21 12 21z"/></svg> <b>loves it</b>, <svg class="lab-ico is-cut" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg> <b>cuts it</b>, <b class="lab-ast">*</b> <b>yes, but</b> (write what should change), anything you leave alone stays. YOUR PICKS turns your marks into a code for Claude.</p>
     <nav class="lab-tabs" id="labTabs" role="tablist" aria-label="The art"></nav>
   </header>
   <main id="labMain"></main>
@@ -46,6 +46,6 @@
   </div>
 </section>
 <div class="t-toast lab-toast" id="labToast" role="status" aria-live="polite"></div>
-<script src="lab.js"></script>
+<script src="lab.js?v=20261001-notes"></script>
 </body>
 </html>

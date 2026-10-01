@@ -14,7 +14,7 @@
   var doc = document, win = window;
   var ROOT = "../../";
   var LAB_V = "v1";
-  var K_PICKS = "t82-art-lab-picks-v1", K_UI = "t82-art-lab-ui-v1";
+  var K_PICKS = "t82-art-lab-picks-v1", K_UI = "t82-art-lab-ui-v1", K_NOTES = "t82-art-lab-notes-v1";
   var KINDS = ["loss", "dots", "scene", "hot", "perk", "goat"];
   var BUILTIN = { loss: "classic", dots: "classic", scene: "lake", hot: "classic", perk: "classic", goat: "classic" };
   var BUILTIN_NAME = { loss: "Classic L", dots: "Classic", scene: "Lake", hot: "Classic", perk: "Classic", goat: "Classic" };
@@ -90,6 +90,8 @@
 
   // the two marks, drawn (a heart glyph prints as a red emoji on some iPhones)
   var HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="lab-fill" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" d="M12 20.4s-7.1-4.4-9.1-8.8C1.5 8.4 3.5 5.1 6.8 5.1c2 0 3.5 1.1 5.2 3.1 1.7-2 3.2-3.1 5.2-3.1 3.3 0 5.3 3.3 3.9 6.5-2 4.4-9.1 8.8-9.1 8.8z"/></svg>';
+  // the asterisk: "yes, but this needs to change" (the owner, 2026-10-01): a note he types under the look
+  var STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 4.5v15M5.5 8.25l13 7.5M18.5 8.25l-13 7.5"/></svg>';
   var CROSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
   var PLAY = '<svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true"><path fill="currentColor" d="M1.5 1l7.5 4-7.5 4z"/></svg>';
   var PREV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></svg>';
@@ -109,6 +111,65 @@
   var PICKS = (function () { var p = readJSON(K_PICKS); return p && typeof p === "object" && !(p instanceof Array) ? p : {}; })();
   var UI = (function () { var u = readJSON(K_UI); return u && typeof u === "object" ? u : {}; })();
   function saveUI() { writeJSON(K_UI, UI); }
+  // the notes: "yes, but" comments, one per look, kept on this phone beside the hearts and Xs (independent of them:
+  // a loved look can still carry a note)
+  var NOTES = (function () { var n = readJSON(K_NOTES); return n && typeof n === "object" && !(n instanceof Array) ? n : {}; })();
+  function noteOf(key) { return typeof NOTES[key] === "string" ? NOTES[key] : ""; }
+  function setNote(key, text) {
+    text = String(text || "").replace(/\s+$/, "");
+    if (text.replace(/\s/g, "")) NOTES[key] = text; else delete NOTES[key];
+    if (!writeJSON(K_NOTES, NOTES) && !setMark.warned) { setMark.warned = true; toast("This browser won't save picks: copy the code before you leave."); }
+    paintNotes(key);
+    paintBar();
+  }
+  function paintNotes(key) {
+    var has = !!noteOf(key);
+    Array.prototype.forEach.call(doc.querySelectorAll('[data-nk="' + key + '"]'), function (b) { b.setAttribute("aria-pressed", has ? "true" : "false"); });
+    Array.prototype.forEach.call(doc.querySelectorAll('.lab-tile[data-key="' + key + '"]'), function (t) { t.classList.toggle("is-noted", has); });
+  }
+  // The note's box drops down under the look (a tile) or under the card's buttons (what is playing). It stays bound
+  // to the look it was opened for, so the next look in a ten-in-a-row never steals what he is typing.
+  function noteBox(key, name) {
+    var ta = h("textarea", "lab-notetext", { rows: 3, maxlength: 600, "data-nt": key, "aria-label": "Yes, but: what should change in " + (name || key),
+      placeholder: "Yes, but\u2026 what should change? (slower, less aqua, a bigger L)" });
+    ta.value = noteOf(key);
+    var t = 0;
+    ta.addEventListener("input", function () { clearTimeout(t); t = setTimeout(function () { setNote(key, ta.value); }, 250); });
+    ta.addEventListener("blur", function () { clearTimeout(t); setNote(key, ta.value); });
+    var done = h("button", "lab-note-done", { type: "button" }, "DONE");
+    var box = h("div", "lab-notebox", { "data-nb": key }, [
+      h("div", "lab-note-head", null, [h("span", "lab-note-label", null, "* YES, BUT" + (name ? " \u00B7 " + String(name).toUpperCase() : "")), done]), ta]);
+    done.addEventListener("click", function () { clearTimeout(t); setNote(key, ta.value); box.parentNode && box.parentNode.removeChild(box); syncOpen(); });
+    return box;
+  }
+  function syncOpen() {
+    Array.prototype.forEach.call(doc.querySelectorAll("[data-nk]"), function (b) {
+      var holder = b.closest(".lab-tile") || b.closest(".lab-now"), box = holder && holder.querySelector(".lab-notebox");
+      b.setAttribute("aria-expanded", box && box.getAttribute("data-nb") === b.getAttribute("data-nk") ? "true" : "false");
+    });
+  }
+  doc.addEventListener("click", function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest("[data-nk]") : null;
+    if (!b || b.disabled) return;
+    var key = b.getAttribute("data-nk");
+    if (!key) return;
+    var holder = b.closest(".lab-tile") || b.closest(".lab-now");
+    if (!holder) return;
+    var open = holder.querySelector(".lab-notebox");
+    if (open) {                                                   // save whatever is in it, then close (or swap looks)
+      var ta0 = open.querySelector("textarea");
+      if (ta0) setNote(open.getAttribute("data-nb"), ta0.value);
+      open.parentNode.removeChild(open);
+      if (open.getAttribute("data-nb") === key) { syncOpen(); return; }
+    }
+    var box = noteBox(key, b.getAttribute("data-nn") || "");
+    holder.appendChild(box);
+    syncOpen();
+    b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+    var ta = box.querySelector("textarea");
+    try { ta.focus({ preventScroll: true }); } catch (e) { ta.focus(); }
+    if (box.scrollIntoView) try { box.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) { box.scrollIntoView(false); }
+  });
   function markOf(key) { return PICKS[key] === "love" || PICKS[key] === "cut" ? PICKS[key] : ""; }
   function setMark(key, m) {
     if (m) PICKS[key] = m; else delete PICKS[key];
@@ -127,12 +188,14 @@
       t.classList.toggle("is-cut", m === "cut");
     });
   }
-  function marks(key, big) {
+  function marks(key, big, name) {
     var box = h("div", "lab-marks");
     box.appendChild(h("button", "lab-mk is-love", { type: "button", "data-mk": key, "data-m": "love", "aria-pressed": markOf(key) === "love" ? "true" : "false",
       "aria-label": "Love it", html: HEART + (big ? "<span>LOVE</span>" : "") }));
     box.appendChild(h("button", "lab-mk is-cut", { type: "button", "data-mk": key, "data-m": "cut", "aria-pressed": markOf(key) === "cut" ? "true" : "false",
       "aria-label": "Cut it", html: CROSS + (big ? "<span>CUT</span>" : "") }));
+    box.appendChild(h("button", "lab-mk is-note", { type: "button", "data-nk": key, "data-nn": name || "", "aria-pressed": noteOf(key) ? "true" : "false",
+      "aria-expanded": "false", "aria-label": "Yes, but: write what should change", html: STAR }));
     return box;
   }
   // one listener for every heart and X on the page
@@ -147,15 +210,16 @@
   function counts() {
     var love = 0, cut = 0;
     Object.keys(PICKS).forEach(function (k) { if (PICKS[k] === "love") love++; else if (PICKS[k] === "cut") cut++; });
-    return { love: love, cut: cut };
+    return { love: love, cut: cut, note: Object.keys(NOTES).length };
   }
   function paintBar() {
     var c = counts(), el = $("labBarCount");
     if (!el) return;
     el.innerHTML = "";
-    if (!c.love && !c.cut) { el.textContent = "Nothing marked yet"; return; }
+    if (!c.love && !c.cut && !c.note) { el.textContent = "Nothing marked yet"; return; }
     el.appendChild(h("span", "lab-n-love", null, c.love + (c.love === 1 ? " love" : " loves")));
     el.appendChild(h("span", "lab-n-cut", null, c.cut + (c.cut === 1 ? " cut" : " cuts")));
+    if (c.note) el.appendChild(h("span", "lab-n-note", null, c.note + (c.note === 1 ? " note" : " notes")));
   }
   // The code he pastes back: plain text, one line per kind. Ids are the files' names (art/<kind>/<id>.js).
   function picksCode() {
@@ -169,6 +233,11 @@
       });
       lines.push(kind + ": love " + (love.join(" ") || "-") + " | cut " + (cut.join(" ") || "-"));
     });
+    var nk = Object.keys(NOTES).filter(function (k) { return noteOf(k); }).sort();
+    if (nk.length) {
+      lines.push("yes, but (keep, with these changes):");
+      nk.forEach(function (k) { lines.push("* " + k + ": " + noteOf(k).replace(/\s+/g, " ").replace(/^\s|\s$/g, "")); });
+    }
     lines.push("unmarked = keep. In the lab: " + KINDS.map(function (k) { return k + " " + (LIST[k] ? LIST[k].length : 0); }).join(", ") + ".");
     return lines.join("\n");
   }
@@ -368,8 +437,9 @@
     if (v.note) main.appendChild(h("span", "lab-memo", null, v.note));
     t.appendChild(main);
     if (o.body) t.appendChild(o.body);
-    t.appendChild(h("div", "lab-tile-foot", null, [tryLink(v), marks(v.key)]));
+    t.appendChild(h("div", "lab-tile-foot", null, [tryLink(v), marks(v.key, false, v.name)]));
     t.classList.toggle("is-love", markOf(v.key) === "love");
+    t.classList.toggle("is-noted", !!noteOf(v.key));
     t.classList.toggle("is-cut", markOf(v.key) === "cut");
     if (v.state) setTimeout(function () { var s = v.state; v.state = ""; setState(v, s); }, 0);
     return t;
@@ -602,6 +672,11 @@
         b.setAttribute("data-mk", key); b.disabled = !v;
         b.setAttribute("aria-pressed", v && markOf(key) === b.getAttribute("data-m") ? "true" : "false");
       });
+      Array.prototype.forEach.call(acts.querySelectorAll("[data-nk]"), function (b) {
+        b.setAttribute("data-nk", key); b.setAttribute("data-nn", v ? v.name : ""); b.disabled = !v;
+        b.setAttribute("aria-pressed", v && noteOf(key) ? "true" : "false");
+      });
+      syncOpen();
       now1.prev.disabled = now1.next.disabled = !list.length;
     }
     function showNow(v, n, of) {
@@ -1240,10 +1315,15 @@
     $("labClose").addEventListener("click", closeSheet);
     $("labCopy").addEventListener("click", copyCode);
     $("labClear").addEventListener("click", function () {
-      if (!Object.keys(PICKS).length) { toast("Nothing to clear."); return; }
-      if (!win.confirm("Clear every heart and X?")) return;
+      if (!Object.keys(PICKS).length && !Object.keys(NOTES).length) { toast("Nothing to clear."); return; }
+      if (!win.confirm("Clear every heart, X and note?")) return;
       Object.keys(PICKS).forEach(function (k) { delete PICKS[k]; });
       writeJSON(K_PICKS, PICKS);
+      Object.keys(NOTES).forEach(function (k) { delete NOTES[k]; });
+      writeJSON(K_NOTES, NOTES);
+      Array.prototype.forEach.call(doc.querySelectorAll(".lab-notebox"), function (b) { b.parentNode.removeChild(b); });
+      Array.prototype.forEach.call(doc.querySelectorAll("[data-nk]"), function (b) { b.setAttribute("aria-pressed", "false"); b.setAttribute("aria-expanded", "false"); });
+      Array.prototype.forEach.call(doc.querySelectorAll(".lab-tile"), function (t) { t.classList.remove("is-noted"); });
       Array.prototype.forEach.call(doc.querySelectorAll("[data-mk]"), function (b) { b.setAttribute("aria-pressed", "false"); });
       Array.prototype.forEach.call(doc.querySelectorAll(".lab-tile"), function (t) { t.classList.remove("is-love", "is-cut"); });
       paintBar();
@@ -1268,6 +1348,6 @@
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", boot); else boot();
 
   // for Claude and the QA scripts: decode a pasted code, read what is on the page
-  win.T82LAB = { code: picksCode, picks: function () { return JSON.parse(JSON.stringify(PICKS)); }, list: function (k) { return LIST[k] || []; },
+  win.T82LAB = { code: picksCode, picks: function () { return JSON.parse(JSON.stringify(PICKS)); }, notes: function () { return JSON.parse(JSON.stringify(NOTES)); }, list: function (k) { return LIST[k] || []; },
     open: function (k) { openTab(k, true); }, version: LAB_V };
 })();
