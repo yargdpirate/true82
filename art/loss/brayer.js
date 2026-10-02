@@ -28,13 +28,14 @@
     }
   }
   function roller(K, g, x, y, mv, s) {                  // x, y: the roller's middle; mv: +1 rolling down, -1 up
-    var w = CW * s * 1.3, t = 21 * s, hb = -mv, lw = Math.max(3, 3.2 * s);
-    g.fillStyle = K.pat("pop", 0.3, g); g.fillRect(x - w / 2, y + (mv > 0 ? -44 * s : 0), w, 44 * s);   // the smear behind it
+    var w = CW * s * 1.6, t = 27 * s, hb = -mv, lw = Math.max(3, 3.4 * s);
+    g.fillStyle = K.pat("pop", 0.3, g); g.fillRect(x - w / 2, y + (mv > 0 ? -48 * s : 0), w, 48 * s);   // the smear behind it
     g.fillStyle = K.pat("pop", 0.88, g); g.fillRect(x - w / 2, y - t / 2, w, t);
-    g.strokeStyle = g.fillStyle; g.lineWidth = lw; g.lineCap = "round"; g.beginPath();
-    g.moveTo(x - w / 2, y); g.lineTo(x - w / 2, y + hb * 30 * s); g.lineTo(x + w / 2, y + hb * 30 * s); g.lineTo(x + w / 2, y);
-    g.moveTo(x, y + hb * 30 * s); g.lineTo(x, y + hb * 64 * s); g.stroke();
-    g.fillStyle = K.pat("light", 0.75, g); g.fillRect(x - 6 * s, Math.min(y + hb * 60 * s, y + hb * 98 * s), 12 * s, 38 * s);
+    g.fillStyle = K.pat("light", 0.6, g); g.fillRect(x - w / 2 + 3 * s, y - t / 2 + 4 * s, w - 6 * s, 5 * s);   // the roller's lit side
+    g.strokeStyle = K.pat("pop", 0.88, g); g.lineWidth = lw; g.lineCap = "round"; g.beginPath();
+    g.moveTo(x - w / 2, y); g.lineTo(x - w / 2, y + hb * 38 * s); g.lineTo(x + w / 2, y + hb * 38 * s); g.lineTo(x + w / 2, y);
+    g.moveTo(x, y + hb * 38 * s); g.lineTo(x, y + hb * 72 * s); g.stroke();
+    g.fillStyle = K.pat("light", 0.75, g); g.fillRect(x - 7 * s, Math.min(y + hb * 68 * s, y + hb * 112 * s), 14 * s, 44 * s);
   }
   T82ART.add("loss", "brayer", {
     name: "Brayer",

@@ -74,7 +74,7 @@
       if (two && p2 > 0) { band(st.lt, yT - 6, yb); band(st.dn, yb, yB + 6); }
       else band(two ? st.lt : st.dn, yT - 6, p1 > 0 ? yb : yT - 6);
       g.beginPath(); g.rect(cx - ih - ft, yT - ft, 2 * (ih + ft), yB - yT + 2 * ft); g.rect(cx - ih, yT, 2 * ih, yB - yT);
-      g.fillStyle = K.pat("pop", 0.7, g); g.fill("evenodd");
+      g.fillStyle = K.pat("pop", 0.5, g); g.fill("evenodd");
       g.beginPath(); g.rect(cx - ih, yT, 2 * ih, yB - yT); Lp(g, X, Y, 1);
       g.fillStyle = K.pat("pop", 0.17, g); g.fill("evenodd");
       if (e < tl + 0.09) {                               // the squeegee: the bead rides ahead of the blade, the bar behind

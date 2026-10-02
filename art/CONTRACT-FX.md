@@ -26,10 +26,16 @@ second), so riso-fx.js loads after reel-riso.js.
 ```
 T82FX.use(kind, id)                  the look the run dealt for a kind (null or an invalid id: classic)
 T82FX.prime(kind, id) -> bool        that look's prep, one job per idle moment (default classic); call it once its file
-                                     has loaded. false: the look is not registered
+                                     has loaded. false: the look is not registered. The prep runs in the order a run's
+                                     moments come, whatever order the calls came in: perk, then hot, then goat, and within
+                                     a kind classic (the stand-in, a few small jobs) before the dealt look. A look that
+                                     leaves a slot out primes classic too
 T82FX.play(kind, slot, el, opts) -> ms   plays one slot at el's rect; its duration in ms, 0 = not played
 T82FX.stop()                         ends every effect, takes the layer off and frees every printed plate, emoji sheet
                                      and stamp (the theme is read again next time); the dealt looks and the off list stay
+T82FX.end(kind) -> bool              ends that kind's running beats only (its screen went) and keeps every look's prep;
+                                     the layer comes off when nothing else plays. true: something was running
+T82FX.ready(kind, id) -> bool        whether that look's prep is all printed (default classic): a play now pays nothing
 T82FX.slots                          { hot: [cold, warm, hot, fire, nova, save, miss], perk: [refund, sale], goat: [burst] }
 T82FX.version                        "v67"
 T82FX.qa                             the bench's hooks (below)
@@ -92,7 +98,8 @@ slots, no `T82RISO`, no body or no canvas: play returns 0 and app.js runs the ol
   element.
 - `K.flash(strength, ink)`: the whole screen lights in one ink's halftone (default `light`) and drops back in 0.26 s
   in four steps, printed as a page layer of the ink's screen tile under the canvas. At most 0.72, once per effect,
-  never within `T82RISO.flashGap` (0.77 s) of the last flash; it works in `draw` or `hit` and returns whether it fired.
+  never within `T82RISO.flashGap` (0.77 s) of the last flash, the reel's included (both engines claim each flash on one
+  real-time clock, `T82RISO.flashClaim`); it works in `draw` or `hit` and returns whether it fired.
   Only `K.flash` lights the whole screen (art/CONTRACT.md law 3).
 
 ## The kinds
@@ -127,7 +134,9 @@ T82ART.add("goat", id, { name, by, prep, slots: { burst: {dur, draw} } });   // 
   with `builtin: true`, ride in the bags like the reel's classic L, and play whenever the dealt look's file is not in
   yet, so even the fallback is ink.
 - **A throw** in prep, `hit` or `draw` turns that look off for the session (one `[t82]` warning) and classic finishes
-  the moment from where it was. A look without a slot plays classic for that slot.
+  the moment from where it was. Its own plates are freed; the riso emoji sheets (one cache: two looks printing the same
+  emoji at the same size and inks hold the same sheet) and the kit's tiles are shared, so they stay. A look without a
+  slot plays classic for that slot.
 - **Sizes:** a hot pack 14 KB, a perk pack 10 KB, a goat pack 8 KB (1 KB = 1024 bytes, comments count).
 
 ## Where the game calls them (app.js)
@@ -139,6 +148,13 @@ T82ART.add("goat", id, { name, by, prep, slots: { burst: {dur, draw} } });   // 
   those bags stay put); the 82-0 scene still is. Each dealt look is told to riso-fx.js (`T82FX.use`), fetched with
   the run's other files 1.4 s into the draft in idle time, and primed once it is in (`T82FX.prime`); one whose file
   failed moves on in its bag (`T82ART.skip`).
+- **Classic stands in primed** (`fxPrime`: for each kind, the dealt look once its file is in, otherwise classic): 1.4
+  s into the draft, with the fetch, classic is primed for every FX kind the run can have (Kaman's 82-0 volley and a
+  game with no art-core.js too); each arriving file then primes its look, behind its kind's classic. While a dealt
+  look is still printing its prep and classic's is printed, classic stands in (`fxLook`, booking nothing), so a perk
+  tapped the second after the file arrives never pays; an 82-0 volley settles its look at its first shell. Not at the
+  deal: the first raster of the emoji face (35 to 245 ms in desktop WebKit) would land in the first ticket's spin, so
+  a perk tapped inside the first 1.5 s or so still prints classic's few jobs in the tap, as before.
 - **The Heat Check** (`hotHand` post-season and `hotHandMid` mid-season): when the wheel locks, the tier's slot at the
   heat label (`big` only for nova); without the layer: the ON FIRE flame spray and the SUPERNOVA plumes, and nothing
   for COLD, WARM and HOT, as before. The verdict: `save` at the verdict stamp, spreading over its card (`ev.area`)
@@ -151,9 +167,13 @@ T82ART.add("goat", id, { name, by, prep, slots: { burst: {dur, draw} } });   // 
   finale adds the riso shells to its own rings, or nothing without the layer (it had no emoji). A pending volley stops
   when the screen changes or on SKIP.
 - **Booking:** a dealt look leaves its bag (`T82ART.used`) the first time it plays in a run; classic standing in for a
-  look still loading books nothing.
+  look still loading books nothing. A results scene, ordinary or perfect, leaves its bag when its print reveals
+  (`playResultsPrint`), once a run per scene: an 81-1 print the Heat Check's save swapped before it ever showed keeps
+  its place.
 - **Stopping:** a new run and the home screen always `T82FX.stop()`; entering the results and the reel's or the Heat
   Check's SKIP stop it only while something still prints, then prime the looks still to come (stop frees every plate).
+  SEE YOUR TEAM and BACK TO THE SEASON take the Heat Check's card away, so they end its beats (`T82FX.end("hot")`):
+  the save never prints over the results or the resumed reel, and the 82-0 volley still to come keeps its plates.
 - **Fallbacks:** without riso-fx.js, or when play throws or returns 0, the old emoji effect runs exactly as before
   (at most once). The game ignores the OS reduced-motion flag on purpose (app.js `reducedMotion()` is false), so the
   layer plays for everyone; `K.reduced` (the OS flag, from the reel's kit) is there for a pack that wants to calm
@@ -207,7 +227,7 @@ T82ART.add("scene", "summit", {
 - tools/art-index.js reads `perfect: true` from the file without running it (a literal on the def itself; an error on
   anything but a scene) and writes it on the entry; `classic` is reserved for hot, perk and goat.
 
-## QA levers (test builds only; true82.net ignores every one)
+## QA levers (the v67 ones are test builds only; true82.net ignores them)
 
 - `?art=hot:<id>,perk:<id>,goat:<id>,perfect:<id>` forces the run's looks (`forced("perfect")`, or `forced("scene",
   {perfect: true})`; a plain `scene:` never answers for the perfect bag). `classic` forces the built-in.
@@ -217,8 +237,10 @@ T82ART.add("scene", "summit", {
   lands SUPERNOVA and the save reaches 82-0, so the print reprints as the perfect scene. `?force82=` turns the
   mid-season Heat Check off. (A forced 81-1 that misses shows the record the boosted net projects, not 81-1: the
   lever forces the wins, not the net rating.)
-- Still there: `?clutch=1` (the post-season Heat Check on any Presti season), `?midhot=1` (the mid-season one past its
-  +20 bar), `?reelms=<ms>` (the reel's length).
+- Still there, from before v67, and NOT gated: `?clutch=1` (the post-season Heat Check on any Presti season),
+  `?midhot=1` (the mid-season one past its +20 bar) and `?reelms=<ms>` (the reel's length) work on true82.net too.
+  `?art=`, `?perk=` and `?force82=` are the only levers it ignores. Gating the older three is a behavior change: the
+  owner's call.
 
 ## Budgets (tools/art-qa.mjs, Chromium on the M1 at 4x; absolute for the FX kinds)
 
