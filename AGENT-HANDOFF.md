@@ -11,6 +11,12 @@
 > the undo is his, one step in the Cloudflare dashboard (Workers & Pages, then true82, then Deployments: "Rollback to
 > this deployment" on the previous production deployment).
 >
+> **NEW (2026-10-01, section 000001): `/api/recap` is locked to the app.** It used to be an unauthenticated POST on a
+> public URL that spent ANTHROPIC_API_KEY, which is what any "lab" would have been built on; no lab survives in the
+> repo. It now serves same-origin requests only, in one phase, with every roster name and fit note checked against
+> what app.js can emit, under per-IP and daily caps. `RECAP_OFF=1` stops all AI copy with no deploy. The prompt, the
+> answer and the share signature are byte-identical for real play, and app.js is untouched (no cache key, no BUILD_V).
+>
 > His merge command, for next time (from the repo folder):
 > `git checkout main && git merge --ff-only origin/main && git merge --ff-only c-code-clean && git push origin main && git checkout c-code-clean`
 >
@@ -33,13 +39,84 @@
 
 **Current source of truth:** the GitHub repo. `main` = `c-code-clean` = v66.4, LIVE (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
-**Date:** 2026-09-29
+**Date:** 2026-10-01
 **Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
-**Most recent change:** section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Most recent change:** section 000001: the Tribune's Anthropic key is the app's only (same-origin, one phase, an allowlisted roster and fit notes, per-IP and daily spend caps, a RECAP_OFF switch; no lab was found in the tree, and app.js is untouched). Before that, section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
+
+## 000001. START HERE (2026-10-01, night): THE TRIBUNE'S API KEY IS THE APP'S ONLY (branch `claude/charming-hypatia-i343va`, off c-code-clean; NOT on main)
+
+**What he asked (2026-10-01):** "we need to prevent unauthorized use of my anthropic api that is currently being used
+to write the tribune article ... make sure it's only ever used to write tribune articles as dictated by the app
+currently ... i think at some point we made a 'lab' out of the tribune articles and to do so we basically made the api
+publicly accessible. shut it off, don't want the lab rn. do on the c-code-clean repo first." Later, the same session:
+"totally possible the lab was erased some time ago btw and not in any documentation."
+
+**There is no lab in the tree, and there was no second endpoint to delete.** One file has ever touched the key:
+`functions/api/recap.js`. Nothing else in the repo names `api.anthropic.com`, `x-api-key` or `ANTHROPIC_API_KEY`
+(`tools/labels-refresh.js` matched only on a commit-message trailer), nothing but app.js posts to `/api/recap`, and no
+branch carries a Tribune lab: `c-code`, `accounts-test`, `art-variety` and `home-titles` have the identical file, and
+only the long-dead `cloudflare/workers-autoconfig` differs (an older, smaller recap.js). The Reprint Lab
+(`docs/reprint-lab/`) is a design explorer and never calls the API. So the lab was indeed erased earlier. What was
+still live is the thing that made it possible: **`/api/recap` was an unauthenticated POST on a public URL that spent a
+billable key.** Anyone could `curl https://true82.net/api/recap`, pick the costliest of its three prompt shapes, and
+put their own prose in the roster names and the fit notes, which is a free Claude proxy on the owner's bill. That is
+closed now.
+
+**The four guards (functions/api/recap.js, cheapest first; nothing reaches the model that the Function did not either
+write itself or check against the app's own vocabulary):**
+1. **Same origin.** A POST must carry an `Origin` (browsers send it on every non-GET) or, failing that, a `Referer`
+   from true82.net, www.true82.net, a `*.true82.pages.dev` preview, or localhost. Anything else gets a 403 before the
+   body is read. A lookalike (`true82.net.evil.example`) does not pass.
+2. **One phase.** Only `edition` is served, which is the only phase the shipped app.js sends (it posts `{phase:"edition"}` and nothing else). The retired
+   `headline` and `article` phases were a second and a third prompt shape, and `article` always turned thinking on for
+   2,600 tokens, so a caller could choose the most expensive path on the site. They now fail soft, which for an old
+   cached client means the local edition, exactly as a timeout does.
+3. **A roster the app could have drafted.** Slots must be G/F/C, names must be name-shaped (checked against all 3,509
+   names in site_data.json and the `S. O'Neal` share surnames they build), and every fit note must match one of the 23
+   sentences `recapFitNotes()` can actually emit (`APP_NOTES` / `NOTE_SHAPES`). A note of a caller's own choosing is
+   dropped; a sentence in a name field refuses the request. **This is what closes prompt injection**: free text no
+   longer reaches the system prompt at all.
+4. **A spend ceiling.** Per IP `RECAP_IP_HOURLY` (default 8) and site-wide `RECAP_DAILY_MAX` (default 2,000) editions,
+   counted in the existing `GAMES` KV namespace under `rl:recap:*` keys that expire themselves. This is the guard that
+   still holds when a script forges an `Origin` header, which any script can do: guards 1 to 3 pin the shape of a
+   request, guard 4 bounds what matching that shape can cost. Both fail OPEN on any KV error or missing binding, so a
+   counter never costs a reader the paper.
+
+**Also:** `RECAP_OFF=1` stops every AI edition at once, from the dashboard, with no deploy (the paper prints its local
+copy, as it does when the key is missing). The zero-token health probe no longer tells strangers whether a billable key
+is bound: `t82RecapHealth()` from the console on the site still gets the full detail (it sends a same-origin Referer),
+as does `?key=<DASH_KEY>`, and everyone else gets `{ok:true,health:true}`.
+
+**What did NOT change, and this was checked, not assumed.** For a real app payload the new Function sends a
+**byte-identical** system prompt (4,761 chars) and user message (738 chars), the same model, the same 900 max_tokens
+with thinking off, and returns the same nickname, article and **share signature**, so published `/r/:slug` links keep
+verifying. `app.js` is untouched: no cache key to stamp, no `BUILD_V` bump, no migration, no style change. Note the fit
+notes are still clamped to 110 chars for the prompt after the allowlist check, so the long usage note reaches the model
+cut off at the same byte it always was.
+
+**Validation.** `node test.js` 157 passed, 0 failed (153 before; the four new ones run app.js's own `recapFitNotes`
+against the Function's allowlist, check every dataset name, and pin the endpoint's shape, so adding a fit note without
+teaching the guard fails the build). `node tools/recap-guard-check.mjs` 27 passed, 0 failed: a new tool that runs the
+real Function in-process with a stubbed fetch and asserts, for every scenario, whether the provider was called at all.
+Both are offline and spend nothing.
+
+**For the owner.** Nothing is required of him. Worth doing: look at the Anthropic console's usage for the days before
+2026-10-01 and see whether anything was spent that the game cannot explain. The key itself was never exposed (it stayed
+server-side in the Function and was never sent to a browser), so **it does not need rotating** on account of this; it
+would only need rotating if its usage shows abuse he wants to cut off immediately, and `RECAP_OFF=1` is the faster
+first move. If real play ever nears 2,000 editions a day, raise `RECAP_DAILY_MAX`; `0` disables either cap.
+
+**Testing it on the preview, which is where he asked for it first.** The work is on `claude/charming-hypatia-i343va`, cut from `c-code-clean` at v66.4 (the two were identical), so it is on the c-code-clean line and not on main.
+A branch preview is an allowed host, so the Tribune works there as on the site, BUT Pages keeps separate Production and
+Preview binding sets: if the preview environment has no `ANTHROPIC_API_KEY` the paper prints local copy and
+`t82RecapHealth()` in the console says `configured: false`, which is the fastest way to tell the two apart. To see a
+guard do its job from outside the app: `curl -si -X POST https://<preview>.true82.pages.dev/api/recap -H 'content-type:
+application/json' -d '{"phase":"edition","players":[]}'` returns **403 `not_app`**, and the same request from the game
+itself is served. Merge to main on his word, the usual way.
 
 ## 000000. START HERE (2026-09-29, night): V66 TO V66.4, THE LAUNCH WEEK'S SPECIAL DAILIES, THE START SCREEN'S TEXT, THE TEST DAY (LIVE)
 
