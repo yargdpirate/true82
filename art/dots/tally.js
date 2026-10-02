@@ -1,6 +1,7 @@
-/* art/dots/tally.js: Tally. A win is an aqua tally stroke drawn top to bottom; every fifth straight win is the gate
-   slash through the one before it, and a streak of 10, 20, 30 is circled in gold once, twice, three times. A loss is
-   a stroke that topples onto its side and snaps in two, chips hopping off the break. */
+/* art/dots/tally.js: Tally. A win is an aqua tally stroke drawn top to bottom. A loss is a stroke that topples onto its
+   side and snaps in two, chips hopping off the break. A streak leaves no mark on the settled stamp (the owner's rule):
+   the 30th straight win rests exactly like the first, so there is no gate slash on every fifth and no gold circle on
+   the tens; only the burst at every tenth win moves. (Cut in the Art Lab, kept in case it comes back.) */
 (function () {
   "use strict";
   var PI = Math.PI, M = Math, TAU = PI * 2;
@@ -11,32 +12,22 @@
   }
   T82ART.add("dots", "tally", {
     name: "Tally",
-    by: "Wins are tally strokes, every fifth straight is slashed and tens are circled in gold; losses topple onto their side and snap.",
-    reach: { w: 3.7, l: 2 },
+    by: "Wins are tally strokes (a gold burst on every tenth straight); losses topple onto their side and snap.",
+    reach: { w: 1.7, l: 2 },
     live: { w: 0.32, l: 0.5 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0);
-      D.t = (r() - 0.5) * 0.16; D.h = 0.9 + r() * 0.2; D.k = r() < 0.5 ? 1 : -1; D.a = r() * TAU;
+      D.t = (r() - 0.5) * 0.16; D.h = 0.9 + r() * 0.2; D.k = r() < 0.5 ? 1 : -1;
+      r();  // the gold circle's turn was drawn here; the draw stays so every loss keeps the look he picked
       D.q = [r(), r(), r()];
     },
     a: function (K, g, D, c, R, e) {
       if (!D.win) return;
-      var u = K.ease.out(e / 0.1), h = R * D.h, s = D.streak % 5 === 0, x0 = c[0] < D.pitch ? -1.2 : -3, k = K.ease.out((e - 0.06) / 0.12);
+      var u = K.ease.out(e / 0.1), h = R * D.h;
       g.fillStyle = K.tone(0.95);
       g.save(); g.translate(c[0], c[1]); g.rotate(D.t); g.beginPath();
       rib(g, 0, -h, 0, -h + 2 * h * u, R * 0.32, R * 0.25); g.fill(); g.restore();
-      if (s && k > 0) {  // the gate: the slash runs up through the stroke before it
-        g.beginPath(); x0 *= R; rib(g, c[0] + x0, c[1] + R, c[0] + x0 + (R * 1.1 - x0) * k, c[1] + R - 2 * R * k, R * 0.22, R * 0.22); g.fill();
-      }
-    },
-    b: function (K, g, D, c, R, e) {
-      if (!D.win || D.streak < 10 || e < 0.1) return;
-      var n = D.streak >= 30 ? 3 : D.streak >= 20 ? 2 : 1, k = K.ease.out((e - 0.1) / 0.16), i;
-      g.strokeStyle = K.tone(0.95); g.lineWidth = R * 0.17;
-      for (i = 0; i < n; i++) {  // a pen circling it again and again: loops that cross, not rings
-        g.beginPath(); g.ellipse(c[0] + (i - 1) * R * 0.05, c[1], R * 0.92, R * 1.3, (i - 1) * 0.3 + 0.1, D.a + i * 2, D.a + i * 2 + TAU * 1.06 * k); g.stroke();
-      }
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;
@@ -54,7 +45,7 @@
         g.beginPath(); g.arc(c[0] + R * (-0.3 + i * 0.5) * q, y + R * (0.46 + D.q[i] * 0.1) * q - z, R * (0.12 + D.q[i] * 0.04), 0, TAU); g.fill();
       }
     },
-    win: function (K, p, info) {  // chalk dust; the fifth straight and every tenth ring the board
+    win: function (K, p, info) {  // chalk dust; every tenth straight rings the board
       K.spark({ x: p[0], y: p[1], n: 3, ink: "win", sp: [50, 130], r: [1, 2], life: [0.18, 0.1], grav: 200, seed: info.seed });
       if (info.streak < 10 || info.streak % 10) return;
       K.ring({ x: p[0], y: p[1], dur: 0.5, r0: 6, r1: 64, w0: 6, ink: "gold", cov: 0.9 });

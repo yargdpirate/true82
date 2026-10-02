@@ -332,7 +332,7 @@
   function lookOf(kind, id, o) {
     var key = kind + "/" + id, led = LEDGER[key] || {};
     return { kind: kind, id: id, key: key, name: o.name || id, file: o.file || null, on: o.on !== false, builtin: !!o.builtin,
-      tier: led.tier || "", note: led.note || "", by: "", perfect: !!o.perfect, state: "" };
+      tier: led.tier || "", note: led.note || "", by: "", perfect: !!o.perfect, state: "", tempo: o.tempo || null };
   }
   function syncDef(v) {
     var d = defOf(v.kind, v.id);
@@ -343,14 +343,16 @@
     return true;
   }
   function buildList(kind) {
-    var A = art(), out = [], seen = {}, b = BUILTIN[kind], i = 0;
-    if (b) { out.push(lookOf(kind, b, { name: BUILTIN_NAME[kind], builtin: true })); seen[b] = 1; }
+    var A = art(), out = [], seen = {}, b = BUILTIN[kind], i = 0, bOn = true;
+    // a built-in art/enabled.json switched off (perk classic, the owner's cut of 2026-10-02) is never dealt in the game
+    try { if (b && A && A.enabled && A.get && A.get(kind, b)) bOn = A.enabled(kind).indexOf(b) >= 0; } catch (e) { bOn = true; }
+    if (b) { out.push(lookOf(kind, b, { name: BUILTIN_NAME[kind], builtin: true, on: bOn })); seen[b] = 1; }
     if (A && A.catalog) {
       try {
         A.catalog(kind).forEach(function (en) {
           if (!en || seen[en.id]) return;
           seen[en.id] = 1;
-          out.push(lookOf(kind, en.id, { name: en.name, file: en.file, on: en.on, perfect: en.perfect === true }));
+          out.push(lookOf(kind, en.id, { name: en.name, file: en.file, on: en.on, perfect: en.perfect === true, tempo: en.tempo || null }));
         });
       } catch (e) { /* an older art-core without this kind: just the built-in */ }
     }
@@ -399,6 +401,9 @@
     if (v.tier === "A") out.push(h("span", "lab-tag is-a", { title: "The reviewers' A list" }, "A LIST"));
     else if (v.tier === "B") out.push(h("span", "lab-tag is-b", { title: "The reviewers' B list" }, "B LIST"));
     if (!v.on) out.push(h("span", "lab-tag is-off", null, "OFF IN GAME"));
+    // the owner's speed dial (art/tempo.json): this look plays faster from one of its phases
+    if (v.tempo) out.push(h("span", "lab-tag", { title: "Your speed note: " + v.tempo.x + "x " + (v.tempo.from ? "from its " + v.tempo.from : "the whole way") },
+      Math.round((v.tempo.x - 1) * 100) + "% FASTER" + (v.tempo.from ? " \u00B7 " + String(v.tempo.from).toUpperCase() : "")));
     var st = h("span", "lab-tag is-bad", { "data-state": v.key }, "");
     st.hidden = true;
     out.push(st);
@@ -502,6 +507,7 @@
     var st = { alive: true, timers: [], gi: 0, cw: 0, cl: 0, told: 0, k: 0, streak: 0, lossRun: 0, mi: -1, left: 0, start: 0, mw: 0, ml: 0, row: null, recEl: null };
     var opts = { loss: (o.plan || []).slice(), dots: o.dots || "classic",
       onUse: function (kind, id) { setTimeout(function () { if (st.alive && o.onUse) o.onUse(kind, id); }, 0); } };
+    if (o.tempo === false) opts.tempo = false;         // today's pace: the speed dial off (the engine's QA switch)
     if (slow !== 1) opts.clock = function () { var t = now(); return (base + (t - base) / slow) / 1000; };
     var R = null;
     try { R = T82RISO.create(ov, { games: games, wins: w, losses: games.length - w }, opts); } catch (e) { R = null; }
@@ -638,7 +644,7 @@
   }
   function paneLoss(pane) {
     var kind = "loss", list = LIST.loss || [];
-    var S = { mode: MODES[UI.lossMode] ? UI.lossMode : "mid", run: null, seq: null, cur: null };
+    var S = { mode: MODES[UI.lossMode] ? UI.lossMode : "mid", pace: UI.lossPace === "today" ? "today" : "dial", run: null, seq: null, cur: null };
     var stage = h("div", "lab-stage");
     var now1 = { box: h("div", "lab-now") };
     now1.chips = h("span", "lab-tile-title");
@@ -716,7 +722,7 @@
         if (!ok.length) { now1.by.textContent = "This look's file didn't load, so there's nothing to play."; S.seq = null; return; }
         now1.by.textContent = v.by || v.note || "";
         var sc = single(S.mode), M = MODES[S.mode];
-        S.run = runReel({ host: stage, games: sc.games, prefill: sc.prefill, plan: [v.id], pace: M.pace,
+        S.run = runReel({ host: stage, games: sc.games, prefill: sc.prefill, plan: [v.id], pace: M.pace, tempo: S.pace !== "today",
           onEnd: function () { if (S.seq === token) S.seq = null; checkBroke([v]); }, onSkip: stop });
       });
     }
@@ -739,7 +745,7 @@
         if (token.i >= token.ids.length) { stop(); now1.count.textContent = "DONE \u00B7 " + token.ids.length; return; }
         var part = token.ids.slice(token.i, token.i + 10), M = MODES[S.mode];
         token.i += part.length;
-        S.run = runReel({ host: stage, games: stretch(S.mode, part.length), prefill: 0, plan: part, pace: M.pace, clFor: M.cl,
+        S.run = runReel({ host: stage, games: stretch(S.mode, part.length), prefill: 0, plan: part, pace: M.pace, clFor: M.cl, tempo: S.pace !== "today",
           onUse: function (k, id) { if (S.seq !== token || k !== "loss") return; token.n++; showNow(look(kind, id), token.n, token.ids.length); },
           onEnd: function () { checkBroke(part.map(function (id) { return look(kind, id); })); setTimeout(chunk, 500); },
           onSkip: stop });
@@ -780,6 +786,10 @@
     add(pane, [h("div", "lab-row", null, [b10, bAll]), note,
       seg("How long each L holds", Object.keys(MODES).map(function (k) { return { k: k, label: MODES[k].label, sub: MODES[k].sub }; }), S.mode, function (k) {
         S.mode = k; UI.lossMode = k; saveUI();
+      }),
+      // the owner's speed notes (art/tempo.json) against the pace the looks had before them, saved in case he changes his mind
+      seg("Speed", [{ k: "dial", label: "YOUR NOTES", sub: "SPED UP" }, { k: "today", label: "BEFORE", sub: "THE OLD PACE" }], S.pace, function (k) {
+        S.pace = k; UI.lossPace = k; saveUI();
       }),
       stage, now1.box,
       h("h2", "t-head lab-h", { "data-head": "rule" }, "Every L \u00B7 " + list.length)]);

@@ -13,6 +13,8 @@
   T82ART.add("loss", "scratch", {
     name: "Scratch-Off",
     by: "A violet foil lottery scratcher slaps down, a coin scribbles the foil away in five rows to reveal a big pink L, a NOT A WINNER stamp lands, then the card rips slowly open from the bottom and is torn in two.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.571 of E.dur, where the card starts to rip (rs: fixed at 0.6 s in a 0.8 to 1.25 s moment, so its place in a 1.05 s one; 0.488 of 1.7 s)
+    phases: { exit: 0.571 },
     hit: function (K, E) {
       var B = K.box, H = B.y1 - B.y0, tw = Math.min(B.x1 - B.x0 - 24, 1.0 * H);
       K.spark({ x: B.cx, y: (B.y0 + B.y1) / 2, n: 14, ink: function (q) { return q() < 0.6 ? "night" : "light"; }, sp: [120, 360], r: [1, 2.8], life: [0.25, 0.3], grav: 600, seed: E.seed, streak: true });

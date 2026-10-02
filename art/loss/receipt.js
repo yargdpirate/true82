@@ -64,6 +64,8 @@
   T82ART.add("loss", "receipt", {
     name: "Receipt",
     by: "A thermal printer feeds a receipt with a giant L out of a slot, the paper is torn off and curls away.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.606 of E.dur, where the paper is torn off and curls away (dur - X, X = clamp(0.28 dur + 0.12, 0.2, 0.45): 0.636 s of 1.05 s; 0.735 of 1.7 s)
+    phases: { exit: 0.606 },
     prep: function (K) {
       var st = K.st;
       return [

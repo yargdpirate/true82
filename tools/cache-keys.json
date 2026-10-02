@@ -2,16 +2,16 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20261001-v67",
-      "sha": "16e8688830424513"
+      "key": "20261002-v67-2",
+      "sha": "d97aac40d6a4aa57"
     },
     "styles.css": {
       "key": "20260929-v66",
       "sha": "7f146eb9a74d620c"
     },
     "reel-riso.js": {
-      "key": "20261001-v67",
-      "sha": "ec10a9365467c33e"
+      "key": "20261002-v67-2",
+      "sha": "117a32e166282396"
     },
     "masthead.webp": {
       "key": "20260928-v64-1",
@@ -62,16 +62,16 @@
       "sha": "7eb099e1553c0e78"
     },
     "art-core.js": {
-      "key": "20261001-v67",
-      "sha": "bb0818130247af1c"
+      "key": "20261002-v67-2",
+      "sha": "c0b6f6491737265f"
     },
     "art-index.js": {
-      "key": "20261002-v67-1",
-      "sha": "8b420e055fdc07a9"
+      "key": "20261002-v67-2",
+      "sha": "cb5790ce6e99fcf9"
     },
     "riso-fx.js": {
-      "key": "20261001-v67",
-      "sha": "4a2b8ebca6b3da26"
+      "key": "20261002-v67-2",
+      "sha": "227ccac10d4e48f1"
     },
     "art/loss/bigtype.js": {
       "key": "20261001-v67",
@@ -94,8 +94,8 @@
       "sha": "62fda9e79c7baaee"
     },
     "art/loss/crumple.js": {
-      "key": "20261001-v67",
-      "sha": "58ec768d7899dbd5"
+      "key": "20261002-v67-2",
+      "sha": "ef4dda58b9ab7f42"
     },
     "art/loss/drum.js": {
       "key": "20261002-v67-1",
@@ -106,8 +106,8 @@
       "sha": "7d60951251f06806"
     },
     "art/loss/fold.js": {
-      "key": "20261001-v67",
-      "sha": "f2aa2480ad8529fc"
+      "key": "20261002-v67-2",
+      "sha": "1ed189db3d885742"
     },
     "art/loss/fountain.js": {
       "key": "20261002-v67-1",
@@ -134,16 +134,16 @@
       "sha": "3ca9d3bcabc489c9"
     },
     "art/loss/marbling.js": {
-      "key": "20261001-v67",
-      "sha": "7d6ba9fef6693cc6"
+      "key": "20261002-v67-2",
+      "sha": "237ac5e6a883ca67"
     },
     "art/loss/melt.js": {
-      "key": "20261001-v67",
-      "sha": "abe950ca8df2040e"
+      "key": "20261002-v67-2",
+      "sha": "594205faf9ffaae2"
     },
     "art/loss/misfeed.js": {
-      "key": "20261002-v67-1",
-      "sha": "8dd8af5d1bd0b4b6"
+      "key": "20261002-v67-2",
+      "sha": "cefd4f4aadd51748"
     },
     "art/loss/moire.js": {
       "key": "20261002-v67-1",
@@ -154,20 +154,20 @@
       "sha": "4d840db7e5cf7a46"
     },
     "art/loss/overprint.js": {
-      "key": "20261002-v67-1",
-      "sha": "80b7ad3c93131d6c"
+      "key": "20261002-v67-2",
+      "sha": "3899ef5f5c5a5e7d"
     },
     "art/loss/polaroid.js": {
       "key": "20261001-v67",
       "sha": "f06c9ddada390255"
     },
     "art/loss/ransom.js": {
-      "key": "20261001-v67",
-      "sha": "4b522c1b351c6709"
+      "key": "20261002-v67-2",
+      "sha": "aa7dae5b965200b2"
     },
     "art/loss/receipt.js": {
-      "key": "20261001-v67",
-      "sha": "a49cb61dfd5f8b08"
+      "key": "20261002-v67-2",
+      "sha": "7aa2cb05854ccfa3"
     },
     "art/loss/ripple.js": {
       "key": "20261002-v67-1",
@@ -178,16 +178,16 @@
       "sha": "f27f865ba420761a"
     },
     "art/loss/scratch.js": {
-      "key": "20261001-v67",
-      "sha": "6c014158be34bd67"
+      "key": "20261002-v67-2",
+      "sha": "3fd19c1abcf37eef"
     },
     "art/loss/seal.js": {
       "key": "20261001-v67",
       "sha": "01b3353802639abc"
     },
     "art/loss/separation.js": {
-      "key": "20261002-v67-1",
-      "sha": "b8a9562db2babb30"
+      "key": "20261002-v67-2",
+      "sha": "9d225d13926d14f9"
     },
     "art/loss/setoff.js": {
       "key": "20261002-v67-1",
@@ -198,16 +198,16 @@
       "sha": "5cb30f432328ac78"
     },
     "art/loss/spill.js": {
-      "key": "20261001-v67",
-      "sha": "01954c991514c4bb"
+      "key": "20261002-v67-2",
+      "sha": "2c11a14c8a0576ab"
     },
     "art/loss/spray.js": {
       "key": "20261002-v67-1",
       "sha": "06dbddf658d44bb8"
     },
     "art/loss/square.js": {
-      "key": "20261001-v67",
-      "sha": "84f34b3e59c3ad48"
+      "key": "20261002-v67-2",
+      "sha": "f96ba6d3e2c750e5"
     },
     "art/loss/squeegee.js": {
       "key": "20261002-v67-1",
@@ -218,104 +218,104 @@
       "sha": "db0a727b84cb6633"
     },
     "art/loss/sticker.js": {
-      "key": "20261001-v67",
-      "sha": "36e06907e3d4fb39"
+      "key": "20261002-v67-2",
+      "sha": "d7291adcc31c80a9"
     },
     "art/loss/tape.js": {
-      "key": "20261001-v67",
-      "sha": "34ddcb18b4273437"
+      "key": "20261002-v67-2",
+      "sha": "7ab2c9ae16baed9f"
     },
     "art/loss/tear.js": {
       "key": "20261001-v67",
       "sha": "039565d25ca49195"
     },
     "art/loss/testsheet.js": {
-      "key": "20261001-v67",
-      "sha": "cee2a4bc59cd70f7"
+      "key": "20261002-v67-2",
+      "sha": "02441bf48b04b21c"
     },
     "art/loss/trim.js": {
       "key": "20261001-v67",
       "sha": "39a048bc456fd54a"
     },
     "art/loss/typewriter.js": {
-      "key": "20261001-v67",
-      "sha": "659ffa362db5bac3"
+      "key": "20261002-v67-2",
+      "sha": "346836cc0ffd6be8"
     },
     "art/loss/woodtype.js": {
       "key": "20261001-v67",
       "sha": "62e0bd4941b64ff5"
     },
     "art/dots/arrows.js": {
-      "key": "20261001-v67",
-      "sha": "7ad3c5f9d0550000"
+      "key": "20261002-v67-2",
+      "sha": "52f130c9a1cc2381"
     },
     "art/dots/balls.js": {
-      "key": "20260930-v67",
-      "sha": "8567ed6c55b1e5d4"
+      "key": "20261002-v67-2",
+      "sha": "47e2d8560909ac84"
     },
     "art/dots/bars.js": {
-      "key": "20261002-v67-1",
-      "sha": "8a84ababc3badc33"
+      "key": "20261002-v67-2",
+      "sha": "9e12b79c76a9f2e9"
     },
     "art/dots/bolts.js": {
-      "key": "20261001-v67",
-      "sha": "f63e97e87a7f9804"
+      "key": "20261002-v67-2",
+      "sha": "f9e3ae665a6ea546"
     },
     "art/dots/checks.js": {
-      "key": "20261001-v67",
-      "sha": "7f37d4fb7adfcbb4"
+      "key": "20261002-v67-2",
+      "sha": "5de62a60d90a9961"
     },
     "art/dots/confetti.js": {
-      "key": "20261002-v67-1",
-      "sha": "250541c597dd2cd2"
+      "key": "20261002-v67-2",
+      "sha": "b32f7ed6c607b8fb"
     },
     "art/dots/dagger.js": {
-      "key": "20261001-v67",
-      "sha": "e91d818790a98d39"
+      "key": "20261002-v67-2",
+      "sha": "6f327849a7299747"
     },
     "art/dots/diamonds.js": {
-      "key": "20261001-v67",
-      "sha": "94e0325e7f52ee5a"
+      "key": "20261002-v67-2",
+      "sha": "0dd828c89656e818"
     },
     "art/dots/drops.js": {
-      "key": "20261001-v67",
-      "sha": "034993333cd51356"
+      "key": "20261002-v67-2",
+      "sha": "daf8ec6b2b35cb7c"
     },
     "art/dots/hoops.js": {
-      "key": "20261002-v67-1",
-      "sha": "67b4ea2d64058705"
+      "key": "20261002-v67-2",
+      "sha": "81843a96d7a942cd"
     },
     "art/dots/letters.js": {
-      "key": "20261001-v67",
-      "sha": "dbbf5258cd89e05d"
+      "key": "20261002-v67-2",
+      "sha": "1340f952e890593a"
     },
     "art/dots/moons.js": {
-      "key": "20261001-v67",
-      "sha": "1027c96e886af6b8"
+      "key": "20261002-v67-2",
+      "sha": "311775acee477308"
     },
     "art/dots/pixels.js": {
-      "key": "20261001-v67",
-      "sha": "4f7f5a2f7911659a"
+      "key": "20261002-v67-2",
+      "sha": "24df07c4934f8f64"
     },
     "art/dots/prints.js": {
-      "key": "20261001-v67",
-      "sha": "a5a665dc772e7fac"
+      "key": "20261002-v67-2",
+      "sha": "5182bc2f72ae1429"
     },
     "art/dots/stars.js": {
-      "key": "20261001-v67",
-      "sha": "b5174d6ce7eb789c"
+      "key": "20261002-v67-2",
+      "sha": "689f7336bbdb26dd"
     },
     "art/dots/suns.js": {
-      "key": "20261001-v67",
-      "sha": "d26cdbb6f391582f"
+      "key": "20261002-v67-2",
+      "sha": "02e94dc2a9526fb0"
     },
     "art/dots/tally.js": {
-      "key": "20261001-v67",
-      "sha": "e6baf9a424241b42"
+      "key": "20261002-v67-2",
+      "sha": "6c02d99314cc483a"
     },
     "art/dots/tickets.js": {
-      "key": "20261002-v67-1",
-      "sha": "1ed2c386c28acd2b"
+      "key": "20261002-v67-2",
+      "sha": "eb1a90425721c586"
     },
     "art/scene/alpine.js": {
       "key": "20261001-v67",
@@ -390,12 +390,12 @@
       "sha": "bc2d8a61096b2c7a"
     },
     "art/scene/wave.js": {
-      "key": "20261001-v67",
-      "sha": "e81efae12013fe8b"
+      "key": "20261002-v67-2",
+      "sha": "761316c2f55a4f05"
     },
     "art/hot/arcade.js": {
-      "key": "20261001-v67",
-      "sha": "801be7e91bc1315d"
+      "key": "20261002-v67-2",
+      "sha": "d1275fb0398fa0c8"
     },
     "art/hot/comicheat.js": {
       "key": "20261002-v67-1",
@@ -406,8 +406,8 @@
       "sha": "fecf9f732d501147"
     },
     "art/hot/jam.js": {
-      "key": "20261001-v67",
-      "sha": "c331f6be52f95c1c"
+      "key": "20261002-v67-2",
+      "sha": "ff663eb13a1b58a6"
     },
     "art/hot/phoenix.js": {
       "key": "20261002-v67-1",

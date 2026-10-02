@@ -105,7 +105,7 @@ redraws, so keep them small.
   var TAU = Math.PI * 2;
   T82ART.add("dots", "chips", {
     name: "Chips",
-    by: "Wins pop in as round coins, losses slam down as square chips; a streak gets a rim.",
+    by: "Wins pop in as round coins, losses slam down as square chips; a coin on a streak flares as it lands.",
     reach: { w: 1.5, l: 2.1 },                           // the coin pops to 1.3R; the chip's corner reaches 1.4 x 1.41R
     live: { w: 0.2, l: 0.3 },                            // each is still before its window ends (0.15 s, 0.2 s)
     inks: { a: "win", b: "pop", c: "loss" },
@@ -114,10 +114,10 @@ redraws, so keep them small.
       var s = 1 + 0.3 * (1 - K.ease.out(e / 0.15));
       g.fillStyle = K.tone(0.95); g.beginPath(); g.arc(c[0], c[1], R * s, 0, TAU); g.fill();
     },
-    b: function (K, g, D, c, R) {                        // plate b: a rim from 10 straight
-      if (!D.win || D.streak < 10) return;
-      g.strokeStyle = K.tone(D.streak >= 20 ? 0.95 : 0.7); g.lineWidth = R * 0.2;
-      g.beginPath(); g.arc(c[0], c[1], R * 1.25, 0, TAU); g.stroke();
+    b: function (K, g, D, c, R, e) {                     // plate b: from 10 straight, a ring flares as the coin lands
+      if (!D.win || D.streak < 10 || e >= 0.15) return;  //   and is gone by 0.15 s: no streak mark stays
+      g.strokeStyle = K.tone(0.8 * (1 - e / 0.15)); g.lineWidth = R * 0.2;
+      g.beginPath(); g.arc(c[0], c[1], R * (1.05 + e * 1.3), 0, TAU); g.stroke();
     },
     c: function (K, g, D, c, R, e) {                     // plate c: the chip
       if (D.win) return;
@@ -130,7 +130,8 @@ redraws, so keep them small.
 
 No `marks`, so each loss still gets classic's seeded drips, splats and cracks on `D` (unused here); no `win` or
 `lossHit`, so the classic sparks and bursts play. A real set keeps the drips (the owner's rule: every loss reads at
-the end) and makes 20 and 30 straight read too.
+the end). A streak shows only in the moment (the owner, 2026-10-02: "animations are great, persistent remainders on
+streaks of it are not"): a flare inside the live window, a burst in `win()`, never a mark on the settled coin.
 
 **A scene** (art/scene/bars.js). Tone only: the engine inks, screens, clips and reveals each layer.
 
@@ -217,6 +218,7 @@ node tools/art-qa.mjs scene <id>     banners for 82-0, 64-18, 41-41, 20-62 in ea
 node tools/art-qa.mjs all [kind]     every look (unindexed files too) plus side-by-side rows of all of them
 node tools/art-qa.mjs baseline       the built-ins alone
 node tools/art-qa.mjs hot|perk|goat <id|classic|all>   an FX pack on the game's own screens (part two, below)
+node tools/art-qa.mjs finish loss    when every loss look's moment is over (the speed dial applied), quickest first
   --webkit   also run in WebKit (the iPhone's engine): errors and fallbacks
   --quick    pictures only, no timing        --out DIR   where it writes (default: <tmp>/t82-art-qa/<mode>-<id>)
 ```
@@ -263,6 +265,36 @@ built-in in the same run. What the built-ins cost there (2026-09-30):
 The pilots, for scale: seal 1.28x classic's frame, prep 0.63x in 8 jobs (the longest 1.36x classic's: its smear
 prints in four bands), 4.4 MB, 7.7 KB; balls 0.90x the moving frame, 1.07x settled, 6.0 KB; skyline 0.94x lake's
 bake, 1.00x its reveal, 15.6 KB.
+
+## The speed dial (loss looks)
+
+The owner speeds looks up without anyone touching their files (2026-10-02: "save current animation pace in case I
+change my mind about speeding up"). A look names the phases of its moment on its def, and **art/tempo.json** says
+how much faster to play it from one of them:
+
+```js
+phases: { exit: 0.62 },        // on the def: the exit starts 62% of the way through the hold (E.dur)
+```
+```json
+"loss/crumple": { "from": "exit", "x": 1.3 },     // art/tempo.json: 30% faster from the exit on
+"loss/seal": { "from": 0, "x": 1.2 }              // 20% faster, the whole moment
+```
+
+The engine warps that moment's clock alone (`e` before the phase, `start + (e - start) x 1.3` after it) and hands the
+warped `e` to the look's veil, draw and caption, so its fade comes early too and the card sits clean until the reel
+moves on. Write `phases` as a literal of plain fractions (the index reads it without running the file); a look whose
+timeline is in seconds converts at the mid moment (1.05 s) and says so in a comment. Delete a line from tempo.json and
+the look plays exactly as before: the file without it is today's pace. After an edit, `node tools/art-index.js` (it
+writes each line into art-index.js and names any line it has to skip). `node tools/art-qa.mjs finish loss` prints when
+every look's moment is over, dialed and at today's pace, quickest first: the owner's numbers for a standard length.
+
+## Loading (the phone's side)
+
+Nothing downloads before a draft; then only what the first moments need (the first four loss looks, the dot set, the
+scene, the Presti perk and Heat Check), the other ten loss looks when the reel opens, and the 82-0 looks only for a
+season that can still end 82-0. On Data Saver or a 2G/3G connection nothing downloads at all: the built-ins play
+(art/CONTRACT.md, the game's flow). Only a look with a `prep` is ever primed, so give one a prep only for work that
+would cost a frame on a phone.
 
 ## The laws (the short version)
 
@@ -313,6 +345,8 @@ loss marked on it, the gauge (color only left of `D.fillX`) holding.
 - **Everything in art/ is cached for a year once deployed** (one `/art/*` rule). After any edit: `node
   tools/art-index.js` and `node tools/cache-keys.js --stamp <new key>`, never a hand-edited `?v=`, and never fetch a
   new key on true82.net before the page that links it is live. Keep living pages (labs) out of art/.
+- **`phases` is a literal on the def too** (`phases: { exit: 0.62 }`, plain numbers from 0 to 1): a computed one is an
+  error, and a dial line naming a phase the look does not declare is skipped (test.js fails until they agree).
 - **`perfect: true` is a literal on the def.** The index reads it without running the file (it never sees a variable
   or a computed flag, and lists that scene in the ordinary bag), and only a scene may say it. A perfect scene is
   dealt only for an 82-0, from its own bag; at any other record it prints the lake.

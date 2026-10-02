@@ -14,7 +14,14 @@
    name, or that takes a built-in's id (the classic L and dots, the lake).
    Part two (art/CONTRACT-FX.md): art/hot, art/perk and art/goat (the riso FX layer's packs) are listed the same way,
    and a scene whose def says perfect: true (a literal true, read without running the file) is an 82-0 scene: its
-   entry carries perfect: true, so the game deals it only for an 82-0 season, from its own bag. */
+   entry carries perfect: true, so the game deals it only for an 82-0 season, from its own bag.
+   The owner's picks (2026-10-02): "off" may name a built-in too ("perk/classic": it still stands in for a look that is
+   not there, but no bag deals it; the index hands that list to T82ART.index), and art/tempo.json is his speed dial:
+   { "loss/crumple": { "from": "exit", "x": 1.3 }, ... } plays that look 1.3 times as fast from the phase its def names
+   exit (phases: { exit: 0.36 }, a literal object of plain numbers, read without running the file), or from 0, the
+   whole moment. Each valid line rides the look's entry (tempo: { from, x }); the engine warps the moment's clock. A line
+   that names no file, a phase the def does not declare, or an x outside 1 to 3 is skipped with a warning, and
+   test.js fails until it is fixed (tempoErrors()). Removing a line restores the look's own pace. */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
 const ROOT = path.join(__dirname, "..");
@@ -22,7 +29,8 @@ const KINDS = ["loss", "dots", "scene", "hot", "perk", "goat"];
 const BUILTIN = { loss: ["classic"], dots: ["classic"], scene: ["lake"], hot: ["classic"], perk: ["classic"], goat: ["classic"] };   // they live inside the engines (riso-fx.js's classic looks too)
 const BUDGET = { loss: 10, dots: 6, scene: 16, hot: 14, perk: 10, goat: 8 };   // KB of unminified source (law 6; part two's budgets)
 const BUDGET_PERFECT = 20;                                                     // an 82-0 scene: more inks, more layers, its live motion
-const INDEX = "art-index.js", ENABLED = "art/enabled.json", MANIFEST = path.join(__dirname, "cache-keys.json");
+const INDEX = "art-index.js", ENABLED = "art/enabled.json", TEMPO = "art/tempo.json", MANIFEST = path.join(__dirname, "cache-keys.json");
+const TEMPO_KINDS = ["loss"];                                                  // the kinds whose moments the dial can speed up (the reel's)
 const ART_FILE = /^art\/(loss|dots|scene|hot|perk|goat)\/[^/]+\.js$/;
 const ID = /^[a-z0-9-]+$/;
 
@@ -190,12 +198,33 @@ function parse(src, kind, base) {
   if (keyIn(L, open, "builtin", () => true) === true) errors.push(rel + ": builtin is the engines' own flag (the classic L and dots, the lake); a variant never sets it");
   f.perfect = perfectIn(L, open);
   if (f.perfect && kind !== "scene") errors.push(rel + ": perfect: true is for scenes only (an 82-0 print, art/CONTRACT-FX.md)");
+  f.phases = phasesIn(L, open);
+  if (f.phases === false) { f.phases = null; errors.push(rel + ": phases must be a literal object of plain numbers, each a fraction of the moment from 0 to 1 (phases: { exit: 0.62 })"); }
   return f;
 }
 // the object's own name: "..." (depth 1 only, so a nested { name } inside a layer never counts)
 function nameIn(L, open) { return keyIn(L, open, "name", valueAt); }
 // part two: perfect: true at depth 1 (a literal true; anything else is an ordinary scene)
 function perfectIn(L, open) { return keyIn(L, open, "perfect", (L2, at, code, from) => /^\s*:\s*true\b/.test(code.slice(from))) === true; }
+// the owner's dial (art/tempo.json) names a phase of the look: phases: { exit: 0.62, ding: 0.4 } at depth 1, each the
+// fraction of the moment's hold where that phase begins. null: none declared; false: not a literal of plain numbers
+function phasesIn(L, open) {
+  const r = keyIn(L, open, "phases", (L2, at, code, from) => {
+    const m = /^\s*:\s*\{([^{}]*)\}/.exec(code.slice(from));
+    if (!m) return false;
+    const out = {}, body = m[1].trim();
+    if (!body) return out;
+    for (const part of body.split(",")) {
+      const kv = /^\s*(?:([A-Za-z_$][\w$]*)|"([^"]*)"|'([^']*)')\s*:\s*([0-9]*\.?[0-9]+)\s*$/.exec(part);
+      if (!kv) return false;
+      const v = +kv[4];
+      if (!(v >= 0 && v <= 1)) return false;
+      out[kv[1] || kv[2] || kv[3]] = v;
+    }
+    return out;
+  });
+  return r == null ? null : r;
+}
 // the def's own key (depth 1 only), handed to read(L, at, code, the offset just after the key)
 function keyIn(L, open, key, read) {
   const code = L.code, at = {}, bare = new RegExp("^" + key + "\\s*:");
@@ -237,9 +266,37 @@ function offList(files, errors) {
   try { o = JSON.parse(fs.readFileSync(p, "utf8")); } catch (err) { errors.push(ENABLED + " is not valid JSON: " + err.message); return []; }
   const off = o && Array.isArray(o.off) ? o.off : null;
   if (!off) { errors.push(ENABLED + " needs an \"off\" list of \"<kind>/<id>\" (it may be empty)"); return []; }
-  off.forEach((k) => { if (!files.some((f) => f.kind + "/" + f.id === k)) errors.push(ENABLED + " turns off \"" + k + "\", but there is no art/" + k + ".js"); });
+  off.forEach((k) => {
+    if (builtinKey(k)) return;                   // a built-in the owner cut: it lives in the engine, no file behind it
+    if (!files.some((f) => f.kind + "/" + f.id === k)) errors.push(ENABLED + " turns off \"" + k + "\", but there is no art/" + k + ".js");
+  });
   return off;
 }
+// "perk/classic": a built-in's own id (BUILTIN), which enabled.json may switch off but no file stands behind
+function builtinKey(k) { const p = String(k).split("/"); return p.length === 2 && KINDS.indexOf(p[0]) >= 0 && BUILTIN[p[0]].indexOf(p[1]) >= 0; }
+// art/tempo.json, the owner's speed dial: -> { dial: { "kind/id": { from, x } } (the valid lines), errors: [...] }
+function tempoOf(files) {
+  const p = path.join(ROOT, TEMPO), dial = {}, errors = [];
+  if (!fs.existsSync(p)) return { dial, errors };
+  let o = null;
+  try { o = JSON.parse(fs.readFileSync(p, "utf8")); } catch (err) { errors.push(TEMPO + " is not valid JSON: " + err.message); return { dial, errors }; }
+  if (!o || typeof o !== "object" || Array.isArray(o)) { errors.push(TEMPO + " must be an object of \"<kind>/<id>\": { \"from\": <phase or 0>, \"x\": <speed> }"); return { dial, errors }; }
+  Object.keys(o).forEach((k) => {
+    if (k === "about") return;
+    const v = o[k], kind = k.split("/")[0], f = files.find((x) => x.kind + "/" + x.id === k);
+    const bad = (why) => errors.push(TEMPO + " \"" + k + "\": " + why);
+    if (TEMPO_KINDS.indexOf(kind) < 0) return bad("only a loss look's moment has a dial (" + TEMPO_KINDS.join(", ") + ")");
+    if (!f) return bad("there is no art/" + k + ".js");
+    if (!v || typeof v !== "object" || Array.isArray(v)) return bad("write { \"from\": \"<phase>\" or 0, \"x\": 1.3 }");
+    if (typeof v.x !== "number" || !(v.x >= 1 && v.x <= 3)) return bad("x is the speed from that phase on, a number from 1 to 3 (1.3 = 30% faster; the reel's hold is fixed, so a look can only speed up)");
+    if (v.from !== 0 && (typeof v.from !== "string" || !ID.test(v.from))) return bad("from is a phase the look's def declares, or 0 (the whole moment)");
+    if (v.from !== 0 && !(f.phases && Object.prototype.hasOwnProperty.call(f.phases, v.from)))
+      return bad("the look declares no phase \"" + v.from + "\"" + (f.phases && Object.keys(f.phases).length ? " (it has " + Object.keys(f.phases).join(", ") + ")" : " (its def has no phases: { " + v.from + ": <fraction> })"));
+    dial[k] = { from: v.from, x: v.x };
+  });
+  return { dial, errors };
+}
+function tempoErrors() { return tempoOf(scan()).errors; }
 function loadManifest() { return JSON.parse(fs.readFileSync(MANIFEST, "utf8")); }
 // the manifest with exactly the art files on disk (new ones join with an empty key, deleted ones leave); the art
 // entries sit together at the end, in the index's order
@@ -249,24 +306,29 @@ function syncManifest(m, files) {
   files.forEach((f) => { out[f.rel] = m.files[f.rel] || { key: "", sha: "" }; });
   return Object.assign({}, m, { files: out });
 }
-function text(entries) {
+function text(entries, offB) {
   const rows = entries.map((e) => "    { kind: " + JSON.stringify(e.kind) + ", id: " + JSON.stringify(e.id) + ", name: " + JSON.stringify(e.name) +
-    ", file: " + JSON.stringify(e.file) + ", on: " + e.on + (e.perfect ? ", perfect: true" : "") + " }");
+    ", file: " + JSON.stringify(e.file) + ", on: " + e.on + (e.perfect ? ", perfect: true" : "") +
+    (e.tempo ? ", tempo: { from: " + JSON.stringify(e.tempo.from) + ", x: " + e.tempo.x + " }" : "") + " }");
+  const tail = offB && offB.length ? "], { off: " + JSON.stringify(offB) + " });\n" : "]);\n";
   return "/* GENERATED by node tools/art-index.js from art/<kind>/ (loss, dots, scene, hot, perk, goat): never hand-edit\n" +
     "   (art/CONTRACT.md, art/CONTRACT-FX.md). One entry per variant file; \"on\" = the game deals it (art/enabled.json lists\n" +
     "   the ones that are off; the lab shows them all); \"perfect\" = an 82-0 scene, dealt from its own bag. Each file's\n" +
-    "   ?v= key is the cache-key manifest's: node tools/cache-keys.js --stamp <key> rewrites it. */\n" +
+    "   ?v= key is the cache-key manifest's: node tools/cache-keys.js --stamp <key> rewrites it. \"tempo\" = the owner's speed\n" +
+    "   dial (art/tempo.json); \"off\" after the list = built-ins no bag deals (they still stand in). */\n" +
     "(function () {\n  \"use strict\";\n  if (typeof T82ART === \"undefined\" || !T82ART || !T82ART.index) return;\n" +
-    (rows.length ? "  T82ART.index([\n" + rows.join(",\n") + "\n  ]);\n" : "  T82ART.index([]);\n") + "})();\n";
+    (rows.length ? "  T82ART.index([\n" + rows.join(",\n") + "\n  " + tail : "  T82ART.index([" + tail) + "})();\n";
 }
 // what the index and the manifest should be, from the files on disk
 function build() {
   const files = scan(), errors = [];
   files.forEach((f) => f.errors.forEach((e) => errors.push(e)));
-  const off = offList(files, errors), m = syncManifest(loadManifest(), files);
+  const off = offList(files, errors), m = syncManifest(loadManifest(), files), T = tempoOf(files);
   const entries = files.filter((f) => !f.errors.length).map((f) => ({ kind: f.kind, id: f.id, name: f.name,
-    file: f.rel + "?v=" + m.files[f.rel].key, on: off.indexOf(f.kind + "/" + f.id) < 0, perfect: f.perfect === true }));
-  return { files, errors, entries, manifest: m, text: text(entries) };
+    file: f.rel + "?v=" + m.files[f.rel].key, on: off.indexOf(f.kind + "/" + f.id) < 0, perfect: f.perfect === true,
+    tempo: T.dial[f.kind + "/" + f.id] || null }));
+  const offB = off.filter(builtinKey);
+  return { files, errors, entries, manifest: m, text: text(entries, offB), tempoErrors: T.errors };
 }
 function check() {
   const b = build(), findings = b.errors.slice(), have = loadManifest().files;
@@ -279,6 +341,7 @@ function check() {
 function write() {
   const b = build();
   if (b.errors.length) { console.error(b.errors.join("\n") + "\n\nart index: not written (fix the files above)"); process.exit(1); }
+  if (b.tempoErrors.length) console.error(b.tempoErrors.join("\n") + "\nart tempo: the lines above are skipped (those looks play at their own pace) until fixed");
   const mText = JSON.stringify(b.manifest, null, 2) + "\n";
   if (fs.readFileSync(MANIFEST, "utf8") !== mText) fs.writeFileSync(MANIFEST, mText);
   const p = path.join(ROOT, INDEX);
@@ -293,11 +356,11 @@ function write() {
 
 if (require.main === module) {
   if (process.argv.indexOf("--check") > 0) {
-    const f = check();
+    const f = check().concat(tempoErrors());
     if (f.length) { console.log(f.join("\n")); process.exit(1); }
     console.log("art index: current (every art file listed and keyed in the manifest, nothing stale)");
   } else write();
 }
 // a file's size budget in KB (law 6): its kind's, or an 82-0 scene's
 function budgetOf(f) { return f.kind === "scene" && f.perfect ? BUDGET_PERFECT : BUDGET[f.kind]; }
-module.exports = { check, build, scan, parse, lex, es5, text, budgetOf, KINDS, BUILTIN, BUDGET, BUDGET_PERFECT, INDEX };
+module.exports = { check, build, scan, parse, lex, es5, text, budgetOf, tempoOf, tempoErrors, KINDS, BUILTIN, BUDGET, BUDGET_PERFECT, INDEX, TEMPO_KINDS };

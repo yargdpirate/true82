@@ -1,5 +1,7 @@
 /* art/dots/balls.js: Ball and Brick (a pilot, art/CONTRACT.md). Wins bounce in as tiny basketballs (seams knocked
-   out), losses thud down as cracked, dripping bricks: shape AND ink differ at 6 px. Streaks print in gold. */
+   out), losses thud down as cracked, dripping bricks: shape AND ink differ at 6 px. A streak leaves no mark on the
+   settled stamp (the owner's rule): the 30th straight win rests exactly like the first; only the burst at every tenth
+   win moves. */
 (function () {
   "use strict";
   var TAU = Math.PI * 2, PI = Math.PI, M = Math;
@@ -27,10 +29,10 @@
 
   T82ART.add("dots", "balls", {
     name: "Ball and Brick",
-    by: "Wins bounce in as tiny basketballs, losses thud down as cracked, dripping bricks; streaks go gold.",
+    by: "Wins bounce in as tiny basketballs, losses thud down as cracked, dripping bricks; every tenth straight win bursts gold.",
     reach: { w: 1.7, l: 2.5 },
     live: { w: 0.3, l: 1.0 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0);
       D.rot = r() * PI;
@@ -46,19 +48,6 @@
       g.fillStyle = K.tone(0.95); g.fill();
       g.globalCompositeOperation = "destination-out"; g.strokeStyle = K.tone(1); g.lineWidth = M.max(0.8, R * 0.14);
       seams(g, R * 0.98, a); g.restore();
-    },
-    b: function (K, g, D, c, R, e) {  // gold: a rim (10), seams (20), the ball (30)
-      if (!D.win || D.streak < 10) return;
-      var t = K.clamp((e - 0.08) / 0.14, 0, 1), a;
-      if (!t) return;
-      g.save(); g.strokeStyle = K.tone(0.92); g.lineWidth = R * (D.streak >= 20 ? 0.2 : 0.15);
-      g.beginPath(); g.arc(c[0], c[1], 1.27 * R * M.min(1, 0.8 + 0.2 * K.ease.back(t)), 0, TAU); g.stroke();
-      if (D.streak >= 20) {
-        a = onBall(K, g, D, c, R, e); g.clip();
-        if (D.streak >= 30) { g.fillStyle = K.tone(0.55); g.fill(); }
-        g.lineWidth = M.max(0.9, R * 0.17); seams(g, R * 0.98, a);
-      }
-      g.restore();
     },
     c: function (K, g, D, c, R, e) {  // the brick, crumbs, drip
       if (D.win) return;

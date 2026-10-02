@@ -1,5 +1,6 @@
-/* art/dots/drops.js: Fire and Rain. Win: an aqua flame lit from its base (gold heart at 10, gold flames behind at 20 and
-   30). Loss: a pink drop that falls, splats into a spiky ink splat and runs. */
+/* art/dots/drops.js: Fire and Rain. Win: an aqua flame lit from its base. Loss: a pink drop that falls, splats into a
+   spiky ink splat and runs. A streak leaves no mark on the settled stamp (the owner's rule): the 30th straight win rests
+   exactly like the first; only the burst at every tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2, KO = "destination-out";
@@ -15,10 +16,10 @@
   }
   T82ART.add("dots", "drops", {
     name: "Fire and Rain",
-    by: "Wins light as aqua flames, gold at the heart and behind on a streak; a loss is a pink drop that splats and runs.",
+    by: "Wins light as aqua flames (a gold burst on every tenth straight); a loss is a pink drop that splats and runs.",
     reach: { w: 2.2, l: 3.4 },
     live: { w: 0.34, l: 0.85 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0), i, a = r() * TAU;
       D.dx = (r() - 0.5) * 0.9; D.dl = 0.65 + r() * 0.35; D.sp = [];
@@ -30,17 +31,6 @@
       g.save(); pose(K, g, c, R, e, 0, 0, 1); h = g.createLinearGradient(0, -1.25, 0, 1.02);  // thins to dots at the tip
       h.addColorStop(0, K.tone(0.72)); h.addColorStop(0.5, K.tone(0.93)); h.addColorStop(1, K.tone(0.97)); g.fillStyle = h; flame(g); g.fill();
       g.globalCompositeOperation = KO; g.fillStyle = K.tone(1); flame(g, 0.5); g.fill(); g.restore();
-    },
-    b: function (K, g, D, c, R, e) {  // gold: the heart (10), flames behind: right (20), left (30)
-      if (!D.win || D.streak < 10) return;
-      var n = D.streak >= 30 ? 2 : D.streak >= 20 ? 1 : 0, i;
-      g.fillStyle = K.tone(0.94);
-      for (i = 0; i < n; i++) {
-        if (e < 0.05 + 0.04 * i) continue;
-        g.save(); pose(K, g, c, R, e - 0.05 - 0.04 * i, i ? -0.54 : 0.52, -0.1 + 0.1 * i, 0.86); flame(g); g.fill(); g.restore();
-      }
-      g.save(); pose(K, g, c, R, e, 0, 0, 1); g.globalCompositeOperation = KO; g.fillStyle = K.tone(1); g.lineJoin = "round"; g.lineWidth = 0.14; flame(g); g.fill(); g.stroke(); g.restore();
-      g.save(); pose(K, g, c, R, e, 0, 0, 1); flame(g, 0.4); g.fill(); g.restore();
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

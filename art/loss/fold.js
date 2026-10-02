@@ -29,6 +29,8 @@
   T82ART.add("loss", "fold", {
     name: "Fold-Out",
     by: "A pleated paper L springs open out of a folded stack with a block shadow, holds while the pleats breathe, then folds shut and tumbles away.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.55 of E.dur, where the stack folds shut and tumbles (tx = dur - X: 0.578 s of 1.05 s; 0.647 of 1.7 s)
+    phases: { exit: 0.55 },
     draw: function (K, E, e) {
       var g = K.g, B = K.box, f = K.fade(E, e);
       if (f <= 0) return;

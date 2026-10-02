@@ -1,0 +1,20 @@
+{
+  "about": "The owner's speed dial for the loss looks (his notes of 2026-10-02, \"total arbitrary estimate of how much I want sped up\"). \"<kind>/<id>\": { \"from\": a phase the look's def declares (phases: { exit: 0.62 }) or 0 for the whole moment, \"x\": how many times faster from there, 1 to 3 }. The engine plays the look at its own pace up to that phase, then x times as fast, so it finishes early and the card sits clean until the reel moves on. TODAY'S PACE IS SAVED: delete a line and that look plays exactly as it did before the dial. After an edit: node tools/art-index.js (it writes each line into art-index.js), then the cache-key stamp.",
+  "loss/crumple": { "from": "exit", "x": 1.3 },
+  "loss/fold": { "from": "exit", "x": 1.3 },
+  "loss/melt": { "from": "melt", "x": 1.15 },
+  "loss/misfeed": { "from": "exit", "x": 1.35 },
+  "loss/overprint": { "from": "exit", "x": 1.2 },
+  "loss/ransom": { "from": "exit", "x": 1.2 },
+  "loss/receipt": { "from": "exit", "x": 1.2 },
+  "loss/scratch": { "from": "exit", "x": 1.2 },
+  "loss/seal": { "from": 0, "x": 1.2 },
+  "loss/separation": { "from": "exit", "x": 1.2 },
+  "loss/spill": { "from": "exit", "x": 1.2 },
+  "loss/square": { "from": "exit", "x": 1.3 },
+  "loss/squeegee": { "from": 0, "x": 1.2 },
+  "loss/sticker": { "from": "exit", "x": 1.4 },
+  "loss/tape": { "from": "exit", "x": 1.3 },
+  "loss/testsheet": { "from": "exit", "x": 1.3 },
+  "loss/typewriter": { "from": "ding", "x": 1.3 }
+}

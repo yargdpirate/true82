@@ -1,21 +1,21 @@
-/* art/dots/confetti.js: Confetti. A win is an aqua paper triangle that flutters down flipping edge-on and lands; a streak
-   throws gold confetti around it (2 bits at 10, 4 at 20, 6 at 30). A loss is a pink sheet that crumples into a faceted wad
-   (each facet its own tone), bounces and rolls to a stop, and leaks a run of ink. */
+/* art/dots/confetti.js: Confetti. A win is an aqua paper triangle that flutters down flipping edge-on and lands. A loss
+   is a pink sheet that crumples into a faceted wad (each facet its own tone), bounces and rolls to a stop, and leaks a
+   run of ink. A streak leaves no mark on the settled stamp (the owner's rule): the 30th straight win rests exactly like
+   the first, with no gold bits left lying around it; only the burst at every tenth win moves. */
 (function () {
   "use strict";
-  var M = Math, PI = M.PI, TAU = PI * 2, NV = 7, BIT = [[-1, -0.85], [1, -0.7], [-1.05, 0.8], [1, 0.95], [0.05, -1.12], [0.1, 1.2]];
+  var M = Math, PI = M.PI, TAU = PI * 2, NV = 7;
   T82ART.add("dots", "confetti", {
     name: "Confetti",
-    by: "Wins are aqua paper triangles fluttering down (gold confetti thrown around them on a streak); a loss is a sheet crumpling into a pink faceted wad that bounces, rolls, and leaks ink.",
+    by: "Wins are aqua paper triangles fluttering down (a gold burst on every tenth straight); a loss is a sheet crumpling into a pink faceted wad that bounces, rolls, and leaks ink.",
     reach: { w: 2.2, l: 2.9 },
     live: { w: 0.3, l: 0.9 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0), i;
       D.r = r() * TAU; D.k = r() < 0.5 ? -1 : 1; D.dx = (r() - 0.5) * 0.6; D.dl = 0.65 + r() * 0.35; D.p = [(r() - 0.5) * 0.4, (r() - 0.5) * 0.4];
-      D.v = []; D.f = []; D.j = []; D.b = [];
+      D.v = []; D.f = []; D.j = [];
       for (i = 0; i < NV; i++) { D.v.push(0.6 + r() * 0.6); D.f.push(0.45 + r() * 0.5); D.j.push((r() - 0.5) * 0.4); }
-      for (i = 0; i < 6; i++) D.b.push(r() * TAU);
     },
     a: function (K, g, D, c, R, e) {
       if (!D.win) return;
@@ -24,18 +24,6 @@
       g.fillStyle = K.tone(0.95); g.beginPath();
       for (i = 0; i < 3; i++) { a = -PI / 2 + i * TAU / 3 + D.j[i] * 0.5; g.lineTo(M.cos(a) * (0.7 + D.v[i] * 0.3), M.sin(a) * (0.7 + D.v[i] * 0.3)); }
       g.closePath(); g.fill(); g.restore();
-    },
-    b: function (K, g, D, c, R, e) {
-      if (!D.win || D.streak < 10) return;
-      var n = D.streak >= 30 ? 6 : D.streak >= 20 ? 4 : 2, i, k;
-      g.fillStyle = K.tone(0.92);
-      for (i = 0; i < n; i++) {
-        k = K.ease.out((e - 0.03 - 0.015 * i) / 0.12);
-        if (k <= 0) continue;
-        g.save(); g.translate(c[0] + R * BIT[i][0] * k, c[1] + R * BIT[i][1] * k); g.rotate(D.b[i] + 6 * (1 - k)); g.beginPath();
-        if (i % 3 === 2) g.arc(0, 0, R * 0.28, 0, TAU); else if (i % 3) { g.moveTo(0, -R * 0.38); g.lineTo(R * 0.34, R * 0.26); g.lineTo(-R * 0.34, R * 0.26); } else g.rect(-R * 0.26, -R * 0.26, R * 0.52, R * 0.52);
-        g.fill(); g.restore();
-      }
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

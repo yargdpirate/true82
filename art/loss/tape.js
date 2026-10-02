@@ -68,6 +68,8 @@
   T82ART.add("loss", "tape", {
     name: "Caution Tape",
     by: "Two strips of hazard tape stenciled LOSS slap across the card in an L, the toe flaps once, and both are ripped away.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.75 of E.dur, where both strips are ripped off (tE = dur - X, X = min(0.35, 0.25 dur): exactly 0.75 up to 1.4 s, 0.794 at 1.7 s)
+    phases: { exit: 0.75 },
     prep: function (K) {
       var st = K.st, P1 = function () { return st.P1; }, P2 = function () { return st.P2; };
       var jobs = [function () { st.P1 = K.plate((SW + 2 * PAD + SX) * U, (SL + 2 * PAD + SY) * U, 8101); st.P2 = K.plate((FL + 2 * PAD + SX) * U, (SW + 2 * PAD + SY) * U, 8102); }];

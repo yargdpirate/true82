@@ -29,7 +29,8 @@ T82FX.prime(kind, id) -> bool        that look's prep, one job per idle moment (
                                      has loaded. false: the look is not registered. The prep runs in the order a run's
                                      moments come, whatever order the calls came in: perk, then hot, then goat, and within
                                      a kind classic (the stand-in, a few small jobs) before the dealt look. A look that
-                                     leaves a slot out primes classic too
+                                     leaves a slot out primes classic too. A look with no prep has nothing to prime: it
+                                     never joins the queue (and is ready at once)
 T82FX.play(kind, slot, el, opts) -> ms   plays one slot at el's rect; its duration in ms, 0 = not played
 T82FX.stop()                         ends every effect, takes the layer off and frees every printed plate, emoji sheet
                                      and stamp (the theme is read again next time); the dealt looks and the off list stay
@@ -60,6 +61,8 @@ slots, no `T82RISO`, no body or no canvas: play returns 0 and app.js runs the ol
 | `seed` | per play (app.js passes a fresh one each time): every random choice comes from `K.rand(ev.seed)` |
 | `label` | the tier's text, "82-0", "REFUND", the hot player's surname (opts.label, else the element's text) |
 | `big` | SUPERNOVA, the save that reaches 82-0, and every 82-0 burst |
+| `m` | every Heat Check slot: the multiplier of the tier the wheel landed on (the save and the miss: the tier that decided them), from the game's own `HH_SEGMENTS`; null elsewhere |
+| `ladder` | every Heat Check slot: the whole wheel, `[{ label, m }, ...]` in wheel order (COLD first), from `HH_SEGMENTS` at the moment it plays; null elsewhere |
 | `el`, `box` | the anchor and the element a shake moves |
 
 ### The kit (`K`)
@@ -84,7 +87,13 @@ slots, no `T82RISO`, no body or no canvas: play returns 0 and app.js runs the ol
   made: never a raw emoji glyph on screen.
 - `K.emojiJobs([[name, char, px, inks, opts], ...], st)`: the same as prep jobs, one stage per job (the glyph and its
   coverage, each ink screened, the sheet), stored into `st[name]` (default `K.st`). Prep emoji this way, never in a
-  draw.
+  draw. The engine's once-a-page warm-ups (the emoji face's first glyph, a first tiny separation) run, each in an idle
+  moment of its own, only ahead of a look whose prep has such stages; the theme's faces only ahead of a dealt look's
+  first job (the owner, 2026-10-02: prime only what needs it). In the idle pass the prep body runs in a moment of its
+  own (it lists the jobs), so keep it to listing: the work goes in the jobs.
+- **The numbers a pack prints are the game's.** The owner retunes the Heat Check (2026-10-02: COLD 0.9, WARM 1.0, HOT
+  1.1, ON FIRE 1.2, SUPERNOVA 1.3): a pack that shows a multiplier reads `ev.m` and `ev.ladder` (app.js hands them to
+  every Heat Check slot from `HH_SEGMENTS`) and keeps a copy of its own only as the fallback when they are null.
 - `K.sprite(g, em, x, y, scale, rot, alpha)`: prints a riso emoji centered at (x, y), css px. `scale` may be `[sx,
   sy]` (a squash on impact, a stretch in flight). Hold it between 0.7 and 1.1 (art/CRAFT.md); a pop through smaller
   scales is fine inside 0.15 s. Any `{plates, reg, w, h}` of screened plates prints too, plate by plate.
@@ -145,18 +154,29 @@ T82ART.add("goat", id, { name, by, prep, slots: { burst: {dur, draw} } });   // 
   sequence is one look. `hot` and `perk` in Presti only (the only mode with the Heat Check and the perks); `goat` and
   the 82-0 scene (`deal("scene", 1, {perfect: true})`) in every mode with a results page (not Kaman, whose 82-0
   volley plays riso-fx.js's classic goat). Without riso-fx.js no hot, perk or goat look is dealt (nothing downloads,
-  those bags stay put); the 82-0 scene still is. Each dealt look is told to riso-fx.js (`T82FX.use`), fetched with
-  the run's other files 1.4 s into the draft in idle time, and primed once it is in (`T82FX.prime`); one whose file
-  failed moves on in its bag (`T82ART.skip`).
-- **Classic stands in primed** (`fxPrime`: for each kind, the dealt look once its file is in, otherwise classic): 1.4
-  s into the draft, with the fetch, classic is primed for every FX kind the run can have (Kaman's 82-0 volley and a
-  game with no art-core.js too); each arriving file then primes its look, behind its kind's classic. While a dealt
-  look is still printing its prep and classic's is printed, classic stands in (`fxLook`, booking nothing), so a perk
-  tapped the second after the file arrives never pays; an 82-0 volley settles its look at its first shell. Not at the
-  deal: the first raster of the emoji face (35 to 245 ms in desktop WebKit) would land in the first ticket's spin, so
-  a perk tapped inside the first 1.5 s or so still prints classic's few jobs in the tap, as before.
+  those bags stay put); the 82-0 scene still is. On a slow link (`T82ART.lean()`, art/CONTRACT.md) nothing is dealt
+  and every moment plays classic. The perk bag never deals classic (the owner cut it on 2026-10-02: art/enabled.json
+  `perk/classic`), but classic still stands in while a dealt perk's file is on its way. Each dealt look is told to
+  riso-fx.js (`T82FX.use`), fetched in idle time, and primed once it is in (`T82FX.prime`); one whose file failed
+  moves on in its bag (`T82ART.skip`).
+- **When each file comes** (the owner, 2026-10-02: load smartly, never drag a slow phone or a slow link): the perk
+  and the Heat Check (Presti) 1.4 s into the draft, with the run's first loss looks; the 82-0 fireworks and, in a
+  mode with the reel, the 82-0 picture only once the season is known and can still end 82-0 (`artSeasonKnown`: 82
+  wins, or a Presti Heat Check that can save it: 81 wins, `?clutch=1`, or the mid-season one); in a mode with no
+  reel the 82-0 picture comes with the draft, since the print follows it at once.
+- **Classic stands in primed** (`fxPrime`: for each kind, the dealt look once its file is in, otherwise classic), for
+  a moment the run can still have (`fxKinds`): 1.4 s into the draft, with the fetch, classic is primed for the perk
+  and the Heat Check in Presti, and for the 82-0 volley in Kaman (always 82-0; a game with no art-core.js too); every
+  other mode primes the fireworks only once the season is known to be able to end 82-0 (their prep is emoji
+  separations: work for nothing in a 60-22 season). Each arriving file then primes its look, behind its kind's
+  classic. While a dealt look is still printing its prep and classic's is printed, classic stands in (`fxLook`,
+  booking nothing), so a perk tapped the second after the file arrives never pays; an 82-0 volley settles its look at
+  its first shell. Not at the deal: the first raster of the emoji face (35 to 245 ms in desktop WebKit) would land in
+  the first ticket's spin, so a perk tapped inside the first 1.5 s or so still prints classic's few jobs in the tap,
+  as before. (The GOAT climb's hidden test, five taps on its 82-0 cap, can fire a volley at any record: then the
+  fireworks print in the tap.)
 - **The Heat Check** (`hotHand` post-season and `hotHandMid` mid-season): when the wheel locks, the tier's slot at the
-  heat label (`big` only for nova); without the layer: the ON FIRE flame spray and the SUPERNOVA plumes, and nothing
+  heat label (`big` only for nova; every Heat Check slot gets `ev.m` and `ev.ladder`, `hhFxOpts`); without the layer: the ON FIRE flame spray and the SUPERNOVA plumes, and nothing
   for COLD, WARM and HOT, as before. The verdict: `save` at the verdict stamp, spreading over its card (`ev.area`)
   instead of the goat fireworks (`big` only when the save reaches 82-0; mid-season it says the hot player's name);
   `miss` on NO SAVE and on a post-season miss (no effect before).

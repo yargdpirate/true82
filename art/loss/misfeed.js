@@ -56,6 +56,8 @@
   T82ART.add("loss", "misfeed", {
     name: "Misfeed",
     by: "The drum misfeeds: a straight aqua L, then a pink one over it whose lower half slips sideways along a diagonal fault, buzzing, with ink dragged off the stem, before the sheet is yanked off the card.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.75 of E.dur, where the sheet is yanked off (dur - X, X = min(0.35, 0.25 dur): exactly 0.75 up to 1.4 s, 0.794 at 1.7 s)
+    phases: { exit: 0.75 },
     prep: function (K) {
       var st = K.st;
       return piece(K, st, "aq", "pop", 9102, AQ, function (K2, g) { g.fillStyle = K2.tone(0.36); lpath(K2, g); g.fill(); }).concat(

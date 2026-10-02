@@ -30,11 +30,11 @@
   <p class="qa-note">Watch one here: <code>?watch=loss:classic</code> (the three loss moments, looped), <code>?watch=dots:classic</code> (a season's ledger), <code>?watch=scene:lake</code> (the print's reveal).</p>
   <p class="qa-note">The FX looks (art/CONTRACT-FX.md, riso-fx.js) on the game's own screens: <code>node tools/art-qa.mjs hot &lt;id&gt;</code> (or perk, goat; <code>classic</code> for the built-in, <code>all</code> side by side), and here <code>?watch=hot:classic</code> (the seven Heat Check beats in turn), <code>?watch=perk:classic</code>, <code>?watch=goat:classic</code> (the 82-0 volley).</p>
 </main>
-<script src="/art-core.js?v=20261001-v67" defer></script>
-<script src="/art-index.js?v=20261002-v67-1" defer></script>
-<script src="/reel-riso.js?v=20261001-v67" defer></script>
+<script src="/art-core.js?v=20261002-v67-2" defer></script>
+<script src="/art-index.js?v=20261002-v67-2" defer></script>
+<script src="/reel-riso.js?v=20261002-v67-2" defer></script>
 <script src="/results-riso.js?v=20261001-v67" defer></script>
-<script src="/riso-fx.js?v=20261001-v67" defer></script>
+<script src="/riso-fx.js?v=20261002-v67-2" defer></script>
 <script>
 /* window.T82QA: the bench's building blocks. Everything here is scripted, deterministic and on a clock the caller owns
    (the engines' opts.clock), so a frame at e = 0.35 s is the same frame on every run and every machine. Nothing in
@@ -165,7 +165,8 @@
   }
 
   /* ---- the reel: app.js's overlay at its real size, on the bench clock ----
-     o = { games (82 x 0/1), loss: [ids], dots: id, pace, clOffset (added to each info.cl: 14 keeps every loss light,
+     o = { games (82 x 0/1), loss: [ids], dots: id, pace, tempo (false: every look at its own pace, the owner's speed
+           dial off; default: the dial art-index.js carries), clOffset (added to each info.cl: 14 keeps every loss light,
            so a dots measure meets no loss moment), live ({ w, l }: the dot set's windows, for each frame's busy flag),
            hold (pin the Web Animations to the clock: without it a shake started inside one long scripted run never
            moves, since the page's own timeline only advances between tasks, and the card stays tilted) } */
@@ -183,7 +184,7 @@
     var card = ov.querySelector(".reel-card"), acts = ov.querySelector("#reelActs"), runEl = ov.querySelector("#reelRun");
     var uses = [], w = wins(games);
     var R = window.T82RISO.create(ov, { games: games, wins: w, losses: games.length - w }, {
-      loss: o.loss || [], dots: o.dots || BUILTIN.dots, clock: clock.now, manual: true,
+      loss: o.loss || [], dots: o.dots || BUILTIN.dots, clock: clock.now, manual: true, tempo: o.tempo,
       onUse: function (kind, id) { uses.push(kind + ":" + id); }
     });
     if (!R) { ov.remove(); throw new Error("T82RISO.create returned null (riso off, or no canvas)"); }

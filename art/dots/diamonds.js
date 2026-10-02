@@ -1,5 +1,7 @@
-/* art/dots/diamonds.js: Diamonds. A win spins in as a cut gem (facets in two tones, seams carved); a loss lands whole,
-   cracks in a flash and falls open as two halves. Streaks sparkle in white: a star at 10, two at 20, a white table at 30. */
+/* art/dots/diamonds.js: Diamonds. A win spins in as a cut gem (facets in two tones, seams carved) and throws one white
+   twinkle that is gone by the time it lands; a loss lands whole, cracks in a flash and falls open as two halves. A streak
+   leaves no mark on the settled stamp (the owner's rule): the 30th straight win rests exactly like the first; only the
+   burst at every tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI;
@@ -44,7 +46,7 @@
 
   T82ART.add("dots", "diamonds", {
     name: "Diamonds",
-    by: "Wins spin in as cut gems; a loss lands whole, cracks and falls open in two halves. Streaks sparkle white.",
+    by: "Wins spin in as cut gems and twinkle once; a loss lands whole, cracks and falls open in two halves.",
     reach: { w: 1.7, l: 2.3 },
     live: { w: 0.32, l: 0.8 },
     inks: { a: "win", b: "light", c: "loss" },
@@ -61,18 +63,11 @@
       gem(K, g, 0); seam(g, R, SM);
       g.restore();
     },
-    b: function (K, g, D, c, R, e) {
-      var t = K.clamp((e - 0.12) / 0.14, 0, 1), s = D.streak;
+    b: function (K, g, D, c, R, e) {  // white: a win's one twinkle (up and gone by 0.26 s), a loss's flash as it cracks
+      var t = K.clamp((e - 0.12) / 0.14, 0, 1);
       g.fillStyle = K.tone(0.95);
       if (D.win) {
-        if (s >= 30) {
-          g.save(); g.translate(c[0], c[1] - 0.1 * R); g.scale(R, R); g.fillStyle = K.tone(0.7); g.beginPath();
-          g.moveTo(P[0][0], P[0][1]); g.lineTo(P[1][0], P[1][1]); g.lineTo(P[6][0], P[6][1]); g.lineTo(P[5][0], P[5][1]); g.fill(); g.restore();
-          g.fillStyle = K.tone(0.95);
-        }
-        var q = s >= 10 ? K.ease.back(K.clamp((e - 0.1) / 0.14, 0, 1)) : M.sin(PI * t) * 0.6;
-        star(g, c[0] - 0.7 * R, c[1] - 0.95 * R, R * (s >= 10 ? 0.8 : 0.6) * q);
-        if (s >= 20) star(g, c[0] + 0.8 * R, c[1] - 0.6 * R, R * 0.5 * q);
+        star(g, c[0] - 0.7 * R, c[1] - 0.95 * R, R * 0.6 * M.sin(PI * t) * 0.6);
       } else {
         t = K.clamp((e - 0.06) / 0.12, 0, 1);
         star(g, c[0] + D.cx * R, c[1] + 0.1 * R, R * 0.9 * M.sin(PI * t));

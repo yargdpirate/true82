@@ -52,6 +52,8 @@
   T82ART.add("loss", "ransom", {
     name: "Ransom Note",
     by: "L, O, S, S cut from four different print sources on rough paper scraps are thrown in one at a time and slap down at crooked angles, the L biggest, then a gust takes them.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.619 of E.dur, where the gust takes the scraps (dur - 0.1 - X, X = min(0.3, 0.3 dur): 0.4 s from the end, so 0.619 of 1.05 s, 0.765 of 1.7 s)
+    phases: { exit: 0.619 },
     prep: function (K) {
       var st = K.st;
       st.cut = []; st.can = [];

@@ -1,6 +1,6 @@
-/* art/dots/arrows.js: Up and Down. A win is an aqua arrow that shoots up and sticks; a streak grows gold fins (small at
-   10, bigger at 20) and at 30 a gold band around the arrow. A loss is a heavy pink arrow that falls and drives into a
-   line of ink, squashes, cracks and drips. */
+/* art/dots/arrows.js: Up and Down. A win is an aqua arrow that shoots up and sticks; a loss is a heavy pink arrow that
+   falls and drives into a line of ink, squashes, cracks and drips. A streak leaves no mark on the settled stamp (the
+   owner's rule): the 30th straight win rests exactly like the first, and only the burst at every tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2;
@@ -20,10 +20,10 @@
   }
   T82ART.add("dots", "arrows", {
     name: "Up and Down",
-    by: "Wins shoot up as aqua arrows that grow gold fins on a streak (a gold band at 30); losses are heavy pink arrows that drive into a line of ink, crack and drip.",
+    by: "Wins shoot up as aqua arrows (a gold burst on every tenth straight); losses are heavy pink arrows that drive into a line of ink, crack and drip.",
     reach: { w: 2.2, l: 3.4 },
     live: { w: 0.32, l: 0.85 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0), i;
       D.t = (r() - 0.5) * 0.24; D.w = []; for (i = 0; i < 14; i++) D.w.push((r() - 0.5) * 0.08);
@@ -32,16 +32,6 @@
     a: function (K, g, D, c, R, e) {
       if (!D.win) return;
       g.save(); pose(K, g, D, c, R, e); g.fillStyle = ramp(K, g, -0.9, 0.9, 0.4, 0.86); arrow(g, D.w, true); g.fill();
-      g.restore();
-    },
-    b: function (K, g, D, c, R, e) {  // gold: a rocket's fins, small at 10, bigger at 20, and at 30 a gold band around the whole arrow
-      if (!D.win || D.streak < 10) return;
-      var n = D.streak >= 30 ? 2 : D.streak >= 20 ? 1 : 0, d = K.ease.back((e - 0.05) / 0.12), x, y = [0.2, 0.02, 0.02][n], w = [0.58, 0.72, 0.8][n] * d;
-      g.save(); pose(K, g, D, c, R, e); g.fillStyle = K.tone(0.94); g.beginPath();
-      for (x = -1; x < 2; x += 2) { g.moveTo(0.28 * x, y); g.lineTo((0.28 + w) * x, 0.94); g.lineTo(0.28 * x, 0.94); }
-      g.fill();
-      if (n > 1) { g.strokeStyle = K.tone(0.94); g.lineJoin = "round"; g.lineWidth = 0.62 * d; arrow(g, D.w, true); g.stroke(); }  // from 30 a gold band hugs the whole arrow
-      g.globalCompositeOperation = "destination-out"; g.fillStyle = K.tone(1); g.lineJoin = "round"; g.lineWidth = 0.1; arrow(g, D.w, true); g.fill(); g.stroke();
       g.restore();
     },
     c: function (K, g, D, c, R, e) {

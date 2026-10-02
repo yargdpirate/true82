@@ -28,6 +28,8 @@
   T82ART.add("loss", "square", {
     name: "Try Square",
     by: "The L is a carpenter's square: a pink steel try square with its scale carved in drops in, clangs, shivers, then is thrown away like a boomerang.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.55 of E.dur, where the square is thrown off (tx = dur - X, X = clamp(0.45 dur, 0.2, 0.78): exactly 0.55 from 0.44 to 1.73 s)
+    phases: { exit: 0.55 },
     prep: function (K) {
       var st = K.st;
       return [

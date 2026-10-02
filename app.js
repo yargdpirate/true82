@@ -4727,14 +4727,15 @@ function goatBurst(box, cx, cy, emojis, o) {
 // beat inside the same box, each placing itself as the emoji shells did; without riso-fx.js, the emoji shells exactly
 // as before. risoOnly: the reel's 82-0 finale, whose own riso rings are today's look, adds riso shells or nothing.
 function fireGoats(box, risoOnly) {
-  var w = box.clientWidth || 300, h = box.clientHeight || 280, gen = FX_GEN;
+  var w = box.clientWidth || 300, h = box.clientHeight || 280, gen = FX_GEN, look;
   if (risoOnly && !fxOn()) return;
   for (var b = 0; b < 9; b++) {
     (function (k) {
       setTimeout(function () {
         if (!fxOn()) { if (!risoOnly) goatBurst(box, w * (0.2 + Math.random() * 0.6), h * (0.18 + Math.random() * 0.58)); return; }
         if (gen !== FX_GEN || !document.body.contains(box)) return;   // the screen changed or SKIP: the volley stops
-        fxPlay("goat", "burst", box, { label: "82\u20130", big: true }, risoOnly ? null : function () {
+        if (look === undefined) look = fxLook("goat");               // one look for the whole volley, settled at its first shell
+        fxPlay("goat", "burst", box, { label: "82\u20130", big: true, look: look }, risoOnly ? null : function () {
           goatBurst(box, w * (0.2 + Math.random() * 0.6), h * (0.18 + Math.random() * 0.58));
         });
       }, k * 180);
@@ -5011,12 +5012,12 @@ function hotHand(e) {
       // v67 part two: the save that reaches 82-0 prints in the run's Heat Check look at the stamp (big: 82-0's scale);
       // without it, the goat fireworks in the card, as before
       var fw = ov.querySelector("#hhFw");
-      if (fw && !reducedMotion()) fxPlay("hot", "save", v.querySelector(".hh-stamp") || v, { label: "82\u20130", big: true }, function () { fireGoats(fw); });
+      if (fw && !reducedMotion()) fxPlay("hot", "save", v.querySelector(".hh-stamp") || v, hhFxOpts(seg, { label: "82\u20130", big: true }), function () { fireGoats(fw); });
     } else {
       ov.classList.add("missed");
       v.innerHTML = netHtml;
       buzz(10);
-      fxPlay("hot", "miss", v.querySelector(".hh-stamp") || v, { label: seg.label }, null);   // v67: NO SAVE's beat (none before)
+      fxPlay("hot", "miss", v.querySelector(".hh-stamp") || v, hhFxOpts(seg, { label: seg.label }), null);   // v67: NO SAVE's beat (none before)
     }
     v.classList.add("on");
     ov.querySelector("#hhActions").classList.add("on");
@@ -5174,6 +5175,7 @@ function hotHand(e) {
   });
   var seeBtn = ov.querySelector("#hhSee");
   if (seeBtn) seeBtn.addEventListener("click", function () {
+    fxEnd("hot");   // v67 part two: the save's beat goes with its card (the 82-0 volley's plates stay printed)
     dismiss();
     if (G.hotWins >= CFG.GAMES_IN_SEASON) fireWL();   // perfect record revealed -> emoji explosion in the W/L box
   });
@@ -7976,10 +7978,12 @@ function showResults() {
     // Duels, dailies, and challenges never enter this branch; the +20 gate is
     // strict; the raw pre-boost net still ships to percentile/leaderboards.
     var midTrigger = hhMidGate(e, season) && !FORCE_82 ? { e: e } : null;   // ?force82= tests the post-season path
+    artSeasonKnown(e, midTrigger, true);         // v67: the rest of the reel's looks, and the 82-0 ones if it can be 82-0
     showSeasonReel(season, e, function () { finishRunTail(e); }, midTrigger);
     return;
   }
   qaForceSeason(e, null);                        // v67 QA: ?force82= (no reel: the record alone)
+  artSeasonKnown(e, null, false);                // v67: the 82-0 fireworks only for a record that can still be 82-0
   finishRunTail(e);
 }
 function finishRunTail(e) {
@@ -8179,6 +8183,9 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
   function resolve(boost) {
     if (resolved) return;
     resolved = true;
+    // v67 part two: the lock's and the save's beats go with the card, never printing over the resumed reel (whose
+    // 82-0 shells keep their printed plates)
+    fxEnd("hot");
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     onResolve(boost);
   }
@@ -8199,13 +8206,13 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
       buzz(45);
       // v67 part two: CATCHES FIRE in the run's Heat Check look (none: the goat fireworks in the card, as before)
       var fw = ov.querySelector("#hhmFw");
-      if (fw && !reducedMotion()) fxPlay("hot", "save", v.querySelector(".hh-stamp") || v, { label: shareSurname(G.picks[hotIdx].row[IDX.name]), big: false }, function () { fireGoats(fw); });
+      if (fw && !reducedMotion()) fxPlay("hot", "save", v.querySelector(".hh-stamp") || v, hhFxOpts(seg, { label: shareSurname(G.picks[hotIdx].row[IDX.name]), big: false }), function () { fireGoats(fw); });
     } else {
       ov.classList.add("missed");
       v.innerHTML = '<div class="hh-stamp miss">NO SAVE</div>' +
         '<div class="hh-netcap">' + esc(seg.label) + " \u00B7 THE LOSS LANDS</div>";
       buzz(10);
-      fxPlay("hot", "miss", v.querySelector(".hh-stamp") || v, { label: seg.label }, null);   // v67: NO SAVE's beat (none before)
+      fxPlay("hot", "miss", v.querySelector(".hh-stamp") || v, hhFxOpts(seg, { label: seg.label }), null);   // v67: NO SAVE's beat (none before)
     }
     v.classList.add("on");
     ov.querySelector("#hhmActions").classList.add("on");
@@ -8692,13 +8699,24 @@ function resultsPrintPal() {
    drafts, so the home page never pays for art and the reel finds them ready. G.art keeps the deal for the whole run:
    the reel, the results print, its Heat Check reprint and the poster all use the same looks. A look leaves the bag
    only when it actually plays (T82ART.used). No art-core.js, or a look that never arrives: the built-in looks (the
-   classic L and dots, the lake), exactly as before. The paintings bag above is separate and unchanged. */
+   classic L and dots, the lake), exactly as before. The paintings bag above is separate and unchanged.
+   The owner (2026-10-02): "handle preloading smartly to not drag performance for users with slower phones and/or
+   slow internet". So the downloads come in two steps, each in idle time and never waited on: while the player drafts,
+   only what the first moments need (the first four loss looks, the dot set, the scene, the Presti perks and Heat
+   Check); when the season is known (the reel opens), the other ten loss looks, and the 82-0 looks only for a season
+   that can still end 82-0. On Data Saver or a 2G/3G link T82ART.deal hands out nothing at all: the built-ins play. */
 var ART_LOSS_N = 14;   // the season's heavy losses (heavy() in reel-riso.js: losses 1 to 14 get the big moment)
+var ART_LOSS_FIRST = 4;   // the loss looks fetched while the player drafts (the season's first heavy losses; the rest at the reel)
 // the reel plays only for a standalone Classic or Presti run; every other mode goes straight to the print
 function seasonReelPlays() { return (MODE === "classic" || MODE === "cap") && !G.social && !G.ch && !!(window.T82 && T82.simSeason); }
 function artDealRun() {
   var A = window.T82ART;
-  if (!G || !A || !A.deal || MODE === "kaman") return;   // Kaman has no reel and no print
+  if (!G) return;
+  if (!A || !A.deal || MODE === "kaman") {   // Kaman has no reel and no print; its 82-0 volley (and, with no art at all,
+    var g = G;                               // every FX moment) is riso-fx.js's classic, printed while the player drafts
+    setTimeout(function () { if (G === g) fxPrime(fxKinds()); }, 1400);
+    return;
+  }
   var art;
   try {
     var reel = seasonReelPlays();
@@ -8708,11 +8726,16 @@ function artDealRun() {
   artDealFx(A, art);   // v67 part two: the riso FX looks and the 82-0 picture ride the same deal
   function fetchArt() {
     try {
-      if (art.loss.length) A.load("loss", art.loss);
+      if (art.loss.length) A.load("loss", art.loss.slice(0, ART_LOSS_FIRST));   // the rest when the reel opens (artSeasonKnown)
       if (art.dots) A.load("dots", [art.dots]);
       if (art.scene) A.load("scene", [art.scene]);
     } catch (err) { /* cosmetic: the built-ins play */ }
-    try { artFetchFx(A, art); } catch (err) { /* cosmetic: the old emoji effects play */ }
+    // v67 part two: classic is printed now for every FX moment this run can have, ready to stand in until each dealt
+    // file is in (riso-fx.js preps a perk first, a dealt look ahead of its classic)
+    if (G && G.art === art) fxPrime(fxKinds());
+    // a perk can land in the draft and a Heat Check in the reel's first seconds; with no reel the record shows right
+    // after the draft, and the 82-0 picture is settled at that first print, so it has to be here by then
+    try { artFetchFx(A, art, reel ? ["perk", "hot"] : ["perk", "hot", "perfect"]); } catch (err) { /* cosmetic: the old emoji effects play */ }
   }
   // after the first ticket's slot reels have landed (about a second, spinReels), in idle time where the browser has
   // it (iPhones have no requestIdleCallback): the downloads never share a frame with the spin
@@ -8744,19 +8767,45 @@ function artDealFx(A, art) {
   try { if (window.T82FX && typeof T82FX.use === "function") ["hot", "perk", "goat"].forEach(function (kind) { T82FX.use(kind, art[kind] || null); }); }
   catch (err) { /* cosmetic */ }
 }
-// fetched with the run's other looks: an FX look is primed (its prep, in idle time) once its file is in, and one whose
-// file failed moves on in the bag (T82ART.skip), like the reel's and the print's
-function artFetchFx(A, art) {
+// fetched with the run's other looks (kinds: which of hot, perk, goat and perfect this step fetches): an FX look is
+// primed (its prep, in idle time) once its file is in, and one whose file failed moves on in the bag (T82ART.skip),
+// like the reel's and the print's
+function artFetchFx(A, art, kinds) {
   ["hot", "perk", "goat"].forEach(function (kind) {
     var id = art[kind];
-    if (!id) return;
+    if (!id || kinds.indexOf(kind) < 0) return;
     A.load(kind, [id]).then(function (got) {
       if (got.length) { if (G && G.art === art) fxPrime([kind]); }
       else if (A.skip) A.skip(kind, id);
     });
   });
-  if (art.perfect) A.load("scene", [art.perfect]).then(function (got) { if (!got.length && A.skip) A.skip("scene", art.perfect); });
+  if (art.perfect && kinds.indexOf("perfect") >= 0) A.load("scene", [art.perfect]).then(function (got) { if (!got.length && A.skip) A.skip("scene", art.perfect); });
 }
+// The season is known (showResults; with a reel, the moment it opens): the run's other ten loss looks, and the 82-0
+// looks only when this season can still end 82-0 (art82). A season that cannot never downloads them (their bags keep
+// them for one that can) and never primes the fireworks. Idle time, never waited on: a look not in by its moment is
+// passed over and plays next time.
+function artSeasonKnown(e, midTrigger, reel) {
+  if (!G) return;
+  G.fx82 = art82(e, midTrigger);
+  if (G.fx82) fxPrime(["goat"]);                 // the fireworks' stand-in (or the dealt look, if in) prints now
+  var A = window.T82ART, art = G.art;
+  if (!A || !A.load || !art) return;
+  artIdle(function () {
+    if (!G || G.art !== art) return;
+    try { if (reel && art.loss.length > ART_LOSS_FIRST) A.load("loss", art.loss.slice(ART_LOSS_FIRST)); } catch (err) { /* cosmetic */ }
+    if (G.fx82) { try { artFetchFx(A, art, reel ? ["goat", "perfect"] : ["goat"]); } catch (err) { /* cosmetic */ } }
+  });
+}
+// whether this season can still end 82-0: it is 82-0, or a Presti Heat Check can still save it (the post-season one at
+// 81 wins, ?clutch=1 on any record, or the mid-season one, which re-rolls the rest of the season)
+function art82(e, midTrigger) {
+  if (!e) return false;
+  var n = CFG.GAMES_IN_SEASON;
+  if (e.winTally >= n || midTrigger) return true;
+  try { return (e.winTally === n - 1 || FORCE_CLUTCH) && !!hhEligible(e); } catch (err) { return false; }
+}
+function artIdle(fn) { if (typeof requestIdleCallback === "function") requestIdleCallback(fn, { timeout: 1000 }); else setTimeout(fn, 0); }
 // the reel's art: the run's loss looks in play order, its dot set, and the bag's bookkeeping when a look plays (just
 // after the frame that slams it: a phone's storage write never lands inside the animation)
 function artReelOpts() {
@@ -8782,15 +8831,23 @@ function fxPack(kind) {
   var id = G && G.art ? G.art[kind] : null;
   try { return id && window.T82ART && T82ART.get(kind, id) ? id : null; } catch (err) { return null; }
 }
-// play one slot of the run's look at an element (opts: label, big...): its duration in ms, or 0 when the old emoji
-// effect (fallback, at most once) played instead: no riso-fx.js, no element, or a call that threw or played nothing.
-// A look that throws once it is under way is riso-fx.js's to finish (its classic look carries the moment on).
+// the look a moment plays now: the dealt one, unless its prep is still printing (its file has only just arrived) while
+// classic's is printed, when classic stands in (booking nothing) so the moment never pays for printing
+function fxLook(kind) {
+  var id = fxPack(kind);
+  try { if (id && typeof T82FX.ready === "function" && !T82FX.ready(kind, id) && T82FX.ready(kind, "classic")) return null; } catch (err) {}
+  return id;
+}
+// play one slot of the run's look at an element (opts: label, big...; look: the look a volley settled on, null for
+// classic): its duration in ms, or 0 when the old emoji effect (fallback, at most once) played instead: no riso-fx.js,
+// no element, or a call that threw or played nothing. A look that throws once it is under way is riso-fx.js's to
+// finish (its classic look carries the moment on).
 function fxPlay(kind, slot, anchor, opts, fallback) {
   var ms = 0, id = null, o, k;
   if (anchor && fxOn()) {
-    id = fxPack(kind);
+    id = opts && opts.look !== undefined ? opts.look : fxLook(kind);
     o = { id: id || "classic", seed: Math.floor(Math.random() * 4294967296) };
-    for (k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) o[k] = opts[k];
+    for (k in opts) if (k !== "look" && Object.prototype.hasOwnProperty.call(opts, k)) o[k] = opts[k];
     try { ms = +T82FX.play(kind, slot, anchor, o) || 0; }
     catch (err) { ms = 0; if (typeof console !== "undefined" && console.warn) console.warn("[t82] fx " + kind + " " + slot + " fell back:", err); }
   }
@@ -8807,16 +8864,27 @@ function fxBook(kind, id) {
   art.fxUsed[kind] = 1;
   setTimeout(function () { try { T82ART.used(kind, id); } catch (err) {} }, 0);
 }
-// the run's looks of these kinds get their prep in idle time (riso-fx.js schedules it): once their files are in, and
-// again after a stop that let their plates go, when they may still play on this screen
+// the FX kinds a run primes: the perks and the Heat Check in Presti (a perk can land in the draft, a Heat Check in the
+// reel's first seconds); the 82-0 fireworks in Kaman (always 82-0) and, once the season is known, only for one that
+// can still end 82-0 (G.fx82, artSeasonKnown). A moment that cannot come is never primed: that prep is work for nothing.
+function fxKinds() {
+  var k = MODE === "cap" ? ["perk", "hot"] : [];
+  if (MODE === "kaman" || (G && G.fx82)) k.push("goat");
+  return k;
+}
+// the look of each kind that would play now gets its prep in idle time (riso-fx.js schedules it, the perk first): the
+// run's dealt look once its file is in, otherwise classic, which stands in for it (a perk tapped before the file
+// arrives, a file that failed, nothing dealt, every Kaman 82-0), so even the stand-in never prints inside the moment.
+// Called 1.4 s into the draft, as each file arrives, and again after a stop that let the plates go.
 function fxPrime(kinds) {
-  if (!G || !G.art || !window.T82FX || !window.T82ART) return;
+  if (!G || !window.T82FX || typeof T82FX.prime !== "function") return;
+  var can = fxKinds();
   kinds.forEach(function (kind) {
-    var id = G.art[kind];
-    if (!id || !T82ART.get(kind, id)) return;
+    var id = fxPack(kind);
+    if (can.indexOf(kind) < 0) return;           // only a moment this run can (still) have, the dealt look or classic
     try {
-      if (typeof T82FX.use === "function") T82FX.use(kind, id);
-      if (typeof T82FX.prime === "function") T82FX.prime(kind, id);
+      if (id && typeof T82FX.use === "function") T82FX.use(kind, id);
+      T82FX.prime(kind, id || "classic");
     } catch (err) { /* cosmetic: the look preps when it first plays, or the old effect plays */ }
   });
 }
@@ -8830,13 +8898,28 @@ function fxStop(onlyPlaying) {
   try { if (window.T82FX && typeof T82FX.stop === "function") { T82FX.stop(); return true; } } catch (err) {}
   return false;
 }
+// One kind's beats end now and every look keeps its prep: the Heat Check's card goes (SEE YOUR TEAM, BACK TO THE
+// SEASON), so its save no longer prints over the next screen, while the 82-0 volley still to come there plays from
+// plates already printed (a full stop would make its first shell print them inside the tap)
+function fxEnd(kind) {
+  try { if (window.T82FX && typeof T82FX.end === "function") T82FX.end(kind); } catch (err) { /* cosmetic */ }
+}
 // The Heat Check's wheel locks: the tier's beat in the run's hot look at the label, each tier bigger than the last
 // (SUPERNOVA the biggest thing in the game but 82-0). Without the look: the ON FIRE flame spray and the SUPERNOVA
 // volcano plumes, and nothing for COLD, WARM and HOT, exactly as before.
 var HH_FX_SLOTS = ["cold", "warm", "hot", "fire", "nova"];
+// Every Heat Check beat gets the game's own numbers (art/CONTRACT-FX.md): ev.m, the tier the wheel landed on, and
+// ev.ladder, every tier's label and multiplier in wheel order, read from HH_SEGMENTS at the moment it plays. The owner
+// retunes the ladder (2026-10-02: COLD 0.9 up to SUPERNOVA 1.3), so a look that prints a multiplier never keeps its own.
+function hhFxOpts(seg, o) {
+  o = o || {};
+  if (seg && typeof seg.m === "number") o.m = seg.m;
+  o.ladder = (HH_SEGMENTS || []).map(function (s) { return { label: String(s.label), m: s.m }; });
+  return o;
+}
 function hhLockFx(segIdx, label) {
   var slot = HH_FX_SLOTS[Math.max(0, Math.min(HH_FX_SLOTS.length - 1, segIdx))];
-  fxPlay("hot", slot, label, { label: HH_SEGMENTS[segIdx] ? String(HH_SEGMENTS[segIdx].label) : "", big: segIdx === 4 }, function () {
+  fxPlay("hot", slot, label, hhFxOpts(HH_SEGMENTS[segIdx], { label: HH_SEGMENTS[segIdx] ? String(HH_SEGMENTS[segIdx].label) : "", big: segIdx === 4 }), function () {
     if (segIdx === 4) supernovaErupt(label);                     // SUPERNOVA -> five volcano plumes across the screen
     else if (segIdx === 3) sprayFromEl(label, FIRE_EMOJI);       // ON FIRE -> simple radial flame burst (money-style)
   });
@@ -8898,8 +8981,6 @@ function mountResultsPrint(e, daily) {
   host.setAttribute("data-spec", JSON.stringify(RESULTS_PRINT_SPEC));   // the print's recipe rides the page (the Reprint Lab reprints it in any look)
   RESULTS_PRINT = printCall(function () { return window.T82PRINT ? T82PRINT.mount(host, RESULTS_PRINT_SPEC, { defer: canWatch }) : null; });
   if (!RESULTS_PRINT) return;
-  // v67: the scene leaves this device's bag once it has printed (once a run: the Heat Check reprint is the same print)
-  if (RESULTS_PRINT_SPEC.scene && G.art && !G.art.sceneUsed) { G.art.sceneUsed = true; try { T82ART.used("scene", RESULTS_PRINT_SPEC.scene); } catch (err) {} }
   RESULTS_PRINT_HOLDS = RESULTS_PRINT_SPEC; RESULTS_PRINT_SHOWN = false;
   var board = host.closest ? host.closest(".rr-board") : null;
   if (board) board.classList.add("printed");                 // the print carries the mode line; the eyebrow steps aside
@@ -8938,8 +9019,20 @@ function playResultsPrint() {
     if (!RESULTS_PRINT) return null;
     if (RESULTS_PRINT_HOLDS !== RESULTS_PRINT_SPEC) { RESULTS_PRINT_HOLDS = RESULTS_PRINT_SPEC; RESULTS_PRINT.update(RESULTS_PRINT_SPEC); }
     else RESULTS_PRINT.play();
+    resultsPrintBook(RESULTS_PRINT_SPEC);
     return null;
   });
+}
+// v67: a scene leaves this device's bag when it actually prints in, once a run per scene (art/CONTRACT.md). An 81-1
+// print the Heat Check covered and its save then swapped for the 82-0 picture never showed, so it keeps its place
+// in the bag; the perfect scene the reveal prints leaves its own. The storage write waits out the reveal's frame.
+function resultsPrintBook(spec) {
+  var id = spec && spec.scene, art = G && G.art;
+  if (!id || !art || !window.T82ART) return;
+  if (!art.scenesShown) art.scenesShown = {};
+  if (art.scenesShown[id]) return;
+  art.scenesShown[id] = 1;
+  setTimeout(function () { try { T82ART.used("scene", id); } catch (err) {} }, 0);
 }
 function bakeResultsPoster() {
   var spec = RESULTS_PRINT_SPEC;
@@ -8956,13 +9049,10 @@ function bakeResultsPoster() {
 // The end-of-season Heat Check can turn 81-1 into 82-0 after the page is up.
 function resultsPrintRecord(e, wins) {
   if (!RESULTS_PRINT_SPEC || wins === RESULTS_PRINT_SPEC.wins) return;
-  var daily = !!(G.social && window.T82DAILY), was = RESULTS_PRINT_SPEC.scene;
-  RESULTS_PRINT_SPEC = resultsPrintSpec(e, daily ? { isOfficial: true } : null, wins);
+  var daily = !!(G.social && window.T82DAILY);
   // v67 part two: the save that turns 81-1 into 82-0 reprints the picture as the run's perfect scene (the owner's "so
-  // much better than 81-1"); a scene the page had not printed yet leaves its bag now, as the first print's did
-  if (RESULTS_PRINT && RESULTS_PRINT_SPEC.scene && RESULTS_PRINT_SPEC.scene !== was && G.art && window.T82ART) {
-    try { T82ART.used("scene", RESULTS_PRINT_SPEC.scene); } catch (err) {}
-  }
+  // much better than 81-1"); it leaves its bag when that reprint actually reveals (playResultsPrint)
+  RESULTS_PRINT_SPEC = resultsPrintSpec(e, daily ? { isOfficial: true } : null, wins);
   RESULTS_POSTER = null;
   var host = el("rrPrint");
   if (host) { host.setAttribute("aria-label", wins + " and " + (CFG.GAMES_IN_SEASON - wins) + ". The shape of the season."); host.setAttribute("data-spec", JSON.stringify(RESULTS_PRINT_SPEC)); }
@@ -9652,7 +9742,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v67";
+var BUILD_V = "v67.2";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

@@ -14,6 +14,10 @@
      node tools/art-qa.mjs hot|perk|goat <id>   an FX pack (art/CONTRACT-FX.md) on the game's own screens: every slot's
                                             frames, its frame and prep costs at 4x against the absolute budgets;
                                             <id> classic for the built-in, all for every pack of the kind side by side
+     node tools/art-qa.mjs finish loss      when each loss look's moment is over: the last frame with any of its ink on
+                                            the card (hero, veil, caption, sprays) in the mid moment (1.05 s hold) and
+                                            the first loss after a streak (1.70 s), the owner's speed dial applied (and
+                                            today's pace beside each dialed look); a table, quickest first
    Options:
      --out DIR       where it all lands (default <tmp>/t82-art-qa/<mode>[-<id>]): report.json, index.html, the PNGs
      --webkit        also run each variant in WebKit, unthrottled: console errors and fallbacks (Safari-only breakage)
@@ -24,6 +28,7 @@
                      the live code's classic, say, for a regression check (engines without the hooks get a stand-in)
      --port N        the static server's port (default: a free one)
      --timeout S     seconds one picture step may take before the variant is dropped as hung (default 90; timing x3)
+     --no-tempo      finish: every look at its own pace (the dial off), for the record of today's pace
    Exit 1 when a variant fails a budget or a check (never for baseline). Needs Playwright 1.6x with Chromium (WebKit
    for --webkit); PLAYWRIGHT overrides its path. It drives docs/art-lab/qa.html (window.T82QA).
 
@@ -87,16 +92,18 @@ for (let i = 2; i < process.argv.length; i++) {
   else if (a === "--port") opt.port = +process.argv[++i] || 0;
   else if (a === "--root") opt.root = path.resolve(process.argv[++i]);
   else if (a === "--timeout") { T_RENDER = Math.max(5, +process.argv[++i] || 90) * 1000; T_TIME = T_RENDER * 3; }
+  else if (a === "--no-tempo") opt.noTempo = true;
   else if (a === "-h" || a === "--help") usage(0);
   else pos.push(a);
 }
 function usage(code) {
   const src = fs.readFileSync(fileURLToPath(import.meta.url), "utf8");
-  console.log(src.slice(src.indexOf("/*") + 2, src.indexOf("*/")).split("\n").slice(0, 28).join("\n"));
+  console.log(src.slice(src.indexOf("/*") + 2, src.indexOf("*/")).split("\n").slice(0, 32).join("\n"));
   process.exit(code);
 }
 const MODE = pos[0];
-if (!MODE || !["loss", "dots", "scene", "all", "baseline", "hot", "perk", "goat"].includes(MODE)) usage(2);
+if (!MODE || !["loss", "dots", "scene", "all", "baseline", "hot", "perk", "goat", "finish"].includes(MODE)) usage(2);
+if (MODE === "finish" && pos[1] !== "loss") { console.error("art-qa: finish measures the loss looks: node tools/art-qa.mjs finish loss"); process.exit(2); }
 if (["hot", "perk", "goat"].includes(MODE) && !/^[a-z0-9-]+$/.test(pos[1] || "")) { console.error("art-qa: " + MODE + " needs a pack id ([a-z0-9-]+), classic or all"); process.exit(2); }
 if (KINDS.includes(MODE) && !/^[a-z0-9-]+$/.test(pos[1] || "")) { console.error("art-qa: " + MODE + " needs a variant id ([a-z0-9-]+)"); process.exit(2); }
 if (MODE === "all" && pos[1] && !KINDS.includes(pos[1])) { console.error("art-qa: all takes a kind: loss, dots or scene"); process.exit(2); }
@@ -233,6 +240,56 @@ async function pgLossTime({ id, kase }) {
   const after = st().canvasBytes || 0, off = st().off || [];
   h.destroy();
   return { jobs: pr.jobs, stampMs: s.ms, hold: s.hold, frames, peak, after, off, uses: h.uses.slice() };
+}
+// When a loss moment is over (the finish mode): the moment played on the bench clock at 60 fps from its slam to the end
+// of its hold, and after every frame the card's effects canvas (the veil, the rings and sprays, the hero, the caption:
+// everything the moment prints) is read for ink; the last frame with any is its finish. The sprays move frame by frame
+// (their state carries over), so the scan runs forward, and a frame's read stops at its first inked pixel: only the
+// clean frames after the finish are read whole. tempo: false plays the look at its own pace (the dial off). hero: the
+// look's own picture alone (a bench copy of it with no veil, no caption and no slam; the dial still applies), which
+// tells a look that has left the card from one still holding its last pose into the hold's closing fade; that pass also
+// finds when the picture stops moving (still: the last frame that differs from the one before it, read on a sampled
+// grid of pixels, before the classic closing fade, K.fade's last 0.2 s, starts on the look's own clock).
+async function pgFinish({ id, kase, tempo, hero }) {
+  const Q = window.T82QA, C = Q.CASES[kase], A = window.T82ART, tempo0 = A && A.tempo, look = id;
+  if (hero) {
+    const def = A.get("loss", look), copy = {}, alias = "qa-hero-" + look;
+    for (const k in def) copy[k] = def[k];
+    copy.veil = false; copy.caption = false; copy.hit = function () {};
+    A.add("loss", alias, copy);
+    if (tempo0) A.tempo = function (k, i) { return tempo0.call(A, k, i === alias ? look : i); };   // the copy keeps the look's dial
+    id = alias;
+  }
+  const h = Q.reel({ games: C.games, loss: [id], dots: Q.BUILTIN.dots, pace: C.pace, hold: true, tempo });
+  try {
+    await Q.prep(h);
+    h.instantTo(C.gi); h.frame();
+    Q.anims.finish();
+    const fxc = h.card.querySelector("canvas.riso-fx"), s = h.stamp(false), dur = s.hold / 1000;
+    let last = -1, dial = null, seen = false, still = 0, prev = null, fade = dur - 0.2;
+    for (let k = 0; k / 60 < dur + 1e-9; k++) {
+      Q.clock.t = s.t0 + k / 60;
+      h.frame();
+      const st = h.R.qa ? h.R.qa.state() || {} : {};
+      if (st.playing && st.playing.indexOf(id) >= 0) seen = true;
+      if (st.tempo && st.tempo.length && !dial) {
+        dial = st.tempo[0];
+        const a = dial.at * dur;                      // the closing fade on the real clock: e' = dur - 0.2 under the dial
+        if (fade > a) fade = a + (fade - a) / dial.x;
+      }
+      if (!fxc || !fxc.width) continue;
+      const px = new Uint32Array(fxc.getContext("2d").getImageData(0, 0, fxc.width, fxc.height).data.buffer);
+      if (hero && k / 60 < fade - 1e-9) {             // a sampled print of the frame (every 4th pixel of every 4th row)
+        let hsh = 2166136261 >>> 0;
+        for (let y = 0; y < fxc.height; y += 4) for (let x = 0, i = y * fxc.width; x < fxc.width; x += 4, i += 4) hsh = Math.imul(hsh ^ px[i], 16777619) >>> 0;
+        if (prev !== null && hsh !== prev) still = k / 60;
+        prev = hsh;
+      }
+      for (let i = 0; i < px.length; i++) if (px[i] !== 0) { last = k / 60; break; }
+    }
+    const off = h.R.qa ? (h.R.qa.state() || {}).off || [] : [];
+    return { dur, last, still, dial, played: seen || id === Q.BUILTIN.loss, off, uses: h.uses.slice() };
+  } finally { h.destroy(); if (tempo0) A.tempo = tempo0; }
 }
 // the ledger, played live to the end and settled; each month's live strip against the same month reprinted by strip()
 async function pgLedger({ id, live }) {
@@ -1077,7 +1134,86 @@ function writeIndex(report) {
 function fmtNum(v, unit) { return unit === "bytes" ? fmtB(v) : unit === "ms" ? fmtMs(v) : String(v); }
 
 /* ---------- the run ---------- */
+/* ---------- finish: when each loss look's moment is over (the owner, 2026-10-02: "we need to standardize the animation
+   time; after making my changes, which is the quickest finishing animation?"). Unthrottled: it reads pictures, not
+   costs. Every loss look (classic, the index, files not indexed yet) in the mid moment and the first loss after a
+   streak, with the speed dial art-index.js carries; a dialed look is measured at today's pace too. ---------- */
+const FINISH_CASES = [["mid", "mid moment"], ["streak", "first loss"]];
+async function finishMain() {
+  const t0 = Date.now(), srv = await serve(opt.root, opt.port);
+  BASE = "http://127.0.0.1:" + srv.port + "/";
+  browser = await PW.chromium.launch();
+  ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2 });
+  const rows = [];
+  try {
+    const lister = await bench(ctx);
+    const list = await lister.evaluate(() => window.T82QA.list("loss"));
+    await lister.close();
+    const dir = path.join(opt.root, "art", "loss");
+    fs.readdirSync(dir).filter((f) => /^[a-z0-9-]+\.js$/.test(f)).map((f) => f.slice(0, -3))
+      .filter((id) => !list.some((e) => e.id === id)).forEach((id) => list.push({ id, name: id, on: true, unindexed: true }));
+    log("art-qa: finish, " + list.length + " loss looks" + (opt.noTempo ? " at their own pace (--no-tempo)" : ", the speed dial applied") + "; out " + OUT);
+    let page = null;
+    for (const v of list) {
+      const row = { id: v.id, name: v.name, on: v.on !== false, unindexed: !!v.unindexed, dial: null, finish: {}, hero: {}, still: {}, today: {}, holds: {}, played: true, errors: [] };
+      try {
+        if (!page) page = await bench(ctx);
+        const L = await loadVariant(page, "loss", v.id);
+        if (!L.ok) throw new Error(L.error || "did not register");
+        if (L.def && L.def.name) row.name = L.def.name;
+        for (const [kase] of FINISH_CASES) {
+          const r = await ev(page, pgFinish, { id: v.id, kase, tempo: opt.noTempo ? false : undefined }, T_RENDER);
+          row.finish[kase] = r.last < 0 ? null : r2(r.last); row.holds[kase] = r2(r.dur);
+          if (r.dial) row.dial = r.dial;
+          if (!r.played || r.off.indexOf("loss:" + v.id) >= 0) row.played = false;
+          const hr = await ev(page, pgFinish, { id: v.id, kase, tempo: opt.noTempo ? false : undefined, hero: true }, T_RENDER);
+          row.hero[kase] = hr.last < 0 ? null : r2(hr.last); row.still[kase] = r2(hr.still);
+        }
+        if (row.dial) for (const [kase] of FINISH_CASES) {
+          const r = await ev(page, pgFinish, { id: v.id, kase, tempo: false }, T_RENDER);
+          row.today[kase] = r.last < 0 ? null : r2(r.last);
+        }
+        const n = takeNotes(page);
+        row.errors.push(...n.errors, ...n.warnings.filter((w) => ENGINE_WARN.test(w)));
+      } catch (e) {
+        row.errors.push(String(e && e.message || e));
+        if (page) await page.close().catch(() => {});
+        page = null;
+      }
+      rows.push(row);
+      log("art-qa: finish " + v.id + "  " + FINISH_CASES.map(([k]) => (row.finish[k] == null ? "n/a" : row.finish[k].toFixed(2) + " s")).join(" / ") +
+        "  (the picture " + FINISH_CASES.map(([k]) => (row.hero[k] == null ? "n/a" : row.hero[k].toFixed(2) + " s")).join(" / ") + ")" +
+        (row.dial ? "  dial x" + row.dial.x : "") + (row.errors.length ? "  (" + row.errors[0] + ")" : ""));
+    }
+    if (page) await page.close();
+  } finally {
+    await browser.close().catch(() => {});
+    await srv.close();
+  }
+  const key = (r) => (r.finish.mid == null ? 1e9 : r.finish.mid) + (r.hero.mid == null ? 1e9 : r.hero.mid) / 1e3 + (r.finish.streak == null ? 1e9 : r.finish.streak) / 1e6;
+  rows.sort((a, b) => key(a) - key(b) || a.id.localeCompare(b.id));
+  const holds = rows.find((r) => r.holds.mid) || { holds: {} };
+  const s = (v) => (v == null ? "n/a" : v.toFixed(2));
+  const head = ["#", "look", "mid " + (holds.holds.mid || 1.05).toFixed(2) + " s", "first " + (holds.holds.streak || 1.7).toFixed(2) + " s",
+    "picture", "", "still", "", "the owner's dial (today's pace: mid / first)"];
+  const body = rows.map((r, i) => [String(i + 1), r.name + " (" + r.id + ")" + (r.on ? "" : " [cut]") + (r.unindexed ? " [not indexed]" : "") + (r.played ? "" : " [did not play]"),
+    s(r.finish.mid), s(r.finish.streak), s(r.hero.mid), s(r.hero.streak), s(r.still.mid), s(r.still.streak),
+    r.dial ? "x" + r.dial.x + " from " + (r.dial.at ? Math.round(r.dial.at * 100) + "% of the hold" : "the slam") + " (" + s(r.today.mid) + " / " + s(r.today.streak) + ")" : "-"]);
+  const w = head.map((h, i) => Math.max(h.length, ...body.map((b) => b[i].length)));
+  const line = (c) => c.map((x, i) => (i === 1 || i === 8 ? x.padEnd(w[i]) : x.padStart(w[i]))).join("  ").replace(/\s+$/, "");
+  const table = ["When each loss moment is over, in seconds after the slam (quickest first; each pair: the mid moment, then the first loss).",
+    "mid / first: the last frame with any of the moment's ink on the card (the picture, the veil, the caption, the slam's rings",
+    "and sprays). picture: the look's own picture alone (a look that leaves the card ends early; one that holds its last pose",
+    "fades out with the hold). still: when that picture stops moving (before the hold's closing fade; 0.00: it never moves).", "",
+    line(head), ...body.map(line)].join("\n");
+  log("\n" + table + "\n");
+  fs.writeFileSync(path.join(OUT, "finish.txt"), table + "\n");
+  fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify({ mode: "finish", tempo: !opt.noTempo, cases: FINISH_CASES, rows, seconds: Math.round((Date.now() - t0) / 1000) }, null, 2));
+  log("art-qa: " + path.join(OUT, "finish.txt") + "  (" + Math.round((Date.now() - t0) / 1000) + " s)");
+  process.exit(rows.some((r) => r.errors.length) ? 1 : 0);
+}
 async function main() {
+  if (MODE === "finish") return finishMain();      // when each loss look's moment is over (the owner's standard)
   if (FX_KINDS.includes(MODE)) return fxMain();    // the FX layer's packs run on their own bench (below the scene's)
   const t0 = Date.now();
   const srv = await serve(opt.root, opt.port);

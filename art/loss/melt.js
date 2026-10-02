@@ -30,6 +30,8 @@
   T82ART.add("loss", "melt", {
     name: "Wax Melt",
     by: "A thick glossy pink L slams in, then melts: the stem slumps and leans, the toe droops, drips grow under it and their beads pinch off into a puddle on the baseline, and the whole puddle slides off the card.",
+    // the tempo dial (art/tempo.json): phase "melt" begins at 0.171 of E.dur, where the melting starts: fixed at 0.18 s (tM), so this is its place in a 1.05 s moment (0.106 of 1.7 s)
+    phases: { melt: 0.171 },
     hit: function (K, E) {
       var B = K.box, H = B.y1 - B.y0;
       K.flash(E.first ? 0.55 : 0.4); K.shake(Math.max(E.dur, 0.4), E.first ? 11 : 8);

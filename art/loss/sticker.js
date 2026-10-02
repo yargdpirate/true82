@@ -53,6 +53,8 @@
   T82ART.add("loss", "sticker", {
     name: "Slap Sticker",
     by: "A die-cut L sticker slaps on with a squash and a curling corner, hangs a beat, then peels off from that corner and flies away.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.55 of E.dur, where the peel starts (tp = dur - X, X = clamp(0.45 dur, 0.2, 0.55): exactly 0.55 up to 1.22 s, 0.676 at 1.7 s)
+    phases: { exit: 0.55 },
     prep: function (K) {
       var st = K.st;
       return [

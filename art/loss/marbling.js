@@ -1,7 +1,8 @@
 /* art/loss/marbling.js: Suminagashi. A pink ink drop falls down the line of the stem and lands on the elbow: rings of
    ink spread from it (pink, violet, a pink core, stock between them like marbled paper) and two combs drag them out,
-   one up the stem and one along the foot, so the rings become nested bands in the shape of an L. The water rings
-   once and stills; a violet echo ring drifts out. Then the combs are drawn back and the bands are drunk into the elbow.
+   one up the stem and one along the foot, so the rings become nested bands in the shape of an L. The drop's own ripple
+   is one small, faint ring that stays by the elbow. The water rings once and stills; a violet echo ring drifts out.
+   Then the combs are drawn back and the bands are drunk into the elbow.
    Plates: two scratch canvases (pink, violet) redrawn every frame: each band is the L filled in the ink's K.pat, its
    inner band knocked out (destination-out), so the nesting is real. Beats (s, x k for a short moment): drop 0 to .045,
    rings .045 to .12, stem comb .065 to .155, foot comb .115 to .195, ripple after; the exit takes the last .12 to .34 s. */
@@ -45,8 +46,9 @@
     hit: function (K, E) {
       var B = K.box, H = B.y1 - B.y0, k = K.clamp(E.dur / 0.9, 0.36, 1), x = B.cx - 0.18 * H, y = (B.y0 + B.y1) / 2 + 0.35 * H;
       K.flash(E.first ? 0.5 : 0.34); K.shake(Math.max(E.dur, 0.4), E.first ? 9 : 7);
-      K.ring({ x: x, y: y, delay: 0.045 * k, dur: 0.38, r0: 8, r1: 0.5 * H, w0: 7, ink: "night", cov: 0.7 });
-      K.ring({ x: x, y: y, delay: 0.07 * k, dur: 0.42, r0: 6, r1: 0.62 * H, w0: 4, ink: "loss", cov: 0.88 });
+      // the drop's ripple, kept small, faint and slow (the owner, 2026-10-02: the old two rings ran out across the card
+      // and tugged the eye away from the L): one violet ring that spreads a little past the elbow and fades there
+      K.ring({ x: x, y: y, delay: 0.045 * k, dur: 0.6, r0: 6, r1: 0.2 * H, w0: 3, ink: "night", cov: 0.42 });
     },
     draw: function (K, E, e) {
       var st = K.st, g = K.g, B = K.box, f = K.fade(E, e), H = B.y1 - B.y0, d = K.d, c = K.clamp, i, j, x, b, a, o, hh;

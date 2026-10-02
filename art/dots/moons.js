@@ -1,6 +1,7 @@
 /* art/dots/moons.js: Phases. A win rises and waxes to a full aqua moon (craters left as stock, a white lit limb); a loss
-   lands full and wanes to a bold pink crescent over its dusty dark side. Streaks wax brighter: a halo of white dots
-   at 10, a wider one at 20, a white-hot moon at 30. */
+   lands full and wanes to a bold pink crescent over its dusty dark side. A streak leaves no mark on the settled stamp
+   (the owner's rule): the 30th straight win rests exactly like the first, with no halo; only the burst at every tenth
+   win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2;
@@ -19,7 +20,7 @@
   }
   T82ART.add("dots", "moons", {
     name: "Phases",
-    by: "Wins rise and wax to a full aqua moon; a loss wanes to a bold pink crescent over the dusty dark side. Streaks wax brighter.",
+    by: "Wins rise and wax to a full aqua moon (a white burst on every tenth straight); a loss wanes to a bold pink crescent over the dusty dark side.",
     reach: { w: 1.9, l: 1.9 },
     live: { w: 0.3, l: 0.7 },
     inks: { a: "win", b: "light", c: "loss" },
@@ -35,16 +36,11 @@
       craters(g, D, R);
       g.restore();
     },
-    b: function (K, g, D, c, R, e) {
+    b: function (K, g, D, c, R, e) {  // white: the lit limb, a thin crescent down the moon's right edge
       if (!D.win) return;
-      var t = K.ease.out(e / 0.26), s = D.streak, x = c[0], y = c[1] + (1 - t) * 0.5 * R, q, h;
+      var t = K.ease.out(e / 0.26), x = c[0], y = c[1] + (1 - t) * 0.5 * R;
       g.fillStyle = K.tone(0.95);
       g.beginPath(); g.arc(x, y, R * 1.02, 0, TAU); g.arc(x + 0.2 * R, y + 0.2 * R, R * 0.92, 0, TAU, true); g.fill();
-      if (s < 10 || t < 0.75) return;
-      if (s >= 30) { g.save(); g.translate(x, y); g.fillStyle = K.tone(0.6); lit(g, R * 1.02, 1); g.fill(); craters(g, D, R); g.restore(); }
-      q = s >= 20 ? 1.62 : 1.38; h = g.createRadialGradient(x, y, R * 0.95, x, y, R * q * t);
-      h.addColorStop(0, K.tone(s >= 20 ? 0.95 : 0.8)); h.addColorStop(1, K.tone(0));
-      g.fillStyle = h; g.beginPath(); g.arc(x, y, R * q * t, 0, TAU); g.arc(x, y, R * 0.98, 0, TAU, true); g.fill();
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

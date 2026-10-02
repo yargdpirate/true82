@@ -25,9 +25,12 @@
        opts: id (this look, not the dealt one), seed, label, big (82-0 / SUPERNOVA scale), rect ({x, y, w, h}
        instead of el's), box (the element K.shake should move; default el's card)
        a slot's draw(K, ev, e) gets ev = { x, y, w, h, cx, cy (el's rect and center, viewport css px), W, H (the
-       viewport), area ({x, y, w, h}: el's card, the room a celebration may fill), seed, label, big, el, box }; an
-       optional hit(K, ev) runs once as the beat starts
+       viewport), area ({x, y, w, h}: el's card, the room a celebration may fill), seed, label, big, el, box, and on
+       every Heat Check beat m and ladder: the game's own multipliers, opts.m and opts.ladder }; an optional hit(K, ev)
+       runs once as the beat starts
    T82FX.stop()                           ends everything, takes the layer off and frees every printed plate
+   T82FX.end(kind)                        ends that kind's beats now (its screen went) and keeps every look's prep
+   T82FX.ready(kind, id)                  whether that look's prep is all printed (default classic)
    T82FX.qa                               the bench's hooks (docs/art-lab/qa.html, tools/art-qa.mjs)
    The kit K a pack draws with: the reel's shared half (K.inks with hot, good and you added, K.pat, K.plate, K.screen,
    K.levels, K.tone, K.rgb, K.reg, K.tile, K.text, K.font, K.rand, K.ease, K.fade, K.blend...) on K.g, the layer in
@@ -48,13 +51,15 @@
   var Z = 300;
   var FLASH_MAX = 0.72, FLASH_DUR = 0.26;          // the reel's: never stronger than the first loss's flash
   var EMOJI_FACE = "\"Apple Color Emoji\",\"Segoe UI Emoji\",\"Noto Color Emoji\",sans-serif";
+  // The once-a-page warm-ups, each in an idle moment of its own: the emoji face and a first separation only ahead of a
+  // look whose prep prints riso emoji (K.emojiJobs), the theme's faces ahead of a dealt look's jobs (art/CONTRACT-FX.md)
   var WARM = [["emoji", 0], ["separation", 0], ["mono", 700], ["disp", 800], ["disp", 700], ["mono", 500]];
 
   var CV = null, G = null, W = 0, H = 0, D = 1;   // the layer, its context, its size in css px, device px per css px
   var BASE = null;                                 // the shared kit: T82RISO.kit plus the FX parts
   var PACKS = {}, DEAD = {}, DEALT = {}, EMO = {}, SOLVE = {}, WARNED = {};
   var FX = [], raf = 0, cur = null, seq = 0, listedIn = null;
-  var QUEUE = [], idleOn = false, warmed = 0;
+  var QUEUE = [], idleOn = false, WARMED = {};      // WARMED: which of WARM have run on this page
   var FLASH = { t: -1e9, s: 0, ink: "light", last: -1e9 };
   var QA = { clock: null, manual: false };
 
@@ -77,7 +82,18 @@
     if (Array.isArray(o)) { for (var i = 0; i < o.length; i++) eachCanvas(o[i], fn, depth + 1, seen); return; }
     for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) eachCanvas(o[k], fn, depth + 1, seen);
   }
-  function freeCanvases(st) { eachCanvas(st, function (c) { c.width = 0; c.height = 0; }, 0, []); }
+  // keep: canvases that are not one look's to free (shared())
+  function freeCanvases(st, keep) { eachCanvas(st, function (c) { if (!keep || keep.indexOf(c) < 0) { c.width = 0; c.height = 0; } }, 0, []); }
+  // The canvases every look shares: the riso emoji sheets (EMO is one cache, so two looks that print the same emoji at
+  // the same size and inks hold the very same sheet: classic's 24 px flame is emojifire's) and the kit's screen tiles
+  // (the reel's own cache). A look that throws must never blank them, or classic, the look that carries its moment on,
+  // and every other look holding them would print nothing for the rest of the session. stop() frees the sheets itself.
+  var TILED = [];
+  function shared() {
+    var keep = TILED.slice(), k;
+    for (k in EMO) if (EMO.hasOwnProperty(k)) { keep.push(EMO[k].print); (EMO[k].plates || []).forEach(function (c) { keep.push(c); }); }
+    return keep;
+  }
   function canvasBytes(st) { var n = 0; eachCanvas(st, function (c) { n += c.width * c.height * 4; }, 0, []); return n; }
 
   /* ---- the layer: one canvas for the session, on the page only while something prints ---- */
@@ -117,6 +133,8 @@
     var K = window.T82RISO.kit(document.documentElement, G);
     CV.style.mixBlendMode = K.blend;               // the inks meet the screen under them as they meet the stock
     K.g = G; K.e = 0; K.st = null;
+    var tile0 = K.tile;                            // the reel's cached tile: noted, so no stop or throw ever blanks it
+    K.tile = function (ink, cov) { var t = tile0(ink, cov); if (t && TILED.indexOf(t) < 0) TILED.push(t); return t; };
     K.emoji = emoji; K.emojiJobs = emojiJobs; K.sprite = sprite; K.dots = dots; K.shake = shake; K.flash = flash; K.ring = ring; K.spark = spark;
     BASE = K;
     return K;
@@ -253,16 +271,17 @@
   function emoji(ch, px, inks, o) { var b = separation(ch, px, inks, o); while (b.step()) { /* every stage, now */ } return b.em; }
   // Prep's way to print riso emoji: jobs that print each [name, char, px, inks, opts] of the list into st (default the
   // pack's K.st) one stage per job. return K.emojiJobs([["flame", "\uD83D\uDD25", 64, ["hot", "dusk", "loss"]]]);
+  function emoJob(fn) { fn.emo = 1; return fn; }  // marks a separation stage: the emoji warm-ups run before the first
   function emojiJobs(list, st) {
     var jobs = [];
     st = st || (this && this.st) || {};
     (Array.isArray(list) ? list : []).forEach(function (it) {
       var b = null, n = Math.min(3, Array.isArray(it[3]) && it[3].length ? it[3].length : 1) + 2;
-      for (var k = 0; k < n; k++) jobs.push(function () {
+      for (var k = 0; k < n; k++) jobs.push(emoJob(function () {
         if (st[it[0]]) return;
         if (!b) b = separation(it[1], it[2], it[3], it[4]);
         if (!b.step()) st[it[0]] = b.em;
-      });
+      }));
     });
     return jobs;
   }
@@ -273,6 +292,7 @@
   // a stretch in flight.
   function sprite(g, em, x, y, s, rot, a) {
     if (!em || !(em.print || em.plates)) return;
+    if (em.print && !em.print.width) return;       // a sheet already let go (a stop mid-frame): nothing to print, never a throw
     g = g || G;
     var sx = s == null ? 1 : Array.isArray(s) ? +s[0] : +s, sy = s == null ? 1 : Array.isArray(s) ? +s[1] : +s;
     a = a == null ? 1 : clamp(+a, 0, 1); rot = +rot || 0;
@@ -285,6 +305,7 @@
     if (!rot && sx === 1 && sy === 1 && g.getTransform) { m = g.getTransform(); if (m.b || m.c || Math.abs(m.a - m.d) > 1e-6) m = null; }
     for (i = 0; i < list.length; i++) {
       r = em.print ? [0, 0] : em.reg && em.reg[i] || [0, 0];
+      if (!list[i] || !list[i].width) continue;
       g.save();
       if (m) {                                     // upright and unscaled: a straight copy onto the device pixels
         g.setTransform(1, 0, 0, 1, 0, 0);
@@ -324,6 +345,10 @@
     if (t - FLASH.last < gap) return false;
     ink = ink || "light";
     BASE.rgb(ink);
+    // the reel's loss flash lights the same screen (a mid-season save, then the resumed reel): the gap holds across the
+    // two engines on one shared clock (T82RISO.flashClaim; an older reel-riso.js without it: this layer's own gap only)
+    var R = window.T82RISO;
+    if (R && typeof R.flashClaim === "function" && !R.flashClaim("fx")) return false;
     FLASH.last = t; FLASH.t = t; FLASH.s = clamp(+s || 0, 0, FLASH_MAX); FLASH.ink = ink;
     if (cur) cur.flashed = true;
     return true;
@@ -564,29 +589,44 @@
     if (pk.builtin) { pk.jobs = []; pk.ji = 0; warn("fx:" + pk.kind, "riso-fx: the built-in " + pk.kind + " threw:", err); return; }
     DEAD[pk.kind + ":" + pk.id] = true;
     pk.dead = true;
-    freeCanvases(pk.K.st);
+    freeCanvases(pk.K.st, shared());               // its own plates go; the sheets and tiles other looks share stay
     pk.K.st = {};
     delete PACKS[pk.kind + ":" + pk.id];
     warn("art:" + pk.kind + ":" + pk.id, "art " + pk.kind + ":" + pk.id + " is off for this session (classic plays instead):", err);
   }
 
-  /* ---- prep: a pack's jobs, one per idle moment (the prep body runs with the first) ---- */
-  function pendingOf(pk) { return pk.dead ? 0 : !pk.jobs ? 1 : pk.jobs.length - pk.ji; }
+  /* ---- prep: a pack's jobs, one per idle moment. In the idle pass the prep body (it lists the jobs) runs in a moment
+     of its own, so the warm-ups can follow what the jobs print; a play that has to print now runs it with the first.
+     A look with no prep has nothing to prime: it never joins the queue, and it is ready from the start. ---- */
+  function pendingOf(pk) { return pk.dead ? 0 : !pk.jobs ? (typeof pk.def.prep === "function" ? 1 : 0) : pk.jobs.length - pk.ji; }
+  function listJobs(pk) {
+    try { var js = typeof pk.def.prep === "function" ? pk.def.prep(pk.K) : []; pk.jobs = Array.isArray(js) ? js : []; }
+    catch (err) { kill(pk, err); }
+  }
   function stepPack(pk) {
     if (pendingOf(pk) <= 0) return false;
-    try {
-      if (!pk.jobs) { var js = typeof pk.def.prep === "function" ? pk.def.prep(pk.K) : []; pk.jobs = Array.isArray(js) ? js : []; }
-      if (pk.ji < pk.jobs.length) { var f = pk.jobs[pk.ji++]; if (typeof f === "function") f(); }
-    } catch (err) { kill(pk, err); }
+    if (!pk.jobs) { listJobs(pk); if (pk.dead) return true; }
+    try { if (pk.ji < pk.jobs.length) { var f = pk.jobs[pk.ji++]; if (typeof f === "function") f(); } }
+    catch (err) { kill(pk, err); }
     return true;
+  }
+  // the next warm-up this pack wants before its first job, or -1: the emoji pair only ahead of emoji stages; the faces
+  // only ahead of a dealt look (classic sets no type of its own)
+  function warmFor(pk) {
+    var emo = (pk.jobs || []).some(function (j) { return j && j.emo; });
+    for (var i = 0; i < WARM.length; i++) if (!WARMED[i] && (i < 2 ? emo : !pk.builtin)) return i;
+    return -1;
   }
   // what the idle pass did not reach runs now (prime avoids this: the moment should never pay for printing)
   function flush(pk) { for (var n = 0; pendingOf(pk) > 0 && n < 4000; n++) stepPack(pk); }
   function idleStep() {                            // one face warm-up ("warm") or one job (true); false when nothing is pending
     QUEUE = QUEUE.filter(function (p) { return !p.dead && pendingOf(p) > 0 && PACKS[p.kind + ":" + p.id] === p; });
     if (!QUEUE.length) return false;
-    if (warmed < WARM.length && (!QUEUE[0].builtin || !warmed)) {   // a face's first canvas text costs up to ~60 ms: not inside a job
-      var f = WARM[warmed++];
+    var pk = QUEUE[0], wi;
+    if (!pk.jobs) { listJobs(pk); return true; }     // the prep body alone: it says what the jobs will print
+    if (pk.ji === 0 && (wi = warmFor(pk)) >= 0) {   // a face's first canvas text costs up to ~60 ms: not inside a job
+      var f = WARM[wi];
+      WARMED[wi] = true;
       if (f[0] === "emoji") {                      // the emoji face's first glyph (the font loads), on a scrap canvas
         var c = cv(48, 48), x = c.getContext("2d");
         x.font = "40px " + EMOJI_FACE; x.fillText("\uD83D\uDD25", 0, 40); x.getImageData(0, 0, 1, 1); c.width = 0;
@@ -594,7 +634,7 @@
       else { G.font = BASE.font(f[1], 40, f[0]); G.measureText("82"); }
       return "warm";
     }
-    return stepPack(QUEUE[0]);
+    return stepPack(pk);
   }
   function idle(fn) { if (typeof requestIdleCallback === "function") requestIdleCallback(fn, { timeout: 200 }); else setTimeout(fn, 16); }
   function kick() {
@@ -622,7 +662,17 @@
     return { x: x, y: y, w: w, h: h, cx: x + w / 2, cy: y + h / 2, W: W, H: H, area: area,
       seed: o.seed != null ? (+o.seed >>> 0) : hash(kind + "/" + slot + "/" + (++seq)),
       label: o.label != null ? String(o.label) : el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "",
-      big: !!o.big, el: el || null, box: box };
+      big: !!o.big, el: el || null, box: box, m: num(o.m), ladder: ladderOf(o.ladder) };
+  }
+  // The Heat Check's numbers as the game has them (app.js reads HH_SEGMENTS; the owner retunes the ladder, so a pack
+  // prints these, never its own): ev.m, the tier's multiplier, and ev.ladder, every tier's { label, m } in wheel order.
+  // null when the caller gave none (a pack falls back to its own copy then).
+  function num(v) { return typeof v === "number" && isFinite(v) ? v : null; }
+  function ladderOf(l) {
+    if (!Array.isArray(l)) return null;
+    var out = [];
+    for (var i = 0; i < l.length; i++) { var r = l[i]; if (!r || num(r.m) === null) return null; out.push({ label: String(r.label == null ? "" : r.label), m: r.m }); }
+    return out.length ? out : null;
   }
   function durOf(sd) { return typeof sd.dur === "number" && sd.dur > 0 ? clamp(sd.dur, 0.1, 8) : 1; }
   function playable(kind, id, slot) {
@@ -698,27 +748,56 @@
       return 0;
     }
   }
+  // The prep goes in the order a run's moments come, not the order their files happen to arrive: a perk can land in
+  // the draft, the Heat Check comes in or after the season, the 82-0 fireworks at its end. Within a kind classic goes
+  // first: it is a few small jobs, and it is what stands in (app.js fxLook) until the dealt look is all printed. A
+  // look primed later but needed sooner goes ahead (between two jobs).
+  var RANK = { perk: 0, hot: 1, goat: 2 };
+  function rankOf(pk) { return RANK[pk.kind] * 2 + (pk.builtin ? 0 : 1); }
   function prime(kind, id) {
     try {
       if (!SLOTS.hasOwnProperty(kind) || !kit()) return false;
       builtins();
       var pk = packOf(kind, typeof id === "string" && id ? id : "classic");
       if (!pk || pk.dead) return false;
-      if (QUEUE.indexOf(pk) < 0) QUEUE.push(pk);
+      if (QUEUE.indexOf(pk) < 0 && pendingOf(pk) > 0) {   // a look with no prep (or all printed) has nothing to prime
+        var at = QUEUE.length;
+        while (at > 0 && rankOf(QUEUE[at - 1]) > rankOf(pk)) at--;
+        QUEUE.splice(at, 0, pk);
+      }
+      // a look that leaves a slot out plays classic for it: classic is printed too, so that moment never pays either
+      if (!pk.builtin && SLOTS[kind].some(function (s) { var sd = pk.def.slots[s]; return !sd || typeof sd.draw !== "function"; })) prime(kind, "classic");
       kick();
       return true;
     } catch (err) { return false; }
   }
+  // whether a look's prep is all printed, so a play now pays nothing (app.js lets a primed classic stand in for a dealt
+  // look still printing: its file just arrived)
+  function ready(kind, id) {
+    if (!SLOTS.hasOwnProperty(kind) || !BASE) return false;
+    var pk = PACKS[kind + ":" + (typeof id === "string" && id ? id : "classic")];
+    return !!pk && !pk.dead && pendingOf(pk) === 0;
+  }
   function use(kind, id) {
     if (!SLOTS.hasOwnProperty(kind)) return;
     if (typeof id === "string" && /^[a-z0-9-]+$/.test(id)) DEALT[kind] = id; else delete DEALT[kind];
+  }
+  // One kind's beats end now, every look's prep kept: the Heat Check's card goes (SEE YOUR TEAM, BACK TO THE SEASON)
+  // while what comes next (the results' 82-0 volley, the resumed reel's shells) still needs its printed plates. The
+  // layer comes off when nothing else plays.
+  function end(kind) {
+    if (!SLOTS.hasOwnProperty(kind)) return false;
+    var n = FX.length;
+    FX = FX.filter(function (fx) { return fx.kind !== kind; });
+    if (!FX.length) { FLASH.t = -1e9; unflash(); park(); }
+    return FX.length < n;
   }
   function stop() {
     FX = []; cur = null; QUEUE = [];
     FLASH.t = -1e9;
     unflash(); TILES = {}; STAMPS = {};
     park();
-    Object.keys(PACKS).forEach(function (k) { freeCanvases(PACKS[k].K.st); });
+    Object.keys(PACKS).forEach(function (k) { freeCanvases(PACKS[k].K.st, TILED); });   // the reel's tiles are the reel's
     PACKS = {};
     Object.keys(EMO).forEach(function (k) { [EMO[k].print].concat(EMO[k].plates || []).forEach(function (c) { if (c) { c.width = 0; c.height = 0; } }); });
     EMO = {};
@@ -752,5 +831,5 @@
   };
 
   builtins();
-  window.T82FX = { play: play, prime: prime, use: use, stop: stop, slots: JSON.parse(JSON.stringify(SLOTS)), qa: qa, version: "v67" };
+  window.T82FX = { play: play, prime: prime, ready: ready, use: use, stop: stop, end: end, slots: JSON.parse(JSON.stringify(SLOTS)), qa: qa, version: "v67" };
 })();

@@ -46,6 +46,8 @@
   T82ART.add("loss", "separation", {
     name: "Separation",
     by: "The L arrives as three ink plates from three sides, each with its registration target; they lock into one bullseye, then the drums miss and the plates fan apart.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.75 of E.dur, where the plates fly apart, each the way it came (dur - X, X = min(0.35, 0.25 dur): exactly 0.75 up to 1.4 s, 0.794 at 1.7 s)
+    phases: { exit: 0.75 },
     prep: function (K) {
       var st = K.st;
       return plate(K, st, 0, "pop", 0.42, 7101, 0.8).concat(plate(K, st, 1, "night", 0.44, 7102, 0.97), plate(K, st, 2, "loss", 0.95, 7103, 0.97));

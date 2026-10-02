@@ -1,5 +1,6 @@
 /* art/dots/letters.js: W and L. Type, set tiny: a win is a chunky aqua W pressed in, a loss is a pink L that smears
-   as the sheet drags. Streaks wear gold printer's rules: a rule under the W (10), over and under (20), boxed (30). */
+   as the sheet drags. A streak leaves no mark on the settled stamp (the owner's rule): the 30th straight win rests
+   exactly like the first, with no printer's rules around it; only the burst at every tenth win moves. */
 (function () {
   "use strict";
   var PI = Math.PI, M = Math;
@@ -14,10 +15,10 @@
   }
   T82ART.add("dots", "letters", {
     name: "W and L",
-    by: "Wins are chunky aqua W's pressed in, losses are a pink L smeared by the drag; streaks are boxed in gold printer's rules.",
+    by: "Wins are chunky aqua W's pressed in (a gold burst on every tenth straight), losses are a pink L smeared by the drag.",
     reach: { w: 2, l: 2.4 },
     live: { w: 0.3, l: 0.7 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0);
       D.t = (r() - 0.5) * (D.win ? 0.1 : 0.34); D.sm = 0.8 + r() * 0.4;
@@ -27,14 +28,6 @@
       var p = K.clamp(e / 0.07, 0, 1), z = 1 + 0.55 * (1 - p) * (1 - p), q = M.sin(K.clamp((e - 0.07) / 0.13, 0, 1) * PI);
       g.save(); g.translate(c[0], c[1] + R * 0.02); g.rotate(D.t); g.scale(z * (1 + 0.08 * q), z * (1 - 0.1 * q));
       g.strokeStyle = K.tone(0.96); W(g, R); g.restore();
-    },
-    b: function (K, g, D, c, R, e) {
-      if (!D.win || D.streak < 10 || e < 0.05) return;
-      var n = D.streak >= 30 ? 3 : D.streak >= 20 ? 2 : 1, k = K.ease.out((e - 0.05) / 0.12), w = R * 0.24;
-      g.fillStyle = g.strokeStyle = K.tone(0.95); g.lineWidth = w;
-      if (n > 2) { g.strokeRect(c[0] - R * 1.28 * k, c[1] - R * 1.28, R * 2.56 * k, R * 2.56); return; }
-      g.fillRect(c[0] - R * k, c[1] + R * 1.1, R * 2 * k, w);
-      if (n > 1) g.fillRect(c[0] - R * k, c[1] - R * 1.1 - w, R * 2 * k, w);
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

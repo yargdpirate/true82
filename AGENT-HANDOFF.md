@@ -1,11 +1,11 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING (2026-10-01, evening): THE ART LIBRARY (v67) IS ON BRANCH `art-variety`, NOT LIVE. Read section 0000000.**
-> The owner asked for "a Louvre" of riso art: many versions of the reel's loss L, the ledger dots, the results picture,
-> special 82-0 pictures, Hot Hand effects and the Presti REFUND / FIRE SALE pop-ups. The system and about 80 pieces
-> are built and on the preview; his Art Lab is https://art-variety.true82.pages.dev/docs/art-lab/ . He will paste back
-> an `ART-LAB PICKS v1` code (loves, cuts, and "yes, but" notes). `main` and `c-code-clean` are untouched (v66.4 live).
-> The session stopped because his weekly usage was at 91%: production may have been cut off mid-run (0000000, "Pending").
+> **FIRST THING (2026-10-02): THE ART LIBRARY WITH THE OWNER'S FIRST PICKS (v67.2, key `20261002-v67-2`) IS ON
+> `c-code-clean` (the preview, merged with main's v66.5) AND `art-variety`. NOT LIVE: `main` is untouched and merges
+> only at his word. Read section 0000000.** His `ART-LAB PICKS v1` (art/PICKS.md, verbatim, with his answers) is
+> applied: 12 cuts switched off, his speed notes on a dial he can undo line by line (art/tempo.json), the dagger,
+> arcade, jam, marbling and wave fixes, no streak mark left on any settled dot, and no art downloads on a slow link.
+> Waiting on him: the standard finish time (the table in 0000000) and the questions listed there.
 
 > **FIRST THING (2026-09-29, late night): v66.4 IS LIVE ON MAIN; section 000000 has everything.** The season's first
 > three nights are special Dailies built for first-timers (an influencer films the game that week): 10/20 Opening Night
@@ -48,7 +48,138 @@ Read this file before editing. It summarizes the current architecture, the recen
 
 ---
 
-## 0000000. START HERE (2026-10-01): V67, THE ART LIBRARY (BRANCH art-variety, NOT LIVE)
+## 0000000. START HERE (2026-10-02): V67.2, THE ART LIBRARY WITH HIS FIRST PICKS (c-code-clean + art-variety, NOT LIVE)
+
+### 2026-10-02: his first picks, applied (v67.2)
+
+**Where:** branch `art-variety` (the art alone: commit "v67.2: the owner's first art picks") and `c-code-clean`
+(that commit merged with origin/main's v66.5, the Tribune's key lock; art-variety carries the merge too). Previews:
+https://art-variety.true82.pages.dev/ (lab /docs/art-lab/) and https://c-code-clean.true82.pages.dev/ . **`main` is
+untouched (v66.5 live); the owner merges at his word** (his merge command is in this file's opening banners).
+BUILD_V `v67.2`; every changed keyed file carries `20261002-v67-2`.
+
+**His picks** (art/PICKS.md has his paste verbatim and his answers to the follow-up questions):
+- **Cuts** (switched off in art/enabled.json `off`, files kept; the lab marks them OFF IN GAME): loss tear, woodtype;
+  dots arrows, balls, bolts, moons, pixels, tally; scene ridgelines; perk classic, halftone, moneyprint. enabled.json
+  may now name a built-in: perk classic is never dealt, but still stands in while a dealt perk's file is loading.
+- **Look fixes:** dots/dagger (wins are slanted aqua daggers with a tapered blade, bent guard and pommel, never a
+  cross; losses are pink asterisks: the reel's own pair); hot/arcade prints the game's live multiplier (ev.m, then
+  ev.ladder, then today's ladder as a fallback: every Hot Hand beat now hands riso-fx.js `ev.m` and `ev.ladder` from
+  HH_SEGMENTS, so the other session's v68 ladder, COLD 0.9 to SUPERNOVA 1.3, shows by itself once it lands); hot/jam
+  (the ball passes in front of the back half of the rim, behind the net and the front half); loss/marbling (the
+  elbow's opening ripple is one small faint slow ring now); scene/wave (redrawn as a breaking wave that travels left,
+  the Great Wave's way: the season climbs the face, the lip throws over a hollow, the sun sits low in it).
+- **Streaks** ("animations are great, persistent remainders on streaks of it are not"): no dot set leaves a streak
+  mark on a settled stamp, classic included (its thicker rim at 10, ring at 20 and glint at 30 are gone; a 30-straight
+  coin rests like the first). The momentary bursts stay (classic's every tenth straight). The rule is in
+  art/CONTRACT.md ("A dot set"); every set was pixel-checked (a 30-straight month prints identically to a 1-straight).
+  NOTE: this is the one change to the built-in look (classic dots) with no art dealt; the rest of classic and the lake
+  are as before.
+- **Kept as is for now:** Big Type's caption city. **Future note only** (art/CONCEPTS.md): gangrun, ghosting and
+  separation as possible looks dedicated to multi-L months.
+
+**The speed dial (his "save current animation pace in case I change my mind"):** art/tempo.json holds his 17 notes,
+one line per look: `"loss/crumple": { "from": "exit", "x": 1.3 }`. `from` is a phase the look's file declares
+(`phases: { exit: 0.362 }` on its def: the fraction of the hold where that part begins, measured at the 1.05 s mid
+moment) or 0 for the whole moment; `x` is how many times faster from there (1 to 3). The reel plays the look at its own
+pace up to the phase, then x times as fast, and hands that clock to its veil, picture, caption and fade alike, so it
+simply finishes early and the card sits clean until the hold ends. **To restore today's pace for a look: delete its
+line**, then `node tools/art-index.js` (it writes each line into art-index.js: no extra download), stamp a new key,
+`node test.js`. To change a percentage, edit `x` the same way. A bad line is skipped with a warning and test.js fails
+until it is fixed. The lab's L tab has a Speed toggle (YOUR NOTES / BEFORE) so he can compare, and each dialed look
+wears a tag like "30% FASTER · EXIT". Judgment calls in the phases (his to overrule): scratch's "tearing exit" starts
+at the rip's start (the slow hinge too); typewriter's starts once the DING has fully appeared (the bell + 0.06 s);
+separation's starts as the three plates fly out (the slow fan-apart before it is not sped). Several exits are fixed
+in seconds, so one fraction is exact at 1.05 s and starts 0.1 to 0.25 s early in a 1.7 s moment.
+
+**Loading (his "handle preloading smartly"):** on Data Saver or a connection the browser rates slow-2g, 2g or 3g,
+`T82ART.deal` hands out nothing: no art downloads, the built-ins play, the bags are untouched (a test build's `?art=`
+still wins). Safari and every iPhone browser have no `navigator.connection`, so iPhones always take the normal path,
+which is staged: during the draft, the first 4 loss looks, the dot set, the scene (and in Presti the perk and Heat
+Check looks); when the reel opens, the other 10 loss looks; the 82-0 looks only if the season can still end 82-0.
+Priming: a look with no prep is never primed; the emoji warm-ups run only ahead of an emoji look; the 82-0 fireworks
+are primed only in Kaman or once a season can still end 82-0.
+
+**Finish times (his "which is the quickest finishing animation?")** from `node tools/art-qa.mjs finish loss`: the
+last frame with any of the look's ink on the card, in the mid moment (1.05 s hold) and the first loss after a streak
+(1.70 s hold), with his dial applied; quickest first.
+
+```
+When each loss moment is over, in seconds after the slam (quickest first; each pair: the mid moment, then the first loss).
+mid / first: the last frame with any of the moment's ink on the card (the picture, the veil, the caption, the slam's rings
+and sprays). picture: the look's own picture alone (a look that leaves the card ends early; one that holds its last pose
+fades out with the hold). still: when that picture stops moving (before the hold's closing fade; 0.00: it never moves).
+
+ #  look                        mid 1.05 s  first 1.70 s  picture        still        the owner's dial (today's pace: mid / first)
+ 1  Rubber Seal (seal)                0.87          1.40     0.87  1.40   0.70  1.23  x1.2 from the slam (1.03 / 1.68)
+ 2  Pull (squeegee)                   0.87          1.40     0.87  1.40   0.70  1.23  x1.2 from the slam (1.03 / 1.68)
+ 3  Crumpled (crumple)                0.88          1.43     0.82  1.37   0.73  1.28  x1.3 from 36% of the hold (1.03 / 1.68)
+ 4  Slap Sticker (sticker)            0.90          1.47     0.87  1.43   0.77  1.33  x1.4 from 55% of the hold (1.03 / 1.68)
+ 5  Fold-Out (fold)                   0.93          1.52     0.92  1.48   0.78  1.37  x1.3 from 55% of the hold (1.03 / 1.68)
+ 6  Wax Melt (melt)                   0.93          1.50     0.93  1.45   0.75  1.33  x1.15 from 17% of the hold (1.03 / 1.68)
+ 7  Try Square (square)               0.93          1.52     0.93  1.52   0.78  1.37  x1.3 from 55% of the hold (1.03 / 1.68)
+ 8  Strikeover (typewriter)           0.95          1.55     0.95  1.55   0.80  1.40  x1.3 from 65% of the hold (1.03 / 1.68)
+ 9  Ransom Note (ransom)              0.97          1.58     0.92  1.52   0.80  1.42  x1.2 from 62% of the hold (1.03 / 1.68)
+10  Misfeed (misfeed)                 0.97          1.58     0.95  1.57   0.83  1.43  x1.35 from 75% of the hold (1.03 / 1.68)
+11  Scratch-Off (scratch)             0.97          1.57     0.97  1.57   0.80  1.40  x1.2 from 57% of the hold (1.03 / 1.68)
+12  Receipt (receipt)                 0.97          1.58     0.97  1.58   0.80  1.42  x1.2 from 61% of the hold (1.03 / 1.68)
+13  Ink Spill (spill)                 0.98          1.60     0.98  1.60   0.82  1.43  x1.2 from 70% of the hold (1.03 / 1.68)
+14  Caution Tape (tape)               0.98          1.60     0.98  1.60   0.83  1.43  x1.3 from 75% of the hold (1.03 / 1.68)
+15  Test Sheet (testsheet)            0.98          1.60     0.98  1.58   0.83  1.43  x1.3 from 75% of the hold (1.03 / 1.68)
+16  Overprint (overprint)             1.00          1.62     1.00  1.62   0.83  1.45  x1.2 from 75% of the hold (1.03 / 1.68)
+17  Separation (separation)           1.00          1.62     1.00  1.62   0.83  1.45  x1.2 from 75% of the hold (1.03 / 1.68)
+18  Brayer (brayer)                   1.03          1.68     0.83  1.45   0.83  1.47  -
+19  Split Fountain (fountain)         1.03          1.68     0.98  1.62   0.83  1.48  -
+20  Big Type (bigtype)                1.03          1.68     1.02  1.67   0.83  1.48  -
+21  Dot Ripple (ripple)               1.03          1.68     1.02  1.62   0.83  1.48  -
+22  Ink Blot (blot)                   1.03          1.68     1.03  1.68   0.83  1.48  -
+23  One Stroke (brush)                1.03          1.68     1.03  1.68   0.70  1.27  -
+24  Classic L (classic)               1.03          1.68     1.03  1.68   0.83  1.48  -
+25  Generation Loss (copier)          1.03          1.68     1.03  1.67   0.83  1.48  -
+26  Riso Drum (drum)                  1.03          1.68     1.03  1.68   0.83  1.48  -
+27  Block Shadow (extrude)            1.03          1.68     1.03  1.68   0.83  1.48  -
+28  Gang Run (gangrun)                1.03          1.68     1.03  1.68   0.83  1.48  -
+29  Ghosting (ghosting)               1.03          1.68     1.03  1.68   0.83  1.48  -
+30  Extra Extra (headline)            1.03          1.68     1.03  1.68   0.83  1.48  -
+31  Knockout (knockout)               1.03          1.68     1.03  1.68   0.83  1.48  -
+32  Line Screen (linescreen)          1.03          1.68     1.03  1.68   0.83  1.48  -
+33  Suminagashi (marbling)            1.03          1.68     1.03  1.68   0.83  1.48  -
+34  Moire (moire)                     1.03          1.68     1.03  1.68   0.83  1.48  -
+35  Op Art (opart)                    1.03          1.68     1.03  1.68   0.83  1.48  -
+36  Instant Film (polaroid)           1.03          1.68     1.03  1.68   0.83  1.48  -
+37  Running Dry (rundry)              1.03          1.68     1.03  1.68   0.83  1.48  -
+38  Set-Off (setoff)                  1.03          1.68     1.03  1.68   0.83  1.48  -
+39  Show-Through (showthrough)        1.03          1.68     1.03  1.68   0.83  1.48  -
+40  Spray Tag (spray)                 1.03          1.68     1.03  1.68   0.77  1.32  -
+41  Stencil (stencil)                 1.03          1.68     1.03  1.68   0.83  1.48  -
+42  The Rip (tear) [cut]              1.03          1.68     1.03  1.63   0.83  1.48  -
+43  Wood Type (woodtype) [cut]        1.03          1.68     1.03  1.68   0.80  1.27  -
+44  Trim (trim)                       1.05          1.68     1.03  1.68   0.83  1.48  -
+```
+
+Seen in the game (a 75-7 Classic season, ?art=loss:seal+crumple+sticker, Chromium 375x812): crumple's last frame came
+0.73 s into a 0.92 s hold, sticker's 0.78 s, seal's 1.20 s into a 1.48 s hold; a season on a reported 3g link
+dealt nothing, fetched nothing from art/ and played classic throughout. Every look without a dial keeps ink until the
+end of its hold: the shared closing fade runs to the end, and most pictures keep moving until it starts. So
+"standardizing" is his call between (a) a target such as "the picture is gone by N% of the hold" (more dial lines, or
+phases on every look) and (b) shorter holds for every loss (holdFor in reel-riso.js, which changes the whole reel's
+pacing).
+
+**Known flake:** on Node 24.18 `node test.js` sometimes dies with a segfault (exit 139, no FAIL line) inside the art
+bag tests, which build about 1,500 vm contexts in a row (3 runs in about 20 on 2026-10-02; every other run: 207 passed,
+0 failed). It is Node, not a check failing: run it again.
+
+**Questions waiting on him (2026-10-02):**
+1. The standard finish time (above).
+2. iPhones never report a slow link (no navigator.connection in Safari): is the staged loading enough there?
+3. The wave: does he want it travelling left (the Great Wave's way)? The poster's crest is kept about 20% smaller so
+   its foam stays off the roster names; it could run bigger behind the names. The sun now sits low in the hollow.
+4. The dagger set: keep the quick gold glint up each new dagger (gone by 0.25 s) and the asterisk's short drip?
+5. Arcade under the new ladder: COLD becomes a 0.9 penalty but still reads "x0.9 COMBO". Drop the word for COLD?
+6. Marbling: only the elbow ripple was calmed; the wavy outline after the combs and the violet echo ring are unchanged.
+7. Tally (cut): its slash on every fifth straight win was a streak mark and is gone; a one-line restore if it returns.
+
+### Before his picks (2026-10-01)
 
 **His words (2026-09-30):** the reel's giant L "gets pretty stale seeing the same L over again ... I want a ton of
 different variations ... if you saw 10 in a row, you're getting 10 different of them", the same for "that mountain
@@ -75,7 +206,7 @@ owner's rules and every brief).
   repeat) and lazy-loads only the dealt files when a draft starts: a season downloads the same few KB whatever the
   library's size. art-index.js is GENERATED (`node tools/art-index.js`), art/enabled.json switches a look off in the
   game (it stays in the lab).
-- The built-ins are today's look, pixel-identical to v66.4: `classic` loss and dots (reel-riso.js), `lake`
+- The built-ins are today's look, pixel-identical to v66.4 (except, since 2026-10-02, classic dots' streak marks): `classic` loss and dots (reel-riso.js), `lake`
   (results-riso.js), and riso versions of the old emoji sprays as `classic` hot/perk/goat (riso-fx.js).
 - riso-fx.js (`T82FX`): one full-screen riso layer, only while an effect plays; emoji are printed as ink separations
   (K.emoji). app.js calls it at the Heat Check's wheel lock and verdicts, REFUND / FIRE SALE, and every 82-0 volley; any

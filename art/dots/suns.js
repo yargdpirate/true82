@@ -1,6 +1,7 @@
-/* art/dots/suns.js: Sun and Cloud. A win is an aqua sun that rises spinning; a streak adds gold rays between the aqua ones
-   (10), a gold halftone halo (20) and a gold disc (30). A loss is a pink rain cloud that slams in from the side, squashes
-   and lets its rain run down in staggered streaks. */
+/* art/dots/suns.js: Sun and Cloud. A win is an aqua sun that rises spinning. A loss is a pink rain cloud that slams in
+   from the side, squashes and lets its rain run down in staggered streaks. A streak leaves no mark on the settled stamp
+   (the owner's rule): the 30th straight win rests exactly like the first, with no extra rays, halo or gold disc; only
+   the burst at every tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2;
@@ -20,10 +21,10 @@
   }
   T82ART.add("dots", "suns", {
     name: "Sun and Cloud",
-    by: "Wins rise as aqua suns (a streak adds gold rays, a halo, then a gold disc); losses are pink rain clouds that slam in and let their rain run.",
+    by: "Wins rise as aqua suns (a gold burst on every tenth straight); losses are pink rain clouds that slam in and let their rain run.",
     reach: { w: 2.2, l: 3.4 },
     live: { w: 0.32, l: 0.85 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0);
       D.rot = r() * PI / 4; D.k = r() < 0.5 ? 1 : -1; D.q = r(); D.dl = 0.7 + r() * 0.3;
@@ -31,21 +32,7 @@
     a: function (K, g, D, c, R, e) {
       if (!D.win) return;
       g.save(); pose(K, g, D, c, R, e); g.fillStyle = K.tone(0.96); g.beginPath(); rays(g, 0, 0.74, 1.3, 0.21, 8); g.fill();
-      if (D.streak < 30) { g.fillStyle = disc(g, K, 0.54, 0.97, 0.7); g.beginPath(); g.arc(0, 0, 0.54, 0, TAU); g.fill(); }  // the disc is dots shrinking to its rim
-      g.restore();
-    },
-    b: function (K, g, D, c, R, e) {  // gold: longer rays between (10), a halo (20), the disc (30)
-      if (!D.win || D.streak < 10) return;
-      var u = K.ease.out((e - 0.05) / 0.15), h;
-      g.save(); pose(K, g, D, c, R, e);
-      if (D.streak >= 20) {
-        h = g.createRadialGradient(0, 0, 0.6, 0, 0, 1.4); h.addColorStop(0, K.tone(0.5)); h.addColorStop(1, K.tone(0));
-        g.fillStyle = h; g.beginPath(); g.arc(0, 0, 1.4, 0, TAU); g.fill();
-        g.save(); g.globalCompositeOperation = "destination-out"; g.lineJoin = "round"; g.lineWidth = 0.12; g.fillStyle = K.tone(1);
-        g.beginPath(); rays(g, 0, 0.74, 1.3, 0.21, 8); if (D.streak < 30) { g.moveTo(0.54, 0); g.arc(0, 0, 0.54, 0, TAU); } g.fill(); g.stroke(); g.restore();
-      }
-      g.fillStyle = K.tone(0.95); g.beginPath(); rays(g, PI / 8, 0.74, 0.74 + 0.5 * u, 0.17, 8); g.fill();
-      if (D.streak >= 30) { g.fillStyle = disc(g, K, 0.54, 0.97, 0.78); g.beginPath(); g.arc(0, 0, 0.54 * u, 0, TAU); g.fill(); }
+      g.fillStyle = disc(g, K, 0.54, 0.97, 0.7); g.beginPath(); g.arc(0, 0, 0.54, 0, TAU); g.fill();  // the disc is dots shrinking to its rim
       g.restore();
     },
     c: function (K, g, D, c, R, e) {

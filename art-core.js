@@ -21,7 +21,14 @@
 
    Nothing here runs on its own: no download before a draft starts, no timers, and no document access until load()
    is called. Every storage call is wrapped (in private mode the bags live in memory for the visit). ES5, like the
-   engines; test.js runs the bag logic in node, where there is no window or document. */
+   engines; test.js runs the bag logic in node, where there is no window or document.
+
+   The owner's picks (2026-10-02): "handle preloading smartly to not drag performance for users with slower phones
+   and/or slow internet", and on Data Saver or a 2G/3G connection "skip downloading new looks and play the built-ins".
+   So deal() hands out nothing on a slow link (lean(): navigator.connection says saveData, or an effectiveType of
+   slow-2g, 2g or 3g): every moment plays its built-in, nothing downloads and the bags stay put. Safari has no
+   navigator.connection, so an iPhone always takes the normal path (app.js loads that in stages). And his speed dial
+   (art/tempo.json, which tools/art-index.js writes into each look's entry) rides the index: tempo(kind, id). */
 var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : (function () {
   "use strict";
   var KINDS = ["loss", "dots", "scene", "hot", "perk", "goat"];   // part two: the Heat Check, the Presti perks, 82-0
@@ -30,6 +37,8 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   var LIVE_HOST = /^(www\.)?true82\.net$/i;          // app.js's offLiveHost: QA forcing never works on the real site
   var REG = { loss: {}, dots: {}, scene: {}, hot: {}, perk: {}, goat: {} };   // kind -> id -> def (variants and built-ins)
   var INDEX = [], BYKEY = {};                        // art-index.js's entries, and each one by "kind/id"
+  var OFFB = {};                                     // "kind/id" -> 1: a built-in art/enabled.json switched off (never dealt)
+  var SLOW = /^(?:slow-2g|2g|3g)$/;                  // the connections that get no art downloads (the owner, 2026-10-02)
   var PENDING = {}, WAIT = {}, FAILED = {};          // "kind/id" -> a load in flight, its finisher, a load that failed
   var MEM = {}, SOLO = {};                           // the bags when the device will not keep them (private mode)
   var BASE = null;                                   // where the art files live: beside this file
@@ -52,20 +61,38 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
     return true;
   }
   function get(kind, id) { return isKind(kind) && typeof id === "string" && has(REG[kind], id) ? REG[kind][id] : null; }
-  // art-index.js hands over the library once: { kind, id, name, file: "art/<kind>/<id>.js?v=<key>", on }
-  function index(list) {
+  // art-index.js hands over the library once: { kind, id, name, file: "art/<kind>/<id>.js?v=<key>", on, tempo? }.
+  // opts.off: the built-ins art/enabled.json switched off ("perk/classic"): they still stand in for a look that is not
+  // there, but a bag never deals them.
+  function index(list, opts) {
     INDEX = (isArr(list) ? list : []).filter(function (en) {
       return en && isKind(en.kind) && isId(en.id) && typeof en.file === "string" && !!en.file;
-    }).map(function (en) { return { kind: en.kind, id: en.id, name: String(en.name || en.id), file: en.file, on: en.on === true, perfect: en.perfect === true }; });
+    }).map(function (en) {
+      return { kind: en.kind, id: en.id, name: String(en.name || en.id), file: en.file, on: en.on === true, perfect: en.perfect === true, tempo: dial(en.tempo) };
+    });
     BYKEY = {};
     INDEX.forEach(function (en) { if (!has(BYKEY, en.kind + "/" + en.id)) BYKEY[en.kind + "/" + en.id] = en; });
+    OFFB = {};
+    (opts && isArr(opts.off) ? opts.off : []).forEach(function (k) {
+      var p = String(k).split("/");
+      if (p.length === 2 && isKind(p[0]) && isId(p[1])) OFFB[p[0] + "/" + p[1]] = 1;
+    });
     return INDEX.length;
   }
+  // the owner's speed dial for one look (art/tempo.json): { from: a phase its def declares, or 0 (the whole moment),
+  // x: how many times faster from there, 1 to 3 }; anything else is no dial (the look plays at its own pace)
+  function dial(t) {
+    if (!t || typeof t !== "object") return null;
+    var x = +t.x, from = t.from;
+    if (!(x >= 1 && x <= 3) || !(from === 0 || isId(from))) return null;
+    return { from: from, x: x };
+  }
+  function tempo(kind, id) { var en = isKind(kind) && typeof id === "string" ? entry(kind, id) : null, t = en && en.tempo; return t ? { from: t.from, x: t.x } : null; }
   function entry(kind, id) { return has(BYKEY, kind + "/" + id) ? BYKEY[kind + "/" + id] : null; }
   // every index entry of a kind, loaded or not, on or off (the lab shows them all)
   function catalog(kind) {
     return INDEX.filter(function (en) { return en.kind === kind; }).map(function (en) {
-      return { kind: en.kind, id: en.id, name: en.name, file: en.file, on: en.on, perfect: en.perfect };
+      return { kind: en.kind, id: en.id, name: en.name, file: en.file, on: en.on, perfect: en.perfect, tempo: tempo(en.kind, en.id) };
     });
   }
   // part two: an 82-0 look (art-index.js reads perfect: true from the file without running it; a registered def
@@ -82,14 +109,25 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
     var def = get(kind, id);
     return !!def && def.builtin === true && (has(BUILTIN, kind) ? BUILTIN[kind] === id : !entry(kind, id));
   }
-  // the ids a bag deals: the index's "on" entries plus the built-ins the engines registered. The perfect looks are a
-  // bag of their own: enabled(kind) never lists one, enabled(kind, { perfect: true }) lists only them.
+  // the ids a bag deals: the index's "on" entries plus the built-ins the engines registered (less any art/enabled.json
+  // switched off: the owner cut perk classic on 2026-10-02, and it still stands in for a look not there yet). The
+  // perfect looks are a bag of their own: enabled(kind) never lists one, enabled(kind, { perfect: true }) only them.
   function enabled(kind, opts) {
     if (!isKind(kind)) return [];
     var want = !!(opts && opts.perfect), out = [], id;
     INDEX.forEach(function (en) { if (en.kind === kind && en.on) out.push(en.id); });
-    for (id in REG[kind]) if (has(REG[kind], id) && isBuiltin(kind, id)) out.push(id);
+    for (id in REG[kind]) if (has(REG[kind], id) && isBuiltin(kind, id) && !has(OFFB, kind + "/" + id)) out.push(id);
     return uniq(out).filter(function (x) { return isPerfect(kind, x) === want; });
+  }
+  // A slow link (the owner, 2026-10-02): Data Saver on, or a connection the browser rates slow-2g, 2g or 3g. Read at
+  // each deal, so a phone that turns Data Saver off gets the library on its next draft. Safari has no
+  // navigator.connection: false there.
+  function lean() {
+    try {
+      var n = typeof navigator !== "undefined" && navigator ? navigator : null;
+      var c = n ? n.connection || n.mozConnection || n.webkitConnection : null;
+      return !!c && (c.saveData === true || SLOW.test(String(c.effectiveType || "")));
+    } catch (err) { return false; }
   }
 
   /* ---- the loader ---- */
@@ -205,11 +243,13 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   // ordinary scene and an ordinary season never draws an 82-0 one; the ordinary bag's key is unchanged
   function bagName(kind, perfect) { return perfect ? kind + "-perfect" : kind; }
   // PEEK the next n ids of this device's bag (refilling as needed). Consumes nothing: two deals in a row agree.
-  // opts.perfect: deal from the perfect bag (the 82-0 scenes) instead.
+  // opts.perfect: deal from the perfect bag (the 82-0 scenes) instead. On a slow link (lean()) nothing: the built-ins
+  // play, nothing downloads, and the bag is not even read.
   function deal(kind, n, opts) {
     n = Math.max(0, Math.floor(+n || 0));
+    if (!n || lean()) return [];
     var on = enabled(kind, opts), name = bagName(kind, !!(opts && opts.perfect));
-    if (!n || !on.length) return [];
+    if (!on.length) return [];
     var bag = readBag(name), flat, c;
     tidy(bag, on);
     flat = [].concat.apply([], bag.b);
@@ -268,6 +308,6 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   }
 
   return { add: add, get: get, index: index, catalog: catalog, enabled: enabled, load: load, deal: deal, used: used,
-    skip: skip, forced: forced, perfect: isPerfect, KINDS: KINDS.slice(), LOAD_MS: LOAD_MS, version: "v67" };
+    skip: skip, forced: forced, perfect: isPerfect, tempo: tempo, lean: lean, KINDS: KINDS.slice(), LOAD_MS: LOAD_MS, version: "v67" };
 })();
 if (typeof window !== "undefined" && window) window.T82ART = T82ART;

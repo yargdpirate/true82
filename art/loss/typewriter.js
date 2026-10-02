@@ -36,6 +36,8 @@
   T82ART.add("loss", "typewriter", {
     name: "Strikeover",
     by: "A typewriter hammers the L again and again, each strike a little off the last in two ribbon inks, then the bell dings and the carriage zips the letter off the card.",
+    // the tempo dial (art/tempo.json): phase "ding" begins at 0.654 of E.dur, where the DING has fully popped in (the bell tD plus its 0.06 s pop: 0.687 s of 1.05 s; 0.771 of 1.7 s)
+    phases: { ding: 0.654 },
     prep: function (K) {
       var st = K.st;
       return [

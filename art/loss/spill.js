@@ -52,6 +52,8 @@
   T82ART.add("loss", "spill", {
     name: "Ink Spill",
     by: "A violet L-shaped channel opens in the card, a fat pink ink drop falls into the top of it with a crown splash, the puddle runs down the channel as if poured and swells over the rim while small drops keep plinking in; then it drains along the same path, and the last bulb falls off the toe, leaving the empty mold.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.7 of E.dur, where the channel drains (tE = dur - X, X = min(0.4, max(0.14, 0.3 dur)): exactly 0.7 up to 1.33 s, 0.765 at 1.7 s)
+    phases: { exit: 0.7 },
     hit: function (K, E) {
       var B = K.box, H = B.y1 - B.y0, G = geo(H), k = K.clamp(E.dur / 0.9, 0.36, 1), y = (B.y0 + B.y1) / 2 + G.yT + 0.1 * H;
       K.flash(E.first ? 0.55 : 0.4); K.shake(Math.max(E.dur, 0.4), E.first ? 10 : 8);

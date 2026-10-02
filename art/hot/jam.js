@@ -3,7 +3,7 @@
    fire singes the net, the nova's net burns away; the save bursts it into flaming balls, the miss clanks. */
 (function () {
   "use strict";
-  var TAU = Math.PI * 2;
+  var M = Math, TAU = M.PI * 2;
   var W = {
     cold: { l: "COLD", px: 54, f: "pop", s: [["night", 5]] },
     warm: { l: "HEATING UP", px: 54, f: "dusk", s: [["key", 5]] },
@@ -17,10 +17,10 @@
   };
   var BALL = "\uD83C\uDFC0", WARMB = ["dusk", "hot", "key"], COLDB = ["pop", "light", "night"], SAT = { sat: 1.3 };
   function k01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
-  function hsh(a, b) { var v = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return v - Math.floor(v); }
+  function hsh(a, b) { var v = M.sin(a * 12.9898 + b * 78.233) * 43758.5453; return v - M.floor(v); }
 
   function flame(g, x, y, ang, w, h, ln) {
-    var ax = Math.cos(ang), ay = Math.sin(ang), q = w / 2, i, u, v, F = [0, -1, 0.3, -0.95, 0.55, -0.65, 0.8, -0.28, 1, 0, 0.8, 0.28, 0.55, 0.65, 0.3, 0.95, 0, 1, -0.3, 0.6, -0.42, 0, -0.3, -0.6];
+    var ax = M.cos(ang), ay = M.sin(ang), q = w / 2, i, u, v, F = [0, -1, 0.3, -0.95, 0.55, -0.65, 0.8, -0.28, 1, 0, 0.8, 0.28, 0.55, 0.65, 0.3, 0.95, 0, 1, -0.3, 0.6, -0.42, 0, -0.3, -0.6];
     for (i = 0; i < F.length; i += 2) {
       u = F[i] * (F[i] < 0 ? q : h); v = F[i + 1] * q + (F[i] > 0 ? ln * F[i] * F[i] : 0);
       if (i) g.lineTo(x + ax * u - ay * v, y + ay * u + ax * v); else g.moveTo(x + ax * u - ay * v, y + ay * u + ax * v);
@@ -41,14 +41,14 @@
   function blit(K, E, x, y, s, rot) {
     var g = K.g, m = g.getTransform();
     g.save(); g.imageSmoothingEnabled = false;
-    if (!rot && s === 1) { g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(E.print, Math.round(m.a * (x - E.w / 2)), Math.round(m.d * (y - E.h / 2))); }
+    if (!rot && s === 1) { g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(E.print, M.round(m.a * (x - E.w / 2)), M.round(m.d * (y - E.h / 2))); }
     else { g.translate(x, y); if (rot) g.rotate(rot); g.scale(s, s); g.drawImage(E.print, -E.w / 2, -E.h / 2, E.w, E.h); }
     g.restore();
   }
   function call(K, ev, keys, y, e, t0, tx) {
     var p = k01((e - t0) / 0.11), fall = e > tx ? (e - tx) * (e - tx) : 0, f = 1, n = keys.length, i, E, s;
     if (e < t0) return;
-    for (i = 0; i < n; i++) { E = K.st[keys[i]]; if (!E || !E.print) return; f = Math.min(f, (ev.area.w - 12) / E.w); }
+    for (i = 0; i < n; i++) { E = K.st[keys[i]]; if (!E || !E.print) return; f = M.min(f, (ev.area.w - 12) / E.w); }
     s = f * (1 + 0.4 * (1 - K.ease.out(p)));
     for (i = 0; i < n; i++) blit(K, K.st[keys[i]], ev.cx + 240 * fall, y + (i - (n - 1) / 2) * 0.84 * W[keys[i]].px * s + 1500 * fall, s, fall * 2.2);
   }
@@ -72,58 +72,61 @@
       q = pos(t);
       if (q[1] > 900 || q[0] < -60) continue;
       (i < n / 3 ? A : B).push(q[0], q[1], br * 0.7 * (1 - i / (n + 2)));
-      if (tf && i % 2) { r = pos(t + 0.02); L.push([q[0], q[1], Math.atan2(q[1] - r[1], q[0] - r[0]), br * (1.7 - i / n), br * (3.2 - i * 3 / n), Math.sin(Math.floor(e * 12) * 2 + i) * br * 0.5]); }
+      if (tf && i % 2) { r = pos(t + 0.02); L.push([q[0], q[1], M.atan2(q[1] - r[1], q[0] - r[0]), br * (1.7 - i / n), br * (3.2 - i * 3 / n), M.sin(M.floor(e * 12) * 2 + i) * br * 0.5]); }
     }
     dots(K, P.ti[0], A); dots(K, P.ti[1], B);
   }
-  function hoop(K, P, e, L) {
+  function hoop(K, P, e, L, rim) {
     var g = K.g, R = 5, N = 7, rx = P.rx, dy = P.nh / (R - 1), nd = [], i, k, x, y, bt, sw, ln, u = e - P.ta, a, b, c, d, pd = [], pe = [];
-    var rim = P.brick && u > 0 ? Math.sin(u * 40) * 3 * Math.exp(-u * 7) : 0;
     for (k = 0; k < R; k++) for (i = 0; i < N; i++) {
-      sw = u > 0 ? Math.sin(u * 17 + k) * Math.exp(-u * 4) * 6 * k / (R - 1) : 0;
+      sw = u > 0 ? M.sin(u * 17 + k) * M.exp(-u * 4) * 6 * k / (R - 1) : 0;
       x = P.hx + (i / (N - 1) * 2 - 1) * rx * (1 - 0.42 * k / (R - 1)) + sw; y = P.hy + rim + k * dy;
       bt = P.nb && (P.nb > 1 || k >= R - 2) ? P.ta + 0.2 + (R - 1 - k) * P.rx * 0.0016 + hsh(i, k) * 0.08 : 1e9;
       nd.push({ x: x, y: y, b: bt });
       ln = k ? 0.42 : 0.9;
       if (P.nb === 3 && e > bt && e < bt + 0.4) {
         c = (e - bt) / 0.4;
-        for (a = 0; a < 8; a++) { d = Math.sqrt(c) * (12 + 44 * hsh(a, i + k)); b = a + i * 3 + k; (a % 2 ? pd : pe).push(x + Math.cos(b) * d, y + Math.sin(b) * d, 3 * (1 - c) + 0.5); }
-      } else if (P.nb < 3 && e > bt && e < bt + ln) L.push([x, y, -Math.PI / 2, P.fw * (0.7 + 0.5 * hsh(k, i)), P.fh * (1 - (e - bt) / ln * 0.6) * (0.7 + 0.5 * hsh(i, k + 3)), Math.sin(Math.floor(e * 12) * 2 + i * 3) * P.fw * 0.4]);
+        for (a = 0; a < 8; a++) { d = M.sqrt(c) * (12 + 44 * hsh(a, i + k)); b = a + i * 3 + k; (a % 2 ? pd : pe).push(x + M.cos(b) * d, y + M.sin(b) * d, 3 * (1 - c) + 0.5); }
+      } else if (P.nb < 3 && e > bt && e < bt + ln) L.push([x, y, -M.PI / 2, P.fw * (0.7 + 0.5 * hsh(k, i)), P.fh * (1 - (e - bt) / ln * 0.6) * (0.7 + 0.5 * hsh(i, k + 3)), M.sin(M.floor(e * 12) * 2 + i * 3) * P.fw * 0.4]);
     }
-    blit(K, K.st["r" + rx], P.hx, P.hy + rim, 1, 0);
     dots(K, "light", pd); dots(K, "hot", pe);
     g.save(); g.beginPath();
     for (k = 0; k < R - 1; k++) for (i = 0; i < N - 1; i++) {
       a = nd[k * N + i]; b = nd[k * N + i + 1]; c = nd[(k + 1) * N + i]; d = nd[(k + 1) * N + i + 1];
-      if (e < Math.min(a.b, d.b) + 0.08) { g.moveTo(a.x, a.y); g.lineTo(d.x, d.y); }
-      if (e < Math.min(b.b, c.b) + 0.08) { g.moveTo(b.x, b.y); g.lineTo(c.x, c.y); }
+      if (e < M.min(a.b, d.b) + 0.08) { g.moveTo(a.x, a.y); g.lineTo(d.x, d.y); }
+      if (e < M.min(b.b, c.b) + 0.08) { g.moveTo(b.x, b.y); g.lineTo(c.x, c.y); }
     }
     g.lineWidth = 2.4; g.strokeStyle = K.pat("light", 0.88, g); g.stroke();
     g.restore();
+    blit(K, K.st["f" + rx], P.hx, P.hy + rim, 1, 0);
   }
+  // as the eye sees a ball drop through: the rim's back half, the ball (trail, flames), the net, the rim's front half
   function jam(K, ev, e, P) {
-    var cx = ev.cx, cy = ev.cy, L = [], i, j, t, b, u, A = ev.area;
+    var cx = ev.cx, cy = ev.cy, L = [], N = [], i, j, t, b, u, A = ev.area, u0 = e - P.ta;
+    var rim = P.brick && u0 > 0 ? M.sin(u0 * 40) * 3 * M.exp(-u0 * 7) : 0;
     P.hx = cx; P.hy = P.top != null ? A.y + P.top : cy + P.hyo; P.vx = 260 / P.ta;
     if (e > P.ta && P.sh) K.shake(ev.box, 0.5, P.sh);
     if (e > P.ta && P.fl) K.flash(P.fl, "hot");
     function pos(t) { return bpos(P, t); }
+    blit(K, K.st["b" + P.rx], P.hx, P.hy + rim, 1, 0);
     trail(K, L, P, pos, e, P.trail, P.dt, P.br, P.tf);
-    hoop(K, P, e, L);
     b = bpos(P, e);
     if (e > 0 && b[1] < ev.H + 60) K.sprite(K.g, K.st[P.ball], b[0], b[1], 1, 0, 1);
     if (P.fan) for (j = 0; j < 6; j++) {
       u = e - P.ta - 0.1 - j * 0.07;
       if (u < 0) continue;
-      var ang = -Math.PI / 2 + (j - 2.5) * 0.42, vv = 560 + 60 * (j % 2), fn = function (t) { return [P.hx + Math.cos(ang) * vv * t, P.hy + Math.sin(ang) * vv * t + 600 * t * t]; };
+      var ang = -M.PI / 2 + (j - 2.5) * 0.42, vv = 560 + 60 * (j % 2), fn = function (t) { return [P.hx + M.cos(ang) * vv * t, P.hy + M.sin(ang) * vv * t + 600 * t * t]; };
       trail(K, L, P, fn, u, 7, 0.022, 16, 1);
       b = fn(u); if (b[1] < ev.H + 40) K.sprite(K.g, K.st.bh, b[0], b[1], 1, 0, 1);
     }
     flames(K, L);
+    hoop(K, P, e, N, rim);
+    flames(K, N);
     call(K, ev, P.word, (P.aw ? A.y : cy) + P.wy, e, P.ta, P.dur - 0.3);
     if (e > P.ta) {
       for (i = 0; i < 2; i++) if (!i || P.r2) K.ring({ x: P.hx, y: P.hy, r0: 8, r1: P.rx * (2.2 + i * 0.7), w0: P.rx * (0.12 - i * 0.05) + 3, ink: i ? P.r2 : P.pk, cov: 0.88, dur: 0.5, delay: P.ta + i * 0.06 });
-      K.spark({ x: P.hx, y: P.hy + P.rx * 0.3, n: Math.round(P.rx * 0.3), ink: function (q) { var v = q(); return v < 0.3 ? "light" : v < 0.65 ? "hot" : P.pk; }, sp: [120, 360], r: [1.2, 2.8], life: [0.4, 0.3], grav: 400, seed: ev.seed, delay: P.ta});
-      if (P.em) K.spark({ x: P.hx, y: P.hy + P.nh * 0.6, n: P.em, ink: "dusk", sp: [20, 90], r: [1, 2.2], life: [0.9, 0.7], grav: -90, dir: -Math.PI / 2, cone: 2.4, seed: ev.seed + 9, delay: P.ta + 0.3 });
+      K.spark({ x: P.hx, y: P.hy + P.rx * 0.3, n: M.round(P.rx * 0.3), ink: function (q) { var v = q(); return v < 0.3 ? "light" : v < 0.65 ? "hot" : P.pk; }, sp: [120, 360], r: [1.2, 2.8], life: [0.4, 0.3], grav: 400, seed: ev.seed, delay: P.ta});
+      if (P.em) K.spark({ x: P.hx, y: P.hy + P.nh * 0.6, n: P.em, ink: "dusk", sp: [20, 90], r: [1, 2.2], life: [0.9, 0.7], grav: -90, dir: -M.PI / 2, cone: 2.4, seed: ev.seed + 9, delay: P.ta + 0.3 });
     }
   }
   var T = {
@@ -137,7 +140,7 @@
   };
   Object.keys(T).forEach(function (k) {
     var p = T[k];
-    p.nh = p.rx * 1.25; p.br = Math.round(p.rx * 0.43); p.dt = p.big ? 0.018 : 0.014;
+    p.nh = p.rx * 1.25; p.br = M.round(p.rx * 0.43); p.dt = p.big ? 0.018 : 0.014;
   });
   function beat(id, dur) { T[id].dur = dur; return { dur: dur, draw: function (K, ev, e) { jam(K, ev, e, T[id]); } }; }
 
@@ -149,11 +152,11 @@
       function merge(k, w, h, parts, inks) { // the plates, each off register, onto one sheet
         var c = document.createElement("canvas"), g = c.getContext("2d");
         c.width = w * k; c.height = h * k; g.globalCompositeOperation = K.blend;
-        parts.forEach(function (pj, j) { var r = K.reg(inks[j]); pj.forEach(function (q) { g.drawImage(q[0], Math.round(r[0] * k) + q[1] * k, Math.round(r[1] * k)); q[0].width = 0; }); });
+        parts.forEach(function (pj, j) { var r = K.reg(inks[j]); pj.forEach(function (q) { g.drawImage(q[0], M.round(r[0] * k) + q[1] * k, M.round(r[1] * k)); q[0].width = 0; }); });
         return { print: c, w: w, h: h };
       }
       Object.keys(W).forEach(function (key) {
-        var w = W[key], px = w.px, D = w.s[w.s.length - 1][1], pad = 10, n = Math.ceil(w.l.length * px / 380), P = [], X = [], wd, ht, gl, out = [], inks = [w.f], k = 0;
+        var w = W[key], px = w.px, D = w.s[w.s.length - 1][1], pad = 10, n = M.ceil(w.l.length * px / 380), P = [], X = [], wd, ht, gl, out = [], inks = [w.f], k = 0;
         function plate(ink, j, src, done) { // each part of the word's plate in its own job
           var i;
           function one(i) {
@@ -167,8 +170,8 @@
         jobs.push(function () {
           var c = document.createElement("canvas").getContext("2d"), g, i;
           c.font = K.font(700, px, "disp");
-          wd = Math.ceil(c.measureText(w.l).width + D + pad * 2 + px * 0.14); ht = Math.ceil(px * 0.84 + D + pad * 2);
-          for (i = 0; i <= n; i++) X[i] = Math.round(wd * i / n);
+          wd = M.ceil(c.measureText(w.l).width + D + pad * 2 + px * 0.14); ht = M.ceil(px * 0.84 + D + pad * 2);
+          for (i = 0; i <= n; i++) X[i] = M.round(wd * i / n);
           k = K.d;
           gl = document.createElement("canvas"); gl.width = wd * k; gl.height = ht * k; g = gl.getContext("2d");
           g.setTransform(k, 0, 0, k, 0, 0); g.transform(1, 0, -0.14, 1, 0.14 * ht, 0);
@@ -190,20 +193,20 @@
               g.getImageData(0, 0, 1, 1);
             });
           }
-          for (a = k0 + 1; a <= sh[1]; a += 5) copies(a, Math.min(a + 4, sh[1]));
-          for (a = 0; a <= k0; a += 5) copies(a, Math.min(a + 4, k0), 1);
+          for (a = k0 + 1; a <= sh[1]; a += 5) copies(a, M.min(a + 4, sh[1]));
+          for (a = 0; a <= k0; a += 5) copies(a, M.min(a + 4, k0), 1);
           plate(sh[0], j + 1, function () { return tc; }, function () { tc.width = 0; });
         });
         jobs.push(function () { st[key] = merge(k, wd, ht, out, inks); P = gl = null; });
       });
       Object.keys(T).forEach(function (id) { RX[T[id].rx] = 1; });
-      Object.keys(RX).forEach(function (rx) { // a rim: dusk with a gold lip
+      Object.keys(RX).forEach(function (rx) { // a rim in two halves, dusk, the front with a gold lip
         rx = +rx;
         jobs.push(function () {
-          var q = rx * 0.22, w = 2 * rx + 14, h = 2 * q + 16, P = K.plate(w, h, rx), lw = Math.max(3.5, rx * 0.06);
-          function arc(g, a0, a1) { g.beginPath(); g.ellipse(w / 2, h / 2, rx, q, 0, a0, a1); g.stroke(); }
-          st["r" + rx] = merge(P.k, P.W / P.k, P.H / P.k, [[[K.screen(P, "dusk", function (g) { g.lineWidth = lw; g.strokeStyle = K.tone(0.95); arc(g, 0, TAU); }), 0]],
-            [[K.screen(P, "hot", function (g) { g.lineWidth = lw * 0.5; g.strokeStyle = K.tone(0.95); arc(g, 0.15, Math.PI - 0.15); }), 0]]], ["dusk", "hot"]);
+          var q = rx * 0.22, w = 2 * rx + 14, h = 2 * q + 16, P = K.plate(w, h, rx), lw = M.max(3.5, rx * 0.06), PI = M.PI;
+          function arc(ink, l, a0, a1) { return [[K.screen(P, ink, function (g) { g.lineWidth = l; g.strokeStyle = K.tone(0.95); g.beginPath(); g.ellipse(w / 2, h / 2, rx, q, 0, a0, a1); g.stroke(); }), 0]]; }
+          st["b" + rx] = merge(P.k, P.W / P.k, P.H / P.k, [arc("dusk", lw, PI, TAU)], ["dusk"]);
+          st["f" + rx] = merge(P.k, P.W / P.k, P.H / P.k, [arc("dusk", lw, 0, PI), arc("hot", lw / 2, 0.15, PI - 0.15)], ["dusk", "hot"]);
         });
       });
       return jobs.concat(K.emojiJobs([["bc", BALL, 30, COLDB, SAT], ["bw", BALL, 36, WARMB, SAT], ["bh", BALL, 44, WARMB, SAT], ["bf", BALL, 52, WARMB, SAT], ["bn", BALL, 96, WARMB, SAT]]));

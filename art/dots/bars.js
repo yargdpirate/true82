@@ -1,7 +1,8 @@
 /* art/dots/bars.js: Waveform. Every game is a little audio waveform of three capsule bars on the ledger's center line. A
-   win is an aqua burst of sound (the bars jump on twos, then hold tall; from 10 straight the middle bar prints gold, from
-   20 the right one too, at 30 all three). A loss cuts the sound: pegged pink bars collapse to flat stubs and one of them drips. A
-   season of them reads as the waveform of the year. */
+   win is an aqua burst of sound (the bars jump on twos, then hold tall). A loss cuts the sound: pegged pink bars collapse
+   to flat stubs and one of them drips. A season of them reads as the waveform of the year. A streak leaves no mark on the
+   settled stamp (the owner's rule): the 30th straight win rests exactly like the first; only the burst at every tenth win
+   moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2, X = [-0.82, 0, 0.82], BW = 0.27, STUB = [0.26, 0.5, 0.2];
@@ -18,28 +19,27 @@
     var s = M.floor(e / 0.04);
     return s >= 6 ? D.h[i] : M.min(1.3, D.h[i] * (s ? 1 + (hash(D.gi * 7 + s * 3 + i) - 0.55) * 1.1 * (1 - s / 6) : 0.25));
   }
-  function win(K, g, D, c, R, e, gold) {  // gold 0 prints the aqua bars, 1 the gold ones (the middle bar first, then the right, then the left)
-    var n = D.streak >= 30 ? 3 : D.streak >= 20 ? 2 : D.streak >= 10 ? 1 : 0, i, h, f = g.createLinearGradient(0, c[1] - R * 1.25, 0, c[1] + R * 1.25);
+  function win(K, g, D, c, R, e) {  // the three aqua bars
+    var i, h, f = g.createLinearGradient(0, c[1] - R * 1.25, 0, c[1] + R * 1.25);
     f.addColorStop(0, K.tone(0.66)); f.addColorStop(0.3, K.tone(0.95)); f.addColorStop(0.7, K.tone(0.95)); f.addColorStop(1, K.tone(0.66));  // the tips thin to dots
     g.fillStyle = f; g.beginPath();
     for (i = 0; i < 3; i++) {
       h = jump(D, e, i) * R;
-      if (((i === 1 ? 0 : i ? 1 : 2) < n) === !!gold) bar(g, c[0] + X[i] * R, c[1] - h, c[1] + h, BW * R, 1, 1);
+      bar(g, c[0] + X[i] * R, c[1] - h, c[1] + h, BW * R, 1, 1);
     }
     g.fill();
   }
   T82ART.add("dots", "bars", {
     name: "Waveform",
-    by: "Wins are bursts of sound, three aqua bars jumping tall (gold on a streak); a loss cuts the sound: the bars collapse to a flat pink stub that drips.",
+    by: "Wins are bursts of sound, three aqua bars jumping tall (a gold burst on every tenth straight); a loss cuts the sound: the bars collapse to a flat pink stub that drips.",
     reach: { w: 1.6, l: 2.7 },
     live: { w: 0.32, l: 0.9 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0);
       D.h = [0.4 + r() * 0.45, 0.85 + r() * 0.3, 0.4 + r() * 0.45]; D.k = (r() * 3) | 0; D.dl = 0.65 + r() * 0.35;
     },
-    a: function (K, g, D, c, R, e) { if (D.win) win(K, g, D, c, R, e, 0); },
-    b: function (K, g, D, c, R, e) { if (D.win && D.streak >= 10) win(K, g, D, c, R, e, 1); },
+    a: function (K, g, D, c, R, e) { if (D.win) win(K, g, D, c, R, e); },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;
       var i, h, f = K.clamp((e - 0.04) / 0.12, 0, 1), u = K.ease.out((e - 0.18) / 0.6), L = D.pitch * (D.lastRow ? 0.42 : 0.16) * D.dl * u, w = BW * R, x = c[0] + X[D.k] * R, y, s;

@@ -1,5 +1,6 @@
-/* art/dots/checks.js: Marked. A win is a rubber-stamped aqua check; a streak extrudes a gold block shadow under it
-   (10, 20, 30 add a step). A loss is a stamped cross in a ring that did not take evenly (a gap), bled and run. */
+/* art/dots/checks.js: Marked. A win is a rubber-stamped aqua check. A loss is a stamped cross in a ring that did not
+   take evenly (a gap), bled and run. A streak leaves no mark on the settled stamp (the owner's rule): the 30th straight
+   win rests exactly like the first; only the burst at every tenth win moves. */
 (function () {
   "use strict";
   var PI = Math.PI, M = Math, TAU = PI * 2;
@@ -15,10 +16,10 @@
   }
   T82ART.add("dots", "checks", {
     name: "Marked",
-    by: "Wins are rubber-stamped aqua checks, streaks extrude a gold block shadow; losses are a stamped cross in a ring that did not take.",
+    by: "Wins are rubber-stamped aqua checks (a gold burst on every tenth straight); losses are a stamped cross in a ring that did not take.",
     reach: { w: 2.5, l: 2.6 },
     live: { w: 0.3, l: 0.9 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0);
       D.t = (r() - 0.5) * (D.win ? 0.3 : 0.36); D.g = r() * TAU; D.dx = r() - 0.5; D.dl = 0.65 + r() * 0.35;
@@ -29,14 +30,6 @@
       var b = K.clamp((e - 0.06) / 0.14, 0, 1);  // the ink spreads into the paper a little
       if (b > 0) { g.fillStyle = K.tone(0.3 * b); tick(g, c[0], c[1], R, z, D.t, 0.15 * b); g.fill(); }
       g.fillStyle = K.tone(0.96); tick(g, c[0], c[1], R, z, D.t); g.fill();
-    },
-    b: function (K, g, D, c, R, e) {
-      if (!D.win || D.streak < 10 || e < 0.06) return;
-      var n = D.streak >= 30 ? 3 : D.streak >= 20 ? 2 : 1, k = K.ease.out((e - 0.06) / 0.12), i;
-      g.fillStyle = K.tone(0.55);
-      for (i = n; i > 0; i--) { tick(g, c[0] + R * 0.26 * i * k, c[1] + R * 0.22 * i * k, R, 1, D.t); g.fill(); }
-      g.save(); g.globalCompositeOperation = "destination-out"; g.fillStyle = K.tone(1);
-      tick(g, c[0], c[1], R, 1.08, D.t); g.fill(); g.restore();  // the aqua check keeps its own ink: a pure check with a shadow
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

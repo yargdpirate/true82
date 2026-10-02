@@ -1,5 +1,6 @@
-/* art/dots/tickets.js: Admit One. A win is an aqua ticket flicked in and punched; a streak fills the punch with gold and bands the
-   foot (10), the head too (20), and at 30 the whole ticket prints gold. A loss is the ticket in pink ripped in half. */
+/* art/dots/tickets.js: Admit One. A win is an aqua ticket flicked in and punched. A loss is the ticket in pink ripped in
+   half. A streak leaves no mark on the settled stamp (the owner's rule): the 30th straight win rests exactly like the
+   first, with no gold bands and no golden ticket; only the burst at every tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2, W = 1.05, H = 0.66, N = 0.27, TY = [-H, -0.4, -0.05, 0.3, H];
@@ -15,17 +16,16 @@
     g.closePath();
   }
   function put(g, c, R, x, y, a, sx, sy) { g.translate(c[0] + R * x, c[1] + R * y); g.rotate(a); g.scale(R * sx, R * sy); }
-  function lv(D) { return D.streak >= 30 ? 3 : D.streak >= 20 ? 2 : D.streak >= 10 ? 1 : 0; }
   function pose(K, g, D, c, R, e) {  // the flick: in from the upper right spinning, a slam, a squash
     var q = 1 - K.clamp(e / 0.09, 0, 1), m = M.sin(K.clamp((e - 0.09) / 0.08, 0, 1) * PI) * 0.13;
     q *= q; put(g, c, R, 1.3 * q, 0.1 - 1.1 * q, D.t + 1.2 * q * D.k, 1 + 0.2 * q + m, 1 + 0.2 * q - m);
   }
   T82ART.add("dots", "tickets", {
     name: "Admit One",
-    by: "Wins are aqua tickets flicked in and punched (gold bands on a streak, a golden ticket at 30); a loss is the ticket ripped in half, the pink halves tilting apart, ink running from the tear.",
+    by: "Wins are aqua tickets flicked in and punched (a gold burst on every tenth straight); a loss is the ticket ripped in half, the pink halves tilting apart, ink running from the tear.",
     reach: { w: 2.9, l: 3.2 },
     live: { w: 0.32, l: 0.9 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0), i;
       D.t = (r() - 0.5) * 0.2; D.k = r() < 0.5 ? -1 : 1; D.dl = 0.65 + r() * 0.35; D.z = [];
@@ -33,31 +33,14 @@
     },
     a: function (K, g, D, c, R, e) {
       if (!D.win) return;
-      var a = e - 0.1, v = lv(D), x, y;
+      var a = e - 0.1, x, y;
       g.save(); pose(K, g, D, c, R, e); g.fillStyle = K.tone(0.95);
-      if (v < 3) {
-        g.beginPath(); tk(g, e < 0.1 ? 0 : 0.36); g.fill("evenodd");
-        if (v) {  // room for the gold bands
-          g.beginPath(); tk(g, 0); g.clip(); g.globalCompositeOperation = "destination-out"; g.fillStyle = K.tone(1);
-          g.fillRect(-W, H - 0.38, 2 * W, 0.4); if (v > 1) g.fillRect(-W, -H - 0.02, 2 * W, 0.4);
-        }
-      } else if (a > 0) { g.beginPath(); g.arc(0.36, 0, 0.22, 0, TAU); g.fill(); }  // the golden ticket keeps an aqua punch
+      g.beginPath(); tk(g, e < 0.1 ? 0 : 0.36); g.fill("evenodd");
       g.restore();
       if (a > 0 && a < 0.14) {  // the chad
         x = 0.36 * M.cos(D.t) + 4 * a; y = 0.1 + 0.36 * M.sin(D.t) - 3 * a + 14 * a * a;
         g.fillStyle = K.tone(0.95); g.beginPath(); g.arc(c[0] + R * x, c[1] + R * y, R * 0.3 * (1 - a / 0.14), 0, TAU); g.fill();
       }
-    },
-    b: function (K, g, D, c, R, e) {
-      var v = lv(D);
-      if (!D.win || !v) return;
-      g.save(); pose(K, g, D, c, R, e); g.fillStyle = K.tone(0.92); g.beginPath();
-      if (v > 2) { tk(g, e < 0.1 ? 0 : 0.36); g.fill("evenodd"); }
-      else {
-        g.arc(0.36, 0, 0.27 * K.ease.back((e - 0.1) / 0.1), 0, TAU); g.rect(-W, H - 0.32, 2 * W, 0.32); if (v > 1) g.rect(-W, -H, 2 * W, 0.32);
-        g.fill();
-      }
-      g.restore();
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

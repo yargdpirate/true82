@@ -44,6 +44,8 @@
   T82ART.add("loss", "overprint", {
     name: "Overprint",
     by: "Pink prints the L, then an aqua plate on the same pin swings through it like a wrecking ball: the overlap prints a lighter wedge that opens and shuts, twice in a long moment, until the plates settle a hair off register.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.75 of E.dur, where both plates drop away (dur - X, X = min(0.35, 0.25 dur): exactly 0.75 up to 1.4 s, 0.794 at 1.7 s)
+    phases: { exit: 0.75 },
     prep: function (K) {
       var st = K.st;
       return plate(K, st, "pk", "loss", 0.94, 8301).concat(plate(K, st, "aq", "pop", 0.46, 8302));

@@ -1,7 +1,8 @@
 /* art/dots/hoops.js: Swish and Clank. A win is a ball dropping through a tiny hoop: it hits the net (bulges, sways) and
-   settles in the rim, the net a halftone mesh (from 10 straight the rim prints gold, from 20 the net, at 30 the ball: a
-   gold hoop). A loss is the same hoop in pink and the ball clanking off the rim: the rim bends and rings, the ball flies off
-   to the corner, the net hangs limp as drips. */
+   settles in the rim, the net a halftone mesh. A loss is the same hoop in pink and the ball clanking off the rim: the rim
+   bends and rings, the ball flies off to the corner, the net hangs limp as drips. A streak leaves no mark on the settled
+   stamp (the owner's rule): the 30th straight win rests exactly like the first, an aqua hoop; only the burst at every
+   tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2, KO = "destination-out";
@@ -20,35 +21,30 @@
     if (e < 0.24) { k = 1 - (e - 0.12) / 0.12; return -0.62 + 0.97 * k * k; }
     return -0.62;
   }
-  function win(K, g, D, c, R, e, gold) {  // gold 0 prints the aqua parts, 1 the gold ones
-    var n = D.streak >= 30 ? 3 : D.streak >= 20 ? 2 : D.streak >= 10 ? 1 : 0, y = fall(e), k = e > 0.06 && e < 0.22 ? M.sin(PI * (e - 0.06) / 0.16) : 0;
+  function win(K, g, D, c, R, e) {  // the net, the ball and the rim, all aqua
+    var y = fall(e), k = e > 0.06 && e < 0.22 ? M.sin(PI * (e - 0.06) / 0.16) : 0;
     var s = e > 0.1 && e < 0.25 ? 0.3 * M.sin((e - 0.1) * 55) * (1 - (e - 0.1) / 0.15) : 0, h, bw = 0.3 + 0.4 * k;
     g.save(); g.translate(c[0], c[1]); g.scale(R, R);
-    if ((n >= 2) === !!gold) {  // the net: a halftone mesh that thins toward its foot
-      h = g.createLinearGradient(0, -0.1, 0, 1.4); h.addColorStop(0, K.tone(0.74)); h.addColorStop(1, K.tone(0.26));
-      g.fillStyle = h; g.beginPath(); g.moveTo(-0.84, 0); g.lineTo(0.84, 0); g.lineTo(bw + s, 1.2 + 0.4 * k); g.lineTo(-bw + s, 1.2 + 0.4 * k); g.closePath(); g.fill();
-    }
+    h = g.createLinearGradient(0, -0.1, 0, 1.4); h.addColorStop(0, K.tone(0.74)); h.addColorStop(1, K.tone(0.26));  // the net: a halftone mesh that thins toward its foot
+    g.fillStyle = h; g.beginPath(); g.moveTo(-0.84, 0); g.lineTo(0.84, 0); g.lineTo(bw + s, 1.2 + 0.4 * k); g.lineTo(-bw + s, 1.2 + 0.4 * k); g.closePath(); g.fill();
     g.fillStyle = K.tone(1); g.globalCompositeOperation = KO; g.beginPath(); g.arc(0, y, 0.76, 0, TAU); g.fill();  // a gap round the ball
     g.globalCompositeOperation = "source-over";
-    if ((n >= 3) === !!gold) {  // the ball: the rim and a seam carved through it
-      g.fillStyle = K.tone(0.95); g.beginPath(); g.arc(0, y, 0.62, 0, TAU); g.fill();
-      g.globalCompositeOperation = KO; g.fillStyle = K.tone(1); g.beginPath(); cap(g, -1, 1, -0.1, 0.2); g.rect(-0.07, y - 0.7, 0.14, 0.7); g.fill(); g.globalCompositeOperation = "source-over";
-    }
-    if ((n >= 1) === !!gold) { g.fillStyle = K.tone(0.95); g.beginPath(); cap(g, -0.88, 0.88, -0.1, 0.1); g.fill(); }
+    g.fillStyle = K.tone(0.95); g.beginPath(); g.arc(0, y, 0.62, 0, TAU); g.fill();  // the ball: the rim and a seam carved through it
+    g.globalCompositeOperation = KO; g.fillStyle = K.tone(1); g.beginPath(); cap(g, -1, 1, -0.1, 0.2); g.rect(-0.07, y - 0.7, 0.14, 0.7); g.fill(); g.globalCompositeOperation = "source-over";
+    g.fillStyle = K.tone(0.95); g.beginPath(); cap(g, -0.88, 0.88, -0.1, 0.1); g.fill();
     g.restore();
   }
   T82ART.add("dots", "hoops", {
     name: "Swish and Clank",
-    by: "Wins are a ball dropping through a tiny hoop, a halftone net bulging (the rim, net and ball go gold on a streak); a loss is the ball clanking off a pink rim and flying off, the net hanging limp as drips.",
+    by: "Wins are a ball dropping through a tiny hoop, a halftone net bulging (a gold burst on every tenth straight); a loss is the ball clanking off a pink rim and flying off, the net hanging limp as drips.",
     reach: { w: 1.9, l: 3.3 },
     live: { w: 0.32, l: 0.9 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0);
       D.q = [r(), r(), r()]; D.dl = 0.65 + r() * 0.35;
     },
-    a: function (K, g, D, c, R, e) { if (D.win) win(K, g, D, c, R, e, 0); },
-    b: function (K, g, D, c, R, e) { if (D.win && D.streak >= 10) win(K, g, D, c, R, e, 1); },
+    a: function (K, g, D, c, R, e) { if (D.win) win(K, g, D, c, R, e); },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;
       var f = K.clamp((e - 0.06) / 0.2, 0, 1), u = K.ease.out((e - 0.12) / 0.6), t = M.max(0, e - 0.06), i, x, y, sq, sag = e < 0.06 ? 0 : 0.28 * (1 - M.exp(-t * 40)) + 0.13 * M.exp(-t * 14) * M.sin(t * 60);

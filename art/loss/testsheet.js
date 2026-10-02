@@ -69,6 +69,8 @@
   T82ART.add("loss", "testsheet", {
     name: "Test Sheet",
     by: "A riso test print slaps down: a big pink L off register from its aqua and violet drums, tint ladders, a registration target, crop marks and a marker note, then the sheet is pulled away.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.75 of E.dur, where the sheet is pulled away (tE = dur - X, X = min(0.35, 0.25 dur): exactly 0.75 up to 1.4 s, 0.794 at 1.7 s)
+    phases: { exit: 0.75 },
     prep: function (K) {
       var st = K.st;
       return [

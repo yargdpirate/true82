@@ -1,11 +1,11 @@
-/* art/dots/bolts.js: Struck and Out. A win is an aqua bolt that strikes top to bottom with a halftone flash; a streak
-   backs it with a gold bolt (10), a pair (20) and a halo of gold dots (30). A loss is the same bolt struck in pink, then
-   flooded: a dull screened disc of ink with the bolt left as a hole in it, the power out, and a drip. */
+/* art/dots/bolts.js: Struck and Out. A win is an aqua bolt that strikes top to bottom with a halftone flash. A loss is
+   the same bolt struck in pink, then flooded: a dull screened disc of ink with the bolt left as a hole in it, the power
+   out, and a drip. A streak leaves no mark on the settled stamp (the owner's rule): the 30th straight win rests exactly
+   like the first; only the burst at every tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI, TAU = PI * 2;
   var BL = [-0.05, -1.15, 0.6, -1.15, 0.22, -0.2, 0.62, -0.2, -0.3, 1.2, -0.02, 0.1, -0.52, 0.1];
-  var EC = [[0.58, 0.02, 0.96, 0.94], [-0.58, 0.06, 0.96, 0.94]];
   function bolt(g, w, s) {  // the bolt in R units at the origin, scaled by s; w: the hand-cut wobble
     g.beginPath();
     for (var i = 0; i < 14; i += 2) g.lineTo((BL[i] + w[i >> 1]) * s, (BL[i + 1] + w[7 + (i >> 1)]) * s);
@@ -19,10 +19,10 @@
   }
   T82ART.add("dots", "bolts", {
     name: "Struck and Out",
-    by: "Wins strike as aqua bolts with a halftone flash (a streak backs them with gold bolts, then a gold halo); a loss is the bolt flooded out: a dull pink disc with the bolt left as a hole, and a drip.",
+    by: "Wins strike as aqua bolts with a halftone flash (a gold burst on every tenth straight); a loss is the bolt flooded out: a dull pink disc with the bolt left as a hole, and a drip.",
     reach: { w: 2.2, l: 3.4 },
     live: { w: 0.34, l: 0.85 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0), i;
       D.t = (r() - 0.5) * 0.22; D.w = []; for (i = 0; i < 14; i++) D.w.push((r() - 0.5) * 0.07);
@@ -39,20 +39,6 @@
       }
       h = g.createLinearGradient(0, -1.15, 0, 1.2); h.addColorStop(0, K.tone(0.96)); h.addColorStop(0.5, K.tone(0.93)); h.addColorStop(1, K.tone(0.7));  // the strike thins to dots toward its foot
       g.fillStyle = h; bolt(g, D.w, s); g.fill(); g.restore();
-    },
-    b: function (K, g, D, c, R, e) {  // gold bolts behind it, knocked out under the aqua one
-      if (!D.win || D.streak < 10) return;
-      var n = D.streak >= 20 ? 2 : 1, i, q, s, h;
-      if (D.streak >= 30) {  // a halo of gold dots shrinking outward, behind the pair
-        g.save(); g.translate(c[0], c[1]); g.scale(R, R); h = g.createRadialGradient(0, 0, 0.3, 0, 0, 1.38);
-        h.addColorStop(0, K.tone(0.6 * K.ease.out(e / 0.1))); h.addColorStop(1, K.tone(0)); g.fillStyle = h; g.beginPath(); g.arc(0, 0, 1.38, 0, TAU); g.fill(); g.restore();
-      }
-      for (i = 0; i < n; i++) {
-        q = EC[i]; if (e < 0.04 + 0.03 * i) continue;
-        g.fillStyle = K.tone(q[3]);
-        g.save(); s = strike(K, g, D, c, R, e - 0.04 - 0.03 * i, q[0], q[1], q[2]); bolt(g, D.w, s); g.fill(); g.restore();
-      }
-      g.save(); s = strike(K, g, D, c, R, e, 0, 0, 1); g.globalCompositeOperation = "destination-out"; g.fillStyle = K.tone(1); g.lineJoin = "round"; g.lineWidth = 0.14; bolt(g, D.w, s); g.fill(); g.stroke(); g.restore();
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

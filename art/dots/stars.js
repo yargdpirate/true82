@@ -1,5 +1,7 @@
-/* art/dots/stars.js: Stars and Xs. Wins spin in as hand-cut aqua stars with a glint; a streak adds gold halftone halo
-   bands (10, 20, 30) and rays. Losses are an X scrawled in two flicks that bleeds, spatters and runs. */
+/* art/dots/stars.js: Stars and Xs. Wins spin in as hand-cut aqua stars with a twinkling glint that is gone by the time
+   they settle. Losses are an X scrawled in two flicks that bleeds, spatters and runs. A streak leaves no mark on the
+   settled stamp (the owner's rule): the 30th straight win rests exactly like the first, with no halo or shine; only the
+   burst at every tenth win moves. */
 (function () {
   "use strict";
   var PI = Math.PI, M = Math;
@@ -20,10 +22,10 @@
   }
   T82ART.add("dots", "stars", {
     name: "Stars and Xs",
-    by: "Wins spin in as aqua stars, streaks wear a gold halftone halo; losses are a scrawled X that bleeds and runs.",
+    by: "Wins spin in as aqua stars (a gold burst on every tenth straight); losses are a scrawled X that bleeds and runs.",
     reach: { w: 2.2, l: 2.7 },
     live: { w: 0.32, l: 0.95 },
-    inks: { a: "win", b: "gold", c: "loss" },
+    inks: { a: "win", c: "loss" },
     marks: function (K, D) {
       var r = K.rand(((D.gi + 1) * 2654435761) >>> 0), i;
       D.rot = (r() - 0.5) * 0.5; D.ri = 0.42 + r() * 0.08;
@@ -40,19 +42,6 @@
       g.fillStyle = K.tone(0.95);
       star(g, c[0], c[1], R * 1.04 * s, D.ri, D.rot - (1 - K.ease.out(t)) * 1.26, D.w); g.fill();
       if (k > 0 && k < 1) { g.fillStyle = K.tone(0.8); g.beginPath(); glint(g, c[0], c[1], R * 2 * M.sin(k * PI), D.rot + PI / 4); g.fill(); }  // the twinkle
-    },
-    b: function (K, g, D, c, R, e) {
-      if (!D.win || D.streak < 10) return;
-      var n = D.streak >= 30 ? 3 : D.streak >= 20 ? 2 : 1, k = 0.4 + 0.6 * K.ease.out((e - 0.06) / 0.18), i, a, q;
-      if (e < 0.06) return;
-      g.fillStyle = K.tone(0.2);  // stepped bands: the screen turns them into dots that swell toward the star
-      for (i = n; i >= 0; i--) { g.beginPath(); g.arc(c[0], c[1], R * (1.25 + 0.2 * i) * k, 0, PI * 2); g.fill(); if (i == n - 1) g.fillStyle = K.tone(0.3); }
-      g.save(); g.globalCompositeOperation = "destination-out"; g.fillStyle = K.tone(1);
-      star(g, c[0], c[1], R * 1.2, D.ri + 0.06, D.rot, D.w); g.fill(); g.restore();  // the star keeps its own aqua: stock around it
-      if (n > 2) {  // thirty: a permanent gold shine on the star's shoulder (stock around it; over the aqua it prints white)
-        g.save(); g.globalCompositeOperation = "destination-out"; g.beginPath(); glint(g, c[0] + R * 0.75, c[1] - R * 0.75, R * 1.7 * k, 0.3); g.fill(); g.restore();
-        g.fillStyle = K.tone(0.95); g.beginPath(); glint(g, c[0] + R * 0.75, c[1] - R * 0.75, R * 1.3 * k, 0.3); g.fill();
-      }
     },
     c: function (K, g, D, c, R, e) {
       if (D.win) return;

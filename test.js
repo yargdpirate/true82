@@ -1105,7 +1105,7 @@ if (fs.existsSync("site_data.json")) {
   const APP = fs.readFileSync("app.js", "utf8");
   eq("art wiring: the deal runs where a draft begins (newGame), the reel passes it to T82RISO.create, the spec carries the scene, the print marks it used",
     [/analyticsTrack\("game_start", startEvent\);\n  artDealRun\(\);/.test(APP), /T82RISO\.create\(ov, season, artOpts\)/.test(APP), /if \(scene\) spec\.scene = scene;/.test(APP),
-      /T82ART\.used\("scene", RESULTS_PRINT_SPEC\.scene\)/.test(APP), /if \(seasonReelPlays\(\)\) \{\n    T82\.armSeasonSim\(G\);/.test(APP)],
+      /function resultsPrintBook\(spec\) \{[^]*?T82ART\.used\("scene", id\)/.test(APP), /if \(seasonReelPlays\(\)\) \{\n    T82\.armSeasonSim\(G\);/.test(APP)],
     [true, true, true, true, true]);
 
   // the library on disk (tools/art-index.js): listed, keyed, named right, small, and in the copy law
@@ -1304,18 +1304,29 @@ if (fs.existsSync("site_data.json")) {
     G = { art: { perk: "stamps", hot: "jam", goat: null } }; T82ART.add("perk", "stamps", { name: "x" }); T82ART.add("hot", "jam", { name: "x" });
     FX_UNTIL = 0; out.idle = fxStop(true); out.gen0 = FX_GEN;
     fxPlay("perk", "refund", {}, {}, null); out.playing = fxStop(true); out.after = fxStop(true); out.always = fxStop(); out.gen1 = FX_GEN;
-    fxPrime(["hot", "perk", "goat"]);`);
-  eq("fx wiring: SKIP and entering the results stop riso-fx.js only while something prints, leaving the results always does; a prime goes to each look whose file is in",
+    MODE = "cap"; fxPrime(["hot", "perk", "goat"]);
+    MODE = "classic"; fxPrime(["hot", "perk", "goat"]);
+    G.fx82 = true; fxPrime(["hot", "perk", "goat"]);
+    MODE = "kaman"; G = { art: null }; fxPrime(["hot", "goat"]);
+    MODE = "cap"; G = { art: { perk: "late", hot: null, goat: null } }; fxPrime(["perk", "hot", "goat"]);`);
+  eq("fx wiring: SKIP and entering the results stop riso-fx.js only while something prints, leaving the results always does; a prime goes to each look whose file is in, " +
+    "and classic is primed to stand in for a moment the run can have whose look is not in (nothing dealt, a file still loading, Kaman's 82-0); " +
+    "a moment the run cannot have is never primed (Classic has no Heat Check or perk; the 82-0 fireworks wait for a season that can end 82-0)",
     [stops.idle, stops.playing, stops.after, stops.always, stops.gen1 - stops.gen0, calls.filter((c) => c[0] === "stop").length, calls.filter((c) => c[0] === "prime").map((c) => c[1] + "/" + c[2])],
-    [false, true, false, true, 3, 2, ["hot/jam", "perk/stamps"]]);
+    [false, true, false, true, 3, 2, ["hot/jam", "perk/stamps", "goat/classic", "goat/classic", "perk/classic", "hot/classic"]]);
   const APP = fs.readFileSync("app.js", "utf8");
   eq("fx wiring: the game calls the looks where the emoji used to play (the wheel's lock and the verdicts in both Heat Checks, REFUND and FIRE SALE, every 82-0 volley, the reel's 82-0 finale), stops them on SKIP and screen changes, and an 82-0 prints the perfect scene, the save's reprint too",
     [(APP.match(/hhLockFx\(segIdx, label\);/g) || []).length, (APP.match(/fxPlay\("hot", "save"/g) || []).length, (APP.match(/fxPlay\("hot", "miss"/g) || []).length,
       /fxPlay\("perk", "refund", acts/.test(APP), /fxPlay\("perk", "sale", acts/.test(APP), /fxPlay\("goat", "burst", box/.test(APP), /fireGoats\(rc, true\)/.test(APP),
       /sprayFromEl\(document\.querySelector\("\.ticket-actions"\)/.test(APP), /if \(segIdx === 4\) supernovaErupt\(label\);\n\s+else if/.test(APP.replace(/function hhLockFx[\s\S]*?\n\}/, "")),
       /function newGame[^\n]*\n(?:[^\n]*\n){0,5}\s+fxStop\(\);/.test(APP), /function renderIntro\(\) \{\n  fxStop\(\);/.test(APP), /if \(fxStop\(true\)\) fxPrime\(\["hot", "goat"\]\);\n  if \(MODE === "kaman"\)/.test(APP),
-      /var scene = wins >= CFG\.GAMES_IN_SEASON \? resultsPrintPerfect\(\) : resultsPrintScene\(\);/.test(APP), /RESULTS_PRINT_SPEC\.scene !== was/.test(APP)],
+      /var scene = wins >= CFG\.GAMES_IN_SEASON \? resultsPrintPerfect\(\) : resultsPrintScene\(\);/.test(APP), /function playResultsPrint\(\) \{[^}]*\}[^}]*resultsPrintBook\(RESULTS_PRINT_SPEC\);/.test(APP)],
     [2, 2, 2, true, true, true, true, false, false, true, true, true, true, true]);
+  eq("fx wiring: SEE YOUR TEAM and BACK TO THE SEASON end the Heat Check's beats with its card (keeping the volley's plates), " +
+    "the results scene is booked at its reveal (not its mount), and an 82-0 volley settles one look at its first shell",
+    [/seeBtn\.addEventListener\("click", function \(\) \{\n\s+fxEnd\("hot"\);/.test(APP), /resolved = true;\n(?:\s*\/\/[^\n]*\n)*\s+fxEnd\("hot"\);/.test(APP),
+      /function mountResultsPrint[^]*?\n\}/.exec(APP)[0].indexOf("T82ART.used") < 0, /if \(look === undefined\) look = fxLook\("goat"\);/.test(APP)],
+    [true, true, true, true]);
 
   // the QA levers (test builds only): ?perk= lands the run's first paid Presti spin on that perk; ?force82= the record
   ctx.location = { hostname: "true82.net", search: "?perk=refund&force82=1" };
@@ -1343,6 +1354,200 @@ if (fs.existsSync("site_data.json")) {
   eq("fx QA levers: ?perk= and ?force82= are ignored on true82.net and read on a test build; ?perk= lands the run's first paid Presti spin on the real perk (once a run, Presti only); ?force82= makes the record 82-0 or 81-1",
     [live, test, lev.refund, lev.sale, lev.classic, lev.perfect, lev.one, lev.off],
     [[null, null], ["sale", "save"], [10, 10, "skipEra", false, null], [8, 8, null, true, "skipTeam"], null, [82, 82, 0, true], [81, 81, 1, true], 50]);
+}
+
+// v67 THE OWNER'S PICKS (2026-10-02): his speed dial for the loss looks (art/tempo.json), the cuts (art/enabled.json, a
+// built-in too), no persistent streak marks on the dots, the Heat Check's live multipliers for the riso looks, and
+// smart loading: nothing on Data Saver or a 2G/3G link, and on any other link only what the first moments need.
+{
+  const ART_CORE = fs.readFileSync("art-core.js", "utf8"), AI = require("./tools/art-index.js"), R = ctx.window.T82RISO;
+  const visit = (disk, conn, host, search) => {
+    const c = { Math, JSON, console, location: { hostname: host || "localhost", search: search || "" } };
+    if (conn !== undefined) c.navigator = conn === null ? {} : { connection: conn };
+    c.localStorage = { getItem: (k) => (k in disk ? disk[k] : null), setItem: (k, v) => { disk[k] = String(v); } };
+    vm.createContext(c); vm.runInContext(ART_CORE, c);
+    return c.T82ART;
+  };
+  const entry = (kind, id, o) => Object.assign({ kind, id, name: id, file: "art/" + kind + "/" + id + ".js?v=t", on: true }, o || {});
+  const lib = (A, extra) => {
+    A.index(["a", "b", "c", "d"].map((id) => entry("loss", id)).concat([entry("dots", "chips"), entry("scene", "skyline"), entry("perk", "stamps")], extra || []));
+    A.add("loss", "classic", { builtin: true }); A.add("dots", "classic", { builtin: true }); A.add("scene", "lake", { builtin: true });
+    return A;
+  };
+
+  // the slow-link rule: Data Saver, slow-2g, 2g or 3g deal nothing (the built-ins play, the bags are not touched)
+  const slow = [{ saveData: true, effectiveType: "4g" }, { effectiveType: "slow-2g" }, { effectiveType: "2g" }, { effectiveType: "3g" }].map((conn) => {
+    const disk = {}, A = lib(visit(disk, conn));
+    return [A.lean(), A.deal("loss", 14).length, A.deal("dots", 1).length, A.deal("scene", 1).length, A.deal("perk", 1).length, Object.keys(disk).length];
+  });
+  const fast = [{ effectiveType: "4g", saveData: false }, null, undefined].map((conn) => {
+    const disk = {}, A = lib(visit(disk, conn));
+    return [A.lean(), A.deal("loss", 14).length, A.deal("dots", 1).length, Object.keys(disk).length > 0];
+  });
+  eq("art slow links: on Data Saver or a slow-2g/2g/3g connection the deal is empty (every moment plays its built-in, nothing downloads, the bags are not touched); " +
+    "on 4g, or with no navigator.connection (Safari), the library deals as before",
+    [slow, fast], [slow.map(() => [true, 0, 0, 0, 0, 0]), fast.map(() => [false, 14, 1, true])]);
+  {
+    // the game on a slow link: no art downloads at all (a test build's ?art= still wins: QA asked for it)
+    const loads = [];
+    const run = (A) => {
+      ctx.window.T82ART = A; ctx.T82ART = A; ctx.window.T82 = ctx.T82;
+      A.load = function (k, ids) { loads.push(k + ":" + ids.join("+")); return { then: function () {} }; };
+      try {
+        return vm.runInContext(`(function () { var keepG = G, keepMode = MODE, keepST = setTimeout, out;
+          setTimeout = function (fn) { fn(); return 0; };
+          try { MODE = "cap"; G = { ch: null }; artDealRun(); artSeasonKnown({ winTally: 82 }, null, true);
+            out = [G.art.loss.length, G.art.dots, G.art.scene, G.art.hot, G.art.perk, G.art.goat, G.art.perfect]; }
+          finally { G = keepG; MODE = keepMode; setTimeout = keepST; }
+          return out; })()`, ctx);
+      } finally { delete ctx.window.T82ART; delete ctx.T82ART; delete ctx.window.T82; }
+    };
+    const dealt = run(lib(visit({}, { saveData: true })));
+    const lean = loads.splice(0);
+    const qa = run(lib(visit({}, { effectiveType: "2g" }, "preview.pages.dev", "?art=loss:a")));
+    eq("art slow links: a Presti run on Data Saver deals and downloads nothing (no loss looks, no dots, scene, Heat Check, perk, 82-0 looks); a test build's ?art= still plays what it forces",
+      [dealt, lean, qa[0], loads], [[0, null, null, null, null, null, null], [], 14, ["loss:a+a+a+a", "loss:a+a+a+a+a+a+a+a+a+a"]]);
+  }
+
+  // smart loading on a normal link: the draft fetches what the first moments need, the reel the rest, the 82-0 looks
+  // only for a season that can still end 82-0
+  {
+    const L14 = "abcdefghijklmn".split("");
+    const stageLib = () => {
+      const A = visit({}, null);
+      A.index(L14.map((id) => entry("loss", id)).concat([entry("dots", "chips"), entry("scene", "skyline"), entry("scene", "summit", { perfect: true }),
+        entry("hot", "jam"), entry("perk", "stamps"), entry("goat", "shells")]));
+      return A;
+    };
+    const loads = [];
+    const stage = (body) => {
+      const A = stageLib(), FXS = { play() { return 0; }, prime() {}, use() {}, stop() {} };
+      ctx.window.T82ART = A; ctx.T82ART = A; ctx.window.T82 = ctx.T82; ctx.window.T82FX = FXS; ctx.T82FX = FXS;
+      A.load = function (k, ids) { loads.push(k + ":" + ids.length + (k === "loss" ? "" : " " + ids.join("+"))); return { then: function () {} }; };
+      try {
+        return vm.runInContext(`(function () { var keepG = G, keepMode = MODE, keepST = setTimeout, out = {}, R = ${JSON.stringify(Array(5).fill(1))};
+          setTimeout = function (fn) { fn(); return 0; };
+          try { ${body} } finally { G = keepG; MODE = keepMode; setTimeout = keepST; }
+          return out; })()`, ctx);
+      } finally { delete ctx.window.T82ART; delete ctx.T82ART; delete ctx.window.T82; delete ctx.window.T82FX; delete ctx.T82FX; }
+    };
+    const ROUNDS = vm.runInContext("CFG.ROUNDS", ctx);
+    const picks = JSON.stringify(Array(ROUNDS).fill({}));
+    const got = {};
+    stage(`MODE = "classic"; G = { ch: null }; artDealRun();`); got.classicDraft = loads.splice(0);
+    stage(`MODE = "classic"; G = { ch: null }; artDealRun(); artSeasonKnown({ winTally: 60 }, null, true);`); got.classic60 = loads.splice(0).slice(3);
+    stage(`MODE = "classic"; G = { ch: null }; artDealRun(); artSeasonKnown({ winTally: 82 }, null, true); out.fx82 = G.fx82;`); got.classic82 = loads.splice(0).slice(3);
+    stage(`MODE = "cap"; G = { ch: null, mode: "cap", picks: ${picks} }; artDealRun();`); got.prestiDraft = loads.splice(0);
+    stage(`MODE = "cap"; G = { ch: null, mode: "cap", picks: ${picks} }; artDealRun(); artSeasonKnown({ winTally: 81 }, null, true);`); got.presti81 = loads.splice(0).slice(5);
+    stage(`MODE = "cap"; G = { ch: null, mode: "cap", picks: ${picks} }; artDealRun(); artSeasonKnown({ winTally: 70 }, { e: {} }, true);`); got.prestiMid = loads.splice(0).slice(5);
+    stage(`MODE = "classic"; G = { ch: null, social: { key: "k" } }; artDealRun(); artSeasonKnown({ winTally: 82 }, null, false);`); got.daily82 = loads.splice(0);
+    stage(`MODE = "classic"; G = { ch: null, social: { key: "k" } }; artDealRun(); artSeasonKnown({ winTally: 81 }, null, false);`); got.daily81 = loads.splice(0);
+    eq("art loading: a Classic draft fetches the first 4 loss looks, the dot set and the scene; the reel's opening the other 10, and the 82-0 fireworks and picture only for an 82-0",
+      [got.classicDraft, got.classic60, got.classic82], [["loss:4", "dots:1 chips", "scene:1 skyline"], ["loss:10"], ["loss:10", "goat:1 shells", "scene:1 summit"]]);
+    eq("art loading: Presti adds the Heat Check and the perk to the draft's fetch; an 81-1 (the save can reach 82-0) and a mid-season Heat Check fetch the 82-0 looks; " +
+      "the Daily (no reel) fetches its 82-0 picture with the draft (its print comes right after) and the fireworks only for an 82-0",
+      [got.prestiDraft, got.presti81, got.prestiMid, got.daily82, got.daily81],
+      [["loss:4", "dots:1 chips", "scene:1 skyline", "hot:1 jam", "perk:1 stamps"], ["loss:10", "goat:1 shells", "scene:1 summit"], ["loss:10", "goat:1 shells", "scene:1 summit"],
+        ["scene:1 skyline", "scene:1 summit", "goat:1 shells"], ["scene:1 skyline", "scene:1 summit"]]);
+    const APP = fs.readFileSync("app.js", "utf8");
+    eq("art loading: the game calls it where the season becomes known, before the reel opens and before a reel-less results page",
+      [/artSeasonKnown\(e, midTrigger, true\);[^\n]*\n\s+showSeasonReel\(/.test(APP), /artSeasonKnown\(e, null, false\);[^\n]*\n\s+finishRunTail\(e\);/.test(APP)], [true, true]);
+  }
+
+  // the cuts: a built-in may be switched off (perk classic: never dealt, still the stand-in)
+  {
+    const A = visit({}, null);
+    A.index([entry("perk", "stamps"), entry("perk", "coins"), entry("perk", "halftone", { on: false })], { off: ["perk/classic", "bad", "perk/BAD"] });
+    A.add("perk", "classic", { builtin: true });
+    const seen = new Set();
+    for (let i = 0; i < 12; i++) { const d = A.deal("perk", 1)[0]; seen.add(d); A.used("perk", d); }
+    const B = visit({}, null);
+    B.index([entry("perk", "stamps")]); B.add("perk", "classic", { builtin: true });
+    const ON = JSON.parse(fs.readFileSync("art/enabled.json", "utf8")).off;
+    const CUTS = ["loss/tear", "loss/woodtype", "dots/arrows", "dots/balls", "dots/bolts", "dots/moons", "dots/pixels", "dots/tally", "scene/ridgelines",
+      "perk/classic", "perk/halftone", "perk/moneyprint"];
+    const idx = AI.build();
+    eq("art cuts: art/enabled.json switches off the owner's twelve cuts (2026-10-02; the files stay), perk classic included: a switched-off built-in is never dealt " +
+      "but still stands in (riso-fx.js plays it while a look's file is on its way)",
+      [CUTS.filter((k) => ON.indexOf(k) < 0), [...seen].sort(), B.enabled("perk").sort(), idx.errors, /\], \{ off: \["perk\/classic"\] \}\);/.test(idx.text),
+        idx.entries.filter((e) => !e.on).map((e) => e.kind + "/" + e.id).sort()],
+      [[], ["coins", "stamps"], ["classic", "stamps"], [], true, CUTS.filter((k) => k !== "perk/classic").sort()]);
+  }
+
+  // the speed dial: the warp, a look with no line untouched, and art/tempo.json naming only real looks and their phases
+  {
+    const T = R.tempo, exit = T.of({ phases: { exit: 0.5 } }, { from: "exit", x: 1.3 }), all = T.of({ phases: {} }, { from: 0, x: 1.2 });
+    const es = [0, 0.1, 0.25, 0.5, 0.6, 0.8, 1, 1.2];
+    eq("art tempo: the dial warps a moment's clock from its phase on (e before it; start + (e - start) x after it), so the look ends early: " +
+      "exit at half of a 1.05 s hold, 1.3x, ends 0.93 s in; the whole moment at 1.2x ends at 0.875 s",
+      [exit, all, es.map((e) => +T.warp(exit, e, 1).toFixed(4)), +((0.525 + (1.05 - 0.525) / 1.3)).toFixed(3), +(T.warp(exit, 0.9288, 1.05)).toFixed(3), +(1.05 / 1.2).toFixed(3), +T.warp(all, 0.875, 1.05).toFixed(3)],
+      [{ at: 0.5, x: 1.3 }, { at: 0, x: 1.2 }, [0, 0.1, 0.25, 0.5, 0.63, 0.89, 1.15, 1.41], 0.929, 1.05, 0.875, 1.05]);
+    const def = { phases: { exit: 0.62 } };
+    eq("art tempo: a look with no line (or a line naming a phase it lacks, x of 1 or less or past 3) keeps its own pace exactly",
+      [T.of(def, null), T.of(def, { from: "ding", x: 1.3 }), T.of(def, { from: "exit", x: 1 }), T.of(def, { from: "exit", x: 0.8 }), T.of(def, { from: "exit", x: 4 }),
+        T.of({}, { from: "exit", x: 1.3 }), es.every((e) => T.warp(null, e, 1.05) === e)],
+      [null, null, null, null, null, null, true]);
+    const C = visit({}, null);
+    C.index([entry("loss", "fold", { tempo: { from: "exit", x: 1.3 } }), entry("loss", "seal", { tempo: { from: 0, x: 1.2 } }), entry("loss", "melt"),
+      entry("loss", "bad", { tempo: { from: "exit", x: 9 } }), entry("loss", "worse", { tempo: { from: "Exit!", x: 1.2 } })]);
+    eq("art tempo: art-core.js hands the engine each look's line from the index (none, or an invalid one: no dial)",
+      [C.tempo("loss", "fold"), C.tempo("loss", "seal"), C.tempo("loss", "melt"), C.tempo("loss", "bad"), C.tempo("loss", "worse"), C.tempo("loss", "nope"), C.catalog("loss")[0].tempo],
+      [{ from: "exit", x: 1.3 }, { from: 0, x: 1.2 }, null, null, null, null, { from: "exit", x: 1.3 }]);
+    const TJ = JSON.parse(fs.readFileSync("art/tempo.json", "utf8")), files = AI.scan();
+    const fake = [AI.parse('T82ART.add("loss", "x", { name: "X", phases: { exit: 0.62, "ding": .4 }, draw: function () {} });', "loss", "x.js"),
+      AI.parse('T82ART.add("loss", "y", { name: "Y", phases: PH, draw: function () {} });', "loss", "y.js"),
+      AI.parse('T82ART.add("loss", "z", { name: "Z", phases: { exit: 1.5 }, draw: function () {} });', "loss", "z.js"),
+      AI.parse('T82ART.add("loss", "w", { name: "W", draw: function () { var o = { phases: { exit: 0.5 } }; } });', "loss", "w.js")];
+    eq("art tempo: the index reads a look's phases without running it (a literal of plain fractions at the def's top level only)",
+      [fake[0].phases, fake[0].errors, fake[1].errors.length > 0, fake[2].errors.length > 0, fake[3].phases], [{ exit: 0.62, ding: 0.4 }, [], true, true, null]);
+    eq("art tempo: art/tempo.json carries the owner's 17 speed notes and names only real loss looks and phases they declare (x 1 to 3); the index carries every line",
+      [Object.keys(TJ).filter((k) => k !== "about").length, AI.tempoErrors(), AI.build().entries.filter((e) => e.tempo).length,
+        files.filter((f) => TJ[f.kind + "/" + f.id] && TJ[f.kind + "/" + f.id].from !== 0).every((f) => f.phases && TJ[f.kind + "/" + f.id].from in f.phases)],
+      [17, [], 17, true]);
+    const errs = (o) => { const p = "art/tempo.json"; const keep = fs.readFileSync(p, "utf8"); try { fs.writeFileSync(p, JSON.stringify(o)); return AI.tempoErrors().length; } finally { fs.writeFileSync(p, keep); } };
+    eq("art tempo: a line for a look that is not there, a phase it does not declare, a kind other than loss or an x outside 1 to 3 is refused",
+      [errs({ "loss/nope": { from: 0, x: 1.2 } }), errs({ "loss/seal": { from: "nope", x: 1.2 } }), errs({ "dots/chips": { from: 0, x: 1.2 } }),
+        errs({ "loss/seal": { from: 0, x: 0.5 } }), errs({ "loss/seal": { from: 0, x: 1.2 } })],
+      [1, 1, 1, 1, 0]);
+    const REEL = fs.readFileSync("reel-riso.js", "utf8");
+    eq("art tempo: the reel warps only a dialed look's veil, hero, caption and fade (classic and opts.tempo false keep their pace) and prints nothing once its time is up",
+      [/if \(M\.T\) \{ e = warp\(M\.T, e, E\.dur\); if \(e >= E\.dur\) return; \}/.test(REEL), /T: DIAL && u !== classicU \? tempoOf\(u\.def, artTempo\(u\.id\)\) : null/.test(REEL),
+        /DIAL = opts\.tempo !== false/.test(REEL), /M\.T = null; classicU\.playing\+\+/.test(REEL)], [true, true, true, true]);
+  }
+
+  // the streaks: the moment stays (classic's burst every tenth straight), the settled coin carries no streak mark
+  {
+    const REEL = fs.readFileSync("reel-riso.js", "utf8"), dots = /var CLASSIC_DOTS = \{[^]*?\n  \};/.exec(REEL)[0];
+    const plates = dots.slice(dots.indexOf("    a: function"), dots.indexOf("    win: function"));
+    eq("dots streaks: classic's plates read no streak (no thicker rim at 10, ring at 20 or glint at 30 on a settled coin), and its burst every tenth straight stays",
+      [/streak/.test(plates), /info\.streak >= 10 && info\.streak % 10 === 0/.test(dots), /persistent remainders on streaks/.test(REEL)], [false, true, true]);
+  }
+
+  // the Heat Check's numbers: every Hot Hand beat gets the game's own multiplier and ladder (hot/arcade prints them)
+  {
+    const FXM = { o: [], play(kind, slot, a, o) { this.o.push([slot, o.m, o.ladder]); return 900; }, prime() {}, use() {}, stop() {} };
+    ctx.window.T82FX = FXM; ctx.T82FX = FXM;
+    let segs;
+    try {
+      segs = vm.runInContext(`(function () { var keepG = G, keepMode = MODE, out;
+        try { MODE = "cap"; G = { art: null }; [0, 1, 2, 3, 4].forEach(function (i) { hhLockFx(i, {}); });
+          out = HH_SEGMENTS.map(function (s) { return { label: String(s.label), m: s.m }; }); }
+        finally { G = keepG; MODE = keepMode; }
+        return out; })()`, ctx);
+    } finally { delete ctx.window.T82FX; delete ctx.T82FX; }
+    const APP = fs.readFileSync("app.js", "utf8"), FX = fs.readFileSync("riso-fx.js", "utf8");
+    eq("hot looks: every Heat Check beat hands riso-fx.js the tier's multiplier (ev.m) and the whole ladder (ev.ladder) from HH_SEGMENTS, the save and the miss too, both Heat Checks",
+      [FXM.o.map((x) => x[1]), FXM.o.every((x) => JSON.stringify(x[2]) === JSON.stringify(segs)), segs.length,
+        (APP.match(/fxPlay\("hot", "(save|miss)", [^\n]*hhFxOpts\(seg, /g) || []).length, /m: num\(o\.m\), ladder: ladderOf\(o\.ladder\)/.test(FX)],
+      [segs.map((x) => x.m), true, 5, 4, true]);
+  }
+  {
+    const FX = fs.readFileSync("riso-fx.js", "utf8");
+    eq("fx priming: a look with no prep is never primed (nothing to print ahead), and the emoji warm-ups run only ahead of a look that prints riso emoji",
+      [/function pendingOf\(pk\) \{ return pk\.dead \? 0 : !pk\.jobs \? \(typeof pk\.def\.prep === "function" \? 1 : 0\)/.test(FX),
+        /if \(QUEUE\.indexOf\(pk\) < 0 && pendingOf\(pk\) > 0\)/.test(FX), /i < 2 \? emo : !pk\.builtin/.test(FX), /function emoJob\(fn\) \{ fn\.emo = 1;/.test(FX)],
+      [true, true, true, true]);
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

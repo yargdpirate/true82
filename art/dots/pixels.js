@@ -1,6 +1,7 @@
 /* art/dots/pixels.js: Pixel Blocks. A win drops in as a solid 2x2 block with a white corner pixel and locks with one
    white flash; a loss tumbles down as the awkward L piece and sheds loose pixels. Stepped on twos (12 fps), every cell a
-   screened square. Streaks: white corner brackets at 10, a full frame at 20, a white-hot block at 30. */
+   screened square. A streak leaves no mark on the settled stamp (the owner's rule): the 30th straight win rests exactly
+   like the first, with no brackets or frame; only the burst at every tenth win moves. */
 (function () {
   "use strict";
   var M = Math, PI = M.PI;
@@ -25,17 +26,10 @@
     a: function (K, g, D, c, R, e) {
       if (D.win) piece(K, g, OC, c, R, e < 0.167 ? -R * 0.6 * (2 - M.floor(e * 12)) : 0, 0, 1, 0.95, 0.86);
     },
-    b: function (K, g, D, c, R, e) {
+    b: function (K, g, D, c, R, e) {  // white: the corner pixel, and the one flash as the block locks (the third step, gone at the fourth)
       if (!D.win) return;
-      var s = D.streak, f = M.floor(e * 12), q = R * 0.86, h = R * 1.32, w = R * 0.17, x = c[0], y = c[1], dy = f < 2 ? -R * 0.6 * (2 - f) : 0;
-      if (s >= 10 && f >= 2) {
-        g.fillStyle = K.tone(0.9); g.beginPath(); g.rect(x - h, y - h, 2 * h, 2 * h); g.rect(x - h + w, y - h + w, 2 * (h - w), 2 * (h - w)); g.fill("evenodd");
-        if (s < 20) {
-          g.save(); g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000";
-          g.fillRect(x - R * 0.45, y - h - 1, R * 0.9, 2 * h + 2); g.fillRect(x - h - 1, y - R * 0.45, 2 * h + 2, R * 0.9); g.restore();
-        }
-      }
-      if (f === 2 || (s >= 30 && f > 2)) piece(K, g, OC, c, R, 0, 0, 1, f === 2 ? 0.5 : 0.62, 0.86);
+      var f = M.floor(e * 12), q = R * 0.86, x = c[0], y = c[1], dy = f < 2 ? -R * 0.6 * (2 - f) : 0;
+      if (f === 2) piece(K, g, OC, c, R, 0, 0, 1, 0.5, 0.86);
       g.fillStyle = K.tone(0.95); g.fillRect(x - q + 0.5, y + dy - q + 0.5, q - 1, q - 1);
     },
     c: function (K, g, D, c, R, e) {

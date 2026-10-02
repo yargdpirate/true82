@@ -72,6 +72,8 @@
   T82ART.add("loss", "crumple", {
     name: "Crumpled",
     by: "A sheet with a pink L slaps on, crumples into a faceted paper ball, drops, bounces and is tossed off the card.",
+    // the tempo dial (art/tempo.json): phase "exit" begins at 0.362 of E.dur, where the crumple starts (tc = dur - X - Dc - 0.04: 0.38 s of 1.05 s; 0.559 of 1.7 s)
+    phases: { exit: 0.362 },
     prep: function (K) {
       var st = K.st;
       return [

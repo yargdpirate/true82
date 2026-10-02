@@ -93,20 +93,23 @@ Every scene: the season's line is the dominant silhouette, every loss is marked 
 
 ## Dot sets (`art/dots/<id>.js`)
 
+A streak shows only in the moment (a burst every tenth straight), never as a mark on the settled stamp: the owner,
+2026-10-02, "animations are great, persistent remainders on streaks of it are not" (art/CONTRACT.md, "A dot set").
+
 | id | name | win / loss |
 |---|---|---|
-| stars | Stars and Xs | win: a five-point star that twinkles in; loss: a hand-drawn X with bleed. Streaks: stars grow a halo. |
-| tally | Tally | win: a bold vertical tally stroke; loss: a broken stroke fallen on its side. Every fifth straight win gets the slash. |
+| stars | Stars and Xs | win: a five-point star that twinkles in; loss: a hand-drawn X with bleed. |
+| tally | Tally | win: a bold vertical tally stroke; loss: a broken stroke fallen on its side. |
 | diamonds | Diamonds | win: a faceted diamond (facets knocked out); loss: a diamond split by a crack, its halves apart. |
 | checks | Marked | win: a rubber-stamped check mark; loss: a stamped cross in a circle. |
-| arrows | Up and Down | win: an arrow up that pops up; loss: an arrow down that slams down. Streaks: the arrow doubles. |
+| arrows | Up and Down | win: an arrow up that pops up; loss: an arrow down that slams down. |
 | drops | Fire and Rain | win: a flame (teardrop up) in the win ink; loss: a falling raindrop (teardrop down) that splats. |
 | pixels | Pixels | win: a solid pixel square with a bright corner; loss: a broken pixel with missing quarters. |
 | hoops | Swish and Clank | win: a ball dropping through a tiny ring; loss: a ball bouncing off the ring's edge. |
 | suns | Sun and Cloud | win: a little sunburst with rays; loss: a cloud with a rain streak. |
 | letters | W and L | win: a tiny letterpress W; loss: a tiny letterpress L, slightly smeared. |
 | tickets | Tickets | win: a ticket stub with a punched hole; loss: a ticket torn in half. |
-| moons | Phases | win: a full moon (craters knocked out); loss: a new moon (a dark disc with a thin rim). Streaks wax brighter. |
+| moons | Phases | win: a full moon (craters knocked out); loss: a new moon (a dark disc with a thin rim). |
 | confetti | Confetti | win: a confetti triangle spinning in; loss: a crumpled paper wad. |
 | bars | Waveform | win: a tall bar; loss: a short bar with a drip; the ledger reads like an audio waveform of the season. |
 | prints | Thumbprints | win: a whorled thumbprint in the win ink; loss: a smudged print dragged sideways. |
@@ -169,6 +172,13 @@ Every scene: the season's line is the dominant silhouette, every loss is marked 
 | ukiyoe | Woodblock | An L carved as a ukiyo-e woodblock print: flat color areas, keyblock outlines, a wave or cloud pattern inside it. |
 | zine | Zine Cut | A photocopied, cut-and-paste zine page: a torn halftone photo of an L, tape strips, a scrawled note, all off-register. |
 
+### Future note (the owner, 2026-10-02): looks for a month with more than one L
+
+Not to build yet, only to remember. The owner sees three of the loss looks as possible looks dedicated to a month that
+takes several Ls: **gangrun** (a sheet of small Ls, one per loss), **ghosting** (each loss a paler ghost of the one
+before) and **separation** (the plates of the month's losses drifting further out of register). Until then they stay
+ordinary loss moments, dealt one loss at a time like every other look.
+
 ## Hot Hand packs (`art/hot/<id>.js`; the shared riso FX layer)
 
 The Heat Check (Presti's Hot Hand, post-season at 81-1 and mid-season) spins a wheel that locks on COLD, WARM, HOT, ON
@@ -187,7 +197,7 @@ separations (the kit prints an emoji's colors as two or three inks), never as ra
 | match | Fuse | A match strikes (warm), catches (hot), a fuse sparks along the screen (on fire), fireworks (supernova). |
 | thermo | Redline | A riso thermometer or gauge needle climbs through the tiers and bursts its glass at supernova. |
 | phoenix | Phoenix | Sparks gather into a riso firebird that rises by tier and sweeps across the screen at supernova. |
-| arcade | Combo | Arcade combo counters: x1.2, x1.35, x1.5, x2.0 in pixel digits with pixel flames; the save is a high-score screen. |
+| arcade | Combo | Arcade combo counters: the game's live Hot Hand multiplier (ev.m, never a number of its own) in pixel digits with pixel flames; the save is a high-score screen. |
 
 ## Presti perks (`art/perk/<id>.js`; the shared riso FX layer)
 

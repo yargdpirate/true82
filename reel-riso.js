@@ -26,11 +26,20 @@
    art/dots/<id>.js) registers another one with T82ART.add, and both go
    through the same code here. create() takes the season's deal in opts
    (opts.loss, the loss moments in play order; opts.dots, the dot set); with
-   no opts every frame prints exactly as v64.1 did. A variant draws through
+   no opts every frame prints as v64.1 did, less one change the owner asked
+   for on 2026-10-02: a settled coin no longer keeps a streak mark (below,
+   "the built-in dot set"). A variant draws through
    the kit K (the inks, the halftone screen, the hits) and nothing else, its
    costly printing runs in idle moments ahead of its loss (at most three
    ahead), and a variant that throws is turned off for the session and hands
    its moment back to classic: the art can never break the reel.
+
+   The owner's speed dial (2026-10-02, art/tempo.json): a loss look may name
+   the phases of its moment (def.phases: { exit: 0.62 }, the fraction of the
+   hold where each begins), and his dial plays a look x times as fast from
+   one of them (or from 0). The engine warps that moment's clock alone and
+   hands the warped time to its veil, hero, caption and fade alike, so the
+   look finishes early and the card sits clean until the cursor moves on.
 
    The halftone pipeline follows sevenevesai/riso-windowseat closely (the
    screen-threshold construction and the paper and starvation recipes), so
@@ -158,6 +167,17 @@
   // v51: app.js paces every season to one end time (a bad season runs faster), so the red flash
   // carries its own speed limit: never closer than this, whatever the pace (~1.3 flashes a second).
   var FLASH_GAP = 0.77;
+  // v67 part two: the reel's card and the riso FX layer (riso-fx.js) light the same screen (a mid-season Heat Check's
+  // save, then the resumed reel's next loss), so the gap holds across the two engines as well. Each claims its flash
+  // here on the real clock and never fires within FLASH_GAP of the OTHER engine's last one; each keeps its own clock
+  // for its own flashes, so ?risoslow and a bench's manual clock are unchanged. -> whether the flash may fire
+  var FLASH_LAST = { at: -1e9, by: "" };
+  function flashClaim(by) {
+    var t = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) / 1000;
+    if (FLASH_LAST.by && FLASH_LAST.by !== by && t - FLASH_LAST.at < FLASH_GAP) return false;
+    FLASH_LAST.at = t; FLASH_LAST.by = String(by || "");
+    return true;
+  }
   function holdFor(lossNo, prevStreak) {
     if (lossNo <= 1) return prevStreak >= 5 ? 1700 : 1350;
     if (lossNo <= 6) return 1050;
@@ -422,28 +442,26 @@
     return D;
   }
 
-  /* ---- the built-in dot set: classic (v48 to v66's ledger, byte for byte) ----
-     Plate a is the win ink (the coin), b the pop ink (rims, the landing flash, the loss ring's offset), c the loss ink
-     (the slammed ring, its splats and drips). A variant has the same shape: art/CONTRACT.md, "A dot set". */
+  /* ---- the built-in dot set: classic (v48 to v66's ledger, less its streak marks) ----
+     Plate a is the win ink (the coin), b the pop ink (the rim, the landing flash, the loss ring's offset), c the loss ink
+     (the slammed ring, its splats and drips). A variant has the same shape: art/CONTRACT.md, "A dot set".
+     The owner (2026-10-02): "animations are great, persistent remainders on streaks of it are not". So a streak shows
+     only in the moment (the burst every tenth straight, in win() below, and the header's STRAIGHT count); a settled coin
+     is the same coin at 3 straight or 30. Gone: the thicker rim from 10, the outer ring from 20, the glint from 30. */
   var CLASSIC_DOTS = {
     name: "Classic", builtin: true,
-    by: "Coins that pop in and run hotter with a streak; a loss slams a ring that cracks, splats and drips.",
+    by: "Coins that pop in, with a burst every tenth straight; a loss slams a ring that cracks, splats and drips.",
     reach: { w: REACH_W, l: REACH_L }, live: { w: LIVE_W, l: LIVE_L }, inks: { a: "win", b: "pop", c: "loss" },
     marks: function (K, D) { if (!D.win) lossMarks(D, D.gi, D.cl); },
     a: function (K, g, D, c, R, e) {
       if (!D.win) return;
       var p = e / 0.17, s = popScale(p);
       g.fillStyle = tone(0.95 + 0.05 * clamp(1 - p, 0, 1)); circ(g, c[0], c[1], R * s); g.fill();
-      if (D.streak >= 30) {                                 // 30 straight: a paper glint on the coin
-        g.save(); g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000";
-        g.beginPath(); g.ellipse(c[0] - R * s * 0.34, c[1] - R * s * 0.36, R * s * 0.3, R * s * 0.11, -0.7, 0, TAU); g.fill(); g.restore();
-      }
     },
     b: function (K, g, D, c, R, e) {
       if (D.win) {
         var s = popScale(e / 0.17), b = clamp(1 - e / 0.17, 0, 1);
-        g.strokeStyle = tone(0.82); g.lineWidth = R * s * (D.streak >= 10 ? 0.2 : 0.12); circ(g, c[0], c[1], R * s * 0.95); g.stroke();
-        if (D.streak >= 20) { g.strokeStyle = tone(D.streak >= 30 ? 0.72 : 0.5); g.lineWidth = R * 0.11; circ(g, c[0], c[1], R * 1.34); g.stroke(); }
+        g.strokeStyle = tone(0.82); g.lineWidth = R * s * 0.12; circ(g, c[0], c[1], R * s * 0.95); g.stroke();
         if (b > 0) { g.fillStyle = tone(0.3 * b); circ(g, c[0], c[1], R * s * 0.8); g.fill(); }      // hot stamp: flashes orange as it lands
       } else {
         var s2 = slamScale(e / 0.13);
@@ -462,7 +480,7 @@
       if (k > 0) D.splats.forEach(function (q) { circ(g, c[0] + Math.cos(q.a) * q.d * R, c[1] + Math.sin(q.a) * q.d * R, q.s * R * k); g.fill(); });
       drawCracks(g, D, c, R * s);
     },
-    win: function (K, p, info) {                            // a spit of sparks; every tenth straight, a burst
+    win: function (K, p, info) {                            // a spit of sparks; every tenth straight, a burst (the streak's moment)
       var rnd = K.rand(info.seed);
       K.spark({ x: p[0], y: p[1], n: 5, ink: "win", sp: [60, 170], r: [1.3, 2.4], life: [0.2, 0.12], grav: 260, rnd: rnd });
       if (info.streak >= 10 && info.streak % 10 === 0) {
@@ -609,6 +627,24 @@
     return def && (typeof def.a === "function" || typeof def.b === "function" || typeof def.c === "function") ? def : null;
   }
   function num(v, dflt, lo, hi) { return typeof v === "number" && isFinite(v) ? clamp(v, lo, hi) : dflt; }
+  // The owner's speed dial (art/tempo.json, written into art-index.js by tools/art-index.js; T82ART.tempo). t = { from,
+  // x }: from = a phase the look's def names (def.phases: { exit: 0.62 }: the fraction of the hold where its exit
+  // begins) or 0 (the whole moment); x = how many times faster from there (1 to 3: the hold is fixed, so a look can
+  // only finish early). -> { at (the fraction), x }, or null: no dial, the look keeps its own pace exactly.
+  function tempoOf(def, t) {
+    if (!def || !t || typeof t !== "object") return null;
+    var x = +t.x, at = t.from === 0 ? 0 : null, ph = def.phases;
+    if (!(x > 1 && x <= 3)) return null;
+    if (at === null && typeof t.from === "string" && ph && typeof ph === "object" && Object.prototype.hasOwnProperty.call(ph, t.from)) at = +ph[t.from];
+    return typeof at === "number" && at >= 0 && at < 1 ? { at: at, x: x } : null;
+  }
+  // the moment's clock under a dial: e itself before the phase starts (at x dur), then x times as fast from there
+  function warp(T, e, dur) { if (!T) return e; var s = T.at * dur; return e <= s ? e : s + (e - s) * T.x; }
+  function artTempo(id) {
+    var A = window.T82ART;
+    if (!A || typeof A.tempo !== "function" || typeof id !== "string") return null;
+    try { return A.tempo("loss", id); } catch (e) { return null; }
+  }
   // ds: a ledger's dot set (the def, its plates' inks, its reach and live windows), shared by every month strip
   function setDots(ds, def, id) {
     var r = def.reach || {}, l = def.live || {}, k = def.inks || {};
@@ -686,7 +722,7 @@
   }
 
   /* ---- the reel ----
-     opts (every one optional; app.js passed none before v67, and none = classic everywhere, pixel for pixel):
+     opts (every one optional; app.js passed none before v67, and none = classic everywhere):
        root     the element whose theme to print in (default: the page)
        loss     the loss moments' ids in play order (T82ART.deal("loss", 14)): each heavy loss plays the next one that is
                 registered; an unregistered one is skipped; none left = classic
@@ -695,6 +731,7 @@
                 set once, at the season's first stamp (only an id the reel actually got from opts and found)
        onSkip   function (kind, id): a listed loss id passed over because it is not registered (or is off), and a dot
                 set from opts that did not resolve (app.js: T82ART.skip, so a look that never arrives moves on in the bag)
+       tempo    QA: false plays every look at its own pace (the owner's dial off: the lab's TODAY'S PACE, the harness)
        clock    QA: function returning seconds; replaces the reel's clock
        manual   QA: no requestAnimationFrame loop and no idle scheduling. The reel then has frame() (one frame at the
                 clock's current time) and the prep runs only through qa.runJob() (or at a loss, all at once) */
@@ -706,7 +743,7 @@
     if (!card || !head || !runEl) return null;
     opts = opts || {};
     var TH = readTheme(opts.root), RGB = TH.rgb;
-    var MANUAL = !!opts.manual, CLOCK = typeof opts.clock === "function" ? opts.clock : clock;
+    var MANUAL = !!opts.manual, CLOCK = typeof opts.clock === "function" ? opts.clock : clock, DIAL = opts.tempo !== false;
     var onUse = typeof opts.onUse === "function" ? opts.onUse : null, onSkip = typeof opts.onSkip === "function" ? opts.onSkip : null;
     builtins();
 
@@ -789,6 +826,7 @@
     // closer than FLASH_GAP to the last one (the photosensitivity line). false = it did not fire.
     KIT.flash = function (s) {
       if (!inHit || tNow - lastFlash < FLASH_GAP) return false;
+      if (!flashClaim("reel")) return false;     // the FX layer flashed under FLASH_GAP ago
       lastFlash = tNow;
       jolt(flash, [{ opacity: clamp(+s || 0, 0, 0.72) }, { opacity: 0 }], { duration: 260 * SLOW, easing: "ease-out" });
       return true;
@@ -926,7 +964,7 @@
         var M = ev.m;
         if (!M || M.id !== id) return;
         var old = M.u;
-        M.u = classicU; M.id = "classic"; M.def = CLASSIC_LOSS; M.K = classicU.K; classicU.playing++;
+        M.u = classicU; M.id = "classic"; M.def = CLASSIC_LOSS; M.K = classicU.K; M.T = null; classicU.playing++;   // classic, at its own pace
         old.playing--; old.dead = true; if (!old.playing) drop(old);
       });
       refresh();
@@ -939,7 +977,8 @@
       u.playing++;
       var E = { t0: t, dur: dur, first: first, lossNo: info.cl, lossRun: info.lossRun || 0, prevStreak: info.prevStreak || 0,
         x: p[0], y: p[1], seed: seed, sub: copy[0], sub2: copy[1], city: String(info.city || ""), date: String(info.date || "") };
-      var M = { u: u, id: u.id, def: u.def, K: u.K, E: E };
+      // the owner's dial for this look (none for classic, or with opts.tempo false): its clock warps from its phase on
+      var M = { u: u, id: u.id, def: u.def, K: u.K, E: E, T: DIAL && u !== classicU ? tempoOf(u.def, artTempo(u.id)) : null };
       events.push({ type: "loss", t0: t, dur: dur, m: M });
       refresh();                                     // the window moves on: the next variant starts printing in idle time
       place(M.K, E, card.clientWidth, card.clientHeight, head.offsetHeight);   // a hit may aim at the hero's box
@@ -971,8 +1010,11 @@
     }
     // One guarded call into a moment's art (0 veil, 1 hero, 2 caption). The card's canvas state is saved around it; a
     // throw resets the canvas outright (whatever the variant left on its state stack) and hands the moment to classic.
+    // A dialed look (M.T) gets the warped time in all three, so its fade lands early too; once that time reaches the
+    // hold the look is over and prints nothing more (the hit's rings and sprays keep their own clock).
     function art(ev, part, t, w, h, top) {
       var M = ev.m, def = M.def, K = M.K, E = M.E, e = t - ev.t0;
+      if (M.T) { e = warp(M.T, e, E.dur); if (e >= E.dur) return; }
       if (part === 0 && def.veil === false) return;
       if (part === 2 && def.caption === false) return;
       place(K, E, w, h, top);
@@ -1184,7 +1226,8 @@
         Object.keys(UNITS).forEach(function (i) { bytes += canvasBytes(UNITS[i].K.st); });
         events.forEach(function (ev) { if (ev.m) playing.push(ev.m.id); });
         return { prepped: prepped, canvasBytes: bytes, pending: pend, window: WIN.map(function (u) { return u.id; }), playing: playing,
-          next: LP < PLAN.length ? PLAN.slice(LP) : [], dots: DS.id, off: Object.keys(dead), ready: gate };
+          next: LP < PLAN.length ? PLAN.slice(LP) : [], dots: DS.id, off: Object.keys(dead), ready: gate,
+          tempo: events.filter(function (ev) { return ev.m && ev.m.T; }).map(function (ev) { return { id: ev.m.id, at: ev.m.T.at, x: ev.m.T.x }; }) };
       }
     };
     var reel = { openMonth: openMonth, stamp: stamp, closeMonth: closeMonth, finale: finale, destroy: destroy, qa: qa };
@@ -1229,6 +1272,6 @@
   function kit(root, g) { return kitBase(readTheme(root), g || null); }
 
   builtins();
-  window.T82RISO = { create: create, strip: strip, kit: kit, holdFor: holdFor, heavy: heavy, lossCopy: lossCopy, flashGap: FLASH_GAP, theme: readTheme,
-    inks: INK_ORDER.slice(), version: "v67" };
+  window.T82RISO = { create: create, strip: strip, kit: kit, holdFor: holdFor, heavy: heavy, lossCopy: lossCopy, flashGap: FLASH_GAP, flashClaim: flashClaim, theme: readTheme,
+    tempo: { of: tempoOf, warp: warp }, inks: INK_ORDER.slice(), version: "v67" };
 })();
