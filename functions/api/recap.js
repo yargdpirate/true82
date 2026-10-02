@@ -1,26 +1,49 @@
 // POST /api/recap — fail-soft season-recap copywriter for the Tribune overlay.
 //
-// Preferred browser path:
-//   phase "edition"  -> nickname + four-sentence story in one fast request when
-//                       the reader presses READ STORY. No thinking by default,
-//                       because one round trip is cheaper than two serial calls. The three-second
-//                       opening sequence masks normal latency; slower valid editions
-//                       remain in a visible typesetting state instead of being discarded.
+// The only path: phase "edition" -> nickname + four-sentence story in one fast
+// request when the reader presses READ STORY. The three-second opening sequence
+// masks normal latency; slower valid editions remain in a visible typesetting
+// state instead of being discarded.
 //
-// Legacy-compatible paths remain available for old clients:
-//   phase "headline" -> nickname only
-//   phase "article"  -> story written to a supplied nickname
+// Any problem (not the app, no key, timeout, bad parse) returns {ok:false} with
+// status 200. The browser then typesets deterministic local copy, so the paper
+// never blocks and a rejected caller never learns more than "no".
 //
-// Any problem (no key, timeout, bad parse) returns {ok:false} with status 200.
-// The browser then typesets deterministic local copy, so the paper never blocks.
+// THE KEY IS THE APP'S, AND ONLY THE APP'S (v66.5, the owner 2026-10-01: "make
+// sure it's only ever used to write tribune articles as dictated by the app").
+// ANTHROPIC_API_KEY is a billable secret behind a public URL, so four guards run
+// before any provider call, cheapest first. Nothing reaches the model that this
+// file did not either write itself or check against the app's own vocabulary:
+//   1. SAME ORIGIN. A POST must carry an Origin (browsers send it on every
+//      non-GET) or, failing that, a Referer from true82.net, a *.true82.pages.dev
+//      preview, or localhost. Everything else is refused unread.
+//   2. ONE PHASE. Only "edition" is served. The retired "headline" and "article"
+//      phases were a second and a third prompt shape, and "article" always turned
+//      thinking on for 2600 tokens, so a caller could pick the costliest path.
+//   3. TOTAL INPUT ALLOWLIST. Player names must be name-shaped, slots must be
+//      G/F/C, and every fit note must match one of the sentences app.js can
+//      actually emit (APP_NOTES / NOTE_SHAPES below). A note or name that is
+//      prose of a caller's own choosing is dropped or refused, which is what
+//      closes prompt injection: free text never reaches the system prompt.
+//   4. BUDGET. A per-IP hourly cap, plus a daily cap for the whole site, held in
+//      the KV counter namespace. This is the ceiling that still holds when a
+//      script forges an Origin header, which any script can do. Both are
+//      env-tunable and fail open: a KV error never costs a reader the paper.
+// Guards 1 to 3 pin the shape of the request; guard 4 bounds what abuse can cost
+// if someone matches the shape. A static site has no secret to give the browser,
+// so these bound the blast radius; they cannot authenticate a caller outright.
 //
 // Bindings (Pages > Settings > Environment variables / Bindings):
 //   ANTHROPIC_API_KEY   (secret, REQUIRED for AI copy — degrades locally without it)
 //   RECAP_MODEL         (optional, default "claude-sonnet-4-6")
-//   RECAP_VOICE         (optional house voice applied to article/edition copy)
-//   RECAP_HEADLINE_THINK (optional legacy headline thinking budget, >=1024)
-//   RECAP_EDITION_THINK  (optional edition thinking budget, >=1024; default off)
-//   RECAP_SIGN_KEY       (secret; signs AI editions for permanent /r/:slug share pages)
+//   RECAP_VOICE         (optional house voice applied to edition copy)
+//   RECAP_EDITION_THINK (optional edition thinking budget, >=1024; default off)
+//   RECAP_SIGN_KEY      (secret; signs AI editions for permanent /r/:slug share pages)
+//   RECAP_IP_HOURLY     (optional, default 8; editions per IP per hour, 0 = no cap)
+//   RECAP_DAILY_MAX     (optional, default 2000; editions per day site-wide, 0 = no cap)
+//   RECAP_OFF           (optional; "1" stops all AI copy at once, no deploy needed)
+//   GAMES               (KV namespace, the games counter; also holds the two counters above)
+//   DASH_KEY            (optional, as on /avocado: ?key= returns the full health detail)
 
 const TIERS = [
   [82, "PERFECT SEASON — 82-0", "immortality achieved; euphoric and mythic — this team just did the only thing left to do"],
@@ -60,19 +83,6 @@ Sentence 3, the verdict on perfection, chosen by the final record, one short lin
 Sentence 4, the kicker: invent one absurd, personality-consistent locker-room, team-flight, interview-room, group-chat, wardrobe, hobby, or off-day scene. Vary the setting; nightlife is not the default. End on this.
 Never blame spacing, shooting, or shot-sharing. Never mention ratings, models, engines, fantasy, video games, or drafting. Do not use em dashes.`;
 
-const SYS_HEADLINE = `You name the team on the newspaper front page after the 82nd and final game of an NBA season. The five players below are real, each frozen at one historical season; the record is established fact.
-
-${NICKNAME_RULES}
-
-Output only the nickname on a single line: no quotes, no explanation. Maximum three words, plus an optional leading "The".`;
-
-const SYS_ARTICLE = `You are a Sports Illustrated columnist filing a short season-ending blurb after this team's 82nd and final game. The roster is real NBA players, each frozen at one specific season of his career; treat the record as established fact and write as though it were a real NBA season. The nickname is already in print, and your job is to explain it.
-
-Return ONLY a JSON object, no markdown fences, no commentary:
-{"article": "..."}
-
-${ARTICLE_RULES}`;
-
 const SYS_EDITION = `You are the front-page sports editor after the 82nd and final game of an NBA season. The five players below are real, each frozen at one historical season; treat the record as established fact and write as though this season really happened.
 
 Create the nickname and the complete short article together so the article explains the exact nickname you chose.
@@ -88,14 +98,80 @@ Return ONLY a JSON object, no markdown fences, no commentary:
 
 const DEFAULT_VOICE = `VOICE — clean, modern Sports Illustrated sports-desk prose: vivid and confident, plain-spoken, never gimmicky or old-timey. Let the roster and the record carry it.`;
 const HARD = `FORMAT AND LENGTH OVERRIDE THE VOICE. Output ONLY the JSON object — no text before or after it, nothing outside the fields. Obey every length limit stated above exactly. If the voice will not fit inside the format and the length, trim the voice, never the format or the count.`;
-const HARD_HEAD = `FORMAT OVERRIDES THE VOICE. Output ONLY the nickname itself, on one line: no quotes, markdown, or explanation. Use at most three words, plus an optional leading "The".`;
 const HARD_EDITION = `FORMAT OVERRIDES EVERYTHING. Output exactly one JSON object with both non-empty string fields "nickname" and "article". The nickname is at most three words, plus an optional leading "The". Do not omit either field or put text outside the object.`;
 
 const BAN = `CONTENT BAN (nickname and story): never frame this team as dysfunctional for its talent, and never write it as winning "despite itself." Forbidden angles: "too many stars," "not enough shots, touches, or ball to go around," ego or usage conflict, trouble sharing the ball, a "crowded" or "shrinking" offense, "a team that shouldn't (have) work(ed)," and naming spacing, a cramped or clogged floor, or shaky shooting as a flaw. In the story, when the floor is tight, show the skill that beats it (a live handle, a shot-maker's tough two, a cutter finding the seam) and never the reason it was tight. These players won; write HOW they won, never why they supposedly couldn't. Other genuine weaknesses (defense, size, rim protection, depth) are fair game.`;
 
-const RECAP_BUILD = "2026-07-11.tribune-share-debug-v2";
+const RECAP_BUILD = "2026-10-01.tribune-app-only-v1";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const EDITION_TIMEOUT_MS = 28000;
+const MAX_BODY_BYTES = 8000;          // the app's edition payload is about 2 KB
+const DEFAULT_IP_HOURLY = 8;          // a reader finishes one season at a time
+const DEFAULT_DAILY_MAX = 2000;       // site-wide ceiling; raise it if real play ever nears it
+
+/* ---- the app's own payload (KEEP IN SYNC with app.js buildRecapPayload /
+        recapFitNotes; test.js runs real drafts through both and fails if the
+        app can emit anything this block would not accept) ------------------- */
+const ALLOWED_SLOTS = new Set(["G", "F", "C"]);          // app.js BUCKETS
+// A real player name: letters (the dataset has diacritics and one Cyrillic
+// letter), spaces, periods, apostrophes, hyphens. The longest in site_data.json
+// is "Nickeil Alexander-Walker" at 24 characters and 4 words; the room left over
+// is for a hh surname line like "S. O'Neal", never for a sentence.
+const NAME_RE = /^\p{L}[\p{L}\p{M}'’.\- ]{0,39}$/u;
+const HOT_TIER_RE = /^[\p{L}\p{N}'’.\- ]{1,12}$/u;   // a Hot Hand segment label, clamped to 12 as before
+const nameOK = (s) => NAME_RE.test(s) && s.trim().split(/\s+/).length <= 5;
+
+// Every fixed note recapFitNotes() can push.
+const APP_NOTES = new Set([
+  "surplus shooting: extra floor-spacers stretch every defense",
+  "two small guards: they get posted up and shot over all night",
+  "an undersized frontcourt: the other team owns the offensive glass",
+  "a balanced five: no structural weakness the model could tax",
+  "nobody on the roster can guard the other team's best scorer",
+  "nobody wants the last shot in a close game",
+  "nobody rotates on defense",
+  "nobody attacks the rim or gets to the line",
+  "nobody can make a tough shot when a play breaks down",
+  "three off-court knuckleheads share a locker room",
+  "two off-court knuckleheads share a locker room",
+  "two players who hold the ball: it goes in and it does not come out",
+  "two defenders the other team hunts on every switch",
+  "two foul merchants living at the line until the playoff whistle disappears",
+  "stat padding: numbers that do not add up to winning",
+  "three switchable defenders: they switch everything",
+  "a playmaker keeps finding two off-ball scorers cutting to the rim"
+]);
+// ...and the five it builds around engine numbers.
+const NUM = "-?\\d{1,4}(?:\\.\\d{1,2})?";
+const NOTE_SHAPES = [
+  new RegExp("^more than one ball's worth of stars: their usage adds up to " + NUM +
+    " against the " + NUM + " a lineup can share(, with two alphas still figuring out how to play together, not just alongside each other)?$"),
+  new RegExp("^only " + NUM + " of " + NUM + " required floor-spacers: the floor shrinks in the half court$"),
+  new RegExp("^" + NUM + " shooters on a board that charges for every one past " + NUM + ": the extra spacing cost points$"),
+  new RegExp("^both starting guards rank bottom-" + NUM + "% defensively: the perimeter leaks$"),
+  new RegExp("^both forwards rank bottom-" + NUM + "% defensively: the frontcourt gets attacked$")
+];
+const appNoteOK = (s) => APP_NOTES.has(s) || NOTE_SHAPES.some((re) => re.test(s));
+
+// Who may spend the key. Browsers send Origin on every non-GET request; Referer
+// is the fallback for the rare client that does not, and for the console's
+// zero-token health probe.
+const LIVE_HOSTS = new Set(["true82.net", "www.true82.net", "localhost", "127.0.0.1", "[::1]"]);
+function hostAllowed(h) {
+  const host = String(h || "").toLowerCase();
+  if (!host) return false;
+  if (LIVE_HOSTS.has(host)) return true;
+  return host === "true82.pages.dev" || host.endsWith(".true82.pages.dev") || host.endsWith(".localhost");
+}
+function callerHost(request) {
+  for (const header of ["origin", "referer"]) {
+    const raw = request.headers.get(header);
+    if (!raw || raw === "null") continue;
+    try { return new URL(raw).hostname.toLowerCase(); } catch (e) { return null; }
+  }
+  return null;
+}
+/* ---- end app-payload block --------------------------------------------------- */
 
 /* ---- share-page signature (KEEP BYTE-EQUIVALENT with functions/r/[id].js) ---- */
 const SIGN_VERSION = "t82share.v2";
@@ -128,11 +204,50 @@ async function hmacHex(secret, msg) {
 }
 /* ---- end synced block -------------------------------------------------------- */
 
+const envInt = (v, dflt) => {
+  if (v == null || v === "") return dflt;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n >= 0 ? n : dflt;
+};
+
+// The spend ceiling. KV is eventually consistent and this read-then-write can
+// undercount under load, which is fine for a brake: it bounds abuse, it is not
+// an accounting ledger. Every failure path returns null (allow), because the
+// paper matters more than the cap.
+async function budgetSpend(env, request, log) {
+  const ipMax = envInt(env.RECAP_IP_HOURLY, DEFAULT_IP_HOURLY);
+  const dayMax = envInt(env.RECAP_DAILY_MAX, DEFAULT_DAILY_MAX);
+  if (!env.GAMES || (!ipMax && !dayMax)) return null;
+
+  const ip = (request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "").split(",")[0].trim();
+  const hourKey = ipMax && ip ? "rl:recap:ip:" + ip + ":" + Math.floor(Date.now() / 3600000) : null;
+  const dayKey = dayMax ? "rl:recap:day:" + new Date().toISOString().slice(0, 10) : null;
+  try {
+    const [hourRaw, dayRaw] = await Promise.all([
+      hourKey ? env.GAMES.get(hourKey) : Promise.resolve(null),
+      dayKey ? env.GAMES.get(dayKey) : Promise.resolve(null)
+    ]);
+    const hourN = parseInt(hourRaw || "0", 10) || 0;
+    const dayN = parseInt(dayRaw || "0", 10) || 0;
+    if (hourKey && hourN >= ipMax) return { reason: "rate_ip", ipCount: hourN, ipMax };
+    if (dayKey && dayN >= dayMax) return { reason: "rate_day", dayCount: dayN, dayMax };
+    await Promise.all([
+      hourKey ? env.GAMES.put(hourKey, String(hourN + 1), { expirationTtl: 3600 }) : Promise.resolve(),
+      dayKey ? env.GAMES.put(dayKey, String(dayN + 1), { expirationTtl: 172800 }) : Promise.resolve()
+    ]);
+    return null;
+  } catch (e) {
+    log("budget_error", e && e.message ? String(e.message).slice(0, 120) : "kv");
+    return null;   // never let the counter keep a reader from the paper
+  }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const started = Date.now();
   const model = env.RECAP_MODEL || DEFAULT_MODEL;
   const configured = !!env.ANTHROPIC_API_KEY;
+  const recapOff = /^(1|true|yes|on)$/i.test(String(env.RECAP_OFF == null ? "" : env.RECAP_OFF));
   const suppliedId = request.headers.get("x-t82-recap-id");
   const requestId = suppliedId && /^[A-Za-z0-9._-]{6,80}$/.test(suppliedId)
     ? suppliedId
@@ -178,11 +293,26 @@ export async function onRequest(context) {
     return respond(Object.assign({ ok: false, reason }, extra), 200, "fallback", reason);
   };
 
-  // Zero-token deployment/binding probe for browser-console diagnostics.
+  const host = callerHost(request);
+  const fromApp = hostAllowed(host);
+
+  // Zero-token deployment/binding probe for browser-console diagnostics. The
+  // detail (whether a billable key is bound, which model, which budgets) is the
+  // owner's, so a stranger gets the bare "deployed" answer.
   if (request.method === "GET" || request.method === "HEAD") {
     phase = "health";
-    const editionThink = Math.max(0, parseInt(env.RECAP_EDITION_THINK, 10) || 0);
-    log("health", null, { configured, signKey: !!env.RECAP_SIGN_KEY, editionThink, editionTimeoutMs: EDITION_TIMEOUT_MS });
+    const url = new URL(request.url);
+    const keyed = !!env.DASH_KEY && url.searchParams.get("key") === env.DASH_KEY;
+    if (!fromApp && !keyed) {
+      log("health", "not_app", { host: cleanHeader(host) });
+      return respond({ ok: true, health: true }, 200, "health", null);
+    }
+    const editionThink = envInt(env.RECAP_EDITION_THINK, 0);
+    log("health", null, {
+      configured, signKey: !!env.RECAP_SIGN_KEY, editionThink, editionTimeoutMs: EDITION_TIMEOUT_MS,
+      ipHourly: envInt(env.RECAP_IP_HOURLY, DEFAULT_IP_HOURLY), dailyMax: envInt(env.RECAP_DAILY_MAX, DEFAULT_DAILY_MAX),
+      budgetBinding: !!env.GAMES, off: recapOff
+    });
     return respond({
       ok: true,
       health: true,
@@ -190,7 +320,13 @@ export async function onRequest(context) {
       signKey: !!env.RECAP_SIGN_KEY,
       editionThink,
       editionTimeoutMs: EDITION_TIMEOUT_MS,
-      message: configured
+      ipHourly: envInt(env.RECAP_IP_HOURLY, DEFAULT_IP_HOURLY),
+      dailyMax: envInt(env.RECAP_DAILY_MAX, DEFAULT_DAILY_MAX),
+      budgetBinding: !!env.GAMES,
+      off: recapOff,
+      message: recapOff
+        ? "RECAP_OFF is set: every edition is the local one. Unset it to print AI copy again."
+        : configured
         ? (env.RECAP_SIGN_KEY ? "Recap generation and signed share pages are configured." : "Recap generation is configured; RECAP_SIGN_KEY is missing, so shares use the bare site URL.")
         : "Recap Function is deployed but ANTHROPIC_API_KEY is not bound in this environment."
     }, 200, "health", null);
@@ -201,12 +337,28 @@ export async function onRequest(context) {
     return respond({ ok: false, reason: "method" }, 405, "error", "method");
   }
 
+  // GUARD 1 — the app's own pages only, before the body is even read.
+  if (!fromApp) {
+    log("blocked", "not_app", { host: cleanHeader(host) });
+    return respond({ ok: false, reason: "not_app" }, 403, "blocked", "not_app");
+  }
+  // The owner's off switch: one environment variable stops every AI edition
+  // without a deploy, and the paper prints its local copy as it always does.
+  if (recapOff) return fail("off");
   if (!configured) return fail("unconfigured", { configured: false });
+
+  const declared = Number(request.headers.get("content-length") || 0);
+  if (declared > MAX_BODY_BYTES) return fail("too_large", { declared });
 
   let b;
   try { b = await request.json(); } catch (e) { return fail("bad_json", { errorName: e && e.name }); }
   if (!b || typeof b !== "object" || !Array.isArray(b.players) || b.players.length !== 5) return fail("bad_payload");
-  phase = b.phase === "article" ? "article" : b.phase === "edition" ? "edition" : "headline";
+
+  // GUARD 2 — one phase. "headline" and "article" are retired: an old cached
+  // client that still asks for them falls back to local copy, which is what it
+  // does for every other {ok:false} and the reason the paper never blocks.
+  phase = b.phase === "edition" ? "edition" : "retired";
+  if (phase !== "edition") return fail("phase_retired", { asked: cleanHeader(b.phase) });
 
   const clean = (s, max) => String(s == null ? "" : s).replace(/[<>{}\\]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
   // Product contract: at most three nickname words, with an optional leading
@@ -214,7 +366,7 @@ export async function onRequest(context) {
   // clamp keeps the newspaper layout deterministic when a model occasionally
   // runs long.
   const normalizeNickname = (value) => {
-    const raw = clean(value, 80).replace(/^\s*["'\u201C\u2018]+|["'\u201D\u2019]+\s*$/g, "");
+    const raw = clean(value, 80).replace(/^\s*["'“‘]+|["'”’]+\s*$/g, "");
     const words = raw.split(/\s+/).filter(Boolean);
     const maxWords = words.length && /^the$/i.test(words[0].replace(/[^A-Za-z]/g, "")) ? 4 : 3;
     return clean(words.slice(0, maxWords).join(" ").replace(/[,:;.!?]+$/, ""), 48);
@@ -229,19 +381,31 @@ export async function onRequest(context) {
   const wins = Math.round(num(b.wins, 0, 82));
   const losses = 82 - wins;
   const modeLabel = b.mode === "cap" ? "Presti (salary-cap draft)" : b.mode === "pro" ? "Pro draft" : "Classic draft";
-  const players = b.players.map(p => ({
-    slot: clean(p.slot, 2) || "?",
-    yr: Math.round(num(p.yr, 1974, 2030)),
-    name: clean(p.name, 40) || "Unknown",
-    v: num(p.v, -5, 25).toFixed(1)
-  }));
-  const notes = (Array.isArray(b.notes) ? b.notes : []).slice(0, 6).map(n => clean(n, 110)).filter(Boolean);
-  const hh = b.hh && b.hh.player ? { player: clean(b.hh.player, 30), tier: clean(b.hh.tier, 12) } : null;
-  const nickname = normalizeNickname(b.nickname);
-  if (phase === "article" && !nickname) return fail("bad_payload");
+
+  // GUARD 3 — a roster the app could have drafted, or nothing at all. The slot,
+  // the season and the value were already clamped; the name is the one field
+  // that carried free text into the system prompt, so it has to be a name.
+  const players = [];
+  for (const p of b.players) {
+    const slot = clean(p && p.slot, 2);
+    const name = clean(p && p.name, 40);
+    if (!ALLOWED_SLOTS.has(slot) || !name || !nameOK(name)) {
+      return fail("bad_player", { slotOK: ALLOWED_SLOTS.has(slot), nameChars: name.length });
+    }
+    players.push({ slot, yr: Math.round(num(p && p.yr, 1974, 2030)), name, v: num(p && p.v, -5, 25).toFixed(1) });
+  }
+  // Fit notes: only sentences app.js can actually emit survive. A note is
+  // checked whole and then clamped to 110 for the prompt exactly as before, so
+  // the model sees the same bytes it always did.
+  const offered = (Array.isArray(b.notes) ? b.notes : []).slice(0, 6).map((n) => clean(n, 400)).filter(Boolean);
+  const notes = offered.filter(appNoteOK).map((n) => n.slice(0, 110));
+  const notesDropped = offered.length - notes.length;
+  const hhPlayer = clean(b.hh && b.hh.player, 30);
+  const hhTier = clean(b.hh && b.hh.tier, 12);
+  const hh = hhPlayer && nameOK(hhPlayer) && hhTier && HOT_TIER_RE.test(hhTier) ? { player: hhPlayer, tier: hhTier } : null;
 
   const t = tierFor(wins);
-  const fullContext = `MODE: ${modeLabel}
+  const user = `MODE: ${modeLabel}
 FINAL RECORD: ${wins}-${losses} (82 games)
 SEASON TIER: ${t[1]}
 TONE DIRECTIVE: ${t[2]}
@@ -251,33 +415,26 @@ ${players.map(p => `${p.slot} / ${p.yr} / ${p.name} / ${p.v}`).join("\n")}
 COMPOSITION SIGNALS (how the five fit together):
 ${notes.length ? notes.map(n => "- " + n).join("\n") : "- a reasonably balanced five"}`;
 
-  const user = phase === "headline"
-    ? `FINAL RECORD: ${wins}-${losses}
-ROSTER (season / player):
-${players.map(p => `${p.yr} ${p.name}`).join("\n")}`
-    : phase === "article"
-      ? `${fullContext}
-TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
-      : fullContext;
-
-  const isArticle = phase === "article";
-  const isEdition = phase === "edition";
   const voice = env.RECAP_VOICE || DEFAULT_VOICE;
-  const headThink = Math.max(0, parseInt(env.RECAP_HEADLINE_THINK, 10) || 0);
-  const editionThink = Math.max(0, parseInt(env.RECAP_EDITION_THINK, 10) || 0);
-  const useThink = isArticle || (isEdition ? editionThink >= 1024 : headThink >= 1024);
-  const thinkBudget = isArticle ? 1400 : isEdition ? editionThink : headThink;
-  const maxTokens = isArticle ? 2600 : isEdition ? (useThink ? thinkBudget + 900 : 900) : (useThink ? thinkBudget + 512 : 512);
-  const timeoutMs = isArticle ? 30000 : isEdition ? EDITION_TIMEOUT_MS : 24000;
+  const editionThink = envInt(env.RECAP_EDITION_THINK, 0);
+  const useThink = editionThink >= 1024;
+  const thinkBudget = editionThink;
+  const maxTokens = useThink ? thinkBudget + 900 : 900;
+  const timeoutMs = EDITION_TIMEOUT_MS;
+  const system = SYS_EDITION + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD + "\n\n" + HARD_EDITION;
+
+  // GUARD 4 — the spend ceiling, charged only once a request is this app's and
+  // this shape, so junk never eats a reader's allowance.
+  const over = await budgetSpend(env, request, log);
+  if (over) {
+    log("blocked", over.reason, over);
+    return respond(Object.assign({ ok: false, reason: over.reason }, over), 200, "blocked", over.reason);
+  }
+
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
 
-  let system;
-  if (isArticle) system = SYS_ARTICLE + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD;
-  else if (isEdition) system = SYS_EDITION + "\n\n" + voice + "\n\n" + BAN + "\n\n" + HARD + "\n\n" + HARD_EDITION;
-  else system = SYS_HEADLINE + (env.RECAP_VOICE ? "\n\n" + env.RECAP_VOICE : "") + "\n\n" + HARD_HEAD;
-
-  log("provider_request", null, { configured: true, wins, useThink, thinkBudget, maxTokens, timeoutMs });
+  log("provider_request", null, { configured: true, wins, useThink, thinkBudget, maxTokens, timeoutMs, notesDropped });
   let resp;
   try {
     resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -341,44 +498,25 @@ TEAM NICKNAME ALREADY IN PRINT: ${nickname}`
 
   try {
     const text = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n");
-    if (isArticle || isEdition) {
-      const cleaned = text.replace(/```json|```/g, "").trim();
-      const first = cleaned.indexOf("{");
-      const last = cleaned.lastIndexOf("}");
-      if (first < 0 || last <= first) return fail("parse_no_object", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
-      const out = JSON.parse(cleaned.slice(first, last + 1));
-      let article = clean(out.article, 700);
-      if (!article) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
-      if (isEdition) {
-        const originalNick = clean(out.nickname, 80);
-        const nick = normalizeNickname(originalNick);
-        if (!nick) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
-        article = clean(reconcileNickname(article, originalNick, nick), 700);
-        const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
-        let sig = null;
-        if (env.RECAP_SIGN_KEY) {
-          try { sig = await hmacHex(env.RECAP_SIGN_KEY, shareSigMessage(b.mode, wins, b.net, nick, article, players)); }
-          catch (e) { log("sign_error", cleanHeader(e && e.message)); }
-        }
-        log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length, nicknameTrimmed: originalNick !== nick, articleChars: article.length, signed: !!sig });
-        return respond(Object.assign({ ok: true, nickname: nick, article, source: "api", diagnostic }, sig ? { sig } : {}), 200, "api", null);
-      }
-      const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
-      log("api", null, { providerRequestId: providerId, stopReason, usage, articleChars: article.length });
-      return respond({ ok: true, article, source: "api", diagnostic }, 200, "api", null);
-    }
-
-    let nickRaw = text.replace(/```json|```/g, "").trim();
-    const js = nickRaw.indexOf("{"), je = nickRaw.lastIndexOf("}");
-    if (js !== -1 && je > js) {
-      try { const o = JSON.parse(nickRaw.slice(js, je + 1)); if (o && o.nickname) nickRaw = String(o.nickname); } catch (e2) {}
-    }
-    nickRaw = nickRaw.split("\n")[0].replace(/^\s*["'\u201C\u2018]+|["'\u201D\u2019]+\s*$/g, "");
-    const nick = normalizeNickname(nickRaw);
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const first = cleaned.indexOf("{");
+    const last = cleaned.lastIndexOf("}");
+    if (first < 0 || last <= first) return fail("parse_no_object", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
+    const out = JSON.parse(cleaned.slice(first, last + 1));
+    let article = clean(out.article, 700);
+    if (!article) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
+    const originalNick = clean(out.nickname, 80);
+    const nick = normalizeNickname(originalNick);
     if (!nick) return fail("empty", { providerRequestId: providerId, stopReason, usage, textChars: text.length });
+    article = clean(reconcileNickname(article, originalNick, nick), 700);
     const diagnostic = { providerRequestId: providerId, stopReason, usage, timeoutMs };
-    log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length });
-    return respond({ ok: true, nickname: nick, source: "api", diagnostic }, 200, "api", null);
+    let sig = null;
+    if (env.RECAP_SIGN_KEY) {
+      try { sig = await hmacHex(env.RECAP_SIGN_KEY, shareSigMessage(b.mode, wins, b.net, nick, article, players)); }
+      catch (e) { log("sign_error", cleanHeader(e && e.message)); }
+    }
+    log("api", null, { providerRequestId: providerId, stopReason, usage, nicknameChars: nick.length, nicknameTrimmed: originalNick !== nick, articleChars: article.length, signed: !!sig });
+    return respond(Object.assign({ ok: true, nickname: nick, article, source: "api", diagnostic }, sig ? { sig } : {}), 200, "api", null);
   } catch (e) {
     return fail("parse", {
       providerRequestId: providerId,
