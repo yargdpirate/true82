@@ -2197,6 +2197,23 @@ async function accountLane() {
       await ACC.fetchDaily(), await ACC.fetchWeekly(), ACC.submitRun() === undefined],
      [[true, true], true, "function", "function", "function", null, null, true]);
 
+  // (1b) THE CUT-OFF DRAFT (v69.2). body.drafting locks the page with
+  // overflow:hidden; iOS does not clamp the scroll offset when a document stops
+  // scrolling, so a draft started from a scrolled home screen opens with its top
+  // above the viewport and no way back — which is every draft after the first,
+  // because the mode buttons sit below the fold on a phone. Every toggle must go
+  // through setDrafting(), which enters at the top. A raw classList call added
+  // later would quietly bring the bug back, so no raw calls are allowed.
+  eq("v69.2 the cut-off draft: every body.drafting toggle goes through setDrafting(), which scrolls to the top " +
+     "before the lock and again after layout (iOS settles a frame late)",
+     [/function setDrafting\(on\)/.test(appSrc),
+      /if \(on\) toTop\(\);/.test(appSrc),
+      /requestAnimationFrame\(toTop\)/.test(appSrc),
+      appSrc.split('classList.add("drafting")').length - 1,
+      appSrc.split('classList.remove("drafting")').length - 1,
+      appSrc.split('classList.toggle("drafting"').length - 1],
+     [true, true, true, 0, 0, 1]);
+
   // (2) the lane switch: off on live, on where it is being built or invited
   eq("v69 the lane switch: off on true82.net, on for localhost and for ?acct=1",
      [loadAcct("true82.net", "").laneOn(), loadAcct("true82.net", "?acct=1").laneOn(),

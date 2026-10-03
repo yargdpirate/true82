@@ -865,13 +865,31 @@ function bindHaptics() {
 // padding) applied when you're no longer drafting -> dead scroll space below the content. On
 // every return to visibility, re-sync the two chrome classes to G (the source of truth). This
 // is a no-op whenever they already match.
+// v69.2 THE CUT-OFF DRAFT (iOS). body.drafting locks the page with
+// `height: 100dvh; overflow: hidden` (styles.css). Chromium clamps the scroll
+// offset to 0 when a document stops being scrollable; iOS does NOT — it leaves
+// the page exactly where it was, and with the lock on there is no way to scroll
+// back. So a draft started from a scrolled home screen opens with its top (the
+// bank, the ticket, the skips) above the viewport, permanently.
+// That is every draft after the first one: once you have played, you land back
+// on the home screen and must scroll down to reach PRESTI or THE DAILY, so the
+// tap that starts the game is a tap made while scrolled.
+// The fix is to enter the draft at the top, twice: before the lock (while the
+// page can still scroll) and again after layout (iOS settles a frame late).
+function setDrafting(on) {
+  var toTop = function () { try { window.scrollTo(0, 0); } catch (e) {} };
+  if (on) toTop();
+  document.body.classList.toggle("drafting", !!on);
+  if (on && typeof requestAnimationFrame === "function") requestAnimationFrame(toTop);
+}
+
 var _visBound = false;
 function bindVisibilityResync() {
   if (_visBound) return;
   _visBound = true;
   function resync() {
     var drafting = !!(G && G.screen === "draft");
-    document.body.classList.toggle("drafting", drafting);
+    setDrafting(drafting);
     document.body.classList.toggle("has-pick", drafting && !!G.selected);
   }
   document.addEventListener("visibilitychange", function () {
@@ -3456,7 +3474,7 @@ function renderIntro() {
   G = null;
   ANALYTICS_HOME_N += 1;
   if (window.T82DUI) T82DUI.stop();   // leaving a duel screen kills its poll
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   document.body.classList.remove("gating");
   document.body.classList.remove("has-pick");   // EXIT RUN with a player selected
   renderPips();
@@ -4124,7 +4142,7 @@ function refreshPool() {
 function renderDraft(anim) {
   G.screen = "draft";
   G.query = "";                 // fresh filter on each new round / skip (sort persists)
-  document.body.classList.add("drafting");   // hides the masthead: the utility bar takes over (styles.css)
+  setDrafting(true);   // hides the masthead: the utility bar takes over (styles.css); enters at the top (iOS)
   document.body.classList.remove("gating");
   var rows = currentPoolRows();
   var codes = {};
@@ -7681,7 +7699,7 @@ function sdTrayHtml() {
     '<span class="rd-slotrow">' + btns + "</span></div>";
 }
 function renderShowdownDraft() {
-  document.body.classList.add("drafting");
+  setDrafting(true);
   document.body.classList.remove("gating");
   var pool = sdBuildPool();
   var avail = sdBoardOrder(pool.list.filter(function (p) { return SD.taken[p.name] == null; }));
@@ -7737,7 +7755,7 @@ function renderShowdownDraft() {
     if (SD_TIMER) { clearTimeout(SD_TIMER); SD_TIMER = 0; }
     analyticsTrack("showdown_state", { surface: "redraft", action: "abandon", mode: "showdown", ordinal: SD ? SD.at + 1 : 0 });
     SD = null;
-    document.body.classList.remove("drafting");
+    setDrafting(false);
     renderIntro();
   });
 }
@@ -7774,7 +7792,7 @@ function sdKeepAnchors(pool, anchors) {   // the first anchor still on the board
   }
 }
 function renderShowdownResults() {
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   var v = SD.verdict, mine = v.map(function (t) { return t.gi; }).indexOf(0);
   var podium = v.map(function (t, i) {
     var five = t.roster.map(function (p) {
@@ -7808,7 +7826,7 @@ function renderShowdownResults() {
    The cards carry the theme (styles.css: .rd-diff[data-diff]), so the copy
    stays short. The choice can be remembered (localStorage + a cookie). */
 function renderDifficultyScreen(cfg) {
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   document.body.classList.remove("gating");
   var remembered = diffRemembered(cfg.mode), usable = diffStoreUsable();
   function card(k) {
@@ -7869,7 +7887,7 @@ function sdFeatRowHtml(id, line) {
 /* ---------- the class gate: pick a class, read the stakes, draft ---------- */
 function renderShowdownGate(silent) {
   if (SD_DIFF == null) { renderShowdownDifficulty(); return; }
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   document.body.classList.remove("gating");
   sdDeriveClasses();
   if (SD_QA.cls && !SD_QA.used && SD_CLASSES[SD_QA.cls]) { SD_CLASS_ID = SD_QA.cls; SD_QA.used = 1; SD_CLASS_PICKED = 1; }
@@ -9260,7 +9278,7 @@ function renderResults(e, keepScroll) {
   var shareLabel = !dailyShare ? "SHARE YOUR TEAM"
     : dailyShare.isOfficial ? "SHARE THE DAILY"
     : "SHARE OFFICIAL (" + dailyShare.official.wins + "-" + (CFG.GAMES_IN_SEASON - dailyShare.official.wins) + ")";
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   document.body.classList.remove("gating");
   // v50 RISO RESULTS: the page prints on the same paper stock as the reel.
   // The hero is THE SHAPE OF A SEASON (results-riso.js) over the plain
@@ -9399,7 +9417,7 @@ function kamanShareText() {
 }
 function renderKamanResults() {
   renderPips();
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   document.body.classList.remove("gating");
   var picksHtml = G.picks.map(function (p) {
     var row = p.row, name = row[IDX.name];
@@ -9558,7 +9576,7 @@ function renderDailyArchive() {
   if (!window.T82DAILY) { renderIntro(); return; }
   G = null;
   if (window.T82DUI) T82DUI.stop();
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   document.body.classList.remove("gating");
   renderPips();
   var today = T82DAILY.dayKey(), key = T82DAILY.shiftKey(today, -1), rows = "", guard = 0;
@@ -9659,7 +9677,7 @@ function renderDailyGate(board, target, variantTag, opts) {
     target_wins: target ? target.w : null, target_net: target ? target.n : null
   });
   if (window.T82DUI) T82DUI.stop();
-  document.body.classList.remove("drafting");
+  setDrafting(false);
   document.body.classList.add("gating");   // full-screen gate: masthead + footer hide (styles.css)
   renderPips();
   var baseName = board.base === "cap" ? "Presti" : board.base === "pro" ? "Pro" : "Classic";
