@@ -7,10 +7,9 @@
 > or ranked. Two cheats are closed and both are covered by tests: claiming a score you did not get (the replay
 > catches it) and posting an easy random board as today's Daily (the day key alone fixes the mode, seed and
 > challenge, re-derived server-side from daily-core.js). **HE HAS DECIDED ACCOUNTS GO LIVE FOR THE DEBUT.**
-> **TWO THINGS HE MUST ACT ON, both in section 0000002:** (1) verified boards need the **Workers Paid plan ($5/mo)**
-> — warming the engine costs ~111 ms CPU and the free plan kills anything over 10 ms; without it runs store
-> unverified and the boards stay empty rather than wrong. (2) The **Clerk production instance** needs its DNS
-> started this week (up to 48 h), and it carries different keys from the development one.
+> **WHAT HE MUST ACT ON, in section 0000002:** the **Clerk production instance** needs its DNS started this week
+> (up to 48 h), and it carries different keys from the development one. **The Workers Paid plan is NOT required** —
+> that earlier claim was wrong and is corrected below.
 
 > **FIRST THING (2026-10-03): V69, THE ACCOUNT (accounts.js key `20261003-v69`), IS BUILT AND TESTED ON
 > `c-code-clean` (in the working tree; commit at his word). IT IS DORMANT: true82.net renders nothing and requests
@@ -127,11 +126,21 @@ Measured defences, both pinned in test.js:
   the mode, the seed AND the challenge, re-derived server-side from the same daily-core.js the browser runs
 - a second attempt at the same day -> `alreadyToday`, not stored (UNIQUE on `(user_id, official)`)
 
-**WHAT HE MUST DO.** Beyond v69's five steps: paste `migrations/0031_runs_boards_v1.sql`, and **turn on the Workers
-Paid plan**. The engine costs ~111 ms CPU to warm per isolate (JSON.parse 15 ms + initData 96 ms, measured) and
-every verification after that is 0.04 ms — so it is a cold-start wall, not a throughput problem, and the free
-plan's 10 ms ceiling kills the request that pays it. Without the plan the game plays normally, runs store
-unverified, and the boards stay quiet rather than filling with unchecked numbers.
+**WHAT HE MUST DO.** Beyond v69's five steps: paste `migrations/0031_runs_boards_v1.sql`. That is all.
+
+**THE WORKERS PAID PLAN IS NOT REQUIRED — an earlier claim here was wrong.** The reasoning was: warming the
+engine costs ~111 ms CPU per isolate (JSON.parse 15 ms + initData 96 ms, measured on the owner's Mac), and Workers
+Free allows 10 ms CPU a request, so the request that pays the warm-up would be killed. **Measured against the live
+preview on 2026-10-03, it is not.** Three real submissions to v69-boards.true82.pages.dev came back with the
+server's own replay: an ordinary Classic run verified 74-8 net 14.95 (matching the client exactly), today's real
+Daily board verified 78-4 net 19.78, and a claimed 82-0 on that same run was rejected with `why: "rng-draws"`.
+Whether that is because the account is already on a paid plan, because Pages Functions account for start-up
+differently, or because the ceiling is not what the docs imply, is unknown — but the empirical answer is that
+verification works as deployed. Do not spend the $5 on this reasoning alone; if boards ever fill with
+`verified = 0` rows whose verdict is `engine`, THAT is the symptom that would justify it.
+
+The general lesson, and it cost two false conclusions in one session: a measurement taken on the owner's Mac is
+not a measurement of Cloudflare, and a green local test is not a green deployed test. Check what the URL serves.
 
 **Two design calls worth knowing.**
 - *No streak counter.* An incremental counter must assume days arrive in order; a backfill during testing proved it
