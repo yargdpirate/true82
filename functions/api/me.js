@@ -17,9 +17,28 @@ export async function onRequestGet(context) {
       // whether auth is configured is already obvious to anyone who tries it.
       const sent = !!(request.headers.get("authorization") || /(^|;\s*)__session=/.test(request.headers.get("cookie") || ""));
       if (!sent) return json({ ok: true, anonymous: true });
+      const parties = (env && env.AUTHORIZED_PARTIES) || "";
+      const origin = new URL(request.url).origin;
+      let keyUsable = null;
+      if (env && env.CLERK_JWT_KEY) {
+        try {
+          const body = String(env.CLERK_JWT_KEY).replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+          const bin = atob(body), bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          await crypto.subtle.importKey("spki", bytes, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+          keyUsable = true;
+        } catch { keyUsable = false; }
+      }
       return json({ ok: true, anonymous: true, tokenSent: true,
         serverHasKey: !!(env && env.CLERK_JWT_KEY),
-        why: (env && env.CLERK_JWT_KEY) ? "token-rejected" : "no-key-on-this-environment" });
+        keyUsable,
+        authorizedParties: parties || null,
+        thisOrigin: origin,
+        originAllowed: !parties || parties.split(",").map((x) => x.trim()).includes(origin),
+        why: !(env && env.CLERK_JWT_KEY) ? "no-key-on-this-environment"
+           : keyUsable === false ? "key-will-not-parse"
+           : (parties && !parties.split(",").map((x) => x.trim()).includes(origin)) ? "origin-not-in-AUTHORIZED_PARTIES"
+           : "token-rejected" });
     }
 
     const out = { ok: true, anonymous: false, user: { tag: auth.tag, name: auth.name } };
