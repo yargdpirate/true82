@@ -25,6 +25,8 @@ GET /api/traits?op=result and op=labels, plus a HEAD on /r/)
 - Never SQL: 0021 and 0022 were code-only deploys (docs/history/DEPLOY-0021
   and DEPLOY-0022). 0001-0003 (accounts, leagues, fast advance) belong to
   origin/accounts-test and item 17 (later); c-code-clean needs none of them.
+  0030 (v69) is this lane's own, much smaller account schema: three tables,
+  renumbered out of 0001's way and carrying none of its game tables.
 - The branch preview reads the production D1 (identical vote tallies on
   true82.net and c-code-clean.true82.pages.dev).
 
@@ -229,4 +231,56 @@ returns unsure 249, yes 215. The results cards on true82.net read the live tags,
 the game's boards and scoring read labels.json, which picks them up at the next tag refresh
 (`node tools/labels-refresh.js`, or the Monday task). Rollback: `DELETE FROM trait_scout_v1 WHERE source =
 'scout-2026-09-28 claude-opus-5-5'` (the question rows are harmless without a claim).
+
+
+## 0030_accounts_min_v1.sql (v69, 2026-10-03; NOT YET APPLIED)
+
+The account lane's whole schema: three tables, all additive, nothing existing touched.
+
+`users` — `clerk_id` (unique, opaque, Clerk's), `tag` (unique, 4 characters from a 30-symbol no-confusable alphabet,
+server-assigned by `functions/_lib/auth.js`), `display_name` (filtered by `_lib/names.js`, defaults to `GM-<tag>`),
+the three cosmetic slots the spec reserves, and two timestamps. No email, no password, no IP, no user agent — Clerk
+is the identity of record and SECURITY.md explains why that is the whole point.
+
+`sid_links` — `(sid, user_id)`. `sid` is `t82:sid`, a namespace `accounts.js` mints for this lane alone. It is
+deliberately NOT the retention cookie `t82_rid` and NOT the traits voter hash: joining either would turn the
+pseudonymous analytics stream into an identified one, against the owner's v43 privacy decision.
+
+`local_claims` — `(user_id, kind)` holding ONE JSON blob. Today the only kind is `daily1`: the up-to-400-day local
+Daily record from `localStorage.t82_daily1`, which is otherwise lost the moment someone clears their browser.
+`days` and `streak` sit beside the blob so `/api/me` never parses it, and `verified` is always 0 because every byte
+of it is client-reported (ACCOUNTS.md §1) — it must never feed a verified board.
+
+**Why one blob and not one row per day.** D1's free plan allows 100,000 row writes a day, and since 2026-09-01
+Cloudflare *fails* queries once an account crosses it. At a row per day, 250 sign-ups would spend the entire site's
+daily write budget and take the Tribune and the analytics down with them. One row per claim makes a launch spike
+one write per person. If a board ever needs to query individual days, expand it then, from the blob.
+
+Small enough for the console paste path. Order of application does not matter: it depends on nothing.
+`npx wrangler d1 execute true82 --remote --file=migrations/0030_accounts_min_v1.sql`
+Check: `SELECT COUNT(*) FROM users` returns 0 on a fresh apply, and
+`SELECT name FROM sqlite_master WHERE name IN ('users','sid_links','local_claims')` returns three rows.
+Rollback: `DROP TABLE local_claims; DROP TABLE sid_links; DROP TABLE users;` — nothing else references them.
+
+## 0031_runs_boards_v1.sql (v69.1, 2026-10-03; NOT YET APPLIED)
+
+The boards' one table. `runs` holds a finished game as the SERVER recomputed it: `wins`, `net`, `budget_used`,
+`cap_left`, `hh_win` and `picks` all come from replaying `{mode, seed, actions}` through the same sim-core.js the
+browser ran, never from anything the client said about its own score. `verified` is 1 only when that replay agreed;
+`verdict` records why when it did not (`rng-draws`, `wins`, `net`, `hh`, `illegal-op`, `incomplete`, `engine`).
+
+Six indexes, one per board plus two guards. `idx_runs_official_once` is the important one: UNIQUE on
+`(user_id, official)`, so the first official attempt at a day's Daily is the one that counts and a second is
+accepted, answered honestly and dropped. `idx_runs_pending` exists so unverified rows can be found again if the
+engine was unavailable when they arrived.
+
+There is deliberately NO streak table. An incremental counter has to assume days arrive in chronological order, and
+a counter that can drift is the wrong thing to put under a board people care about; `/api/lb?board=streak` computes
+the longest consecutive run with gaps-and-islands over the rows themselves (`julianday(day) - row_number()` is
+constant inside a run). test.js runs that exact SQL against an in-memory SQLite, including out-of-order inserts.
+
+Small enough for the console paste path, and it depends on 0030 only for the `users` rows the boards join to.
+`npx wrangler d1 execute true82 --remote --file=migrations/0031_runs_boards_v1.sql`
+Check: `SELECT COUNT(*) FROM runs` returns 0 on a fresh apply.
+Rollback: `DROP TABLE runs;` — nothing else references it.
 

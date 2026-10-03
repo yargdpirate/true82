@@ -2157,5 +2157,254 @@ if (fs.existsSync("site_data.json")) {
 }
 
 
-console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+// ---------- v69 THE ACCOUNT LANE (accounts.js, functions/_lib, functions/api) ----------
+// functions/ is ESM and this harness is CommonJS, so these run in an async tail
+// and the tally moves inside it. Everything above stays synchronous.
+async function accountLane() {
+  // (1) THE LANDMINE. app.js calls three T82ACC methods with no try/catch around
+  // them, so a T82ACC that lacks one throws mid-renderIntro() and the home screen
+  // never draws. This is the regression test for that; read accounts.js's header.
+  const acctSrc = fs.readFileSync("accounts.js", "utf8");
+  function loadAcct(hostname, search) {
+    const noop = () => {}, elStub = { setAttribute: noop, removeAttribute: noop, addEventListener: noop, appendChild: noop, style: {}, classList: { add: noop, remove: noop } };
+    const c = {
+      document: { readyState: "complete", querySelector: () => null, getElementById: () => null,
+        createElement: () => Object.assign({}, elStub), addEventListener: noop,
+        head: { appendChild: noop }, body: { classList: { add: noop, remove: noop }, appendChild: noop } },
+      location: { hostname, search: search || "" }, localStorage: null,
+      fetch: () => Promise.reject(new Error("no network in tests")),
+      Promise, Math, JSON, console, crypto: require("crypto").webcrypto
+    };
+    c.window = c; c.globalThis = c;
+    vm.createContext(c); vm.runInContext(acctSrc, c);
+    return c.T82ACC;
+  }
+  const ACC = loadAcct("true82.net", "");
+  // Both fetch call sites sit bare in renderIntro(); only submitRun() is wrapped.
+  // If a future edit wraps them in try/catch these two assertions flip and the
+  // stubs below stop being load-bearing — read the header before relaxing them.
+  const appSrc = fs.readFileSync("app.js", "utf8");
+  const callLine = (needle) => appSrc.split("\n").filter((l) => l.indexOf(needle) !== -1);
+  const bare = ["T82ACC.fetchDaily()", "T82ACC.fetchWeekly()"].map((needle) => {
+    const lines = callLine(needle);
+    return lines.length === 1 && lines[0].indexOf("try") === -1;
+  });
+  eq("v69 the landmine: app.js still calls fetchDaily/fetchWeekly UNGUARDED (one bare call site each, no try), " +
+     "accounts.js answers both with a benign stub, and submitRun survives being called with nothing " +
+     "(removing a stub breaks the home screen, not just accounts)",
+     [bare, callLine("T82ACC.submitRun({").length === 1,
+      typeof ACC.fetchDaily, typeof ACC.fetchWeekly, typeof ACC.submitRun,
+      await ACC.fetchDaily(), await ACC.fetchWeekly(), ACC.submitRun() === undefined],
+     [[true, true], true, "function", "function", "function", null, null, true]);
+
+  // (2) the lane switch: off on live, on where it is being built or invited
+  eq("v69 the lane switch: off on true82.net, on for localhost and for ?acct=1",
+     [loadAcct("true82.net", "").laneOn(), loadAcct("true82.net", "?acct=1").laneOn(),
+      loadAcct("localhost", "").laneOn(), loadAcct("127.0.0.1", "").laneOn(),
+      loadAcct("c-code-clean.true82.pages.dev", "").laneOn()],
+     [false, true, true, true, false]);
+  // THE LIVE GUARANTEE: with the lane off, initClerk() must resolve null without
+  // touching the network, EVEN THOUGH real Clerk keys are configured. The race
+  // is deliberate — initClerk() returning a promise that never settles would
+  // otherwise truncate this whole suite silently instead of failing.
+  {
+    const timeout = (ms) => new Promise((r) => setTimeout(() => r("HUNG"), ms));
+    const off = await Promise.race([loadAcct("true82.net", "").initClerk(), timeout(2000)]);
+    eq("v69 the live guarantee: lane off -> initClerk() resolves null, so true82.net requests nothing from Clerk " +
+       "even with keys configured", off, null);
+  }
+
+  // (3) display names (functions/_lib/names.js)
+  const names = await import("./functions/_lib/names.js");
+  eq("v69 name: clean passes, charset and leet-denylist and short all fall back to GM-<tag>",
+     [names.cleanName("Gray K", "4F2K"), names.cleanName("<script>", "4F2K"),
+      names.cleanName("Sh1t Lord", "4F2K"), names.cleanName("ab", "4F2K"), names.cleanName(null, "4F2K")],
+     ["Gray K", "GM-4F2K", "GM-4F2K", "GM-4F2K", "GM-4F2K"]);
+
+  // (4) Clerk session verification against a REAL RS256 keypair, no network.
+  // Ported from origin/accounts-test §13; functions/_lib/auth.js is byte-identical
+  // to that branch's copy, so these checks still pin exactly what they pinned.
+  const { generateKeyPairSync, createSign } = require("crypto");
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const pem = publicKey.export({ type: "spki", format: "pem" });
+  const b64u = (buf) => Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  function jwt(payload, opts = {}) {
+    const h = b64u(JSON.stringify({ alg: opts.alg || "RS256", typ: "JWT" }));
+    const pl = b64u(JSON.stringify(payload));
+    const signer = createSign("RSA-SHA256"); signer.update(h + "." + pl);
+    let sig = b64u(signer.sign(privateKey));
+    if (opts.breakSig) sig = sig.slice(0, -2) + (sig.endsWith("AA") ? "BB" : "AA");
+    return h + "." + pl + "." + sig;
+  }
+  const auth = await import("./functions/_lib/auth.js");
+  const nowS = Math.floor(Date.now() / 1000);
+  const req = (token) => ({ headers: { get: (k) => (k.toLowerCase() === "authorization" && token) ? "Bearer " + token : null } });
+  const envA = { CLERK_JWT_KEY: pem };
+  eq("v69 auth: valid token -> sub", await auth.verifySession(req(jwt({ sub: "user_1", exp: nowS + 300, azp: "https://true82.net" })), envA), "user_1");
+  eq("v69 auth: expired -> anonymous", await auth.verifySession(req(jwt({ sub: "user_1", exp: nowS - 300 })), envA), null);
+  eq("v69 auth: tampered signature -> anonymous", await auth.verifySession(req(jwt({ sub: "user_1", exp: nowS + 300 }, { breakSig: true })), envA), null);
+  {
+    const good = jwt({ sub: "user_1", exp: nowS + 300 });
+    const cookiePost = (hdrs) => new Request("http://true82.net/api/name",
+      { method: "POST", headers: { cookie: "__session=" + good, ...(hdrs || {}) } });
+    eq("v69 auth CSRF gate: a cookie-sourced POST needs same-origin proof; GETs and vouched POSTs pass",
+       [await auth.verifySession(cookiePost(), envA),
+        await auth.verifySession(cookiePost({ "sec-fetch-site": "same-origin" }), envA),
+        await auth.verifySession(cookiePost({ origin: "http://true82.net" }), envA),
+        await auth.verifySession(cookiePost({ origin: "http://evil.example" }), envA),
+        await auth.verifySession(new Request("http://true82.net/api/me", { headers: { cookie: "__session=" + good } }), envA)],
+       [null, "user_1", "user_1", null, "user_1"]);
+  }
+  eq("v69 auth: malformed -> anonymous", await auth.verifySession(req("not.a.jwt"), envA), null);
+  eq("v69 auth: missing CLERK_JWT_KEY -> anonymous (the fail-soft law: a missing secret is not an error)",
+     await auth.verifySession(req(jwt({ sub: "u", exp: nowS + 300 })), {}), null);
+  eq("v69 auth: azp outside AUTHORIZED_PARTIES -> anonymous",
+     await auth.verifySession(req(jwt({ sub: "u", exp: nowS + 300, azp: "https://evil.com" })),
+       { CLERK_JWT_KEY: pem, AUTHORIZED_PARTIES: "https://true82.net" }), null);
+  eq("v69 auth: __session cookie fallback",
+     await auth.verifySession({ headers: { get: (k) => k === "cookie" ? "__session=" + jwt({ sub: "user_2", exp: nowS + 300 }) : null } }, envA), "user_2");
+
+  // (5) the claim's sanitizer: nothing the client sends is copied through
+  const claim = await import("./functions/api/claim.js");
+  const dirty = { official: {
+      "2026-10-01": { num: 5, wins: 71, net: 3.14159, pct: 88.88, chId: "cap", five: ["Jordan 1996", "x".repeat(99)], nonce: "secret", evil: 1 },
+      "2026-10-02": { wins: 999 },
+      "not-a-day": { wins: 82 }, "../etc/passwd": { wins: 80 }
+    }, streak: { count: 7, lastKey: "2026-10-02" }, archive: { "2026-09-09": { wins: 80 } }, extra: 1 };
+  const cleaned = claim.cleanDaily(dirty);
+  eq("v69 claim sanitizer: bad day keys, unknown fields, archive and nonce dropped; wins clamped to 82; " +
+     "net and pct rounded; a long name truncated",
+     [Object.keys(cleaned.official).sort(), cleaned.official["2026-10-02"].wins,
+      cleaned.official["2026-10-01"].net, cleaned.official["2026-10-01"].pct,
+      cleaned.official["2026-10-01"].nonce, cleaned.official["2026-10-01"].five[1].length,
+      "archive" in cleaned, cleaned.streak],
+     [["2026-10-01", "2026-10-02"], 82, 3.14, 88.9, undefined, 48, false, { count: 7, lastKey: "2026-10-02" }]);
+  eq("v69 claim sanitizer: junk in, valid shape out (never a throw)",
+     [claim.cleanDaily(null), claim.cleanDaily("nope"), claim.cleanDaily({ official: [], streak: 5 })],
+     [{ official: {}, streak: { count: 0, lastKey: "" } }, { official: {}, streak: { count: 0, lastKey: "" } },
+      { official: {}, streak: { count: 0, lastKey: "" } }]);
+  {
+    const better = claim.cleanDaily({ official: { "2026-10-01": { wins: 80 } }, streak: { count: 2 } });
+    const worse = claim.cleanDaily({ official: { "2026-10-01": { wins: 40 } }, streak: { count: 1 } });
+    const first = claim.mergeDaily(null, cleaned);
+    const big = { official: {}, streak: { count: 1, lastKey: "2026-10-01" } };
+    for (let i = 0; i < 900; i++) {
+      const d = new Date(Date.UTC(2024, 0, 1) + i * 86400000).toISOString().slice(0, 10);
+      big.official[d] = { wins: 70, net: 1.5, five: ["Player Name Here", "Another One", "Third", "Fourth", "Fifth"] };
+    }
+    const capped = claim.mergeDaily(null, claim.cleanDaily(big));
+    eq("v69 claim merge: append-only (a claimed day only moves on a BETTER result), the streak keeps the higher " +
+       "count, re-claiming is idempotent, and 900 days land inside the 400-day and 64 KB caps",
+       [claim.mergeDaily(first, better).official["2026-10-01"].wins,
+        claim.mergeDaily(first, worse).official["2026-10-01"].wins,
+        claim.mergeDaily(first, better).streak.count,
+        JSON.stringify(claim.mergeDaily(first, cleaned)) === JSON.stringify(first),
+        Object.keys(capped.official).length <= 400, JSON.stringify(capped).length <= 64 * 1024],
+       [80, 71, 7, true, true, true]);
+  }
+
+  // (6) the endpoints load and export a handler (the esbuild-interop rehearsal)
+  const lb = await import("./functions/api/lb.js");
+  for (const mod of ["me", "name", "claim", "run", "lb"]) {
+    const m = await import("./functions/api/" + mod + ".js");
+    eq("v69 api/" + mod + ".js loads + exports a handler", typeof (m.onRequestPost || m.onRequestGet), "function");
+  }
+
+  // (6b) THE BOARDS, against a real SQLite. node:sqlite runs the migrations and
+  // the endpoint's OWN SQL — not a paraphrase of it — so a board that would
+  // return the wrong people fails here rather than on the day it matters.
+  {
+    const { DatabaseSync } = require("node:sqlite");
+    const db = new DatabaseSync(":memory:");
+    const ddl = (f) => fs.readFileSync("migrations/" + f, "utf8").split(";").map((x) => x.trim()).filter(Boolean);
+    for (const stmt of ddl("0030_accounts_min_v1.sql")) db.exec(stmt);
+    for (const stmt of ddl("0031_runs_boards_v1.sql")) db.exec(stmt);
+
+    const addUser = db.prepare("INSERT INTO users (id, clerk_id, tag, display_name, created_ts) VALUES (?,?,?,?,0)");
+    ["ava", "ben", "cy"].forEach((n, i) => addUser.run(i + 1, "c_" + n, "TAG" + i, n.toUpperCase()));
+    let rid = 0;
+    const addRun = db.prepare(
+      `INSERT INTO runs (id,user_id,mode,seed,verified,wins,net,budget_used,cap_left,official,created_ts)
+       VALUES (?,?,?,?,?,?,?,?,?,?,0)`);
+    const run = (uid, mode, wins, net, verified, budget, day) =>
+      addRun.run("r" + (++rid), uid, mode, rid, verified, wins, net, budget === undefined ? null : budget,
+                 budget === undefined ? null : 50 - budget, day || null);
+
+    // ava: 10 classic, 2 of them 82-0, best net 30. ben: 10 classic, 1 immortal.
+    // cy: only 3 classic runs -> below the bar, must not appear on the rate board.
+    for (let i = 0; i < 10; i++) run(1, "classic", i < 2 ? 82 : 70, i === 0 ? 30 : 10, 1);
+    for (let i = 0; i < 10; i++) run(2, "classic", i < 1 ? 82 : 70, 20, 1);
+    for (let i = 0; i < 3; i++) run(3, "classic", 82, 40, 1);
+    run(1, "classic", 82, 99, 0);                       // UNVERIFIED: must never rank
+    run(null, "classic", 82, 98, 1);                    // anonymous: must never rank
+    run(1, "cap", 82, 5, 1, 41);                        // Presti perfection, $41M
+    run(2, "cap", 82, 5, 1, 38);                        // cheaper
+    run(3, "cap", 82, 5, 0, 1);                         // unverified $1M: must never rank
+    run(1, "cap", 80, 4, 1, 10, "2026-10-03");          // today's daily
+    ["2026-09-20","2026-09-21","2026-09-22","2026-09-25","2026-09-26"].forEach((d) => run(2, "cap", 70, 1, 1, 20, d));
+
+    const rows = (key, arg) => {
+      const b = lb.BOARDS[key];
+      const st = db.prepare(b.sql);
+      return arg === undefined ? st.all() : st.all(arg);
+    };
+
+    const rate = rows("rate", "classic");
+    eq("v69.1 board 82-0%: ranked by rate, the " + lb.MIN_RUNS + "-run bar excludes a 3-for-3, and neither an " +
+       "unverified 82-0 nor an anonymous one counts",
+       [rate.map((r) => r.name), rate.map((r) => r.immortals + "/" + r.runs)],
+       [["AVA", "BEN"], ["2/10", "1/10"]]);
+
+    const cheap = rows("cheapest");
+    eq("v69.1 board Cheapest 82-0: least money first, and the unverified $1M run is not there",
+       cheap.map((r) => r.name + " $" + r.score), ["BEN $38", "AVA $41"]);
+
+    const net = rows("net");
+    eq("v69.1 board Best net: one row per GM, their best Classic season, verified only",
+       net.map((r) => r.name + " " + r.score), ["CY 40", "AVA 30", "BEN 20"]);
+
+    const daily = rows("daily", "2026-10-03");
+    eq("v69.1 board Today: only that day's verified rows", daily.map((r) => r.name + " " + r.score), ["AVA 80"]);
+
+    // ben played 09-20, 21, 22 (a run of 3) then 09-25, 26 (a run of 2) -> best 3.
+    // Order of insertion is deliberately not chronological; the query must not care.
+    const streak = rows("streak");
+    eq("v69.1 board Streak: longest CONSECUTIVE run of Dailies, computed from the rows (a gap splits it, and the " +
+       "answer does not depend on the order the days were written)",
+       streak.map((r) => r.name + " best=" + r.score + " days=" + r.days), ["BEN best=3 days=5", "AVA best=1 days=1"]);
+
+    db.close();
+  }
+
+  // (6c) the Daily's board is the server's to decide, not the client's
+  {
+    const sim = await import("./functions/_lib/sim.js");
+    const D = require("./daily-core.js");
+    const day = "2026-10-03", board = sim.dailyBoard(day);
+    eq("v69.1 the Daily is server-derived: the day key alone fixes the mode, the seed and the challenge, so a run " +
+       "played on any other seed cannot be posted as that day's board",
+       [board.key, board.base === D.boardFor(day).base, board.seed === D.boardFor(day).seed,
+        sim.dailyBoard("2026-10-04").seed !== board.seed, sim.dailyBoard("nope"), sim.dailyBoard("")],
+       [day, true, true, true, null, null]);
+  }
+
+  // (7) the paste rule (migrations/MIGRATIONS-NOTES.md): the D1 console can
+  // smart-convert a double hyphen, so a migration carries NO comment lines, and
+  // every statement must be independently repeat-safe.
+  {
+    for (const [file, n] of [["0030_accounts_min_v1.sql", 4], ["0031_runs_boards_v1.sql", 7]]) {
+      const sql = fs.readFileSync("migrations/" + file, "utf8");
+      const stmts = sql.split(";").map((x) => x.trim()).filter(Boolean);
+      eq("v69 migration " + file.slice(0, 4) + ": zero comment lines, and every statement is idempotent",
+         [sql.indexOf("--"), stmts.length, stmts.every((x) => /IF NOT EXISTS/i.test(x))],
+         [-1, n, true]);
+    }
+  }
+}
+
+accountLane()
+  .catch((e) => { fail++; console.log("FAIL  v69 the account lane: the harness threw — " + ((e && e.stack) || e)); })
+  .then(() => {
+    console.log(`\n${pass} passed, ${fail} failed`);
+    process.exit(fail ? 1 : 0);
+  });

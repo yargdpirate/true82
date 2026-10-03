@@ -9929,7 +9929,22 @@ function scheduleSharePct(e) {
 // self-heals on the next page load.
 function gameFinishedPings() {
   pingGames("POST");
-  try { if (window.T82ACC) T82ACC.submitRun(); } catch (e) {}   // core-truth replay submit (accounts.js); kaman self-skips
+  // v69.1 THE BOARDS: this seam hands over what the run DID — mode, seed and the
+  // logged actions — and nothing about what it scored. accounts.js replays it
+  // locally for the canonical draw count, the server replays it AGAIN, and only
+  // the server's recomputation is ever stored or ranked. The payload is built
+  // here because G is module-scoped to this file; accounts.js cannot see it.
+  // kaman never submits. Wrapped, as before: the game must not notice a failure.
+  try {
+    if (window.T82ACC && G && MODE !== "kaman") T82ACC.submitRun({
+      mode: MODE,
+      seed: G.seed,
+      actions: (G.actions || []).slice(),
+      dayKey: G.social ? G.social.key : null,
+      chId: G.social ? G.social.chId : null,
+      official: (G.analyticsOfficial === 1 && G.social && G.social.key) ? G.social.key : null
+    });
+  } catch (e) {}
   setTimeout(fetchFootStats, 1500);
 }
 

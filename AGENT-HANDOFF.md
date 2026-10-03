@@ -1,5 +1,31 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-03, later): V69.1, THE BOARDS, IS BUILT AND TESTED ON `c-code-clean` (working tree;
+> commit at his word). FIVE BOARDS, HIS LIST: 82-0% per mode · daily streak · cheapest Presti 82-0 · best Classic
+> net · best of each Daily.** Every one is VERIFIED: the client posts `{mode, seed, actions}` and never a score,
+> the server replays it through the same sim-core.js the browser ran, and only the server's recomputation is stored
+> or ranked. Two cheats are closed and both are covered by tests: claiming a score you did not get (the replay
+> catches it) and posting an easy random board as today's Daily (the day key alone fixes the mode, seed and
+> challenge, re-derived server-side from daily-core.js). **HE HAS DECIDED ACCOUNTS GO LIVE FOR THE DEBUT.**
+> **TWO THINGS HE MUST ACT ON, both in section 0000002:** (1) verified boards need the **Workers Paid plan ($5/mo)**
+> — warming the engine costs ~111 ms CPU and the free plan kills anything over 10 ms; without it runs store
+> unverified and the boards stay empty rather than wrong. (2) The **Clerk production instance** needs its DNS
+> started this week (up to 48 h), and it carries different keys from the development one.
+
+> **FIRST THING (2026-10-03): V69, THE ACCOUNT (accounts.js key `20261003-v69`), IS BUILT AND TESTED ON
+> `c-code-clean` (in the working tree; commit at his word). IT IS DORMANT: true82.net renders nothing and requests
+> nothing from Clerk until ONE boolean flips.** The owner
+> re-opened item 17 and scoped it hard: "just the account." So this is sign in, have a name, keep your Dailies — and
+> nothing else. No boards, no runs, no duels, no leagues, no Arena; those stay on `origin/accounts-test`.
+> **Clerk is still the right pick and was re-verified today** (50,000 monthly retained users free, commercial use
+> fine, Clerk branding on free, a one-month grace period, Pro $25/mo). The decisive reason is repo law: zero build
+> step. `functions/_lib/auth.js` is ported BYTE-IDENTICAL from the accounts branch.
+> **HE STILL HAS TO DO FIVE THINGS before it can sign anyone in** — they are all dashboard work, listed in
+> section 0000001 as a walkthrough, and nothing in this commit works until then.
+> **His four calls (2026-10-03):** email code + Google; hidden lane, tested locally; name + tag + claim the old
+> Dailies; a "13 or older" line, no age gate. Section 0000001 has the rest, including what must change before the
+> button can go live (five public pages still promise "no account").
+
 > **FIRST THING (2026-10-03): V68.2 (app.js and sim-core.js key `20261003-v68-3`, BUILD_V `v68.2`, engine VERSION 17)
 > IS ON `c-code-clean` AND `art-variety` (committed and pushed; NOT LIVE: `main` is still v66.5 and merges only at his
 > word).** The owner's decision on v68.1's
@@ -85,6 +111,108 @@
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
+
+## 0000002. START HERE (2026-10-03, later): V69.1, THE BOARDS (c-code-clean, BUILT BUT DORMANT)
+
+**The five, his words (2026-10-03):** "82-0% on each mode; daily streak; least money to go 82-0 in Presti; best net
+rating for classic. And best daily per daily obv." All five are live behind the same `ACCT_LIVE` flip as v69.
+
+**THE SUBMISSION LAW, and why it matters more than the boards do.** `app.js` hands accounts.js what the run DID
+(mode, seed, the logged actions) and nothing about what it scored. accounts.js replays it locally for the canonical
+draw count; `/api/run` replays it AGAIN server-side through the same `sim-core.js`, and stores only what its own
+replay produced. A run whose replay disagrees stores `verified = 0` with the reason and can never appear anywhere.
+Measured defences, both pinned in test.js:
+- a run claiming 82-0 it did not get -> `verified 0, why "rng-draws"`
+- an easy random board posted as today's Daily -> stored, but `officialRejected`, because the day key alone fixes
+  the mode, the seed AND the challenge, re-derived server-side from the same daily-core.js the browser runs
+- a second attempt at the same day -> `alreadyToday`, not stored (UNIQUE on `(user_id, official)`)
+
+**WHAT HE MUST DO.** Beyond v69's five steps: paste `migrations/0031_runs_boards_v1.sql`, and **turn on the Workers
+Paid plan**. The engine costs ~111 ms CPU to warm per isolate (JSON.parse 15 ms + initData 96 ms, measured) and
+every verification after that is 0.04 ms — so it is a cold-start wall, not a throughput problem, and the free
+plan's 10 ms ceiling kills the request that pays it. Without the plan the game plays normally, runs store
+unverified, and the boards stay quiet rather than filling with unchecked numbers.
+
+**Two design calls worth knowing.**
+- *No streak counter.* An incremental counter must assume days arrive in order; a backfill during testing proved it
+  drifts (it read 9 where the answer was 10). The streak board is gaps-and-islands over the Daily rows themselves,
+  so it cannot drift and does not care what order days were written in. test.js runs that exact SQL against an
+  in-memory SQLite with deliberately out-of-order inserts.
+- *The 82-0% board needs 10 finished seasons in a mode to qualify* (`MIN_RUNS` in `functions/api/lb.js`, one dial),
+  otherwise one lucky first run reads 100%.
+
+**Known, bounded, and his to weigh.** The Daily's seed is derived from the day key by shipped JavaScript, so a
+determined player can compute a future day's board and pre-solve it. The fix is a server-minted HMAC seed
+(`DAILY_SECRET`, the design is on origin/accounts-test) — deliberately NOT done two weeks before a debut, because
+it would change the shipped Daily's character. Fabricating a score is impossible; getting an early look at a board
+is not.
+
+**The art bots.** The boards are deliberately plain — his instruction was to invest in functionality because art
+bots beautify later. The markup is `.lb-tabs` / `.lb-list` / `.lb-row` / `.lb-rank` / `.lb-name` / `.lb-score`, and
+`.lb-you` marks the signed-in player's row. Restyling is CSS only; no JavaScript needs to move.
+
+**Verified end to end** against a local wrangler + D1 with 84 bot-played runs across three GMs: all five boards
+populate and rank correctly, the cheapest Presti 82-0 reads $38M, the streak board reads 10/6/3 against raw day
+spans of 10/6/3, and both cheat attempts were rejected. 286 checks pass.
+
+## 0000001. START HERE (2026-10-03): V69, THE ACCOUNT (c-code-clean, BUILT BUT DORMANT)
+
+**What shipped.** Sign in, set a display name, and the account takes custody of this browser's Daily record. That is
+the whole feature. `migrations/0030_accounts_min_v1.sql` (three tables: `users`, `sid_links`, `local_claims`),
+`functions/_lib/{auth,names,acct}.js`, `functions/api/{me,name,claim}.js`, `accounts.js`, the account face in the
+44px slot v65 reserved, `SECURITY.md`, a `.gitignore`, and 19 new checks in `test.js` (277 pass).
+
+**THE LIVE FLIP IS ONE LINE.** `ACCT_LIVE` at the top of `accounts.js`. While it is `false` the button renders only
+on localhost or on any URL carrying `?acct=1` — so he can try it on his phone, on the real site, without launching
+it for anyone else. Deliberately NOT done through index.html's `#t82-live-hide` block: a CSS hide still downloads
+Clerk, and it cannot tell localhost from production. That block is untouched; every gameplay surface it hides stays
+hidden.
+
+**WHAT HE MUST DO BEFORE IT SIGNS ANYONE IN (five steps, all dashboard work).**
+1. Clerk dashboard -> create or reuse an application. Enable **email code** and **Google** only.
+2. API keys -> paste the Publishable Key and Frontend API URL into `CONFIG` at the top of `accounts.js`.
+3. Same page -> *Show JWT public key -> PEM* -> that is `CLERK_JWT_KEY` in Cloudflare Pages, on **Production AND
+   Preview** (the split-env trap). Add `AUTHORIZED_PARTIES` too.
+4. Clerk -> allowed origins -> add `http://127.0.0.1:8792` for local work.
+5. Paste `migrations/0030_accounts_min_v1.sql` into the D1 console for `true82`. Purely additive.
+A Clerk **production** instance is NOT needed yet, and is not free of friction when it is: it wants CNAMEs for
+`clerk`, `accounts` and `mail` on true82.net, up to 48h to propagate, plus his own Google OAuth app (development
+instances ride Clerk's shared Google credentials, which is why Google costs nothing to build against today).
+
+**BEFORE THE BUTTON CAN GO LIVE — this is a gate, not a nicety.** Five public surfaces promise there is no account:
+`index.html:138`, `md/faq.md:19` and `:27`, `md/index.md:26`, and the `faq/` and `how-it-works/` twins. They are
+true today and become false the moment the face appears on true82.net. (`md/faq.md:19`'s "no cookies" is **already**
+wrong — the 400-day `t82_rid` retention cookie has been live since v40r2.)
+
+**THE LANDMINE, now covered by a test.** `app.js:3748` and `app.js:3766` call `T82ACC.fetchDaily()` and
+`fetchWeekly()` with NO try/catch. Defining `T82ACC` without them throws mid-`renderIntro()` and **the home screen
+never draws** — it would look like the whole site broke, not like accounts broke. `accounts.js` ends with three
+benign stubs for exactly this, and `test.js` now fails if either the call sites or the stubs change.
+
+**Three decisions worth knowing.**
+- *The claim is one row, not 400.* `t82_daily1` holds up to 400 days. D1's free plan allows 100,000 row writes a day
+  and **since 2026-09-01 Cloudflare fails queries past it** — a row per day would let ~250 sign-ups spend the whole
+  site's budget and take the Tribune and analytics down with them. Measured: a four-day history costs 5 rows total.
+- *The claim links `t82:sid` and nothing else.* Not the retention cookie `t82_rid`, not the traits voter hash.
+  Joining either would turn the pseudonymous analytics stream into an identified one, against his v43 decision.
+- *Previews sign in but create nothing.* `_lib/acct.js` honours `_middleware.js`'s mockDb flag: on any host that is
+  not true82.net or localhost, the Clerk token is verified for real and answered with a synthetic stable tag, so the
+  whole signed-in UI is exercisable on a preview while D1 stays clean. Verified: a preview sign-in wrote 0 rows.
+  (`auth.js` itself does NOT know about this — it is byte-identical to the branch, and the rule lives one layer up.)
+
+**The email.** He asked the sheet to confirm which address he signed in with. It reads that from the live Clerk
+session in the browser; it is never posted to `/api/*` and there is no column for it in any migration. Clerk stays
+the identity of record, so a D1 breach is not an email breach (SECURITY.md).
+
+**Verified end to end** against a local `wrangler pages dev` + D1 (`.claude/launch.json` -> `site-api4`), with a
+throwaway RSA keypair standing in for Clerk: first sign-in mints a tag, a claim of 3 days lands, re-claiming the
+same payload adds 0, a second device adds its day and a WORSE repeat of a day does not overwrite the better one,
+a filthy display name falls back to `GM-<tag>`, a second Clerk id gets its own row, and a preview host writes
+nothing. The game itself plays unchanged with `accounts.js` in the chain (zero console errors).
+
+**Still open.** His v66 traffic question (section 000000) is still unanswered; the D1 write-budget finding above is
+the first hard data point for it. And there is no CSP yet — `SECURITY.md` §5 has the recipe, which needs the Clerk
+Frontend API host, so it belongs with the production instance.
 
 ## 0000000. START HERE (2026-10-03): V68.2, V68.1 AND V68 ON V67.2, THE ART LIBRARY WITH HIS PICKS (c-code-clean + art-variety, NOT LIVE)
 

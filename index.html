@@ -61,7 +61,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261002-v68">
+<link rel="stylesheet" href="styles.css?v=20261003-v69-3">
 <link rel="stylesheet" href="look.css?v=20260927-v60">
 <style id="t82-live-hide">
   /* LIVE LANE ONLY. app.js and styles.css are byte-identical to the
@@ -69,11 +69,17 @@
      live, and it lives HERE (in the one file allowed to differ per lane) so the
      shared engine/shell/CSS never fork. It hides the account/duel/league entry
      points renderIntro() emits unconditionally, which would otherwise be dead
-     buttons on the public site. To LAUNCH one of these on live: add the
-     required account/feature files to LIVE_FILES and the critical chain as
-     documented in DEPLOY-LANES.md, then delete its #id from the rule
+     buttons on the public site. To LAUNCH one of these on live: add the files it
+     needs to the script chain at the foot of this page and to
+     tools/cache-keys.json (then node tools/cache-keys.js --stamp <key>), add the
+     endpoints it needs under functions/api/, then delete its #id from the rule
      below. (dailyStrip/startWeekly are already hidden by attribute; listed for
      completeness so this block is the full "not-yet-live UI" manifest.)
+     2026-10-03, v69: the LIVE_FILES list and DEPLOY-LANES.md this block used to
+     cite were never written on any branch, so the procedure above replaces them
+     with what the repo actually does. The account face is NOT in this rule: its
+     lane switch is ACCT_LIVE in accounts.js, because a CSS hide would still
+     download Clerk and cannot tell localhost from production.
      2026-07-12: THE DAILY launched via the sanctioned path — challenges.js
      promoted to shared, daily-core.js added to the critical chain on both
      lanes. #startDaily needs no unhide: app.js swaps it into the Pro slot when
@@ -83,10 +89,11 @@
 </head>
 <body>
 <header class="site-head">
-  <!-- v65 the home's top bar: HOW TO PLAY on the left (app.js wires it), a slot kept for the account button on the right -->
+  <!-- v65 the home's top bar: HOW TO PLAY on the left (app.js wires it), the account face on the right (v69:
+       accounts.js fills this slot where its lane is on; it stays empty on true82.net until ACCT_LIVE flips) -->
   <div class="hm-top" id="hmTop">
     <button class="hm-howto tm-flat" id="homeRulesBtn" type="button" aria-haspopup="dialog" aria-label="How to play: a short demo and the basics"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg><span>How to play</span></button>
-    <span class="hm-acct" aria-hidden="true"></span>
+    <span class="hm-acct"></span>
   </div>
   <!-- the masthead everywhere else (lazy: the home shows its title art instead, so it never downloads there); on the
        home, the title art (v65, the owner's Title 2): the logo over its grid floor, which runs on down behind Classic.
@@ -149,7 +156,12 @@
      until a draft starts, and the engines below register their built-in looks here, so these two come first -->
 <script src="art-core.js?v=20261002-v68" defer></script>
 <script src="art-index.js?v=20261002-v68" defer></script>
-<script src="app.js?v=20261003-v68-3" defer></script>
+<!-- v69 the account lane: sign in, have a name, keep your Dailies. It comes before app.js because app.js
+     calls T82ACC.fetchDaily/fetchWeekly/submitRun unguarded, so the stubs in accounts.js must already exist.
+     Its own lane switch (ACCT_LIVE in accounts.js) decides whether anything renders; on true82.net today it
+     renders nothing and requests nothing from Clerk. No file here is hidden by #t82-live-hide below. -->
+<script src="accounts.js?v=20261003-v69-3" defer></script>
+<script src="app.js?v=20261003-v69-3" defer></script>
 <script src="reel-riso.js?v=20261002-v68" defer></script>
 <!-- v67 part two (art/CONTRACT-FX.md): the shared riso FX layer (the Heat Check, the Presti perks, the 82-0 fireworks);
      it prints with the reel's kit, so it comes after reel-riso.js. Without it the game plays the old emoji effects. -->

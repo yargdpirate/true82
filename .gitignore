@@ -1,0 +1,9 @@
+# Local-only. SECURITY.md §6 tells an operator to put local secrets in
+# .dev.vars; without this line that advice is a trap, because the repo had no
+# .gitignore at all before v69 and the file would be committed on the next add.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# wrangler's local state and login cache (scratch; never part of a deploy)
+.wrangler/

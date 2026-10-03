@@ -4010,7 +4010,59 @@ body:has(#app#app):not(:has(#app#app > :is(.hm, #staticIntro))) .hm-top { displa
 .hm-howto svg { flex: none; width: 18px; height: 18px; }
 .hm-howto:active { color: var(--t-text); }
 .hm-howto:focus-visible { outline: 2px solid var(--t-offset); outline-offset: 2px; border-radius: 8px; }
-.hm-acct { width: 44px; height: 44px; }   /* the account button's place (nothing built there yet) */
+.hm-acct { width: 44px; height: 44px; }   /* the account button's place; accounts.js fills it where its lane is on */
+
+/* v69 THE ACCOUNT BUTTON and its sheet. The sheet reuses the shared overlay
+   wholesale (.rules-overlay / .rules-sheet / .plq-frame / .rs-head / .rs-close /
+   .rs-scroll) — only these rules are new, and the button copies .hm-howto's
+   flat, 44px, token-only treatment so the two sides of the top bar match. */
+.acct-btn {
+  appearance: none; -webkit-appearance: none; margin: 0; padding: 0; cursor: pointer;
+  width: 44px; height: 44px; border: 0; background: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: rgb(var(--t-text-rgb) / .8);   /* quiet white, the same weight as .hm-howto on the left */
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.acct-btn:active, .acct-btn-in { color: var(--t-text); }   /* signed in: the same white, filled face, no gold */
+.acct-btn:focus-visible { outline: 2px solid var(--t-offset); outline-offset: 2px; border-radius: 8px; }
+.acct-btn svg { flex: none; width: 22px; height: 22px; }
+.acct-email { margin: 0; font-family: var(--t-mono); font-size: 13px; line-height: 1.4; word-break: break-all; color: var(--t-text); }
+.acct-sheet .rs-scroll { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding-top: 4px; }
+.acct-p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--t-text); }
+.acct-fine { margin: 0; font-size: 12px; line-height: 1.4; color: var(--t-text-3); }
+.acct-label { font-family: var(--t-disp); font-weight: 700; font-size: 12.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--t-text-2); }
+.acct-input {
+  appearance: none; -webkit-appearance: none; width: 100%; min-height: 40px; padding: 8px 10px;
+  border: 1.5px solid var(--t-rule); border-radius: var(--t-r-btn);
+  background: var(--t-ground); color: var(--t-text);
+  font-family: var(--t-body); font-size: 15px;
+}
+.acct-input:focus { border-color: var(--t-accent); outline: none; }
+
+/* v69.1 THE BOARDS. Deliberately plain: the art bots restyle this later, so what
+   is spent here is legibility on a phone, not decoration. Tokens only. */
+.lb-tabs { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.lb-modes { margin-top: -4px; }
+.lb-tab {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 32px; padding: 5px 10px; border: 1.5px solid var(--t-rule);
+  border-radius: var(--t-r-btn); background: transparent; color: var(--t-text-2);
+  font-family: var(--t-disp); font-weight: 700; font-size: 12.5px;
+  letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.lb-tab.on { color: var(--t-accent); border-color: var(--t-accent); }
+.lb-list { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; }
+.lb-row {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 7px 4px; border-bottom: 1px solid rgb(var(--t-rule-rgb) / .5);
+}
+.lb-row:last-child { border-bottom: 0; }
+.lb-rank { flex: none; width: 2.2em; font-family: var(--t-mono); font-size: 12px; color: var(--t-text-3); text-align: right; }
+.lb-name { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--t-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-score { flex: none; font-family: var(--t-mono); font-size: 13px; color: var(--t-text-2); }
+.lb-you { background: rgb(var(--t-accent-rgb) / .1); border-radius: 4px; }
+.lb-you .lb-name, .lb-you .lb-score { color: var(--t-accent); }
 .brand-art { display: contents; }   /* off the home: no box of its own, the masthead lays out as before */
 .ht { display: none; }
 body:has(#app#app > :is(.hm, #staticIntro)) #app { padding-top: 0; padding-bottom: 24px; }

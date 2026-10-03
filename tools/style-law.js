@@ -28,7 +28,7 @@ const CSS_FILES = ["styles.css"];
 // in the theme (v67: the owner's Art Lab, docs/art-lab/, wears the game's theme)
 const GRAFT_CSS = ["docs/art-lab/lab.css"];
 // browser JS that builds UI (canvas modules may use pure black, and only as a coverage mask)
-const JS_FILES = ["app.js", "results-riso.js", "reel-riso.js", "analytics.js", "retention-client.js", "challenges.js", "daily-core.js", "sim-core.js",
+const JS_FILES = ["app.js", "accounts.js", "results-riso.js", "reel-riso.js", "analytics.js", "retention-client.js", "challenges.js", "daily-core.js", "sim-core.js",
   "art-core.js", "art-index.js", "riso-fx.js",   // v67 part two: riso-fx.js, the shared riso FX layer (art/CONTRACT-FX.md)
   "docs/art-lab/lab.js"];                          // v67: the Art Lab (docs/art-lab/), the owner's page for picking looks
 const MASK_OK = { "results-riso.js": 1, "reel-riso.js": 1, "riso-fx.js": 1 };

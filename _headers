@@ -23,6 +23,8 @@
 # and never asks again (no revalidation round trip before the page can draw). The list is tools/cache-keys.json's:
 # every reference carries its key and a changed file gets a new one (node tools/cache-keys.js; test.js checks both
 # the keys and that this list matches). HTML pages and labels.json are never here: they keep revalidating.
+/accounts.js
+  Cache-Control: public, max-age=31536000, immutable
 /app.js
   Cache-Control: public, max-age=31536000, immutable
 /styles.css
