@@ -120,8 +120,14 @@ export async function onRequestPost(context) {
       created_ts: Date.now()
     };
 
+    // A storage failure must never swallow the VERDICT. The old shape rethrew
+    // anything that wasn't a UNIQUE clash, so the outer catch answered
+    // {ok:false, why:"server"} and the verification result — the thing an
+    // operator actually needs to see — was lost. That made it impossible to
+    // tell "the engine could not load" from "the table is missing" from
+    // outside, which is exactly the question you ask when a board stays empty.
     const fields = Object.keys(row);
-    let dedup = false, alreadyToday = false;
+    let dedup = false, alreadyToday = false, storeError = null;
     try {
       await env.DB.prepare(
         `INSERT INTO runs (${fields.join(",")}) VALUES (${fields.map(() => "?").join(",")})`
@@ -130,7 +136,7 @@ export async function onRequestPost(context) {
       const msg = String((e && e.message) || e);
       if (/UNIQUE/i.test(msg) && /official/i.test(msg)) alreadyToday = true;
       else if (/UNIQUE/i.test(msg)) dedup = true;
-      else throw e;
+      else storeError = msg.slice(0, 60);
     }
 
     // No streak counter is kept here on purpose: /api/lb computes the streak
@@ -139,7 +145,8 @@ export async function onRequestPost(context) {
     const streak = null;
 
     return json({
-      ok: true, stored: !dedup && !alreadyToday, dedup, alreadyToday,
+      ok: true, stored: !dedup && !alreadyToday && !storeError, dedup, alreadyToday,
+      storeError: storeError || undefined,
       verified, why: v.ok ? undefined : v.why,
       anonymous: !userId,
       officialRejected: !!(official && !claimedDay),
