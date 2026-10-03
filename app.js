@@ -328,7 +328,7 @@ function hhNet82() { return T82.hhNet82(G); }
 function hhPickHot() { return T82.hhPickHot(G); }
 function hhSpinSeg() { return T82.hhSpinSeg(G); }
 function hhEligible(e) { return T82.hhEligible(G, e); }
-function hhRecord(played, net, newNet, m) { return T82.hhRecord(played, net, newNet, m); }   // v68.1: the record a spin leaves (sim-core.js)
+function hhRecord(played, net, newNet, m, playedOut) { return T82.hhRecord(played, net, newNet, m, playedOut); }   // v68.1: the record a spin leaves (sim-core.js; v68.2: playedOut judges it in expected wins)
 function swapTargetsFor(i) { return T82.swapTargetsFor(G, i); }
 function pickHasMoves(i) { return T82.pickHasMoves(G, i); }
 
@@ -4881,8 +4881,10 @@ function hotHand(e) {
     // realized season on a standalone run, the projection on the Daily) by the spin's projected change. HOT and up
     // only raise it, WARM never moves it, COLD only lowers it; the save is the raised record reaching 82. v68 set it
     // from the spun projection (hhWins(newNet)), so a HOT spin could drop a lucky 81-1 to 78-4. The rule lives in
-    // sim-core.js (hhRecord), the same function the replay verifier's finish() runs.
-    hhRec = hhRecord(e.winTally, e.net, newNet, seg.m);   // (hhRec: verdict() has its own `rec`, the record's element)
+    // sim-core.js (hhRecord), the same function the replay verifier's finish() runs. v68.2 (the owner: "about 25%"): a
+    // season played out (e.season) is judged by the spin's change in EXPECTED wins against T82.HH_SAVE_GAIN, so a lucky
+    // 81-1 is saved on about 25% of spins (45% under v68.1's whole projected wins); the Daily's projection keeps v68.1.
+    hhRec = hhRecord(e.winTally, e.net, newNet, seg.m, !!e.season);   // (hhRec: verdict() has its own `rec`, the record's element)
     if (FORCE_82 === "save" && !hhRec.save) {                     // ...and the save reaches 82-0 (test builds only)
       newNet = Math.max(newNet, hhNet82() + 0.5); hhRec = { wins: CFG.GAMES_IN_SEASON, save: 1 };
     }
@@ -5055,8 +5057,9 @@ function hotHand(e) {
     ov.querySelector("#hhActions").classList.add("on");
   }
 
-  // v68.1: the record as the net climbs: the 81 played, moved by the projected change so far (hhRecord)
-  function recAt(net) { return hhRecord(e.winTally, e.net, net, seg.m).wins; }
+  // v68.1: the record as the net climbs: the 81 played, moved by the change so far (hhRecord; v68.2: expected wins
+  // on a season played out, as above)
+  function recAt(net) { return hhRecord(e.winTally, e.net, net, seg.m, !!e.season).wins; }
 
   function climb() {
     ov.querySelector("#hhStep3").classList.add("on");
@@ -7999,8 +8002,9 @@ function showResults() {
   // Heat Check its intended stage. Hot Hand keys on e.winTally, which below
   // becomes the REALIZED record before the finish path runs, so the spin
   // fires on a literal 81 regardless of where the loss fell; the boost
-  // moves that played 81 by the spin's projected change (v68.1, hhRecord in
-  // sim-core.js: HOT and up only raise it, COLD only lowers it), and the
+  // moves that played 81 by the spin's change in expected wins (v68.2,
+  // hhRecord in sim-core.js with HH_SAVE_GAIN: HOT and up only raise it, COLD
+  // only lowers it; the projection's whole wins until v68.1), and the
   // percentile still ships raw pre-boost e.net, which realization never
   // touches. Daily boards, challenges, and pro stay analytic until their
   // own adaptations. The arming op "ss" rides the action stream so replays
@@ -9819,7 +9823,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v68.1";
+var BUILD_V = "v68.2";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

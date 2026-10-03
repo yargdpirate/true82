@@ -1836,13 +1836,14 @@ if (fs.existsSync("site_data.json")) {
   // the two places that used to key the neutral rung on the index
   eq("hot hand: nothing gates the spin on `segIdx > 0` any more (the index is no longer the neutral rung)",
     [/segIdx > 0/.test(APP), /hhMoved/.test(APP), /seg\.m !== 1/.test(APP)], [false, true, true]);
-  eq("hot hand: finish() has no improve-only clamp, and (v68.1) sets the record with the one record rule, hhRecord",
-    [/hhWins\(newNet\) > res\.wins/.test(CORE), /var rec = hhRecord\(res\.wins, e\.net, newNet, seg\.m\);/.test(CORE)], [false, true]);
+  eq("hot hand: finish() has no improve-only clamp, and (v68.1) sets the record with the one record rule, hhRecord " +
+    "(v68.2: told whether the season was played out)",
+    [/hhWins\(newNet\) > res\.wins/.test(CORE), /var rec = hhRecord\(res\.wins, e\.net, newNet, seg\.m, !!season\);/.test(CORE)], [false, true]);
   // refusing is now the only way to keep an 81, so the decline op must still apply nothing
   eq("hot hand: I DON'T WANT YOUR CHARITY (op hx) still applies nothing, which is now the only way to keep an 81",
     /if \(S\.hhDeclined\) \{\s*\n\s*res\.hh = \{ declined: 1/.test(CORE), true);
   // the balance change has to carry a VERSION bump (the handoff's replay law)
-  eq("hot hand: a result-affecting change bumped the core VERSION (v68.1: past v15, the record rule and Presti replays)", T.VERSION >= 16, true);
+  eq("hot hand: a result-affecting change bumped the core VERSION (v68.2: past v16, a played 81 judged in expected wins)", T.VERSION >= 17, true);
   // and the reference table has to agree with the code, or it drifts again
   const MODES = fs.readFileSync("docs/MODES.md", "utf8");
   eq("hot hand: docs/MODES.md's wheel table matches HH_SEGMENTS exactly (mult and odds)",
@@ -1850,49 +1851,91 @@ if (fs.existsSync("site_data.json")) {
 }
 
 
-// ---------- v68.1 MOVE FROM THE REAL 81 (the owner, 2026-10-02) ----------
+// ---------- v68.1 MOVE FROM THE REAL 81 (the owner, 2026-10-02), v68.2 ABOUT 25% (2026-10-03) ----------
 // Presti plays its season out game by game, so many 81-1s are lucky (the five projects 78 to 80). v68 set the record
 // from the spun projection, so a HOT spin could drop a lucky 81-1 to 78-4. His rule: the spin moves the record from
-// the 81 actually PLAYED, by the spin's projected change (how many wins it moves the projected record). HOT, ON FIRE
-// and SUPERNOVA can only raise it, WARM never moves it, COLD can only lower it, and the 82-0 save is the raised record
-// reaching 82. One function holds it (sim-core.js hhRecord); the game's Heat Check and the replay verifier both run it.
+// the 81 actually PLAYED. HOT, ON FIRE and SUPERNOVA can only raise it, WARM never moves it, COLD can only lower it, and
+// the 82-0 save is the raised record reaching 82. One function holds it (sim-core.js hhRecord); the game's Heat Check
+// and the replay verifier both run it. v68.1 moved it by the whole wins of the projected record, which saved about 45%
+// of lucky 81-1s; v68.2 (his "about 25%") judges a season PLAYED out by the spin's change in EXPECTED wins,
+// g = 82 (phi(newNet / NET_SD) - phi(net / NET_SD)), and moves the record floor(g - HH_SAVE_GAIN) + 1 whole wins under
+// the same direction rule. A board that never plays its season out (the Daily) keeps v68.1's whole-win rule.
 {
   const T = ctx.T82, SEG = T.HH_SEGMENTS, APP = fs.readFileSync("app.js", "utf8"), CORE = fs.readFileSync("sim-core.js", "utf8");
+  const SD = ctx.SC.NET_SD, G = T.HH_SAVE_GAIN, gain = (a, b) => 82 * (T.phi(null, b / SD) - T.phi(null, a / SD));
   const cases = [];
-  for (let n = 0; n <= 40; n += 0.05) for (let v = -3; v <= 12; v += 0.5) for (const sg of SEG) for (const played of [81, 79, 70])
-    cases.push({ played, net: n, newNet: n + (sg.m - 1) * v * T.HH_BONUS_SCALE, sg, r: T.hhRecord(played, n, n + (sg.m - 1) * v * T.HH_BONUS_SCALE, sg.m) });
+  for (let n = 0; n <= 40; n += 0.05) for (let v = -3; v <= 12; v += 0.5) for (const sg of SEG) for (const played of [81, 79, 70]) {
+    const nn = n + (sg.m - 1) * v * T.HH_BONUS_SCALE;
+    cases.push({ played, net: n, v, newNet: nn, sg, r: T.hhRecord(played, n, nn, sg.m), rp: T.hhRecord(played, n, nn, sg.m, true) });
+  }
   const hot = cases.filter(c => c.sg.m > 1), lucky78 = hot.filter(c => c.played === 81 && T.hhWins(c.net) === 78);
-  eq("move from the real 81: HOT, ON FIRE and SUPERNOVA never lower a played record (" + hot.length + " spins across nets 0 to " +
-    "+40 and hot values -3 to 12), a lucky 81-1 whose five projects 78-4 included (" + lucky78.length + " of them)",
-    [hot.filter(c => c.r.wins < c.played).length, lucky78.length > 1000, lucky78.filter(c => c.r.wins < 81).length], [0, true, 0]);
-  eq("move from the real 81: WARM never moves the record, on any five", cases.filter(c => c.sg.m === 1 && c.r.wins !== c.played).length, 0);
-  eq("move from the real 81: COLD never raises the record (a hot player valued below zero included), and it can lower one",
-    [cases.filter(c => c.sg.m < 1 && c.r.wins > c.played).length, cases.some(c => c.sg.m < 1 && c.played === 81 && c.r.wins < 81)], [0, true]);
-  eq("move from the real 81: the record moves by exactly the spin's projected change (whole wins of the projected record), " +
-    "upward only on HOT and up, downward only on COLD",
-    cases.filter(c => { const d = T.hhWins(c.newNet) - T.hhWins(c.net);
-      return c.r.wins !== (c.sg.m > 1 ? Math.min(82, c.played + Math.max(0, d)) : c.sg.m < 1 ? c.played + Math.min(0, d) : c.played); }).length, 0);
-  eq("move from the real 81: the save is exactly the raised record reaching 82 (only HOT and up can save, and only a spin " +
-    "that lifts the projection by a win or more saves an 81)",
-    [cases.filter(c => c.played === 81 && (c.r.save === 1) !== (c.r.wins === 82)).length,
-      cases.filter(c => c.r.save && !(c.sg.m > 1)).length,
-      cases.filter(c => c.played === 81 && c.sg.m > 1 && (c.r.save === 1) !== (T.hhWins(c.newNet) - T.hhWins(c.net) >= 1)).length],
-    [0, 0, 0]);
-  // the case the owner heard about, and its other side
-  const r1 = T.hhRecord(81, 19.0, 19.4, 1.1), r2 = T.hhRecord(81, 19.7, 20.1, 1.1);
-  eq("the lucky 81-1: a five at net +19.0 projects 78-4; it played 81-1 and went HOT (+0.4, caught fire): v68 printed 78-4, " +
-    "now it stays 81-1. From +19.7 the same +0.4 lifts the projection from 78 to 79, so it raises the 81 to 82-0, the save",
-    [T.hhWins(19.0), T.hhWins(19.4), r1.wins, r1.save, T.hhWins(19.7), T.hhWins(20.1), r2.wins, r2.save], [78, 78, 81, 0, 78, 79, 82, 1]);
+  eq("move from the real 81: HOT, ON FIRE and SUPERNOVA never lower a played record, under either rule (" + hot.length +
+    " spins across nets 0 to +40 and hot values -3 to 12), a lucky 81-1 whose five projects 78-4 included (" + lucky78.length + " of them)",
+    [hot.filter(c => c.r.wins < c.played || c.rp.wins < c.played).length, lucky78.length > 1000,
+      lucky78.filter(c => c.r.wins < 81 || c.rp.wins < 81).length], [0, true, 0]);
+  eq("move from the real 81: WARM never moves the record, on any five, under either rule",
+    cases.filter(c => c.sg.m === 1 && (c.r.wins !== c.played || c.rp.wins !== c.played)).length, 0);
+  eq("move from the real 81: COLD never raises the record (a hot player valued below zero included), under either rule, " +
+    "and it can lower one under each",
+    [cases.filter(c => c.sg.m < 1 && (c.r.wins > c.played || c.rp.wins > c.played)).length,
+      cases.some(c => c.sg.m < 1 && c.played === 81 && c.r.wins < 81), cases.some(c => c.sg.m < 1 && c.played === 81 && c.rp.wins < 81)],
+    [0, true, true]);
+  // v68.2, a season played out: the expected-wins rule, exactly
+  eq("v68.2 a season played out: the record moves by exactly floor(g - HH_SAVE_GAIN) + 1 whole wins of the spin's change " +
+    "in expected wins g, upward only on HOT and up, downward only on COLD",
+    cases.filter(c => { const d = Math.floor(gain(c.net, c.newNet) - G) + 1;
+      return c.rp.wins !== (c.sg.m > 1 ? Math.min(82, c.played + Math.max(0, d)) : c.sg.m < 1 ? Math.max(0, c.played + Math.min(0, d)) : c.played); }).length, 0);
+  eq("v68.2 a season played out: an 81 is saved exactly when a HOT-or-better spin gains HH_SAVE_GAIN expected wins or more, " +
+    "and a COLD costs a win exactly when it takes away more than 1 - HH_SAVE_GAIN",
+    [cases.filter(c => c.played === 81 && (c.rp.save === 1) !== (c.rp.wins === 82)).length,
+      cases.filter(c => c.rp.save && !(c.sg.m > 1)).length,
+      cases.filter(c => c.played === 81 && c.sg.m > 1 && (c.rp.save === 1) !== (gain(c.net, c.newNet) >= G)).length,
+      cases.filter(c => c.played === 81 && c.sg.m < 1 && (c.rp.wins < 81) !== (gain(c.net, c.newNet) - G < -1)).length,
+      cases.filter(c => c.played === 81 && c.rp.save).length > 1000, cases.filter(c => c.played === 81 && c.sg.m < 1 && c.rp.wins < 81).length > 100],
+    [0, 0, 0, 0, true, true]);
+  // monotonic: on one five and one hot player, a bigger rung never leaves a lower record (and a bigger net change never
+  // leaves a lower record on the same rung)
+  let mono = 0, monoN = 0;
+  for (let n = 10; n <= 24; n += 0.25) for (let v = -2; v <= 12; v += 0.5) for (const played of [81, 79]) {
+    const w = SEG.map(sg => T.hhRecord(played, n, n + (sg.m - 1) * v * T.HH_BONUS_SCALE, sg.m, true).wins);
+    monoN++; if (v >= 0 && w.some((x, i) => i && x < w[i - 1])) mono++;
+  }
+  let mono2 = 0;
+  for (let n = 10; n <= 24; n += 0.25) for (const sg of SEG) { let last = -1;
+    for (let d = 0; d <= 3; d += 0.02) { const x = T.hhRecord(81, n, n + (sg.m >= 1 ? d : -d) * (sg.m === 1 ? 0 : 1), sg.m, true).wins;
+      if (sg.m < 1 ? (last >= 0 && x > last) : (last >= 0 && x < last)) mono2++; last = x; } }
+  eq("v68.2 monotonic: on the same five and hot player (valued 0 or more) a bigger rung never leaves a lower record (" + monoN +
+    " fives), and a bigger spin on the same rung never moves the record the wrong way",
+    [mono, mono2], [0, 0]);
+  // the constant: one knob, documented
+  const MODES = fs.readFileSync("docs/MODES.md", "utf8");
+  eq("v68.2 the one knob: HH_SAVE_GAIN is 0.64, exported by the engine, and docs/MODES.md and the engine's comment name it " +
+    "with its value and how to retune it",
+    [G, /var HH_SAVE_GAIN = 0\.64;/.test(CORE), /THE ONE KNOB/.test(CORE), /`HH_SAVE_GAIN` \(0\.64\)/.test(MODES), /\*\*Retune\*\*/.test(MODES)],
+    [0.64, true, true, true, true]);
+  // the cases the owner heard about
+  const r1 = T.hhRecord(81, 19.0, 19.4, 1.1, true), r2 = T.hhRecord(81, 19.7, 20.1, 1.1, true), r2d = T.hhRecord(81, 19.7, 20.1, 1.1);
+  const r3 = T.hhRecord(81, 19.0, 19.0 + 0.2 * 7 * T.HH_BONUS_SCALE, 1.2, true), r4 = T.hhRecord(81, 19.0, 19.0 - 0.1 * 8 * T.HH_BONUS_SCALE, 0.9, true);
+  eq("the lucky 81-1: a five at net +19.0 projects 78-4; it played 81-1 and went HOT (+0.4, 0.30 expected wins): v68 printed " +
+    "78-4, it stays 81-1. From +19.7 the same +0.4 crosses the projection's step from 78 to 79: v68.1 called that a win and " +
+    "saved it, v68.2 sees 0.28 expected wins and keeps 81-1. ON FIRE on a hot player valued 7 (+0.94, 0.69 expected wins) " +
+    "saves; COLD on one valued 8 (-0.54, 0.43 expected wins lost) costs a win: 80-2",
+    [T.hhWins(19.0), T.hhWins(19.4), r1.wins, r1.save, T.hhWins(19.7), T.hhWins(20.1), r2d.wins, r2d.save, r2.wins, r2.save, r3.wins, r3.save, r4.wins],
+    [78, 78, 81, 0, 78, 79, 82, 1, 81, 0, 82, 1, 80]);
   // a board that never plays its season out (the Daily, a challenge) has the projection as its record: unchanged from v68
   const honest = cases.filter(c => c.played === T.hhWins(c.net) && c.played === 81 && c.sg.m > 1 && c.newNet >= c.net);
   eq("an honest 81 (the Daily: its record is the projection) ends exactly where v68 put it: the spun projection",
     [honest.length > 100, honest.filter(c => c.r.wins !== T.hhWins(c.newNet)).length], [true, 0]);
+  eq("the projection's rule (no playedOut: the Daily, a challenge) is v68.1's, whole wins of the projected record, unchanged",
+    cases.filter(c => { const d = T.hhWins(c.newNet) - T.hhWins(c.net);
+      return c.r.wins !== (c.sg.m > 1 ? Math.min(82, c.played + Math.max(0, d)) : c.sg.m < 1 ? c.played + Math.min(0, d) : c.played); }).length, 0);
   // the game reads the same function the verifier runs
-  eq("the game's Heat Check takes its record from hhRecord (the played 81, the spun net, the rung), and every screen after " +
+  eq("the game's Heat Check takes its record from hhRecord (the played 81, the spun net, the rung, and v68.2: whether the " +
+    "season was played out, e.season, as finish() asks of its own season), and every screen after " +
     "it (the record, the print, the comp line, the share text, the Daily's official record) reads that record",
-    [/hhRec = hhRecord\(e\.winTally, e\.net, newNet, seg\.m\);/.test(APP), /G\.hotWins = hhRec\.wins;/.test(APP), /win = !!hhRec\.save;/.test(APP),
-      /function recAt\(net\) \{ return hhRecord\(e\.winTally, e\.net, net, seg\.m\)\.wins; \}/.test(APP),
-      /function hhRecord\(played, net, newNet, m\) \{ return T82\.hhRecord\(played, net, newNet, m\); \}/.test(APP),
+    [/hhRec = hhRecord\(e\.winTally, e\.net, newNet, seg\.m, !!e\.season\);/.test(APP), /G\.hotWins = hhRec\.wins;/.test(APP), /win = !!hhRec\.save;/.test(APP),
+      /function recAt\(net\) \{ return hhRecord\(e\.winTally, e\.net, net, seg\.m, !!e\.season\)\.wins; \}/.test(APP),
+      /function hhRecord\(played, net, newNet, m, playedOut\) \{ return T82\.hhRecord\(played, net, newNet, m, playedOut\); \}/.test(APP),
       /hhWins\(newNet\)\s*[,;)]/.test(APP.replace(/\/\/[^\n]*/g, "")),
       // one name, declared once in hotHand: a `var` of the same name in its verdict() would shadow it (as `rec` did)
       (/\nfunction hotHand\(e\) \{[^]*?\n\}\n/.exec(APP)[0].match(/var [^;]*\bhhRec\b/g) || []).length],
@@ -1990,7 +2033,7 @@ if (fs.existsSync("site_data.json")) {
       if (decline) T.declineHeat(G); else if (sp.seg.m > 1) { T.hhMidReroll(season, at, sp.newNet); wins = season.wins; }
     } else if (vctx.hhEligible(e) && e.winTally === 81) {
       kind = "post"; const sp = spin();
-      if (decline) T.declineHeat(G); else wins = vctx.hhRecord(e.winTally, e.net, sp.newNet, sp.seg.m).wins;
+      if (decline) T.declineHeat(G); else wins = vctx.hhRecord(e.winTally, e.net, sp.newNet, sp.seg.m, standalone).wins;
     }
     // SHARE YOUR TEAM's record line, as the results page builds it (renderResults keeps its e: resultsEngine), when the
     // Heat Check left the totals alone (refused, never offered, or a mid-season spin below HOT)
@@ -2024,7 +2067,7 @@ if (fs.existsSync("site_data.json")) {
       print: spec.wins === page && spec.net === vctx.signed1(moved ? G.hotNewNet : e.net) &&
         spec.games.length === 82 && spec.games.reduce((a, g) => a + g, 0) === page };
     if (force) { const sg = vctx.HH_SEGMENTS[force.seg];
-      out.want = T.hhRecord(81, e.net, e.net + (sg.m - 1) * vctx.valueOf(G.picks[force.hot].row) * vctx.HH_BONUS_SCALE, sg.m).wins;
+      out.want = T.hhRecord(81, e.net, e.net + (sg.m - 1) * vctx.valueOf(G.picks[force.hot].row) * vctx.HH_BONUS_SCALE, sg.m, true).wins;
       out.m = sg.m; }
     return out;
   };
@@ -2076,6 +2119,41 @@ if (fs.existsSync("site_data.json")) {
     "mid-season spin below HOT): " + sh + " runs, " + shLucky + " of them played to a record their projection does not " +
     "give (it shared the projection: a played 81-1 that projects 75 shared 75-7)",
     [shOk === sh, shOff, shLucky > 100], [true, [], true]);
+  // v68.2 THE RATE (the owner, 2026-10-03: "about 25%"). The post-season Heat Check on a standalone Presti run comes only
+  // to a five at or under HH_MID_NET that played 81-1 (above it, the first loss gets the mid-season check). On a fixed
+  // seeded sample (1,000 bot drafts on the real data, seeds 770000 + 29i: the v68.1 measurement's own), each five weighted
+  // by its odds of playing exactly 81-1 (82 p^81 (1 - p) at the nightly rate the season plays, p = min(0.97, phi(net/SD))),
+  // each hot player by the reel's weight (max(0.5, v)^2) and each rung by its odds: v68.2 saves 22 to 28% of those spins
+  // (25.0% here; v68.1's whole projected wins saved 46.4% of the same spins), and COLD still costs a win now and then.
+  {
+    const SD = vctx.SC.NET_SD, ph = x => T.phi(null, x);
+    let tot = 0, save = 0, stay = 0, low = 0, save681 = 0, fives = 0, honest = 0, honestOff = 0;
+    for (let i = 1; i <= 1000; i++) {
+      const r = bot("cap", null, 770000 + i * 29); if (r.dead) continue;
+      const S = r.S, e = T.engine(S, S.picks.map(p => p.row), S.picks.map(p => p.slot));
+      const vs = S.picks.map(pk => T.valueOf(S, pk.row)), wts = vs.map(v => Math.pow(Math.max(0.5, v), 2)), ws = wts.reduce((a, b) => a + b, 0);
+      if (T.hhWins(e.net) === 81) for (let h = 0; h < 5; h++) for (const sg of T.HH_SEGMENTS) {   // the Daily's honest 81
+        const nn = e.net + (sg.m - 1) * vs[h] * T.HH_BONUS_SCALE; honest++;
+        if (T.hhRecord(81, e.net, nn, sg.m).wins !== (sg.m > 1 ? Math.min(82, Math.max(81, T.hhWins(nn))) : sg.m < 1 ? Math.min(81, T.hhWins(nn)) : 81)) honestOff++;
+      }
+      if (!(e.net <= T.HH_MID_NET)) continue;
+      fives++;
+      const p = Math.min(0.97, ph(e.net / SD)), w81 = 82 * Math.pow(p, 81) * (1 - p);
+      for (let h = 0; h < 5; h++) for (const sg of T.HH_SEGMENTS) {
+        const pr = w81 * (wts[h] / ws) * (sg.odds / 100), nn = e.net + (sg.m - 1) * vs[h] * T.HH_BONUS_SCALE;
+        const w = T.hhRecord(81, e.net, nn, sg.m, true).wins;
+        tot += pr; if (w === 82) save += pr; else if (w === 81) stay += pr; else low += pr;
+        if (T.hhRecord(81, e.net, nn, sg.m).wins === 82) save681 += pr;
+      }
+    }
+    const pc = x => (100 * x / tot).toFixed(1) + "%";
+    eq("v68.2 the rate: on " + fives + " bot fives that can reach the post-season Heat Check (1,000 seeded drafts), a lucky " +
+      "played 81-1 is saved on " + pc(save) + " of spins (22 to 28%; v68.1 saved " + pc(save681) + " of the same spins), stays " +
+      "81-1 on " + pc(stay) + ", and COLD lowers it on " + pc(low) + "; the Daily's honest 81s (" + honest + " spins on fives " +
+      "projecting 81) still end where the spun projection puts them",
+      [fives > 700, save / tot >= 0.22 && save / tot <= 0.28, save681 / tot > 0.4, low / tot > 0.01 && low / tot < 0.05, honest > 0, honestOff],
+      [true, true, true, true, true, 0]);
+  }
 }
 
 

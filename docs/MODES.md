@@ -161,28 +161,42 @@ here now match the code (they did not before):
 
 Spin: `newNet = net + (m − 1) · valueOf(hot) · HH_BONUS_SCALE(0.67)`.
 
-**The record rule (v68.1, the owner, 2026-10-02: "move from the real 81").**
-The spin moves the record the season actually PLAYED, never the projection's.
-In plain words:
+**The record rule (v68.1, the owner, 2026-10-02: "move from the real 81";
+v68.2, 2026-10-03: "about 25%").** The spin moves the record the season
+actually PLAYED, never the projection's. In plain words:
 
-- The spin's *projected change* is how many whole wins it moves the five's
-  projected record: `hhWins(newNet) − hhWins(net)` (a five at +19.0 projects
-  78-4; a spin to +20.1 projects 79-3: a change of +1).
-- **HOT, ON FIRE, SUPERNOVA** can only raise the played record, by that
-  change: `min(82, played + max(0, change))`.
+- **HOT, ON FIRE, SUPERNOVA** can only raise the played record.
 - **WARM** never moves it.
-- **COLD** can only lower it, by that change: `played + min(0, change)`.
-- **The 82-0 save** is the raised record reaching 82: an 81 is saved exactly
-  when the spin lifts the projection by a win or more.
+- **COLD** can only lower it.
+- **The 82-0 save** is the raised record reaching 82.
+- **How far it moves, on a season played out (standalone Presti, v68.2).**
+  The spin is judged by its change in *expected* wins, fractions and all:
+  `gain = 82 · (phi(newNet / NET_SD) − phi(net / NET_SD))` (a five at +19.0
+  expects 77.35 wins; HOT on a hot player valued 6 lifts the net 0.40 and
+  the expectation by 0.30). The played record moves by
+  `floor(gain − HH_SAVE_GAIN) + 1` whole wins, the rung's direction rule
+  on top. With `HH_SAVE_GAIN` (0.64): a HOT-or-better spin worth 0.64
+  expected wins or more saves the 81 (82-0); a COLD that takes away more
+  than 0.36 expected wins costs a win (80-2), more than 1.36 two. That is
+  the 81 plus the expected change, rounded with its line at 0.64 instead of
+  0.5. In practice HOT (+0.1 of the hot player's value) almost never saves,
+  ON FIRE saves about half the time, SUPERNOVA most of the time.
+- **How far it moves, on a board that does not play its season out (the
+  Daily, a challenge).** v68.1's rule, unchanged: the spin's *projected
+  change*, `hhWins(newNet) − hhWins(net)` whole wins of the projected
+  record. There the record IS the projection, so this gives exactly what v68
+  gave (the spun projection) for any spin that raises the net.
 
-One function holds it, `hhRecord(played, net, newNet, m)` in sim-core.js; the
-game's Heat Check (app.js `hotHand`) and the replay verifier (`finish()`) both
-run it, so a submitted run verifies. Why: Presti plays the season out game by
-game, so many 81-1s are lucky (the five projects 78 to 80), and v68 set the
-record from the spun projection: a HOT "+0.4, caught fire" dropped a lucky
-81-1 to 78-4. On a board that does not play its season out (the Daily, a
-challenge) the record IS the projection, so the rule gives exactly what v68
-gave (the spun projection) for any spin that raises the net.
+One function holds it, `hhRecord(played, net, newNet, m, playedOut)` in
+sim-core.js (`playedOut`: the season was played out game by game); the
+game's Heat Check (app.js `hotHand`, `!!e.season`) and the replay verifier
+(`finish()`, `!!season`) both run it, so a submitted run verifies. Why the
+played 81: Presti plays the season out game by game, so many 81-1s are lucky
+(the five projects 78 to 80), and v68 set the record from the spun
+projection: a HOT "+0.4, caught fire" dropped a lucky 81-1 to 78-4. Why
+expected wins (v68.2): v68.1 counted a whole projected win whenever a spin
+crossed one of the projection's steps, so a +0.4 that happened to cross from
+78 to 79 saved the 81, and lucky 81-1s were saved on about 45% of spins.
 
 The record, the print, the comp line, the GOAT Climb, the ledger, the share
 text and the Daily's official record all follow `G.hotWins` (the rule's
@@ -211,18 +225,59 @@ value away. WARM is exactly ×1, so `newNet === net` and the record stays put.
 post-season one. So on a standalone Presti run every post-season Heat Check is
 a five at +20 or below that played 81-1: a lucky 81 (projection 79 or less).
 
-**What the rule does to the save rate** (bot drafts on the real data, each
-five weighted by its 81-1 odds, 2026-10-02): on those post-season spins v68
-lowered the record 86% of the time (every rung but WARM) and never saved;
-v68.1 saves 45%, leaves 81-1 53%, and lowers it 2% (COLD only). The weaker the
-lucky five, the easier the save, because the projection's win steps are
-narrower lower down (a projection of 75: 55%; 78: 45%; 79: 6%). An honest 81
-(the Daily) saves as in v68, about 8 to 9% of spins (9.0% on 587 bot fives
-projecting 81). `HH_BONUS_SCALE` is the one
-knob that moves both without touching the staircase.
+**What the rule does to the save rate** (2026-10-03, v68.2). The method
+(the same as v68.1's): bot drafts on the real data (tools/daily-audit.js
+`makeBot`, Presti, seeds 770000 + 29i); every five at or under +20 can reach
+the post-season Heat Check, and each is weighted by its odds of playing
+exactly 81-1 (`82 · p^81 · (1 − p)` at the nightly rate the season plays,
+`p = min(0.97, phi(net / 12))`), each hot player by the reel's weight
+(`max(0.5, v)²`) and each rung by its odds.
 
-**COLD costs.** COLD lowers the played record by the projected change (often
-0, sometimes 1 or 2). Refusing the spin (I DON'T WANT YOUR CHARITY, op `hx`)
+| On a lucky played 81-1 (20,000 drafts, 16,671 such fives) | save (82-0) | stays 81-1 | lowered (COLD) |
+|---|---|---|---|
+| v68 (the spun projection) | 0% | 14% | 86% |
+| v68.1 (whole projected wins) | 45.6% | 52.3% | 2.0% |
+| **v68.2 (expected wins, `HH_SAVE_GAIN` 0.64)** | **24.9%** | **72.4%** | **2.8%** |
+
+Scored with labels.json (as the site does): 24.7% / 72.6% / 2.7%. Checked
+through the verifier's own `finish()` (4,000 other fives, 1,000 played
+seasons each: 32,998 real post-season Heat Checks): 24.5% / 72.9% / 2.7%.
+By rung (v68.1 to v68.2, share of saves on that rung): HOT 39.8% to 1.9%,
+ON FIRE 69.4% to 49.7%, SUPERNOVA 86.4% to 84.3%; COLD lowers 34% of its
+spins under v68.1, 46% now. By projection, v68.2 saves 39% of 74s, 35% of
+75s, 32% of 76s, 28% of 77s, 22% of 78s and 20% of 79s (v68.1: 59%, 56%,
+55%, 50%, 46%, 6%): the steps no longer decide it.
+
+**The Daily's honest 81** (its record is the projection; every five
+projecting 81 reaches the Heat Check): unchanged, the same code path as
+v68.1. 9.0% on v68.1's own sample (587 fives projecting 81, seeds 660000 +
+37i, 20,000 drafts), 10.3% on the 558 in the sample above.
+
+**The mid-season Heat Check** is untouched (v68.1's `hhMidReroll`): a
+HOT-or-better boost ends 82-0 22.3% of the time, a played 81-1 that is
+boosted 96.8%, and none ends worse than played (4,000 drafts, 25,040 mid
+checks, 20,191 boosted).
+
+**Retune** with the one constant, `HH_SAVE_GAIN` (0.64) in sim-core.js
+(bump `T82.VERSION` with it, then the cache key). It is the expected-wins
+gain that earns a whole win on a played 81, and it moves the save rate and
+COLD's bite together (COLD costs a win past `1 − HH_SAVE_GAIN`):
+
+| `HH_SAVE_GAIN` | 0.5 | 0.6 | 0.63 | **0.64** | 0.65 | 0.7 | 0.8 | 1.0 |
+|---|---|---|---|---|---|---|---|---|
+| saves a lucky 81-1 | 36% | 28% | 25.5% | **24.9%** | 24% | 21% | 16% | 8% |
+| COLD lowers it (of all spins) | 1.0% | 2.2% | 2.6% | **2.8%** | 2.9% | 3.9% | 5.5%* | 6% |
+
+(*from 0.8 up, nearly every COLD costs a win.) The measurement is a few
+lines (the weights above); test.js keeps the rate between 22% and 28% on a
+fixed sample (1,000 seeded drafts: 25.0%; v68.1's rule 46.4% on the same).
+`HH_BONUS_SCALE` (0.67) still moves every Heat Check at once (the Daily's,
+the mid-season's and this one) without touching the staircase.
+
+**COLD costs.** COLD lowers a played record by a whole win once it takes
+away more than `1 − HH_SAVE_GAIN` (0.36) expected wins (about 46% of COLD
+spins on a lucky 81-1), and the Daily's projection by its projected change
+(often 0, sometimes 1 or 2). Refusing the spin (I DON'T WANT YOUR CHARITY, op `hx`)
 applies nothing and keeps the 81. Percentile rank is unaffected either way:
 `/api/percentile` ranks the RAW engine net, written before the Hot Hand
 touches anything.

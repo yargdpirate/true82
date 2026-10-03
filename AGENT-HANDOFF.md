@@ -1,5 +1,16 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-03): V68.2 (app.js and sim-core.js key `20261003-v68-3`, BUILD_V `v68.2`, engine VERSION 17)
+> IS ON `c-code-clean` AND `art-variety` (committed and pushed; NOT LIVE: `main` is still v66.5 and merges only at his
+> word).** The owner's decision on v68.1's
+> biggest open item: a lucky Presti 81-1 became 82-0 on about 45% of post-season spins; he picked ABOUT 25% (over
+> 15/20/33). Only how a PLAYED 81 moves changed: the spin is judged by its change in EXPECTED wins (fractions count),
+> and one constant, `HH_SAVE_GAIN` 0.64 in sim-core.js, says how much expected gain earns a whole win. Measured: saves
+> 24.9%, stays 72.4%, COLD lowers 2.8% (v68.1: 45.6 / 52.3 / 2.0). Everything else of v68.1 stands (HOT and up never
+> lower, WARM never moves, COLD never raises, CHARITY applies nothing, the Daily's honest 81 and its ~9%, the
+> mid-season Heat Check, the ladder and odds). Section 0000000, "v68.2", has the table and what he must hear (HOT now
+> almost never saves; COLD bites a little more often). Not touched: the 0.97 nightly cap (its own balance check, later).
+
 > **FIRST THING (2026-10-02, night): V68.1 (app.js key `20261002-v68-2`, sim-core.js `20261002-v68-1`, BUILD_V `v68.1`,
 > engine VERSION 16) IS ON `c-code-clean` AND `art-variety` (committed and pushed; NOT LIVE: `main` is still v66.5 and
 > merges only at his word).** The owner's three decisions after hearing v68's
@@ -65,17 +76,123 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v68.1, committed and pushed, also on `art-variety` (the owner's "move from the real 81" record rule, the 10% shorter season, the middle dot in the Hot Hand rows; section 0000000), on v68 (the Hot Hand scaling, the shorter pauses, the iPhone check, art-remove; on v67.2, the art library with the owner's first picks, merged with v66.5; NOT live; section 0000000). `main` = v66.5, LIVE (the Tribune's API key locked to the app, section 000001); before it v66.4 (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v68.2 (the owner's "about 25%": a played 81 judged in expected wins, `HH_SAVE_GAIN`; section 0000000; committed and pushed, also on `art-variety`), on v68.1 (the owner's "move from the real 81" record rule, the 10% shorter season, the middle dot in the Hot Hand rows; section 0000000), on v68 (the Hot Hand scaling, the shorter pauses, the iPhone check, art-remove; on v67.2, the art library with the owner's first picks, merged with v66.5; NOT live; section 0000000). `main` = v66.5, LIVE (the Tribune's API key locked to the app, section 000001); before it v66.4 (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
-**Date:** 2026-10-02
-**Build:** `v68.1` on `c-code-clean` (`BUILD_V = "v68.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js at `20261002-v68-2`, sim-core.js at `20261002-v68-1`; styles.css, reel-riso.js, art-core.js, art-index.js and art/hot/arcade.js at `20261002-v68`; the rest as tools/cache-keys.json lists them; engine `T82.VERSION` 16).
-**Most recent change:** section 0000000 (c-code-clean, NOT live, 2026-10-02 night): v68.1, the owner's three decisions (the record moves from the 81 played; the season 10% shorter; the middle dot), the verifier brought level with the game. Before that, v68 (2026-10-02 evening): the Hot Hand scaling (his other session), the shorter pauses, the iPhone check, COLD's wording in Combo, tools/art-remove.js. Before that, in the same section: v67.2, the art library with the owner's first picks (cuts, his speed dial art/tempo.json, the dagger/arcade/jam/marbling/wave fixes, no streak marks on settled dots, no art downloads on a slow link, the finish-time table). Before that, section 000001 (LIVE on main, 2026-10-02): the Tribune's Anthropic key is the app's only (same-origin, one phase, an allowlisted roster and fit notes, per-IP and daily spend caps, a RECAP_OFF switch; no lab was found in the tree, and app.js is untouched). Before that, section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Date:** 2026-10-03
+**Build:** `v68.2` on `c-code-clean` (`BUILD_V = "v68.2"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js and sim-core.js at `20261003-v68-3`; styles.css, reel-riso.js, art-core.js, art-index.js and art/hot/arcade.js at `20261002-v68`; the rest as tools/cache-keys.json lists them; engine `T82.VERSION` 17).
+**Most recent change:** section 0000000 (c-code-clean, NOT live, 2026-10-03): v68.2, a lucky played 81-1 saved on about 25% of spins (was 45%), one constant (`HH_SAVE_GAIN`). Before that (2026-10-02 night): v68.1, the owner's three decisions (the record moves from the 81 played; the season 10% shorter; the middle dot), the verifier brought level with the game. Before that, v68 (2026-10-02 evening): the Hot Hand scaling (his other session), the shorter pauses, the iPhone check, COLD's wording in Combo, tools/art-remove.js. Before that, in the same section: v67.2, the art library with the owner's first picks (cuts, his speed dial art/tempo.json, the dagger/arcade/jam/marbling/wave fixes, no streak marks on settled dots, no art downloads on a slow link, the finish-time table). Before that, section 000001 (LIVE on main, 2026-10-02): the Tribune's Anthropic key is the app's only (same-origin, one phase, an allowlisted roster and fit notes, per-IP and daily spend caps, a RECAP_OFF switch; no lab was found in the tree, and app.js is untouched). Before that, section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 0000000. START HERE (2026-10-02): V68.1 AND V68 ON V67.2, THE ART LIBRARY WITH HIS PICKS (c-code-clean + art-variety, NOT LIVE)
+## 0000000. START HERE (2026-10-03): V68.2, V68.1 AND V68 ON V67.2, THE ART LIBRARY WITH HIS PICKS (c-code-clean + art-variety, NOT LIVE)
+
+### 2026-10-03: v68.2, "about 25%" (c-code-clean, NOT LIVE)
+
+**His decision (2026-10-03),** on v68.1's first open item: under "move from the real 81" a lucky Presti 81-1 became
+82-0 on about 45% of post-season spins. He wants ABOUT 25% (asked "somewhere between", then picked 25% over 15, 20 and
+33). Keep everything else of v68.1. Separately and NOT now: the 0.97 nightly cap (v68.1's open item 2; its own
+balance check later). COLD costing wins on the print stays unmarked (fine as is).
+
+**Where:** `c-code-clean` and `art-variety`, one commit on v68.1 (BUILD_V `v68.2`; app.js and sim-core.js at key
+`20261003-v68-3`; engine VERSION 17; the preview is https://c-code-clean.true82.pages.dev/). Not live; `main` is v66.5
+until he says merge.
+
+**The rule in plain words.** Only how a PLAYED 81 moves changed (sim-core.js `hhRecord`, which app.js's hotHand and the
+verifier's finish() both run):
+- The spin is judged by its change in **expected** wins, fractions and all: `82 x (phi(newNet / 12) - phi(net / 12))`.
+  (v68.1 counted whole wins of the projected record, so a +0.4 that happened to cross a projection step, 78 to 79,
+  counted a full win and saved the 81.)
+- The played record moves by `floor(gain - HH_SAVE_GAIN) + 1` whole wins, under the same direction rule: HOT, ON FIRE
+  and SUPERNOVA only raise it (a gain of 0.64 expected wins or more saves the 81: 82-0), WARM never moves it, COLD only
+  lowers it (a loss of more than 0.36 expected wins costs one: 80-2). That is the 81 plus the expected change, rounded
+  with its line at 0.64 instead of 0.5. I DON'T WANT YOUR CHARITY still applies nothing.
+- A board that does not play its season out (the Daily, a challenge) keeps v68.1's whole-win rule, untouched, so its
+  honest 81 keeps its ~9%. `hhRecord(played, net, newNet, m, playedOut)`: app.js passes `!!e.season`, finish()
+  `!!season`.
+- The mid-season Heat Check, the ladder (0.9/1.0/1.1/1.2/1.3), the odds and HH_BONUS_SCALE are untouched.
+
+**Measured (2026-10-03)**, the way v68.1's numbers were: bot Presti drafts on the real data (tools/daily-audit.js
+makeBot, seeds 770000 + 29i), every five at or under +20 net (the only ones that reach the post-season Heat Check),
+each weighted by its odds of playing exactly 81-1 (`82 p^81 (1 - p)`, `p = min(0.97, phi(net/12))`), each hot player
+by the reel's weight (`max(0.5, v)^2`), each rung by its odds.
+
+| | save (82-0) | stays 81-1 | lowered (COLD) |
+|---|---|---|---|
+| Lucky played 81, v68.1 (20,000 drafts, 16,671 fives, effective sample 4,160) | 45.6% | 52.3% | 2.0% |
+| **Lucky played 81, v68.2 (same fives)** | **24.9%** | **72.4%** | **2.8%** |
+| v68.2 scored with labels.json (20,000 drafts) | 24.7% | 72.6% | 2.7% |
+| v68.2 through the verifier's own finish() (4,000 other fives x 1,000 seasons: 32,998 real post-season checks) | 24.5% | 72.9% | 2.7% |
+| The Daily's honest 81 (unchanged code path): v68.1's own sample, 587 fives projecting 81 | 9.0% | | |
+| The Daily's honest 81: the 558 fives projecting 81 in the sample above | 10.3% | | |
+| Mid-season Heat Check (unchanged): HOT-or-better boosts ending 82-0 (20,191 boosts); a boosted played 81-1 | 22.3%; 96.8% | | never worse than played |
+
+By rung on a lucky 81 (v68.1 to v68.2): HOT saves 39.8% to 1.9%, ON FIRE 69.4% to 49.7%, SUPERNOVA 86.4% to 84.3%;
+COLD lowers 34% of its spins to 46%. By projection v68.2 saves 39% of 74s down to 20% of 79s (v68.1: 59% down to 46% of
+78s, but only 6% of 79s, the step artifact): the steps no longer decide it.
+
+**How to retune: one constant,** `HH_SAVE_GAIN` in sim-core.js (bump `T82.VERSION` with it, then stamp the key). Higher
+= fewer saves and a slightly harsher COLD (it costs a win past 1 - HH_SAVE_GAIN):
+
+| HH_SAVE_GAIN | 0.5 | 0.6 | 0.63 | **0.64** | 0.65 | 0.7 | 0.8 | 1.0 |
+|---|---|---|---|---|---|---|---|---|
+| saves a lucky 81-1 | 36% | 28% | 25.5% | **24.9%** | 24% | 21% | 16% | 8% |
+| COLD lowers it (of all spins) | 1.0% | 2.2% | 2.6% | **2.8%** | 2.9% | 3.9% | 5.5% | 6% |
+
+To re-measure after a retune: test.js's rate check prints the save, stay and lower rates on its fixed 1,000-draft
+sample with exactly these weights (it is the measurement, smaller); docs/MODES.md has the method and the full table.
+The 20,000-draft numbers came from the same weights over more seeds; the finish() cross-check played 1,000 seasons
+per five through `T82.finish` with a fresh rng each (S.simSeason on), counting every post-season Heat Check.
+
+**Tests (test.js):** the record-rule sweep now runs both rules over 223,479 spins (HOT and up never lower, WARM never
+moves, COLD never raises, under either; the played-out move is exactly `floor(g - HH_SAVE_GAIN) + 1`; the save is
+exactly `g >= HH_SAVE_GAIN`; COLD costs a win exactly past `1 - HH_SAVE_GAIN`; monotonic: a bigger rung or a bigger
+spin never moves the record the wrong way; the projection's rule is v68.1's, unchanged); the constant is 0.64 and
+documented here and in MODES.md; the lucky cases (from +19.7 HOT +0.4: v68.1 saved, v68.2 keeps 81-1; ON FIRE on a
+value-7 hot player saves; COLD on a value-8 one costs a win); the game and the verifier still agree on all 2,800 real
+Presti runs and the 75 forced skips; **the rate**: on 1,000 seeded bot drafts (835 fives that can reach the check) a
+lucky 81-1 is saved on 25.0% of spins, held to 22-28% (v68.1's rule: 46.4% of the same spins).
+
+**Checked (2026-10-03):** stamp 20261003-v68-3; `node test.js` 258 passed, 0 failed; style law clean; cache keys clean.
+Real browser (local static server; Chromium 375x812, WebKit 320x568 for three of them), real Presti runs (bot drafts,
+labels on) driven through confirmPick, the reel and the lever, no page errors, the verifier's replay and verifyRun
+agree (record and draws) on every one:
+- seed 9300652, +19.43 (projects 78), played 81-1, HOT on C. Paul +0.57 (projection 78 to 79, 0.40 expected wins):
+  v68.1 would print 82-0; v68.2 stamp 81-1, record 81-1, share "81-1", print 81; verifier 81, 833 draws.
+- seed 9301835, +19.71, HOT +0.52 (78 to 79, 0.35): 81-1 everywhere (v68.1: 82-0); verifier 81, 833.
+- seed 9335120, +15.81 (projects 75), SUPERNOVA on R. Parish +0.60 (the projection does not move; 0.66 expected
+  wins): v68.1 would keep 81-1; v68.2 82-0, share "82-0", print 82 (saved game 53); verifier 82, 906 draws.
+- seed 9351521, +17.16, COLD on J. Butler -0.37 (0.37 expected wins lost, the projection does not move): 80-2 on
+  the stamp, record, share and print (v68.1: 81-1); verifier 80, 950.
+- seed 9303669, ON FIRE +0.57 (0.44): 81-1 everywhere; verifier 81, 954.
+
+**Checked again, independently (2026-10-03, a second session, its own seeds):** 20,000 drafts (seeds 5150000 + 41i)
+against HEAD's v68.1 sim-core.js loaded side by side and a restatement of the rule written without hhRecord (0
+disagreements): save 24.9%, stay 72.3%, lowered 2.8% with labels (v68.1: 45.9%, 2.0%). Through finish() itself, 6,000
+fives x 1,000 re-seeded seasons (5.3M seasons) against v68.1's finish(): 46,995 post-season Heat Checks saved 24.7%,
+stayed 72.4%, lowered 2.8% (v68.1: 45.5%, 2.1%); every refused check stayed 81; the 1,024,675 mid-season checks and
+every other season were identical to v68.1, draws included. The Daily (400 day keys x 40 seeds, played and refused):
+identical to v68.1; its honest 81 saves 9.1%. The test's 22-28% band: 30 other 1,000-draft samples, mean 24.95%, SD
+0.51, range 24.0 to 25.9. Browser (Chromium 375x812, real taps through the draft, reel, lever, SEE YOUR TEAM and SHARE
+YOUR TEAM), five runs on its own seeds: HOT +0.56 expected (v68.1: 82-0) and HOT +0.27 stay 81-1; COLD -0.39 80-2; COLD
+-0.34 81-1; ON FIRE +0.81 82-0. Stamp, record, net, ledger, print, Tribune payload and share text matched the node
+prediction; replay and verifyRun agreed; no page errors.
+
+**For him (open, his call):**
+1. **HOT almost never saves a lucky 81 now** (1.9% of HOT spins, was 39.8%): a HOT is +0.1 of one player's value, about
+   0.3 expected wins on most fives, so the saves come from ON FIRE (about half) and SUPERNOVA (84%). This is what "judge
+   it in expected wins" does at 25%; if he wants HOT to save more, the knob cannot give it without raising every rung.
+2. **COLD bites a little more often:** 46% of COLD spins on a lucky 81 cost a win (2.8% of all spins), was 34% (2.0%),
+   because the one constant is a rounding line (a COLD costs a win past 0.36 expected wins). The other one-constant
+   shape (a win moves only when the change reaches 0.64 EITHER way) also lands 24.9% saves, but COLD would cost a win on
+   only 4% of COLD spins (0.2% of all), and refusing the spin would protect almost nothing. Say the word to switch.
+3. A weaker lucky five still saves more often than a stronger one (39% at a 74 projection, 22% at 78, 20% at 79), but
+   the cliff at 79 (v68.1: 6%) is gone.
+4. The 0.97 nightly ceiling (v68.1's item 2) is untouched, as he asked; the rates above are measured with it in place
+   (it binds only above +22.6 net, so it does not touch the post-season population).
+5. v68.1's items 3 to 7 below still stand (item 1 is this section).
+
 
 ### 2026-10-02 (night): v68.1, his three decisions on v68's list (c-code-clean, NOT LIVE)
 

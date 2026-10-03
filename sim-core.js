@@ -1341,15 +1341,33 @@ function initDataCore(data) {
   // from the spun projection, so a HOT spin dropped a lucky 81-1 (a five projecting 78 to 80) to 78-4. On a standalone
   // Presti run every post-season Heat Check is such a five: one drafted above HH_MID_NET (20, a projection of 79 and
   // up) that loses a game gets the mid-season Heat Check at that loss instead (hhMidAt), so it never reaches this one.
+  // v68.2 (the owner, 2026-10-03: "about 25%"): on a season PLAYED out (playedOut: a standalone Presti run, armed
+  // "ss") the change is judged in EXPECTED wins, not whole projected wins. v68.1's whole-win steps saved a lucky 81-1
+  // on about 45% of spins (a +0.4 net that crossed a projection step counted a full win). Now the spin's gain is
+  // 82 * (phi(newNet / NET_SD) - phi(net / NET_SD)) (fractions count; hhExpWins), and it moves the played record by
+  // floor(gain - HH_SAVE_GAIN) + 1 whole wins, the rung's direction rule as before: HOT and up gain a win when the
+  // gain reaches HH_SAVE_GAIN (so the save is exactly gain >= HH_SAVE_GAIN on an 81), COLD costs one when it takes
+  // away more than 1 - HH_SAVE_GAIN (and a second past 2 - HH_SAVE_GAIN), WARM never moves it. That is the 81 plus the
+  // expected change, rounded with its line at HH_SAVE_GAIN instead of 0.5. A board that does not play its season out
+  // (the Daily, a challenge: playedOut false) keeps v68.1's rule (whole projected wins), so its honest 81 saves exactly
+  // as before (about 9%).
   // played: the record played (81 at the post-season check); net, newNet: the five's net before and after the spin;
-  // m: the rung's multiplier. -> { wins, save (1: the raised record reached 82), before, after (the projections) }.
+  // m: the rung's multiplier; playedOut: the season was played out game by game. -> { wins, save (1: the raised record
+  // reached 82), before, after (the projections), change (the whole wins the rule allows, before the direction rule) }.
   // app.js's hotHand reads this same function, so a submitted run verifies against finish() below.
-  function hhRecord(played, net, newNet, m) {
+  function hhRecord(played, net, newNet, m, playedOut) {
     var N = CFG.GAMES_IN_SEASON, before = hhWins(net), after = hhWins(newNet), wins = played;
-    if (m > 1) wins = Math.min(N, played + Math.max(0, after - before));
-    else if (m < 1) wins = Math.max(0, played + Math.min(0, after - before));
-    return { wins: wins, save: (wins >= N && played < N) ? 1 : 0, before: before, after: after };
+    var change = playedOut ? Math.floor(hhExpWins(newNet) - hhExpWins(net) - HH_SAVE_GAIN) + 1 : after - before;
+    if (m > 1) wins = Math.min(N, played + Math.max(0, change));
+    else if (m < 1) wins = Math.max(0, played + Math.min(0, change));
+    return { wins: wins, save: (wins >= N && played < N) ? 1 : 0, before: before, after: after, change: change };
   }
+  // v68.2 THE ONE KNOB for a played 81: the gain in expected wins that earns a whole win. 0.64 saves about 25% of the
+  // post-season Heat Check spins on played Presti 81-1s (the owner's pick, 2026-10-03; v68.1 saved about 45%). Raise it
+  // and saves get rarer (and COLD a little harsher: it costs a win past 1 - HH_SAVE_GAIN); lower it and the reverse.
+  // 1.0 would save about 8%, 0.5 about 36%. Retune with the measurement in docs/MODES.md; test.js holds its band.
+  var HH_SAVE_GAIN = 0.64;
+  function hhExpWins(net) { return CFG.GAMES_IN_SEASON * phi(null, net / SC.NET_SD); }
 
   // v68.1 THE MID-SEASON SAVE (v47.15's mid-season Heat Check), in the engine so a replay can know it happened. A
   // standalone Presti season (armed "ss") whose five is drafted above HH_MID_NET net pauses on its first realized
@@ -1444,8 +1462,9 @@ function initDataCore(data) {
         // v68.1: the record moves from the 81 played by the spin's projected change (hhRecord): HOT and up only
         // raise it, WARM never moves it, COLD only lowers it, and the save is the raised record reaching 82. v68 set
         // it from the spun projection (hhWins(newNet)), so a HOT spin could lower a lucky 81-1. app.js's hotHand
-        // takes the same function, so a submitted run still verifies here.
-        var rec = hhRecord(res.wins, e.net, newNet, seg.m);
+        // takes the same function, so a submitted run still verifies here. v68.2: a season played out (season set)
+        // is judged in expected wins (HH_SAVE_GAIN); the projection's 81 (the Daily) keeps the whole-win rule.
+        var rec = hhRecord(res.wins, e.net, newNet, seg.m, !!season);
         res.hh = { hotIdx: hotIdx, segIdx: segIdx, segLabel: seg.label, m: seg.m,
                    newNet: newNet, win: rec.save };
         res.wins = rec.wins; res.losses = CFG.GAMES_IN_SEASON - rec.wins; res.netFinal = newNet;
@@ -1526,7 +1545,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 16,  // v16 (v68.1, the owner's "move from the real 81"): a Heat Check spin moves the record PLAYED by its projected change (hhRecord: HOT and up only raise it, WARM never moves it, COLD only lowers it; the save is the raised record reaching 82), and finish() now plays out an armed Presti season ("ss") and its mid-season Heat Check the way app.js does, the mid-season re-roll reusing each night's own draw (never worse than the games played). v15 (v68): the Hot Hand ladder is a flat 0.1 staircase, 0.9 COLD to 1.3 SUPERNOVA (was 1.0/1.2/1.35/1.5/2.0), and the spin's number now STANDS in finish() instead of being clamped to "improve only" - so COLD can cost a win and I DON'T WANT YOUR CHARITY is the only way to keep an 81. v14 (v63.1): one ball tops out at 6 (USAGE_CAP); the Dueling Banjos no longer charge (one ball tells their story); Presti's ceiling is $26 (was $23) and its $1 gem is luck's rebate (one at most, only when the board's five best rolled over fair) on boards that do not set CAP_GEM. v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 17,  // v17 (v68.2, the owner's "about 25%"): on a season played out, a Heat Check spin moves the played record by its change in EXPECTED wins (82 * (phi(newNet/SD) - phi(net/SD)), fractions count), floor(gain - HH_SAVE_GAIN) + 1 whole wins under the same direction rule (HH_SAVE_GAIN 0.64: a lucky Presti 81-1 is saved on about 25% of spins, was 45%); the Daily's projection keeps the whole-win rule. v16 (v68.1, the owner's "move from the real 81"): a Heat Check spin moves the record PLAYED by its projected change (hhRecord: HOT and up only raise it, WARM never moves it, COLD only lowers it; the save is the raised record reaching 82), and finish() now plays out an armed Presti season ("ss") and its mid-season Heat Check the way app.js does, the mid-season re-roll reusing each night's own draw (never worse than the games played). v15 (v68): the Hot Hand ladder is a flat 0.1 staircase, 0.9 COLD to 1.3 SUPERNOVA (was 1.0/1.2/1.35/1.5/2.0), and the spin's number now STANDS in finish() instead of being clamped to "improve only" - so COLD can cost a win and I DON'T WANT YOUR CHARITY is the only way to keep an 81. v14 (v63.1): one ball tops out at 6 (USAGE_CAP); the Dueling Banjos no longer charge (one ball tells their story); Presti's ceiling is $26 (was $23) and its $1 gem is luck's rebate (one at most, only when the board's five best rolled over fair) on boards that do not set CAP_GEM. v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
@@ -1559,7 +1578,7 @@ function initDataCore(data) {
     setLabels: setLabels, labelsOf: labelsOf, labelsReady: function () { return !!LABELS; }, foldName: foldName, labelTaxes: labelTaxes,
     oneBall: oneBall, sizeUnits: sizeUnits,
     hhNet82: hhNet82, hhPickHot: hhPickHot, hhSpinSeg: hhSpinSeg, hhEligible: hhEligible,
-    hhWins: hhWins, hhRecord: hhRecord, hhMidAt: hhMidAt, hhMidReroll: hhMidReroll, HH_MID_NET: HH_MID_NET,
+    hhWins: hhWins, hhExpWins: hhExpWins, hhRecord: hhRecord, HH_SAVE_GAIN: HH_SAVE_GAIN, hhMidAt: hhMidAt, hhMidReroll: hhMidReroll, HH_MID_NET: HH_MID_NET,
     swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,
     HH_SEGMENTS: HH_SEGMENTS, HH_BONUS_SCALE: HH_BONUS_SCALE
   };
