@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/styles.css?v=20260929-v66">
+<link rel="stylesheet" href="/styles.css?v=20261002-v68">
 <link rel="stylesheet" href="/look.css?v=20260927-v60">
 <style>
 /* The art bench: a bare page that wears the game's theme and runs the two print engines with nothing of the game
@@ -30,9 +30,9 @@
   <p class="qa-note">Watch one here: <code>?watch=loss:classic</code> (the three loss moments, looped), <code>?watch=dots:classic</code> (a season's ledger), <code>?watch=scene:lake</code> (the print's reveal).</p>
   <p class="qa-note">The FX looks (art/CONTRACT-FX.md, riso-fx.js) on the game's own screens: <code>node tools/art-qa.mjs hot &lt;id&gt;</code> (or perk, goat; <code>classic</code> for the built-in, <code>all</code> side by side), and here <code>?watch=hot:classic</code> (the seven Heat Check beats in turn), <code>?watch=perk:classic</code>, <code>?watch=goat:classic</code> (the 82-0 volley).</p>
 </main>
-<script src="/art-core.js?v=20261002-v67-2" defer></script>
-<script src="/art-index.js?v=20261002-v67-2" defer></script>
-<script src="/reel-riso.js?v=20261002-v67-2" defer></script>
+<script src="/art-core.js?v=20261002-v68" defer></script>
+<script src="/art-index.js?v=20261002-v68" defer></script>
+<script src="/reel-riso.js?v=20261002-v68" defer></script>
 <script src="/results-riso.js?v=20261001-v67" defer></script>
 <script src="/riso-fx.js?v=20261002-v67-2" defer></script>
 <script>
@@ -88,9 +88,10 @@
   function season(head, w, seed) { var n = 82 - head.length; return head.concat(shuffled(n, clamp(w - wins(head), 0, n), seed)); }
   function run(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v); return a; }
   // The three loss moments every loss variant must read in (art/CONTRACT.md, the timeline): the season's first loss
-  // after a 12-game streak (the longest hold, 1.7 s), loss 5 of a great year in February (low in the card, so the
-  // hero takes the span ABOVE the wound; 1.05 s), and the 14th loss of a bad year (the last heavy one) at the
-  // fastest pace the game's reelPace() deals a heavy loss (0.42: 0.29 s, its shortest over every record). The hero
+  // after a 12-game streak (the longest hold, 1.45 s since v68's shorter pauses; 1.7 s before), loss 5 of a great year
+  // in February (low in the card, so the hero takes the span ABOVE the wound; 0.89 s, was 1.05), and the 14th loss of a
+  // bad year (the last heavy one) at the fastest pace the game's reelPace() deals a heavy loss (0.42: 0.25 s, was 0.29,
+  // its shortest over every record). The holds are the reel's own (reel-riso.js's holdFor). The hero
   // sits below the wound in the other two.
   var CASES = {
     streak: { key: "streak", label: "first loss, after 12 straight", games: season(run(12, 1).concat([0]), 66, 11), gi: 12, pace: 1 },

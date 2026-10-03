@@ -26,9 +26,17 @@
    The owner's picks (2026-10-02): "handle preloading smartly to not drag performance for users with slower phones
    and/or slow internet", and on Data Saver or a 2G/3G connection "skip downloading new looks and play the built-ins".
    So deal() hands out nothing on a slow link (lean(): navigator.connection says saveData, or an effectiveType of
-   slow-2g, 2g or 3g): every moment plays its built-in, nothing downloads and the bags stay put. Safari has no
-   navigator.connection, so an iPhone always takes the normal path (app.js loads that in stages). And his speed dial
-   (art/tempo.json, which tools/art-index.js writes into each look's entry) rides the index: tempo(kind, id). */
+   slow-2g, 2g or 3g): every moment plays its built-in, nothing downloads and the bags stay put. And his speed dial
+   (art/tempo.json, which tools/art-index.js writes into each look's entry) rides the index: tempo(kind, id).
+
+   v68 THE iPHONE CHECK (the owner, 2026-10-02: "add check"). Safari, and so every iPhone browser, has no
+   navigator.connection, so the rule above never fires there. Instead the first art file a run downloads is timed (the
+   probe; the run's other dealt files wait for its answer, never longer than PROBE_MS): in by PROBE_MS, the run loads
+   as usual; failed or slower, the run goes lean from then on (it downloads nothing more and every look not yet in
+   plays its built-in), and the tab remembers it (sessionStorage "t82-art-slow", wrapped), so its next draft starts
+   lean: only that draft's probe downloads, and a fast one clears the memory. Only the game's own dealt looks are
+   measured or held back (a test build's ?art=, the lab and the harness load as before), and nothing in the game ever
+   waits for any of it. */
 var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : (function () {
   "use strict";
   var KINDS = ["loss", "dots", "scene", "hot", "perk", "goat"];   // part two: the Heat Check, the Presti perks, 82-0
@@ -39,6 +47,15 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   var INDEX = [], BYKEY = {};                        // art-index.js's entries, and each one by "kind/id"
   var OFFB = {};                                     // "kind/id" -> 1: a built-in art/enabled.json switched off (never dealt)
   var SLOW = /^(?:slow-2g|2g|3g)$/;                  // the connections that get no art downloads (the owner, 2026-10-02)
+  // v68 the iPhone check (above). PROBE_MS: one art file is 3 to 16 KB (2 to 6 KB on the wire, compressed), fetched
+  // alone on the page's open connection: one round trip plus a few ms. A good LTE or wifi link answers in 0.1 to 0.4 s
+  // and an ordinary 3G one well under 1 s; 1.5 s is that worst case with room for an iPhone SE busy with the draft's
+  // slot animation (the onload waits on its main thread), and it is the round trip of the links Chrome rates 2g
+  // (1.4 s and more), where 10 more files would compete with the game for seconds. To change it: this number.
+  var PROBE_MS = 1500;
+  var SLOW_KEY = "t82-art-slow";                     // sessionStorage: "1" = this tab measured a slow link
+  var NET = { verdict: "", probe: null, timer: 0, queue: [] };   // this run's probe (see newRun)
+  var DEALT = {}, HELD = {}, SLOW_MEM = false;       // this run's dealt "kind/id"s; the ones held back; the memory
   var PENDING = {}, WAIT = {}, FAILED = {};          // "kind/id" -> a load in flight, its finisher, a load that failed
   var MEM = {}, SOLO = {};                           // the bags when the device will not keep them (private mode)
   var BASE = null;                                   // where the art files live: beside this file
@@ -121,14 +138,16 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   }
   // A slow link (the owner, 2026-10-02): Data Saver on, or a connection the browser rates slow-2g, 2g or 3g. Read at
   // each deal, so a phone that turns Data Saver off gets the library on its next draft. Safari has no
-  // navigator.connection: false there.
+  // navigator.connection: false there, and the iPhone check (the loader's probe, below) measures the link instead.
   function lean() {
-    try {
-      var n = typeof navigator !== "undefined" && navigator ? navigator : null;
-      var c = n ? n.connection || n.mozConnection || n.webkitConnection : null;
-      return !!c && (c.saveData === true || SLOW.test(String(c.effectiveType || "")));
-    } catch (err) { return false; }
+    try { var c = conn(); return !!c && (c.saveData === true || SLOW.test(String(c.effectiveType || ""))); } catch (err) { return false; }
   }
+  // the browser's own word on the link (navigator.connection), or null (Safari: every iPhone browser)
+  function conn() {
+    try { var n = typeof navigator !== "undefined" && navigator ? navigator : null; return (n && (n.connection || n.mozConnection || n.webkitConnection)) || null; }
+    catch (err) { return null; }
+  }
+  function clock() { try { return typeof performance !== "undefined" && performance && performance.now ? performance.now() : Date.now(); } catch (err) { return Date.now(); } }
 
   /* ---- the loader ---- */
   // The files sit beside this script (art/ next to art-core.js), so a page in a subfolder (a lab) finds them too.
@@ -147,6 +166,8 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
     var key = kind + "/" + id, en = entry(kind, id);
     if (get(kind, id) || FAILED[key] || !en || typeof document === "undefined" || !document || !document.createElement) return Promise.resolve();
     if (PENDING[key]) return PENDING[key];
+    var gate = gateOf(key), N = NET;
+    if (gate === "hold") { HELD[key] = 1; return Promise.resolve(); }   // a lean run: the built-in plays, the bag keeps it
     PENDING[key] = new Promise(function (resolve) {
       var done = false, timer = 0, s;
       function finish() {
@@ -155,21 +176,77 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
         clearTimeout(timer);
         delete WAIT[key]; delete PENDING[key];
         if (!get(kind, id)) FAILED[key] = 1;   // an error, a timeout or a file that never registered: skip it for this visit
+        if (gate === "probe") probeEnd(N, !!get(kind, id));
         resolve();
       }
-      WAIT[key] = finish;
-      try {
-        s = document.createElement("script");
-        s.async = true;
-        s.src = urlOf(en.file);                // the index's file carries its ?v= key: cached a year, fetched once
-        s.setAttribute("data-t82-art", key);
-        s.onload = finish; s.onerror = finish;
-        timer = setTimeout(finish, LOAD_MS);
-        (document.head || document.documentElement).appendChild(s);
-      } catch (err) { finish(); }
+      function start() {
+        WAIT[key] = finish;
+        try {
+          s = document.createElement("script");
+          s.async = true;
+          s.src = urlOf(en.file);              // the index's file carries its ?v= key: cached a year, fetched once
+          s.setAttribute("data-t82-art", key);
+          s.onload = finish; s.onerror = finish;
+          timer = setTimeout(finish, LOAD_MS);
+          (document.head || document.documentElement).appendChild(s);
+        } catch (err) { finish(); }
+      }
+      if (gate === "wait") {                   // the probe answers first: then this file loads, or the run is lean
+        N.queue.push(function (v) {
+          if (v === "fast") { start(); return; }
+          done = true; HELD[key] = 1; delete PENDING[key]; resolve();
+        });
+        return;
+      }
+      if (gate === "probe") probeStart(N, key);
+      start();
     });
     return PENDING[key];
   }
+  // v68 the iPhone check: what one load of a dealt look does now. "go": load it. "probe": load it and time it (the
+  // run's first). "wait": load it once the probe says the link is fast. "hold": the run is lean, load nothing. A
+  // browser that rates its own link (navigator.connection) and anything not dealt this run always go.
+  function gateOf(key) {
+    if (!has(DEALT, key) || conn()) return "go";
+    if (NET.verdict === "fast") return "go";
+    if (NET.verdict === "slow") return "hold";
+    if (!NET.probe) return "probe";
+    return NET.verdict === "remembered" ? "hold" : "wait";   // a tab measured slow before: only the probe downloads
+  }
+  function probeStart(N, key) {
+    N.probe = { key: key, t0: clock() };
+    N.timer = setTimeout(function () { probeEnd(N, false); }, PROBE_MS);   // not in by then: slow, and nothing waits longer
+  }
+  function probeEnd(N, ok) {
+    if (N.verdict === "fast" || N.verdict === "slow" || !N.probe) return;   // already answered (the timer, or the file)
+    var fast = ok && clock() - N.probe.t0 <= PROBE_MS, q = N.queue;
+    N.verdict = fast ? "fast" : "slow";
+    N.queue = [];
+    clearTimeout(N.timer);
+    slowMemo(!fast);
+    q.forEach(function (fn) { fn(N.verdict); });
+  }
+  // A new run (app.js, as a draft starts, before it deals): its own probe, its own dealt looks. A tab that measured a
+  // slow link starts it lean ("remembered").
+  function newRun() {
+    NET = { verdict: slowMemo() ? "remembered" : "", probe: null, timer: 0, queue: [] };
+    DEALT = {}; HELD = {};
+  }
+  // the tab's memory of a slow link: read (no argument) or set it. sessionStorage, wrapped; in memory where it is refused
+  function slowMemo(set) {
+    var ss = null;
+    try { ss = typeof sessionStorage !== "undefined" ? sessionStorage : null; } catch (err) { ss = null; }
+    if (set === undefined) {
+      try { if (ss && ss.getItem(SLOW_KEY) === "1") return true; } catch (err) {}
+      return SLOW_MEM;
+    }
+    SLOW_MEM = !!set;
+    try { if (ss) { if (set) ss.setItem(SLOW_KEY, "1"); else ss.removeItem(SLOW_KEY); } } catch (err) {}
+    return SLOW_MEM;
+  }
+  // QA and test.js: this run's answer: "" (not measured yet, or a browser that rates its own link), "fast", "slow",
+  // or "remembered" (the tab measured a slow link before and this run's probe has not answered)
+  function net() { return conn() ? "" : NET.verdict; }
   // Promise -> the requested ids that are now registered. Never rejects, never loads anything unless asked, and two
   // calls for the same file share one request.
   function load(kind, ids) {
@@ -259,7 +336,9 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
       flat = flat.concat(c);
     }
     writeBag(name, bag);
-    return flat.slice(0, n);
+    flat = flat.slice(0, n);
+    flat.forEach(function (id) { DEALT[kind + "/" + id] = 1; });   // the game's own downloads: the iPhone check gates these
+    return flat;
   }
   // A look actually played: take it out of the bag (its first place in line) and remember it as the last one. A
   // perfect look leaves the perfect bag on its own (opts.perfect, true or false, names the bag outright).
@@ -275,10 +354,11 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   // A dealt look that did not play because it was not there: its file failed, timed out or never registered on this
   // device (a load-time throw, syntax an old iPhone cannot parse), or the engine had switched it off. It moves on like
   // a used one (it comes back next cycle, and a fresh cycle does not open with it), so a look that cannot load here
-  // never sits at the head of the bag and freezes it. A file still loading keeps its place (it plays next time).
+  // never sits at the head of the bag and freezes it. A file still loading keeps its place (it plays next time), and
+  // so does one a lean run held back (the iPhone check: it was never tried).
   // The reel reports its skips (opts.onSkip), app.js the print's scene. Returns whether the look moved on.
   function skip(kind, id, opts) {
-    if (!isKind(kind) || !isId(id) || PENDING[kind + "/" + id]) return false;
+    if (!isKind(kind) || !isId(id) || PENDING[kind + "/" + id] || HELD[kind + "/" + id]) return false;
     used(kind, id, opts);
     return true;
   }
@@ -308,6 +388,7 @@ var T82ART = (typeof T82ART !== "undefined" && T82ART && T82ART.add) ? T82ART : 
   }
 
   return { add: add, get: get, index: index, catalog: catalog, enabled: enabled, load: load, deal: deal, used: used,
-    skip: skip, forced: forced, perfect: isPerfect, tempo: tempo, lean: lean, KINDS: KINDS.slice(), LOAD_MS: LOAD_MS, version: "v67" };
+    skip: skip, forced: forced, perfect: isPerfect, tempo: tempo, lean: lean, newRun: newRun, net: net,
+    KINDS: KINDS.slice(), LOAD_MS: LOAD_MS, PROBE_MS: PROBE_MS, version: "v68" };
 })();
 if (typeof window !== "undefined" && window) window.T82ART = T82ART;

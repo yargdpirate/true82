@@ -15,8 +15,9 @@
                                             frames, its frame and prep costs at 4x against the absolute budgets;
                                             <id> classic for the built-in, all for every pack of the kind side by side
      node tools/art-qa.mjs finish loss      when each loss look's moment is over: the last frame with any of its ink on
-                                            the card (hero, veil, caption, sprays) in the mid moment (1.05 s hold) and
-                                            the first loss after a streak (1.70 s), the owner's speed dial applied (and
+                                            the card (hero, veil, caption, sprays) in the mid moment (0.89 s hold) and
+                                            the first loss after a streak (1.45 s; v68's shorter pauses: 1.05 and 1.70
+                                            before; the reel's own holds), the owner's speed dial applied (and
                                             today's pace beside each dialed look); a table, quickest first
    Options:
      --out DIR       where it all lands (default <tmp>/t82-art-qa/<mode>[-<id>]): report.json, index.html, the PNGs
@@ -69,7 +70,7 @@ const BUDGET = {
 // the loss moment's fixed times (seconds after the slam); each case adds its last frame and one just after it ends
 const LOSS_TIMES = [0, 0.05, 0.1, 0.18, 0.25, 0.35, 0.5, 0.7, 0.9, 1.1, 1.3];
 const LOSS_CASES = ["streak", "mid", "late"];
-// the read check's frame: e = 0.25 s, or in a moment too short for that (late: 0.29 s, the game's fastest heavy loss)
+// the read check's frame: e = 0.25 s, or in a moment too short for that (late: 0.25 s since v68, the game's fastest heavy loss)
 // its last frame at full ink, before K.fade's 0.2 s fade-out starts
 const readTime = (dur) => Math.min(0.25, Math.max(0.07, Math.round((dur - 0.2) * 100) / 100));
 const WIN_TIMES = [0, 0.03, 0.06, 0.1, 0.15, 0.24];
@@ -568,7 +569,7 @@ async function lossRender(id, dir, o) {
     await page.close();
   }
   const f320 = path.join(dir, "loss-" + id + "-320.png");
-  await sheet(f320, { title: "loss \u00B7 " + id + " \u00B7 320 wide", sub: "The three moments at their read frame (e = 0.25 s; the 0.29 s moment just before its fade) on a 320 x 568 phone: is it an L (or LOSS) at a glance?", sections: [{ cols: 3, cells }] });
+  await sheet(f320, { title: "loss \u00B7 " + id + " \u00B7 320 wide", sub: "The three moments at their read frame (e = 0.25 s; the fastest moment (0.25 s) at e = 0.07) on a 320 x 568 phone: is it an L (or LOSS) at a glance?", sections: [{ cols: 3, cells }] });
   res.images.push(f320);
   return res;
 }
@@ -1345,7 +1346,7 @@ async function main() {
         if (kind === "loss") {
           for (const k of LOSS_CASES) {
             const fk = path.join(OUT, "row-loss-" + k + ".png");
-            await sheet(fk, { title: "every loss \u00B7 " + k, sub: "Each variant's frame at e = 0.35 s (the 0.29 s moment: its read frame).", sections: [{ cols: 4, cells: list.filter((x) => x.frames[k]).map((x) => ({ src: dataURL(x.frames[k]), label: x.id, sub: x.played && x.played[k] === false ? "(classic played)" : "", w: 260 })) }] });
+            await sheet(fk, { title: "every loss \u00B7 " + k, sub: "Each variant's frame at e = 0.35 s (the 0.25 s moment: its read frame).", sections: [{ cols: 4, cells: list.filter((x) => x.frames[k]).map((x) => ({ src: dataURL(x.frames[k]), label: x.id, sub: x.played && x.played[k] === false ? "(classic played)" : "", w: 260 })) }] });
             rows.push(fk);
           }
         } else if (kind === "dots") {

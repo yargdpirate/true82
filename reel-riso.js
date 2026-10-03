@@ -178,11 +178,23 @@
     FLASH_LAST.at = t; FLASH_LAST.by = String(by || "");
     return true;
   }
-  function holdFor(lossNo, prevStreak) {
+  // v68 (the owner, 2026-10-02: "shorten pause"): every heavy loss (1 to 14) holds the cursor HOLD_SCALE of the pause
+  // it had before (holdToday), so the whole season plays faster. 0.85 matches the quickest-finishing looks (Rubber Seal
+  // and Pull were done at 0.87 s of a 1.03 s pause). TO CHANGE IT: edit this one number (1 = the old pauses; 0.8 = 20%
+  // shorter), stamp a new cache key, run node test.js. The looks fit themselves to the new pause (E.dur), the tempo
+  // dial (art/tempo.json) still works on top, app.js keeps the ticks at their old pace (it paces the season with
+  // holdToday), and the light losses past the 14th keep their 240 ms. The red flash keeps its own limit (FLASH_GAP)
+  // at any setting; test.js's photosensitivity check (heavy losses under 3 a second) fails below about 0.42.
+  var HOLD_SCALE = 0.85;
+  function holdToday(lossNo, prevStreak) {           // the pauses before v68, in ms (app.js paces the season with these)
     if (lossNo <= 1) return prevStreak >= 5 ? 1700 : 1350;
     if (lossNo <= 6) return 1050;
     if (lossNo <= 14) return 700;
     return 240;
+  }
+  function holdFor(lossNo, prevStreak) {             // the pause each loss plays, in ms (pace 1)
+    var ms = holdToday(lossNo, prevStreak);
+    return heavy(lossNo) ? ms * HOLD_SCALE : ms;
   }
   function lossCopy(info) {
     var at = "AT " + String(info.city || "").toUpperCase(), when = String(info.date || "").toUpperCase();
@@ -1272,6 +1284,6 @@
   function kit(root, g) { return kitBase(readTheme(root), g || null); }
 
   builtins();
-  window.T82RISO = { create: create, strip: strip, kit: kit, holdFor: holdFor, heavy: heavy, lossCopy: lossCopy, flashGap: FLASH_GAP, flashClaim: flashClaim, theme: readTheme,
+  window.T82RISO = { create: create, strip: strip, kit: kit, holdFor: holdFor, holdToday: holdToday, holdScale: HOLD_SCALE, heavy: heavy, lossCopy: lossCopy, flashGap: FLASH_GAP, flashClaim: flashClaim, theme: readTheme,
     tempo: { of: tempoOf, warp: warp }, inks: INK_ORDER.slice(), version: "v67" };
 })();

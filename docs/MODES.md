@@ -148,20 +148,37 @@ Overlay fires on every completed cap draft under 82-0 (`hhEligible`). Two paths:
   (`hhPickHot`: weighted by value², min weight 0.5²), heat wheel spins a segment
   (`hhSpinSeg`), win bar climbs, verdict.
 
-Wheel (`HH_SEGMENTS`, odds sum 100):
+Wheel (`HH_SEGMENTS`, odds sum 100) — v68: a flat 0.1 staircase, and the odds
+here now match the code (they did not before):
 | Segment | ×mult | odds |
 |---|---|---|
-| COLD | 1.0 | 5 |
-| WARM | 1.2 | 25 |
-| HOT | 1.35 | 25 |
-| ON FIRE | 1.5 | 25 |
-| SUPERNOVA | 2.0 | 20 |
+| COLD | 0.9 | 6 |
+| WARM | 1.0 | 14 |
+| HOT | 1.1 | 42 |
+| ON FIRE | 1.2 | 23 |
+| SUPERNOVA | 1.3 | 15 |
 
-Boost: `newNet = net + (m − 1) · valueOf(hot) · HH_BONUS_SCALE(0.67)`. Goes
+Spin: `newNet = net + (m − 1) · valueOf(hot) · HH_BONUS_SCALE(0.67)`. Goes
 undefeated iff `newNet > hhNet82()` — the smallest net where
-`ceil(82·Φ(net/NET_SD)) = 82`, found by bisection. On a win, the record, ledger,
-GOAT climb, and share text update to the boosted numbers (`G.hotWins`,
-`G.hotValue`).
+`ceil(82·Φ(net/NET_SD)) = 82`, found by bisection. The record, ledger, GOAT
+climb, and share text follow the spun numbers (`G.hotWins`, `G.hotValue`).
+
+**The neutral rung is WARM, not index 0.** Anything that asks "did the spin move
+anything" must read `seg.m !== 1`, never `segIdx > 0` — COLD is 0.9 and takes
+value away. WARM is exactly ×1, so `newNet === net` and `hhWins(newNet) ===
+winTally`: an exact no-op by the engine's own formula.
+
+**COLD costs.** `finish()` lets the spun number stand in both directions (it used
+to clamp to "improve only"), so a COLD can drop an 81-1 to 80-2 — about 26% of
+81s, and COLD is 6% of spins, so ~1.6% of all 81-1 runs. Refusing the spin
+(I DON'T WANT YOUR CHARITY, op `hx`) is the only way to keep the 81. Percentile
+rank is unaffected either way: `/api/percentile` ranks the RAW engine net,
+written before the Hot Hand touches anything.
+
+**Reaching 82-0** is deliberately rare on this ladder: measured over 12,000 bot
+cap runs, an 81-1 run goes 82-0 on 8.0% of spins (SUPERNOVA itself saves 24%).
+The old ladder was 43.6%. `HH_BONUS_SCALE` is the one knob that moves this
+without touching the staircase.
 
 ## Analytics (for context when touching game events)
 

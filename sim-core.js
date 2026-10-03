@@ -1365,25 +1365,37 @@ function initDataCore(data) {
       var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
       // v37: a declined Heat Check ("I don't want your charity") consumes the
       // SAME two draws — clients draw at overlay build, so rngDraws parity
-      // demands it — but applies nothing. The record stands at 81.
+      // demands it — but applies nothing. The record stands at 81. Since v68
+      // that refusal is the only way to KEEP the 81: see below.
       if (S.hhDeclined) {
         res.hh = { declined: 1, hotIdx: hotIdx, segIdx: segIdx };
       } else {
         var win = newNet > hhNet82(S);
         res.hh = { hotIdx: hotIdx, segIdx: segIdx, segLabel: seg.label, m: seg.m,
                    newNet: newNet, win: win ? 1 : 0 };
+        // v68: the spin's number STANDS, up or down. The old law clamped this to
+        // "improve only", which was invisible while every rung was >= 1 but would
+        // have silently eaten the owner's COLD 0.9 (the one rung that costs).
+        // WARM is exactly x1, so newNet === e.net and hhWins(newNet) === winTally:
+        // an exact no-op, by the same formula the engine used. app.js's hotHand
+        // takes the same number, so a submitted run still verifies here.
         if (win) { res.wins = CFG.GAMES_IN_SEASON; res.losses = 0; res.netFinal = newNet; }
-        else if (hhWins(newNet) > res.wins) { res.wins = hhWins(newNet); res.losses = CFG.GAMES_IN_SEASON - res.wins; res.netFinal = newNet; }
+        else { res.wins = hhWins(newNet); res.losses = CFG.GAMES_IN_SEASON - res.wins; res.netFinal = newNet; }
       }
     }
     return res;
   }
+  // v68 (owner): the ladder is a flat 0.1 staircase, 0.9 to 1.3. COLD is the
+  // first tier that can COST you: it is below 1, so the spin is a gamble and
+  // I DON'T WANT YOUR CHARITY is a real choice, not flavor. WARM (1.0) is the
+  // neutral rung now, NOT index 0: anything keyed on "segIdx > 0 means a boost"
+  // is wrong by construction. Read seg.m, never the index.
   var HH_SEGMENTS = [
-    { label: "COLD",      m: 1.0,  odds: 6,  lvl: 0 },
-    { label: "WARM",      m: 1.2,  odds: 14, lvl: 1 },
-    { label: "HOT",       m: 1.35, odds: 42, lvl: 2 },
-    { label: "ON FIRE",   m: 1.5,  odds: 23, lvl: 3 },
-    { label: "SUPERNOVA", m: 2.0,  odds: 15, lvl: 4 }
+    { label: "COLD",      m: 0.9,  odds: 6,  lvl: 0 },
+    { label: "WARM",      m: 1.0,  odds: 14, lvl: 1 },
+    { label: "HOT",       m: 1.1,  odds: 42, lvl: 2 },
+    { label: "ON FIRE",   m: 1.2,  odds: 23, lvl: 3 },
+    { label: "SUPERNOVA", m: 1.3,  odds: 15, lvl: 4 }
   ];
   var HH_BONUS_SCALE = 0.67;
 
@@ -1445,7 +1457,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 14,  // v14 (v63.1): one ball tops out at 6 (USAGE_CAP); the Dueling Banjos no longer charge (one ball tells their story); Presti's ceiling is $26 (was $23) and its $1 gem is luck's rebate (one at most, only when the board's five best rolled over fair) on boards that do not set CAP_GEM. v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 15,  // v15 (v68): the Hot Hand ladder is a flat 0.1 staircase, 0.9 COLD to 1.3 SUPERNOVA (was 1.0/1.2/1.35/1.5/2.0), and the spin's number now STANDS in finish() instead of being clamped to "improve only" - so COLD can cost a win and I DON'T WANT YOUR CHARITY is the only way to keep an 81. v14 (v63.1): one ball tops out at 6 (USAGE_CAP); the Dueling Banjos no longer charge (one ball tells their story); Presti's ceiling is $26 (was $23) and its $1 gem is luck's rebate (one at most, only when the board's five best rolled over fair) on boards that do not set CAP_GEM. v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {

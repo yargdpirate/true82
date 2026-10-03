@@ -1,5 +1,13 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-02, evening): V68 (key `20261002-v68`, BUILD_V `v68`) IS ON `c-code-clean` AND
+> `art-variety`. NOT LIVE: `main` is still v66.5 and merges only at the owner's word, AFTER he has read the outstanding
+> list in section 0000000 (the biggest: on a lucky 81-1 a HOT spin can lower the record).** v68 = the Hot Hand
+> scaling from his other session (COLD 0.9, WARM 1.0, HOT 1.1, ON FIRE 1.2, SUPERNOVA 1.3; the spin's number stands
+> both ways), the shorter heavy-loss pauses (HOLD_SCALE 0.85 in reel-riso.js), the iPhone check (art-core.js times the
+> run's first art file; slow = no more downloads), Combo no longer printing COMBO on COLD, and tools/art-remove.js
+> (one command removes any look for good). The dagger, marbling and the wave stay exactly as they are.
+
 > **FIRST THING (2026-10-02): THE ART LIBRARY WITH THE OWNER'S FIRST PICKS (v67.2, key `20261002-v67-2`) IS ON
 > `c-code-clean` (the preview, merged with main's v66.5) AND `art-variety`. NOT LIVE: `main` is untouched and merges
 > only at his word. Read section 0000000.** His `ART-LAB PICKS v1` (art/PICKS.md, verbatim, with his answers) is
@@ -44,17 +52,106 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v67.2 (the art library with the owner's first picks, merged with v66.5; NOT live; section 0000000). `main` = v66.5, LIVE (the Tribune's API key locked to the app, section 000001); before it v66.4 (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v68 (the Hot Hand scaling, the shorter pauses, the iPhone check, art-remove; on v67.2, the art library with the owner's first picks, merged with v66.5; NOT live; section 0000000). `main` = v66.5, LIVE (the Tribune's API key locked to the app, section 000001); before it v66.4 (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-10-02
-**Build:** `v64.1` on `c-code-clean` (`BUILD_V = "v64.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, masthead.webp and masthead.png at `20260928-v64-1`; sim-core.js, challenges.js, daily-core.js and results-riso.js at `20260928-v63-1`; look.css at `20260927-v60`; analytics.js and retention-client.js at `20260725-traits-v44`; site_data.json at `sc-v42c`; labels.json via `<meta name="t82-labels" content="20260928-tags">`, revalidating as before; engine `T82.VERSION` 14).
-**Most recent change:** section 0000000 (c-code-clean and art-variety, NOT live, 2026-10-02): v67.2, the art library with the owner's first picks (cuts, his speed dial art/tempo.json, the dagger/arcade/jam/marbling/wave fixes, no streak marks on settled dots, no art downloads on a slow link, the finish-time table). Before that, section 000001 (LIVE on main, 2026-10-02): the Tribune's Anthropic key is the app's only (same-origin, one phase, an allowlisted roster and fit notes, per-IP and daily spend caps, a RECAP_OFF switch; no lab was found in the tree, and app.js is untouched). Before that, section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v68` on `c-code-clean` (`BUILD_V = "v68"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, sim-core.js, art-core.js, art-index.js and art/hot/arcade.js at `20261002-v68`; the rest as tools/cache-keys.json lists them; engine `T82.VERSION` 15).
+**Most recent change:** section 0000000 (c-code-clean and art-variety, NOT live, 2026-10-02 evening): v68, the Hot Hand scaling (his other session), the shorter pauses, the iPhone check, COLD's wording in Combo, tools/art-remove.js. Before that, in the same section: v67.2, the art library with the owner's first picks (cuts, his speed dial art/tempo.json, the dagger/arcade/jam/marbling/wave fixes, no streak marks on settled dots, no art downloads on a slow link, the finish-time table). Before that, section 000001 (LIVE on main, 2026-10-02): the Tribune's Anthropic key is the app's only (same-origin, one phase, an allowlisted roster and fit notes, per-IP and daily spend caps, a RECAP_OFF switch; no lab was found in the tree, and app.js is untouched). Before that, section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 0000000. START HERE (2026-10-02): V67.2, THE ART LIBRARY WITH HIS FIRST PICKS (c-code-clean + art-variety, NOT LIVE)
+## 0000000. START HERE (2026-10-02): V68 ON V67.2, THE ART LIBRARY WITH HIS PICKS (c-code-clean + art-variety, NOT LIVE)
+
+### 2026-10-02 (evening): v68, his answers and the Hot Hand scaling (c-code-clean + art-variety, NOT LIVE)
+
+**His words (2026-10-02):** "shorten pause; add check; cold; g2g; g2g. make sure the hot hand bonus scaling is
+incorporated and all my other changes are approved. i like all the other animations i haven't mentioned yet. make sure
+they coded so that they are easily removable (by a relatively dumb model) if i want to fully remove one of the
+animations or art, without breaking anything. commit the hot hand scaling. do all that then lmk if any
+outstanding/ambiguous stuff remains BEFORE you push to main. then push to main."
+
+Decoded against the questions below (v67.2's list): 1 "shorten pause" = the standard finish time is shorter holds for
+every heavy loss; 2 "add check" = iPhones get a measured slow-link check; 5 "cold" = Combo must not print COMBO on COLD;
+3 and 4 "g2g" = the wave, the dagger set's glint and drip (and marbling's later outline) stay exactly as they are; 7
+(tally) and every look he did not mention: approved as they are.
+
+**Where:** `c-code-clean` and `art-variety` (one commit on v67.2, "v68: ..."; the preview is
+https://c-code-clean.true82.pages.dev/). **`main` is untouched (v66.5 live) until he has read the list below and says
+merge.** His merge command is in this file's opening banners.
+
+**What v68 is:**
+1. **The Hot Hand scaling (from his other session, ported as written; its patch was the uncommitted work in the main
+   folder).** sim-core.js `HH_SEGMENTS`: COLD 0.9, WARM 1.0, HOT 1.1, ON FIRE 1.2, SUPERNOVA 1.3 (odds unchanged:
+   6/14/42/23/15); `finish()` lets the spin's number stand both ways (it used to clamp to "improve only"); VERSION 15.
+   app.js `hotHand`: "did the spin move anything" is `seg.m !== 1` (hhMoved), never `segIdx > 0`; COLD prints on a
+   plain card (no flame) as a cost in the bad tone (`.net-cost`, `.cold-cost` in styles.css), a ledger row "Hot Hand
+   cost ... went cold", the total line "minus Hot Hand"; the GOAT Climb re-plots either way. One fix beyond the patch:
+   the sign and colour follow the actual change (hhDown), since a hot player valued below zero gains a little from x0.9.
+   QA lever `?force82=cold` (test builds only). docs/MODES.md has the table; test.js has the "hot hand ladder" block.
+2. **Shorter pauses.** reel-riso.js `HOLD_SCALE = 0.85` (one number, commented): every heavy loss (1 to 14) holds 0.85
+   of its old pause (`holdToday` keeps the old ones; app.js still paces the season with them, so the ticks and month
+   leads run exactly as before and the season simply ends earlier by the time saved). 1.45 / 0.89 / 0.60 s at pace 1
+   (were 1.70 / 1.05 / 0.70); the light losses past the 14th keep 240 ms. To change it: that number, stamp, test.js.
+3. **The iPhone check** (art-core.js, `PROBE_MS = 1500`). With no `navigator.connection` (every iPhone browser) the run's
+   first dealt art file is timed; the run's other files wait for it (never past 1.5 s). Slow or failed: the run goes
+   lean (nothing more downloads, every look not yet in plays its built-in, held looks keep their place in the bag) and
+   the tab remembers (sessionStorage `t82-art-slow`), so its next draft downloads only a probe; a fast probe clears it.
+   app.js calls `T82ART.newRun()` before each deal. `?art=`, the lab and the harness are never gated.
+4. **Combo at COLD** (art/hot/arcade.js): the word follows `ev.m`: over x1.0 COMBO (MAX COMBO on the nova), at x1.0
+   "- EVEN -" (WARM: white, flat, no fire), under x1.0 BRICKED (COLD: loss pink, a thud, falling bits). 14,315 of
+   14,336 bytes: a future edit to this pack must trim something.
+5. **Removing a look:** `node tools/art-remove.js <kind>/<id> [...]` deletes the file and every line naming it
+   (art/tempo.json, art/enabled.json, art/ledger.json), regenerates the index, bumps BUILD_V by .1, stamps a key, runs
+   --check and test.js, and prints the exact files and git command; all or nothing (any failure puts every file back).
+   It refuses the built-ins (switch those off in art/enabled.json instead). art/README.md opens with it. test.js no
+   longer depends on any particular look's file and checks that no code names one.
+
+**Checked (2026-10-02 evening, w2 worktree):** art-index current; stamp 20261002-v68; `node test.js` 234 passed, 0
+failed; style law clean. In the game (static server, same seeded season on v68 and on a copy with HOLD_SCALE 1):
+- Chromium 375x812, an 80-2: first loss held 1.99 s -> 1.69 s, second 1.23 -> 1.04 s; the finale at 17.02 s -> 16.56 s
+  (the 16.8 s target plus about 0.2 s of timer drift). A 2-80: holds 0.57 -> 0.49, 0.45 -> 0.38 (losses 2 to 6),
+  0.30 -> 0.25 (7 to 14); finale 17.01 -> 16.25 s. WebKit 320x568, the same seasons: 17.17 -> 16.70 s and
+  17.19 -> 16.42 s, identical holds. No console errors beyond the static server's /api 404/501.
+- Presti with `?clutch=1` through the Heat Check; `?force82=cold&art=hot:arcade` (Chromium 375 and WebKit 320): the
+  COLD beat printed "x0.9 BRICKED"; net label "+19.0 − 0.4" in the bad tone, card "− 0.44", no flame, ledger "Hot Hand
+  cost ... went cold (value x0.9) −0.4". WARM (wheel pinned to WARM in the test): "x1.0 - EVEN -", record and net
+  unchanged, no ledger row.
+- iPhone check (WebKit, which has no navigator.connection; art/ answering 2 s late): one request (the probe), verdict
+  slow, flag set, the season played on built-ins; next draft: one probe only; routes made fast: that draft's probe came
+  back fast, the flag cleared and the reel-open stage loaded (10 files); the draft after loaded everything.
+- Removal drill (a copy): `art-remove loss/crumple dots/dagger scene/wave hot/arcade`: test.js 234/0, the lab opens all
+  six tabs without them, its picks code drops them, a Classic season with bags still naming them plays clean.
+
+**Outstanding for him before `main` (the list he asked for):**
+1. **A HOT spin can lower an 81-1 (the game's record follows the net formula, not the season it played).** Presti plays
+   the season game by game, so many 81-1s are lucky (the five's net projects 78 to 80 wins). The Heat Check then sets
+   the record from the spun net (`hhWins(newNet)`), so any rung that moves the net, HOT and up included, can drop it:
+   seen on a test build, an 81-1 five at net +19.0 went HOT "+0.4, caught fire" and ended 78-4 under GAME OVER. This
+   was already true live with the old ladder; the new ladder's smaller bonuses make it common (estimate, Presti nets
+   +15 to +27: about 41% of HOT and 26% of SUPERNOVA spins on an 81-1 lower it, against 23% and 2% before). The same
+   root, rarer (a five already over the 82-0 line, net +27.0, that lost a game): WARM plays the 82-0 save celebration
+   but stamps 81-1, and COLD can still reach 82-0 under "Hot Hand cost". A likely fix (his call: it moves the save
+   rate): move the record from the 81 it played by the spin's projected change, so only COLD can lower it and WARM
+   never moves it.
+2. The other session's balance figures (COLD drops about 26% of 81s; 82-0 on 8.0% of 81-1 spins, was 43.6%) came from
+   bot runs on the engine's projection and were not re-measured; in the game's played-out seasons they differ (item 1).
+3. WARM is now a no-op (no flame, no bonus); live it gave +20%. Only HOT and up show fire.
+4. COLD on a hot player valued below zero raises the net a little; it shows honestly as a small "+" with "went cold".
+5. The shorter pauses save about 0.5 to 0.8 s of a 16.8 s season. If he wants seasons noticeably faster: HOLD_SCALE
+   lower, or REEL_END_MS (app.js, the whole season's length).
+6. iPhone check limits: the first fast draft after a slow one still plays built-ins for the looks its draft stage had
+   held (dots, scene and 3 losses; they play the next draft); a file from the phone's cache reads as fast; a probe that
+   fails (a 404) marks the tab slow; at 1.5 s an iPhone on ordinary 3G still gets art (Chrome's own rule cuts all 3g).
+7. Copy law: the Hot Hand rows on the Scoring Card (an em-dash between "COLD" and "J. Kidd went cold") and a few older
+   strings (the Tribune's "TRIBUNE WIRE" byline, the move hint, the load error) still carry em-dashes. Older than v68.
+8. art/ledger.json (the critics' tiers in the lab) is not in the repo, so the lab shows no tiers (it works without).
+
+`?force82=cold` forces 81-1 on any five, so on a test build the record after COLD follows the five's net (often 78 or
+79): good for seeing the COLD display, not for judging the record. The finish-time table above is from v67.2's pauses;
+v68's is in the w2 scratch (v68/a1/finish/finish.txt): Rubber Seal and Pull now finish at 0.73 of the 0.89 s moment.
+
 
 ### 2026-10-02: his first picks, applied (v67.2)
 
@@ -175,7 +272,7 @@ pacing).
 bag tests, which build about 1,500 vm contexts in a row (3 runs in about 20 on 2026-10-02; every other run passed: 211 checks
 with v66.5's merged in). It is Node, not a check failing: run it again.
 
-**Questions waiting on him (2026-10-02):**
+**Questions he had then (2026-10-02; all answered that evening, see v68 above):**
 1. The standard finish time (above).
 2. iPhones never report a slow link (no navigator.connection in Safari): is the staged loading enough there?
 3. The wave: does he want it travelling left (the Great Wave's way)? The poster's crest is kept about 20% smaller so

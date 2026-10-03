@@ -47,10 +47,18 @@ same commit.
   `T82ART.add(...)`, `window.T82ART.add(...)` or a local name for it (`var A = window.T82ART; A.add(...)`), with the
   def an object literal or a `var` set to one in the same file.
 - `art/enabled.json`: `{ "about": "...", "off": ["kind/id", ...] }`, the looks the game does NOT deal (the lab still
-  shows them, marked OFF IN GAME). Every other file is on. A name in `off` with no file behind it is an error, except
-  a built-in's own id (`perk/classic`, the owner's cut of 2026-10-02): a switched-off built-in is never dealt, but it
-  still stands in for a dealt look that is not there (art-index.js hands that list over as `T82ART.index(list, { off
-  })`). After an edit: `node tools/art-index.js`.
+  shows them, marked OFF IN GAME). Every other file is on. A built-in's own id may be named (`perk/classic`, the
+  owner's cut of 2026-10-02): a switched-off built-in is never dealt, but it still stands in for a dealt look that is
+  not there (art-index.js hands that list over as `T82ART.index(list, { off })`). Since v68 a name with no file behind
+  it (a look deleted by hand) no longer stops the generator: it switches nothing off, the index is written without it,
+  and `--check` (so test.js) names the line to delete. After an edit: `node tools/art-index.js`.
+- **Removing a look for good** (v68, the owner: "easily removable ... without breaking anything"): `node
+  tools/art-remove.js <kind>/<id>` deletes the file and every line naming it (art/tempo.json, art/enabled.json,
+  art/ledger.json), regenerates the index and the manifest, bumps BUILD_V, stamps a key, runs the checks and test.js,
+  and prints what to commit; all or nothing (any failure puts every file back). It refuses the built-ins. No code in
+  the engines, art-core.js, app.js, the lab, the bench or the tools names a particular look (test.js checks that), no
+  check in test.js needs a particular look's file, and a device's stored bag drops an id that is no longer in the
+  index at its next deal.
 - `art/tempo.json`: the owner's speed dial for the loss looks, `{ "about": "...", "loss/<id>": { "from": "<phase>" | 0,
   "x": 1.3 }, ... }` ("A loss moment", the speed dial, below). The generator writes each valid line into the look's
   entry (`tempo: { from, x }`) and warns about (and skips) a line that names no file, a phase the look does not
@@ -94,7 +102,9 @@ T82ART.load(kind, ids)      Promise -> the requested ids that are registered whe
                             art-core.js's own URL, so a page in a subfolder finds art/). A file finishes when it
                             registers, loads, errors or times out (LOAD_MS, 8 s); two calls for one file share one
                             request; a file that errored, timed out or never registered is skipped for the rest of
-                            the visit. Never rejects. Never loads anything on its own.
+                            the visit. Never rejects. Never loads anything on its own. A look this run dealt goes
+                            through the iPhone check first (below): it may wait for the run's probe (1.5 s at most)
+                            or be held back in a lean run (it resolves unregistered and keeps its place in the bag)
 T82ART.deal(kind, n)        PEEK the next n ids of this device's shuffle bag (consumes nothing: two deals agree). On a
                             slow link (lean()) it deals nothing: [] (every moment plays its built-in, nothing
                             downloads, the bag is not even read)
@@ -103,13 +113,19 @@ T82ART.skip(kind, id)       a dealt look that did not play because it was not th
                             never registered; or the engine had turned it off): it moves on exactly as used() does (it
                             comes back next cycle, and a fresh cycle does not open with it), so a look that cannot load
                             on this device never sits at the head of the bag. A file still loading keeps its place
-                            (returns false). The reel reports its skips through opts.onSkip, app.js the print's scene.
+                            (returns false), and so does one a lean run held back (never tried). The reel reports its
+                            skips through opts.onSkip, app.js the print's scene.
 T82ART.forced(kind)         QA: the ids ?art= forces on a test build, or null (below)
 T82ART.tempo(kind, id)      the owner's speed dial for that look ({ from, x }, from its index entry), or null
 T82ART.lean()               a slow link: navigator.connection says saveData, or an effectiveType of slow-2g, 2g or 3g
                             (the owner, 2026-10-02: "skip downloading new looks and play the built-ins"). Read at
-                            each deal. Safari has no navigator.connection: false there, always
-T82ART.KINDS, .LOAD_MS, .version ("v67")
+                            each deal. Safari has no navigator.connection: false there, always (the iPhone check
+                            measures the link there instead)
+T82ART.newRun()             v68: a new run (app.js's artDealRun, before it deals): its own probe and dealt looks; a
+                            tab that measured a slow link starts it lean
+T82ART.net()                v68 (QA, test.js): this run's iPhone check: "" (not measured yet, or a browser that rates
+                            its own link), "fast", "slow" or "remembered" (lean from the tab's memory, probe pending)
+T82ART.KINDS, .LOAD_MS, .PROBE_MS (1500), .version ("v68")
 ```
 
 **The bags.** One per kind per device, in localStorage: `t82-art-bag-<kind>` holds `{ k, b }` (`k`: the enabled ids
@@ -143,6 +159,27 @@ first id). The live site ignores it.
    wins over the bag (`artPick`). The deal rides `G.art = { loss, dots, scene }` for the whole run. On a slow link
    (`T82ART.lean()`: Data Saver, or a 2G/3G connection) every deal is empty: the run downloads no art at all and plays
    the built-ins (a test build's `?art=` still forces what it names).
+   **The iPhone check** (v68, the owner, 2026-10-02: "add check"). Safari, and so every iPhone browser, has no
+   `navigator.connection`, so the rule above never fires on an iPhone. There, art-core.js measures the link with the
+   run's own first download (`artDealRun` calls `T82ART.newRun()` before it deals):
+   - **The probe:** the first file of a look this run dealt goes out alone and is timed (`performance.now`); the run's
+     other dealt files wait for its answer, never longer than `PROBE_MS`. In (registered) by 1.5 s: the waiting files go
+     out at once and the run loads as usual. Failed, or still out at 1.5 s: **the run goes lean** from then on: nothing
+     more downloads (the waiting files, the reel's ten, the 82-0 looks), every look not yet in plays its built-in, and
+     a look held back keeps its place in the bag (`skip()` returns false: it was never tried). The probe itself still
+     plays if it arrives later.
+   - **The memory:** a slow answer sets `sessionStorage["t82-art-slow"] = "1"` (wrapped; in memory for the page where
+     the browser refuses it), so the tab's next draft starts lean: only its probe downloads. A fast probe clears it
+     (and that run's later files load). Closing the tab forgets it.
+   - **Why 1.5 s:** an art file is 3 to 16 KB (2 to 6 KB on the wire, compressed), fetched alone on the page's open
+     connection: one round trip plus a few ms. A good LTE or wifi link answers in 0.1 to 0.4 s, an ordinary 3G one well
+     under 1 s; 1.5 s is that worst case with room for an iPhone SE whose main thread is busy with the draft (the onload
+     waits on it), and it is the round trip of the links Chrome rates 2g (1.4 s and more), where ten more files would
+     compete with the game for seconds. One number in art-core.js (`PROBE_MS`).
+   - Only the game's dealt looks are gated: a test build's `?art=`, the lab and the harness never deal, so they load
+     as before; a browser with `navigator.connection` is never probed. Nothing in the game waits for the probe: the
+     draft, the reel and the print run as they would with no art. A file served from the phone's cache answers at
+     once, so it reads as fast (harmless: it cost no download).
 2. **The fetch, in two steps** (the owner, 2026-10-02: "handle preloading smartly to not drag performance for users
    with slower phones and/or slow internet"). Nothing is fetched before a draft starts, so the home page and the first
    paint never pay for art; a built-in fetches nothing; every step runs in idle time (requestIdleCallback where the
@@ -197,8 +234,9 @@ T82ART.add("loss", "seal", {
 - **The order of a frame** (on the card's effects canvas, `K.g`): every moment's veil, then the rings, then the
   sparks, then each moment's hero (`draw`) and caption. The engine saves the canvas state around each call and places
   `K.box` before each one.
-- **E** (the event): `t0, dur` (seconds the cursor holds: about 0.29 to 2.14 over every record the game can deal; it
-  scales with the season's pace, app.js's `reelPace()`),
+- **E** (the event): `t0, dur` (seconds the cursor holds: about 0.25 to 1.82 over every record the game can deal; it
+  scales with the season's pace, app.js's `reelPace()`, and since v68 every heavy loss holds `HOLD_SCALE`, 0.85, of
+  its old pause: reel-riso.js's `holdFor`, the owner's "shorten pause"; before, 0.29 to 2.14),
   `first` (the season's first loss), `lossNo` (1-14), `lossRun`, `prevStreak`, `x, y` (the wound: the stamp's center
   in card CSS px), `seed` (per game: `((gi + 3) * 7919) >>> 0`; replays match), `sub, sub2` (the caption lines, from
   `lossCopy`), `city`, `date`.
@@ -214,14 +252,14 @@ T82ART.add("loss", "seal", {
   classic draws no L before then, and a hero set in the display face should wait for it too.
 - **The timeline:** the hero reads by `e = 0.25` and is gone by `e = E.dur` (`K.fade(E, e)` gives the classic 0.2 s
   fade-out multiplier, from `E.dur - 0.2`). The owner's speed dial (below) may hand a look a warped `e`: draw from the
-  `e` you are given and from nothing else (never a clock of your own), and the dial just works. It must read at both ends of the duration range: a 0.29 s moment late in
-  a bad season (the game's fastest heavy loss: the fade starts at `e = 0.09`, so the hero must have landed by then;
-  classic's L lands at 0.07) and a 1.7 to 2.1 s moment that kills a long streak. The harness plays 1.7, 1.05 and
-  0.29 s and reads each at `e = 0.25`, the fast one at `e = 0.09`.
+  `e` you are given and from nothing else (never a clock of your own), and the dial just works. It must read at both ends of the duration range: a 0.25 s moment late in
+  a bad season (the game's fastest heavy loss: the fade starts at `e = 0.05`, so the hero must land at once; classic's
+  L lands at 0.07, still at 90% ink) and a 1.45 to 1.8 s moment that kills a long streak. The harness plays 1.45, 0.89
+  and 0.25 s (the reel's own holds: they follow `HOLD_SCALE`) and reads each at `e = 0.25`, the fast one at `e = 0.07`.
 - **The speed dial** (the owner, 2026-10-02: his speed notes, art/tempo.json). A look names the phases of its own
   moment on its def: `phases: { exit: 0.62, ding: 0.4 }`, each the fraction of `E.dur` where that phase begins, on the
-  look's own timeline (a look whose timeline runs in seconds converts at the mid moment, a 1.05 s hold, and says so in
-  a comment). A literal object of plain numbers from 0 to 1, at the def's top level: the generator reads it without
+  look's own timeline (a look whose timeline runs in seconds converts at the mid moment, a 1.05 s hold before v68, and
+  says so in a comment; the mid moment holds 0.89 s since, so such a phase now starts a little early in seconds). A literal object of plain numbers from 0 to 1, at the def's top level: the generator reads it without
   running the file. The dial's line `{ "from": "exit", "x": 1.3 }` (or `"from": 0`, the whole moment) makes the engine
   warp that moment's clock for that look alone: `e' = e` before the phase starts (`s = phases[from] x E.dur`), `s + (e -
   s) x x` after it, handed to its `veil`, `draw` and `caption` alike (so `K.fade` lands early too); once `e'` reaches
@@ -441,8 +479,8 @@ motion.
   `T82RISO.tempo.of(def, line)` -> `{ at, x }` or null and `T82RISO.tempo.warp(T, e, dur)`: the dial's math (test.js
   pins it).
 - `node tools/art-qa.mjs finish loss` (the owner, 2026-10-02: "we need to standardize the animation time; after making
-  my changes, which is the quickest finishing animation?"): every loss look in the mid moment (a 1.05 s hold) and the
-  first loss after a streak (1.70 s), the dial applied, each at 60 fps on the bench clock: the last frame with any of
+  my changes, which is the quickest finishing animation?"): every loss look in the mid moment (a 0.89 s hold since v68;
+  1.05 s before) and the first loss after a streak (1.45 s; 1.70 s before), the dial applied, each at 60 fps on the bench clock: the last frame with any of
   the moment's ink on the card (the picture, the veil, the caption, the slam's rings and sprays); the look's own
   picture alone; when that picture stops moving (before the hold's closing fade); and, beside a dialed look, its
   finish at today's pace. A table, quickest first (`finish.txt`, `report.json`; `--no-tempo` measures every look at

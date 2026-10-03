@@ -1,5 +1,29 @@
 # The art library: how to add a look (v67)
 
+## Removing a look
+
+One command, from the repo root (the look is `<kind>/<id>`: its file is `art/<kind>/<id>.js`):
+
+```
+node tools/art-remove.js loss/seal                # several at once: node tools/art-remove.js loss/seal dots/balls
+node tools/art-remove.js loss/seal --dry-run      # only shows what it would do
+```
+
+It deletes the file and every line that names the look (its speed-dial line in art/tempo.json, its entry in
+art/enabled.json's `off` list, its entry in art/ledger.json), regenerates art-index.js (which also drops the file from
+tools/cache-keys.json), bumps BUILD_V in app.js, stamps a fresh cache key (or `--key K`), runs
+`node tools/art-index.js --check` and `node test.js`, and prints what it did and the exact `git add` / `git commit`
+to run. It never commits, and it is all or nothing: if any step fails it puts every file back as it was (the deleted
+look too) and says what failed. Nothing else in the
+game, the lab or the harness names a particular look, so nothing else needs editing; any mentions left in comments or
+docs are listed, and are harmless.
+
+- **The built-ins cannot be removed** (`classic` in loss, dots, hot, perk and goat; `lake` in scene): they live inside
+  the engines, not in files, and they are what plays whenever another look is missing. The tool refuses them.
+- **To only hide a look from the game** (it stays in the lab, marked OFF IN GAME, and can come back by deleting the
+  line), add `"<kind>/<id>"` to art/enabled.json's `off` list, run `node tools/art-index.js`, stamp a key and run
+  `node test.js`. This works for the built-ins too (`"perk/classic"`: never dealt, still the stand-in).
+
 The reel's giant L, the reel's win and loss dots and the results print each come in many looks, one small file per
 look, dealt from a shuffle bag so a player sees every look once before any repeats. This is the how-to. The spec is
 **art/CONTRACT.md** (every signature, rule and budget; if this guide and the contract disagree, the contract wins).
@@ -226,8 +250,8 @@ node tools/art-qa.mjs finish loss    when every loss look's moment is over (the 
 It prints one line per look (PASS or FAIL, then the numbers) and the paths it wrote. In the out folder:
 - **index.html**: every look's checks and sheets on one page, readable on a phone.
 - **the contact sheets** (PNG): a loss's three moments frame by frame (`loss-<id>-streak/mid/late.png`), its read
-  frames (e = 0.25 s; the 0.29 s moment at 0.09 s, just before its fade) at 320 px (`loss-<id>-320.png`) and full
-  size (`-e025.png`, the fast one `-e009.png`); a dot set's ledger, `strip()` beside the live
+  frames (e = 0.25 s; the 0.25 s moment at 0.07 s, early in its fade) at 320 px (`loss-<id>-320.png`) and full
+  size (`-e025.png`, the fast one `-e007.png`); a dot set's ledger, `strip()` beside the live
   reel month by month, plus a win and a loss mid-stamp at 4x; a scene's banners, its poster (JPEG) and its reveal.
 - **report.json**: every number and every check, per look.
 
@@ -283,7 +307,8 @@ phases: { exit: 0.62 },        // on the def: the exit starts 62% of the way thr
 The engine warps that moment's clock alone (`e` before the phase, `start + (e - start) x 1.3` after it) and hands the
 warped `e` to the look's veil, draw and caption, so its fade comes early too and the card sits clean until the reel
 moves on. Write `phases` as a literal of plain fractions (the index reads it without running the file); a look whose
-timeline is in seconds converts at the mid moment (1.05 s) and says so in a comment. Delete a line from tempo.json and
+timeline is in seconds converts at the mid moment (1.05 s before v68's shorter pauses, 0.89 s since) and says so in a
+comment. Delete a line from tempo.json and
 the look plays exactly as before: the file without it is today's pace. After an edit, `node tools/art-index.js` (it
 writes each line into art-index.js and names any line it has to skip). `node tools/art-qa.mjs finish loss` prints when
 every look's moment is over, dialed and at today's pace, quickest first: the owner's numbers for a standard length.
@@ -329,8 +354,8 @@ loss marked on it, the gauge (color only left of `D.fillX`) holding.
 - **The index reads your file without running it.** `T82ART.add` once, literally (or through `var A =
   window.T82ART`), the kind and id as plain strings, `name: "..."` a plain string at the def's top level.
 - **A throw is final for the visit.** The engine turns the look off at its first throw (one console warning) and the
-  built-in plays from then on; the harness fails any look that warned. Test the 0.29 s moment (the game's fastest
-  heavy loss: the hero must land by e = 0.09, where its fade starts) and the 320 px phone, where the box is smallest.
+  built-in plays from then on; the harness fails any look that warned. Test the 0.25 s moment (the game's fastest
+  heavy loss since v68: its fade starts at e = 0.05, so the hero must land at once; classic's lands at 0.07) and the 320 px phone, where the box is smallest.
 - **`K.flash` only works inside `hit`, and only for a heavy loss.** Anywhere else it returns false. It is capped at
   0.72 and never fires within 0.77 s of the last flash.
 - **The scene's ink names are not the reel's** (`pink` = `pop`, `blue` = `key`, ...: the kit table above). An unknown

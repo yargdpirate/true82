@@ -1,12 +1,13 @@
 /* Combo, a Heat Check pack (art/CONTRACT-FX.md): the arcade in 8-bit riso. Every mark is a square cell of K.pat on a
-   coarse grid, stepped on twos; type is a 5 x 7 pixel face. The counter is the wheel's live multiplier: digits drop
-   in under pixel flames, rings and spark squares, each tier bigger. Inks lie source-over inside the layer (the layer
-   itself blends onto the screen): a third of screen's cost, and no mark here overprints another. */
+   coarse grid, stepped on twos; type is a 5 x 7 pixel face. The counter is the wheel's live multiplier, and the number
+   picks the word (tier()): COMBO over x1.0, - EVEN - at it (warm: flat, white, no fire), BRICKED under it (cold: loss
+   ink, a thud, bits falling). Inks lie source-over inside the layer: a third of screen's cost, and no mark here
+   overprints another. */
 (function () {
   "use strict";
   var M = Math, FL = M.floor, RO = M.round, TAU = M.PI * 2;
-  var CH = "0123456789.-xABCEGHIMORSTUVXY";
-  var DA = "ehjlphe4c4444eeh1248veh161he26aiv22vgu11he68guhhev124888ehhehheehhf12c00000oo000v00000ha4ahehhvhhhuhhuhhuehggghevgguggvehgnhhehhhvhhhe44444ehrllhhhehhhhheuhhukihfgge11uv444444hhhhhhehhhhha4hha4ahhhha4444";
+  var CH = "0123456789.-xABCEGHIMORSTUVXYKDN";
+  var DA = "ehjlphe4c4444eeh1248veh161he26aiv22vgu11he68guhhev124888ehhehheehhf12c00000oo000v00000ha4ahehhvhhhuhhuhhuehggghevgguggvehgnhhehhhvhhhe44444ehrllhhhehhhhheuhhukihfgge11uv444444hhhhhhehhhhha4hha4ahhhha4444hikokihuhhhhhuhpljhhh";
   var HOP = [-6, -3, -1, 0, -1, 0], MEMO = {}, FLM = {}, LYM = {};
 
   function k01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
@@ -60,7 +61,7 @@
     if (o.sh) fill(K, o.sh, o.shc || 0.55, pts(Y.s, c, ox, oy, m), 0);
     if (o.ed) fill(K, o.ed, 0.62, pts(Y.e, c, ox, oy, m), 0);
     if (o.flat) return fill(K, f, 0.88, pts(Y.f, c, ox, oy, m), 0);
-    fill(K, o.hi || f, 0.88, pts(Y.f, c, ox, oy, m, 0, 3), 0); fill(K, f, 0.8, pts(Y.f, c, ox, oy, m, 3, 5), 0); fill(K, f, 0.7, pts(Y.f, c, ox, oy, m, 5, 7), 0);
+    fill(K, f, 0.88, pts(Y.f, c, ox, oy, m, 0, 3), 0); fill(K, f, 0.8, pts(Y.f, c, ox, oy, m, 3, 5), 0); fill(K, f, 0.7, pts(Y.f, c, ox, oy, m, 5, 7), 0);
   }
   function fit(w, s) { return M.min(4, FL((w - 24) / (cells(s).w + 1))); }
   function mid(cx, s, c) { return RO(cx - cells(s).w * c / 2); }
@@ -68,7 +69,7 @@
     var w = layers(s).w + 3, cc = M.max(3, M.min(c, FL(((mw || M.max(ev.area.w, 250)) - 16) / w)));
     return { c: cc, ox: RO(ev.cx - (w - 1) * cc / 2) + cc, w: w };
   }
-  function hop(e, t0, c) { var k = FL((e - t0) * 16); return k < 0 ? null : k < 6 ? HOP[k] * c : 0; }
+  function hop(e, t0, c, t) { var k = FL((e - t0) * 16); return k < 0 ? null : k < 6 ? (t || HOP)[k] * c : 0; }
   function flame(w, h, fr) {
     var key = w + "," + h + "," + (fr & 3), m = FLM[key], i, t, hw, cc, mh, ch, W2 = (w - 1) / 2, lean = [1.6, 0.4, -1.6, -0.4][fr & 3];
     if (m) return m;
@@ -134,10 +135,10 @@
     };
   }
   function tier(K, ev, e, p) {
-    var L = lay(ev, p.c, p.s, p.w), c = L.c, top = p.top == null ? RO(ev.cy + 30) : p.top, t0 = p.t0 || 0, h = hop(e, t0, c), k = FL((e - t0) * 16), lab = M.max(3, RO(c / 2.6));
-    var cap = p.cap || "COMBO", g = 1 - k01((e - p.x) / 0.26), cx = ev.cx, cy = top + 3.5 * c, i, f, r, rs, mod = e > p.x ? crumble(e, p.x, 0.22, c) : null;
+    var L = lay(ev, p.c, p.s, p.w), c = L.c, top = p.top == null ? RO(ev.cy + 30) : p.top, t0 = p.t0 || 0, h = hop(e, t0, c, p.hp), k = FL((e - t0) * 16), lab = M.max(3, RO(c / 2.6));
+    var cap = p.cap || (p.m < 0.99 ? "BRICKED" : p.m < 1.01 ? "- EVEN -" : "COMBO"), g = 1 - k01((e - p.x) / 0.26), cx = ev.cx, cy = top + 3.5 * c, i, f, r, rs, mod = e > p.x ? crumble(e, p.x, 0.22, c) : null;
     if (h === null) return;
-    word(K, p.s, c, L.ox, top + h, { face: k === 3 ? "light" : p.face, hi: p.hi, ed: p.ed, sh: p.sh, shc: p.shc, mod: mod });
+    word(K, p.s, c, L.ox, top + h, { face: k === 3 ? "light" : p.face, ed: p.ed, sh: p.sh, shc: p.shc, mod: mod });
     if (k >= 3 && !p.nocap && (!mod || p.x > 0.8)) word(K, cap, lab, mid(cx, cap, lab), top + 8 * c + lab, { face: p.lab || p.face, flat: 1, mod: mod });
     for (i = 0; p.fl && i < p.fl.length; i++) { f = p.fl[i]; flames(K, f[0], cx, f[1], top - 6, f[2], f[3], f[4], f[5], f[6], e, g); }
     for (i = 0; p.rg && i < p.rg.length; i++) { r = p.rg[i]; expand(K, cx, cy, r[6], r[0], r[1], r[2], r[3], e - r[4], r[5]); }
@@ -148,9 +149,9 @@
     if (p.sp) { p.sp.x = cx; p.sp.y = cy - c + (p.sp.dy || 0); p.sp.seed = ev.seed + c; sparks(K, p.sp, e); }
   }
   var FIRE = ["light", "hot", "loss"], T = {  // fl: flames [n, spacing, w, h, delay, mid extra, cell]; rg: rings [ink, r0, r1, dur, delay, thick, cell]
-    cold: { c: 7, face: "pop", hi: "light", sh: "night", shc: 0.5, x: 0.5,
-      sp: { n: 14, v: [30, 90], life: 0.7, g: 160, c: 4, ink: ["pop", "light", "pop"], delay: 0.1, dir: M.PI / 2, cone: 2.4, w: 150, stag: 0.3, dy: -70 } },
-    warm: { c: 9, face: "dusk", hi: "hot", sh: "loss", shc: 0.45, x: 0.66, fl: [[2, 112, 5, 8, 0.18, 0, 6]], rg: [["dusk", 4, 13, 0.4, 0.14, 0, 6]] },
+    cold: { c: 7, face: "loss", sh: "night", shc: 0.55, x: 0.5, hp: [-6, -3, 0, 1, 1, 0],
+      sp: { n: 14, v: [30, 90], life: 0.7, g: 160, c: 4, ink: ["loss", "night", "loss"], delay: 0.1, dir: M.PI / 2, cone: 2.4, w: 150, stag: 0.3, dy: -70 } },
+    warm: { c: 9, face: "light", sh: "night", shc: 0.5, x: 0.6, hp: [0, 0, 0, 0, 0, 0] },
     hot: { c: 9, face: "hot", ed: "dusk", sh: "key", x: 0.86, fl: [[4, 56, 7, 10, 0.18, 0, 7]], rg: [["hot", 3, 15, 0.45, 0.15, 1, 8], ["dusk", 3, 19, 0.55, 0.2, 0, 8]],
       sp: { n: 16, v: [140, 300], life: 0.6, g: 380, c: 4, ink: ["light", "hot", "dusk"], delay: 0.14 } },
     fire: { c: 11, face: "hot", ed: "dusk", sh: "loss", x: 1.12, fl: [[6, 54, 7, 12, 0.16, 0, 8]], ry: [10, 5, 18, 8, 0.3, 0.12, 0.2],
@@ -159,20 +160,20 @@
       fl: [[5, 64, 7, 15, 0.36, 7, 10], [4, 64, 5, 9, 0.5, 0, 10]], rg: [["hot", 3, 30, 0.9, 0, 1, 10], ["dusk", 3, 33, 0.9, 0.08, 0, 10], ["loss", 3, 36, 0.9, 0.16, 0, 10]],
       sp: { n: 44, v: [180, 520], life: 1.2, g: -120, c: 6, ink: FIRE, delay: 0.3, dir: -M.PI / 2, cone: 2.6 } }
   };
-  // the counter: the game's ev.m, else the tier's rung of ev.ladder, else today's ladder (x1.0, x1.35...)
-  var NOW = [1, 1.2, 1.35, 1.5, 2];
+  // the counter: ev.m, else the tier's rung of ev.ladder, else the 2026-10-02 ladder (x0.9 to x1.3)
+  var NOW = [0.9, 1, 1.1, 1.2, 1.3];
   function beat(id, dur, hit) {
     var i = ["cold", "warm", "hot", "fire", "nova"].indexOf(id);
     return { dur: dur, hit: hit, draw: function (K, ev, e) {
       var m = ev.m != null ? ev.m : ev.ladder && ev.ladder[i] ? ev.ladder[i].m : NOW[i];
-      T[id].s = "x" + (+m).toFixed(2).replace(/0$/, "");
+      T[id].s = "x" + (+m).toFixed(2).replace(/0$/, ""); T[id].m = m;
       tier(K, ev, e, T[id]);
     } };
   }
 
   window.T82ART.add("hot", "arcade", {
     name: "Combo",
-    by: "8-bit combo counters of the wheel's live multiplier, with pixel flames and a sunburst; a high score screen for the save, GAME OVER for the miss.",
+    by: "8-bit pixel-flame counters of the wheel's multiplier: COMBO over x1.0, EVEN at it, BRICKED under; HIGH SCORE for the save, GAME OVER for the miss.",
     prep: function () { return []; },
     slots: {
       cold: beat("cold", 0.9), warm: beat("warm", 0.9), hot: beat("hot", 1.1),
@@ -184,7 +185,7 @@
         var hc = fit(pw, hs), cc = fit(pw, tl);
         var W = RO(pw * kq), H = RO(180 * kq);
         X = RO(cx - W / 2); Y = RO(py + (180 - H) / 2);
-        if (kq > 0) {  // the marquee: a violet field in a gold frame, grown and shrunk in steps
+        if (kq > 0) {  // the marquee, grown and shrunk in steps
           fill(K, "night", 0.5, [X, Y, W, H], 0);
           fill(K, "hot", 0.88, [X, Y, W, 5, X, Y + H - 5, W, 5, X, Y, 5, H, X + W - 5, Y, 5, H], 0);
         }
@@ -195,7 +196,7 @@
           if (n > 0) word(K, tl.substr(0, n), cc, mid(cx, tl, cc), py + 144, { face: n >= tl.length && FL(e * 6) % 2 ? "light" : "pop", flat: 1, mod: mod });
         }
         p = [[0.1, 0.08, 0.35, "hot"], [0.9, 0.1, 0.5, "pop"], [0.18, 0.7, 0.65, "loss"], [0.82, 0.74, 0.8, "light"], [0.5, 0.86, 0.95, "dusk"]];
-        for (i = 0; i < 5; i++) {  // five shells of squares round the card
+        for (i = 0; i < 5; i++) {  // five shells round the card
           X = Z.x + Z.w * p[i][0]; Y = Z.y + Z.h * p[i][1];
           expand(K, X, Y, 6, p[i][3], 2, 11, 0.5, e - p[i][2], false);
           sparks(K, { x: X, y: Y, n: 16, v: [100, 260], life: 0.8, g: 260, c: 5, ink: ["light", p[i][3], "hot"], seed: ev.seed + i * 7, delay: p[i][2] }, e);

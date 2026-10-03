@@ -190,15 +190,34 @@ for (let n = 1; n <= 82; n++) if (RISO.heavy(n)) for (const st of [0, 4, 31]) mi
 eq("riso reel: red-flash losses come under 3 per second (photosensitivity line)", 1000 / (minFlashHold + 48) < 3, true);
 eq("riso reel: the loss that ends a real streak holds longest", RISO.holdFor(1, 31) > Math.max(RISO.holdFor(1, 0), RISO.holdFor(2, 0), RISO.holdFor(20, 0)), true);
 eq("riso reel: the red flash has its own speed limit, under 1.5 a second at any pace", 1 / RISO.flashGap < 1.5, true);
-// v51 reel pacing: every record finishes at the same moment; 78-82 wins take the natural, slowest pace
+// v51 reel pacing: every record's pace is set so it would finish at the same moment; 78-82 wins take the natural,
+// slowest pace. v68 (the owner, "shorten pause"): the pace is still set with the pauses before v68 (holdToday), and
+// the reel plays the shorter heavy pauses (holdFor, HOLD_SCALE of before), so the ticks keep their speed and the
+// season ends sooner by exactly the time the pauses save.
 const season = (w, lossesFirst) => { const g = []; for (let i = 0; i < 82; i++) g.push(1); let l = 82 - w;
   for (let i = lossesFirst ? 0 : 81; l > 0; i += lossesFirst ? 1 : -1) { g[i] = 0; l--; } return g; };
 const spread = w => { const g = []; for (let i = 0; i < 82; i++) g.push(Math.floor((i + 1) * w / 82) > Math.floor(i * w / 82) ? 1 : 0); return g; };
 const seasons = [season(82), season(78, false), spread(78), spread(60), spread(41), season(26, true), season(0, true)];
-eq("reel pacing: every record finishes at the same moment",
-  seasons.map(g => Math.round(ctx.reelNaturalMs(g, RISO.holdFor) * ctx.reelPace(g, RISO.holdFor))), seasons.map(() => ctx.REEL_END_MS));
+const holdPairs = [];
+for (let n = 1; n <= 20; n++) for (const st of [0, 4, 31]) holdPairs.push([n, RISO.holdToday(n, st), RISO.holdFor(n, st)]);
+eq("shorter pauses: every heavy loss (the first 14) pauses 0.85 of what it did before (1.70 s after a streak is now 1.45 s, " +
+  "1.05 s is 0.89 s, 0.70 s is 0.60 s); the light losses after the 14th keep 0.24 s",
+  [RISO.holdScale, holdPairs.filter(([n, was, now]) => Math.abs(now - (n <= 14 ? was * 0.85 : was)) > 1e-9).length,
+    holdPairs.filter(([n, , now]) => n > 14 && now !== 240).length, RISO.holdFor(1, 31), RISO.holdFor(3, 0), RISO.holdFor(9, 0)],
+  [0.85, 0, 0, 1445, 892.5, 595]);
+eq("shorter pauses: the ticks keep their speed (each record's pace is set with the old pauses, exactly as before v68, so with " +
+  "them every record would still end at 16.8 s), and the game paces the reel that way",
+  [seasons.map(g => Math.round(ctx.reelNaturalMs(g, RISO.holdToday) * ctx.reelPace(g, RISO.holdToday))),
+    /var PACE = reelPace\(season\.games, riso && window\.T82RISO \? \(T82RISO\.holdToday \|\| T82RISO\.holdFor\) : null, reelEndMs\(\)\);/.test(fs.readFileSync("app.js", "utf8"))],
+  [seasons.map(() => ctx.REEL_END_MS), true]);
+const endsAt = g => ctx.reelNaturalMs(g, RISO.holdFor) * ctx.reelPace(g, RISO.holdToday);
+const savedAt = g => ctx.reelSavedMs(g, RISO.holdToday, RISO.holdFor) * ctx.reelPace(g, RISO.holdToday);
+eq("shorter pauses: a season ends sooner by exactly the time its shorter pauses save (a 78-4 about 0.7 s sooner, a 60-22 about " +
+  "1.2 s; an 82-0 has no pause to shorten and still ends at 16.8 s)",
+  [seasons.map(g => Math.abs(endsAt(g) - (ctx.REEL_END_MS - savedAt(g))) < 1e-6), seasons.map(g => +(savedAt(g) / 1000).toFixed(1))],
+  [seasons.map(() => true), [0, 0.7, 0.7, 1.2, 1, 0.9, 0.8]]);
 eq("reel pacing: 78-82 wins play at the natural (slowest) pace or slower; worse seasons run faster",
-  [ctx.reelPace(spread(78), RISO.holdFor) >= 0.97, ctx.reelPace(season(82), RISO.holdFor) > 1, ctx.reelPace(spread(41), RISO.holdFor) < 0.8], [true, true, true]);
+  [ctx.reelPace(spread(78), RISO.holdToday) >= 0.97, ctx.reelPace(season(82), RISO.holdToday) > 1, ctx.reelPace(spread(41), RISO.holdToday) < 0.8], [true, true, true]);
 const EM = String.fromCharCode(0x2014);
 const lossLines = [{ cl: 1, prevStreak: 31 }, { cl: 1, prevStreak: 0 }, { cl: 3, lossRun: 2 }, { cl: 4, lossRun: 1 }]
   .map(i => RISO.lossCopy(Object.assign({ city: "Orlando", date: "Dec 23" }, i)).join(" "));
@@ -1464,11 +1483,12 @@ if (fs.existsSync("site_data.json")) {
     const B = visit({}, null);
     B.index([entry("perk", "stamps")]); B.add("perk", "classic", { builtin: true });
     const ON = JSON.parse(fs.readFileSync("art/enabled.json", "utf8")).off;
+    // v68: a cut whose file was later removed for good (node tools/art-remove.js) leaves the list with it; the rest stay off
+    const idx = AI.build(), there = (k) => AI.BUILTIN[k.split("/")[0]].indexOf(k.split("/")[1]) >= 0 || idx.files.some((f) => f.kind + "/" + f.id === k);
     const CUTS = ["loss/tear", "loss/woodtype", "dots/arrows", "dots/balls", "dots/bolts", "dots/moons", "dots/pixels", "dots/tally", "scene/ridgelines",
-      "perk/classic", "perk/halftone", "perk/moneyprint"];
-    const idx = AI.build();
-    eq("art cuts: art/enabled.json switches off the owner's twelve cuts (2026-10-02; the files stay), perk classic included: a switched-off built-in is never dealt " +
-      "but still stands in (riso-fx.js plays it while a look's file is on its way)",
+      "perk/classic", "perk/halftone", "perk/moneyprint"].filter(there);
+    eq("art cuts: art/enabled.json switches off the owner's twelve cuts (2026-10-02; the files stay unless he removes one for good), perk classic included: " +
+      "a switched-off built-in is never dealt but still stands in (riso-fx.js plays it while a look's file is on its way)",
       [CUTS.filter((k) => ON.indexOf(k) < 0), [...seen].sort(), B.enabled("perk").sort(), idx.errors, /\], \{ off: \["perk\/classic"\] \}\);/.test(idx.text),
         idx.entries.filter((e) => !e.on).map((e) => e.kind + "/" + e.id).sort()],
       [[], ["coins", "stamps"], ["classic", "stamps"], [], true, CUTS.filter((k) => k !== "perk/classic").sort()]);
@@ -1500,14 +1520,20 @@ if (fs.existsSync("site_data.json")) {
       AI.parse('T82ART.add("loss", "w", { name: "W", draw: function () { var o = { phases: { exit: 0.5 } }; } });', "loss", "w.js")];
     eq("art tempo: the index reads a look's phases without running it (a literal of plain fractions at the def's top level only)",
       [fake[0].phases, fake[0].errors, fake[1].errors.length > 0, fake[2].errors.length > 0, fake[3].phases], [{ exit: 0.62, ding: 0.4 }, [], true, true, null]);
-    eq("art tempo: art/tempo.json carries the owner's 17 speed notes and names only real loss looks and phases they declare (x 1 to 3); the index carries every line",
-      [Object.keys(TJ).filter((k) => k !== "about").length, AI.tempoErrors(), AI.build().entries.filter((e) => e.tempo).length,
+    // the owner's 17 notes (2026-10-02); a look removed for good (node tools/art-remove.js) takes its line with it
+    const lines = Object.keys(TJ).filter((k) => k !== "about");
+    eq("art tempo: art/tempo.json carries the owner's speed notes (17 on 2026-10-02, fewer only for a look since removed) and names only real loss looks and " +
+      "phases they declare (x 1 to 3); the index carries every line",
+      [lines.length <= 17 && lines.length === lines.filter((k) => files.some((f) => f.kind + "/" + f.id === k)).length, AI.tempoErrors(),
+        AI.build().entries.filter((e) => e.tempo).length === lines.length,
         files.filter((f) => TJ[f.kind + "/" + f.id] && TJ[f.kind + "/" + f.id].from !== 0).every((f) => f.phases && TJ[f.kind + "/" + f.id].from in f.phases)],
-      [17, [], 17, true]);
-    const errs = (o) => { const p = "art/tempo.json"; const keep = fs.readFileSync(p, "utf8"); try { fs.writeFileSync(p, JSON.stringify(o)); return AI.tempoErrors().length; } finally { fs.writeFileSync(p, keep); } };
+      [true, [], true, true]);
+    const errs = (o) => AI.tempoErrors(o).length;   // the dial's content handed in: the file on disk is never rewritten
+    // any loss look on disk will do (v68: no check names a particular look, so any one can be removed); none left: skipped
+    const anyLoss = files.find((f) => f.kind === "loss"), real = anyLoss ? "loss/" + anyLoss.id : null, line = (o) => { const x = {}; x[real] = o; return x; };
     eq("art tempo: a line for a look that is not there, a phase it does not declare, a kind other than loss or an x outside 1 to 3 is refused",
-      [errs({ "loss/nope": { from: 0, x: 1.2 } }), errs({ "loss/seal": { from: "nope", x: 1.2 } }), errs({ "dots/chips": { from: 0, x: 1.2 } }),
-        errs({ "loss/seal": { from: 0, x: 0.5 } }), errs({ "loss/seal": { from: 0, x: 1.2 } })],
+      [errs({ "loss/nope": { from: 0, x: 1.2 } }), real ? errs(line({ from: "nope", x: 1.2 })) : 1, errs({ "dots/chips": { from: 0, x: 1.2 } }),
+        real ? errs(line({ from: 0, x: 0.5 })) : 1, real ? errs(line({ from: 0, x: 1.2 })) : 0],
       [1, 1, 1, 1, 0]);
     const REEL = fs.readFileSync("reel-riso.js", "utf8");
     eq("art tempo: the reel warps only a dialed look's veil, hero, caption and fade (classic and opts.tempo false keep their pace) and prints nothing once its time is up",
@@ -1621,6 +1647,178 @@ if (fs.existsSync("site_data.json")) {
       RECAP_SRC.indexOf("await budgetSpend(") < atAnthropic],
     [false, 1, true, true, true, true]);
 }
+
+// ---------- v68 REMOVING A LOOK (tools/art-remove.js; art/README.md, "Removing a look") ----------
+// The owner: every look "easily removable (by a relatively dumb model) ... without breaking anything". One command
+// deletes the file and every line naming it; nothing else in the game, the lab, the harness or these checks names a
+// particular look, so any one can go. (The drill that removed one look of every kind with it is in the v68 handoff.)
+{
+  const RM = require("./tools/art-remove.js"), AI = require("./tools/art-index.js"), files = AI.scan(), one = files[0];
+  const P = RM.plan(["loss/classic", "scene/lake", "perk/classic", "loss/no-such-look", "nope/x", "a b c"]
+    .concat(one ? [one.kind + "/" + one.id, "art/" + one.kind + "/" + one.id + ".js", one.kind + ":" + one.id] : []));
+  eq("removing a look: the tool refuses the built-ins (it says to switch them off in art/enabled.json instead), an unknown look or kind, and reads " +
+    "loss/seal, loss:seal and art/loss/seal.js as the same look",
+    [P.refused.map((r) => r.arg), P.refused.slice(0, 3).every((r) => /built-in[^]*"off" list in art\/enabled\.json/.test(r.why)),
+      /there is no art\/loss\/no-such-look\.js/.test(P.refused[3].why), P.looks.map((l) => l.key)],
+    [["loss/classic", "scene/lake", "perk/classic", "loss/no-such-look", "nope/x", "a b c"], true, true, one ? [one.kind + "/" + one.id] : []]);
+  const T0 = fs.readFileSync("art/tempo.json", "utf8"), E0 = fs.readFileSync("art/enabled.json", "utf8"), tk = Object.keys(JSON.parse(T0)).filter((k) => k !== "about");
+  const T1 = RM.tempoWithout(T0, tk.slice(0, 1)), E1 = RM.enabledWithout(E0, JSON.parse(E0).off.slice(0, 1));
+  const LG = RM.ledgerWithout(JSON.stringify({ ledger: { "loss/a": { tier: "A" }, "loss:b": "B", "dots/c": "A" }, loss: [{ id: "a" }] }), ["loss/a", "loss/b"]);
+  eq("removing a look: its line leaves art/tempo.json and art/enabled.json with the rest of each file exactly as it was, and its entry leaves art/ledger.json in any shape the lab reads",
+    [RM.tempoWithout(T0, []).text === T0, RM.enabledWithout(E0, []).text === E0, T1.dropped.length === (tk.length ? 1 : 0), T1.text.split("\n").length === T0.split("\n").length - T1.dropped.length,
+      E1.text.split("\n").length === E0.split("\n").length - E1.dropped.length, LG.dropped.sort(), Object.keys(JSON.parse(LG.text).ledger)],
+    [true, true, true, true, true, ["loss/a", "loss/b"], ["dots/c"]]);
+  eq("removing a look: a fresh cache key from the date and the looks (never one already used), and the footer's build number moves on",
+    [RM.deriveKey([{ kind: "loss", id: "seal", key: "loss/seal" }], new Date(2001, 0, 2)), /^20010102-rm-\d+-looks-[0-9a-f]{6}$/.test(RM.deriveKey(files.slice(0, 9).map((f) => ({ kind: f.kind, id: f.id, key: f.kind + "/" + f.id })), new Date(2001, 0, 2))),
+      RM.nextBuild("v68"), RM.nextBuild("v68.1"), RM.nextBuild("v67.2")],
+    ["20010102-rm-loss-seal", files.length >= 9, "v68.1", "v68.2", "v67.3"]);
+  // a look deleted by hand (no tool) never stops the index: a line naming it is reported with the fix, nothing else
+  const gone = JSON.parse(E0); gone.off = gone.off.concat(["loss/gone-for-good"]);
+  const b = AI.build({ enabled: gone }), stale = [b.errors, b.stale.length, AI.check({ enabled: gone }).some((x) => /gone-for-good[^]*art-remove/.test(x)), b.text === AI.build().text];
+  eq("removing a look: one deleted by hand still leaves a working index (a line in art/enabled.json naming it switches nothing off; the check names it and the fix)",
+    stale, [[], 1, true, true]);
+  // nothing outside art/ names a look: the engines, art-core, the lab, the bench and the tools find the looks in the index
+  const ON_DISK = new Set(files.map((f) => f.kind + "/" + f.id)), RELS = new Set(files.map((f) => f.rel));
+  const named = ["app.js", "art-core.js", "reel-riso.js", "results-riso.js", "riso-fx.js", "docs/art-lab/lab.js", "tools/art-qa.mjs", "tools/art-index.js", "tools/art-remove.js"]
+    .map((p) => [p, AI.lex(fs.readFileSync(p, "utf8")).strs.map((x) => x.val.replace(/\?v=.*$/, "").replace(/^\/+/, "")).filter((v) => ON_DISK.has(v) || RELS.has(v) || ON_DISK.has(v.replace(":", "/")))])
+    .filter((x) => x[1].length);
+  eq("removing a look: no game, lab, bench or tool code names a particular look (each finds them in art-index.js or on disk), so removing any one breaks nothing",
+    named, []);
+}
+
+// ---------- v68 THE iPHONE CHECK (art-core.js; art/CONTRACT.md, next to the Data Saver rule) ----------
+// iPhones have no navigator.connection, so the slow-link rule never fires there. art-core.js times the first art file
+// a run downloads (the probe; the run's other dealt files wait for it, never longer than PROBE_MS): a fast one, the run
+// loads as usual; a failed or slow one, the run goes lean (nothing more downloads, the built-ins play, the bags keep
+// their places) and the tab remembers it (sessionStorage) so the next draft starts lean, where a fast probe clears it.
+// Pure: a fake page (scripts that never load until told), a fake loader clock and fake timers.
+{
+  const ART_CORE = fs.readFileSync("art-core.js", "utf8");
+  const page = (o) => {
+    o = o || {};
+    const P = { now: 0, timers: [], scripts: [], session: o.session || {} };
+    const c = { Math, JSON, console, location: { hostname: "localhost", search: o.search || "" },
+      navigator: o.conn ? { connection: o.conn } : {},
+      performance: { now: () => P.now },
+      setTimeout: (fn, ms) => { P.timers.push({ fn, at: P.now + ms, ms }); return P.timers.length; },
+      clearTimeout: (id) => { if (P.timers[id - 1]) P.timers[id - 1].fn = null; },
+      localStorage: { getItem: () => null, setItem: () => {} },
+      document: { createElement: () => { const el = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } }; return el; },
+        head: { appendChild: (el) => P.scripts.push(el) }, querySelector: () => null } };
+    if (o.session === "refused") c.sessionStorage = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("denied"); }, removeItem() { throw new Error("denied"); } };
+    else c.sessionStorage = { getItem: (k) => (k in P.session ? P.session[k] : null), setItem: (k, v) => { P.session[k] = String(v); }, removeItem: (k) => { delete P.session[k]; } };
+    vm.createContext(c); vm.runInContext(ART_CORE, c);
+    const A = c.T82ART;
+    A.index("abcdefghijklmn".split("").map((id) => ({ kind: "loss", id, name: id, file: "art/loss/" + id + ".js?v=t", on: true }))
+      .concat([{ kind: "dots", id: "chips", name: "chips", file: "art/dots/chips.js?v=t", on: true }]));
+    P.A = A;
+    P.sent = () => P.scripts.map((el) => el.attrs["data-t82-art"]);
+    // the clock moves; any timer due by then fires (the probe's 1.5 s line, a file's 8 s timeout)
+    P.wait = (ms) => { P.now += ms; P.timers.forEach((t) => { if (t.fn && t.at <= P.now) { const f = t.fn; t.fn = null; f(); } }); };
+    // a sent file arrives: it registers and its onload fires
+    P.arrive = (key) => { const el = P.scripts.find((x) => x.attrs["data-t82-art"] === key); const [k, id] = key.split("/"); A.add(k, id, { name: id }); el.onload(); };
+    P.fail = (key) => { P.scripts.find((x) => x.attrs["data-t82-art"] === key).onerror(); };
+    return P;
+  };
+  // a draft: a new run, the deal (14 loss looks, a dot set), the draft's fetch (the first four and the dots)
+  const draft = (P) => { P.A.newRun(); const d = P.A.deal("loss", 14); P.A.deal("dots", 1); P.A.load("loss", d.slice(0, 4)); P.A.load("dots", ["chips"]); return d; };
+
+  const fast = page(), df = draft(fast), probe1 = fast.sent();
+  fast.wait(300); fast.arrive("loss/" + df[0]);
+  const fastAfter = fast.sent().length;
+  fast.A.load("loss", df.slice(4));
+  eq("iPhone check: only the run's first file goes out at first (the probe); in by 1.5 s (here 0.3 s), the run's other files follow at once and the reel's ten later",
+    [probe1, fast.A.net(), fastAfter, fast.sent().length, "t82-art-slow" in fast.session, fast.A.PROBE_MS], [["loss/" + df[0]], "fast", 5, 15, false, 1500]);
+
+  const slow = page(), ds = draft(slow);
+  slow.wait(1499); const before = slow.A.net(); slow.wait(1);
+  slow.A.load("loss", ds.slice(4)); slow.arrive("loss/" + ds[0]);
+  eq("iPhone check: a probe still out at 1.5 s makes the run lean: nothing more downloads (not the waiting files, not the reel's ten), the tab remembers it, " +
+    "and a look held back keeps its place in the bag (the probe itself still plays if it arrives)",
+    [before, slow.A.net(), slow.sent(), slow.session["t82-art-slow"], slow.A.skip("loss", ds[1]), slow.A.skip("loss", ds[5]), !!slow.A.get("loss", ds[0])],
+    ["", "slow", ["loss/" + ds[0]], "1", false, false, true]);
+
+  const broken = page(), db = draft(broken);
+  broken.wait(80); broken.fail("loss/" + db[0]);
+  const late = page(), dl = draft(late);
+  late.wait(1600); late.arrive("loss/" + dl[0]);
+  eq("iPhone check: a probe that fails (an error at 0.08 s) is a slow link too, and so is one that arrives after the 1.5 s line",
+    [broken.A.net(), broken.sent().length, broken.session["t82-art-slow"], late.A.net(), late.sent().length], ["slow", 1, "1", "slow", 1]);
+
+  // the next draft in that tab (a new page load, the same sessionStorage): it starts lean, only its probe goes out
+  const again = page({ session: slow.session }), da = draft(again);
+  const leanStart = [again.A.net(), again.sent()];
+  again.wait(200); again.arrive("loss/" + da[0]);
+  again.A.load("loss", da.slice(4));
+  const again2 = page({ session: late.session }), db2 = draft(again2);
+  again2.wait(1500);
+  eq("iPhone check: the tab's next draft starts lean (only its probe downloads, the rest of the draft's files never go out); a fast probe clears the memory " +
+    "and the season's later files load; a slow one keeps it",
+    [leanStart, again.A.net(), "t82-art-slow" in again.session, again.sent().length, again2.A.net(), again2.session["t82-art-slow"], again2.sent().length],
+    [["remembered", ["loss/" + da[0]]], "fast", false, 11, "slow", "1", 1]);
+
+  const rated = page({ conn: { effectiveType: "4g", saveData: false } }); draft(rated);
+  // a lean run, then a load of looks it never dealt (what ?art=, the lab and the harness do): they still go out
+  const qa = page({ search: "?art=loss:k" }); qa.A.newRun(); const dq = qa.A.deal("loss", 2); qa.A.load("loss", dq); qa.wait(1500);
+  qa.A.load("loss", "abcdefghijklmn".split("").filter((id) => dq.indexOf(id) < 0).slice(0, 2));
+  const priv = page({ session: "refused" }); draft(priv); priv.wait(1500);
+  const priv1 = priv.A.net(), priv2 = (() => { priv.A.newRun(); priv.A.deal("loss", 14); return priv.A.net(); })();
+  eq("iPhone check: a browser that rates its own link (navigator.connection) is not probed, a look loaded without a deal (?art=, the lab, the harness) " +
+    "is never held, and a tab that refuses sessionStorage keeps the memory for the page",
+    [rated.sent().length, rated.A.net(), qa.A.net(), qa.sent().length, priv1, priv2], [5, "", "slow", 3, "slow", "remembered"]);
+  eq("iPhone check: the game starts each run's probe as the draft begins, before it deals (art-core.js's newRun), and never waits on it",
+    [/try \{ if \(typeof A\.newRun === "function"\) A\.newRun\(\); \} catch \(err\) \{[^}]*\}\n  try \{\n    var reel = seasonReelPlays\(\);/.test(fs.readFileSync("app.js", "utf8")),
+      /\.then\(/.test(/function artDealRun\(\) \{[^]*?\n\}/.exec(fs.readFileSync("app.js", "utf8"))[0])],
+    [true, false]);
+}
+
+// ---------- v68 THE HOT HAND LADDER ----------
+// The owner's ladder: 0.9 COLD, then 0.1 a rung to 1.3 SUPERNOVA. The point of
+// these checks is the second half of the ask - that the new numbers are not
+// contradicted or ignored anywhere else. Two things used to encode "index 0 is
+// the only rung that changes nothing": app.js's `segIdx > 0` gate and
+// sim-core's improve-only clamp in finish(). Both would have silently eaten a
+// 0.9. WARM is the neutral rung now, and it has to be an EXACT no-op.
+{
+  const T = ctx.T82, SEG = T.HH_SEGMENTS, APP = fs.readFileSync("app.js", "utf8"), CORE = fs.readFileSync("sim-core.js", "utf8");
+  eq("hot hand ladder: COLD 0.9, WARM 1.0, HOT 1.1, ON FIRE 1.2, SUPERNOVA 1.3 (labels and order unchanged)",
+    SEG.map(s2 => [s2.label, s2.m, s2.lvl]),
+    [["COLD", 0.9, 0], ["WARM", 1.0, 1], ["HOT", 1.1, 2], ["ON FIRE", 1.2, 3], ["SUPERNOVA", 1.3, 4]]);
+  // a flat staircase: every rung exactly 0.1 above the one below it
+  eq("hot hand ladder: a flat 0.1 staircase with no gap or repeat, and the odds still sum to 100",
+    [SEG.slice(1).map((s2, i) => +(s2.m - SEG[i].m).toFixed(10)), SEG.reduce((a, s2) => a + s2.odds, 0)],
+    [[0.1, 0.1, 0.1, 0.1], 100]);
+  eq("hot hand ladder: exactly one rung is neutral (WARM) and exactly one is below 1 (COLD), so a spin can cost",
+    [SEG.filter(s2 => s2.m === 1).map(s2 => s2.label), SEG.filter(s2 => s2.m < 1).map(s2 => s2.label)],
+    [["WARM"], ["COLD"]]);
+  // WARM must be an EXACT no-op: same formula the engine used, so hhWins of an
+  // unchanged net gives back the engine's own tally, bit for bit.
+  const warm = SEG[1].m, nets = [4.4, 12.0, 23.7, 26.9, 31.2];
+  eq("hot hand: WARM (x1) moves the net by exactly zero, so the record it implies is the engine's own tally",
+    nets.map(n => [n + (warm - 1) * 9.5 * T.HH_BONUS_SCALE === n, T.hhWins(n) === Math.min(82, Math.ceil(82 * T.phi(null, n / ctx.SC.NET_SD)))]),
+    nets.map(() => [true, true]));
+  // COLD has to be able to reach a LOWER record, or 0.9 is decoration
+  const cold = SEG[0].m, hotV = 9.5, at81 = nets.filter(n => T.hhWins(n) === 81);
+  eq("hot hand: COLD (x0.9) lowers the net, and on a real 81 it can reach a record below 81",
+    [at81.length > 0, at81.every(n => n + (cold - 1) * hotV * T.HH_BONUS_SCALE < n),
+     at81.some(n => T.hhWins(n + (cold - 1) * hotV * T.HH_BONUS_SCALE) < 81)],
+    [true, true, true]);
+  // the two places that used to key the neutral rung on the index
+  eq("hot hand: nothing gates the spin on `segIdx > 0` any more (the index is no longer the neutral rung)",
+    [/segIdx > 0/.test(APP), /hhMoved/.test(APP), /seg\.m !== 1/.test(APP)], [false, true, true]);
+  eq("hot hand: finish() no longer clamps the spin to improve-only, so a COLD drop stands",
+    [/hhWins\(newNet\) > res\.wins/.test(CORE), /else \{ res\.wins = hhWins\(newNet\)/.test(CORE)], [false, true]);
+  // refusing is now the only way to keep an 81, so the decline op must still apply nothing
+  eq("hot hand: I DON'T WANT YOUR CHARITY (op hx) still applies nothing, which is now the only way to keep an 81",
+    /if \(S\.hhDeclined\) \{\s*\n\s*res\.hh = \{ declined: 1/.test(CORE), true);
+  // the balance change has to carry a VERSION bump (the handoff's replay law)
+  eq("hot hand: a result-affecting balance change bumped the core VERSION past v14", T.VERSION >= 15, true);
+  // and the reference table has to agree with the code, or it drifts again
+  const MODES = fs.readFileSync("docs/MODES.md", "utf8");
+  eq("hot hand: docs/MODES.md's wheel table matches HH_SEGMENTS exactly (mult and odds)",
+    SEG.filter(s2 => MODES.indexOf(`| ${s2.label} | ${s2.m.toFixed(1)} | ${s2.odds} |`) < 0).map(s2 => s2.label), []);
+}
+
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

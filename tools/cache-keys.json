@@ -2,16 +2,16 @@
   "about": "Files served with a year-long immutable cache (_headers). Each reference carries ?v=<key>; a changed file needs a new key: node tools/cache-keys.js --stamp <key>. test.js checks it.",
   "files": {
     "app.js": {
-      "key": "20261002-v67-2",
-      "sha": "d97aac40d6a4aa57"
+      "key": "20261002-v68",
+      "sha": "0ac8996aee6388d6"
     },
     "styles.css": {
-      "key": "20260929-v66",
-      "sha": "7f146eb9a74d620c"
+      "key": "20261002-v68",
+      "sha": "391567b2b75dc796"
     },
     "reel-riso.js": {
-      "key": "20261002-v67-2",
-      "sha": "117a32e166282396"
+      "key": "20261002-v68",
+      "sha": "52acff0d1378a3ea"
     },
     "masthead.webp": {
       "key": "20260928-v64-1",
@@ -26,8 +26,8 @@
       "sha": "c21c87911781c688"
     },
     "sim-core.js": {
-      "key": "20260929-v66-1",
-      "sha": "82ab37ada25544aa"
+      "key": "20261002-v68",
+      "sha": "46bec78436c3a6e5"
     },
     "challenges.js": {
       "key": "20260929-v66-4",
@@ -62,12 +62,12 @@
       "sha": "7eb099e1553c0e78"
     },
     "art-core.js": {
-      "key": "20261002-v67-2",
-      "sha": "c0b6f6491737265f"
+      "key": "20261002-v68",
+      "sha": "ce40214d145a476a"
     },
     "art-index.js": {
-      "key": "20261002-v67-2",
-      "sha": "cb5790ce6e99fcf9"
+      "key": "20261002-v68",
+      "sha": "f4644fd57052025b"
     },
     "riso-fx.js": {
       "key": "20261002-v67-2",
@@ -394,8 +394,8 @@
       "sha": "761316c2f55a4f05"
     },
     "art/hot/arcade.js": {
-      "key": "20261002-v67-2",
-      "sha": "d1275fb0398fa0c8"
+      "key": "20261002-v68",
+      "sha": "857b15fc25e8d25b"
     },
     "art/hot/comicheat.js": {
       "key": "20261002-v67-1",

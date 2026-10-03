@@ -4832,13 +4832,15 @@ var FORCE_MIDHOT = !!(typeof location !== "undefined" && location.search && /[?&
 // dollar comes back, or the board's prices drop $2). ?force82=1 realizes the season 82-0 (the perfect print, the goat
 // fireworks, the reel's 82-0 finale), in any mode with a season; ?force82=81 realizes 81-1, so a Presti run gets the
 // post-season Heat Check for real; ?force82=save does that and lands the save (SUPERNOVA, over the 82-0 line), so the
-// results print reprints as a perfect scene. A forced run is not one the engine would replay: test builds only.
+// results print reprints as a perfect scene. v68: ?force82=cold realizes 81-1 too and lands the spin on COLD, the one
+// rung that costs (x0.9), so its drop treatment can be seen on demand. A forced run is not one the engine would replay:
+// test builds only.
 function qaFlag(re) {
   try { if (typeof location === "undefined" || !offLiveHost()) return null; var m = re.exec(location.search || ""); return m ? m[1] : null; }
   catch (err) { return null; }
 }
 var FORCE_PERK = qaFlag(/[?&]perk=(refund|sale)(?:&|$)/);
-var FORCE_82 = qaFlag(/[?&]force82=(1|81|save)(?:&|$)/);
+var FORCE_82 = qaFlag(/[?&]force82=(1|81|save|cold)(?:&|$)/);
 // ?perk=: the first paid spin of the run (the engine has charged it and rolled its own perk) lands the asked-for one
 function qaPerk(spinId) {
   if (!FORCE_PERK || MODE !== "cap" || !G || G.qaPerkDone) return;
@@ -4876,12 +4878,22 @@ function hotHand(e) {
   if (clutch) {
     hotIdx = hhPickHot(); segIdx = hhSpinSeg(); seg = HH_SEGMENTS[segIdx];
     if (FORCE_82 === "save") { segIdx = HH_SEGMENTS.length - 1; seg = HH_SEGMENTS[segIdx]; }   // v67 QA: ?force82=save lands it
+    // v68 QA: ?force82=cold lands the one rung that COSTS. COLD is 6% of spins,
+    // so without a lever the drop treatment is unreachable on demand.
+    else if (FORCE_82 === "cold") { segIdx = 0; seg = HH_SEGMENTS[0]; }
     hotV = valueOf(G.picks[hotIdx].row);
     var THRESH = hhNet82();
     newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
     win = newNet > THRESH;
     if (FORCE_82 === "save" && !win) { newNet = THRESH + 0.5; win = true; }   // ...and the save reaches 82-0 (test builds only)
   }
+  // v68: the ladder's neutral rung is WARM (m === 1), NOT index 0: COLD is 0.9
+  // and takes value away. "Did the spin move anything" is a question about the
+  // multiplier, never the index, and only a real clutch spin can move it.
+  // hhCold is the tier (he went cold: no flame); which way the numbers moved is
+  // their own sign (hhDown), since a player whose value is below zero gains a
+  // little from x0.9 and loses a little from x1.1.
+  var hhMoved = clutch && seg.m !== 1, hhCold = hhMoved && seg.m < 1, hhDown = hhMoved && newNet < e.net;
   var names = G.picks.map(function (p) { return shareSurname(p.row[IDX.name]); });
   var ITEM = 54, COPIES = 6, targetFlat = (COPIES - 2) * names.length + hotIdx;
 
@@ -4943,19 +4955,19 @@ function hotHand(e) {
     analyticsTrack("heatcheck_result", Object.assign(analyticsRunSnapshot(), {
       surface: "heat_check", action: "spin_result", segment: seg.label,
       outcome: win ? "hit_82" : "miss", hit_82: win ? 1 : 0,
-      wins: segIdx > 0 ? hhWins(newNet) : e.winTally,
-      net: segIdx > 0 ? newNet : e.net
+      wins: hhMoved ? hhWins(newNet) : e.winTally,
+      net: hhMoved ? newNet : e.net
     }));
-    // Final record is now known (any non-COLD segment moves it): stage the Tribune.
+    // Final record is now known (any rung off WARM moves it, COLD downward): stage the Tribune.
     prepareRecap(e,
-      segIdx > 0 ? hhWins(newNet) : e.winTally,
-      segIdx > 0 ? newNet : e.net,
-      segIdx > 0 ? { player: shareSurname(G.picks[hotIdx].row[IDX.name]), tier: seg.label } : null);
-    if (segIdx > 0) {                                            // COLD = nobody caught fire: no flame, no highlight, no boost
+      hhMoved ? hhWins(newNet) : e.winTally,
+      hhMoved ? newNet : e.net,
+      hhMoved ? { player: shareSurname(G.picks[hotIdx].row[IDX.name]), tier: seg.label } : null);
+    if (hhMoved) {                                               // WARM = x1 = the spin changed nothing: no mark, no move
       G.hotIdx = hotIdx;
-      G.hotLvl = seg.lvl;                                        // tier reached (WARM 1 ... SUPERNOVA 4) -> picks the share emoji
-      G.hotValue = hotV * (1 + (seg.m - 1) * HH_BONUS_SCALE);    // the hot player's post-boost value
-      G.hotBase = e.net; G.hotNewNet = newNet; G.hotWins = hhWins(newNet);   // post-boost totals (drive record/net/share)
+      G.hotLvl = seg.lvl;                                        // tier reached (COLD 0 ... SUPERNOVA 4) -> picks the share emoji
+      G.hotValue = hotV * (1 + (seg.m - 1) * HH_BONUS_SCALE);    // the hot player's value after the spin (COLD: lower)
+      G.hotBase = e.net; G.hotNewNet = newNet; G.hotWins = hhWins(newNet);   // post-spin totals (drive record/net/share)
       // THE DAILY: a boost that lands after the results render amends the SAME
       // run's official record (nonce-matched; a practice run can never steal
       // official) and refreshes the on-screen grade so the screenshot is honest.
@@ -4966,9 +4978,14 @@ function hotHand(e) {
       }
       var card = document.querySelector('.pick-card[data-pick="' + hotIdx + '"]');
       if (card) {
-        card.classList.add("hot-pick");
+        // v68: only a rung ABOVE warm wears the fire gold. COLD took value away,
+        // so it prints as a cost in the bad tone on a plain card, no flame.
+        if (!hhCold) card.classList.add("hot-pick");
         var pv = card.querySelector(".pr-v");
-        if (pv) pv.innerHTML = "<small>V</small>" + hotV.toFixed(2) + ' <span class="hot-bonus">+ ' + (G.hotValue - hotV).toFixed(2) + "</span>";
+        var dv = G.hotValue - hotV;
+        if (pv) pv.innerHTML = "<small>V</small>" + hotV.toFixed(2) +
+          ' <span class="' + (dv < 0 ? "cold-cost" : "hot-bonus") + '">' +
+          (dv < 0 ? "\u2212 " : "+ ") + Math.abs(dv).toFixed(2) + "</span>";
       }
       var rec = document.querySelector(".big");                  // updated W/L record (the win rate)
       if (rec) rec.textContent = G.hotWins + "\u2013" + (CFG.GAMES_IN_SEASON - G.hotWins);
@@ -4980,10 +4997,11 @@ function hotHand(e) {
         cmp.innerHTML = cmpHtml + (typeof G.sharePct === "number"
           ? (cmpHtml ? ' <span class="comp-pct">\u2022 Top ' : '<span class="comp-pct">Top ') + G.sharePct + "%</span>" : "");
       }
-      var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [bonus, hot-hand fire gold]
+      var lbl = document.querySelector(".big-label");            // net rating = [base, gold] + [the spin, fire gold up / bad tone down]
       if (lbl) lbl.innerHTML = 'net rating <span class="net-base">' + signed1(e.net) +
-        '</span> <span class="net-bonus">+ ' + (newNet - e.net).toFixed(1) + "</span>";
-      if (G.hotWins > e.winTally) {                              // boost moved the win total -> re-plot the GOAT Climb
+        '</span> <span class="' + (hhDown ? "net-cost" : "net-bonus") + '">' +
+        (hhDown ? "\u2212 " : "+ ") + Math.abs(newNet - e.net).toFixed(1) + "</span>";
+      if (G.hotWins !== e.winTally) {                            // the spin moved the win total (either way) -> re-plot the GOAT Climb
         var cl = document.querySelector(".climb");
         if (cl) { cl.outerHTML = climbHtml(e, G.hotWins); setupGoatFireworks(G.hotWins >= CFG.GAMES_IN_SEASON); }
       }
@@ -4992,18 +5010,20 @@ function hotHand(e) {
       if (totalRow) {
         var bonusRow = document.createElement("div");
         bonusRow.className = "ledger-row";
-        bonusRow.innerHTML = '<span>Hot Hand bonus<span class="why">' + seg.label + " \u2014 " +
-          esc(shareSurname(G.picks[hotIdx].row[IDX.name])) + " caught fire (value \u00D7" + seg.m + ").</span></span>" +
-          '<span class="ledger-amt hot">+' + fmt1(newNet - e.net) + "</span>";
+        var who = esc(shareSurname(G.picks[hotIdx].row[IDX.name]));
+        bonusRow.innerHTML = '<span>Hot Hand ' + (hhDown ? "cost" : "bonus") + '<span class="why">' + seg.label + " \u2014 " +
+          who + (hhCold ? " went cold" : " caught fire") + " (value \u00D7" + seg.m + ").</span></span>" +
+          '<span class="ledger-amt ' + (hhDown ? "tax" : "hot") + '">' + (hhDown ? "\u2212" : "+") + fmt1(Math.abs(newNet - e.net)) + "</span>";
         totalRow.parentNode.insertBefore(bonusRow, totalRow);
         var amtEl = totalRow.querySelector(".ledger-amt");
         if (amtEl) amtEl.textContent = signed1(newNet);
         var whyEl = totalRow.querySelector(".why");
-        if (whyEl) whyEl.textContent = "Score " + fmt1(e.score) + " + Hot Hand " + fmt1(newNet - e.net) + " minus baseline " + fmt1(BASELINE) + ".";
+        if (whyEl) whyEl.textContent = "Score " + fmt1(e.score) + (hhDown ? " minus" : " +") +
+          " Hot Hand " + fmt1(Math.abs(newNet - e.net)) + " minus baseline " + fmt1(BASELINE) + ".";
       }
     }
     var v = ov.querySelector("#hhVerdict");
-    var finalW = segIdx > 0 ? G.hotWins : e.winTally;   // wins are now the static reveal (ticker showed net rating)
+    var finalW = hhMoved ? G.hotWins : e.winTally;   // wins are now the static reveal (ticker showed net rating)
     var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + finalW + "\u2013" + (CFG.GAMES_IN_SEASON - finalW) + '</div><div class="hh-netcap">FINAL RECORD</div>';
     if (win) {
       ov.classList.add("won");
@@ -5496,13 +5516,13 @@ function shareLine2(wins, emoji) {
   return (emoji ? emoji + " " : "") + shareRecord(wins) + (body ? " | " + body : "");
 }
 function shareText(e) {
-  var hot = (typeof G.hotNewNet === "number");                   // Hot Hand boost (any non-COLD) applies to the shared totals
+  var hot = (typeof G.hotNewNet === "number");                   // the Hot Hand moved the totals (any rung off WARM, COLD downward)
   var wins = hot ? G.hotWins : e.winTally;
   var lines = ["TRUE 82 " + shareHeadCtx(), shareLine2(wins, shareEmojiFor(wins, null, MODE))];
   var rows = picksInSlotOrder().map(function (entry) {
     var p = entry.p;
     var flame = "";
-    if (entry.i === G.hotIdx) {                                  // COLD never sets G.hotIdx; WARM stays emoji-free
+    if (entry.i === G.hotIdx) {                                  // WARM (x1) never sets G.hotIdx; COLD is lvl 0, so it stays emoji-free
       if (G.hotLvl === 4) flame = " \uD83C\uDF0B";               // SUPERNOVA -> volcano
       else if (G.hotLvl >= 2) flame = " \uD83D\uDD25";           // HOT / ON FIRE -> fire
     }
@@ -8034,7 +8054,13 @@ var REEL_MONTHS = [["OCT", 5], ["NOV", 15], ["DEC", 15], ["JAN", 15], ["FEB", 11
    the slowest of the 78-82-win seasons (78-4 with its first loss ending a streak), so those
    all play at the natural, slowest pace and worse seasons run faster. The red flash keeps its
    own speed limit in reel-riso.js, so a compressed bad season never flashes faster than
-   before. QA: ?reelms=<ms> tries another end time. */
+   before. QA: ?reelms=<ms> tries another end time.
+   v68 (the owner, 2026-10-02: "shorten pause"): the pace is still set with the pauses every loss
+   had before (T82RISO.holdToday), so the ticks, the month leads and the light losses run exactly as
+   they did; the reel then plays the shorter heavy pauses (T82RISO.holdFor: HOLD_SCALE, 0.85, of
+   before, in reel-riso.js), so a season ends sooner than REEL_END_MS by exactly the time they save
+   (reelSavedMs: about 0.7 s for a 78-4, about 1.2 s for a 70-12 or a 60-22, about 1.3 s at most; an
+   82-0 has no loss and still ends at REEL_END_MS). */
 var REEL_END_MS = 16800;
 var REEL_TICK = 48, REEL_LEAD0 = 650, REEL_LEAD = 960, REEL_OPEN = 140, REEL_CLOSE = 120, REEL_FIN = 640;
 function reelNaturalMs(games, holdFn) {
@@ -8057,6 +8083,12 @@ function reelEndMs() {
 function reelPace(games, holdFn, endMs) {
   var nat = reelNaturalMs(games, holdFn);
   return nat > 0 ? Math.max(0.3, Math.min(2.5, (endMs || REEL_END_MS) / nat)) : 1;
+}
+// v68: the time the shorter pauses save in a season, in ms at pace 1 (today's natural length less the new one); the
+// reel ends that much times its pace before REEL_END_MS. holdToday: the pauses the pace is set with; holdFn: the ones
+// that play.
+function reelSavedMs(games, holdToday, holdFn) {
+  return holdToday && holdFn ? reelNaturalMs(games, holdToday) - reelNaturalMs(games, holdFn) : 0;
 }
 var REEL_CITIES = ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cleveland", "Dallas", "Denver",
   "Detroit", "Golden State", "Houston", "Indiana", "Los Angeles", "Memphis", "Miami", "Milwaukee",
@@ -8370,8 +8402,10 @@ function showSeasonReel(season, e, done, midTrigger) {
   // v67: the run's dealt art (its loss looks in play order and its dot set); without art-core.js, exactly as before
   try { if (window.T82RISO && T82RISO.create) { var artOpts = artReelOpts(); riso = artOpts ? T82RISO.create(ov, season, artOpts) : T82RISO.create(ov, season); } } catch (err) { risoOff(err); }
   function risoCall(fn) { if (!riso) return 0; try { return fn() || 0; } catch (err) { risoOff(err); return 0; } }
-  // v51: one pace for the whole season, so every record finishes at the same moment (see REEL_END_MS)
-  var PACE = reelPace(season.games, riso && window.T82RISO ? T82RISO.holdFor : null, reelEndMs());
+  // v51: one pace for the whole season, set so every record would finish at the same moment with the pauses before
+  // v68 (T82RISO.holdToday; an older reel-riso.js without it: its holdFor, which are those pauses); the reel plays the
+  // v68 pauses at that pace, so the ticks keep their speed and the season ends sooner (see REEL_END_MS)
+  var PACE = reelPace(season.games, riso && window.T82RISO ? (T82RISO.holdToday || T82RISO.holdFor) : null, reelEndMs());
   // v47.15: the reel is now a cursor engine instead of a pre-scheduled cascade,
   // so it can pause on the exact square where the Mid-Season Heat Check
   // fires and resume onto a re-rolled remainder. Month W-L headers tick live
@@ -8718,6 +8752,9 @@ function artDealRun() {
     return;
   }
   var art;
+  // v68 the iPhone check: a new run gets its own probe (art-core.js times the first art file it downloads; a slow one,
+  // or a tab that measured one before, keeps the run lean). Nothing here waits for it.
+  try { if (typeof A.newRun === "function") A.newRun(); } catch (err) { /* cosmetic: the run loads as before */ }
   try {
     var reel = seasonReelPlays();
     art = G.art = { loss: reel ? artPick(A, "loss", ART_LOSS_N) : [], dots: reel ? artPick(A, "dots", 1)[0] || null : null,
@@ -9440,7 +9477,7 @@ var DAILY_LINK = (function () {   // ?d=YYYYMMDD&w=&n= beat-my-five landing; con
 function dailyFiveLines() {
   return picksInSlotOrder().map(function (entry) {
     var p = entry.p, flame = "";
-    if (entry.i === G.hotIdx) {                                  // COLD never sets G.hotIdx; WARM stays emoji-free
+    if (entry.i === G.hotIdx) {                                  // WARM (x1) never sets G.hotIdx; COLD is lvl 0, so it stays emoji-free
       if (G.hotLvl === 4) flame = " \uD83C\uDF0B";
       else if (G.hotLvl >= 2) flame = " \uD83D\uDD25";
     }
@@ -9742,7 +9779,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v67.2";
+var BUILD_V = "v68";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

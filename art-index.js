@@ -87,7 +87,7 @@
     { kind: "scene", id: "sunrise", name: "Every Ray", file: "art/scene/sunrise.js?v=20261002-v67-1", on: true, perfect: true },
     { kind: "scene", id: "volcano", name: "Eruption", file: "art/scene/volcano.js?v=20261002-v67-1", on: true },
     { kind: "scene", id: "wave", name: "The Wave", file: "art/scene/wave.js?v=20261002-v67-2", on: true },
-    { kind: "hot", id: "arcade", name: "Combo", file: "art/hot/arcade.js?v=20261002-v67-2", on: true },
+    { kind: "hot", id: "arcade", name: "Combo", file: "art/hot/arcade.js?v=20261002-v68", on: true },
     { kind: "hot", id: "comicheat", name: "Comic Heat", file: "art/hot/comicheat.js?v=20261002-v67-1", on: true },
     { kind: "hot", id: "emojifire", name: "Riso Emoji", file: "art/hot/emojifire.js?v=20261001-v67", on: true },
     { kind: "hot", id: "jam", name: "Heating Up", file: "art/hot/jam.js?v=20261002-v67-2", on: true },

@@ -94,6 +94,9 @@ slots, no `T82RISO`, no body or no canvas: play returns 0 and app.js runs the ol
 - **The numbers a pack prints are the game's.** The owner retunes the Heat Check (2026-10-02: COLD 0.9, WARM 1.0, HOT
   1.1, ON FIRE 1.2, SUPERNOVA 1.3): a pack that shows a multiplier reads `ev.m` and `ev.ladder` (app.js hands them to
   every Heat Check slot from `HH_SEGMENTS`) and keeps a copy of its own only as the fallback when they are null.
+  Since v68 COLD (x0.9) is a cost and WARM (x1.0) is even: a pack that prints a bonus word beside the multiplier
+  picks it from `ev.m`, never a bonus under x1.0 (the owner, 2026-10-02: "cold"; Combo prints BRICKED on COLD
+  and "- EVEN -" on WARM).
 - `K.sprite(g, em, x, y, scale, rot, alpha)`: prints a riso emoji centered at (x, y), css px. `scale` may be `[sx,
   sy]` (a squash on impact, a stretch in flight). Hold it between 0.7 and 1.1 (art/CRAFT.md); a pop through smaller
   scales is fine inside 0.15 s. Any `{plates, reg, w, h}` of screened plates prints too, plate by plate.
@@ -118,8 +121,8 @@ T82ART.add("hot", id, {            // the Heat Check pack: one look across all s
   name, by,
   prep: function (K) { return [jobs]; },             // optional: K.emojiJobs(...), K.screen... into K.st
   slots: {
-    cold:  { dur: 0.9, draw: function (K, ev, e) { ... } },   // the wheel locks on COLD (nobody caught fire)
-    warm:  { dur: 0.9, draw: ... },                           // WARM: a small lift
+    cold:  { dur: 0.9, draw: function (K, ev, e) { ... } },   // the wheel locks on COLD (since v68 x0.9: a cost)
+    warm:  { dur: 0.9, draw: ... },                           // WARM (since v68 x1.0: even, nothing moves)
     hot:   { dur: 1.1, draw: ... },                           // HOT: a real burst
     fire:  { dur: 1.4, draw: ... },                           // ON FIRE: big
     nova:  { dur: 2.4, draw: ... },                           // SUPERNOVA: the biggest beat in the game but 82-0 (big)

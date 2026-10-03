@@ -21,7 +21,11 @@
    exit (phases: { exit: 0.36 }, a literal object of plain numbers, read without running the file), or from 0, the
    whole moment. Each valid line rides the look's entry (tempo: { from, x }); the engine warps the moment's clock. A line
    that names no file, a phase the def does not declare, or an x outside 1 to 3 is skipped with a warning, and
-   test.js fails until it is fixed (tempoErrors()). Removing a line restores the look's own pace. */
+   test.js fails until it is fixed (tempoErrors()). Removing a line restores the look's own pace.
+   v68: removing a look for good is one command, node tools/art-remove.js <kind>/<id> (it deletes the file and every
+   line that names it, then runs this). A file deleted by hand never stops this from writing the index: a line in
+   art/enabled.json or art/tempo.json that names a look no longer there is reported (check() and test.js name it and
+   the fix) and otherwise ignored. */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
 const ROOT = path.join(__dirname, "..");
@@ -259,34 +263,35 @@ function scan() {
   });
   return out;
 }
-function offList(files, errors) {
+function offList(files, errors, stale, given) {
   const p = path.join(ROOT, ENABLED);
-  if (!fs.existsSync(p)) return [];
-  let o = null;
-  try { o = JSON.parse(fs.readFileSync(p, "utf8")); } catch (err) { errors.push(ENABLED + " is not valid JSON: " + err.message); return []; }
+  if (!given && !fs.existsSync(p)) return [];
+  let o = given || null;
+  if (!o) { try { o = JSON.parse(fs.readFileSync(p, "utf8")); } catch (err) { errors.push(ENABLED + " is not valid JSON: " + err.message); return []; } }
   const off = o && Array.isArray(o.off) ? o.off : null;
   if (!off) { errors.push(ENABLED + " needs an \"off\" list of \"<kind>/<id>\" (it may be empty)"); return []; }
   off.forEach((k) => {
     if (builtinKey(k)) return;                   // a built-in the owner cut: it lives in the engine, no file behind it
-    if (!files.some((f) => f.kind + "/" + f.id === k)) errors.push(ENABLED + " turns off \"" + k + "\", but there is no art/" + k + ".js");
+    // a look removed by hand: harmless (it switches nothing off), reported so the line goes too
+    if (!files.some((f) => f.kind + "/" + f.id === k)) (stale || errors).push(ENABLED + " turns off \"" + k + "\", but there is no art/" + k + ".js (a removed look): delete that line (node tools/art-remove.js does it)");
   });
   return off;
 }
 // "perk/classic": a built-in's own id (BUILTIN), which enabled.json may switch off but no file stands behind
 function builtinKey(k) { const p = String(k).split("/"); return p.length === 2 && KINDS.indexOf(p[0]) >= 0 && BUILTIN[p[0]].indexOf(p[1]) >= 0; }
 // art/tempo.json, the owner's speed dial: -> { dial: { "kind/id": { from, x } } (the valid lines), errors: [...] }
-function tempoOf(files) {
+function tempoOf(files, given) {
   const p = path.join(ROOT, TEMPO), dial = {}, errors = [];
-  if (!fs.existsSync(p)) return { dial, errors };
-  let o = null;
-  try { o = JSON.parse(fs.readFileSync(p, "utf8")); } catch (err) { errors.push(TEMPO + " is not valid JSON: " + err.message); return { dial, errors }; }
+  if (!given && !fs.existsSync(p)) return { dial, errors };
+  let o = given || null;
+  if (!o) { try { o = JSON.parse(fs.readFileSync(p, "utf8")); } catch (err) { errors.push(TEMPO + " is not valid JSON: " + err.message); return { dial, errors }; } }
   if (!o || typeof o !== "object" || Array.isArray(o)) { errors.push(TEMPO + " must be an object of \"<kind>/<id>\": { \"from\": <phase or 0>, \"x\": <speed> }"); return { dial, errors }; }
   Object.keys(o).forEach((k) => {
     if (k === "about") return;
     const v = o[k], kind = k.split("/")[0], f = files.find((x) => x.kind + "/" + x.id === k);
     const bad = (why) => errors.push(TEMPO + " \"" + k + "\": " + why);
     if (TEMPO_KINDS.indexOf(kind) < 0) return bad("only a loss look's moment has a dial (" + TEMPO_KINDS.join(", ") + ")");
-    if (!f) return bad("there is no art/" + k + ".js");
+    if (!f) return bad("there is no art/" + k + ".js (a removed look): delete that line (node tools/art-remove.js does it)");
     if (!v || typeof v !== "object" || Array.isArray(v)) return bad("write { \"from\": \"<phase>\" or 0, \"x\": 1.3 }");
     if (typeof v.x !== "number" || !(v.x >= 1 && v.x <= 3)) return bad("x is the speed from that phase on, a number from 1 to 3 (1.3 = 30% faster; the reel's hold is fixed, so a look can only speed up)");
     if (v.from !== 0 && (typeof v.from !== "string" || !ID.test(v.from))) return bad("from is a phase the look's def declares, or 0 (the whole moment)");
@@ -296,7 +301,8 @@ function tempoOf(files) {
   });
   return { dial, errors };
 }
-function tempoErrors() { return tempoOf(scan()).errors; }
+// given: art/tempo.json's content instead of the file's (test.js)
+function tempoErrors(given) { return tempoOf(scan(), given).errors; }
 function loadManifest() { return JSON.parse(fs.readFileSync(MANIFEST, "utf8")); }
 // the manifest with exactly the art files on disk (new ones join with an empty key, deleted ones leave); the art
 // entries sit together at the end, in the index's order
@@ -319,19 +325,20 @@ function text(entries, offB) {
     "(function () {\n  \"use strict\";\n  if (typeof T82ART === \"undefined\" || !T82ART || !T82ART.index) return;\n" +
     (rows.length ? "  T82ART.index([\n" + rows.join(",\n") + "\n  " + tail : "  T82ART.index([" + tail) + "})();\n";
 }
-// what the index and the manifest should be, from the files on disk
-function build() {
-  const files = scan(), errors = [];
+// what the index and the manifest should be, from the files on disk (over.enabled: art/enabled.json's content instead
+// of the file's, for test.js)
+function build(over) {
+  const files = scan(), errors = [], stale = [];
   files.forEach((f) => f.errors.forEach((e) => errors.push(e)));
-  const off = offList(files, errors), m = syncManifest(loadManifest(), files), T = tempoOf(files);
+  const off = offList(files, errors, stale, over && over.enabled), m = syncManifest(loadManifest(), files), T = tempoOf(files);
   const entries = files.filter((f) => !f.errors.length).map((f) => ({ kind: f.kind, id: f.id, name: f.name,
     file: f.rel + "?v=" + m.files[f.rel].key, on: off.indexOf(f.kind + "/" + f.id) < 0, perfect: f.perfect === true,
     tempo: T.dial[f.kind + "/" + f.id] || null }));
   const offB = off.filter(builtinKey);
-  return { files, errors, entries, manifest: m, text: text(entries, offB), tempoErrors: T.errors };
+  return { files, errors, stale, entries, manifest: m, text: text(entries, offB), tempoErrors: T.errors };
 }
-function check() {
-  const b = build(), findings = b.errors.slice(), have = loadManifest().files;
+function check(over) {
+  const b = build(over), findings = b.errors.concat(b.stale), have = loadManifest().files;
   b.files.forEach((f) => { if (!have[f.rel]) findings.push(f.rel + " is not in tools/cache-keys.json: run node tools/art-index.js"); });
   Object.keys(have).forEach((k) => { if (ART_FILE.test(k) && !b.files.some((f) => f.rel === k)) findings.push("tools/cache-keys.json keys " + k + " but the file is gone: run node tools/art-index.js"); });
   const p = path.join(ROOT, INDEX), now = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : null;
@@ -342,6 +349,7 @@ function write() {
   const b = build();
   if (b.errors.length) { console.error(b.errors.join("\n") + "\n\nart index: not written (fix the files above)"); process.exit(1); }
   if (b.tempoErrors.length) console.error(b.tempoErrors.join("\n") + "\nart tempo: the lines above are skipped (those looks play at their own pace) until fixed");
+  if (b.stale.length) console.error(b.stale.join("\n") + "\nart enabled: the lines above switch nothing off (their looks are gone); the index is written without them");
   const mText = JSON.stringify(b.manifest, null, 2) + "\n";
   if (fs.readFileSync(MANIFEST, "utf8") !== mText) fs.writeFileSync(MANIFEST, mText);
   const p = path.join(ROOT, INDEX);

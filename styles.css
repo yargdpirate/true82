@@ -986,6 +986,9 @@ button.more-modes:disabled,
 }
 .board .big-label .net-base { color: var(--t-accent); }
 .board .big-label .net-bonus { color: var(--t-hot-hi); text-shadow: 0 0 10px rgb(var(--t-hot-rgb) / .55); }
+/* v68: a COLD Hot Hand (x0.9) TAKES net away. Same slot as the bonus, the bad tone
+   instead of fire gold - red is bad, hot is fire gold. Both tokens are kit-aware. */
+.board .big-label .net-cost { color: var(--t-bad-hi); text-shadow: 0 0 10px rgb(var(--t-bad-rgb) / .55); }
 .board .big {
   font-family: var(--t-disp);
   font-weight: 700;
@@ -1043,6 +1046,8 @@ button.more-modes:disabled,
 }
 .hot-pick .pr-name { color: var(--t-hot-hi); }/* hot player's name in the bonus fire gold */
 .hot-pick .pr-v .hot-bonus { color: var(--t-hot-hi); text-shadow: 0 0 10px rgb(var(--t-hot-rgb) / .6); }/* base value stays the accent gold; only the bonus is fire gold */
+/* v68: a COLD spin prints the value it cost, on a plain card (no .hot-pick flame) */
+.pick-card .pr-v .cold-cost { color: var(--t-bad-hi); text-shadow: 0 0 10px rgb(var(--t-bad-rgb) / .6); }
 .hot-pick .slot-badge {
   color: var(--t-hot-hi);
   text-shadow: 0 0 10px rgb(var(--t-hot-rgb) / .6);

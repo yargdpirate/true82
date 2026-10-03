@@ -209,8 +209,8 @@
   });
   function counts() {
     var love = 0, cut = 0;
-    Object.keys(PICKS).forEach(function (k) { if (PICKS[k] === "love") love++; else if (PICKS[k] === "cut") cut++; });
-    return { love: love, cut: cut, note: Object.keys(NOTES).length };
+    Object.keys(PICKS).forEach(function (k) { if (!stillThere(k)) return; if (PICKS[k] === "love") love++; else if (PICKS[k] === "cut") cut++; });
+    return { love: love, cut: cut, note: Object.keys(NOTES).filter(stillThere).length };
   }
   function paintBar() {
     var c = counts(), el = $("labBarCount");
@@ -221,6 +221,13 @@
     el.appendChild(h("span", "lab-n-cut", null, c.cut + (c.cut === 1 ? " cut" : " cuts")));
     if (c.note) el.appendChild(h("span", "lab-n-note", null, c.note + (c.note === 1 ? " note" : " notes")));
   }
+  // v68: a look removed for good since it was marked (node tools/art-remove.js) leaves the code; its mark stays on
+  // this phone, harmless. Without the engines every mark counts.
+  function stillThere(key) {
+    var i = key.indexOf("/"), kind = key.slice(0, i), id = key.slice(i + 1), A = art();
+    if (i < 0 || BUILTIN[kind] === id || !A || !A.catalog) return true;
+    try { return A.catalog(kind).some(function (en) { return en.id === id; }); } catch (e) { return true; }
+  }
   // The code he pastes back: plain text, one line per kind. Ids are the files' names (art/<kind>/<id>.js).
   function picksCode() {
     var lines = ["ART-LAB PICKS " + LAB_V + "  " + today()];
@@ -228,12 +235,12 @@
       var love = [], cut = [];
       Object.keys(PICKS).sort().forEach(function (k) {
         var i = k.indexOf("/");
-        if (i < 0 || k.slice(0, i) !== kind) return;
+        if (i < 0 || k.slice(0, i) !== kind || !stillThere(k)) return;
         if (PICKS[k] === "love") love.push(k.slice(i + 1)); else if (PICKS[k] === "cut") cut.push(k.slice(i + 1));
       });
       lines.push(kind + ": love " + (love.join(" ") || "-") + " | cut " + (cut.join(" ") || "-"));
     });
-    var nk = Object.keys(NOTES).filter(function (k) { return noteOf(k); }).sort();
+    var nk = Object.keys(NOTES).filter(function (k) { return noteOf(k) && stillThere(k); }).sort();
     if (nk.length) {
       lines.push("yes, but (keep, with these changes):");
       nk.forEach(function (k) { lines.push("* " + k + ": " + noteOf(k).replace(/\s+/g, " ").replace(/^\s|\s$/g, "")); });
@@ -619,10 +626,17 @@
 
   /* ================= THE L ================= */
   var MODES = {
-    first: { label: "1.7 s", sub: "FIRST LOSS", pace: 1, run: [5, 7], cl: function () { return 1; } },
-    mid: { label: "1.05 s", sub: "MID-SEASON", pace: 1, run: [1, 3], cl: function (k) { return 2 + k % 5; } },
-    late: { label: "0.45 s", sub: "BAD YEAR, LATE", pace: 0.643, run: [0, 2], cl: function (k) { return 7 + k % 5; } }
+    first: { label: "1.45 s", sub: "FIRST LOSS", pace: 1, run: [5, 7], cl: function () { return 1; } },
+    mid: { label: "0.89 s", sub: "MID-SEASON", pace: 1, run: [1, 3], cl: function (k) { return 2 + k % 5; } },
+    late: { label: "0.38 s", sub: "BAD YEAR, LATE", pace: 0.643, run: [0, 2], cl: function (k) { return 7 + k % 5; } }
   };
+  // each moment's hold as the reel plays it (reel-riso.js's holdFor, so a change to its HOLD_SCALE shows here too);
+  // the label above only until the engine is in
+  function modeLabel(k) {
+    var M = MODES[k], R = win.T82RISO;
+    try { if (R && R.holdFor) return (R.holdFor(M.cl(0), k === "first" ? M.run[0] : 0) * M.pace / 1000).toFixed(2) + " s"; } catch (e) { /* the label above */ }
+    return M.label;
+  }
   // a stretch of a season: n losses, each after a short run of wins (a first-loss stretch: each after a streak)
   function stretch(mode, n) {
     var M = MODES[mode], g = [], k, i;
@@ -784,7 +798,7 @@
     now1.next.addEventListener("click", function () { step1(1); });
 
     add(pane, [h("div", "lab-row", null, [b10, bAll]), note,
-      seg("How long each L holds", Object.keys(MODES).map(function (k) { return { k: k, label: MODES[k].label, sub: MODES[k].sub }; }), S.mode, function (k) {
+      seg("How long each L holds", Object.keys(MODES).map(function (k) { return { k: k, label: modeLabel(k), sub: MODES[k].sub }; }), S.mode, function (k) {
         S.mode = k; UI.lossMode = k; saveUI();
       }),
       // the owner's speed notes (art/tempo.json) against the pace the looks had before them, saved in case he changes his mind
