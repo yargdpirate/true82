@@ -6,10 +6,21 @@
 import { accountAuth, json } from "../_lib/acct.js";
 
 export async function onRequestGet(context) {
-  const { env } = context;
+  const { env, request } = context;
   try {
     const auth = await accountAuth(context);
-    if (!auth) return json({ ok: true, anonymous: true });
+    if (!auth) {
+      // A diagnostic, because "anonymous" has two very different causes and
+      // they look identical from a phone: the browser sent no token, or it sent
+      // one the server could not verify. Only answered when a token WAS
+      // presented, and it leaks nothing — CLERK_JWT_KEY is a public key, and
+      // whether auth is configured is already obvious to anyone who tries it.
+      const sent = !!(request.headers.get("authorization") || /(^|;\s*)__session=/.test(request.headers.get("cookie") || ""));
+      if (!sent) return json({ ok: true, anonymous: true });
+      return json({ ok: true, anonymous: true, tokenSent: true,
+        serverHasKey: !!(env && env.CLERK_JWT_KEY),
+        why: (env && env.CLERK_JWT_KEY) ? "token-rejected" : "no-key-on-this-environment" });
+    }
 
     const out = { ok: true, anonymous: false, user: { tag: auth.tag, name: auth.name } };
     if (!env.DB) return json(out);
