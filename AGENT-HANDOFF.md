@@ -181,7 +181,14 @@ hidden.
 1. Clerk dashboard -> create or reuse an application. Enable **email code** and **Google** only.
 2. API keys -> paste the Publishable Key and Frontend API URL into `CONFIG` at the top of `accounts.js`.
 3. Same page -> *Show JWT public key -> PEM* -> that is `CLERK_JWT_KEY` in Cloudflare Pages, on **Production AND
-   Preview** (the split-env trap). Add `AUTHORIZED_PARTIES` too.
+   Preview** (the split-env trap). **`AUTHORIZED_PARTIES` is NOT the same on both:** `https://true82.net` on
+   Production, and **unset on Preview**. It is the azp allow-list, and a preview's tokens carry their own azp
+   (`https://<branch>.true82.pages.dev`), which the production value does not contain — so every preview sign-in
+   is correctly refused and lands on the account sheet's "Almost there" panel. auth.js skips the check entirely
+   when the variable is unset, which is the right posture for a test environment. (Found the hard way on
+   2026-10-03: this step used to say to set it on both, and that is exactly what broke the owner's first preview
+   sign-in. `GET /api/me` with a token now answers it directly: `why: "origin-not-in-AUTHORIZED_PARTIES"`, with
+   `authorizedParties` and `thisOrigin` beside it.)
 4. Clerk -> allowed origins -> add `http://127.0.0.1:8792` for local work.
 5. Paste `migrations/0030_accounts_min_v1.sql` into the D1 console for `true82`. Purely additive.
 A Clerk **production** instance is NOT needed yet, and is not free of friction when it is: it wants CNAMEs for

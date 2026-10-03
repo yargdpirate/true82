@@ -38,6 +38,20 @@ is no column for it anywhere in `migrations/`. Keep it that way.
 | SQL injection via a board name | Every board's SQL is a server constant in a fixed registry; the query string only ever picks a key and supplies BOUND arguments. Nothing from a request is interpolated, not even a column or a mode | `api/lb.js` |
 | Third-party script risk | Clerk's two bundles load from the instance's own Frontend API host with **pinned majors** (`@clerk/ui@1`, `@clerk/clerk-js@6`). An unpinned `@latest` would let a breaking release reach players unannounced | `accounts.js` |
 
+## 1b. The auth diagnostic on /api/me
+
+When a request presents a token that does NOT authenticate, `GET /api/me`
+answers with why: `no-key-on-this-environment`, `key-will-not-parse`,
+`origin-not-in-AUTHORIZED_PARTIES` (with `authorizedParties` and `thisOrigin`)
+or `token-rejected`. It is answered only when a token was actually presented.
+
+This is a deliberate, reviewable disclosure. Nothing in it is secret:
+`CLERK_JWT_KEY` is a public key, `AUTHORIZED_PARTIES` is the site's own origin,
+and whether sign-in is configured is obvious to anyone who tries it. It exists
+because "anonymous" has four very different causes that are indistinguishable
+from a phone, and every one of them was guessed at wrongly before this existed.
+Remove the block in `functions/api/me.js` if that trade ever stops being worth it.
+
 ## 2. Known accepted tradeoffs (deliberate, revisit-able)
 
 - `x-t82-err` carries truncated internal error strings (our SQL text, never user
