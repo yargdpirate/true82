@@ -2386,6 +2386,30 @@ async function accountLane() {
        [board.key, board.base === D.boardFor(day).base, board.seed === D.boardFor(day).seed,
         sim.dailyBoard("2026-10-04").seed !== board.seed, sim.dailyBoard("nope"), sim.dailyBoard("")],
        [day, true, true, true, null, null]);
+
+    // (6d) ...and it must agree with the board the BROWSER played. daily-core.js
+    // resolves a day's challenge through the global challenges.js installs, so a
+    // Worker that does not import challenges.js silently serves vanilla boards
+    // and fails every Daily verification. This runs in a CHILD PROCESS importing
+    // only _lib/sim.js, so no other import in this harness can mask the gap.
+    const { execFileSync } = require("child_process");
+    const probe = `
+      const { dailyBoard } = await import("./functions/_lib/sim.js");
+      let withCh = 0, total = 0;
+      for (let i = 0; i < 120; i++) {
+        const d = new Date(Date.UTC(2026, 9, 3) + i * 86400000).toISOString().slice(0, 10);
+        const b = dailyBoard(d); total++; if (b && b.ch) withCh++;
+      }
+      console.log(JSON.stringify({ total, withCh }));`;
+    let probed = { total: 0, withCh: 0 };
+    try {
+      probed = JSON.parse(String(execFileSync(process.execPath, ["--input-type=module", "-e", probe],
+        { cwd: __dirname, encoding: "utf8" })).trim());
+    } catch (e) { probed = { total: 0, withCh: 0, err: String(e.message || e).slice(0, 80) }; }
+    eq("v69.1 the server's Daily carries its CHALLENGE: in a worker that imports only _lib/sim.js, all 120 days " +
+       "still resolve a challenge (dropping sim.js's challenges.js import makes every board vanilla, so every " +
+       "Daily replays wrong and never ranks \u2014 and it looks like a broken engine)",
+       [probed.total, probed.withCh === probed.total && probed.withCh > 0], [120, true]);
   }
 
   // (7) the paste rule (migrations/MIGRATIONS-NOTES.md): the D1 console can

@@ -17,6 +17,16 @@
 
    The handle is cached in module scope deliberately — that IS the warm path. */
 import T82 from "../../sim-core.js";
+/* LOAD-BEARING IMPORT, and it looks removable. daily-core.js resolves a day's
+   challenge through `coreForId`, which reads the GLOBAL `T82CH` that
+   challenges.js installs on load — the browser has it because challenges.js is
+   in the page's script chain. Without this import the Worker's registry is
+   undefined, every board "fails soft to vanilla cap" (daily-core.js:79), and the
+   server derives a DIFFERENT board than the browser played: every Daily on a
+   challenge day would replay wrong, fail verification and never rank. The
+   symptom would look like the engine being broken, not like a missing import.
+   test.js compares the server's board against the browser's for 120 days. */
+import "../../challenges.js";
 import T82DAILY from "../../daily-core.js";
 
 /* The Daily's board for a day, derived HERE rather than taken from the client.
