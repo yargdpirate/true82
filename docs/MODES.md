@@ -136,7 +136,8 @@ skip, or era skip. Normal and gouged bands are never decayed.
 
 ## Hot Hand / Heat Check (cap only)
 
-Overlay fires on every completed cap draft under 82-0 (`hhEligible`). Two paths:
+Overlay fires on every completed cap draft under 82-0 (`hhEligible`), unless
+the season already had its mid-season Heat Check (below). Two paths:
 
 - **≤80 wins (or any non-81):** eyebrow "See Your Results"; overlay carries
   `hh-reveal` (fully opaque backdrop) and starts opaque (created with `in`, no
@@ -158,27 +159,101 @@ here now match the code (they did not before):
 | ON FIRE | 1.2 | 23 |
 | SUPERNOVA | 1.3 | 15 |
 
-Spin: `newNet = net + (m − 1) · valueOf(hot) · HH_BONUS_SCALE(0.67)`. Goes
-undefeated iff `newNet > hhNet82()` — the smallest net where
-`ceil(82·Φ(net/NET_SD)) = 82`, found by bisection. The record, ledger, GOAT
-climb, and share text follow the spun numbers (`G.hotWins`, `G.hotValue`).
+Spin: `newNet = net + (m − 1) · valueOf(hot) · HH_BONUS_SCALE(0.67)`.
+
+**The record rule (v68.1, the owner, 2026-10-02: "move from the real 81").**
+The spin moves the record the season actually PLAYED, never the projection's.
+In plain words:
+
+- The spin's *projected change* is how many whole wins it moves the five's
+  projected record: `hhWins(newNet) − hhWins(net)` (a five at +19.0 projects
+  78-4; a spin to +20.1 projects 79-3: a change of +1).
+- **HOT, ON FIRE, SUPERNOVA** can only raise the played record, by that
+  change: `min(82, played + max(0, change))`.
+- **WARM** never moves it.
+- **COLD** can only lower it, by that change: `played + min(0, change)`.
+- **The 82-0 save** is the raised record reaching 82: an 81 is saved exactly
+  when the spin lifts the projection by a win or more.
+
+One function holds it, `hhRecord(played, net, newNet, m)` in sim-core.js; the
+game's Heat Check (app.js `hotHand`) and the replay verifier (`finish()`) both
+run it, so a submitted run verifies. Why: Presti plays the season out game by
+game, so many 81-1s are lucky (the five projects 78 to 80), and v68 set the
+record from the spun projection: a HOT "+0.4, caught fire" dropped a lucky
+81-1 to 78-4. On a board that does not play its season out (the Daily, a
+challenge) the record IS the projection, so the rule gives exactly what v68
+gave (the spun projection) for any spin that raises the net.
+
+The record, the print, the comp line, the GOAT Climb, the ledger, the share
+text and the Daily's official record all follow `G.hotWins` (the rule's
+record) and `G.hotNewNet` (the spun net, shown as the net rating's second
+number; it moves by the formula even when the record does not). When the
+Heat Check leaves the totals alone (WARM, refused, never offered), the share
+text and the Tribune read the results' own record (`resultsEngine()`: the e
+renderResults was given, so a played-out season's record), never a fresh
+`engine()`, which is the projection. A spin that moves the net but not the
+record re-specs the share poster too (its foot prints NET).
+
+**SKIP (v68.1).** Before the pull, "skip →" refuses, exactly like I DON'T
+WANT YOUR CHARITY (op `hx`). After the pull the spin is committed (the replay
+applies it), so "skip →" skips the show, never the spin: `applyOutcome()` (the
+same once-only step the reveal runs) lands the record, the totals and the
+results, then the card closes. A COLD cannot be dodged by skipping, and a
+save is never thrown away.
 
 **The neutral rung is WARM, not index 0.** Anything that asks "did the spin move
-anything" must read `seg.m !== 1`, never `segIdx > 0` — COLD is 0.9 and takes
-value away. WARM is exactly ×1, so `newNet === net` and `hhWins(newNet) ===
-winTally`: an exact no-op by the engine's own formula.
+anything" must read `seg.m !== 1`, never `segIdx > 0`: COLD is 0.9 and takes
+value away. WARM is exactly ×1, so `newNet === net` and the record stays put.
 
-**COLD costs.** `finish()` lets the spun number stand in both directions (it used
-to clamp to "improve only"), so a COLD can drop an 81-1 to 80-2 — about 26% of
-81s, and COLD is 6% of spins, so ~1.6% of all 81-1 runs. Refusing the spin
-(I DON'T WANT YOUR CHARITY, op `hx`) is the only way to keep the 81. Percentile
-rank is unaffected either way: `/api/percentile` ranks the RAW engine net,
-written before the Hot Hand touches anything.
+**Who reaches which Heat Check (standalone Presti).** A five drafted above
+`HH_MID_NET` (+20, a projection of 79 and up) that loses any game gets the
+**mid-season** Heat Check at that first loss (see below), never the
+post-season one. So on a standalone Presti run every post-season Heat Check is
+a five at +20 or below that played 81-1: a lucky 81 (projection 79 or less).
 
-**Reaching 82-0** is deliberately rare on this ladder: measured over 12,000 bot
-cap runs, an 81-1 run goes 82-0 on 8.0% of spins (SUPERNOVA itself saves 24%).
-The old ladder was 43.6%. `HH_BONUS_SCALE` is the one knob that moves this
-without touching the staircase.
+**What the rule does to the save rate** (bot drafts on the real data, each
+five weighted by its 81-1 odds, 2026-10-02): on those post-season spins v68
+lowered the record 86% of the time (every rung but WARM) and never saved;
+v68.1 saves 45%, leaves 81-1 53%, and lowers it 2% (COLD only). The weaker the
+lucky five, the easier the save, because the projection's win steps are
+narrower lower down (a projection of 75: 55%; 78: 45%; 79: 6%). An honest 81
+(the Daily) saves as in v68, about 8 to 9% of spins (9.0% on 587 bot fives
+projecting 81). `HH_BONUS_SCALE` is the one
+knob that moves both without touching the staircase.
+
+**COLD costs.** COLD lowers the played record by the projected change (often
+0, sometimes 1 or 2). Refusing the spin (I DON'T WANT YOUR CHARITY, op `hx`)
+applies nothing and keeps the 81. Percentile rank is unaffected either way:
+`/api/percentile` ranks the RAW engine net, written before the Hot Hand
+touches anything.
+
+## Mid-season Heat Check (standalone Presti, since v47.15)
+
+A standalone Presti season (the reel plays it, op `ss`) whose five is drafted
+above +20 net (`HH_MID_NET`; `?midhot=1` waives the bar on a test build) pauses
+on its first realized loss and offers the spin (its two draws come right after
+the season's 82). One per season, and it replaces the post-season one. HOT or
+better re-rolls the saved game and the rest of the season at the boosted
+nightly rate, `phi(newNet / NET_SD)` (uncapped, never below the rate it
+played); anything cooler, or a refusal, lets the loss land and the season
+stand as played.
+
+v68.1 (`hhMidReroll`): the re-roll reuses each night's own draw (kept by
+`simSeason` as `season.u`) instead of `Math.random`. A night is a win when its
+draw is under the new rate, so every win the season played stays a win; the
+saved game's draw (a loss, somewhere in [rate, 1)) is stretched back over
+[0, 1), so it is saved at the full new rate, as before. Each re-rolled night
+still wins at exactly the boosted rate, so the odds are unchanged (82-0 on
+about 22% of boosts either way); what is gone is the boost that ended WORSE
+than the season played (about 15% of HOT-or-better boosts did, with
+`Math.random`), and a replay can now follow it.
+
+**The verifier.** Since v68.1 `finish()` plays out an armed Presti season
+(it used to judge Presti on the projection: another record and 82 fewer
+draws), runs the mid-season Heat Check where the game does, and the
+post-season one at exactly 81 wins played (the projection's 81 on the Daily).
+test.js checks the game and the verifier reach the same record with the same
+draws on 2,800 real Presti runs, spun and refused.
 
 ## Analytics (for context when touching game events)
 
@@ -203,8 +278,9 @@ clamps every numeric, never errors to the player.
   nudging `CAP_GEM`/`CAP_TRAP` is safe, reshaping `capRoll` bands changes the
   1-in-50 calibration.
 - **Only if touching the reveal flow:** the results screen is fully rendered
-  BENEATH the overlay before it appears — "skip →" and the non-clutch dismiss
-  both just remove the overlay. Nothing is deferred.
+  BENEATH the overlay before it appears — the non-clutch dismiss and "skip →"
+  before the pull just remove the overlay (at 81 the skip also refuses, op
+  `hx`); "skip →" after the pull first applies the spin (`applyOutcome`).
 - **Only if editing site_data:** `meta.cols` order defines `IDX`; columns pos,
   port, rim, pm, ht are currently unread (see the Open list in docs/history/CONTEXT-2026-07.md) — do not
   reorder cols without regenerating IDX assumptions everywhere.

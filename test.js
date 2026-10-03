@@ -206,18 +206,48 @@ eq("shorter pauses: every heavy loss (the first 14) pauses 0.85 of what it did b
     holdPairs.filter(([n, , now]) => n > 14 && now !== 240).length, RISO.holdFor(1, 31), RISO.holdFor(3, 0), RISO.holdFor(9, 0)],
   [0.85, 0, 0, 1445, 892.5, 595]);
 eq("shorter pauses: the ticks keep their speed (each record's pace is set with the old pauses, exactly as before v68, so with " +
-  "them every record would still end at 16.8 s), and the game paces the reel that way",
+  "them every record would still end at the season's length, 15.12 s since v68.1), and the game paces the reel that way",
   [seasons.map(g => Math.round(ctx.reelNaturalMs(g, RISO.holdToday) * ctx.reelPace(g, RISO.holdToday))),
     /var PACE = reelPace\(season\.games, riso && window\.T82RISO \? \(T82RISO\.holdToday \|\| T82RISO\.holdFor\) : null, reelEndMs\(\)\);/.test(fs.readFileSync("app.js", "utf8"))],
   [seasons.map(() => ctx.REEL_END_MS), true]);
 const endsAt = g => ctx.reelNaturalMs(g, RISO.holdFor) * ctx.reelPace(g, RISO.holdToday);
 const savedAt = g => ctx.reelSavedMs(g, RISO.holdToday, RISO.holdFor) * ctx.reelPace(g, RISO.holdToday);
-eq("shorter pauses: a season ends sooner by exactly the time its shorter pauses save (a 78-4 about 0.7 s sooner, a 60-22 about " +
-  "1.2 s; an 82-0 has no pause to shorten and still ends at 16.8 s)",
-  [seasons.map(g => Math.abs(endsAt(g) - (ctx.REEL_END_MS - savedAt(g))) < 1e-6), seasons.map(g => +(savedAt(g) / 1000).toFixed(1))],
-  [seasons.map(() => true), [0, 0.7, 0.7, 1.2, 1, 0.9, 0.8]]);
-eq("reel pacing: 78-82 wins play at the natural (slowest) pace or slower; worse seasons run faster",
-  [ctx.reelPace(spread(78), RISO.holdToday) >= 0.97, ctx.reelPace(season(82), RISO.holdToday) > 1, ctx.reelPace(spread(41), RISO.holdToday) < 0.8], [true, true, true]);
+eq("shorter pauses: a season ends sooner by exactly the time its shorter pauses save (a 78-4 about 0.6 to 0.7 s sooner, a " +
+  "60-22 about 1.1 s; an 82-0 has no pause to shorten and ends at exactly 15.12 s)",
+  [seasons.map(g => Math.abs(endsAt(g) - (ctx.REEL_END_MS - savedAt(g))) < 1e-6), seasons.map(g => +(savedAt(g) / 1000).toFixed(1)),
+    Math.round(endsAt(season(82)))],
+  [seasons.map(() => true), [0, 0.7, 0.6, 1.1, 0.9, 0.8, 0.7], 15120]);
+// v68.1 (the owner, 2026-10-02: "shorter season too"): the whole season is 10% shorter, on top of v68's pauses
+const PACE_V68 = g => Math.max(0.3, Math.min(2.5, 16800 / ctx.reelNaturalMs(g, RISO.holdToday)));
+eq("shorter season: the season's length is 15.12 s (16.8 s less 10%), so a season at the natural pace ends 15.12 s in, " +
+  "less only the time its shorter pauses save, and every record's reel plays exactly 10% faster than v68's",
+  [ctx.REEL_END_MS, ctx.reelEndMs(), seasons.map(g => +(ctx.reelPace(g, RISO.holdToday) / PACE_V68(g)).toFixed(6)),
+    seasons.map(g => +(endsAt(g) / (ctx.reelNaturalMs(g, RISO.holdFor) * PACE_V68(g))).toFixed(6))],
+  [15120, 15120, seasons.map(() => 0.9), seasons.map(() => 0.9)]);
+eq("reel pacing: 78-82 wins play at 0.9 of v68's pace (the old natural, slowest pace, less 10%); worse seasons run faster",
+  [ctx.reelPace(spread(78), RISO.holdToday) >= 0.97 * 0.9, ctx.reelPace(season(82), RISO.holdToday) > 1, ctx.reelPace(spread(41), RISO.holdToday) < 0.8 * 0.9], [true, true, true]);
+// the flash law at the new length: walk each sample season's real clock (the reel's own schedule at its pace, the
+// pauses it plays) and fire the red flash the way the reel does, never within FLASH_GAP of the last one
+const flashesAt = g => {
+  const pace = ctx.reelPace(g, RISO.holdToday), at = [];
+  let t = 0, gi = 0, cl = 0, streak = 0, last = -1e9;
+  for (let mi = 0; mi < ctx.REEL_MONTHS.length; mi++) {
+    t += ((mi === 0 ? ctx.REEL_LEAD0 : ctx.REEL_LEAD) + ctx.REEL_OPEN) * pace;
+    for (let k = 0; k < ctx.REEL_MONTHS[mi][1] && gi < g.length; k++, gi++) {
+      let hold = 0;
+      if (g[gi]) streak++;
+      else { cl++; hold = RISO.holdFor(cl, streak) * pace; streak = 0;
+        if (RISO.heavy(cl) && t - last >= RISO.flashGap * 1000) { at.push(t); last = t; } }
+      t += (k === ctx.REEL_MONTHS[mi][1] - 1 ? 0 : ctx.REEL_TICK * pace) + hold;
+    }
+  }
+  return at;
+};
+const flashWin = at => at.reduce((m, t0) => Math.max(m, at.filter(t => t >= t0 && t < t0 + 1000).length), 0);
+eq("flash law at 15.12 s: on every sample season the red flash comes at most twice in any second (under 3 a second), and " +
+  "a 78-82-win season still flashes on every heavy loss (its losses are far enough apart at 0.9 pace)",
+  [seasons.map(g => flashWin(flashesAt(g)) <= 2), [season(78, false), spread(78)].map(g => flashesAt(g).length), RISO.flashGap],
+  [seasons.map(() => true), [4, 4], 0.77]);
 const EM = String.fromCharCode(0x2014);
 const lossLines = [{ cl: 1, prevStreak: 31 }, { cl: 1, prevStreak: 0 }, { cl: 3, lossRun: 2 }, { cl: 4, lossRun: 1 }]
   .map(i => RISO.lossCopy(Object.assign({ city: "Orlando", date: "Dec 23" }, i)).join(" "));
@@ -1806,17 +1836,246 @@ if (fs.existsSync("site_data.json")) {
   // the two places that used to key the neutral rung on the index
   eq("hot hand: nothing gates the spin on `segIdx > 0` any more (the index is no longer the neutral rung)",
     [/segIdx > 0/.test(APP), /hhMoved/.test(APP), /seg\.m !== 1/.test(APP)], [false, true, true]);
-  eq("hot hand: finish() no longer clamps the spin to improve-only, so a COLD drop stands",
-    [/hhWins\(newNet\) > res\.wins/.test(CORE), /else \{ res\.wins = hhWins\(newNet\)/.test(CORE)], [false, true]);
+  eq("hot hand: finish() has no improve-only clamp, and (v68.1) sets the record with the one record rule, hhRecord",
+    [/hhWins\(newNet\) > res\.wins/.test(CORE), /var rec = hhRecord\(res\.wins, e\.net, newNet, seg\.m\);/.test(CORE)], [false, true]);
   // refusing is now the only way to keep an 81, so the decline op must still apply nothing
   eq("hot hand: I DON'T WANT YOUR CHARITY (op hx) still applies nothing, which is now the only way to keep an 81",
     /if \(S\.hhDeclined\) \{\s*\n\s*res\.hh = \{ declined: 1/.test(CORE), true);
   // the balance change has to carry a VERSION bump (the handoff's replay law)
-  eq("hot hand: a result-affecting balance change bumped the core VERSION past v14", T.VERSION >= 15, true);
+  eq("hot hand: a result-affecting change bumped the core VERSION (v68.1: past v15, the record rule and Presti replays)", T.VERSION >= 16, true);
   // and the reference table has to agree with the code, or it drifts again
   const MODES = fs.readFileSync("docs/MODES.md", "utf8");
   eq("hot hand: docs/MODES.md's wheel table matches HH_SEGMENTS exactly (mult and odds)",
     SEG.filter(s2 => MODES.indexOf(`| ${s2.label} | ${s2.m.toFixed(1)} | ${s2.odds} |`) < 0).map(s2 => s2.label), []);
+}
+
+
+// ---------- v68.1 MOVE FROM THE REAL 81 (the owner, 2026-10-02) ----------
+// Presti plays its season out game by game, so many 81-1s are lucky (the five projects 78 to 80). v68 set the record
+// from the spun projection, so a HOT spin could drop a lucky 81-1 to 78-4. His rule: the spin moves the record from
+// the 81 actually PLAYED, by the spin's projected change (how many wins it moves the projected record). HOT, ON FIRE
+// and SUPERNOVA can only raise it, WARM never moves it, COLD can only lower it, and the 82-0 save is the raised record
+// reaching 82. One function holds it (sim-core.js hhRecord); the game's Heat Check and the replay verifier both run it.
+{
+  const T = ctx.T82, SEG = T.HH_SEGMENTS, APP = fs.readFileSync("app.js", "utf8"), CORE = fs.readFileSync("sim-core.js", "utf8");
+  const cases = [];
+  for (let n = 0; n <= 40; n += 0.05) for (let v = -3; v <= 12; v += 0.5) for (const sg of SEG) for (const played of [81, 79, 70])
+    cases.push({ played, net: n, newNet: n + (sg.m - 1) * v * T.HH_BONUS_SCALE, sg, r: T.hhRecord(played, n, n + (sg.m - 1) * v * T.HH_BONUS_SCALE, sg.m) });
+  const hot = cases.filter(c => c.sg.m > 1), lucky78 = hot.filter(c => c.played === 81 && T.hhWins(c.net) === 78);
+  eq("move from the real 81: HOT, ON FIRE and SUPERNOVA never lower a played record (" + hot.length + " spins across nets 0 to " +
+    "+40 and hot values -3 to 12), a lucky 81-1 whose five projects 78-4 included (" + lucky78.length + " of them)",
+    [hot.filter(c => c.r.wins < c.played).length, lucky78.length > 1000, lucky78.filter(c => c.r.wins < 81).length], [0, true, 0]);
+  eq("move from the real 81: WARM never moves the record, on any five", cases.filter(c => c.sg.m === 1 && c.r.wins !== c.played).length, 0);
+  eq("move from the real 81: COLD never raises the record (a hot player valued below zero included), and it can lower one",
+    [cases.filter(c => c.sg.m < 1 && c.r.wins > c.played).length, cases.some(c => c.sg.m < 1 && c.played === 81 && c.r.wins < 81)], [0, true]);
+  eq("move from the real 81: the record moves by exactly the spin's projected change (whole wins of the projected record), " +
+    "upward only on HOT and up, downward only on COLD",
+    cases.filter(c => { const d = T.hhWins(c.newNet) - T.hhWins(c.net);
+      return c.r.wins !== (c.sg.m > 1 ? Math.min(82, c.played + Math.max(0, d)) : c.sg.m < 1 ? c.played + Math.min(0, d) : c.played); }).length, 0);
+  eq("move from the real 81: the save is exactly the raised record reaching 82 (only HOT and up can save, and only a spin " +
+    "that lifts the projection by a win or more saves an 81)",
+    [cases.filter(c => c.played === 81 && (c.r.save === 1) !== (c.r.wins === 82)).length,
+      cases.filter(c => c.r.save && !(c.sg.m > 1)).length,
+      cases.filter(c => c.played === 81 && c.sg.m > 1 && (c.r.save === 1) !== (T.hhWins(c.newNet) - T.hhWins(c.net) >= 1)).length],
+    [0, 0, 0]);
+  // the case the owner heard about, and its other side
+  const r1 = T.hhRecord(81, 19.0, 19.4, 1.1), r2 = T.hhRecord(81, 19.7, 20.1, 1.1);
+  eq("the lucky 81-1: a five at net +19.0 projects 78-4; it played 81-1 and went HOT (+0.4, caught fire): v68 printed 78-4, " +
+    "now it stays 81-1. From +19.7 the same +0.4 lifts the projection from 78 to 79, so it raises the 81 to 82-0, the save",
+    [T.hhWins(19.0), T.hhWins(19.4), r1.wins, r1.save, T.hhWins(19.7), T.hhWins(20.1), r2.wins, r2.save], [78, 78, 81, 0, 78, 79, 82, 1]);
+  // a board that never plays its season out (the Daily, a challenge) has the projection as its record: unchanged from v68
+  const honest = cases.filter(c => c.played === T.hhWins(c.net) && c.played === 81 && c.sg.m > 1 && c.newNet >= c.net);
+  eq("an honest 81 (the Daily: its record is the projection) ends exactly where v68 put it: the spun projection",
+    [honest.length > 100, honest.filter(c => c.r.wins !== T.hhWins(c.newNet)).length], [true, 0]);
+  // the game reads the same function the verifier runs
+  eq("the game's Heat Check takes its record from hhRecord (the played 81, the spun net, the rung), and every screen after " +
+    "it (the record, the print, the comp line, the share text, the Daily's official record) reads that record",
+    [/hhRec = hhRecord\(e\.winTally, e\.net, newNet, seg\.m\);/.test(APP), /G\.hotWins = hhRec\.wins;/.test(APP), /win = !!hhRec\.save;/.test(APP),
+      /function recAt\(net\) \{ return hhRecord\(e\.winTally, e\.net, net, seg\.m\)\.wins; \}/.test(APP),
+      /function hhRecord\(played, net, newNet, m\) \{ return T82\.hhRecord\(played, net, newNet, m\); \}/.test(APP),
+      /hhWins\(newNet\)\s*[,;)]/.test(APP.replace(/\/\/[^\n]*/g, "")),
+      // one name, declared once in hotHand: a `var` of the same name in its verdict() would shadow it (as `rec` did)
+      (/\nfunction hotHand\(e\) \{[^]*?\n\}\n/.exec(APP)[0].match(/var [^;]*\bhhRec\b/g) || []).length],
+    [true, true, true, true, true, false, 1]);
+  // the mid-season Heat Check: HOT or better re-rolls from the paused loss on, from each night's own draw
+  const mk = (seed, p0) => { const rng = T.makeRng(seed), g = [], u = []; let w = 0;
+    for (let i = 0; i < 82; i++) { const x = rng.f(); u.push(x); g.push(x < p0 ? 1 : 0); w += g[i]; }
+    return { games: g, u, pGame: p0, wins: w, losses: 82 - w }; };
+  let worse = 0, n2 = 0, won2 = 0, tries = 0, saved = 0, at81 = 0;
+  for (let k = 1; k <= 3000; k++) {
+    const sz = mk(5150 + k, 0.97), played = sz.wins, at = sz.games.indexOf(0);
+    if (at < 0) continue;
+    const before = sz.games.slice(), newNet = 22 + (k % 7) * 0.4;
+    T.hhMidReroll(sz, at, newNet); tries++;
+    if (sz.wins < played) worse++;
+    if (before.some((x, i) => x && !sz.games[i])) worse++;
+    for (let i = at + 1; i < 82; i++) { n2++; won2 += sz.games[i]; }
+    if (played === 81) { at81++; if (sz.wins === 82) saved++; }
+  }
+  const p2avg = [0, 1, 2, 3, 4, 5, 6].reduce((a, j) => a + T.phi(null, (22 + j * 0.4) / ctx.SC.NET_SD), 0) / 7;
+  eq("mid-season Heat Check: a HOT-or-better boost never leaves the season worse than the games it played (no win turns " +
+    "into a loss, in " + tries + " seasons), and each re-rolled night still wins at the boosted rate, so the odds are as before",
+    [tries > 2000, worse, Math.abs(won2 / n2 - p2avg) < 0.004, at81 > 100 && saved / at81 > 0.9], [true, 0, true, true]);
+  eq("mid-season Heat Check: the game re-rolls with the engine's hhMidReroll (it used Math.random, which a replay cannot " +
+    "follow), counts HOT or better off the multiplier, and its +20 bar is the engine's",
+    [/T82\.hhMidReroll\(season, gi, boost\.newNet\);/.test(APP), /Math\.random\(\) < p2/.test(APP), /var qualifies = seg\.m > 1;/.test(APP),
+      /netBar: FORCE_MIDHOT \|\| \(e && e\.net > T82\.HH_MID_NET\)/.test(APP), T.HH_MID_NET], [true, false, true, true, 20]);
+  // v68.1 (the verifier's findings): SKIP after the pull applies the spin; the share reads the results' record; the
+  // share poster re-specs when the net moves without the record
+  const hh = /\nfunction hotHand\(e\) \{[^]*?\n\}\n/.exec(APP)[0];
+  eq("the post-season Heat Check applies its spin in one place (applyOutcome, once), which the reveal and SKIP after " +
+    "the pull both run; SKIP before the pull still refuses (op hx)",
+    [/function applyOutcome\(\) \{\s*\n\s*if \(applied\) return;\s*\n\s*applied = true;/.test(hh),
+      /function verdict\(\) \{\s*\n\s*applyOutcome\(\);/.test(hh),
+      /if \(clutch && !pullState\.fired\(\)\) \{[^]*?T82\.declineHeat\(G\);[^]*?\} else if \(clutch\) \{\s*\n\s*applyOutcome\(\);/.test(hh),
+      (hh.match(/G\.hotWins = hhRec\.wins;/g) || []).length], [true, true, true, 1]);
+  eq("the share text and the Tribune read the results' own record (renderResults keeps its e), never a fresh engine()'s " +
+    "projection: engine(G.picks ...) is left only in showResults and resultsEngine's fallback",
+    [(APP.match(/engine\(G\.picks/g) || []).length, /function renderResults\(e, keepScroll\) \{\n  G\.resE = e;/.test(APP),
+      /el\("shareTeamBtn"\)\.addEventListener\("click", function \(\) \{\n    var e2 = e;/.test(APP)], [2, true, true]);
+  eq("the share poster follows a spin that moves the net but not the record (its foot prints NET)",
+    /var sameWins = wins === RESULTS_PRINT_SPEC\.wins;\n  if \(sameWins && signed1\(typeof G\.hotNewNet === "number" \? G\.hotNewNet : e\.net\) === RESULTS_PRINT_SPEC\.net\) return;/.test(APP), true);
+  // copy law: the Hot Hand's Scoring Card rows (both Heat Checks) use the middle dot, not an em-dash
+  const rows = APP.split("\n").filter(l => /bonusRow\.innerHTML = '<span>Hot Hand/.test(l));
+  eq("copy law: both Heat Checks' Scoring Card rows (\"Hot Hand bonus\" and \"Hot Hand cost\") read RUNG · NAME, no em-dash",
+    [rows.length, rows.every(l => /label\) \+ " \\u00B7 " \+|label \+ " \\u00B7 " \+/.test(l) && !/\\u2014|—/.test(l))], [2, true]);
+}
+
+// v68.1: the game and the replay verifier agree, on real drafts. A bot drafts Presti runs on the real player data; the
+// game's own functions (app.js, in the order the results, the reel and the Heat Checks run them) play each one out,
+// once spinning and once refusing (I DON'T WANT YOUR CHARITY); sim-core's replay must reach the same record with the
+// same number of draws. Before v68.1 the verifier never played a Presti season out, so it judged these on the projection.
+if (fs.existsSync("site_data.json")) {
+  // a page just big enough for the post-season Heat Check's card (hotHand): every element answers every selector with
+  // its own child, and clicks call the listeners. Timers never run, so the card's animation never starts: what a
+  // skip leaves on the page is all that skip itself did.
+  const fakeEl = () => { const el = { style: {}, h: {}, kids: {}, parentNode: null, className: "", innerHTML: "", textContent: "",
+    classList: { add() {}, remove() {}, contains() { return false; }, toggle() {} }, setAttribute() {}, getAttribute() { return null; },
+    addEventListener(t, f) { (el.h[t] = el.h[t] || []).push(f); }, querySelector(q) { return el.kids[q] || (el.kids[q] = fakeEl()); },
+    querySelectorAll() { return []; }, removeChild(c) { c.parentNode = null; }, appendChild(c) { c.parentNode = el; vctx.lastCard = c; },
+    click() { (el.h.click || []).forEach(f => f({})); } }; return el; };
+  const vctx = { window: {}, navigator: {}, location: { search: "" }, performance: ctx.performance,
+    document: { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], addEventListener() {}, createElement: () => fakeEl() },
+    setTimeout: () => 0, requestAnimationFrame: () => 0, Math, console: { log() {}, info() {}, warn() {}, error() {} } };
+  vctx.document.body = fakeEl();
+  vm.createContext(vctx);
+  vm.runInContext(core, vctx);
+  vm.runInContext(code, vctx);
+  vctx.initDataInput = JSON.parse(fs.readFileSync("site_data.json", "utf8"));
+  vm.runInContext("initData(initDataInput); DATA_READY = true;", vctx);
+  vctx.window.T82 = vctx.T82;                                // the browser's window is its global
+  let pullNow = null;                                        // the ball pull, without the drag: fire it on demand
+  vctx.wireBallPull = (lever, arm, onFire) => { let f = false; pullNow = () => { f = true; onFire(); }; return { fired: () => f }; };
+  const T = vctx.T82, AUD = require("./tools/daily-audit.js"), bot = AUD.makeBot({ T82: T, t: T.t }, {});
+  const rebuild = (seed, ops) => { const S = T.newState("cap", seed, null); T.dealRound(S);
+    ops.forEach(op => {
+      if (op.slice(0, 2) === "k:") { const q = op.slice(2).split("|"), sn = parseInt(q[1], 10); T.applyPick(S, q[0], isNaN(sn) ? null : sn, q[2]); T.dealRound(S); }
+      else if (op === "st") T.skipTeam(S); else if (op === "se") T.skipEra(S); else if (op === "yr") T.yearReroll(S);
+      else if (op.slice(0, 3) === "mv:") { const m = op.slice(3).split(","); T.moveSlot(S, +m[0], m[1]); }
+      else if (op.slice(0, 3) === "sw:") { const m = op.slice(3).split(","); T.swapSlots(S, +m[0], +m[1]); }
+    });
+    return S; };
+  // the game: showResults (engine, armSeasonSim, simSeason), the reel's mid-season pause (hhMidGate, hotHandMid's
+  // draws, applyMidBoost), or the post-season hotHand (its draws, hhRecord); standalone = the season plays out
+  const game = (seed, ops, standalone, decline) => {
+    vctx.MODE = "cap"; const G = rebuild(seed, ops); vctx.G = G;
+    const e = vctx.engine(G.picks.map(p => p.row), G.picks.map(p => p.slot));
+    let season = null, kind = "none", wins;
+    if (standalone) { T.armSeasonSim(G); season = T.simSeason(G, e); e.winTally = season.wins; }
+    wins = e.winTally;
+    const spin = () => { const hotIdx = vctx.hhPickHot(), seg = vctx.HH_SEGMENTS[vctx.hhSpinSeg()];
+      return { seg, newNet: e.net + (seg.m - 1) * vctx.valueOf(G.picks[hotIdx].row) * vctx.HH_BONUS_SCALE }; };
+    if (standalone && vctx.hhMidGate(e, season)) {
+      kind = "mid"; const at = season.games.indexOf(0); G.hhMidUsed = 1; const sp = spin();
+      if (decline) T.declineHeat(G); else if (sp.seg.m > 1) { T.hhMidReroll(season, at, sp.newNet); wins = season.wins; }
+    } else if (vctx.hhEligible(e) && e.winTally === 81) {
+      kind = "post"; const sp = spin();
+      if (decline) T.declineHeat(G); else wins = vctx.hhRecord(e.winTally, e.net, sp.newNet, sp.seg.m).wins;
+    }
+    // SHARE YOUR TEAM's record line, as the results page builds it (renderResults keeps its e: resultsEngine), when the
+    // Heat Check left the totals alone (refused, never offered, or a mid-season spin below HOT)
+    let share = null;
+    if (decline || kind === "none" || wins === e.winTally) {
+      G.resE = e; share = { line: vm.runInContext("shareText(resultsEngine())", vctx).split("\n")[1], rec: vctx.shareRecord(wins),
+        lucky: wins !== T.hhWins(e.net) };
+    }
+    return { wins, draws: G.rng.n, kind, actions: G.actions.slice(), share };
+  };
+  // v68.1: the post-season Heat Check's own card (hotHand, as the results open it), pulled or not, then SKIP. After the
+  // pull the spin is committed (the replay applies it), so SKIP has to leave the page on the spun record, never the 81;
+  // before the pull SKIP refuses (op hx). The share line and the share poster's spec read what the page shows.
+  // the share's second line carries the record as its own word (after the tier's emoji, if any)
+  const shares = (line, wins) => new RegExp("(^|\\s)" + vctx.shareRecord(wins) + "(\\s|$)").test(line);
+  const pickHot = vctx.hhPickHot, spinSeg = vctx.hhSpinSeg;
+  const skipRun = (seed, ops, pull, force) => {
+    vctx.MODE = "cap"; const G = rebuild(seed, ops); vctx.G = G;
+    const e = vctx.engine(G.picks.map(p => p.row), G.picks.map(p => p.slot));
+    T.armSeasonSim(G); const season = T.simSeason(G, e); e.winTally = season.wins; e.season = season;
+    vctx.__e = e; vm.runInContext("RESULTS_PRINT_SPEC = resultsPrintSpec(__e, null); RESULTS_PRINT_SHOWN = false;", vctx);
+    if (force) { vctx.hhPickHot = () => force.hot; vctx.hhSpinSeg = () => force.seg; }   // a chosen hot player and rung
+    try { vctx.hotHand(e); } finally { vctx.hhPickHot = pickHot; vctx.hhSpinSeg = spinSeg; }
+    if (pull) pullNow();
+    vctx.lastCard.querySelector("#hhSkip").click();
+    const moved = typeof G.hotNewNet === "number", page = moved ? G.hotWins : e.winTally, spec = vctx.RESULTS_PRINT_SPEC;
+    G.resE = e;
+    const out = { page, draws: G.rng.n, actions: G.actions.slice(), moved, cardGone: !vctx.lastCard.parentNode,
+      share: shares(vm.runInContext("shareText(resultsEngine())", vctx).split("\n")[1], page),
+      // the print counts its games for the strip and the record it prints, so they must sum to the page's record too
+      print: spec.wins === page && spec.net === vctx.signed1(moved ? G.hotNewNet : e.net) &&
+        spec.games.length === 82 && spec.games.reduce((a, g) => a + g, 0) === page };
+    if (force) { const sg = vctx.HH_SEGMENTS[force.seg];
+      out.want = T.hhRecord(81, e.net, e.net + (sg.m - 1) * vctx.valueOf(G.picks[force.hot].row) * vctx.HH_BONUS_SCALE, sg.m).wins;
+      out.m = sg.m; }
+    return out;
+  };
+  let n = 0, agree = 0; const kinds = { none: 0, mid: 0, post: 0 }, off = [];
+  let sk = 0, skAgree = 0, skMoved = 0, skSaved = 0, skRefused = 0; const skOff = [];
+  let sh = 0, shOk = 0, shLucky = 0; const shOff = [];
+  let fz = 0, fzOk = 0, fzCold = 0, fzNetOnly = 0, fzSave = 0; const fzOff = [];
+  for (let i = 1; i <= 700; i++) {
+    const seed = 880000 + i * 31, r = bot("cap", null, seed);
+    if (r.dead) continue;
+    for (const standalone of [true, false]) for (const decline of [false, true]) {
+      const c = game(seed, r.S.actions.slice(), standalone, decline), v = T.replay({ mode: "cap", seed, actions: c.actions });
+      n++;
+      if (v.ok && v.result.wins === c.wins && v.result.rngDraws === c.draws) agree++; else if (off.length < 3) off.push([seed, standalone, decline, c.wins, v.ok && v.result.wins]);
+      if (!decline) kinds[c.kind]++;
+      if (c.share) { sh++; if (shares(c.share.line, c.wins)) shOk++; else if (shOff.length < 3) shOff.push([seed, c.share.line, c.share.rec]);
+        if (c.share.lucky && standalone) shLucky++; }
+      if (standalone && !decline && c.kind === "post") for (const pull of [true, false]) {
+        const s = skipRun(seed, r.S.actions.slice(), pull), sv = T.replay({ mode: "cap", seed, actions: s.actions });
+        sk++;
+        const ok = sv.ok && sv.result.wins === s.page && sv.result.rngDraws === s.draws && s.cardGone && s.share && s.print &&
+          (pull ? !(sv.result.hh && sv.result.hh.declined) : !!(sv.result.hh && sv.result.hh.declined) && s.page === 81);
+        if (ok) skAgree++; else if (skOff.length < 3) skOff.push([seed, pull, s.page, sv.ok && sv.result.wins, s.share, s.print]);
+        if (pull && s.moved) skMoved++; if (pull && s.page === 82) skSaved++; if (!pull) skRefused++;
+      }
+      // every rung on every hot player of the same real 81s, pulled then skipped: the page lands where hhRecord says
+      if (standalone && !decline && c.kind === "post") for (let hot = 0; hot < 5; hot++) for (let seg = 0; seg < 5; seg++) {
+        const s = skipRun(seed, r.S.actions.slice(), true, { hot, seg });
+        fz++;
+        if (s.page === s.want && s.moved === (s.m !== 1) && s.cardGone && s.share && s.print) fzOk++;
+        else if (fzOff.length < 3) fzOff.push([seed, hot, seg, s.page, s.want, s.share, s.print]);
+        if (s.m < 1 && s.page < 81) fzCold++; if (s.moved && s.page === 81) fzNetOnly++; if (s.page === 82) fzSave++;
+      }
+    }
+  }
+  eq("the game and the replay verifier reach the same record with the same draws on every one of " + n + " real Presti " +
+    "runs (spun and refused, played out and projection-only), the mid-season and post-season Heat Checks included",
+    [agree === n, off, kinds.mid > 50, kinds.post > 0], [true, [], true, true]);
+  eq("SKIP on the post-season Heat Check: after the pull the page lands on the spun record (a save is kept, a COLD is not " +
+    "dodged), before the pull it refuses and keeps the 81; the card closes, and the replay agrees, record and draws, on all " +
+    sk + " (" + skMoved + " spins moved the totals, " + skSaved + " saved)",
+    [skAgree === sk, skOff, sk >= 4, skMoved > 0, skRefused === sk / 2], [true, [], true, true, true]);
+  eq("SKIP after the pull, every rung on every hot player of those same 81s (" + fz + " skips): the page lands on " +
+    "hhRecord's record, the share line and the share poster's spec (its wins, the games it prints the record from, and " +
+    "the NET in its foot) read it; " + fzCold + " COLDs lowered it and stay lowered (the print still counted 81 wins " +
+    "there), " + fzNetOnly + " spins moved only the net (the poster kept the pre-spin net there), " + fzSave + " saved",
+    [fzOk === fz, fzOff, fz >= 50, fzCold > 0, fzNetOnly > 0, fzSave > 0], [true, [], true, true, true, true]);
+  eq("SHARE YOUR TEAM shares the record played when the Heat Check left the totals alone (refused, not offered, or a " +
+    "mid-season spin below HOT): " + sh + " runs, " + shLucky + " of them played to a record their projection does not " +
+    "give (it shared the projection: a played 81-1 that projects 75 shared 75-7)",
+    [shOk === sh, shOff, shLucky > 100], [true, [], true]);
 }
 
 

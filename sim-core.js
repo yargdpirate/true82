@@ -1309,13 +1309,14 @@ function initDataCore(data) {
     var cap = C(S, "PG_CAP", 0.97);
     var pRaw = phi(S, e.net / C(S, "NET_SD", SC.NET_SD));
     var p = Math.min(cap, Math.max(1 - cap, pRaw));
-    var games = [], w = 0;
+    var games = [], us = [], w = 0;
     for (var g = 0; g < CFG.GAMES_IN_SEASON; g++) {
-      var win = rnd(S) < p;
+      var u = rnd(S), win = u < p;
       if (win) w++;
       games.push(win ? 1 : 0);
+      us.push(u);                                // v68.1: each night's draw, kept so a mid-season save re-rolls from it
     }
-    return { wins: w, losses: CFG.GAMES_IN_SEASON - w, pGame: p, pRaw: pRaw, games: games };
+    return { wins: w, losses: CFG.GAMES_IN_SEASON - w, pGame: p, pRaw: pRaw, games: games, u: us };
   }
   // Arming is an ACTION ("ss"), logged before the rolls, so a replayed run
   // knows it was played out game by game and draws identically. Nothing
@@ -1332,6 +1333,55 @@ function initDataCore(data) {
     if (S.actions) S.actions.push("hx");
     return true;
   }
+  // v68.1 THE RECORD RULE (the owner, 2026-10-02: "move from the real 81"). A Heat Check spin moves the record the
+  // season actually PLAYED, never the projection's. The spin's projected change is how many whole wins it moves the
+  // five's projected record (hhWins(newNet) - hhWins(net)); the rung says which way that may go: HOT, ON FIRE and
+  // SUPERNOVA (m > 1) can only raise the played record, WARM (m = 1) never moves it, COLD (m < 1) can only lower it.
+  // The 82-0 save is the raised record reaching 82. Why: Presti plays the season game by game, and v68 set the record
+  // from the spun projection, so a HOT spin dropped a lucky 81-1 (a five projecting 78 to 80) to 78-4. On a standalone
+  // Presti run every post-season Heat Check is such a five: one drafted above HH_MID_NET (20, a projection of 79 and
+  // up) that loses a game gets the mid-season Heat Check at that loss instead (hhMidAt), so it never reaches this one.
+  // played: the record played (81 at the post-season check); net, newNet: the five's net before and after the spin;
+  // m: the rung's multiplier. -> { wins, save (1: the raised record reached 82), before, after (the projections) }.
+  // app.js's hotHand reads this same function, so a submitted run verifies against finish() below.
+  function hhRecord(played, net, newNet, m) {
+    var N = CFG.GAMES_IN_SEASON, before = hhWins(net), after = hhWins(newNet), wins = played;
+    if (m > 1) wins = Math.min(N, played + Math.max(0, after - before));
+    else if (m < 1) wins = Math.max(0, played + Math.min(0, after - before));
+    return { wins: wins, save: (wins >= N && played < N) ? 1 : 0, before: before, after: after };
+  }
+
+  // v68.1 THE MID-SEASON SAVE (v47.15's mid-season Heat Check), in the engine so a replay can know it happened. A
+  // standalone Presti season (armed "ss") whose five is drafted above HH_MID_NET net pauses on its first realized
+  // loss; the spin's two draws come right after the season's 82. -> the index of that game, or -1. app.js's
+  // hhMidGate adds only its QA lever (?midhot=1 waives the net bar on a test build).
+  var HH_MID_NET = 20;
+  function hhMidAt(S, e, season) {
+    if (S.mode !== "cap" || !S.simSeason || !season || !season.losses || !S.picks || S.picks.length < CFG.ROUNDS) return -1;
+    if (!(e.net > HH_MID_NET)) return -1;
+    for (var i = 0; i < season.games.length; i++) if (!season.games[i]) return i;
+    return -1;
+  }
+  // HOT or better (m > 1) re-rolls the saved game and the rest of the season at the boosted nightly rate, phi(newNet /
+  // NET_SD), never lower than the rate it played (pGame). v68.1 (the owner: a HOT-or-better boost can never leave the
+  // player worse off than the games he played): the re-roll reuses each night's own draw instead of a fresh random
+  // number (it used Math.random, so a boost could end with MORE losses than the season it replaced, and no replay
+  // could check it). A night is a win when its draw is under the new rate, so every win the season played stays a
+  // win; the saved game's draw (a loss: somewhere in [pGame, 1)) is stretched back over [0, 1), so it is saved at the
+  // full new rate, as before. Each re-rolled night still wins at exactly the new rate, so the odds are what they were;
+  // only "worse than played" is gone, and it draws nothing new. Edits season in place -> season.
+  function hhMidReroll(season, at, newNet) {
+    var p0 = season.pGame, p2 = Math.max(p0, phi(null, newNet / SC.NET_SD)), w = 0, i;
+    for (i = at; i < season.games.length; i++) {
+      var u = season.u[i];
+      if (i === at) u = p0 < 1 ? (u - p0) / (1 - p0) : 0;          // the saved game: its loss's draw, stretched over [0, 1)
+      season.games[i] = u < p2 ? 1 : 0;
+    }
+    for (i = 0; i < season.games.length; i++) if (season.games[i]) w++;
+    season.wins = w; season.losses = season.games.length - w;
+    return season;
+  }
+
   function finish(S) {
     if (S.mode === "kaman") {
       return { mode: S.mode, wins: CFG.GAMES_IN_SEASON, losses: 0, net: null, hh: null,
@@ -1350,39 +1400,58 @@ function initDataCore(data) {
       capLeft: S.mode === "cap" ? S.budget : null,
       rngDraws: S.rng ? S.rng.n : 0, coreVersion: T.VERSION, dataVersion: DATA_VERSION
     };
-    if (S.mode === "classic" && S.simSeason) {
-      var season = simSeason(S, e);
+    // v42 ANY GIVEN NIGHT: a standalone run armed "ss" plays its 82 games from the run's own stream. v68.1: Presti
+    // too. app.js has realized standalone Presti seasons since 2026-07-26 (its Heat Check keys on the 81 PLAYED), but
+    // this verifier only realized Classic, so it judged a Presti run on the projection: another record, and 82 fewer
+    // draws. Now both realize, in the same order.
+    var season = null;
+    if ((S.mode === "classic" || S.mode === "cap") && S.simSeason) {
+      season = simSeason(S, e);
       res.expWins = e.winTally;
       res.wins = season.wins;
       res.losses = season.losses;
       res.season = season;
-      res.rngDraws = S.rng ? S.rng.n : 0;
     }
-    if (S.mode === "cap" && e.winTally === CFG.GAMES_IN_SEASON - 1) {
-      var hotIdx = hhPickHot(S), segIdx = hhSpinSeg(S);
-      var seg = HH_SEGMENTS[segIdx];
-      var hotV = valueOf(S, S.picks[hotIdx].row);
-      var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
+    var midAt = hhMidAt(S, e, season), hotIdx, segIdx, seg, hotV, newNet;
+    if (midAt >= 0) {
+      // v68.1 the mid-season Heat Check (see hhMidAt): its two draws come after the season's, as app.js draws them when
+      // the reel pauses. One per season: it takes the post-season one's place. I DON'T WANT YOUR CHARITY ("hx") and
+      // anything below HOT leave the season exactly as it played; HOT or better re-rolls from that game on (hhMidReroll).
+      hotIdx = hhPickHot(S); segIdx = hhSpinSeg(S); seg = HH_SEGMENTS[segIdx];
+      hotV = valueOf(S, S.picks[hotIdx].row);
+      newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
+      if (S.hhDeclined) res.hh = { mid: midAt + 1, declined: 1, hotIdx: hotIdx, segIdx: segIdx };
+      else {
+        res.hh = { mid: midAt + 1, hotIdx: hotIdx, segIdx: segIdx, segLabel: seg.label, m: seg.m, newNet: newNet, win: 0 };
+        if (seg.m > 1) {
+          hhMidReroll(season, midAt, newNet);
+          res.wins = season.wins; res.losses = season.losses; res.netFinal = newNet;
+          res.hh.win = season.losses === 0 ? 1 : 0;
+        }
+      }
+    } else if (S.mode === "cap" && res.wins === CFG.GAMES_IN_SEASON - 1) {
+      // the post-season Heat Check, at exactly 81 wins: the 81 PLAYED on a realized season (v68.1), the projection's
+      // 81 on a board that does not play its season out (the Daily, a challenge)
+      hotIdx = hhPickHot(S); segIdx = hhSpinSeg(S); seg = HH_SEGMENTS[segIdx];
+      hotV = valueOf(S, S.picks[hotIdx].row);
+      newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
       // v37: a declined Heat Check ("I don't want your charity") consumes the
-      // SAME two draws — clients draw at overlay build, so rngDraws parity
-      // demands it — but applies nothing. The record stands at 81. Since v68
-      // that refusal is the only way to KEEP the 81: see below.
+      // SAME two draws (clients draw at overlay build, so rngDraws parity
+      // demands it) but applies nothing. The record stands at 81.
       if (S.hhDeclined) {
         res.hh = { declined: 1, hotIdx: hotIdx, segIdx: segIdx };
       } else {
-        var win = newNet > hhNet82(S);
+        // v68.1: the record moves from the 81 played by the spin's projected change (hhRecord): HOT and up only
+        // raise it, WARM never moves it, COLD only lowers it, and the save is the raised record reaching 82. v68 set
+        // it from the spun projection (hhWins(newNet)), so a HOT spin could lower a lucky 81-1. app.js's hotHand
+        // takes the same function, so a submitted run still verifies here.
+        var rec = hhRecord(res.wins, e.net, newNet, seg.m);
         res.hh = { hotIdx: hotIdx, segIdx: segIdx, segLabel: seg.label, m: seg.m,
-                   newNet: newNet, win: win ? 1 : 0 };
-        // v68: the spin's number STANDS, up or down. The old law clamped this to
-        // "improve only", which was invisible while every rung was >= 1 but would
-        // have silently eaten the owner's COLD 0.9 (the one rung that costs).
-        // WARM is exactly x1, so newNet === e.net and hhWins(newNet) === winTally:
-        // an exact no-op, by the same formula the engine used. app.js's hotHand
-        // takes the same number, so a submitted run still verifies here.
-        if (win) { res.wins = CFG.GAMES_IN_SEASON; res.losses = 0; res.netFinal = newNet; }
-        else { res.wins = hhWins(newNet); res.losses = CFG.GAMES_IN_SEASON - res.wins; res.netFinal = newNet; }
+                   newNet: newNet, win: rec.save };
+        res.wins = rec.wins; res.losses = CFG.GAMES_IN_SEASON - rec.wins; res.netFinal = newNet;
       }
     }
+    res.rngDraws = S.rng ? S.rng.n : 0;
     return res;
   }
   // v68 (owner): the ladder is a flat 0.1 staircase, 0.9 to 1.3. COLD is the
@@ -1457,7 +1526,7 @@ function initDataCore(data) {
 
   /* ============ public API ============ */
   var T = {
-    VERSION: 15,  // v15 (v68): the Hot Hand ladder is a flat 0.1 staircase, 0.9 COLD to 1.3 SUPERNOVA (was 1.0/1.2/1.35/1.5/2.0), and the spin's number now STANDS in finish() instead of being clamped to "improve only" - so COLD can cost a win and I DON'T WANT YOUR CHARITY is the only way to keep an 81. v14 (v63.1): one ball tops out at 6 (USAGE_CAP); the Dueling Banjos no longer charge (one ball tells their story); Presti's ceiling is $26 (was $23) and its $1 gem is luck's rebate (one at most, only when the board's five best rolled over fair) on boards that do not set CAP_GEM. v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
+    VERSION: 16,  // v16 (v68.1, the owner's "move from the real 81"): a Heat Check spin moves the record PLAYED by its projected change (hhRecord: HOT and up only raise it, WARM never moves it, COLD only lowers it; the save is the raised record reaching 82), and finish() now plays out an armed Presti season ("ss") and its mid-season Heat Check the way app.js does, the mid-season re-roll reusing each night's own draw (never worse than the games played). v15 (v68): the Hot Hand ladder is a flat 0.1 staircase, 0.9 COLD to 1.3 SUPERNOVA (was 1.0/1.2/1.35/1.5/2.0), and the spin's number now STANDS in finish() instead of being clamped to "improve only" - so COLD can cost a win and I DON'T WANT YOUR CHARITY is the only way to keep an 81. v14 (v63.1): one ball tops out at 6 (USAGE_CAP); the Dueling Banjos no longer charge (one ball tells their story); Presti's ceiling is $26 (was $23) and its $1 gem is luck's rebate (one at most, only when the board's five best rolled over fair) on boards that do not set CAP_GEM. v13 (v63): one ball is usage only (a five shares 120% free, 0.3 a point past it; the 20-point rule is gone) and size by unit (two guards 6'2" or shorter cost 2; two F/C 6'6" or shorter cost 2; the 6'6" average is gone). v12 (v62.2): the Simmons pairs (two ball-stickers 2, two hunted 2, two foul merchants 1) and 1 per stat padder. v11 (v62.1): the Dueling Banjos Tax (two settled TITLE #1s cost 2). v10 (v62): one ball (a 4th and 5th 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3). v9 (v61): the label taxes (labels.json; the rim and creator taxes read the tags). v8: traded seasons use whole-season rate/value stats; Presti ceiling $23 ($21 fire sale)
     seedOf: seedOf, autoSeed: autoSeed, makeRng: makeRng, queueRng: queueRng,
     t: null,   // tables handle, set by initData
     initData: function (data) {
@@ -1490,7 +1559,8 @@ function initDataCore(data) {
     setLabels: setLabels, labelsOf: labelsOf, labelsReady: function () { return !!LABELS; }, foldName: foldName, labelTaxes: labelTaxes,
     oneBall: oneBall, sizeUnits: sizeUnits,
     hhNet82: hhNet82, hhPickHot: hhPickHot, hhSpinSeg: hhSpinSeg, hhEligible: hhEligible,
-    hhWins: hhWins, swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,
+    hhWins: hhWins, hhRecord: hhRecord, hhMidAt: hhMidAt, hhMidReroll: hhMidReroll, HH_MID_NET: HH_MID_NET,
+    swapTargetsFor: swapTargetsFor, pickHasMoves: pickHasMoves,
     HH_SEGMENTS: HH_SEGMENTS, HH_BONUS_SCALE: HH_BONUS_SCALE
   };
 

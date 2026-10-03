@@ -328,6 +328,7 @@ function hhNet82() { return T82.hhNet82(G); }
 function hhPickHot() { return T82.hhPickHot(G); }
 function hhSpinSeg() { return T82.hhSpinSeg(G); }
 function hhEligible(e) { return T82.hhEligible(G, e); }
+function hhRecord(played, net, newNet, m) { return T82.hhRecord(played, net, newNet, m); }   // v68.1: the record a spin leaves (sim-core.js)
 function swapTargetsFor(i) { return T82.swapTargetsFor(G, i); }
 function pickHasMoves(i) { return T82.pickHasMoves(G, i); }
 
@@ -4864,17 +4865,10 @@ function qaForceSeason(e, season) {
   }
   e.winTally = wins;
 }
-// v47.15 MID-SEASON HEAT CHECK: "Hot or better" is the HOT segment's index in the
-// engine's ladder (COLD 0, WARM 1, HOT 2, ON FIRE 3, SUPERNOVA 4). Resolved by
-// label so an engine reorder can never silently move the bar.
-var HH_MID_MIN_SEG = (function () {
-  for (var i = 0; i < HH_SEGMENTS.length; i++) if (/hot/i.test(String(HH_SEGMENTS[i].label))) return i;
-  return 2;
-})();
 
 function hotHand(e) {
   var clutch = FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1;   // exactly 81 wins
-  var hotIdx = 0, segIdx = 0, seg = HH_SEGMENTS[0], hotV = 0, newNet = e.net, win = false;
+  var hotIdx = 0, segIdx = 0, seg = HH_SEGMENTS[0], hotV = 0, newNet = e.net, win = false, hhRec = null;
   if (clutch) {
     hotIdx = hhPickHot(); segIdx = hhSpinSeg(); seg = HH_SEGMENTS[segIdx];
     if (FORCE_82 === "save") { segIdx = HH_SEGMENTS.length - 1; seg = HH_SEGMENTS[segIdx]; }   // v67 QA: ?force82=save lands it
@@ -4882,10 +4876,17 @@ function hotHand(e) {
     // so without a lever the drop treatment is unreachable on demand.
     else if (FORCE_82 === "cold") { segIdx = 0; seg = HH_SEGMENTS[0]; }
     hotV = valueOf(G.picks[hotIdx].row);
-    var THRESH = hhNet82();
     newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
-    win = newNet > THRESH;
-    if (FORCE_82 === "save" && !win) { newNet = THRESH + 0.5; win = true; }   // ...and the save reaches 82-0 (test builds only)
+    // v68.1 (the owner, 2026-10-02: "move from the real 81"): the record moves from the 81 PLAYED (e.winTally: the
+    // realized season on a standalone run, the projection on the Daily) by the spin's projected change. HOT and up
+    // only raise it, WARM never moves it, COLD only lowers it; the save is the raised record reaching 82. v68 set it
+    // from the spun projection (hhWins(newNet)), so a HOT spin could drop a lucky 81-1 to 78-4. The rule lives in
+    // sim-core.js (hhRecord), the same function the replay verifier's finish() runs.
+    hhRec = hhRecord(e.winTally, e.net, newNet, seg.m);   // (hhRec: verdict() has its own `rec`, the record's element)
+    if (FORCE_82 === "save" && !hhRec.save) {                     // ...and the save reaches 82-0 (test builds only)
+      newNet = Math.max(newNet, hhNet82() + 0.5); hhRec = { wins: CFG.GAMES_IN_SEASON, save: 1 };
+    }
+    win = !!hhRec.save;
   }
   // v68: the ladder's neutral rung is WARM (m === 1), NOT index 0: COLD is 0.9
   // and takes value away. "Did the spin move anything" is a question about the
@@ -4951,23 +4952,30 @@ function hotHand(e) {
   }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
-  function verdict() {
+  // v68.1: what the spin does to the run (the totals, the results under the card, the Daily's official record, the
+  // Tribune's payload), applied once. verdict() runs it when the reveal lands, and SKIP after the pull runs it too:
+  // the pull committed the spin (the replay's finish() applies it), so skipping the show must never dodge a COLD or
+  // throw away a save. Before, a skip after the pull only closed the card, and the page kept the 81.
+  var applied = false;
+  function applyOutcome() {
+    if (applied) return;
+    applied = true;
     analyticsTrack("heatcheck_result", Object.assign(analyticsRunSnapshot(), {
       surface: "heat_check", action: "spin_result", segment: seg.label,
       outcome: win ? "hit_82" : "miss", hit_82: win ? 1 : 0,
-      wins: hhMoved ? hhWins(newNet) : e.winTally,
+      wins: hhRec ? hhRec.wins : e.winTally,
       net: hhMoved ? newNet : e.net
     }));
-    // Final record is now known (any rung off WARM moves it, COLD downward): stage the Tribune.
+    // Final record is now known (v68.1: HOT and up can only raise the 81 played, COLD only lower it): stage the Tribune.
     prepareRecap(e,
-      hhMoved ? hhWins(newNet) : e.winTally,
+      hhRec ? hhRec.wins : e.winTally,
       hhMoved ? newNet : e.net,
       hhMoved ? { player: shareSurname(G.picks[hotIdx].row[IDX.name]), tier: seg.label } : null);
     if (hhMoved) {                                               // WARM = x1 = the spin changed nothing: no mark, no move
       G.hotIdx = hotIdx;
       G.hotLvl = seg.lvl;                                        // tier reached (COLD 0 ... SUPERNOVA 4) -> picks the share emoji
       G.hotValue = hotV * (1 + (seg.m - 1) * HH_BONUS_SCALE);    // the hot player's value after the spin (COLD: lower)
-      G.hotBase = e.net; G.hotNewNet = newNet; G.hotWins = hhWins(newNet);   // post-spin totals (drive record/net/share)
+      G.hotBase = e.net; G.hotNewNet = newNet; G.hotWins = hhRec.wins;   // post-spin totals (drive record/net/share; v68.1: hhRecord)
       // THE DAILY: a boost that lands after the results render amends the SAME
       // run's official record (nonce-matched; a practice run can never steal
       // official) and refreshes the on-screen grade so the screenshot is honest.
@@ -5011,7 +5019,7 @@ function hotHand(e) {
         var bonusRow = document.createElement("div");
         bonusRow.className = "ledger-row";
         var who = esc(shareSurname(G.picks[hotIdx].row[IDX.name]));
-        bonusRow.innerHTML = '<span>Hot Hand ' + (hhDown ? "cost" : "bonus") + '<span class="why">' + seg.label + " \u2014 " +
+        bonusRow.innerHTML = '<span>Hot Hand ' + (hhDown ? "cost" : "bonus") + '<span class="why">' + seg.label + " \u00B7 " +
           who + (hhCold ? " went cold" : " caught fire") + " (value \u00D7" + seg.m + ").</span></span>" +
           '<span class="ledger-amt ' + (hhDown ? "tax" : "hot") + '">' + (hhDown ? "\u2212" : "+") + fmt1(Math.abs(newNet - e.net)) + "</span>";
         totalRow.parentNode.insertBefore(bonusRow, totalRow);
@@ -5022,6 +5030,10 @@ function hotHand(e) {
           " Hot Hand " + fmt1(Math.abs(newNet - e.net)) + " minus baseline " + fmt1(BASELINE) + ".";
       }
     }
+  }
+
+  function verdict() {
+    applyOutcome();
     var v = ov.querySelector("#hhVerdict");
     var finalW = hhMoved ? G.hotWins : e.winTally;   // wins are now the static reveal (ticker showed net rating)
     var netHtml = '<div class="hh-stamp' + (win ? '' : ' miss') + '">' + finalW + "\u2013" + (CFG.GAMES_IN_SEASON - finalW) + '</div><div class="hh-netcap">FINAL RECORD</div>';
@@ -5043,8 +5055,8 @@ function hotHand(e) {
     ov.querySelector("#hhActions").classList.add("on");
   }
 
-  // wins implied by a net rating - matches the engine's win formula exactly
-  function hhWins(net) { return Math.min(CFG.GAMES_IN_SEASON, Math.ceil(CFG.GAMES_IN_SEASON * phi(net / SC.NET_SD))); }
+  // v68.1: the record as the net climbs: the 81 played, moved by the projected change so far (hhRecord)
+  function recAt(net) { return hhRecord(e.winTally, e.net, net, seg.m).wins; }
 
   function climb() {
     ov.querySelector("#hhStep3").classList.add("on");
@@ -5053,7 +5065,7 @@ function hotHand(e) {
       if (!ov.parentNode) return;
       var t = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - t, 4.5);   // hard ease-out = crawl/stall near the line
       var val = start + (newNet - start) * k;                                 // net rating is what climbs on-screen now
-      var w = hhWins(val);                                                    // wins tracked under the hood for the bar + verdict
+      var w = recAt(val);                                                     // wins tracked under the hood for the bar + verdict
       numEl.textContent = signed1(val);                                       // show NET RATING ticking; final record is revealed static at verdict
       var bonusFrac = Math.max(0, w / CFG.GAMES_IN_SEASON - baseFrac);        // bar still fills toward 82-0 in fire gold
       bonusEl.style.width = (bonusFrac * 100).toFixed(2) + "%";
@@ -5190,6 +5202,11 @@ function hotHand(e) {
         surface: "heat_check", action: "skip", pulled: 0
       }));
       if (window.T82 && T82.declineHeat) T82.declineHeat(G);                 // v37: silent skip at 81 was ALREADY a decline; now the contract knows it
+    } else if (clutch) {
+      applyOutcome();                                                        // v68.1: after the pull, skip skips the show, never the spin
+      dismiss();
+      if (win) fireWL();                                                     // the save, as SEE YOUR TEAM reveals it
+      return;
     }
     dismiss();
   });
@@ -5957,10 +5974,17 @@ function requestEdition() {
 // v59.3 (the owner: keep the Tribune, but only at the very bottom of the results, under RUN IT BACK; never a
 // gate, in any mode). One tap: the paper unfolds right away and works as always. Opening it is still the deliberate
 // act that requests the AI edition and publishes the article link.
+// v68.1: the run's results as the results page shows them. A standalone season is played out, so its record is the
+// season played (e.winTally after showResults), not the projection a fresh engine() returns; the share text and the
+// Tribune read this one (before, SHARE YOUR TEAM printed the projection whenever the Heat Check left the totals alone)
+function resultsEngine() {
+  if (G && G.resE) return G.resE;
+  return engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+}
 function openTribune() {
   if (!G || G.screen !== "results" || MODE === "kaman") return;
   if (!G.recapPayload) {
-    var e = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+    var e = resultsEngine();
     var hot = typeof G.hotNewNet === "number";
     prepareRecap(e, hot ? G.hotWins : e.winTally, hot ? G.hotNewNet : e.net, null);
   }
@@ -6272,7 +6296,7 @@ function showNewspaper(unfold) {
       return;
     }
     trackRecapAction("share_article");
-    var e2 = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+    var e2 = resultsEngine();   // v68.1: the record played, as the results show it
     var sw = (typeof G.hotNewNet === "number") ? G.hotWins : e2.winTally;
     var sn = (typeof G.hotNewNet === "number") ? G.hotNewNet : e2.net;
     var rTrack = { mode: MODE, wins: sw, net: sn,
@@ -7975,11 +7999,13 @@ function showResults() {
   // Heat Check its intended stage. Hot Hand keys on e.winTally, which below
   // becomes the REALIZED record before the finish path runs, so the spin
   // fires on a literal 81 regardless of where the loss fell; the boost
-  // rewrites the record through hhWins(newNet) exactly as before, and the
+  // moves that played 81 by the spin's projected change (v68.1, hhRecord in
+  // sim-core.js: HOT and up only raise it, COLD only lowers it), and the
   // percentile still ships raw pre-boost e.net, which realization never
   // touches. Daily boards, challenges, and pro stay analytic until their
   // own adaptations. The arming op "ss" rides the action stream so replays
-  // realize identically.
+  // realize identically (v68.1: sim-core's finish() now realizes Presti too,
+  // and its mid-season Heat Check).
   if (seasonReelPlays()) {
     T82.armSeasonSim(G);
     var season = T82.simSeason(G, e);
@@ -8060,8 +8086,12 @@ var REEL_MONTHS = [["OCT", 5], ["NOV", 15], ["DEC", 15], ["JAN", 15], ["FEB", 11
    they did; the reel then plays the shorter heavy pauses (T82RISO.holdFor: HOLD_SCALE, 0.85, of
    before, in reel-riso.js), so a season ends sooner than REEL_END_MS by exactly the time they save
    (reelSavedMs: about 0.7 s for a 78-4, about 1.2 s for a 70-12 or a 60-22, about 1.3 s at most; an
-   82-0 has no loss and still ends at REEL_END_MS). */
-var REEL_END_MS = 16800;
+   82-0 has no loss and still ends at REEL_END_MS).
+   v68.1 (the owner, 2026-10-02: "shorter season too"): the whole season is 10% shorter, 15.12 s (was 16.8 s), on top
+   of the shorter pauses. Every record's reel plays 10% faster (the 78-82-win seasons at 0.9 of their natural pace);
+   the red flash keeps its own limit (FLASH_GAP in reel-riso.js), so it never comes faster for it. TO CHANGE IT: this
+   one number (ms), stamp a new cache key, run node test.js (the pacing checks name it). */
+var REEL_END_MS = 15120;
 var REEL_TICK = 48, REEL_LEAD0 = 650, REEL_LEAD = 960, REEL_OPEN = 140, REEL_CLOSE = 120, REEL_FIN = 640;
 function reelNaturalMs(games, holdFn) {
   var t = 0, gi = 0, cl = 0, streak = 0;
@@ -8151,7 +8181,7 @@ function hhMidGate(e, season) {
     engine: !!(window.T82 && T82.hhPickHot && T82.hhSpinSeg && HH_SEGMENTS && HH_SEGMENTS.length),
     hasLoss: !!(season && season.losses > 0),
     unused: !G.hhMidUsed,
-    netBar: FORCE_MIDHOT || (e && e.net > 20)
+    netBar: FORCE_MIDHOT || (e && e.net > T82.HH_MID_NET)   // v68.1: the engine's bar (20), which its verifier reads too
   };
   var go = parts.presti && parts.standalone && parts.roster5 && parts.engine &&
            parts.hasLoss && parts.unused && parts.netBar;
@@ -8173,7 +8203,7 @@ function hotHandMid(e, gameNo, winsSoFar, onResolve) {
   G.hhMidUsed = 1;
   var hotIdx = hhPickHot(), segIdx = hhSpinSeg(), seg = HH_SEGMENTS[segIdx];
   var hotV = valueOf(G.picks[hotIdx].row);
-  var qualifies = segIdx >= HH_MID_MIN_SEG;
+  var qualifies = seg.m > 1;   // v47.15 "HOT or better"; v68.1: read off the multiplier (COLD 0.9, WARM 1.0), as finish() does
   var newNet = e.net + (seg.m - 1) * hotV * HH_BONUS_SCALE;
   var names = G.picks.map(function (p) { return shareSurname(p.row[IDX.name]); });
   var ITEM = 54, COPIES = 6, targetFlat = (COPIES - 2) * names.length + hotIdx;
@@ -8371,7 +8401,7 @@ function applyMidBoostToResults(e) {
   if (totalRow) {
     var bonusRow = document.createElement("div");
     bonusRow.className = "ledger-row";
-    bonusRow.innerHTML = '<span>Hot Hand bonus<span class="why">' + esc(hm.seg.label) + " \u2014 " +
+    bonusRow.innerHTML = '<span>Hot Hand bonus<span class="why">' + esc(hm.seg.label) + " \u00B7 " +
       esc(shareSurname(G.picks[hm.hotIdx].row[IDX.name])) + " caught fire in Game " + hm.gameNo + " (value \u00D7" + hm.seg.m + ").</span></span>" +
       '<span class="ledger-amt hot">+' + fmt1(hm.newNet - e.net) + "</span>";
     totalRow.parentNode.insertBefore(bonusRow, totalRow);
@@ -8494,11 +8524,10 @@ function showSeasonReel(season, e, done, midTrigger) {
   }
 
   function applyMidBoost(boost) {
-    var p2 = phi(boost.newNet / SC.NET_SD);
-    for (var i = gi; i < season.games.length; i++) season.games[i] = Math.random() < p2;
-    var w2 = 0;
-    for (var j = 0; j < season.games.length; j++) { if (season.games[j]) w2++; }
-    season.wins = w2; season.losses = season.games.length - w2;
+    // v68.1: the saved game and the rest re-roll from each night's own draw (sim-core.js hhMidReroll), so a HOT-or-
+    // better boost can never end worse than the games played (the Math.random re-roll before it could), and a replay
+    // reaches the same record. Every win the season played stays a win; each night still wins at the boosted rate.
+    T82.hhMidReroll(season, gi, boost.newNet);
     var eRef = midTrigger.e;
     eRef.winTally = season.wins; eRef.season = season;
     G.hotMid = { hotIdx: boost.hotIdx, segIdx: boost.segIdx, seg: boost.seg, hotV: boost.hotV, newNet: boost.newNet, gameNo: gi + 1 };
@@ -8980,6 +9009,11 @@ function resultsPrintSpec(e, daily, winsNow) {
     for (var k = games.length - 1; have < wins && k >= 0; k--) {   // a Heat Check save flips the loss it rescued
       if (!games[k]) { games[k] = 1; have++; saved = k; }
     }
+    // v68.1: a COLD that lowers the record (it can only lower the season played) costs the season's last wins, the
+    // mirror of the save; the print counts its games for the strip AND the record it prints (before, an 80-2 printed 81-1)
+    for (k = games.length - 1; have > wins && k >= 0; k--) {
+      if (games[k]) { games[k] = 0; have--; }
+    }
   }
   var picks = picksInSlotOrder();
   var names = picks.map(function (en) { return "'" + String(en.p.row[IDX.season]).slice(-2) + " " + ballotSurname(en.p.row[IDX.name]); });
@@ -9084,8 +9118,13 @@ function bakeResultsPoster() {
   });
 }
 // The end-of-season Heat Check can turn 81-1 into 82-0 after the page is up.
+// v68.1: it can also move the net and leave the record (HOT on a lucky 81-1 whose projection does not reach the next
+// win, a COLD that costs no win). The record's picture stays, but the share poster's foot prints the net, so the spec
+// is rebuilt and the poster re-baked; the on-page print (no net on it) is not played again.
 function resultsPrintRecord(e, wins) {
-  if (!RESULTS_PRINT_SPEC || wins === RESULTS_PRINT_SPEC.wins) return;
+  if (!RESULTS_PRINT_SPEC) return;
+  var sameWins = wins === RESULTS_PRINT_SPEC.wins;
+  if (sameWins && signed1(typeof G.hotNewNet === "number" ? G.hotNewNet : e.net) === RESULTS_PRINT_SPEC.net) return;
   var daily = !!(G.social && window.T82DAILY);
   // v67 part two: the save that turns 81-1 into 82-0 reprints the picture as the run's perfect scene (the owner's "so
   // much better than 81-1"); it leaves its bag when that reprint actually reveals (playResultsPrint)
@@ -9096,7 +9135,7 @@ function resultsPrintRecord(e, wins) {
   // v51: never re-print under the Heat Check (v50 invariant 2: the print never reveals
   // under an overlay). Before the first reveal, the pending reveal prints the saved
   // season; after it, the re-print waits for a clear page. The poster bakes now.
-  if (RESULTS_PRINT_SHOWN) {
+  if (RESULTS_PRINT_SHOWN && !sameWins) {
     var wait = setInterval(function () {
       if (!host || !document.body.contains(host)) { clearInterval(wait); return; }
       if (resultsPrintCovered()) return;
@@ -9111,6 +9150,7 @@ function resultsShareFiles() {
 }
 
 function renderResults(e, keepScroll) {
+  G.resE = e;   // v68.1: the record this page shows (resultsEngine)
   // v30.2 hardening: if this render ever runs again (a future keepScroll
   // path), freshly built anchors must not quietly revert to search URLs.
   // The upgrade is idempotent and no-ops until the map has landed.
@@ -9272,7 +9312,7 @@ function renderResults(e, keepScroll) {
   wireStartOver();
   wireDonate();
   el("shareTeamBtn").addEventListener("click", function () {
-    var e2 = engine(G.picks.map(function (p) { return p.row; }), G.picks.map(function (p) { return p.slot; }));
+    var e2 = e;   // v68.1: the run as this page shows it (a played-out season's record), never a fresh engine()'s projection
     if (dailyShare) {
       // THE DAILY share: always the official run, data-first (grade + five +
       // beat link, no Tribune slug, no nickname). The 5-square grade and the
@@ -9779,7 +9819,7 @@ function scheduleCrests() {
 // and reading the footer, especially on a degraded deploy. Bump BUILD_V in
 // the SAME COMMIT as any client cache-key bump in index.html; the walk
 // enforces key/BUILD_V parity and fails the lane on drift.
-var BUILD_V = "v68";
+var BUILD_V = "v68.1";
 // v60 THE MOCK DATABASE (functions/_middleware.js): anywhere but true82.net (and a local dev server) the site runs on
 // a mock that drops every write, so the footer says so beside the build (the owner can tell a test server at a glance).
 function testServer() {

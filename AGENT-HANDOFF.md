@@ -1,5 +1,18 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-02, night): V68.1 (app.js key `20261002-v68-2`, sim-core.js `20261002-v68-1`, BUILD_V `v68.1`,
+> engine VERSION 16) IS ON `c-code-clean` AND `art-variety` (committed and pushed; NOT LIVE: `main` is still v66.5 and
+> merges only at his word).** The owner's three decisions after hearing v68's
+> outstanding list: (1) "move from the real 81": a Heat Check spin moves the record PLAYED by the spin's projected
+> change (HOT and up only raise it, WARM never moves it, COLD only lowers it; the save is the raised record reaching
+> 82), in app.js AND in sim-core's replay verifier, which now also plays out Presti seasons and the mid-season Heat
+> Check (whose re-roll can no longer end worse than the games played); (2) "shorter season too": REEL_END_MS 15120
+> (was 16800); (3) the Hot Hand ledger rows use the middle dot. Section 0000000 has it, and what he still must hear
+> (the save rate on lucky 81s jumps from 0% to about 45%; the 0.97 nightly ceiling the app thinks it lifted). The
+> verifier's three findings are fixed in the same commit (SKIP after the pull now applies the spin; SHARE YOUR TEAM and
+> the Tribune share the record played; the share poster follows a net-only spin), plus one found while checking them
+> (a COLD that cost a win still printed 81-1 on the results print).
+
 > **FIRST THING (2026-10-02, evening): V68 (key `20261002-v68`, BUILD_V `v68`) IS ON `c-code-clean` AND
 > `art-variety`. NOT LIVE: `main` is still v66.5 and merges only at the owner's word, AFTER he has read the outstanding
 > list in section 0000000 (the biggest: on a lucky 81-1 a HOT spin can lower the record).** v68 = the Hot Hand
@@ -52,17 +65,140 @@
 > one-liner). The dictation is badly garbled ("press Steam mode" = Presti mode, "true ADT" = True 82): decode it against
 > the app, and read back your decoding before building.
 
-**Current source of truth:** the GitHub repo. `c-code-clean` = v68 (the Hot Hand scaling, the shorter pauses, the iPhone check, art-remove; on v67.2, the art library with the owner's first picks, merged with v66.5; NOT live; section 0000000). `main` = v66.5, LIVE (the Tribune's API key locked to the app, section 000001); before it v66.4 (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
+**Current source of truth:** the GitHub repo. `c-code-clean` = v68.1, committed and pushed, also on `art-variety` (the owner's "move from the real 81" record rule, the 10% shorter season, the middle dot in the Hot Hand rows; section 0000000), on v68 (the Hot Hand scaling, the shorter pauses, the iPhone check, art-remove; on v67.2, the art library with the owner's first picks, merged with v66.5; NOT live; section 0000000). `main` = v66.5, LIVE (the Tribune's API key locked to the app, section 000001); before it v66.4 (the three special days: star eras, one deep cut, two team skips, crowd-chosen seeds, lists opening on OBPM; the start screen's fitted text; the test day; 000000); before it v65.3 (2026-09-29: the new home, Title 2; 00000z), on v64.1 (the speed pass, section 00000y), on v64 (section 00000x), on v63.1 (00000w), v63 (00000v), v62.2 (00000u), v62.1 (00000t), v62 (00000s) and v61.1 (00000r). Migration 0029 IS applied to the live D1; v61.1 to v64 need no other database step. Merge only on the owner's word. A weekly scheduled task refreshes the tags onto c-code-clean (00000r), so after a refresh `main` needs another fast-forward to carry the new tags live.
 
 **Date:** 2026-10-02
-**Build:** `v68` on `c-code-clean` (`BUILD_V = "v68"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js, styles.css, reel-riso.js, sim-core.js, art-core.js, art-index.js and art/hot/arcade.js at `20261002-v68`; the rest as tools/cache-keys.json lists them; engine `T82.VERSION` 15).
-**Most recent change:** section 0000000 (c-code-clean and art-variety, NOT live, 2026-10-02 evening): v68, the Hot Hand scaling (his other session), the shorter pauses, the iPhone check, COLD's wording in Combo, tools/art-remove.js. Before that, in the same section: v67.2, the art library with the owner's first picks (cuts, his speed dial art/tempo.json, the dagger/arcade/jam/marbling/wave fixes, no streak marks on settled dots, no art downloads on a slow link, the finish-time table). Before that, section 000001 (LIVE on main, 2026-10-02): the Tribune's Anthropic key is the app's only (same-origin, one phase, an allowlisted roster and fit notes, per-IP and daily spend caps, a RECAP_OFF switch; no lab was found in the tree, and app.js is untouched). Before that, section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
+**Build:** `v68.1` on `c-code-clean` (`BUILD_V = "v68.1"`; every cache key lives in tools/cache-keys.json and every page carries it: app.js at `20261002-v68-2`, sim-core.js at `20261002-v68-1`; styles.css, reel-riso.js, art-core.js, art-index.js and art/hot/arcade.js at `20261002-v68`; the rest as tools/cache-keys.json lists them; engine `T82.VERSION` 16).
+**Most recent change:** section 0000000 (c-code-clean, NOT live, 2026-10-02 night): v68.1, the owner's three decisions (the record moves from the 81 played; the season 10% shorter; the middle dot), the verifier brought level with the game. Before that, v68 (2026-10-02 evening): the Hot Hand scaling (his other session), the shorter pauses, the iPhone check, COLD's wording in Combo, tools/art-remove.js. Before that, in the same section: v67.2, the art library with the owner's first picks (cuts, his speed dial art/tempo.json, the dagger/arcade/jam/marbling/wave fixes, no streak marks on settled dots, no art downloads on a slow link, the finish-time table). Before that, section 000001 (LIVE on main, 2026-10-02): the Tribune's Anthropic key is the app's only (same-origin, one phase, an allowlisted roster and fit notes, per-IP and daily spend caps, a RECAP_OFF switch; no lab was found in the tree, and app.js is untouched). Before that, section 000000: v66 to v66.4, the launch week's three special Dailies (star eras, one deep cut, crowd-chosen rolls), the start screen's text fitted to one line, the test day. Before that, section 00000z: v65 and v65.1, the home's title art (the owner picked Title 2, lifted the doors), LIVE. Before that, section 00000y: v64.1, the speed pass (no visual change). Before that, section 00000x: v64, the owner's third playtest (his voice notes). Before that, section 00000w: v63.1, the owner's second playtest list. Before that, section 00000v: v63, the owner's eight tweaks after his playtest, and his standing lesson: build what the game needs, not the literal spec. Before that, section 00000u: v62.2, the owner's pair taxes and stat-padder charge, the scouted tags loaded and frozen. Before that, section 00000t: v62.1, the Dueling Banjos Tax (two TITLE #1s cost 2), and the scouting pass for five thin tags (migration 0029, written and tested, NOT applied). Before that, section 00000s: v62, one ball (a fourth and a fifth 20-point scorer cost 3 each) and too short (a five under 6'6" on average costs 3), the owner's picks after the tag taxes proved to do nothing; plus the fix for the Monday tag refresh. Before that, section 00000r: v61.1, the label taxes (the owner's rules, built with the fixes he agreed to, balance-checked on 15,130 real drafts; Pro hides the tags until the results; a weekly tag refresh is scheduled). Before that, section 00000q: v60, the owner's ten-item list (darker button slabs, all three season paintings, the left-to-right fill, the glove that survives scrolling, the "+" tag sheet, the Scoring Card's corners, no repeat questions, the mock database for test servers, KEEP GOING to /bonuses/, the vote room). Before that, section 00000p: v59.6 is LIVE on main (merged 2026-09-27 at the owner's go). Before that, section 00000o: v59.4, the styled Σ on the Scoring Card's aggregate. Before that, section 00000n: v59.3, the Do-Over board no longer jumps, the game-by-game month captions (SWEPT or a loss pinned on a player), the Tribune as one door at the bottom of the results. Before that, section 00000m: v59.1 and v59.2, the home card's ink print brought into the drafts (every pick prints its coin and diamond; the Do-Over's THE PICK IS IN re-inked in riso). Before that, section 00000l: v59, the new home screen (the owner's "Halftone v2" package: tiers of halftone doors, the vote card that votes in place with a riso reward, Draft Night Do-Over). Before that, 00000k: the database audit (0026, 0027 and 0028 are now live on D1 `true82`) and the owner's call to shelve the art bot today and ship the base game by the end of 2026-09-27. Before that: the art bot's third reel (00000h, 2e), v58.5 the white button base (00000i), v58.4 the Daily ledger (00000h, item 3).
 
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
 
-## 0000000. START HERE (2026-10-02): V68 ON V67.2, THE ART LIBRARY WITH HIS PICKS (c-code-clean + art-variety, NOT LIVE)
+## 0000000. START HERE (2026-10-02): V68.1 AND V68 ON V67.2, THE ART LIBRARY WITH HIS PICKS (c-code-clean + art-variety, NOT LIVE)
+
+### 2026-10-02 (night): v68.1, his three decisions on v68's list (c-code-clean, NOT LIVE)
+
+**His decisions (2026-10-02),** after hearing that under v68 a HOT spin could lower a lucky 81-1:
+1. "Move from the real 81": the spin moves the record from the 81 actually played, by the spin's projected change.
+   HOT, ON FIRE and SUPERNOVA can only raise it, WARM never moves it, COLD can only lower it; the 82-0 save happens
+   when the raised record reaches 82. The same wherever a Heat Check sets a record.
+2. "Shorter season too": the season's whole reel 10% shorter (REEL_END_MS 16800 to 15120), on top of the 0.85 pauses.
+3. Copy law: the new Hot Hand ledger rows' em-dash becomes the site's middle dot.
+
+**Where:** `c-code-clean` and `art-variety`, one commit on v68 (BUILD_V `v68.1`; key `20261002-v68-2` on app.js,
+`20261002-v68-1` on sim-core.js; engine VERSION 16; the preview is https://c-code-clean.true82.pages.dev/). Not live;
+`main` is v66.5 until he says merge.
+
+**What v68.1 is:**
+1. **The record rule, one function.** sim-core.js `hhRecord(played, net, newNet, m)`: the projected change is
+   `hhWins(newNet) - hhWins(net)` (whole wins of the projected record); HOT and up: `min(82, played + max(0, change))`;
+   WARM: played; COLD: `played + min(0, change)`; save = the result reaching 82. app.js `hotHand` takes its record from
+   it (`hhRec`; the climbing bar follows it too, `recAt`), so the stamp, `.big`, the print, the comp line, the GOAT
+   Climb, the ledger, the share text and the Daily's official record (all read `G.hotWins`) follow. The net still moves
+   by the formula (the net label's second number), even when the record does not. On a board that never plays its
+   season out (the Daily, a challenge) the record IS the projection, so nothing changes there for a spin that raises
+   the net. A browser run caught a trap: verdict() declares its own `var rec` (the record's element), which shadowed
+   a first draft's `rec`; the name is `hhRec` and test.js checks it is declared once in hotHand.
+2. **The verifier, level with the game.** sim-core `finish()` used to realize only Classic, so it judged every
+   standalone Presti run (realized since 2026-07-26) on the projection: another record, 82 fewer draws, and never the
+   mid-season Heat Check. Now an armed Presti season (op `ss`) plays out; the mid-season Heat Check runs where the game
+   runs it (`hhMidAt`: Presti, armed, net over `HH_MID_NET` 20, a realized loss; its two draws right after the
+   season's 82; `hx` refuses it); the post-season one fires at exactly 81 PLAYED and uses `hhRecord`; `res.rngDraws`
+   now counts the Heat Check's draws. app.js's mid gate reads `T82.HH_MID_NET`, and "HOT or better" is `seg.m > 1`
+   in both (the old index constant HH_MID_MIN_SEG is gone). Nothing on the server calls verifyRun today.
+3. **The mid-season Heat Check can no longer leave him worse off.** It re-rolled the saved game and the rest with
+   `Math.random` at the boosted rate, so about 15% of HOT-or-better boosts ended with MORE losses than the season
+   played, and no replay could follow it. `hhMidReroll` reuses each night's own draw (`simSeason` now keeps them as
+   `season.u`, no new draws): a night is a win when its draw is under the boosted rate (never below the rate it
+   played), so every played win stays a win; the saved game's draw is stretched back over [0, 1), so it is saved at
+   the full boosted rate as before. Each re-rolled night wins at exactly the boosted rate: the odds are unchanged
+   (82-0 on about 22% of boosts either way); only "worse than played" is gone.
+4. **The season 10% shorter.** app.js `REEL_END_MS = 15120`. Every record's pace is exactly 0.9 of v68's (none hits
+   the 0.3 clamp): an 82-0 ends at 15.12 s, a 78-4 at about 14.45 s (v68 16.06 s), a 0-82 at 14.43 s. The red flash
+   keeps its own gap (FLASH_GAP 0.77 s, reel-riso.js untouched); test.js walks each sample season's real clock with
+   the reel's flash gate: never more than 2 flashes in any second, and a 78-82-win season still flashes on every
+   heavy loss.
+5. **Copy:** both Heat Checks' ledger rows read "HOT · J. Kidd caught fire ..." / "COLD · ... went cold".
+6. **Docs/tests:** docs/MODES.md's Hot Hand part has the rule in plain words, who reaches which Heat Check, the save
+   rates, and a new mid-season section. test.js: the "move from the real 81" block (223,479 swept spins: HOT and up
+   never lower, WARM never moves, COLD never raises, the move is exactly the projected change, the save is exactly
+   the raised record reaching 82, the lucky 81-1 at +19.0, the honest 81 unchanged, the mid-season never worse with
+   the odds as before) and the agreement check: on 2,800 real Presti runs (700 bot drafts, played out and
+   projection-only, spun and refused) the game's own functions and `T82.replay` reach the same record with the same
+   draws. The pacing tests carry 15.12 s.
+
+7. **The verifier's findings, fixed before the commit** (each older than v68.1, each breaking its rule or its
+   "every surface and the verifier agree"):
+   - **SKIP after the pull** used to only close the card: verdict() never ran, so the page kept 81-1 while the replay
+     applied the spin (a landed COLD dodged, a HOT save thrown away). hotHand now has `applyOutcome()` (once-only: the
+     totals, the results, the Daily's official record, the Tribune's payload); the reveal runs it, and SKIP after the
+     pull runs it, then closes the card (and fires the W/L burst on a save, as SEE YOUR TEAM does). SKIP before the
+     pull still refuses (op `hx`).
+   - **SHARE YOUR TEAM** built a fresh `engine()` and shared its projection whenever the Heat Check left the totals
+     alone (WARM, refused, never offered): a played 81-1 that projects 75 shared "75-7". renderResults now keeps its e
+     (`G.resE`) and the share, the Tribune's share and openTribune's fallback read it (`resultsEngine()`).
+   - **The share poster's NET**: `resultsPrintRecord` returned early when the record did not move, so a spin that moved
+     only the net (now the usual lucky-81 outcome) left the poster's foot on the pre-spin net. It re-specs and re-bakes
+     when the net moves too (the on-page print, which has no net, is not replayed then).
+   - **Found while checking them: a COLD that costs a win printed 81-1.** The print counts its games for the strip and
+     the record it prints, and `resultsPrintSpec` only ever flipped losses to wins (the save). A COLD that lowers the
+     record now costs the season's last wins (the save's mirror): the 80-2 prints 80-2 with the second loss at the end.
+     Older than v68.1 (v68's COLD dropped records far lower and printed the 81 too).
+   - test.js: a page stub just big enough for the Heat Check's card runs the real `hotHand` on the real 81s of the
+     agreement check's drafts: pulled then skipped, and skipped before the pull (6 runs: the replay agrees, record and
+     draws), then every rung on every hot player of the same 81s (75 skips: the page lands on hhRecord's record, 8
+     COLDs lowered it, 31 moved only the net, 21 saved), each checking the share line and the poster spec (wins, the
+     games it prints from, the NET). And the share check on 2,704 runs the Heat Check left alone (1,105 of them played
+     to a record their projection does not give). Each check fails with its fix taken out (tried on a copy).
+
+**Checked (2026-10-02 night):** stamp 20261002-v68-1; `node test.js` 248 passed, 0 failed; style law clean. In a real
+browser (Chromium 375x812), the same real Presti run, seed 4100357 (Lopez, Brandon, Durant, English, Duncan: net
++19.28, projects 78-4, played 81-1, the post-season wheel lands HOT on T. Brandon, "+0.3"), driven through the game's
+own confirmPick, reel and lever:
+- v68 (the c-code-clean preview): stamp 78-4, record 78-4, share "78-4"; its verifier: 78 wins, 859 draws against the
+  game's 943.
+- v68.1 (local): stamp 81-1, record 81-1, share "81-1", ledger "HOT · T. Brandon caught fire (value ×1.1). +0.3";
+  verifier 81 wins, 943 draws. The reel to its finale: 16.24 s against 17.76 s (same season, same measure).
+- WebKit 320x568, seed 4112563 (+19.78, projects 78, played 81-1, HOT +0.36 lifts the projection to 79): 82-0, the
+  save; verifier 82, win 1, same draws. Chromium, seed 5201105 (+23.5, played 81-1, the mid-season pause at 43-0,
+  HOT on D. Rivers): the reel ends 82-0; verifier 82, mid 44, same 826 draws. No page errors.
+
+**Checked again after the verifier's findings (2026-10-02 night):** app.js re-stamped `20261002-v68-2`; `node test.js`
+254 passed, 0 failed; style law and cache keys clean. Real browser, the verifier's own real runs (local static server,
+Chromium 375x812 and WebKit 320x568, the same in both, no page errors):
+- seed 7588925, the wheel locks on COLD (projection 76 to 75), SKIP at the lock: 80-2 (record, print, share, recap),
+  the print prints 80-2; the replay 80 wins, 820 draws, same as the game (v68.1 before this fix kept 81-1).
+- seed 7404091, HOT 73 to 74, SKIP at the lock or 2.5 s into the strip: 82-0, the share 82-0; replay 82, 850 draws.
+  Refused instead: 81-1 everywhere, share "81-1" (it said "73-9"); replay 81, declined.
+- seed 7489839, WARM on a lucky 81-1 that projects 75: share "81-1" (it said "75-7"). Seed 9100000, played 74-8,
+  projects 78, no Heat Check: share "74-8" (it said "78-4").
+- seed 7434355, SUPERNOVA, stays 81-1: the poster's foot reads NET +19.5 (it read +18.6), the ledger +19.5. Seed
+  7698541, COLD with no win lost: NET +16.9 on both (it read +17.2).
+
+**For him (open, his call):**
+1. **The save rate on lucky 81s.** On a standalone Presti run every post-season Heat Check is a lucky 81: a five
+   above +20 (a projection of 79 and up) that loses a game gets the mid-season Heat Check instead. On those spins
+   (bot fives on the real data, weighted by their 81-1 odds) v68 lowered the record 86% of the time and never saved;
+   v68.1 saves 45%, leaves 81-1 53%, lowers 2% (COLD). The weaker the five, the easier the save, because the
+   projection's win steps are narrower lower down (projecting 75: 55%; 78: 45%; 79: 6%). An honest 81 (the Daily)
+   saves as in v68, about 9%. If 45% is too generous: HH_BONUS_SCALE, or measure the change in expected wins instead
+   of whole projected wins (about 8.5% on the same fives; that one would need its own rule for the Daily).
+2. **The 0.97 nightly ceiling.** app.js sets `SC.PG_CAP` to 1 for Presti (his 2026-07-26 "uncapped" ruling) and 0.991
+   for Classic, but `simSeason` reads `C(S, "PG_CAP", 0.97)` and `C` returns that default before SC, so every played
+   season is capped at 0.97 a night (82-0 at most 8.2%; a five over the 82-0 line goes 81-1 about 21%). Older than
+   v68; untouched (it moves the 82-0 rate, and game and verifier agree as is).
+3. HOT on a hot player valued below zero lowers the net a little (shown as a cost) but never the record; COLD on one
+   raises the net a little but never the record. Rare (weight 0.25 against v-squared).
+4. A played 81-1 that gets a HOT-or-better mid-season boost now goes 82-0 about 97% of the time (46% before), and a
+   worse played season keeps its wins; per boost the odds are the same as before.
+5. On a test build `?force82=81` can hand a five over the 82-0 line the post-season Heat Check (real play never does);
+   its projection cannot rise, so no spin saves it there. `?force82=save` still forces the save; `?force82=cold` now
+   moves the forced 81 by COLD's projected change (often 0), not to the five's projection.
+6. The art looks fit their moments (E.dur), so at 0.9 pace each moment is 10% shorter; v68's finish-time table and the
+   tempo dial's exits were not re-measured look by look.
+7. Older em-dashes outside the Hot Hand are untouched (the Tribune byline, the move hint, the load error, the stat
+   placeholder, a Kaman line).
 
 ### 2026-10-02 (evening): v68, his answers and the Hot Hand scaling (c-code-clean + art-variety, NOT LIVE)
 
@@ -124,7 +260,7 @@ failed; style law clean. In the game (static server, same seeded season on v68 a
 - Removal drill (a copy): `art-remove loss/crumple dots/dagger scene/wave hot/arcade`: test.js 234/0, the lab opens all
   six tabs without them, its picks code drops them, a Classic season with bags still naming them plays clean.
 
-**Outstanding for him before `main` (the list he asked for):**
+**Outstanding for him before `main` (the list he asked for; v68.1 above answers 1, 5 and 7's Hot Hand rows):**
 1. **A HOT spin can lower an 81-1 (the game's record follows the net formula, not the season it played).** Presti plays
    the season game by game, so many 81-1s are lucky (the five's net projects 78 to 80 wins). The Heat Check then sets
    the record from the spun net (`hhWins(newNet)`), so any rung that moves the net, HOT and up included, can drop it:
