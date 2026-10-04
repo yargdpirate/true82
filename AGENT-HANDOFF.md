@@ -1,29 +1,23 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
-> **FIRST THING (2026-10-03, later): V69.1, THE BOARDS, IS BUILT AND TESTED ON `c-code-clean` (working tree;
-> commit at his word). FIVE BOARDS, HIS LIST: 82-0% per mode · daily streak · cheapest Presti 82-0 · best Classic
-> net · best of each Daily.** Every one is VERIFIED: the client posts `{mode, seed, actions}` and never a score,
-> the server replays it through the same sim-core.js the browser ran, and only the server's recomputation is stored
-> or ranked. Two cheats are closed and both are covered by tests: claiming a score you did not get (the replay
-> catches it) and posting an easy random board as today's Daily (the day key alone fixes the mode, seed and
-> challenge, re-derived server-side from daily-core.js). **HE HAS DECIDED ACCOUNTS GO LIVE FOR THE DEBUT.**
-> **WHAT HE MUST ACT ON, in section 0000002:** the **Clerk production instance** needs its DNS started this week
-> (up to 48 h), and it carries different keys from the development one. **The Workers Paid plan is NOT required** —
-> that earlier claim was wrong and is corrected below.
-
-> **FIRST THING (2026-10-03): V69, THE ACCOUNT (accounts.js key `20261003-v69`), IS BUILT AND TESTED ON
-> `c-code-clean` (in the working tree; commit at his word). IT IS DORMANT: true82.net renders nothing and requests
-> nothing from Clerk until ONE boolean flips.** The owner
-> re-opened item 17 and scoped it hard: "just the account." So this is sign in, have a name, keep your Dailies — and
-> nothing else. No boards, no runs, no duels, no leagues, no Arena; those stay on `origin/accounts-test`.
-> **Clerk is still the right pick and was re-verified today** (50,000 monthly retained users free, commercial use
-> fine, Clerk branding on free, a one-month grace period, Pro $25/mo). The decisive reason is repo law: zero build
-> step. `functions/_lib/auth.js` is ported BYTE-IDENTICAL from the accounts branch.
-> **HE STILL HAS TO DO FIVE THINGS before it can sign anyone in** — they are all dashboard work, listed in
-> section 0000001 as a walkthrough, and nothing in this commit works until then.
-> **His four calls (2026-10-03):** email code + Google; hidden lane, tested locally; name + tag + claim the old
-> Dailies; a "13 or older" line, no age gate. Section 0000001 has the rest, including what must change before the
-> button can go live (five public pages still promise "no account").
+> **FIRST THING (2026-10-04): V69, THE ACCOUNT AND THE FIVE BOARDS, IS BUILT, DEPLOYED AND WORKING — on the
+> branch `v69-boards` ONLY. `main` AND `origin/c-code-clean` ARE UNTOUCHED at v68.2 (`bb2c565`).** Ten commits,
+> `215d859..938865b`. Local `c-code-clean` carries them too but was never pushed, so the remote lane is clean.
+>
+> **It is confirmed working.** The owner signed in on his phone at
+> `https://v69-boards.true82.pages.dev/?acct=1` on 2026-10-04 (email code). Clerk is configured, the Cloudflare
+> env vars are set, and migrations 0030 and 0031 are APPLIED TO PRODUCTION D1 — those three setup jobs are done
+> and need no repeating. Verification runs in production: measured there, an ordinary Classic run replayed 74-8
+> net 14.95 matching the client exactly, today's real Daily board replayed 78-4, and a claimed 82-0 on that same
+> run was refused with `why: "rng-draws"`.
+>
+> **STILL DORMANT ON LIVE.** `ACCT_LIVE` in accounts.js is `false`, so true82.net renders no account face and
+> requests nothing from Clerk; `?acct=1` opens the lane anywhere. The owner has decided **accounts go live for the
+> debut** (the influencer video is already made; the window is 10/20-10/22).
+>
+> **WHAT IS LEFT, in section 0000002:** the Clerk **production** instance (DNS, up to 48h, different keys from the
+> development one), the five public pages that still promise "no account", and clearing the preview's test rows.
+> The Workers Paid plan is NOT needed — an earlier claim here said otherwise and was wrong.
 
 > **FIRST THING (2026-10-03): V68.2 (app.js and sim-core.js key `20261003-v68-3`, BUILD_V `v68.2`, engine VERSION 17)
 > IS ON `c-code-clean` AND `art-variety` (committed and pushed; NOT LIVE: `main` is still v66.5 and merges only at his
@@ -110,6 +104,49 @@
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
+
+## 0000002b. THE SESSION THAT SHIPPED IT (2026-10-03/04): WHAT IS DONE, WHAT IS LEFT, AND FIVE TRAPS
+
+**DONE, do not redo:** Clerk application created (dev instance, email code + Google + TikTok enabled, the owner
+added TikTok himself); `CLERK_JWT_KEY` set on Production AND Preview; `AUTHORIZED_PARTIES` set on Production,
+UNSET on Preview; migrations **0030 and 0031 applied to production D1**; the owner signed in successfully on his
+phone 2026-10-04.
+
+**LEFT, in rough order:**
+1. **The Clerk production instance.** DNS CNAMEs for `clerk`, `accounts`, `mail` on true82.net, up to 48h. It has
+   DIFFERENT keys from the dev one, so `accounts.js` CONFIG and the Cloudflare PEM both change, and everything is
+   re-tested after. Start it well before 10/20. A production instance also needs the owner's OWN Google OAuth app
+   (dev rides Clerk's shared credentials) and, for TikTok, a TikTok developer app plus a SEPARATE approval for the
+   `user.info.email` scope — that review has no guaranteed ceiling and is the riskiest item against the date.
+2. **The five "no account" surfaces** — `index.html:138`, `md/faq.md:19` and `:27`, `md/index.md:26`, plus the
+   `faq/` and `how-it-works/` twins. They become false the moment the face appears on true82.net. A gate, not a
+   nicety. (`md/faq.md:19`'s "no cookies" is already wrong today — the 400-day `t82_rid` cookie is live.)
+3. **Clear the preview's test rows before the boards go public.** SECURITY.md has the command. One of them is a
+   deliberate probe row, `id = '00000000-0000-4000-d000-000000000001'`.
+4. **Merge `v69-boards`** into the lane when he says so. It is ten commits off `bb2c565` and touches app.js,
+   index.html, styles.css, test.js, tools/, functions/ and two migrations.
+5. **The Daily's seed is still client-derivable**, so a determined player can pre-solve a future board. Fabricating
+   a score is impossible; an early look is not. The fix is a server-minted HMAC seed (`DAILY_SECRET`, designed on
+   origin/accounts-test) and was deliberately NOT done two weeks before a debut.
+
+**FIVE TRAPS, each of which cost real time and every one of which will recur:**
+- **A Pages env var change does nothing until the next deployment.** Variables are baked in at build time. Change
+  the variable, THEN rebuild, THEN test — otherwise a correct fix reads as a failed one. This cost the longest
+  detour of the session.
+- **`AUTHORIZED_PARTIES` is per-environment.** A preview's token carries its own `pages.dev` azp, so the
+  production value refuses every preview sign-in. Unset on Preview.
+- **`git branch X` does not check X out.** Two commits landed on the wrong branch and two `git push -q` calls were
+  silent no-ops. Never use `-q` on a push, and verify a deploy by what the URL serves, not by what the push said.
+- **A benchmark on the owner's Mac is not a benchmark of Cloudflare.** The ~111ms engine warm-up led to a confident,
+  wrong "you need the $5/mo plan". Measured against the deployment, verification works as-is.
+- **A test harness that shares a gap with the code under test passes for the wrong reason.** The first Daily
+  verification check went green because neither side loaded challenges.js. The replacement runs in a child process
+  importing only `_lib/sim.js`, and was confirmed to go red when the import is removed.
+
+**The lesson under all five: ask the deployed thing, do not reason about it.** That is why `GET /api/me` answers
+`no-key-on-this-environment` / `key-will-not-parse` / `origin-not-in-AUTHORIZED_PARTIES` /
+`users-table-missing-run-migration-0030` / `token-rejected` when a token fails, and why `/api/run` reports the
+verification verdict even when storage fails. Those two diagnostics ended four rounds of guessing; keep them.
 
 ## 0000002. START HERE (2026-10-03, later): V69.1, THE BOARDS (c-code-clean, BUILT BUT DORMANT)
 
