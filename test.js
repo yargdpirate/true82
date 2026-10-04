@@ -2197,6 +2197,54 @@ async function accountLane() {
       await ACC.fetchDaily(), await ACC.fetchWeekly(), ACC.submitRun() === undefined],
      [[true, true], true, "function", "function", "function", null, null, true]);
 
+  // (1a2) THE BOARD WAITS FOR THE CEREMONY (v69.2). gameFinishedPings() used to
+  // post the run the moment the results rendered — before the post-season Heat
+  // Check overlay had been touched. A refusal (I DON'T WANT YOUR CHARITY, or SKIP
+  // before the pull) pushes "hx" into G.actions from inside that overlay, so the
+  // log that went out had no refusal in it: the server replayed the spin the
+  // player had DECLINED, and agreed with the client's replay of the same
+  // incomplete log, so the row stored verified = 1 with a record nobody played.
+  // Measured on the real data: on Presti seed 7700208 taking the spin gives 82-0
+  // and refusing gives 80-2, so the board could credit a declined 81 as a perfect
+  // season on the Cheapest 82-0 board. These run the REAL functions.
+  {
+    const sent = [];
+    const savedACC = ctx.window.T82ACC, savedG = ctx.G, savedMode = ctx.MODE;
+    // BOTH names, because this sandbox is not a browser: app.js guards on
+    // `window.T82ACC` and then calls the BARE `T82ACC`, which are the same object
+    // in a page (window === globalThis) and two different lookups in a vm, where
+    // `window` is a plain object. Setting only one makes the bare call throw into
+    // submitFinishedRun's own try/catch and the test reads as "nothing was sent".
+    const acc = { submitRun: function (p) { sent.push(p); } };
+    ctx.window.T82ACC = acc; ctx.T82ACC = acc;
+    ctx.MODE = "cap";
+    ctx.G = { seed: 4242, actions: ["k:A|1990|G"], social: null, analyticsOfficial: 0, hhPending: true };
+
+    vm.runInContext("submitFinishedRun();", ctx);              // ceremony still up: nothing leaves
+    const duringCeremony = sent.length;
+
+    vm.runInContext('G.actions.push("hx"); G.hhPending = false; submitFinishedRun();', ctx);
+    const afterRefusal = sent.length === 1 ? sent[0].actions.slice() : sent.length;
+
+    eq("v69.2 the board waits for the Heat Check: while a post-season spin is pending nothing is posted, and the " +
+       "log that finally goes out carries the refusal (\"hx\") the player made inside the overlay — without this " +
+       "a declined 81-1 replays as the spin TAKEN and can be credited as an 82-0",
+      [duringCeremony, afterRefusal, sent.length],
+      [0, ["k:A|1990|G", "hx"], 1]);
+
+    // the ordering is structural too: exactly one submitRun call site, it is
+    // gated on hhPending, and hotHand's dismiss() is what releases it
+    eq("v69.2 and the ordering cannot be undone by accident: one submitRun call site, gated on G.hhPending, " +
+       "released in hotHand's dismiss(), and renderResults arms the gate",
+      [appSrc.split("T82ACC.submitRun({").length - 1,
+       /function submitFinishedRun\(\)[\s\S]{0,400}if \(G\.hhPending\)/.test(appSrc),
+       /G\.hhPending = false;\s+\/\/ the log is final[\s\S]{0,80}submitFinishedRun\(\);/.test(appSrc),
+       /G\.hhPending = !!clutchPending;/.test(appSrc)],
+      [1, true, true, true]);
+
+    ctx.window.T82ACC = savedACC; ctx.T82ACC = savedACC; ctx.G = savedG; ctx.MODE = savedMode;
+  }
+
   // (1b) THE CUT-OFF DRAFT (v69.2). body.drafting locks the page with
   // overflow:hidden; iOS does not clamp the scroll offset when a document stops
   // scrolling, so a draft started from a scrolled home screen opens with its top
@@ -2391,6 +2439,125 @@ async function accountLane() {
        streak.map((r) => r.name + " best=" + r.score + " days=" + r.days), ["BEN best=3 days=5", "AVA best=1 days=1"]);
 
     db.close();
+  }
+
+  // (6b2) ADOPTION (v69.2, the owner's call): the signed-out 79-3 that counts.
+  // Runs the REAL adoptRuns() from claim.js against a real SQLite, because the
+  // three rules that stop it being farmable are all in its SQL and nowhere else.
+  {
+    const { DatabaseSync } = require("node:sqlite");
+    const db = new DatabaseSync(":memory:");
+    const ddl = (f) => fs.readFileSync("migrations/" + f, "utf8").split(";").map((x) => x.trim()).filter(Boolean);
+    for (const s of ddl("0030_accounts_min_v1.sql")) db.exec(s);
+    for (const s of ddl("0031_runs_boards_v1.sql")) db.exec(s);
+
+    // the same tiny D1 shim tools/boards-e2e.js uses
+    const d1 = {
+      prepare(sql) {
+        const mk = (args) => ({
+          bind: (...a) => mk(a.map((v) => (v === undefined ? null : v))),
+          async run() { const r = db.prepare(sql).run(...args); return { meta: { last_row_id: Number(r.lastInsertRowid), changes: Number(r.changes) } }; },
+          async all() { return { results: db.prepare(sql).all(...args) }; },
+          async first() { const r = db.prepare(sql).get(...args); return r === undefined ? null : r; }
+        });
+        return mk([]);
+      }
+    };
+    const env = { DB: d1 };
+    const claimMod = await import("./functions/api/claim.js");
+
+    db.prepare("INSERT INTO users (id, clerk_id, tag, display_name, created_ts) VALUES (1,'c_a','AAAA','A',0)").run();
+    db.prepare("INSERT INTO users (id, clerk_id, tag, display_name, created_ts) VALUES (2,'c_b','BBBB','B',0)").run();
+    const add = db.prepare(
+      `INSERT INTO runs (id,sid,user_id,mode,seed,verified,wins,net,official,created_ts) VALUES (?,?,NULL,'cap',1,?,?,?,?,?)`);
+    add.run("r1", "dev", 1, 70, 9.0, null, 100);        // an ordinary signed-out season
+    add.run("r2", "dev", 1, 72, 11.0, null, 200);       // another
+    add.run("r3", "dev", 0, 82, 30.0, null, 300);       // UNVERIFIED: must never be adopted
+    add.run("r4", "dev", 1, 60, 4.0, "2026-10-01", 400);   // the day's FIRST attempt, worse
+    add.run("r5", "dev", 1, 79, 19.0, "2026-10-01", 500);  // a LATER, better attempt: must be left
+    add.run("r6", "dev", 1, 71, 10.0, "2026-10-02", 600);  // a second day
+    add.run("r7", "other", 1, 75, 14.0, null, 700);     // another device entirely: untouched
+
+    db.prepare("INSERT INTO sid_links (sid, user_id, linked_ts) VALUES ('dev', 1, 0)").run();
+    const first = await claimMod.adoptRuns(env, 1, "dev");
+    const ownerOf = (id) => db.prepare("SELECT user_id FROM runs WHERE id = ?").get(id).user_id;
+
+    eq("v69.2 adoption: the first account on a device takes its verified signed-out seasons and the EARLIEST " +
+       "attempt at each Daily, never the best, never an unverified row, and never another device's runs",
+      [first.first, first.seasons, first.dailies,
+       ownerOf("r1"), ownerOf("r2"), ownerOf("r3"), ownerOf("r4"), ownerOf("r5"), ownerOf("r6"), ownerOf("r7")],
+      [true, 2, 2, 1, 1, null, 1, null, 1, null]);
+
+    // the SECOND account on the same device adopts nothing
+    db.prepare("INSERT INTO sid_links (sid, user_id, linked_ts) VALUES ('dev', 2, 0)").run();
+    add.run("r8", "dev", 1, 68, 7.0, null, 800);        // played signed out after A had claimed
+    const second = await claimMod.adoptRuns(env, 2, "dev");
+    eq("v69.2 one account per device: a second sign-in on the same browser adopts nothing, so a shared phone " +
+       "cannot hand one player's seasons to another and runs cannot be laundered between accounts by signing " +
+       "in and out",
+      [second.first, second.seasons, second.dailies, ownerOf("r8")], [false, 0, 0, null]);
+
+    // a day the account already holds is never doubled (the UNIQUE index cannot fire)
+    add.run("r9", "dev2", 1, 77, 16.0, "2026-10-01", 900);
+    db.prepare("INSERT INTO sid_links (sid, user_id, linked_ts) VALUES ('dev2', 1, 0)").run();
+    const again = await claimMod.adoptRuns(env, 1, "dev2");
+    eq("v69.2 adoption never doubles a day: a better attempt from a SECOND device on a day the account already " +
+       "holds is left alone, so UNIQUE (user_id, official) cannot be violated and a signed-in result can never " +
+       "be displaced by an adopted one",
+      [again.first, again.dailies, ownerOf("r9"),
+       db.prepare("SELECT COUNT(*) n FROM runs WHERE user_id = 1 AND official = '2026-10-01'").get().n],
+      [true, 0, null, 1]);
+    db.close();
+  }
+
+  // (6b3) THE SERVER MUST SCORE WITH THE LABEL TAXES (v69.2). app.js loads
+  // labels.json in every browser and calls T82.setLabels, and the v61 taxes then
+  // move the engine's net. _lib/sim.js did not, so the Worker replayed a
+  // DIFFERENT engine from the one the player played on: the client's honest
+  // claim and the server's honest recomputation disagreed, the run stored
+  // verified = 0, and it could never reach a board. Measured on 900 bot drafts:
+  // the net differs on 26.7% of runs and the record on 20.2%.
+  // It survived because every harness ran its CLIENT side without labels too, so
+  // both sides agreed for the wrong reason. These two checks are the ones that
+  // would have caught it: one proves the taxes really do move the score, the
+  // other proves the Worker asks for the file.
+  {
+    const mkEngine = (withLabels) => {
+      const c = { console: { log() {}, warn() {}, error() {} } };
+      vm.createContext(c);
+      ["sim-core.js", "challenges.js", "daily-core.js"].forEach((f) =>
+        vm.runInContext(fs.readFileSync(f, "utf8"), c, { filename: f }));
+      c.T82.initData(JSON.parse(fs.readFileSync("site_data.json", "utf8")));
+      if (withLabels) c.T82.setLabels(JSON.parse(fs.readFileSync("labels.json", "utf8")));
+      return c.T82;
+    };
+    const Tl = mkEngine(true), Ts = mkEngine(false);
+    const AUD2 = require("./tools/daily-audit.js");
+    const bot2 = AUD2.makeBot({ T82: Tl, t: Tl.t }, {});
+    let n = 0, diff = 0;
+    const modes = ["classic", "cap", "pro"];
+    for (let i = 0; i < 150; i++) {
+      const mode = modes[i % 3], seed = 3300000 + i * 17;
+      const r = bot2(mode, null, seed);
+      if (r.dead) continue;
+      const acts = r.S.actions.concat((mode === "classic" || mode === "cap") ? ["ss"] : []);
+      const a = Tl.replay({ mode: mode, seed: seed, actions: acts }, null);
+      const b = Ts.replay({ mode: mode, seed: seed, actions: acts }, null);
+      if (!a.ok || !b.ok) continue;
+      n++;
+      if (a.result.wins !== b.result.wins || Math.abs(a.result.net - b.result.net) > 1e-9) diff++;
+    }
+    eq("v69.2 the label taxes really do decide the score: on " + n + " bot drafts an engine WITHOUT labels.json " +
+       "disagrees with one that has them on a large share of runs, so a server that skips the file rejects " +
+       "every one of them as a false claim",
+      [n > 100, diff > n * 0.1], [true, true]);
+
+    const simSrc = fs.readFileSync("functions/_lib/sim.js", "utf8");
+    eq("v69.2 and the Worker asks for it: _lib/sim.js fetches labels.json through env.ASSETS and calls " +
+       "setLabels while warming the engine, and exposes labelsReady() so a quiet board can be diagnosed " +
+       "from outside",
+      [/labels\.json/.test(simSrc), /setLabels\(/.test(simSrc), /export async function labelsReady/.test(simSrc)],
+      [true, true, true]);
   }
 
   // (6c) the Daily's board is the server's to decide, not the client's

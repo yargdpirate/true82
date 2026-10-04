@@ -23,15 +23,33 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const NAME = "COALESCE(NULLIF(u.display_name,''), 'GM-' || u.tag)";
 
+/* v69.2 A DAILY IS NOT AN ORDINARY SEASON, so the three mode boards exclude it
+   (`r.official IS NULL`). Measured by tools/boards-e2e.js before the fix: a GM who
+   had played ZERO vanilla Classic seasons sat on the Classic Best net board, because
+   a Daily stores under its BASE mode and nothing distinguished it. Three reasons it
+   has to go:
+     1. A Daily carries a modifier. challenges.js `market_crash` (PRICE_MULT 0) is
+        live in the POOL3 rotation and capCost floors at $1, so on that day every
+        player's five costs $5M. One such day would own Cheapest 82-0 forever, below
+        anything reachable under Presti's ordinary $26-a-player ceiling.
+     2. A Daily is a PROJECTION, not a season played out (app.js seasonReelPlays()
+        excludes G.social), so its record is a different quantity from a Classic or
+        Presti record and they do not belong in one column.
+     3. It punished the habit the game wants. The 82-0% denominator counted every
+        Daily, and a Daily almost never reaches 82, so playing the Daily every day
+        LOWERED your 82-0 rate. The board was charging people for the streak.
+   `official` is the only discriminator the schema has today; a weekly or challenge
+   run that is not a Daily would still slip through, which is what the ch_id column
+   in the handoff's migration 0032 is for. The Daily keeps its own two boards. */
 export const BOARDS = {
   rate: {
     title: "82-0 rate",
-    note: "Share of finished seasons that went 82-0. Needs " + MIN_RUNS + " seasons in the mode to qualify.",
+    note: "Share of ordinary seasons that went 82-0. Needs " + MIN_RUNS + " seasons in the mode to qualify. Dailies have their own boards.",
     sql: `SELECT r.user_id uid, ${NAME} name, u.tag tag,
                  COUNT(*) runs, SUM(CASE WHEN r.wins = 82 THEN 1 ELSE 0 END) immortals,
                  (SUM(CASE WHEN r.wins = 82 THEN 1 ELSE 0 END) * 1.0 / COUNT(*)) score
             FROM runs r JOIN users u ON u.id = r.user_id
-           WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.mode = ?
+           WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL AND r.mode = ?
            GROUP BY r.user_id
           HAVING COUNT(*) >= ${MIN_RUNS}
            ORDER BY score DESC, runs DESC
@@ -78,7 +96,7 @@ export const BOARDS = {
     sql: `SELECT r.user_id uid, ${NAME} name, u.tag tag,
                  MIN(r.budget_used) score, MAX(r.cap_left) saved
             FROM runs r JOIN users u ON u.id = r.user_id
-           WHERE r.verified = 1 AND r.user_id IS NOT NULL
+           WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL
              AND r.mode = 'cap' AND r.wins = 82 AND r.budget_used IS NOT NULL
            GROUP BY r.user_id
            ORDER BY score ASC
@@ -91,7 +109,7 @@ export const BOARDS = {
     note: "Highest net rating on a Classic season.",
     sql: `SELECT r.user_id uid, ${NAME} name, u.tag tag, MAX(r.net) score
             FROM runs r JOIN users u ON u.id = r.user_id
-           WHERE r.verified = 1 AND r.user_id IS NOT NULL
+           WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL
              AND r.mode = 'classic' AND r.net IS NOT NULL
            GROUP BY r.user_id
            ORDER BY score DESC

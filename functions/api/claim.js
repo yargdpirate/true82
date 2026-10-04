@@ -100,6 +100,94 @@ function bestStreak(a, b) {
   return bc >= ac ? (b || { count: 0, lastKey: "" }) : a;
 }
 
+/* ---------- ADOPTION: the runs this device already played, signed out ----------
+   THE OWNER'S CALL (2026-10-04). He plays the Daily signed out, goes 79-3, then
+   signs in: that 79-3 counts. Without this the best moment the game will ever
+   have to earn an account ("you just did that, here is where it ranks") can only
+   ever answer "too late, come back tomorrow", which is precisely the player we
+   are trying to keep.
+
+   WHY IT IS NOT FARMABLE, which was his worry and the reason the strict version
+   existed first. Three rules, all enforced below:
+
+   1. ONE ACCOUNT PER DEVICE, EVER. Only the FIRST account to link a sid adopts
+      anything. A second sign-in on the same browser adopts nothing, so a shared
+      phone cannot hand player A's seasons to player B, and nobody can launder
+      runs between accounts by signing in and out.
+   2. THE DAILY: THE EARLIEST ATTEMPT, NEVER THE BEST. For each day this device
+      played, exactly one row is adopted, the one stored first. Playing the Daily
+      five times signed out and then signing in gets you your FIRST attempt, which
+      is exactly what a signed-in player's one attempt a day gets. (app.js only
+      sends `official` on the first finished run of a day anyway; this is the
+      second line of defence, in SQL, against a client that lies about which.)
+   3. NOTHING UNVERIFIED, AND NEVER OVER A DAY ALREADY HELD. Only runs the server
+      itself replayed and verified are adopted, and a day the account already has
+      a row for is left alone, so the UNIQUE (user_id, official) index can never
+      be violated and an adopted run can never displace one played signed in.
+
+   Ordinary seasons (Classic, Presti, Pro) are adopted without the one-per-day
+   dance: they are unlimited for a signed-in player too, so adopting them adds a
+   player's own history and takes nothing from anyone. The 82-0 RATE board is
+   safe because adoption is all-or-nothing: you cannot keep your good runs and
+   discard the rest.
+
+   Fail-soft like everything on this lane: any trouble returns null and the
+   sign-in still succeeds. */
+const ADOPT_MAX = 400;              // one sign-in may not spend the day's write budget
+
+export async function adoptRuns(env, userId, sid) {
+  try {
+    if (!env.DB || !userId || !sid) return null;
+
+    // Rule 1: are we the first account on this device?
+    const links = await env.DB.prepare("SELECT COUNT(*) n FROM sid_links WHERE sid = ?")
+      .bind(sid).first().catch(() => null);
+    if (!links || links.n !== 1) return { first: false, seasons: 0, dailies: 0 };
+
+    // The ordinary seasons: every verified anonymous run this device played.
+    const seasons = await env.DB.prepare(
+      `UPDATE runs SET user_id = ?
+        WHERE id IN (SELECT id FROM runs
+                      WHERE sid = ? AND user_id IS NULL AND verified = 1 AND official IS NULL
+                      ORDER BY created_ts ASC LIMIT ${ADOPT_MAX})`
+    ).bind(userId, sid).run().catch(() => null);
+
+    // The Dailies: the earliest attempt per day, and only days we do not hold.
+    // Read the candidates first and update by id. The clever single-statement
+    // version is unreadable, and this lane's standing lesson is that a query you
+    // can check by eye beats one you have to trust.
+    const cand = await env.DB.prepare(
+      `SELECT official, MIN(created_ts) first_ts FROM runs
+        WHERE sid = ? AND user_id IS NULL AND verified = 1 AND official IS NOT NULL
+          AND official NOT IN (SELECT official FROM runs WHERE user_id = ? AND official IS NOT NULL)
+        GROUP BY official
+        ORDER BY official DESC LIMIT ${ADOPT_MAX}`
+    ).bind(sid, userId).all().catch(() => null);
+
+    let dailies = 0;
+    const rows = (cand && cand.results) || [];
+    for (const r of rows) {
+      const one = await env.DB.prepare(
+        `SELECT id FROM runs
+          WHERE sid = ? AND user_id IS NULL AND verified = 1 AND official = ? AND created_ts = ?
+          ORDER BY id ASC LIMIT 1`
+      ).bind(sid, r.official, r.first_ts).first().catch(() => null);
+      if (!one) continue;
+      const done = await env.DB.prepare("UPDATE runs SET user_id = ? WHERE id = ? AND user_id IS NULL")
+        .bind(userId, one.id).run().catch(() => null);
+      if (done && done.meta && done.meta.changes) dailies++;
+    }
+
+    return {
+      first: true,
+      seasons: (seasons && seasons.meta && seasons.meta.changes) || 0,
+      dailies
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   if (Number(request.headers.get("content-length") || 0) > MAX_BODY) return json({ ok: false, why: "too-large" });
@@ -120,9 +208,11 @@ export async function onRequestPost(context) {
 
     if (!env.DB) return json({ ok: true, stored: false, linkedSid: false, days: 0, streak: 0 });
 
+    let adopted = null;
     if (sid) {
       await env.DB.prepare("INSERT OR IGNORE INTO sid_links (sid, user_id, linked_ts) VALUES (?,?,?)")
         .bind(sid, auth.userId, Date.now()).run().catch(() => {});
+      adopted = await adoptRuns(env, auth.userId, sid);
     }
 
     let prev = null;
@@ -139,10 +229,11 @@ export async function onRequestPost(context) {
              payload = excluded.payload, days = excluded.days,
              streak = excluded.streak, ts = excluded.ts`
       ).bind(auth.userId, "daily1", JSON.stringify(merged), days, merged.streak.count, Date.now()).run();
-      return json({ ok: true, linkedSid: !!sid, days, streak: merged.streak.count, added: days - Object.keys((prev && prev.official) || {}).length });
+      return json({ ok: true, linkedSid: !!sid, days, streak: merged.streak.count, adopted,
+        added: days - Object.keys((prev && prev.official) || {}).length });
     }
 
-    return json({ ok: true, linkedSid: !!sid, days: 0, streak: 0, added: 0 });
+    return json({ ok: true, linkedSid: !!sid, days: 0, streak: 0, added: 0, adopted });
   } catch (e) {
     return json({ ok: false, why: "server" }, (e && e.message) || e);
   }

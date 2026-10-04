@@ -106,7 +106,15 @@ export async function onRequestPost(context) {
       id, user_id: userId, sid, mode, seed,
       core_version: int(b.coreVersion, 0, 1000),
       data_version: int(b.dataVersion, -0x7FFFFFFF, 0x7FFFFFFF),
-      official: userId && claimedDay ? claimedDay : null,
+      // THE DAY KEY IS STAMPED EVEN WHEN NOBODY IS SIGNED IN (v69.2). It used to
+      // be `userId && claimedDay`, which threw away the only record of which day
+      // an anonymous Daily belonged to — so /api/claim had nothing to adopt and a
+      // signed-out 79-3 could never become official, however soon they signed in.
+      // Storing it is safe on every count: the UNIQUE index is
+      // (user_id, official) WHERE user_id IS NOT NULL, so anonymous rows cannot
+      // clash with each other or with anyone's; and every board filters
+      // user_id IS NOT NULL, so an unadopted row still ranks nowhere.
+      official: claimedDay,
       verified,
       verdict: v.ok ? null : String(v.why).slice(0, 40),
       wins: r ? r.wins : null,

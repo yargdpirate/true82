@@ -50,12 +50,42 @@ export function engine(context) {
     try {
       const { env, request } = context;
       if (!env || !env.ASSETS) return null;
-      const url = new URL("/site_data.json", new URL(request.url).origin);
-      const res = await env.ASSETS.fetch(url);
+      const origin = new URL(request.url).origin;
+      const res = await env.ASSETS.fetch(new URL("/site_data.json", origin));
       if (!res || !res.ok) return null;
       const data = await res.json();
       T82.initData(data);
       if (!T82.t || !T82.t.IDX) return null;
+
+      /* THE LABEL TAXES ARE PART OF THE SCORE (v69.2). app.js loads labels.json
+         in every browser (loadLabels(), app.js) and calls T82.setLabels, and the
+         v61 label taxes then move the engine's net. Without this the Worker
+         replayed a DIFFERENT engine from the one the player played on, so the
+         client's honest claim and the server's honest recomputation disagreed
+         and the run stored verified = 0 and could never reach a board.
+
+         MEASURED on 900 bot drafts across the three modes (2026-10-04): the net
+         differs on 26.7% of runs and the record on 20.2% (Classic 11%, Presti
+         23%, Pro 27%). So better than a quarter of every real season would have
+         been silently dropped from every board, with the symptom "the boards are
+         quiet" and no error anywhere.
+
+         Why nobody caught it: every harness, including this session's first two,
+         ran its client side WITHOUT labels too, so both sides agreed for the
+         wrong reason. That is the repo's own trap (handoff 0000002b, trap five),
+         and it caught the next person as well. tools/boards-e2e.js and
+         tools/boards-live.js now load labels on the client side exactly as a
+         browser does, which is what makes this a test rather than a story.
+
+         Fail-soft: no labels.json, or an unreadable one, leaves the engine
+         scoring as it did before rather than refusing to start. That reopens the
+         mismatch, so it is logged by its absence, not silently papered over:
+         labelsReady() below is what /api/run can be asked about. */
+      try {
+        const lab = await env.ASSETS.fetch(new URL("/labels.json", origin));
+        if (lab && lab.ok) T82.setLabels(await lab.json());
+      } catch { /* scores as it did before; see above */ }
+
       return T82;
     } catch {
       return null;
@@ -87,4 +117,12 @@ export async function verify(context, payload) {
 export async function dataVersion(context) {
   const T = await engine(context);
   try { return T && T.t ? T.t.dataVersion : null; } catch { return null; }
+}
+
+/** Did the engine actually get the label taxes? The one question worth asking
+    the deployment when boards go quiet: a `false` here means every run whose
+    five triggers a tax will fail verification (see engine() above). */
+export async function labelsReady(context) {
+  const T = await engine(context);
+  try { return !!(T && T.labelsReady && T.labelsReady()); } catch { return false; }
 }

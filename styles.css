@@ -4029,7 +4029,7 @@ body:has(#app#app):not(:has(#app#app > :is(.hm, #staticIntro))) .hm-top { displa
 .acct-email { margin: 0; font-family: var(--t-mono); font-size: 13px; line-height: 1.4; word-break: break-all; color: var(--t-text); }
 .acct-sheet .rs-scroll { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding-top: 4px; }
 .acct-p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--t-text); }
-.acct-fine { margin: 0; font-size: 12px; line-height: 1.4; color: var(--t-text-3); }
+.acct-fine { margin: 0; font-size: 12px; line-height: 1.4; color: var(--t-text-2); }   /* v69.2: this carries the qualification copy a confused player most needs to read ("Needs 10 finished seasons"), so it may not be the disabled token either */
 .acct-label { font-family: var(--t-disp); font-weight: 700; font-size: 12.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--t-text-2); }
 .acct-input {
   appearance: none; -webkit-appearance: none; width: 100%; min-height: 40px; padding: 8px 10px;
@@ -4058,11 +4058,15 @@ body:has(#app#app):not(:has(#app#app > :is(.hm, #staticIntro))) .hm-top { displa
   padding: 7px 4px; border-bottom: 1px solid rgb(var(--t-rule-rgb) / .5);
 }
 .lb-row:last-child { border-bottom: 0; }
-.lb-rank { flex: none; width: 2.2em; font-family: var(--t-mono); font-size: 12px; color: var(--t-text-3); text-align: right; }
+.lb-rank { flex: none; width: 3.5ch; font-family: var(--t-mono); font-size: 12px; color: var(--t-text-2);
+  text-align: right; font-variant-numeric: lining-nums tabular-nums; }   /* v69.2: --t-text-3 is the DISABLED token (2.96:1 on the night ground, under WCAG 1.4.3's 4.5:1 at 12px) and the rank is the one element a ranked list exists for; --t-text-2 is 7.30:1. Hierarchy comes back through size and weight, never through contrast. Tabular figures so the column cannot shimmy as ranks gain a digit. */
 .lb-name { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--t-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-score { flex: none; font-family: var(--t-mono); font-size: 13px; color: var(--t-text-2); }
-.lb-you { background: rgb(var(--t-accent-rgb) / .1); border-radius: 4px; }
-.lb-you .lb-name, .lb-you .lb-score { color: var(--t-accent); }
+.lb-you {   /* v69.2: your row was washed in --t-accent, which is ALSO --t-loss and ALSO the selected tab: one meaning per colour, broken twice in one sheet. The theme ships --t-you for exactly this. And a 10% wash computes 1.12:1 against the ground, so colour was the ONLY marker (WCAG 1.4.1); the left bar is the non-colour signal. */
+  background: rgb(var(--t-you-rgb) / .14); border-radius: 4px;
+  border-left: 3px solid var(--t-you); padding-left: 7px;
+}
+.lb-you .lb-name, .lb-you .lb-score { color: var(--t-you); }
 .brand-art { display: contents; }   /* off the home: no box of its own, the masthead lays out as before */
 .ht { display: none; }
 body:has(#app#app > :is(.hm, #staticIntro)) #app { padding-top: 0; padding-bottom: 24px; }

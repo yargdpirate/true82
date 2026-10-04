@@ -4969,6 +4969,19 @@ function hotHand(e) {
   function dismiss() {
     if (!G.recapPayload) prepareRecap(e, e.winTally, e.net, null);   // ceremony skipped before verdict -> stage the payload for the Tribune's door (no model call yet)
     if (ov.parentNode) ov.parentNode.removeChild(ov);
+    // v69.2 THE BOARD WAITS FOR THE CEREMONY. gameFinishedPings() used to post
+    // the run the instant the results rendered, which is BEFORE this overlay has
+    // been touched — so a refusal (I DON'T WANT YOUR CHARITY, or SKIP before the
+    // pull) pushed its "hx" op into G.actions AFTER the log had already been
+    // snapshotted and sent. The server then replayed a log with no refusal in it,
+    // TOOK the spin the player had declined, and agreed with the client's own
+    // replay of the same incomplete log, so the row stored verified = 1 with a
+    // record the player never got: a declined 81-1 could be credited as an 82-0
+    // on the Cheapest 82-0 board. Every exit from this overlay funnels through
+    // dismiss(), so this is the one place the log is final. submitFinishedRun()
+    // is idempotent, so a second call here is harmless.
+    G.hhPending = false;              // the log is final: release the submission
+    submitFinishedRun();
   }
   function segs() { return ov.querySelectorAll(".hh-seg"); }
 
@@ -9378,6 +9391,9 @@ function renderResults(e, keepScroll) {
   // The Heat Check lever survives ONLY when a real spin is pending (exactly 81 wins in Presti, or the QA flag).
   // v59.3: the Tribune is never a gate; its payload is staged here (no model call) for the door at the bottom.
   var clutchPending = hhEligible(e) && !G.hhMidUsed && (FORCE_CLUTCH || e.winTally === CFG.GAMES_IN_SEASON - 1);
+  // v69.2: tell gameFinishedPings() to hold the board submission until the Heat
+  // Check overlay is done with G.actions (hotHand's dismiss() sends it instead).
+  G.hhPending = !!clutchPending;
   if (clutchPending) {
     hotHand(e);                       // recap request fires from verdict() with post-boost totals
   } else if (MODE !== "kaman") {
@@ -9953,8 +9969,24 @@ function gameFinishedPings() {
   // the server's recomputation is ever stored or ranked. The payload is built
   // here because G is module-scoped to this file; accounts.js cannot see it.
   // kaman never submits. Wrapped, as before: the game must not notice a failure.
+  // v69.2: a pending Heat Check holds it back (see submitFinishedRun).
+  submitFinishedRun();
+  setTimeout(fetchFootStats, 1500);
+}
+
+/* v69.2 ONE PLACE THE FINISHED RUN IS POSTED, and it waits for the ceremony.
+   The log is only final once the post-season Heat Check overlay has resolved: a
+   refusal pushes "hx" into G.actions from inside that overlay, long after the
+   results rendered. So while G.hhPending is set this does nothing, and hotHand's
+   dismiss() calls it again when the log is settled. accounts.js's own SUBMITTED
+   guard keys on the action log, so calling this twice with the SAME log is a
+   no-op; the pagehide net below exists for the player who walks away mid-
+   ceremony, where losing the run would be the alternative. */
+function submitFinishedRun() {
   try {
-    if (window.T82ACC && G && MODE !== "kaman") T82ACC.submitRun({
+    if (!window.T82ACC || !G || MODE === "kaman") return;
+    if (G.hhPending) { armHhSubmitNet(); return; }
+    T82ACC.submitRun({
       mode: MODE,
       seed: G.seed,
       actions: (G.actions || []).slice(),
@@ -9963,7 +9995,17 @@ function gameFinishedPings() {
       official: (G.analyticsOfficial === 1 && G.social && G.social.key) ? G.social.key : null
     });
   } catch (e) {}
-  setTimeout(fetchFootStats, 1500);
+}
+var HH_NET_ARMED = false;
+function armHhSubmitNet() {
+  if (HH_NET_ARMED) return;
+  HH_NET_ARMED = true;
+  try {
+    window.addEventListener("pagehide", function () {
+      try { if (G) G.hhPending = false; } catch (e) {}
+      submitFinishedRun();
+    }, { once: true });
+  } catch (e) {}
 }
 
 // v61 THE LABEL TAXES read a frozen copy of the player tags, shipped with each release (tools/labels-freeze.js

@@ -287,11 +287,11 @@
     var head = '<div class="rs-head"><h2 class="rs-title">Boards</h2>' +
       '<button class="rs-close" id="acctClose" type="button" aria-label="Close">\u00D7</button></div>';
     var tabs = '<div class="lb-tabs" role="tablist">' + BOARDS.map(function (b) {
-      return '<button class="lb-tab' + (b.key === boardState.key ? ' on' : '') + '" data-board="' + b.key +
+      return '<button class="lb-tab tm-flat' + (b.key === boardState.key ? ' on' : '') + '" data-board="' + b.key +
         '" type="button" role="tab" aria-selected="' + (b.key === boardState.key) + '">' + esc(b.tab) + '</button>';
     }).join("") + '</div>';
     var modes = def.modes ? '<div class="lb-tabs lb-modes">' + BOARD_MODES.map(function (m) {
-      return '<button class="lb-tab' + (m[0] === boardState.mode ? ' on' : '') + '" data-mode="' + m[0] +
+      return '<button class="lb-tab tm-flat' + (m[0] === boardState.mode ? ' on' : '') + '" data-mode="' + m[0] +
         '" type="button">' + esc(m[1]) + '</button>';
     }).join("") + '</div>' : "";
 
@@ -342,9 +342,26 @@
   }
   function defFor(k) { for (var i = 0; i < BOARDS.length; i++) if (BOARDS[i].key === k) return BOARDS[i]; return BOARDS[0]; }
 
+  /* THE DAY IS THE PLAYER'S, NOT THE SERVER'S (v69.2). /api/lb's daily board
+     defaults to the UTC date, but a run's `official` key is whatever
+     T82DAILY.dayKey() said in THIS browser, which is device-local midnight (the
+     Wordle convention, daily-core.js). Those disagree for the whole American
+     evening: from 5pm Pacific and 8pm Eastern until local midnight, UTC is
+     already tomorrow, so the board asked for a day nobody had played and came
+     back EMPTY for every US player at exactly the hours they play. Measured on
+     2026-10-04: 7 hours a day in Los Angeles, 4 in New York, which covers the
+     10/20-10/22 influencer window. So the client names the day it played and the
+     server's utcDay() stays only as the no-JS fallback. */
+  function todayKey() {
+    try { if (g.T82DAILY && g.T82DAILY.dayKey) return g.T82DAILY.dayKey(); } catch (e) {}
+    return null;
+  }
+
   function loadBoard() {
     var def = defFor(boardState.key);
-    return board(def.key, def.modes ? { mode: boardState.mode } : {}).then(function (data) {
+    var opts = def.modes ? { mode: boardState.mode } : {};
+    if (def.key === "daily") opts.day = todayKey();
+    return board(def.key, opts).then(function (data) {
       var sheet = document.querySelector("#acctOverlay .rules-sheet");
       if (!sheet) return;
       sheet.innerHTML = boardsHtml(def, data);
