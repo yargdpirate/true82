@@ -1693,6 +1693,7 @@
   LB.surfaces = {
     START: START,
     POST: POST,
+    standing: standingLine,   /* lab.js prints it on .res-comp; one implementation, no drift */
     FLOOR: FLOOR,
     start: function (id) { return find(START, id); },
     post: function (id) { return find(POST, id); }

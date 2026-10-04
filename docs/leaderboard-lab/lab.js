@@ -689,6 +689,18 @@
      player scrolls past is here at its real depth, so "how far down is the hook"
      is honest; the section BODIES are stand-ins, which is what the warning line
      on the lab page says. The hook itself mounts exactly where it would ship. */
+  /* The standing, by the owner's settled rule (DECISIONS.md): the rank always with
+     the field size, and the percentile only above PCT_MIN_N and only in the top
+     half. surfaces.js owns the implementation and this reads it, so there is one
+     rule rather than two copies that drift apart. */
+  function standingNow(data) {
+    if (!RC.hasRun) return "";
+    try {
+      if (LB.surfaces && LB.surfaces.standing) return LB.surfaces.standing(RC, data) || "";
+    } catch (e) {}
+    return "";
+  }
+
   function resultsShell(v, data) {
     /* THE RECORD ON THE CARD IS THE RECORD IN THE HOOK. The hook reads the
        viewer's own row out of the board data, so a hardcoded record here would
@@ -716,8 +728,15 @@
         '<p class="eyebrow">CLASSIC · YOUR SEASON</p>' +
         '<div class="rr-print"><div class="big">' + wins + "–" + loss + "</div></div>" +
         '<div class="big-label">net rating ' + net + "</div>" +
+        /* THE REAL LINE, NOT A FROZEN "Top 12%". A hardcoded percentile here did
+           two kinds of damage: it broke the standings rule he settled (the rank
+           leads, the percentile only when the sample earned it), and because it
+           sits directly under the record it made EVERY post-game direction read
+           as "the percentile thing again", which is the one idea he had already
+           ruled out as not being a hook at all. */
         '<div class="res-comp">Juggernaut territory' +
-          (RC.hasRun ? ' <span class="comp-pct">• Top 12%</span>' : "") + "</div>" +
+          (standingNow(data) ? ' <span class="comp-pct">\u2022 ' + esc(standingNow(data)) + '</span>' : '') +
+        '</div>' +
         place("after-comp") +
         '<button class="btn btn-primary btn-block presti-spin rr-share" type="button">SHARE YOUR TEAM</button>' +
       "</section>" +
