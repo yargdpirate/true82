@@ -155,6 +155,67 @@ Read this file before editing. It summarizes the current architecture, the recen
 
 ---
 
+## 0000004. ROUND TWO OF THE LAB (2026-10-04, later): FUNCTIONAL ART, AND WHAT IS STILL WEAK
+
+**He saw round one and rejected it**, correctly: "little to no difference from each other", "it feels
+like a spreadsheet", "we don't even use the secondary app palette colour, that seafoam green". Then
+the sharper brief, which is the one to build against from now on: **"functional art (matching the
+general design language of the rest of the app), not a reskinned spreadsheet"**. And the unshackling,
+which matters more than any of it: **the inherited leaderboard is "just a placeholder, not my absolute
+favourite thing... i bet the previous agent told you to stick to it. ignore that."**
+
+**THE CAUSE WAS THE CONTRACT, NOT THE DESIGNERS, and this is the lesson.** Round one's build brief
+said to reuse the shipped `.lb-*` list so the site's CSS would style it. That one sentence committed
+the board to BEING A TABLE before any designer touched it, and eleven people then produced eleven
+restyled tables. Measured: `backgroundImage` was `none` on the sheet and every row in all eleven
+(including the one named "halftone"), the sheet was byte-identical in all eleven, and there were ZERO
+canvases. **If you inherit a constraint, check whether it is his or the last agent's before you build
+a lab around it.** CONTRACT.md's top section now carries the cancellation.
+
+**SEVENTY PIECES OF ART WERE ALREADY IN THE REPO AND UNUSED.** `T82ART.catalog()` returns 19 scenes,
+43 riso print treatments and 8 heat effects, and `T82PRINT.paper()` hands back the real stock as a
+16 KB data URL. Nobody had to draw anything. Round two added `docs/leaderboard-lab/art.js` as the seam
+(fail-soft, synchronous-safe, idempotent per element, deterministic), and it is the best file in the
+folder. **It also found a trap worth knowing: all 43 "loss" treatments draw the letter L or the word
+LOSS**, so they cannot be used as neutral board texture, and it refuses to.
+
+**Round two now:** six looks, all six painting for real (4 to 28 canvases each); eight navigations,
+none of them a row of pills; nine post-game directions; and the GOAT Climb rebuilt faithfully in the
+lab (the real twenty legends, the real 200/11-px-a-win geometry, the real class names) so a post-game
+direction is designed against the real artwork.
+
+**THE RAIL THAT FILLS UP** is the direction the build did not produce and the lead added. Every
+builder mounted into the Climb and then wrote a SENTENCE under it, which is the caption he had already
+rejected. The Climb is already a leaderboard, so today's living players go on the SAME RAIL as the
+dead legends, each at the height of their own record, in the second ink. The ticks live in a 7px
+channel measured off the real artwork at 320px (legend tags end at 139, pins start at 147); the first
+attempt put them beside the rail where they vanished into it, because the rail is the same aqua.
+
+**STILL WEAK, and his to judge in the lab rather than defects to fix blind:**
+1. `overprint` inks at 1.00:1 on the default board (its wash paints rgb(66,199,233) onto a plate of
+   rgb(65,198,234)) and inks 0 of 12 rows on an all-tied Daily, which is the normal shape of a shared
+   board. It is the weakest of the six and is probably a cut.
+2. The whole-press-sheet navigation assumed light paper. The real stock is near-black, so its type
+   prints at about 1.9:1 and 35 text nodes sit under wash canvases. The idea (small multiples, size as
+   the information, nothing hidden) is worth rescuing; as built it fails on legibility, not taste.
+3. `rail` and `print` are pictures ABOVE a table: 4 canvases each, all in a fixed band, zero inside any
+   row. They do not meet the round-two bar and polish will not change that.
+4. surfaces.js spends fire gold over aqua on 11 of 11 engine calls while nine owner-facing notes say
+   "the second ink". The notes and the pixels disagree.
+
+**ONE RESEARCH FINDING WORTH KEEPING** regardless of which look wins: every sports-scoreboard
+precedent you will find uses RED for the good number (Augusta invented red-for-under-par and the
+Masters board is copied from Fenway). **In TRUE 82 red and `--t-bad` mean BAD.** The standout number
+is `--t-hot` fire gold, new-today is `--t-offset` aqua, and the viewer is `--t-you`. Anyone building a
+scoreboard look from sports reference will import the inversion without noticing.
+
+**THE STANDINGS RULE IS SETTLED AND BUILT** (`docs/leaderboard-lab/DECISIONS.md`): the rank always,
+with the field size, and the percentile only when the sample earned it. `PCT_MIN_N = 139`, 10-point
+steps to 554, 5-point steps to 13,830, one percent only above that, and never above the halfway mark.
+The shipped `MIN_N = 10` in `functions/api/percentile.js` puts a printed "Top 10%" anywhere between
+Top 0% and Top 29%; that endpoint still needs the same treatment, and it must start returning the rank
+and the field size rather than only `pct`. `functions/api/lb.js` already does (v69.2).
+
 ## 0000003. START HERE (2026-10-04): V69.2, THE BOARDS MADE HONEST, AND THE LEADERBOARD LAB
 
 ### What was asked, and what the answer turned out to be
