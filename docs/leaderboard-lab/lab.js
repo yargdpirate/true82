@@ -63,7 +63,11 @@
     // first impression, so the default opens on an ordinary day instead.
     seed: 500,
     // the mode picker on the boards that carry one (82-0%, and the Club's cost view)
-    mode: "classic"
+    mode: "classic",
+    // ROUND TWO. How you GET to a board, which he disliked as a row of pills, and
+    // whether the sheet sits on the real riso paper stock instead of a grey box.
+    nav: "pills",
+    paper: true
   };
   LB.DEFAULT = DEFAULT;
 
@@ -83,7 +87,7 @@
      Order is APPEND-ONLY: a new setting goes on the END, so every code ever
      starred still decodes and a missing trailing field keeps its default. */
   var ORDER = ["view", "slate", "board", "scope", "around", "youRank", "field", "rows",
-    "empty", "signedIn", "hasRun", "showTag", "crowd", "startLink", "postGame", "look", "width", "seed", "mode"];
+    "empty", "signedIn", "hasRun", "showTag", "crowd", "startLink", "postGame", "look", "width", "seed", "mode", "nav", "paper"];
 
   function encode(rc) {
     var s = ORDER.map(function (k) {
@@ -135,6 +139,7 @@
   /* ---------- the control registry ----------
      One place, so a new setting is one row here and nothing else. */
   function lookIds() { return ((LB.looks && LB.looks.LIST) || []).map(function (l) { return [l.id, l.name]; }); }
+  function navIds() { return ((LB.nav && LB.nav.LIST) || []).map(function (n) { return [n.id, n.name]; }); }
   function startIds() { return ((LB.surfaces && LB.surfaces.START) || []).map(function (s) { return [s.id, s.name]; }); }
   function postIds() { return ((LB.surfaces && LB.surfaces.POST) || []).map(function (s) { return [s.id, s.name]; }); }
   function slateList() {
@@ -179,7 +184,11 @@
       { k: "empty", t: "check", label: "Show the empty state" }
     ] },
     { h: "The look", rows: [
-      { k: "look", t: "seg", label: "Art direction", opts: lookIds }
+      { k: "look", t: "seg", label: "Art direction", opts: lookIds },
+      { k: "nav", t: "seg", label: "How you get there", opts: navIds,
+        note: "The pills are what he disliked. These are the alternatives." },
+      { k: "paper", t: "check", label: "Riso paper under it",
+        note: "The real stock the season print and the reel already use." }
     ] },
     { h: "The two new pieces", rows: [
       { k: "startLink", t: "seg", label: "Start screen link", opts: startIds },
@@ -258,6 +267,8 @@
     if (st.length && st.indexOf(RC.startLink) === -1) RC.startLink = st[0];
     var po = postIds().map(function (x) { return x[0]; });
     if (po.length && po.indexOf(RC.postGame) === -1) RC.postGame = po[0];
+    var nv = navIds().map(function (x) { return x[0]; });
+    if (nv.length && nv.indexOf(RC.nav) === -1) RC.nav = nv[0];
   }
 
   function buildViews() {
@@ -422,6 +433,8 @@
       mount.innerHTML = html;
       doc.body.appendChild(mount);
       doc.body.classList.add("rules-open");
+      applyNav(doc, mount);
+      applyPaper(doc, mount);
       wireFrameControls(doc, mount);
       paintLook(doc);
     });
@@ -472,6 +485,57 @@
     if (sel) sel.addEventListener("change", function () { set("mode", sel.value); });
   }
 
+  /* ---------- ROUND TWO: the navigation, and the paper ----------
+     nav.js owns how you GET to a board; boards.js owns the list. So the chosen
+     navigation REPLACES the pill row boards.js emits rather than sitting beside
+     it, and "pills" is simply the direction that reproduces what shipped, so
+     "Compare with today" still means something. Absent nav.js, the pills stay:
+     a missing module must never leave the board unreachable. */
+  function applyNav(doc, mount) {
+    var list = (LB.nav && LB.nav.LIST) || [];
+    var def = null, i;
+    for (i = 0; i < list.length; i++) if (list[i].id === RC.nav) def = list[i];
+    doc.documentElement.setAttribute("data-nav", def ? def.id : "pills");
+    styleTag(doc, "lab-nav", def && def.css ? safe(def.css, RC) : "");
+    if (!def || !def.html) return;
+    var slate = null;
+    try { slate = LB.boards && LB.boards.slate ? LB.boards.slate(RC) : null; } catch (e) {}
+    var markup = "";
+    try { markup = def.html(RC, slate, dataFor()) || ""; } catch (e) { markup = ""; }
+    if (!markup) return;                       // a direction that draws nothing keeps the pills
+    var host = mount.querySelector(".lb-tabs");
+    var box = doc.createElement("div");
+    box.className = "lb-nav";
+    box.setAttribute("data-nav-id", def.id);
+    box.innerHTML = markup;
+    if (host && host.parentNode) host.parentNode.replaceChild(box, host);
+    else {
+      var scroll = mount.querySelector(".rs-scroll");
+      if (scroll) scroll.insertBefore(box, scroll.firstChild); else return;
+    }
+    // gestures, scroll sync, anything a click attribute cannot express. wire() is
+    // called on a FRESH subtree every render, so listeners cannot accumulate.
+    if (def.wire) { try { def.wire(doc, set); } catch (e) {} }
+  }
+
+  /* The sheet sits on the real riso stock the season print and the reel already
+     use, rather than a flat grey box. One call, and it is a toggle because he
+     should be able to see it on and off rather than take my word for it. */
+  function applyPaper(doc, mount) {
+    var sheet = mount.querySelector(".rules-sheet");
+    if (!sheet) return;
+    var url = "";
+    if (RC.paper && LB.art && LB.art.paper) { try { url = LB.art.paper(doc) || ""; } catch (e) { url = ""; } }
+    if (url) {
+      sheet.style.backgroundImage = url;
+      sheet.style.backgroundSize = "cover";
+      sheet.setAttribute("data-paper", "1");
+    } else {
+      sheet.style.backgroundImage = "";
+      sheet.removeAttribute("data-paper");
+    }
+  }
+
   function paintLook(doc) {
     var look = ((LB.looks && LB.looks.LIST) || []).filter(function (l) { return l.id === RC.look; })[0];
     if (look && look.paint) { try { look.paint(doc, RC); } catch (e) {} }
@@ -481,6 +545,103 @@
     return '<div class="rules-overlay"><div class="rules-sheet acct-sheet plq-frame"><div class="rs-scroll">' +
       '<p class="acct-p">A lab module threw while rendering. That is a lab bug, not a design.</p>' +
       '<p class="acct-fine">' + esc(String((e && e.message) || e)) + "</p></div></div></div>";
+  }
+
+
+  /* ---------- THE GOAT CLIMB, rebuilt faithfully ----------
+     The owner's hardest rule for round two: "after the game needs to retain the
+     climb artwork it's using now... it's beautiful the way it is." Round one's
+     results shell did not draw it at all, so every post-game variant was designed
+     against a card that was missing the one thing it must not disturb.
+
+     This is app.js climbHtml reproduced: the same twenty legends, the same
+     geometry (FLOOR 62, LADDER_TOP 81, 200/11 px a win, a 15px compressed band
+     from 81 to 82), the same class names (.climb, .climb-track, .climb-svg with
+     .rail-path and .fill-path, .climb-pin/.climb-tag pairs with .comp on the
+     nearest comparison, .climb-summit-cap, .climb-you with .cy-dot and
+     .cy-label), so the site's own CSS styles it and a variant that mounts into it
+     is mounting into the real thing.
+
+     Worth seeing while designing: THE CLIMB IS ALREADY A LEADERBOARD. A vertical
+     rail, pins for the greatest teams in history, and a marker for where this
+     season sits among them. The board asks the same question about living
+     players. */
+  var CLIMB_LEGENDS = [
+    ["Dream Team", 81], ["Redeem Team", 80], ["OG Death Lineup", 79], ["Hamptons 5", 78],
+    ["Shaqobe Core", 77], ["OG Celts Big 3", 76], ["\u201908 Celts Big 3", 75], ["3-peat Bulls Core", 74],
+    ["\u201916 Warriors", 73], ["\u201996 Bulls", 72], ["Lob City Lineup", 71], ["Prime Wilt Core", 70],
+    ["\u201972 Lakers", 69], ["Fo' Fo' Fo' Co'", 68], ["\u201986 Celtics", 67], ["Heatles", 66],
+    ["\u201916 Spurs", 65], ["The Last Shot Jazz", 64], ["Bad Boy Pistons", 63], ["Beautiful Game Spurs", 62]
+  ];
+
+  /* The geometry, exposed, so a post-game direction can put its own pins ON the
+     rail instead of writing a caption underneath it. Round two's builders all
+     mounted "climb" and all of them wrote a sentence; the whole point of that
+     mount is that the ARTWORK becomes the way in, which needs the same yPct the
+     legend pins use. */
+  function climbGeom(wins) {
+    var FLOOR = 62, TOP = 82, RX = 56, LADDER_TOP = 81, PX_PER_WIN = 200 / 11;
+    var BAND_PX = 15, CLUSTER_PX = Math.round((LADDER_TOP - FLOOR) * PX_PER_WIN);
+    var FLOOR_PX = BAND_PX + CLUSTER_PX;
+    var below = wins < FLOOR;
+    var TRACK_PX = FLOOR_PX + (below ? 50 : 14);
+    var Y_TEAMTOP = BAND_PX / TRACK_PX * 100, Y_FLOOR = FLOOR_PX / TRACK_PX * 100;
+    return {
+      FLOOR: FLOOR, TOP: TOP, RX: RX, LADDER_TOP: LADDER_TOP,
+      TRACK_PX: TRACK_PX, Y_TEAMTOP: Y_TEAMTOP, Y_FLOOR: Y_FLOOR, below: below,
+      yPct: function (w) {
+        if (w <= LADDER_TOP) return Y_TEAMTOP + (LADDER_TOP - w) / (LADDER_TOP - FLOOR) * (Y_FLOOR - Y_TEAMTOP);
+        return (TOP - w) / (TOP - LADDER_TOP) * Y_TEAMTOP;
+      }
+    };
+  }
+  LB.climb = { LEGENDS: CLIMB_LEGENDS, geom: climbGeom };
+
+  function climbShell(wins, inTrack) {
+    var FLOOR = 62, TOP = 82, RX = 56;
+    var LADDER_TOP = 81;                       // the top pin sets the scale
+    var PX_PER_WIN = 200 / 11;
+    var BAND_PX = 15, CLUSTER_PX = Math.round((LADDER_TOP - FLOOR) * PX_PER_WIN);
+    var FLOOR_PX = BAND_PX + CLUSTER_PX;
+    var below = wins < FLOOR;
+    var TRACK_PX = FLOOR_PX + (below ? 50 : 14);
+    var Y_TEAMTOP = BAND_PX / TRACK_PX * 100, Y_FLOOR = FLOOR_PX / TRACK_PX * 100;
+    function yPct(w) {
+      if (w <= LADDER_TOP) return Y_TEAMTOP + (LADDER_TOP - w) / (LADDER_TOP - FLOOR) * (Y_FLOOR - Y_TEAMTOP);
+      return (TOP - w) / (TOP - LADDER_TOP) * Y_TEAMTOP;
+    }
+    var youY = below ? 0 : Math.max(0, Math.min(Y_FLOOR, yPct(wins)));
+    var rank = 0, i;
+    for (i = 0; i < CLIMB_LEGENDS.length; i++) if (CLIMB_LEGENDS[i][1] > wins) rank++;
+    var compIdx = -1;
+    if (!below && rank !== 0) {
+      var best = Infinity;
+      for (i = 0; i < CLIMB_LEGENDS.length; i++) {
+        var dd = Math.abs(CLIMB_LEGENDS[i][1] - wins);
+        if (dd < best) { best = dd; compIdx = i; }
+      }
+    }
+    var pins = CLIMB_LEGENDS.map(function (L, n) {
+      var y = yPct(L[1]).toFixed(2), isC = n === compIdx;
+      return '<span class="climb-pin' + (isC ? " comp" : "") + '" style="top:' + y + '%"></span>' +
+        '<span class="climb-tag' + (isC ? " comp" : "") + '" style="top:' + y + '%">' + esc(L[0]) + "</span>";
+    }).join("");
+    var fill = (!below && youY < Y_FLOOR)
+      ? '<path class="fill-path" d="M' + RX + "," + youY.toFixed(2) + "L" + RX + "," + Y_FLOOR + '"/>' : "";
+    var you = below
+      ? '<div class="climb-you below" style="top:' + ((FLOOR_PX + 22) / TRACK_PX * 100).toFixed(2) + '%">' +
+          '<span class="cy-arrow">\u25BC</span><span class="cy-label">YOUR FIVE</span></div>'
+      : '<div class="climb-you" style="top:' + youY.toFixed(2) + '%">' +
+          '<span class="cy-dot"></span><span class="cy-label">YOUR FIVE</span></div>';
+    return '<div class="climb"><div class="goat-fw" aria-hidden="true"></div>' +
+      '<div class="climb-track" style="height:' + TRACK_PX + 'px">' +
+        '<svg class="climb-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+          '<path class="rail-path" d="M' + RX + ",0L" + RX + "," + Y_FLOOR.toFixed(2) + '"/>' + fill + "</svg>" +
+        pins +
+        '<div class="climb-summit-cap">82\u20130</div>' +
+        you +
+        (inTrack || "") +          // a direction that paints ON the rail lands here
+      "</div></div>";
   }
 
   /* A rebuild of the results card from app.js renderResults (around line 9305):
@@ -526,8 +687,10 @@
         '<h2 class="t-head" data-head="eyebrow">Your five</h2>' +
         '<p class="acct-fine">(the five player cards sit here on the real screen)</p>' +
       "</section>" +
-      '<section class="section rr-climb"><h2 class="t-head" data-head="eyebrow">GOAT Climb</h2>' +
-        '<p class="acct-fine">(the climb sits here)</p></section>' +
+      '<section class="section rr-climb" data-result-section="goat_climb">' +
+        '<h2 class="t-head" data-head="eyebrow">GOAT Climb</h2>' +
+        climbShell(wins, place("climb")) + place("climb-foot") +
+      "</section>" +
       '<section class="section"><h2 class="t-head" data-head="eyebrow">Scoring Card</h2>' +
         '<p class="acct-fine">(the ledger sits here)</p></section>' +
       '<div class="actions" data-result-section="replay">' +

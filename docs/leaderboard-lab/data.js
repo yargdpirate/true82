@@ -599,6 +599,35 @@
 
   /* ---------------- the board ---------------- */
 
+  /* THE SHAPE OF THE WHOLE FIELD, not of the page (added by the lead, round two).
+     board() returns the rows a list shows, which on a Daily are the top twelve and
+     therefore all tied. Anything that draws the FIELD (the rail that fills up, a
+     histogram, a distribution behind a list) needs scores sampled across the whole
+     population instead, so it gets them from the same quantile functions the rows
+     come from. k evenly spaced ranks, first and last included, deduplicated.
+     Returns [{ rank, score, sub }] in the board's own display strings. */
+  function spread(boardId, recipe, k) {
+    recipe = recipe || {};
+    var raw = String(boardId == null ? "today" : boardId);
+    var id = ALIAS[raw] || raw;
+    var B = BOARDS[id];
+    if (!B || !B.row) return [];
+    var seed = int(recipe.seed, 82);
+    var field = Math.max(0, fieldFor(id, Math.max(0, int(recipe.field, 4412))));
+    if (!field) return [];
+    var want = clamp(int(k, 24), 2, 82);
+    var c = { id: id, seed: seed, field: field, youRank: 0, scope: String(recipe.scope || "") };
+    var out = [], seen = {}, i, rank, row;
+    for (i = 0; i < want; i++) {
+      rank = Math.round(1 + (field - 1) * (i / (want - 1)));
+      if (seen[rank]) continue;
+      seen[rank] = 1;
+      try { row = B.row(rank, c); } catch (e) { continue; }
+      if (row) out.push({ rank: rank, score: row.score, sub: row.sub });
+    }
+    return out;
+  }
+
   function board(boardId, recipe) {
     recipe = recipe || {};
     var raw = String(boardId == null ? "today" : boardId);
@@ -678,5 +707,5 @@
   }
 
   g.LB = g.LB || {};
-  g.LB.data = { rng: rng, gms: gms, board: board };
+  g.LB.data = { rng: rng, gms: gms, board: board, spread: spread };
 }(typeof window !== "undefined" ? window : this));

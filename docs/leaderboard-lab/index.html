@@ -72,8 +72,12 @@
 
 <!-- the modules, in contract order. Each one only defines its object on window.LB. -->
 <script src="data.js"></script>
+<!-- art.js is the seam onto the real riso engines (T82PRINT / T82RISO / T82FX / T82ART).
+     It comes before looks.js and nav.js because both paint through it. -->
+<script src="art.js"></script>
 <script src="looks.js"></script>
 <script src="boards.js"></script>
+<script src="nav.js"></script>
 <script src="surfaces.js"></script>
 <script src="lab.js"></script>
 </body>

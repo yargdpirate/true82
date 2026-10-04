@@ -52,8 +52,7 @@ export const BOARDS = {
            WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL AND r.mode = ?
            GROUP BY r.user_id
           HAVING COUNT(*) >= ${MIN_RUNS}
-           ORDER BY score DESC, runs DESC
-           LIMIT ${LIMIT}`,
+           ORDER BY score DESC, runs DESC`,
     args: (q) => [MODES.has(q.get("mode")) ? q.get("mode") : "classic"]
   },
   streak: {
@@ -86,8 +85,7 @@ export const BOARDS = {
            SELECT b.user_id uid, ${NAME} name, u.tag tag, b.score score, b.current current, b.days days
              FROM best b JOIN users u ON u.id = b.user_id
             WHERE b.score > 0
-            ORDER BY b.score DESC, b.days DESC
-            LIMIT ${LIMIT}`,
+            ORDER BY b.score DESC, b.days DESC`,
     args: () => []
   },
   cheapest: {
@@ -99,8 +97,7 @@ export const BOARDS = {
            WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL
              AND r.mode = 'cap' AND r.wins = 82 AND r.budget_used IS NOT NULL
            GROUP BY r.user_id
-           ORDER BY score ASC
-           LIMIT ${LIMIT}`,
+           ORDER BY score ASC`,
     args: () => [],
     asc: true
   },
@@ -112,8 +109,7 @@ export const BOARDS = {
            WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL
              AND r.mode = 'classic' AND r.net IS NOT NULL
            GROUP BY r.user_id
-           ORDER BY score DESC
-           LIMIT ${LIMIT}`,
+           ORDER BY score DESC`,
     args: () => []
   },
   daily: {
@@ -122,8 +118,7 @@ export const BOARDS = {
     sql: `SELECT r.user_id uid, ${NAME} name, u.tag tag, r.wins score, r.net net
             FROM runs r JOIN users u ON u.id = r.user_id
            WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official = ?
-           ORDER BY r.wins DESC, r.net DESC
-           LIMIT ${LIMIT}`,
+           ORDER BY r.wins DESC, r.net DESC`,
     args: (q) => [DAY_RE.test(q.get("day") || "") ? q.get("day") : utcDay()]
   }
 };
@@ -140,7 +135,7 @@ export async function onRequestGet(context) {
     if (!env.DB) return json({ ok: true, board: key, rows: [], note: board.note });
 
     const args = board.args(q);
-    const res = await env.DB.prepare(board.sql).bind(...args).all().catch(() => null);
+    const res = await env.DB.prepare(board.sql + ` LIMIT ${LIMIT}`).bind(...args).all().catch(() => null);
     const rows = (res && res.results) || [];
 
     const out = {
@@ -150,12 +145,37 @@ export async function onRequestGet(context) {
       minRuns: key === "rate" ? MIN_RUNS : undefined
     };
 
-    // "and where am I?" — the line that makes a board personal. Cheap: one
-    // lookup against the rows already fetched, no second query.
+    /* "AND WHERE AM I?" — THE REAL ANSWER, NOT THE ONE ON THIS PAGE (v69.2).
+       This used to resolve `you` with out.rows.find() over the 82 rows already
+       fetched, so every player ranked 83rd or lower got { rank: null } and
+       accounts.js printed "You're not on this board yet" UNDER A SEASON THEY
+       WERE PROUD OF. On a Daily after the debut that is most of the audience
+       being told they do not exist.
+
+       The board's own SQL is now LIMIT-free, so it can be wrapped once and
+       ranked honestly: how many GMs are on it, where this one sits, and what
+       they scored. Ties share a rank (competition ranking: two GMs tied for
+       first are both 1st and the next is 3rd), which is what a reader expects
+       and what the row order alone cannot express.
+
+       `outOf` is the other half of the owner's standings rule (DECISIONS.md):
+       a rank with no field size is flattering nonsense on a small board, so the
+       server never sends one without the other. */
     const auth = await accountAuth(context);
     if (auth && auth.userId) {
-      const mine = out.rows.find((r) => r.uid === auth.userId);
-      out.you = mine ? { rank: mine.rank, score: mine.score } : { rank: null };
+      const cmp = board.asc ? "<" : ">";
+      const me = await env.DB.prepare(
+        `WITH b AS (${board.sql})
+         SELECT (SELECT COUNT(*) FROM b) outOf,
+                (SELECT score FROM b WHERE uid = ?) score,
+                (SELECT COUNT(*) FROM b x WHERE x.score ${cmp} (SELECT score FROM b WHERE uid = ?)) better`
+      ).bind(...args, auth.userId, auth.userId).first().catch(() => null);
+
+      if (me && me.score !== null && me.score !== undefined) {
+        out.you = { rank: (me.better || 0) + 1, score: me.score, outOf: me.outOf || 0 };
+      } else {
+        out.you = { rank: null, outOf: (me && me.outOf) || 0 };
+      }
     }
     out.rows.forEach((r) => { delete r.uid; });        // never leak internal ids
 

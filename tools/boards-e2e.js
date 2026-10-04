@@ -402,7 +402,10 @@ async function main() {
     await get("me", "/api/me", fresh);
     const r = await board("net", "", fresh);
     eq("v69.1 the newcomer: a signed-in player with no seasons is told they are not on the board, never a wrong rank",
-      [r.ok, r.you, r.rows.length > 0], [true, { rank: null }, true]);
+      // outOf rides along now: a rank with no field size is meaningless, so the
+      // server never sends one without the other (DECISIONS.md)
+      [r.ok, r.you && r.you.rank, r.you && typeof r.you.outOf, r.rows.length > 0],
+      [true, null, "number", true]);
   }
 
   /* ---------- the unrankable really are unrankable ---------- */
@@ -523,6 +526,53 @@ async function main() {
      eq("v69.2 adoption never doubles a day: the account holds exactly one row for an adopted day, so the " +
         "UNIQUE (user_id, official) index cannot be violated",
        held, 1);
+  }
+
+
+  /* RANKED PAST THE PAGE (v69.2). Every board is LIMIT 82 and `you` used to be
+     resolved by searching the fetched rows, so the 83rd player was told
+     "You're not on this board yet" under a season they were proud of. The rank
+     is now a real count, and it has to be right well past the page. */
+  {
+    const g = GMS[0];
+    const uid = db.prepare("SELECT id FROM users WHERE tag = ?").get(g.tag).id;
+    // 120 other GMs, each with one Classic season better than Ava's best
+    const best = db.prepare(
+      "SELECT MAX(net) m FROM runs WHERE user_id = ? AND mode = 'classic' AND official IS NULL AND verified = 1"
+    ).get(uid).m;
+    const addU = db.prepare("INSERT INTO users (clerk_id, tag, display_name, created_ts) VALUES (?,?,?,0)");
+    const addR = db.prepare(
+      `INSERT INTO runs (id,user_id,sid,mode,seed,verified,wins,net,official,created_ts)
+       VALUES (?,?,'crowd','classic',1,1,70,?,NULL,?)`);
+    for (let i = 0; i < 120; i++) {
+      const r = addU.run("c_crowd" + i, "C" + String(i).padStart(3, "0"), "Crowd " + i);
+      addR.run("cr" + i, Number(r.lastInsertRowid), best + 1 + i * 0.01, 2000 + i);
+    }
+    const seen = await board("net", "", g.token);
+    const onPage = seen.rows.some((r) => r.name === g.shown);
+    /* The expectation comes from the TABLE, not from a number typed here. Other
+       GMs reach this board earlier in the run (adoption adds one), so a
+       hardcoded rank goes stale the moment anything above it changes, and a
+       test that has to be re-typed is a test people start ignoring. */
+    const truth = db.prepare(
+      `WITH b AS (SELECT user_id uid, MAX(net) score FROM runs
+                   WHERE verified = 1 AND user_id IS NOT NULL AND official IS NULL
+                     AND mode = 'classic' AND net IS NOT NULL GROUP BY user_id)
+       SELECT (SELECT COUNT(*) FROM b) outOf,
+              (SELECT COUNT(*) FROM b x WHERE x.score > (SELECT score FROM b WHERE uid = ?)) + 1 rank`
+    ).get(uid);
+    eq("v69.2 ranked past the page: a GM pushed below the 82 rows the board returns is given their " +
+       "REAL rank (" + truth.rank + " of " + truth.outOf + "), not told they are not on it",
+      [onPage, seen.you && seen.you.rank, seen.you && seen.you.outOf, seen.you && seen.you.rank > 82],
+      [false, truth.rank, truth.outOf, true]);
+
+    // and the signed-in player with no season at all is still told so honestly
+    const fresh2 = mintToken("user_nobody");
+    await get("me", "/api/me", fresh2);
+    const none = await board("net", "", fresh2);
+    eq("v69.2 and a GM with no season is told they are not on it, with the field size beside it, so " +
+       "the two cases cannot be confused",
+      [none.you && none.you.rank, none.you && none.you.outOf > 0], [null, true]);
   }
 
 
