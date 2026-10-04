@@ -163,7 +163,7 @@
   }
 
   var GROUPS = [
-    { h: "The board", rows: [
+    { h: "The board", view: "boards", rows: [
       { k: "slate", t: "seg", label: "Which boards", opts: [["spec", "The new slate"], ["shipped", "Today's five"]],
         note: "Today's five is what is built right now. The new slate is what the research argues for." },
       { k: "board", t: "seg", label: "Open board", opts: boardIds },
@@ -183,16 +183,18 @@
         note: "0 and 1 are real states, not edge cases: they are what the first viewers meet at 9am on debut day." },
       { k: "empty", t: "check", label: "Show the empty state" }
     ] },
-    { h: "The look", rows: [
+    { h: "The look", view: "boards", rows: [
       { k: "look", t: "seg", label: "Art direction", opts: lookIds },
       { k: "nav", t: "seg", label: "How you get there", opts: navIds,
         note: "The pills are what he disliked. These are the alternatives." },
       { k: "paper", t: "check", label: "Riso paper under it",
         note: "The real stock the season print and the reel already use." }
     ] },
-    { h: "The two new pieces", rows: [
-      { k: "startLink", t: "seg", label: "Start screen link", opts: startIds },
-      { k: "postGame", t: "seg", label: "After a game", opts: postIds }
+    { h: "After a game", view: "results", rows: [
+      { k: "postGame", t: "seg", label: "The hook", opts: postIds }
+    ] },
+    { h: "Start screen link", view: "start", rows: [
+      { k: "startLink", t: "seg", label: "The link", opts: startIds }
     ] },
     { h: "Shuffle", rows: [
       { k: "seed", t: "range", label: "Reshuffle the names", min: 1, max: 999, step: 1 }
@@ -202,8 +204,22 @@
   function buildConsole() {
     var host = document.getElementById("labConsole");
     if (!host) return;
+    /* THE CONTROL FOR WHAT YOU ARE LOOKING AT COMES FIRST. The console is about
+       2,700px tall and "After a game" used to sit 2,286px down, under the whole
+       board section. On a phone he was scrolling past two thousand pixels of
+       controls for a tab he was not on, to reach the only control that changes
+       the one he was, which reads exactly as "the after game portion doesn't
+       even update any more at all": nothing he could reach changed it. Groups
+       that belong to the open view sort to the top; untagged groups follow; the
+       other views' groups go last rather than disappearing, because they are
+       still worth having without switching tabs to find them. */
+    var ordered = GROUPS.slice().sort(function (a, b) {
+      var am = a.view === RC.view ? 0 : (a.view ? 2 : 1);
+      var bm = b.view === RC.view ? 0 : (b.view ? 2 : 1);
+      return am - bm;
+    });
     var html = "";
-    GROUPS.forEach(function (grp) {
+    ordered.forEach(function (grp) {
       html += '<div class="lab-group"><div class="lab-group-h">' + esc(grp.h) + "</div>";
       grp.rows.forEach(function (r) {
         var opts = typeof r.opts === "function" ? r.opts() : r.opts;
