@@ -88,7 +88,17 @@
 
   /* Below this many GMs a percentile is one person dressed as precision, so the raw count shows
      instead ("9th of 25"). Same floor the board's own crowd line uses. */
-  var FLOOR = 30;
+  /* PCT_MIN_N, the owner's settled rule (DECISIONS.md, 2026-10-04): "if it's below
+     n=139 just say their rank eg #4 today". 139 is not taste. A printed granularity
+     is honest only when its step is wider than the 95% interval on the share-better,
+     sqrt(p(1-p)/n). At the "Top 10%" claim that needs n >= 139 for the nearest 10,
+     n >= 554 for the nearest 5, and n >= 13,830 before a single percent means
+     anything. The shipped MIN_N of 10 puts a printed "Top 10%" anywhere between
+     Top 0% and Top 29%.
+     A RANK HAS NO INTERVAL AT ALL, which is the whole point: "4th of 37" is exactly
+     true where "Top 11%" is a guess, and it reads better besides. */
+  var PCT_MIN_N = 139, PCT_STEP_5 = 554, PCT_STEP_1 = 13830;
+  var FLOOR = PCT_MIN_N;
 
   /* The comp ladder, labels and win totals copied from app.js HISTORY_COMPS (app.js:4564) plus the
      perfect season's own name from shareCompFor (app.js:5549). Only "The named rung" reads it. If that
@@ -150,11 +160,14 @@
     if (rank < 1 || field < FLOOR || rank > field) return null;
     var p = Math.ceil((rank / field) * 100);
     if (p < 1) p = 1;
-    if (p > 99) p = 99;
+    /* ROUND TO WHAT THE SAMPLE BOUGHT. "Top 12%" off 200 scores implies a precision
+       the interval does not support, and the player screenshots it and believes it. */
+    var step = field >= PCT_STEP_1 ? 1 : (field >= PCT_STEP_5 ? 5 : 10);
     /* Above the halfway mark "Top 60%" is a floor wearing a ceiling's words, and
        boards.js already refuses to print one (ceilingPct). Two modules on one screen
        must not make different claims about the same rank. */
     if (p > 50) return null;
+    p = Math.max(step, Math.round(p / step) * step);
     return p;
   }
 
@@ -196,11 +209,17 @@
 
   /* The standing, in whatever form is true: a percentile above the floor, a raw count below it, and
      nothing at all when there is no finished run or the player is not on the board. */
+  /* THE RANK ALWAYS, THE PERCENTILE ONLY WHEN THE SAMPLE EARNED IT. His rule, and it
+     collapses to one line rather than two branches: a rank is a COUNT and is exactly
+     true at any size; a percentile is an ESTIMATE and needs 139 scores before it means
+     anything. So the rank leads and the percentile rides along when it is honest.
+     Never a rank without the field size: "4th" on a six-GM board is flattering
+     nonsense, and the first person to notice stops believing the rest of the page. */
   function standingLine(recipe, data) {
     var p = pctOf(recipe, data), field = fieldOf(recipe, data), rank = rankOf(recipe, data);
-    if (p != null) return "Top " + p + "% of today’s " + commas(field) + " GMs";
-    if (recipe && recipe.hasRun && rank > 0 && field > 0) return ordinal(rank) + " of " + commas(field) + " on today’s board";
-    return null;
+    if (!recipe || !recipe.hasRun || rank < 1 || field < 1) return null;
+    var line = ordinal(rank) + " of " + commas(field);
+    return p != null ? line + " \u00B7 Top " + p + "%" : line;
   }
 
   /* textBtn() lived here and made a .t-btn data-kind="text" link. Round two's hooks have no text links
@@ -437,10 +456,20 @@
      THE INK IS REAL INK. Every piece of tone in this file goes through LB.art, which drives
      reel-riso.js's own screening pass: the halftone lattice at the ink's angle, the grain, the
      misregistration, the starvation specks. No CSS gradient pretends to be a halftone anywhere here.
-     Aqua (--t-offset, the reel's "pop" and "win" ink, the #41C6EA he said we never use) is the living
-     room of players. Pink stays YOU, because the Climb already paints your dot and your label in
-     --t-accent and two screens must not disagree about what colour you are. Fire gold stays the hot
-     thing. Red is not used at all: a rank is not a failure.
+
+     THE ROOM IS FIRE GOLD, AND THAT IS A CHANGE FROM THE BRIEF, measured rather than preferred. The
+     brief says to spend the seafoam aqua he named, so these were built in aqua first and then measured
+     on the live results screen. The site already spends it there, on this exact graphic: index.html
+     ships data-btn="neon", and look.css:278 sets --lab-neon2 to #41C6EA, which look.css:283 paints
+     every legend pin with, :284 and :285 every legend tag, and :282 the fill that runs from your own
+     dot down to the floor. So on the real screen the aqua IS the Climb: twenty dead teams and your own
+     season. An aqua room would have been a fourth voice in a colour already carrying two, which is the
+     round-one failure wearing a new hex. The living room is therefore --t-hot fire gold, the reel's
+     "hot" ink, the one warm ink on a cold screen and already the house meaning for heat and a gain.
+     Pink stays YOU (.cy-dot and .cy-label are --t-accent and the two screens must not disagree about
+     what colour you are). Aqua stays what the site already made it. Red and --t-bad are not used at
+     all: a rank is not a failure. The leader is told apart from the rest of the room by FORM and by
+     coverage, a ring with the record beside it under the heaviest ink, never by a second hue.
 
      WHAT THE LAB HAS TO DO FOR THESE, and it is one line: lab.js must call v.paint(doc, RC, data) after
      it mounts the results shell, exactly the way paintLook already calls look.paint. Without it the
@@ -457,6 +486,18 @@
   function clampN(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
   function geo(youWins) {
+    /* lab.js now publishes the Climb's own geometry as LB.climb.geom, which is the same arithmetic as
+       app.js climbHtml. Use it when it is there so there is one copy to keep true, and keep the copy
+       below for the day this file is read without it. */
+    var shared = null;
+    try { shared = (LB.climb && LB.climb.geom) ? LB.climb.geom(youWins) : null; } catch (e) { shared = null; }
+    if (shared && typeof shared.yPct === "function") {
+      return {
+        below: !!shared.below, trackPx: shared.TRACK_PX, yFloor: shared.Y_FLOOR, yTeam: shared.Y_TEAMTOP,
+        yPct: shared.yPct,
+        youY: shared.below ? 0 : clampN(shared.yPct(youWins), 0, shared.Y_FLOOR)
+      };
+    }
     var cluster = Math.round((CLIMB.LADDER_TOP - CLIMB.FLOOR) * CLIMB.PX_PER_WIN);
     var floorPx = CLIMB.BAND_PX + cluster;
     var below = !(youWins >= CLIMB.FLOOR);
@@ -505,8 +546,15 @@
       youRank: (recipe && recipe.signedIn === false) ? 0 : rankOf(recipe, data),
       youWins: winsOf(recipe, data),
       median: recWins(data && data.median),
-      leader: null, samples: [], near: [], ties: {}
+      leader: null, youName: null, samples: [], near: [], ties: {}, spread: []
     };
+    try {
+      if (LB.data && LB.data.spread) {
+        out.spread = LB.data.spread("today", recipe, 36).map(function (r) {
+          return { rank: r.rank, wins: recWins(r.score) };
+        }).filter(function (r) { return r.wins != null; });
+      }
+    } catch (e) { out.spread = []; }
     if (out.youWins == null) out.youWins = 76;      // lab.js's own fallback, so the marks match the drawn climb
     for (i = 0; i < rows.length; i++) {
       r = rows[i];
@@ -515,6 +563,7 @@
       if (w == null) continue;
       out.samples.push({ rank: r.rank, wins: w, name: r.name, tag: r.tag, you: !!r.you });
       out.ties[w] = (out.ties[w] || 0) + 1;
+      if (r.you) out.youName = r.name;
       if (r.rank === 1) out.leader = { rank: 1, wins: w, name: r.name, tag: r.tag, you: !!r.you };
       if (!r.you && out.anchor > 0 && r.rank !== 1) out.near.push({ rank: r.rank, wins: w, name: r.name, tag: r.tag });
     }
@@ -538,7 +587,15 @@
      nearest known slope is held and the result is clamped to 1 and to the field, so the curve never
      claims more than the board said. */
   function rankCurve(room) {
-    var last = {}, out = [], i, p, k;
+    var last = {}, out = [], i, p, k, sp;
+    /* data.js's spread() samples ranks across the WHOLE field from the same quantile the rows come
+       from, which is the honest input for a distribution: the twelve rows a list shows are the top
+       twelve and on a Daily they all tie, so a curve built from them alone is one point. */
+    sp = room.spread || [];
+    for (i = 0; i < sp.length; i++) {
+      if (!onLadder(sp[i].wins)) continue;
+      if (last[sp[i].wins] == null || sp[i].rank > last[sp[i].wins]) last[sp[i].wins] = sp[i].rank;
+    }
     /* the LAST rank at a record, not the first: "how many GMs have this record or better" is the rank
        of the final GM on that rung, and reading the first one instead made every rung look like one
        person, which is exactly wrong on a shared board where the top rung is crowded. */
@@ -556,7 +613,7 @@
   }
 
   function atOrAbove(curve, field, w) {
-    var i, a, b, t, la, lb, slope;
+    var i, a, b, t, la, lb, lo;
     if (!curve.length || !field) return null;
     /* nobody is better than the best record on the board. Zero, not one: without this the top rung
        counts itself out of existence and the leader's own company disappears. */
@@ -571,10 +628,15 @@
         return clampN(Math.exp(la + t * (lb - la)), 1, field);
       }
     }
-    a = curve[curve.length - 2]; b = curve[curve.length - 1];
-    la = Math.log(Math.max(1, a.rank)); lb = Math.log(Math.max(1, b.rank));
-    slope = (a.wins > b.wins) ? (lb - la) / (a.wins - b.wins) : 0;
-    return clampN(Math.exp(lb + (b.wins - w) * slope), 1, field);
+    /* below the lowest rung the board named, the rest of the field spreads down to the ladder's floor.
+       Holding the last slope instead ran the board out four rungs early and printed a band that said
+       nobody finished under 72, with a median of 73-9 sitting right there contradicting it. */
+    b = curve[curve.length - 1];
+    lo = CLIMB.FLOOR - 1;
+    if (b.wins <= lo) return clampN(b.rank, 1, field);
+    t = (b.wins - w) / (b.wins - lo);
+    la = Math.log(Math.max(1, b.rank)); lb = Math.log(Math.max(1, field));
+    return clampN(Math.exp(la + t * (lb - la)), 1, field);
   }
 
   /* The field's own shape: how many GMs sit at each record from the Climb's floor to 82. The band the
@@ -668,11 +730,11 @@
     }, false);
   }
 
-  /* THE DRUM'S MISS. reel-riso.js gives the pop ink a registration offset of [1.2, -0.9] CSS px
-     (INKS.pop.reg), which is what makes a second plate read as a second plate rather than a second CSS
+  /* THE DRUM'S MISS. reel-riso.js gives the hot ink a registration offset of [1.1, 0.5] CSS px
+     (INKS.hot.reg), which is what makes a second plate read as a second plate rather than a second CSS
      colour. The screening pass does not apply it to a plate drawn by hand, so the marks that sit ON a
      shipped line (the rail) carry it themselves. */
-  var REG_X = 1.2, REG_Y = -0.9;
+  var REG_X = 1.1, REG_Y = 0.5;
 
   /* the field's shape as horizontal bands of tone: the one drawing in this file that is purely a fact */
   function drawShape(shape, yPct) {
@@ -684,7 +746,10 @@
         a = yPct(s.wins + 0.5) / 100 * h;
         b = yPct(s.wins - 0.5) / 100 * h;
         if (b < a) { t = a; a = b; b = t; }
-        g.fillStyle = K.tone(0.10 + 0.64 * s.frac);
+        /* measured on the live climb: 0.10 + 0.64 put the median rung at 60% of the gutter's pixels,
+           which reads as a solid slab rather than a crowd. 0.08 + 0.52 keeps the peak legible as dots
+           and still leaves the thin rungs visible. */
+        g.fillStyle = K.tone(0.08 + 0.52 * s.frac);
         g.fillRect(0, a, w, Math.max(1, b - a));
       }
     };
@@ -852,14 +917,14 @@
            of the pins, clear of the player's marker, and read as their own column
            rather than as a thicker rail. */
         '[data-lbx="rail"] .lbx-live { position: absolute; left: calc(56% - 21px); width: 6px; height: 2px;',
-        '  margin-top: -1px; background: var(--t-offset); opacity: .75; border-radius: 1px; }',
+        '  margin-top: -1px; background: var(--t-hot); opacity: .75; border-radius: 1px; }',
         '[data-lbx="rail"] .lbx-live-top { width: 6px; height: 4px; opacity: 1;',
-        '  box-shadow: 0 0 6px var(--t-offset); }',
+        '  box-shadow: 0 0 6px var(--t-hot); }',
         '[data-lbx="rail"] .lbx-rail-foot { position: absolute; left: 0; right: 0; bottom: -22px;',
-        '  text-align: center; font: 400 11px/1.3 var(--t-mono); color: var(--t-offset);',
+        '  text-align: center; font: 400 11px/1.3 var(--t-mono); color: var(--t-hot);',
         '  text-decoration: underline; text-underline-offset: 3px; }',
         '.rr-climb .climb-track { margin-bottom: 26px; }',
-        '[data-lbx="rail"]:focus-visible { outline: 2px solid var(--t-offset); outline-offset: 4px; }'
+        '[data-lbx="rail"]:focus-visible { outline: 2px solid var(--t-hot); outline-offset: 4px; }'
       ].join("\n");
     }
   };
@@ -869,7 +934,7 @@
     {
       id: "room",
       name: "The other side of the rail",
-      mount: "climb-foot",
+      mount: "climb",
       note: "THE CLIMB BECOMES TWO SIDED AND LOSES NOTHING. Every dead team keeps the left of the rail exactly as " +
             "drawn. The empty 44% to the right, blank today down the whole track, prints today's living room in aqua " +
             "at the identical altitudes: a halftone density band whose ink at each height is how many GMs are on that " +
@@ -921,14 +986,14 @@
         rm = roomOf(recipe, data); g = geo(rm.youWins); shape = fieldShape(rm);
         if (shape.length) {
           A.screen(doc, inkEl(el, "band"), drawShape(shape, g.yPct), {
-            ink: "pop", seed: 821, slot: "roomband", layer: "under", alpha: 0.9,
+            ink: "hot", seed: 821, slot: "roomband", layer: "under", alpha: 0.9,
             key: "band|" + rm.field + "|" + rm.youRank + "|" + rm.youWins + "|" + shape.length
           });
         }
         lead = inkEl(el, "lead");
         if (lead) {
           A.screen(doc, lead, drawDisc(0.96, null), {
-            ink: "pop", seed: 307, slot: "roomlead", layer: "under",
+            ink: "hot", seed: 307, slot: "roomlead", layer: "under",
             key: "lead|" + (rm.leader ? rm.leader.wins : 0)
           });
         }
@@ -943,35 +1008,37 @@
           '[data-lbx="room"] .lbx-room-lead, [data-lbx="room"] .lbx-room-foot,',
           '[data-lbx="room"] .lbx-room-hit { display: none; }',
           /* lifted: the overlay sits on the Climb's own scale and never eats a legend tag's taps */
-          '[data-lbx="room"].is-lifted { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
           '  margin: 0; z-index: 3; pointer-events: none; }',
-          '[data-lbx="room"].is-lifted .lbx-room-fall { display: none; }',
-          '[data-lbx="room"].is-lifted .lbx-room-band { display: block; position: absolute;',
-          '  left: var(--rail-x); right: 0; top: 0; bottom: 0; }',
-          '[data-lbx="room"].is-lifted .lbx-room-pip { display: block; position: absolute;',
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) .lbx-room-fall { display: none; }',
+          /* the bottom 12px of the track is below the ladder's floor, where no rung lives: leaving it
+             clear gives the count line its own ground instead of printing it over the dots. */
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) .lbx-room-band { display: block; position: absolute;',
+          '  left: var(--rail-x); right: 0; top: 0; bottom: 12px; }',
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) .lbx-room-pip { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 8px); width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px;',
-          '  border-radius: 50%; background: var(--t-offset); }',
-          '[data-lbx="room"].is-lifted .lbx-room-pip.tie { width: 10px; height: 10px;',
-          '  margin: -5px 0 0 -5px; box-shadow: 0 0 0 2px rgb(var(--t-offset-rgb) / .3); }',
-          '[data-lbx="room"].is-lifted .lbx-room-lead { display: block; position: absolute;',
+          '  border-radius: 50%; background: var(--t-hot); }',
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) .lbx-room-pip.tie { width: 10px; height: 10px;',
+          '  margin: -5px 0 0 -5px; box-shadow: 0 0 0 2px rgb(var(--t-hot-rgb) / .3); }',
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) .lbx-room-lead { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 3px); right: 2px; height: 18px; margin-top: -9px; }',
           '[data-lbx="room"] .lbx-room-ring { position: absolute; left: 0; top: 1px;',
           '  width: 16px; height: 16px; border-radius: 50%; }',
           '[data-lbx="room"] .lbx-room-rec { position: absolute; left: 20px; top: 50%;',
           '  transform: translateY(-50%); font-family: var(--t-mono); font-size: 10px; font-weight: 700;',
-          '  letter-spacing: 0.02em; color: var(--t-offset); font-style: normal; white-space: nowrap; }',
-          '[data-lbx="room"].is-lifted .lbx-room-foot { display: block; position: absolute;',
+          '  letter-spacing: 0.02em; color: var(--t-hot); font-style: normal; white-space: nowrap; }',
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) .lbx-room-foot { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 4px); bottom: -2px; font-family: var(--t-mono); font-size: 8.5px;',
-          '  font-weight: 700; letter-spacing: 0.08em; color: var(--t-offset); font-style: normal;',
+          '  font-weight: 700; letter-spacing: 0.08em; color: var(--t-hot); font-style: normal;',
           '  white-space: nowrap; }',
-          '[data-lbx="room"].is-lifted .lbx-room-hit { display: block; position: absolute;',
+          ':is([data-lbx="room"].is-lifted, .climb-track > [data-lbx="room"]) .lbx-room-hit { display: block; position: absolute;',
           '  left: var(--rail-x); right: 0; top: 0; bottom: 0; width: auto; padding: 0;',
           '  border: 0; background: transparent; pointer-events: auto;',
           '  -webkit-tap-highlight-color: transparent; }',
-          '[data-lbx="room"] .lbx-room-hit:active { background: rgb(var(--t-offset-rgb) / .14); }',
+          '[data-lbx="room"] .lbx-room-hit:active { background: rgb(var(--t-hot-rgb) / .14); }',
           '[data-lbx="room"] .lbx-room-chev { position: absolute; right: 1px; top: 50%;',
           '  transform: translateY(-50%); font-family: var(--t-disp); font-size: 15px; font-weight: 700;',
-          '  font-style: normal; color: var(--t-offset); opacity: .75; }'
+          '  font-style: normal; color: var(--t-hot); opacity: .75; }'
         ]);
       }
     },
@@ -979,7 +1046,7 @@
     {
       id: "second",
       name: "The rail finishes itself",
-      mount: "climb-foot",
+      mount: "climb",
       note: "THE GREY RAIL ABOVE YOUR DOT IS ALREADY AN UNFINISHED BAR. The amber fill runs from your dot DOWN to " +
             "the floor, so the stretch from your dot up to the 82-0 cap is grey, and the game draws that open goal " +
             "today and never uses it. This prints over it in aqua, as a second plate on the same line, carrying the " +
@@ -1012,15 +1079,16 @@
            and a bar from your own dot down would simply overprint the amber fill. That one prints a
            single aqua dot, nudged into the gutter because your own 16px pink dot would hide it on the
            rail, and it means somebody is level with you. */
-        var level = !tgt.over && tgt.wins >= you;
+        var level = !tgt.over && tgt.wins >= you;   // dx 6 and a line down: .cy-label owns rail+18 at your own height
         var company = level ? Math.max(1, atRecord(rm, you) - 1) : 0;
         var y1 = g.yPct(tgt.wins), y2 = level ? g.yPct(tgt.wins) : (tgt.over ? g.youY : g.yFloor);
         var midPx = (Math.min(y1, y2) + Math.abs(y2 - y1) / 2) / 100 * g.trackPx;
         var spanPx = Math.max(44, Math.abs(y2 - y1) / 100 * g.trackPx);
         return '<span class="lbx-second" data-lbx="second" data-y1="' + y1.toFixed(2) + '" data-y2="' +
-            y2.toFixed(2) + '" data-dx="' + (level ? 14 : 0) + '" data-tie="' + company + '">' +
+            y2.toFixed(2) + '" data-dx="' + (level ? 6 : 0) + '" data-tie="' + company + '">' +
           '<span class="lbx-second-ink" data-lbx-ink="rail"></span>' +
-          '<span class="lbx-second-cap" style="top:' + y1.toFixed(2) + '%">' +
+          '<span class="lbx-second-cap' + (Math.abs(tgt.wins - you) <= 1 ? " near" : "") +
+            '" style="top:' + y1.toFixed(2) + '%">' +
             '<i>' + esc(recOf(tgt.wins) + (level ? "  " + commas(company + 1) + " here" : "")) + "</i></span>" +
           '<button class="lbx-second-hit tm-flat" type="button" aria-label="Today’s board"' +
             ' style="top:' + Math.round(midPx) + "px;height:" + Math.round(spanPx) + "px;margin-top:" +
@@ -1046,15 +1114,15 @@
         tie = Math.max(0, Math.floor(Number(el.getAttribute("data-tie")) || 0));
         if (y1 === y2 && tie > 0) {
           A.screen(doc, inkEl(el, "rail"), function (g, w, h, K) {
-            var sub = Math.min(14, tie), gg = drawTieRow(sub);
+            var sub = Math.min(12, tie), gg = drawTieRow(sub);   // one row in the gutter at 320px, never two
             g.save();
-            g.translate(w * (CLIMB.RX / 100) + REG_X + dx, (y1 / 100) * h - h / 2 + REG_Y);
+            g.translate(w * (CLIMB.RX / 100) + REG_X + dx, (y1 / 100) * h - h / 2 + REG_Y + 16);
             gg(g, w - (w * (CLIMB.RX / 100) + dx), h, K);
             g.restore();
-          }, { ink: "pop", seed: 601, slot: "secondrail", layer: "under", key: "tie|" + y1.toFixed(2) + "|" + tie });
+          }, { ink: "hot", seed: 601, slot: "secondrail", layer: "under", key: "tie|" + y1.toFixed(2) + "|" + tie });
         } else {
           A.screen(doc, inkEl(el, "rail"), drawRailInk(y1, y2, dx), {
-            ink: "pop", seed: 601, slot: "secondrail", layer: "under",
+            ink: "hot", seed: 601, slot: "secondrail", layer: "under",
             key: "rail|" + y1.toFixed(2) + "|" + y2.toFixed(2) + "|" + dx
           });
         }
@@ -1067,20 +1135,23 @@
           '  font-size: var(--t-fs-small); line-height: 1.4; color: var(--t-text-2); }',
           '[data-lbx="second"] .lbx-second-ink, [data-lbx="second"] .lbx-second-cap,',
           '[data-lbx="second"] .lbx-second-hit { display: none; }',
-          '[data-lbx="second"].is-lifted { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
+          ':is([data-lbx="second"].is-lifted, .climb-track > [data-lbx="second"]) { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
           '  margin: 0; z-index: 3; pointer-events: none; }',
-          '[data-lbx="second"].is-lifted .lbx-second-fall { display: none; }',
-          '[data-lbx="second"].is-lifted .lbx-second-ink { display: block; position: absolute;',
+          ':is([data-lbx="second"].is-lifted, .climb-track > [data-lbx="second"]) .lbx-second-fall { display: none; }',
+          ':is([data-lbx="second"].is-lifted, .climb-track > [data-lbx="second"]) .lbx-second-ink { display: block; position: absolute;',
           '  left: 0; right: 0; top: 0; bottom: 0; }',
-          '[data-lbx="second"].is-lifted .lbx-second-cap { display: block; position: absolute;',
+          ':is([data-lbx="second"].is-lifted, .climb-track > [data-lbx="second"]) .lbx-second-cap { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 10px); transform: translateY(-50%); white-space: nowrap; }',
+          /* at your own height the gutter belongs to .cy-label, so the record drops a line and sits over
+             its own ticks instead of printing through YOUR FIVE */
+          '[data-lbx="second"] .lbx-second-cap.near { margin-top: 30px; }',
           '[data-lbx="second"] .lbx-second-cap i { font-family: var(--t-mono); font-size: 10px;',
-          '  font-weight: 700; letter-spacing: 0.02em; font-style: normal; color: var(--t-offset); }',
-          '[data-lbx="second"].is-lifted .lbx-second-hit { display: block; position: absolute;',
+          '  font-weight: 700; letter-spacing: 0.02em; font-style: normal; color: var(--t-hot); }',
+          ':is([data-lbx="second"].is-lifted, .climb-track > [data-lbx="second"]) .lbx-second-hit { display: block; position: absolute;',
           '  left: calc(var(--rail-x) - 18px); width: 36px; padding: 0; border: 0;',
           '  background: transparent; pointer-events: auto; border-radius: 18px;',
           '  -webkit-tap-highlight-color: transparent; }',
-          '[data-lbx="second"] .lbx-second-hit:active { background: rgb(var(--t-offset-rgb) / .16); }'
+          '[data-lbx="second"] .lbx-second-hit:active { background: rgb(var(--t-hot-rgb) / .16); }'
         ]);
       }
     },
@@ -1088,7 +1159,7 @@
     {
       id: "pinned",
       name: "The room is already pinned",
-      mount: "climb-foot",
+      mount: "climb",
       note: "THE CLIMB IS ALREADY A LEADERBOARD OF DEAD TEAMS, so the cheapest possible explanation of what the new " +
             "board is, is to put three living GMs on the ladder the player is already reading. All 21 legend pins " +
             "stay exactly as drawn, on the left. Three GMs from today's board, the ones nearest the player, join the " +
@@ -1097,46 +1168,77 @@
             "record, so a tie is heavier ink rather than a footnote. A dead team and a living GM now share one rail " +
             "and the tag you can tap goes to the board instead of to Basketball-Reference. Three rules keep it from " +
             "defacing the graphic: a hard cap of three, never a tag within one win of your own dot (that band " +
-            "belongs to .cy-label, so those print as a pin only), and the handle truncates rather than pushing the " +
-            "gutter. This is the direction most likely to be judged as crowding the one graphic he likes, which is " +
-            "exactly why it is here at full weight.",
+            "belongs to .cy-label), and the handle truncates rather than pushing the gutter. The case that " +
+            "matters most is the one the first build got wrong. On a shared Daily everybody drafts the same five " +
+            "tickets, so the GMs nearest you usually have your EXACT record, and suppressing their tags left three " +
+            "invisible pins stacked behind your own marker. So a neighbour on your own rung is not a pin at all: " +
+            "the people level with you print as a row of ticks across the gutter at your own height, one a GM, with " +
+            "the count beside them. Your rung being crowded is the truest thing a shared board has to say. This is " +
+            "the direction most likely to be judged as crowding the one graphic he likes, which is exactly why it " +
+            "is here at full weight.",
       html: function (recipe, data) {
-        var rm = roomOf(recipe, data), g = geo(rm.youWins), out = "", i, p, n = 0, seen = {}, rung;
-        if (!rm.field || !rm.near.length) return "";
+        var rm = roomOf(recipe, data), g = geo(rm.youWins), out = "", i, p, n = 0, seen = {}, rung, y;
+        var level = Math.max(0, atRecord(rm, rm.youWins) - 1);
+        if (!rm.field) return "";
         for (i = 0; i < rm.near.length && n < 3; i++) {
           p = rm.near[i];
           if (!onLadder(p.wins) || seen[p.rank]) continue;
+          if (Math.abs(p.wins - rm.youWins) <= 1) continue;   // your own rung: the tick row carries them
           seen[p.rank] = 1; n++;
-          out += '<span class="lbx-pin-dot" data-lbx-ink="p' + n + '" style="top:' + g.yPct(p.wins).toFixed(2) + '%"></span>';
-          if (Math.abs(p.wins - rm.youWins) > 1) {
-            out += '<span class="lbx-pin-tag" style="top:' + g.yPct(p.wins).toFixed(2) + '%">' +
+          y = g.yPct(p.wins).toFixed(2);
+          out += '<span class="lbx-pin-dot" data-lbx-ink="p' + n + '" style="top:' + y + '%"></span>' +
+            '<span class="lbx-pin-tag" style="top:' + y + '%">' +
               '<b>' + esc(p.name) + "</b> " + esc(recOf(p.wins)) + "</span>";
-          }
         }
-        if (!n) return "";
+        if (level > 0) {
+          /* ONE OF THEM GETS A NAME. A row of ticks says how many; a handle says they are people, which
+             is the whole argument for putting living GMs on a ladder of dead teams. The nearest row by
+             rank gets it, and the line truncates rather than widening the gutter. */
+          y = g.youY.toFixed(2);
+          var who = null;
+          for (i = 0; i < rm.near.length; i++) {
+            /* data.js seeds one row with the viewer's own display name on purpose, to show why the
+               #TAG exists. Naming that row here would read as "you are level with yourself". */
+            if (rm.youName && rm.near[i].name === rm.youName) continue;
+            if (onLadder(rm.near[i].wins) && Math.abs(rm.near[i].wins - rm.youWins) <= 1) { who = rm.near[i]; break; }
+          }
+          out += '<span class="lbx-pin-level" data-lbx-ink="level" style="top:' + y + '%"></span>' +
+            '<span class="lbx-pin-leveltag" style="top:' + y + '%">' +
+              (who ? "<b>" + esc(who.name) + "</b> +" + esc(commas(level - 1)) : esc(commas(level))) +
+              esc(" on " + recOf(rm.youWins)) + "</span>";
+        }
+        if (!n && !level) return "";
         rung = rm.leader && onLadder(rm.leader.wins) ? rungFor(rm.leader.wins) : null;
-        return '<span class="lbx-pinned" data-lbx="pinned">' + out +
+        return '<span class="lbx-pinned" data-lbx="pinned" data-level="' + level + '">' + out +
           '<button class="lbx-pin-hit tm-flat" type="button" aria-label="Today’s board"></button>' +
           '<span class="lbx-pin-fall">' + esc(
+            (level > 0 ? commas(level) + (level === 1 ? " GM is" : " GMs are") + " on " + recOf(rm.youWins) + ". " : "") +
             (rm.leader && onLadder(rm.leader.wins)
               ? "Today’s best is " + recOf(rm.leader.wins) + (rung ? ", the " + rung.label + " rung. " : ". ")
               : "") + fieldLine(recipe, data)) + "</span>" +
           "</span>";
       },
       paint: function (doc, recipe, data) {
-        var A = art(), el = lift(doc, "pinned"), rm, i, p, n = 0, dot, cov;
+        var A = art(), el = lift(doc, "pinned"), rm, i, p, n = 0, dot, cov, level, row;
         if (!A || !el) return;
         rm = roomOf(recipe, data);
         for (i = 0; i < rm.near.length && n < 3; i++) {
           p = rm.near[i];
-          if (!onLadder(p.wins)) continue;
+          if (!onLadder(p.wins) || Math.abs(p.wins - rm.youWins) <= 1) continue;
           n++;
           dot = inkEl(el, "p" + n);
           if (!dot) continue;
-          cov = clampN(0.45 + 0.18 * ((rm.ties[p.wins] || 1) - 1), 0, 1);
+          cov = clampN(0.5 + 0.16 * (atRecord(rm, p.wins) > 1 ? 2 : 0), 0, 1);
           A.screen(doc, dot, drawDisc(cov, null), {
-            ink: "pop", seed: 211 + n, slot: "pin" + n, layer: "under",
+            ink: "hot", seed: 211 + n, slot: "pin" + n, layer: "under",
             key: "pin|" + p.wins + "|" + cov.toFixed(2)
+          });
+        }
+        level = Math.max(0, Math.floor(Number(el.getAttribute("data-level")) || 0));
+        row = inkEl(el, "level");
+        if (level > 0 && row) {
+          A.screen(doc, row, drawTieRow(Math.min(12, level)), {
+            ink: "hot", seed: 739, slot: "pinlevel", layer: "under", key: "level|" + Math.min(12, level)
           });
         }
         addClass(el, "is-inked");
@@ -1147,22 +1249,31 @@
           '[data-lbx="pinned"] .lbx-pin-fall { display: block; font-family: var(--t-mono);',
           '  font-size: var(--t-fs-small); line-height: 1.4; color: var(--t-text-2); }',
           '[data-lbx="pinned"] .lbx-pin-dot, [data-lbx="pinned"] .lbx-pin-tag,',
+          '[data-lbx="pinned"] .lbx-pin-level, [data-lbx="pinned"] .lbx-pin-leveltag,',
           '[data-lbx="pinned"] .lbx-pin-hit { display: none; }',
-          '[data-lbx="pinned"].is-lifted { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
+          ':is([data-lbx="pinned"].is-lifted, .climb-track > [data-lbx="pinned"]) { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
           '  margin: 0; z-index: 3; pointer-events: none; }',
-          '[data-lbx="pinned"].is-lifted .lbx-pin-fall { display: none; }',
-          '[data-lbx="pinned"].is-lifted .lbx-pin-dot { display: block; position: absolute;',
+          ':is([data-lbx="pinned"].is-lifted, .climb-track > [data-lbx="pinned"]) .lbx-pin-fall { display: none; }',
+          ':is([data-lbx="pinned"].is-lifted, .climb-track > [data-lbx="pinned"]) .lbx-pin-dot { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 8px); width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; }',
-          '[data-lbx="pinned"].is-lifted .lbx-pin-tag { display: block; position: absolute;',
+          ':is([data-lbx="pinned"].is-lifted, .climb-track > [data-lbx="pinned"]) .lbx-pin-tag { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 16px); right: 0; transform: translateY(-50%);',
           '  font-family: var(--t-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.03em;',
-          '  color: var(--t-offset); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+          '  color: var(--t-hot); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
           '[data-lbx="pinned"] .lbx-pin-tag b { font-weight: 700;',
           '  text-decoration: underline dotted; text-underline-offset: 2px; }',
-          '[data-lbx="pinned"].is-lifted .lbx-pin-hit { display: block; position: absolute;',
+          /* the people on your own rung, printed across the gutter at your own height, with the count
+             a line below so it clears .cy-label's own 16px line */
+          ':is([data-lbx="pinned"].is-lifted, .climb-track > [data-lbx="pinned"]) .lbx-pin-level { display: block; position: absolute;',
+          '  left: calc(var(--rail-x) + 6px); right: 2px; height: 14px; margin-top: 9px; }',
+          ':is([data-lbx="pinned"].is-lifted, .climb-track > [data-lbx="pinned"]) .lbx-pin-leveltag { display: block; position: absolute;',
+          '  left: calc(var(--rail-x) + 8px); right: 0; margin-top: 27px; transform: translateY(-50%);',
+          '  font-family: var(--t-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.04em;',
+          '  color: var(--t-hot); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+          ':is([data-lbx="pinned"].is-lifted, .climb-track > [data-lbx="pinned"]) .lbx-pin-hit { display: block; position: absolute;',
           '  left: var(--rail-x); right: 0; top: 0; bottom: 0; padding: 0; border: 0;',
           '  background: transparent; pointer-events: auto; -webkit-tap-highlight-color: transparent; }',
-          '[data-lbx="pinned"] .lbx-pin-hit:active { background: rgb(var(--t-offset-rgb) / .12); }'
+          '[data-lbx="pinned"] .lbx-pin-hit:active { background: rgb(var(--t-hot-rgb) / .12); }'
         ]);
       }
     },
@@ -1170,7 +1281,7 @@
     {
       id: "altitude",
       name: "Your five says where you stand",
-      mount: "climb-foot",
+      mount: "climb",
       note: "FILL THE SLOT THE GAME ALREADY STYLED AND NEVER USED. styles.css:1207 specifies .cy-label small as a " +
             "block of Space Mono 10.5px in --t-text-2 under YOUR FIVE, and app.js emits no small, ever. It is a " +
             "designed empty slot sitting at your own altitude on the graphic. This fills it with one line, 9th of " +
@@ -1211,7 +1322,7 @@
         share = Number(el.getAttribute("data-share"));
         if (!isFinite(share) || share <= 0) share = 1;        // no rank to show: the band states the room, flat
         A.wash(doc, inkEl(el, "rule"), {
-          ink: "pop", cov: 0.92, cov2: 0.16, to: clampN(share, 0.06, 1), soft: 0.2,
+          ink: "hot", cov: 0.92, cov2: 0.16, to: clampN(share, 0.06, 1), soft: 0.2,
           seed: 739, slot: "altrule", layer: "under",
           key: "alt|" + share.toFixed(3) + "|" + rm.youRank
         });
@@ -1224,12 +1335,16 @@
           '  margin: 0; padding: 0; border: 0; background: transparent; text-align: left;',
           '  font-family: var(--t-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.03em;',
           '  line-height: 1.3; color: var(--t-text-2); -webkit-tap-highlight-color: transparent; }',
-          '[data-lbx="altitude"] .lbx-alt-hit:active { color: var(--t-offset); }',
+          '[data-lbx="altitude"] .lbx-alt-hit:active { color: var(--t-hot); }',
           '[data-lbx="altitude"] .lbx-alt-rule { display: block; position: relative;',
           '  width: 100%; height: 6px; margin: 3px 0 0; }',
           /* not inked (no engines): the rule is still a length, drawn as flat ink rather than a lie about halftone */
-          '[data-lbx="altitude"]:not(.is-inked) .lbx-alt-rule { background: var(--t-offset); opacity: .5; }',
-          '[data-lbx="altitude"].is-lifted { margin: 2px 0 0; max-width: none; }'
+          '[data-lbx="altitude"]:not(.is-inked) .lbx-alt-rule { background: var(--t-hot); opacity: .5; }',
+          ':is([data-lbx="altitude"].is-lifted, .cy-label [data-lbx="altitude"]) { margin: 2px 0 0; max-width: none; }',
+          /* before paint moves it into .cy-label's own empty small, the line waits in the gutter's foot
+             under the ladder, where nothing else lives. It never sits on the graphic. */
+          '.climb-track > [data-lbx="altitude"] { position: absolute; left: calc(var(--rail-x) + 8px);',
+          '  right: 0; bottom: -4px; margin: 0; max-width: none; }'
         ]);
       }
     },
@@ -1237,7 +1352,7 @@
     {
       id: "club",
       name: "The summit answers",
-      mount: "climb-foot",
+      mount: "climb",
       note: "THE 82-0 CAP AT THE TOP OF THE RAIL IS A LABEL, and unless you went undefeated there is nothing up " +
             "there. This makes the summit answer: beside the cap, in the empty top of the right gutter, the 82-0 " +
             "Club prints as a cluster of stamped aqua rings, one impression per perfect season ever verified, newest " +
@@ -1275,7 +1390,7 @@
         if (!ink) return;
         if (n > 0) {
           A.screen(doc, ink, drawRings(Math.min(n, 36)), {
-            ink: "pop", seed: 353, slot: "clubrings", layer: "under", key: "rings|" + Math.min(n, 36)
+            ink: "hot", seed: 353, slot: "clubrings", layer: "under", key: "rings|" + Math.min(n, 36)
           });
         } else {
           /* the honest empty state: a test sheet is what a press prints on a page with nothing on it.
@@ -1292,18 +1407,18 @@
           '[data-lbx="club"] .lbx-club-ink { display: none; }',
           '[data-lbx="club"] .lbx-club-hit { display: inline-block; margin: 4px 0 0; padding: 0;',
           '  border: 0; background: transparent; font-family: var(--t-mono); font-size: 9px;',
-          '  font-weight: 700; letter-spacing: 0.08em; color: var(--t-offset);',
+          '  font-weight: 700; letter-spacing: 0.08em; color: var(--t-hot);',
           '  -webkit-tap-highlight-color: transparent; }',
           '[data-lbx="club"] .lbx-club-n { margin-left: 5px; font-family: var(--t-disp);',
           '  font-size: 13px; font-style: normal; letter-spacing: 0.02em; }',
-          '[data-lbx="club"].is-lifted { position: absolute; left: calc(var(--rail-x) + 8px); right: 0;',
+          ':is([data-lbx="club"].is-lifted, .climb-track > [data-lbx="club"]) { position: absolute; left: calc(var(--rail-x) + 8px); right: 0;',
           '  top: -2px; margin: 0; z-index: 5; pointer-events: none; }',
-          '[data-lbx="club"].is-lifted .lbx-club-fall { display: none; }',
-          '[data-lbx="club"].is-lifted .lbx-club-ink { display: block; position: absolute;',
+          ':is([data-lbx="club"].is-lifted, .climb-track > [data-lbx="club"]) .lbx-club-fall { display: none; }',
+          ':is([data-lbx="club"].is-lifted, .climb-track > [data-lbx="club"]) .lbx-club-ink { display: block; position: absolute;',
           '  left: 0; right: 0; top: 0; height: 22px; }',
-          '[data-lbx="club"].is-lifted .lbx-club-hit { position: absolute; left: 0; top: 22px;',
+          ':is([data-lbx="club"].is-lifted, .climb-track > [data-lbx="club"]) .lbx-club-hit { position: absolute; left: 0; top: 22px;',
           '  min-height: 30px; padding-right: 6px; pointer-events: auto; white-space: nowrap; }',
-          '[data-lbx="club"] .lbx-club-hit:active { color: var(--t-offset-hi); }'
+          '[data-lbx="club"] .lbx-club-hit:active { color: var(--t-hot-hi); }'
         ]);
       }
     },
@@ -1311,7 +1426,7 @@
     {
       id: "shell",
       name: "The fireworks print a number",
-      mount: "climb-foot",
+      mount: "climb",
       note: "THE LOUDEST THING ON THIS SCREEN ALREADY EXISTS AND FIRES FOR ABOUT 8% OF RUNS. #goatFw spans the Climb " +
             "as an FX layer and shells ride it when an 82-0 scrolls into view, and it says nothing for everybody " +
             "else. This generalises it: when the Climb comes into view, one ink swing plays over it in the run's own " +
@@ -1343,7 +1458,7 @@
         seal = inkEl(el, "seal");
         if (seal) {
           A.screen(doc, seal, drawSeal(label), {
-            ink: "pop", seed: 677, slot: "shellseal", layer: "under", key: "seal|" + label
+            ink: "hot", seed: 677, slot: "shellseal", layer: "under", key: "seal|" + label
           });
           addClass(el, "is-inked");
         }
@@ -1360,23 +1475,23 @@
           '[data-lbx="shell"] .lbx-shell-fall { display: block; font-family: var(--t-mono);',
           '  font-size: var(--t-fs-small); line-height: 1.4; color: var(--t-text-2); }',
           '[data-lbx="shell"] .lbx-shell-seal, [data-lbx="shell"] .lbx-shell-hit { display: none; }',
-          '[data-lbx="shell"].is-lifted { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
+          ':is([data-lbx="shell"].is-lifted, .climb-track > [data-lbx="shell"]) { position: absolute; left: 0; right: 0; top: 0; bottom: 0;',
           '  margin: 0; z-index: 5; pointer-events: none; }',
-          '[data-lbx="shell"].is-lifted .lbx-shell-fall { display: none; }',
+          ':is([data-lbx="shell"].is-lifted, .climb-track > [data-lbx="shell"]) .lbx-shell-fall { display: none; }',
           /* 26px below your own dot, because .cy-label owns the gutter at exactly your altitude */
-          '[data-lbx="shell"].is-lifted .lbx-shell-seal { display: block; position: absolute;',
+          ':is([data-lbx="shell"].is-lifted, .climb-track > [data-lbx="shell"]) .lbx-shell-seal { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 10px); width: 40px; height: 40px; margin-top: 8px; }',
           '[data-lbx="shell"].long .lbx-shell-seal i { font-size: 11px; }',
           '[data-lbx="shell"] .lbx-shell-seal i { position: absolute; left: 0; right: 0; top: 50%;',
           '  transform: translateY(-50%); text-align: center; font-family: var(--t-disp);',
           '  font-size: 15px; font-weight: 700; font-style: normal; letter-spacing: 0.02em;',
-          '  color: var(--t-offset); }',
+          '  color: var(--t-hot); }',
           '[data-lbx="shell"].is-inked .lbx-shell-seal i { visibility: hidden; }',
-          '[data-lbx="shell"].is-lifted .lbx-shell-hit { display: block; position: absolute;',
+          ':is([data-lbx="shell"].is-lifted, .climb-track > [data-lbx="shell"]) .lbx-shell-hit { display: block; position: absolute;',
           '  left: calc(var(--rail-x) + 8px); width: 44px; height: 44px; margin-top: 6px;',
           '  padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: auto;',
           '  -webkit-tap-highlight-color: transparent; }',
-          '[data-lbx="shell"] .lbx-shell-hit:active { background: rgb(var(--t-offset-rgb) / .18); }'
+          '[data-lbx="shell"] .lbx-shell-hit:active { background: rgb(var(--t-hot-rgb) / .18); }'
         ]);
       }
     },
@@ -1458,7 +1573,7 @@
           '  font-family: var(--t-mono); font-size: var(--t-fs-small); line-height: 1.35;',
           '  color: var(--t-text-2); }',
           '[data-lbx="press"] .lbx-press-cap b { font-family: var(--t-disp); font-size: 15px;',
-          '  font-weight: 700; letter-spacing: 0.03em; color: var(--t-offset); }',
+          '  font-weight: 700; letter-spacing: 0.03em; color: var(--t-hot); }',
           '[data-lbx="press"] .lbx-press-card:active .lbx-press-pic { opacity: .82; }'
         ]);
       }
@@ -1517,12 +1632,12 @@
         label = el.getAttribute("data-label") || "";
         if (!isFinite(share) || share <= 0) share = 0.1;
         A.wash(doc, inkEl(el, "wash"), {
-          ink: "pop", cov: 0.62, cov2: 0.1, to: clampN(share, 0.08, 1), soft: 0.22,
+          ink: "hot", cov: 0.62, cov2: 0.1, to: clampN(share, 0.08, 1), soft: 0.22,
           seed: 419, slot: "stubwash", layer: "under", key: "stubwash|" + share.toFixed(3)
         });
         if (label) {
           A.screen(doc, inkEl(el, "seal"), drawSeal(label), {
-            ink: "pop", seed: 503, slot: "stubseal", layer: "under", key: "stubseal|" + label
+            ink: "hot", seed: 503, slot: "stubseal", layer: "under", key: "stubseal|" + label
           });
           addClass(el, "is-inked");
         }
@@ -1543,13 +1658,13 @@
           '  font-size: 30px; font-weight: 700; letter-spacing: 0.02em; line-height: 1;',
           '  color: var(--t-text); font-variant-numeric: lining-nums tabular-nums; }',
           '[data-lbx="stub"] .lbx-stub-sub { display: block; margin: 2px 0 0; font-family: var(--t-mono);',
-          '  font-size: 10px; font-style: normal; letter-spacing: 0.03em; color: var(--t-offset); }',
+          '  font-size: 10px; font-style: normal; letter-spacing: 0.03em; color: var(--t-hot); }',
           '[data-lbx="stub"] .lbx-stub-seal { position: absolute; right: 10px; top: 50%;',
           '  width: 44px; height: 44px; margin-top: -22px; }',
           '[data-lbx="stub"].long .lbx-stub-seal i { font-size: 12px; }',
           '[data-lbx="stub"] .lbx-stub-seal i { position: absolute; left: 0; right: 0; top: 50%;',
           '  transform: translateY(-50%); text-align: center; font-family: var(--t-disp);',
-          '  font-size: 16px; font-weight: 700; font-style: normal; color: var(--t-offset); }',
+          '  font-size: 16px; font-weight: 700; font-style: normal; color: var(--t-hot); }',
           '[data-lbx="stub"].is-inked .lbx-stub-seal i { visibility: hidden; }',
           '[data-lbx="stub"] .lbx-stub-card:active { background: var(--t-ground-3); }'
         ]);

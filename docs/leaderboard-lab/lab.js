@@ -360,6 +360,15 @@
       if (!doc || mine !== renderSeq) return;
       doc.documentElement.setAttribute("data-look", RC.look);
       var look = ((LB.looks && LB.looks.LIST) || []).filter(function (l) { return l.id === RC.look; })[0];
+      /* ORDER MATTERS AND IT IS NOT ARBITRARY. The navigation and the look can
+         both claim the same strip of screen (measured: the edge index and the
+         gangrun density bar both want the right gutter) and they land at equal
+         specificity, so whichever stylesheet comes last wins. The LOOK wins,
+         because the look owns the board's picture of the field and the
+         navigation owns the way in; a navigation that buries the look's one
+         picture is the worse of the two failures. styleTag appends on first
+         use, so this tag is created before "lab-nav" and would otherwise lose. */
+      styleTag(doc, "lab-nav", "");                      // reserve the slot first
       styleTag(doc, "lab-look", look && look.css ? safe(look.css, RC) : "");
       if (RC.view === "start") return paintStart(doc, mine);
       if (RC.view === "results") return paintResults(doc, mine);
@@ -449,13 +458,24 @@
       var prev = doc.getElementById("lbStartLink");
       if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
       var v = surfaceFor("POST");
+      var postData = LB.data && LB.data.board ? LB.data.board("today", RC) : null;
       styleTag(doc, "lab-surface", v && v.css ? safe(v.css, RC) : "");
       /* The post-game hooks all speak about "today's board" in their own copy, so
          they are handed the DAILY, not whatever board the Boards tab happens to have
          open. Feeding them the streak board put "13 days" through a card that prints
          a win-loss record. */
-      app.innerHTML = resultsShell(v, LB.data && LB.data.board ? LB.data.board("today", RC) : null);
+      app.innerHTML = resultsShell(v, postData);
       paintLook(doc);
+      /* THE HOOK PAINTS TOO (the blocker three reviewers found). surfaces.js
+         defines paint(doc, recipe, data) on eight of the nine post-game
+         directions and nothing here called it, so every one of them rendered
+         with ZERO canvases. That is round one's exact failure (four looks
+         defined paint, none painted) relocated into a new file, and the only
+         reason it was not caught twice is that the measurement was run on the
+         boards tab. It runs AFTER innerHTML, so the markup it paints into
+         exists; it is wrapped, because a hook that throws must not take the
+         results screen with it. */
+      if (v && v.paint) { try { v.paint(doc, RC, postData); } catch (e) {} }
     });
   }
 

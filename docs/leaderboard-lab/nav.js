@@ -128,7 +128,7 @@
     cheapest:   "the floor",
     you:        "your best",
     net:        "best net",
-    outdrafted: "best in points",
+    outdrafted: "beat by",
     rate:       "best 82-0 rate"
   };
   /* The short stamp for the edge index's 42px gutter. "\n" is a line break in the notch, which is how
@@ -175,7 +175,10 @@
     if (def.card) return 0;                                   /* your card ranks you against nobody */
     if (def.id === "outdrafted") return 0;                    /* the slate says it arrives after launch week */
     var r = frac("you/" + def.id + "/" + int(recipe.seed, 82));
-    if (r < 0.26) return 0;
+    /* About half the slate comes back 0, because "you are not on this board" is the state the
+       navigation most has to be able to say, and at the first threshold I tried the viewer was on six
+       boards out of eight, which is not a player anybody will recognise. */
+    if (r < 0.45) return 0;
     return Math.max(1, Math.round(base * (0.3 + r * 2.4)));
   }
 
@@ -200,7 +203,7 @@
         /* YOUR CARD has no field and nothing ranked on it. Its headline is your own best line, which
            is the first row data.js puts on the card, and its sub says so in plain words. */
         lead = leader ? String(leader.score) : "";
-        sub = lead ? "nothing here is ranked" : "";
+        sub = lead ? "nothing here is ranked" : firstSentence(d.emptyWhy || "");
         wins = winsOf(lead);
       } else if (d.field <= 0) {
         /* Not open yet, or gated, or empty. No count, no headline, no invented number: the first
@@ -221,7 +224,10 @@
       out.push({
         def: def, id: def.id, tab: def.tab || def.title || def.id, title: def.title || def.tab || def.id,
         open: def.id === recipe.board,
-        live: d.field > 0 || !!def.card,
+        /* live means "there is something on this board". For a ranked board that is a field; for YOUR
+           CARD it is whether the card has a line on it at all, because an empty card with recipe.empty
+           on was reading as a live board with a blank number beside it. */
+        live: def.card ? !!leader : d.field > 0,
         card: !!def.card,
         field: d.field, lead: lead, sub: sub, what: WHAT[def.id] || "the leader",
         wins: wins,
@@ -280,8 +286,15 @@
      bad news and must never be printed as if it were. */
   function inkOf(f) {
     if (!f.live) return "light";
-    if (f.you) return "you";
+    /* HOT BEFORE YOU, and that order came out of a measurement rather than a preference. With "you"
+       first, the viewer at rank 9 on the busiest board took --t-you, and since the busiest board is
+       the one most people are on, FIRE GOLD NEVER PRINTED AT ALL: I measured eight ink layers across
+       six directions and not one of them was #FFD54A. There is exactly one hot board on a slate, it
+       is a fact about the board rather than about the reader, so it takes the gold; you take --t-you
+       on every other board you are on, and on the gold one you are still marked, by the --t-you mark
+       every direction here carries (the punch hole, the pip, the standing line). */
     if (f.hot) return "hot";
+    if (f.you) return "you";
     return "win";
   }
   /* the same four, as a CSS token, for the type and the rules that sit beside the ink */
@@ -323,7 +336,8 @@
   /* The art knobs, as plain attributes on the element that wants them. wire() reads them back off the
      DOM, which is why nothing here needs the recipe a second time: the markup describes its own ink. */
   function inkAttrs(f, kind, extra) {
-    var a = ' data-art="' + kind + '" data-ink="' + inkOf(f) + '" data-cov="' + round2(covOf(f)) +
+    var a = ' data-art="' + kind + '" data-ink="' + inkOf(f) + '"' + (f.you ? ' data-you="1"' : "") +
+      ' data-cov="' + round2(covOf(f)) +
       '" data-to="' + round2(toOf(f)) + '" data-busy="' + round2(f.busy) + '" data-seed="' + f.seed +
       '" data-key="' + esc(f.id) + '"';
     if (f.wins != null) a += ' data-wins="' + f.wins + '"';
@@ -367,8 +381,15 @@
     if (kind === "wash") {
       /* THE ONE THAT STOPS IT BEING A SPREADSHEET. Real halftone ink, in the second app colour, whose
          COVERAGE is your standing and whose REACH is the board's population. The ink runs out, and it
-         runs out in the same dots the season reel and the results print use. */
-      A.wash(doc, el, { ink: ink, cov: cov, to: to, cov2: cov * 0.55, soft: 0.16, seed: seed, alpha: 0.9 });
+         runs out in the same dots the season reel and the results print use.
+
+         data-full turns the REACH channel off and spans the whole element, thinning from cov to
+         nothing instead. The concourse uses it, because a door already carries population in its dot
+         pitch, and at 320px a wash that stops at 50% of a neon door does not read as ink running out,
+         it reads as half a door failing to paint. I looked at it and it was the latter. */
+      var full = el.getAttribute("data-full") === "1";
+      A.wash(doc, el, { ink: ink, cov: cov, to: full ? 1 : to, cov2: full ? 0.04 : cov * 0.55,
+        soft: full ? 0.02 : 0.16, seed: seed, alpha: full ? 0.75 : 0.9 });
       return;
     }
     if (kind === "thick") {
@@ -492,7 +513,12 @@
 
   function hubScroll(doc, navId) {
     var box = doc.querySelector('.lb-nav[data-nav-id="' + navId + '"]');
-    if (!box || box.getAttribute("data-hub") !== "1") return;
+    if (!box) return;
+    /* data-hub sits on the DIRECTION'S own root element, which is a child of the box lab.js builds, so
+       it has to be looked for inside. Reading it off the box itself was always null, and the measured
+       result was that tapping a board on a 401px departures board left you looking at the departures
+       board with zero rows of the list in view. */
+    if (box.getAttribute("data-hub") !== "1" && !box.querySelector('[data-hub="1"]')) return;
     var open = box.querySelector("[data-open]");
     var id = open ? open.getAttribute("data-board") : "";
     var prev = LAST[navId];
@@ -552,7 +578,7 @@
   LIST.push({
     id: "rack",
     name: "The record crate",
-    note: "Printed spines, like flipping a crate of records. A spine's height is how busy that board is and its ink runs as far as its population, so the stack is deliberately uneven. The one you pulled out sits on its own at the foot of the crate with a thread running down into the list, so the list is visibly hanging off the spine you pulled. All eight boards are on the stack and it costs about 240px, so a board still shows under it.",
+    note: "Printed spines, like flipping a crate of records. A spine's height is how busy that board is and its ink runs as far as its population, so the stack is deliberately uneven. The one you pulled out sits on its own at the foot of the crate with a thread running down into the list. All eight boards are on the stack. Measured at 320px it is 301px tall, so tapping a spine scrolls you onto its board.",
     html: function (recipe, slate) {
       var fs = facts(recipe, slate), open = openOne(fs, recipe), i, f, closed = [];
       for (i = 0; i < fs.list.length; i++) { f = fs.list[i]; if (f !== open) closed.push(f); }
@@ -580,7 +606,7 @@
       /* THE CRATE IS TWO DEEP, and that is a measurement, not a style. Eight 44px spines in one column
          is 352px minimum, measured at 484px once the ink and the numbers were in, which put the first
          rank below the fold on a 320px phone. Two deep is 240px and the crate still reads. */
-      return '<div class="nv-rack" style="--thread:' + tokenOf(open || fs.list[0]) + '">' +
+      return '<div class="nv-rack" data-hub="1" style="--thread:' + tokenOf(open || fs.list[0]) + '">' +
         '<div class="nv-crate">' + closed.map(function (f) { return spine(f, false); }).join("") + "</div>" +
         spine(open, true) +
         "</div>";
@@ -599,11 +625,12 @@
           " background: var(--t-ground-2); color: var(--t-text); text-align: left; cursor: pointer;" +
           " font: inherit; -webkit-tap-highlight-color: transparent; }",
         s + ".nv-spine:active { transform: translateX(2px); }",
-        s + ".nv-rk-name { flex: 0 0 auto; max-width: 54%; font: 700 14px/1 var(--t-disp);" +
+        s + ".nv-rk-name { flex: 0 1 auto; min-width: 0; max-width: 52%; font: 700 12.5px/1 var(--t-disp);" +
           " letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
         s + ".nv-rk-mid { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }",
         s + ".nv-rk-num { font: 700 13px/1 var(--t-mono); }",
-        s + ".nv-rk-what { font: 500 9.5px/1.1 var(--t-body); color: var(--t-text-2); text-align: right; }",
+        s + ".nv-rk-what { max-width: 100%; font: 500 9.5px/1.1 var(--t-body); color: var(--t-text-2);" +
+          " text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
         s + ".nv-rk-new { position: absolute; left: 11px; bottom: 3px; height: 13px; padding: 0 4px;" +
           " border-radius: 3px; background: var(--t-offset); color: var(--t-ground); z-index: 1;" +
           " font: 700 9.5px/13px var(--t-disp); letter-spacing: .06em; text-transform: uppercase; }",
@@ -613,7 +640,7 @@
         /* the one you pulled out of the crate: full width, on its own, right above its list */
         s + ".nv-spine.is-out { border-left-color: var(--thread); border-left-width: 4px;" +
           " background: var(--t-ground-3); }",
-        s + ".nv-spine.is-out .nv-rk-name { font-size: 20px; max-width: 58%; color: var(--thread); }",
+        s + ".nv-spine.is-out .nv-rk-name { font-size: 19px; max-width: 58%; color: var(--thread); }",
         s + ".nv-spine.is-out .nv-rk-num { font-size: 22px; }",
         s + ".nv-spine.is-out .nv-rk-what { font-size: 11px; }",
         /* THE THREAD: the list is visibly hanging off the spine you pulled out. box-sizing matters:
@@ -626,7 +653,9 @@
         s + ".lb-row { min-height: 34px; }"
       ].join("\n");
     },
-    wire: function (doc) { paintPass(doc); }
+    /* The crate is 301px and the sheet's visible window at 320px measured 297px, so without the hub
+       scroll a tap left ZERO rows of the board in view. Measured, then fixed. */
+    wire: function (doc) { paintPass(doc); hubScroll(doc, "rack"); }
   });
 
   /* ----------------------------------------------------------------------
@@ -647,7 +676,7 @@
   LIST.push({
     id: "doors",
     name: "The concourse",
-    note: "The home screen's own doors, one per board. The halftone shadow behind each door carries two facts: its ink is what the board is to you, and how tight its dots are is how busy the board is. The open board is the hero door and prints the leader's real season inside it where there is a season to print. It is a hub: the doors cost about 290px, so you see roughly five rows without scrolling, and a tap scrolls you to the board.",
+    note: "The home screen's own doors, one per board. The halftone shadow behind each door carries two facts: its ink is what the board is to you, and how tight its dots are is how busy the board is. The open board is the hero door and prints the leader's real season inside it where there is a season to print. It is a hub: measured at 320px the concourse is 330px, so you scroll to the list, and tapping a door scrolls you onto its board.",
     html: function (recipe, slate) {
       var fs = facts(recipe, slate), open = openOne(fs, recipe), i, out = "", f;
 
@@ -656,13 +685,13 @@
         var pitch = round2(8 - 5 * f.busy);
         var a = ' data-board="' + esc(f.id) + '"' + (f.open ? ' data-open="1" aria-current="true"' : "") +
           ' aria-label="' + esc(f.title + ". " + standing(f, false)) + '"';
-        var wrap = '<div class="hm-ht nv-door nv-' + kind + '" style="--dot: ' + tokenOf(f) +
-          "; --d: " + pitch + "px; --ink: " + tokenOf(f) + '">';
+        var wrap = '<div class="hm-ht nv-door nv-' + kind + '"' + (f.you ? ' data-you="1"' : "") +
+          ' style="--dot: ' + tokenOf(f) + "; --d: " + pitch + "px; --ink: " + tokenOf(f) + '">';
         var art = (kind === "hero" && f.wins != null)
           ? '<span class="nv-dr-art"' + inkAttrs(f, "scene",
               ' data-scene="' + esc(SCENE[f.id] || "skyline") + '" data-context="' +
               esc(String(f.title).toUpperCase()) + '" data-pal="night"') + "></span>"
-          : (kind !== "hero" ? '<span class="nv-dr-wash"' + inkAttrs(f, "wash") + "></span>" : "");
+          : (kind !== "hero" ? '<span class="nv-dr-wash" data-full="1"' + inkAttrs(f, "wash") + "></span>" : "");
         var body = kind === "hero"
           ? (f.isNew ? '<span class="hm-badge">New today</span>' : "") +
             '<span class="hm-t nv-dr-t">' + esc(f.tab) + "</span>" +
@@ -694,7 +723,7 @@
         s + ".nv-door.hm-ht::before { background-size: var(--d, 4px) var(--d, 4px); }",
         s + ".nv-door .hm-mode { position: relative; overflow: hidden; gap: 1px; padding: 5px 8px; }",
         s + ".nv-hero .hm-mode { min-height: 72px; justify-content: center; }",
-        s + ".nv-plate .hm-mode { min-height: 46px; justify-content: center; align-items: flex-start; text-align: left; }",
+        s + ".nv-plate .hm-mode { min-height: 50px; justify-content: center; align-items: flex-start; text-align: left; }",
         s + ".nv-plates { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 7px; }",
         s + ".nv-plate { display: flex; }",
         s + ".nv-plate .hm-mode { flex: 1; }",
@@ -706,6 +735,8 @@
         s + ".nv-dr-mid { font: 700 14px/1.05 var(--t-mono); color: var(--t-text); }",
         s + ".nv-dr-s { font-size: 9.5px; line-height: 1.15; color: var(--t-text-2); }",
         s + ".nv-hero .nv-dr-s { font-size: 11.5px; }",
+        /* the viewer, as a mark on the door rather than as the door's whole ink */
+        s + ".nv-door[data-you] .nv-dr-s { color: var(--t-you); font-weight: 600; }",
         s + ".nv-door .hm-badge { align-self: center; margin: 0 0 2px; height: 15px;" +
           " font: 700 10px/15px var(--t-disp); letter-spacing: .07em; }",
         /* THE TWO ART LAYERS, and the :not() is load bearing. The first version of this rule set
@@ -736,7 +767,7 @@
   LIST.push({
     id: "departures",
     name: "The departures board",
-    note: "A station board. Row height and numeral size say how busy each board is, the status column on the right says whether you are on it, and the numbers flip in so a change announces itself. Nothing is hidden: all eight are listed. The flip is off if the phone asks for less motion. It is a hub, about 380px, so a tap scrolls you to the board.",
+    note: "A station board. Row height and numeral size say how busy each board is, the status column on the right says whether you are on it, and the numbers flip in so a change announces itself. Nothing is hidden: all eight are listed, and the flip is off if the phone asks for less motion. Eight 44px rows is 401px measured, which is the whole screen above the list, so this one is a full index screen and a tap scrolls you onto the board.",
     html: function (recipe, slate) {
       var fs = facts(recipe, slate);
       var rows = fs.list.map(function (f, i) {
@@ -762,8 +793,9 @@
         if (!f.live) return "soon";
         if (f.you) return "you " + ordinal(f.you);
         if (f.isNew) return "new today";
-        if (f.hot) return fmtInt(f.field) + " gms";
-        return "open";
+        /* The count, never the word "open". A status column that says "open" on four rows is the pill
+           row again: it distinguishes nothing. */
+        return fmtInt(f.field) + " " + plural(f.field, (f.def.unit || ["gm", "gms"])[0], (f.def.unit || ["gm", "gms"])[1]).toLowerCase();
       }
     },
     css: function (recipe) {
@@ -788,7 +820,7 @@
           " font: 700 10.5px/1.1 var(--t-disp); letter-spacing: .1em; text-transform: uppercase;" +
           " color: var(--t-offset); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
         /* one meaning per colour, in the status column too */
-        s + ".nv-dep-row[data-ink=\"you\"] .nv-dep-stat { color: var(--t-you); }",
+        s + ".nv-dep-row[data-you] .nv-dep-stat { color: var(--t-you); }",
         s + ".nv-dep-row[data-ink=\"hot\"] .nv-dep-num { color: var(--t-hot); }",
         s + ".nv-dep-row[data-ink=\"light\"] .nv-dep-stat { color: var(--t-text-3); }",
         s + ".nv-dep-row[data-open] { background: rgb(var(--t-light-rgb) / .05); }",
@@ -818,7 +850,7 @@
   LIST.push({
     id: "sheet",
     name: "The whole press sheet",
-    note: "All eight boards printed at once on one press sheet, with trim marks and a registration cross. No controls and nothing hidden: panel size is the information, so the sheet itself says which boards matter. On the real paper stock, so the type is paper ink. The sheet is about 340px, so it is a hub and a tap scrolls you to the board.",
+    note: "All eight boards printed at once on one press sheet, with trim marks and a registration cross. No controls and nothing hidden: panel size is the information, so the sheet itself says which boards matter. On the real paper stock, so the type is paper ink at 14:1 against it. The sheet measured 408px at 320px, so it is a full index and a tap scrolls you onto the board.",
     html: function (recipe, slate) {
       var fs = facts(recipe, slate), open = openOne(fs, recipe);
       var panels = fs.list.map(function (f, i) {
@@ -867,8 +899,9 @@
         s + ".nv-gr-num { font: 700 17px/1.05 var(--t-mono); color: var(--t-ink); }",
         s + ".nv-plate.is-open .nv-gr-num { font-size: 32px; }",
         s + ".nv-gr-what { font: 500 10.5px/1.15 var(--t-body); color: var(--t-ink-2); }",
-        s + ".nv-gr-you { margin-top: 2px; font: 700 10px/1 var(--t-disp); letter-spacing: .09em;" +
-          " text-transform: uppercase; color: var(--t-you); }",
+        s + ".nv-gr-you { margin-top: 2px; padding-left: 4px; border-left: 3px solid var(--t-you);" +
+          " font: 700 10px/1.1 var(--t-disp); letter-spacing: .09em;" +
+          " text-transform: uppercase; color: var(--t-ink); }",
         s + ".nv-gr-new { position: absolute; left: 8px; bottom: 5px; padding: 1px 5px; border-radius: 3px;" +
           " background: var(--t-offset); color: var(--t-ground);" +
           " font: 700 9.5px/1.5 var(--t-disp); letter-spacing: .08em; text-transform: uppercase; }",
@@ -895,7 +928,7 @@
   LIST.push({
     id: "edge",
     name: "The edge index",
-    note: "Thumb notches cut into the right edge of the sheet, pinned low where a thumb reaches. Each notch's printed bar is thick in proportion to how busy that board is, the way a dictionary's S notch is fatter than its Q. The only direction that costs the list no vertical room. It spends 44px of the 320px width, so long board names lose room, and the short stamps have to be tested on his phone before anything is polished.",
+    note: "Thumb notches cut into the right edge of the sheet, pinned low where a thumb reaches. Each notch's printed bar is thick in proportion to how busy that board is, the way a dictionary's S notch is fatter than its Q. The only direction that costs the list no vertical room: measured, the first rank sits 95px down where the pills put it at 199px, so you see MORE of the board than the pills give you. It spends 44px of the 320px width, so long board names lose room, and the short stamps have to be tested on his phone before anything is polished.",
     html: function (recipe, slate) {
       var fs = facts(recipe, slate);
       var notches = fs.list.map(function (f) {
@@ -975,7 +1008,7 @@
   LIST.push({
     id: "bignumber",
     name: "The big number",
-    note: "One hand-hung number for the board you are on, printed in two inks off register, and the other seven as small numbers under it. You learn whether a board is worth opening from its number, not its name. Scale is the only selected state. Each small number carries its own ink: fire gold is the busiest board, --t-you is one you are on, aqua is everything else.",
+    note: "One hand-hung number for the board you are on, printed in two inks off register, and the other seven as small numbers under it. You learn whether a board is worth opening from its number, not its name. Scale is the only selected state. Each small number carries its own ink: fire gold is the busiest board, --t-you is one you are on, aqua is everything else. The shortest of the seven at 255px.",
     html: function (recipe, slate) {
       var fs = facts(recipe, slate), open = openOne(fs, recipe), i, f, rest = [];
       var str = open && open.lead ? open.lead : "";
@@ -991,7 +1024,7 @@
             esc(str) + "</span>"
           : '<span class="nv-bn-soon">' + esc(open.sub || "not open yet") + "</span>") +
         '<span class="nv-bn-cap">' + esc(str ? open.what : "") + "</span>" +
-        '<span class="nv-bn-you">' + esc(standing(open, false)) + "</span>" +
+        '<span class="nv-bn-you"' + (open.you ? ' data-you="1"' : "") + ">" + esc(standing(open, false)) + "</span>" +
         "</div>";
 
       var small = rest.map(function (f) {
@@ -1034,7 +1067,10 @@
           " text-transform: uppercase; color: var(--t-text-2); max-width: 100%;" +
           " white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
         s + ".nv-bn-dot { position: absolute; right: 6px; top: 6px; width: 6px; height: 6px;" +
-          " border-radius: 50%; background: var(--t-offset); }"
+          " border-radius: 50%; background: var(--t-offset); }",
+        /* the viewer, as a mark rather than as the whole object's ink */
+        s + ".nv-bn-s[data-you] { box-shadow: inset 3px 0 0 0 var(--t-you); }",
+        s + ".nv-bn-you[data-you] { color: var(--t-you); }"
       ].join("\n");
     },
     wire: function (doc) { paintPass(doc); hubScroll(doc, "bignumber"); }
@@ -1061,7 +1097,7 @@
   LIST.push({
     id: "pinboard",
     name: "The pinboard",
-    note: "Riso tickets pinned up in two stacks, on the real paper stock. A punched hole marks your own position on each board you are on, a gold seal marks the board with the most action, and a date stamp marks the one that is new today, so you can count your own boards without opening any. Tap only, never drag. Tapping a board where you are inside the top ten fires an ink print over the ticket.",
+    note: "Riso tickets pinned up in two stacks, on the real paper stock. A punched hole marks your own position on each board you are on, a gold seal marks the board with the most action, and a date stamp marks the one that is new today, so you can count your own boards without opening any. Tap only, never drag. Tapping a board where you are inside the top ten fires an ink print over the ticket, a different one per board. 274px measured.",
     html: function (recipe, slate) {
       var fs = facts(recipe, slate), i, half = Math.ceil(fs.list.length / 2);
       var ROT = [-1.8, 1.2, -0.9, 1.6, -1.3, 0.8, -1.6, 1.1];
@@ -1073,9 +1109,15 @@
           (f.you && f.you <= 10 ? ' data-reward="' + esc(HOT_FOR(f)) + '"' : "") +
           ' aria-label="' + esc(f.title + ". " + standing(f, false)) + '"' +
           inkAttrs(f, "wash");
-        var stamp = '<span class="nv-tk-stamp"' + inkAttrs(f, "stamp",
-          ' data-youpct="' + round2(yp) + '" data-seal="' + (f.hot ? 1 : 0) +
-          '" data-stampnew="' + (f.isNew ? 1 : 0) + '"') + "></span>";
+        /* NO EMPTY PLATES. A ticket with no hole, no seal and no date stamp has nothing to print, and
+           the first build still mounted a canvas for it: measured as two stamp layers at 0.0% inked out
+           of eight. A plate costs a halftone screen pass, so the ones with nothing on them are not
+           emitted at all. */
+        var stamp = (yp >= 0 || f.hot || f.isNew)
+          ? '<span class="nv-tk-stamp"' + inkAttrs(f, "stamp",
+              ' data-youpct="' + round2(yp) + '" data-seal="' + (f.hot ? 1 : 0) +
+              '" data-stampnew="' + (f.isNew ? 1 : 0) + '"') + "></span>"
+          : "";
         return tagOpen("nv-ticket" + (f.open ? " is-front" : ""), a) +
           stamp +
           '<span class="nv-tk-name">' + esc(f.tab) + "</span>" +
@@ -1121,15 +1163,18 @@
         s + ".nv-tk-name { position: relative; z-index: 1; max-width: 100%;" +
           " font: 700 13px/1 var(--t-disp); letter-spacing: .07em; text-transform: uppercase;" +
           " white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
-        s + ".nv-ticket.is-front .nv-tk-name { font-size: 17px; color: var(--ink); }",
+        s + ".nv-ticket.is-front .nv-tk-name { font-size: 17px; color: var(--t-ink); }",
         s + ".nv-tk-num { position: relative; z-index: 1; margin-top: 1px;" +
           " font: 700 18px/1.05 var(--t-mono); }",
         s + ".nv-ticket.is-front .nv-tk-num { font-size: 24px; }",
         s + ".nv-tk-what { position: relative; z-index: 1; font: 500 10px/1.2 var(--t-body); color: var(--t-ink-2); }",
-        s + ".nv-tk-stand { position: relative; z-index: 1; margin-top: 3px;" +
+        s + ".nv-tk-stand { position: relative; z-index: 1; margin-top: 3px; padding-left: 4px;" +
           " font: 700 10px/1.2 var(--t-disp); letter-spacing: .09em; text-transform: uppercase; color: var(--t-ink-2); }",
         /* the exposed strip is where the name and the number live, so both are inside the top 46px */
-        s + ".nv-ticket > span { pointer-events: none; }"
+        s + ".nv-ticket > span { pointer-events: none; }",
+        /* the viewer: a --t-you edge down the ticket, so a board you are on is countable from the wall */
+        s + ".nv-ticket[data-you] { border-left: 4px solid var(--t-you); }",
+        s + ".nv-ticket[data-you] .nv-tk-stand { border-left: 3px solid var(--t-you); color: var(--t-ink); }"
       ].join("\n");
     },
     /* The reward, and the only place in this file that touches T82FX. On a tap, for a fact, once. */

@@ -204,7 +204,32 @@ window.LB = window.LB || {};
     if (!out.sheet) return out;
     out.scroll = out.sheet.querySelector(".rs-scroll");
     out.title = String((out.sheet.querySelector(".rs-title") || {}).textContent || "").replace(/\s+/g, " ");
+    /* the BOARD's name, which is what belongs on a printed banner. The sheet's own .rs-title is
+       just "Boards". */
+    try {
+      var sl = (window.LB && LB.boards && LB.boards.slate) ? LB.boards.slate(recipe) : null;
+      (sl && sl.list ? sl.list : []).forEach(function (d) { if (d && d.id === out.boardId && d.title) out.title = String(d.title); });
+    } catch (e) {}
     out.crowd = String((out.sheet.querySelector(".lb-crowd") || {}).textContent || "").replace(/\s+/g, " ");
+    /* THE YOU CARD IS NOT A RANKED LIST and boards.js marks it [data-part="card"], so it has no
+       rows to ink. It is still the one board that is entirely about the viewer, so the picture
+       directions read its first record line and print THAT season. Nothing is ranked, nothing is
+       compared, and the label the card already prints ("Best record") is the name on the plate. */
+    (function () {
+      var c = out.sheet.querySelector('.lb-list[data-part="card"]'), kids2, i2, rr, p2;
+      if (!c) return;
+      kids2 = c.children;
+      for (i2 = 0; i2 < kids2.length; i2++) {
+        rr = kids2[i2];
+        if (rr.nodeName !== "LI") continue;
+        p2 = parseScore(String((rr.querySelector(".lb-score") || {}).textContent || ""));
+        if (p2.kind !== "rec") continue;
+        out.card = { el: rr, list: c, rank: 0, score: String((rr.querySelector(".lb-score") || {}).textContent || "").replace(/\s+/g, " "),
+          name: plainName(rr.querySelector(".lb-name")), you: true, ghost: false, p: p2,
+          t: curve(p2.wins / 82), gap: 0, perfect: p2.wins === 82 };
+        break;
+      }
+    })();
     lists = out.sheet.querySelectorAll('.lb-list:not([data-part="card"])');
     for (i = 0; i < lists.length; i++) {
       if (!out.list) out.list = lists[i];
@@ -232,6 +257,7 @@ window.LB = window.LB || {};
       if (out.rows[i].you && !out.you) out.you = out.rows[i];
       if (!out.leader && (out.rows[i].rank === 1 || i === 0)) out.leader = out.rows[i];
     }
+    if (!out.leader && out.card) out.leader = out.card;     /* the YOU card's own best season */
     return out;
   }
 
@@ -264,6 +290,26 @@ window.LB = window.LB || {};
   /* 320px is a device, not a style opinion. Where a piece of art would eat the readable register
      at 320 it is printed smaller there, and the look's note never claims the larger reading. */
   function narrow(recipe) { return !(recipe && recipe.width && recipe.width >= 375); }
+
+  /* T82PRINT's banner ALWAYS prints spec.wins as a win-loss record in 148px type, and there is
+     no flag that turns it off: drawBannerTitle calls recText(w, l) unconditionally. On a board
+     whose score is not a record (a monthly sum, a streak in days, money, a net, a rate) passing
+     a made up `wins` would print a record that nobody holds, in the biggest type on the screen.
+     The title box is the top quarter of the 1000x660 frame, so focusing the crop on the BOTTOM
+     cuts it out, and the real score stays in type underneath where it belongs. On a record board
+     the crop focuses top and the record is the picture's own headline, which is the point. */
+  function printable(B) { return !!(B.leader && B.leader.p.kind === "rec"); }
+  function printSpec(B, recipe, extra) {
+    var o = extra || {}, rec = printable(B);
+    o.wins = rec ? B.leader.p.wins : Math.round(82 * cl01(B.leader ? B.leader.t : 0.5));
+    o.seed = (recipe && recipe.seed) || 82;
+    /* the count only when there IS a ranked field. The YOU card ranks nobody, and printing
+       "4,412 GMs" on a card of your own records would be the one outright lie on the screen. */
+    o.context = String(B.title || "").toUpperCase() + (B.rows.length && B.field ? "  " + fmtInt(B.field) + " GMs" : "");
+    o.fit = "cover";
+    o.focus = rec ? "top" : "bottom";
+    return o;
+  }
 
   /* THE RULE THAT KEEPS THE SECOND REGISTER ALIVE. 82 coins and rings always wrap to six rows,
      whatever the width, because the reel's pitch scales with cssW: that is 110px of ledger, and
@@ -384,14 +430,15 @@ window.LB = window.LB || {};
         S + " .lbx-seal { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--t-hot);",
         "    display: flex; align-items: center; justify-content: center; font-family: var(--t-mono); font-size: 9px;",
         "    letter-spacing: .04em; color: var(--t-hot); transform: rotate(-11deg); }",
-        S + " .lbx-strip { min-height: 24px; }",
+        S + " .lbx-strip { height: 24px; margin-top: 3px; }",
         S + " .lbx-foot { margin: 6px 0 0; font-family: var(--t-mono); font-size: 10.5px; letter-spacing: .05em; color: var(--t-text-2); }",
         /* the colour bar: the sheet's right edge is the field's density */
         S + " .rs-scroll { padding-right: 32px; }",
         S + " .lbx-bar { position: absolute; top: 0; right: 9px; width: 15px; z-index: 3; pointer-events: none; }",
         /* THE IMPRESSION. Not a row: a trimmed block ganged onto the sheet. */
         S + " .lb-list { gap: 5px; padding: 8px 0 4px; }",
-        S + " .lb-list > .lb-row { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 6px 9px;",
+        /* 29px of left margin is not decoration: it is the gutter the density patch prints in */
+        S + " .lb-list > .lb-row { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 6px 9px 6px 29px;",
         "    border: 0; border-radius: 0; background: none;",
         "    box-shadow: inset 0 0 0 1px rgb(var(--t-rule-rgb) / .55); }",
         S + " .lb-list > .lb-row .lb-rank { flex: none; width: 3.4ch; font-family: var(--t-mono); font-size: 12.5px;",
@@ -402,7 +449,8 @@ window.LB = window.LB || {};
         S + " .lb-tag, " + S + " .lb-sub { font-family: var(--t-mono); font-size: 10.5px; letter-spacing: .04em; text-transform: none; color: var(--t-text-2); }",
         S + " .lb-chip { font-family: var(--t-mono); font-size: 10px; }",
         /* YOUR IMPRESSION is out of line and bullseyed. Position and shape, not colour. */
-              S + " .lb-list > .lb-you, " + S + " .lb-list > .lb-ghost { margin-left: -6px; margin-right: 6px;",        "    box-shadow: inset 0 0 0 1.5px var(--t-you); background: none; border-radius: 0; }",
+        S + " .lb-list > .lb-you, " + S + " .lb-list > .lb-ghost { margin-left: -6px; margin-right: 6px;",
+        "    box-shadow: inset 0 0 0 1.5px var(--t-you); background: none; border-radius: 0; }",
         S + " .lb-list > .lb-you::before, " + S + " .lb-list > .lb-ghost::before { content: \"\"; position: absolute; left: 5px; top: 50%;",
         "    width: 21px; height: 21px; margin-top: -10.5px; border-radius: 50%; border: 2px solid var(--t-you); z-index: 2; }",
         S + " .lb-you .lb-name, " + S + " .lb-you .lb-score { color: var(--t-text); }",
@@ -414,7 +462,6 @@ window.LB = window.LB || {};
            aqua at 63% coverage and aqua at 96% both composite to the same bright field, the ramp
            disappears, and the name measured 2.27:1. */
         S + " .lbx-band canvas[data-lb-art], " + S + " .lbx-bar canvas[data-lb-art], " + S + " .lbx-stock canvas[data-lb-art] { mix-blend-mode: screen; }",
-        S + " .lb-row { padding-left: 29px !important; }",
         "@media (max-width: 340px) {",
         S + " .lbx-who { font-size: 21px; } " + S + " .lbx-rec { font-size: 26px; }",
         S + " .lb-list > .lb-row .lb-name { font-size: 15px; } " + S + " .rs-scroll { padding-right: 30px; }",
@@ -461,15 +508,26 @@ window.LB = window.LB || {};
         if (B.leader.perfect) add(host, mk(doc, "div", "lbx-seal", "82-0"));
         add(host, mk(doc, "div", "lbx-rec", B.leader.score || ""));
         add(b, mk(doc, "div", "lbx-strip"));
-        /* 82 cells wrap to six rows of coins whatever the width (pitch scales with cssW), so a
-           320px phone would spend 110px of its 500px sheet on the ledger alone. At 320 the
-           leader's season prints as 20 blocks on one line and the exact record is 30px type
-           right beside it; at 375 and up it is all 82 games and you can count the losses. */
-        A.strip(doc, b.querySelector(".lbx-strip"), {
-          games: fullLedger(B, recipe) ? season82(B.leader, (recipe && recipe.seed) || 82) : blocksN(B.leader, (recipe && recipe.seed) || 82, 20),
-          wins: B.leader.p.kind === "rec" ? B.leader.p.wins : 82,
-          seed: (recipe && recipe.seed) || 82, cssW: narrow(recipe) ? 276 : 300, layer: "flow", slot: "ledger"
-        });
+        /* THE LEADER'S SEASON AS A PRINTED JOB STRIP: 82 cells in two rows, each inked at the
+           density of that game, a win near solid and a loss starved. Same fact the reel's coins
+           carry and deliberately NOT the same mark: Season Strips owns the coins and rings, and
+           two directions that share a signature are one direction. Two rows of 41 also fits the
+           band's budget, where the reel's own pitch rule wraps 82 cells to six rows at any
+           width and would eat 110px of a 486px sheet. */
+        (function (host, games, ink) {
+          if (!host) return;
+          A.screen(doc, host, function (g, w, h, K) {
+            var cols = 41, cw = w / cols, ch = 10, k, x, y;
+            for (k = 0; k < 82; k++) {
+              x = (k % cols) * cw;
+              y = k < cols ? 0 : 13;
+              g.fillStyle = K.tone(games && games[k] ? 0.92 : 0.13);
+              g.fillRect(x + 0.5, y, Math.max(1.5, cw - 1), ch);
+            }
+          }, { ink: ink, slot: "ledger", layer: "under", seed: 8201,
+               key: "ledger|" + ink + "|" + (games ? games.join("") : "") });
+        })(b.querySelector(".lbx-strip"), season82(B.leader, (recipe && recipe.seed) || 82),
+           B.leader.perfect ? "hot" : "win");
         add(b, mk(doc, "p", "lbx-foot", B.field ? "The bar at the edge is the top 82 of " + fmtInt(B.field) + "." : (B.crowd || "")));
         if (B.leader.perfect) reward(doc, b.querySelector(".lbx-seal"));
       }
@@ -525,12 +583,16 @@ window.LB = window.LB || {};
         S + " .lbx-rail { position: absolute; left: 44px; top: 6px; bottom: 22px; width: 1.5px; background: var(--t-metal); opacity: .75; z-index: 2; }",
         S + " .lbx-ax { position: absolute; left: 0; width: 42px; text-align: right; font-family: var(--t-mono); font-size: 10px;",
         "    letter-spacing: .03em; color: var(--t-text-2); z-index: 2; }",
-        S + " .lbx-ax i { font-style: normal; display: block; font-size: 9px; color: var(--t-metal); }",
-        S + " .lbx-cap { position: absolute; left: 52px; right: 8px; bottom: 4px; display: flex; justify-content: space-between;",
-        "    gap: 8px; font-family: var(--t-mono); font-size: 10px; letter-spacing: .05em; color: var(--t-text-2); z-index: 2; }",
+        S + " .lbx-ax i { font-style: normal; display: block; font-size: 9px; line-height: 1.05; color: var(--t-metal); }",
+        S + " .lbx-cap { position: absolute; left: 52px; right: 8px; bottom: 3px; display: flex; justify-content: space-between;",
+        "    gap: 8px; font-family: var(--t-mono); font-size: 10px; letter-spacing: .05em; color: var(--t-text-2); z-index: 3; }",
         /* THE SUMMIT PLATE: the leader is not a pin. */
-        S + " .lbx-top { position: absolute; left: 56px; top: 4px; z-index: 3; max-width: calc(100% - 70px); }",
-        S + " .lbx-top b { display: block; font-family: var(--t-disp); font-weight: 800; font-size: 17px; line-height: 1;",
+        /* THE SUMMIT PLATE sits top right, where the curve has already descended, over its own
+           scrim. On the first build it sat top left, on top of the leaders, and the record was
+           unreadable through the halftone. */
+        S + " .lbx-top { position: absolute; right: 8px; top: 5px; z-index: 3; max-width: calc(100% - 100px); text-align: right;",
+        "    padding: 3px 6px 4px; background: rgb(var(--t-print-paper-rgb) / .74); }",
+        S + " .lbx-top b { display: block; font-family: var(--t-disp); font-weight: 800; font-size: 16px; line-height: 1;",
         "    letter-spacing: .03em; text-transform: uppercase; color: var(--t-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
         S + " .lbx-top span { font-family: var(--t-mono); font-size: 11px; letter-spacing: .06em; color: var(--t-offset); }",
         /* THE READABLE REGISTER: hairlines, no boxes, no ink. The art is all above. */
@@ -558,7 +620,7 @@ window.LB = window.LB || {};
       ].join("\n");
     },
     paint: function (doc, recipe) {
-      var A = ART(), B = read(doc, recipe), b, plot, tops, i, r, isRec, legend, top;
+      var A = ART(), B = read(doc, recipe), b, plot, tops, i, isRec, legend, top, hi = 1, lo = 0;
       clean(doc);
       if (!B.sheet) return;
       stock(doc, B.sheet, "night", 0.09);
@@ -568,53 +630,78 @@ window.LB = window.LB || {};
       add(b, mk(doc, "div", "lbx-rail"));
       plot = add(b, mk(doc, "div", "lbx-plot"));
 
+      tops = topRanks(recipe);
+
+      /* THE SCALE IS ZOOMED TO THE BOARD, and that is not a cosmetic decision. On an absolute
+         0 to 1 rail the top 82 of a Daily all land in the top fifth and the curve prints as one
+         solid aqua slab with no shape in it: I built that first and it is unreadable. The rail
+         runs from a little above the leader to a little below the 82nd, so the gaps that exist
+         on THIS board are the gaps you see. The ends are labelled with the real scores, and the
+         all time team pins ride the same ruler, so the zoom never hides what the numbers are. */
+      (function () {
+        var all = [], k;
+        for (k = 0; k < tops.length; k++) all.push(tops[k].t);
+        for (k = 0; k < B.rows.length; k++) all.push(B.rows[k].t);
+        if (!all.length) all = [0, 1];
+        hi = Math.max.apply(null, all); lo = Math.min.apply(null, all);
+        if (hi - lo < 0.06) { hi = Math.min(1, hi + 0.03); lo = Math.max(0, lo - 0.03); }
+        var pad = (hi - lo) * 0.12;
+        hi = Math.min(1, hi + pad); lo = Math.max(0, lo - pad);
+      })();
+      function Y(t) { return hi > lo ? cl01((hi - t) / (hi - lo)) : 0.5; }
+
       isRec = !!(B.leader && B.leader.p.kind === "rec");
-      /* THE SCALE'S CALIBRATION: the all time teams, on the same rail, in bronze. A living
-         74-8 means nothing to someone who has never played until the 1996 Bulls are on the
-         same ruler. These three are app.js's own HISTORY_COMPS, the Climb's own pins. */
+      /* THE SCALE'S CALIBRATION: the all time teams, on the same rail, in bronze. A living 74-8
+         means nothing to someone who has never played until the 1996 Bulls are on the same
+         ruler. These are app.js's own HISTORY_COMPS, the Climb's own pins. One is dropped when
+         it falls off this board's scale or would collide with the pin above it. */
       legend = isRec ? [{ w: 81, label: "Dream Team" }, { w: 73, label: "'16 Warriors" }, { w: 72, label: "'96 Bulls" }] : [];
+      var plotH = Math.max(40, b.offsetHeight - 28), lastY = -99;
       for (i = 0; i < legend.length; i++) {
+        var ly = Y(curve(legend[i].w / 82));
+        if (ly <= 0.01 || ly >= 0.99) continue;
+        var ypx = Math.round(6 + ly * plotH);
+        if (ypx - lastY < 22) continue;
+        lastY = ypx;
         var ax = mk(doc, "div", "lbx-ax");
-        ax.style.top = Math.round(6 + (1 - curve(legend[i].w / 82)) * (b.offsetHeight - 28) - 6) + "px";
+        ax.style.top = (ypx - 7) + "px";
         ax.appendChild(mk(doc, "span", "", legend[i].w));
         ax.appendChild(mk(doc, "i", "", legend[i].label));
         add(b, ax);
       }
 
-      tops = topRanks(recipe);
-
-      /* THE FIELD, as one curve: x is rank through the top 82, y is the score on the rail's
-         common scale. The left cliff is the leaders' lead, a flat plateau is a tied crowd, the
-         long tail is the depth of the board. Drawn in real halftone, not a CSS gradient. */
+      /* THE FIELD, as one curve: x is rank through the top 82, y is the score on the rail. The
+         left cliff is the leaders' lead, a flat plateau is a tied crowd, the long fall on the
+         right is the depth of the board. Drawn in real halftone, not a CSS gradient. */
       if (tops.length > 2) {
         A.screen(doc, plot, function (g, w, h, K) {
           var n = tops.length, k, x, y;
           g.beginPath();
           g.moveTo(0, h);
-          for (k = 0; k < n; k++) {
-            x = w * k / (n - 1);
-            y = h - h * cl01(tops[k].t);
-            g.lineTo(x, y);
-          }
+          for (k = 0; k < n; k++) { x = w * k / (n - 1); y = Y(tops[k].t) * h; g.lineTo(x, y); }
           g.lineTo(w, h); g.closePath();
-          g.fillStyle = K.tone(0.34); g.fill();
-          g.lineWidth = 2; g.strokeStyle = K.tone(0.9);
+          /* the body of the field is a QUIET tint and the ridge line is the data. A Daily where
+             the whole top 82 went 82-0 is a real and common case, and at a heavy fill it printed
+             as one solid aqua rectangle with no reading in it. At 0.14 the same board prints as
+             a clean flat line across a tinted field, which is what a room that all tied looks
+             like. */
+          g.fillStyle = K.tone(0.14); g.fill();
+          g.lineWidth = 2.2; g.strokeStyle = K.tone(0.92);
           g.beginPath();
-          for (k = 0; k < n; k++) { x = w * k / (n - 1); y = h - h * cl01(tops[k].t); if (k) g.lineTo(x, y); else g.moveTo(x, y); }
+          for (k = 0; k < n; k++) { x = w * k / (n - 1); y = Y(tops[k].t) * h; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
           g.stroke();
-        }, { ink: "win", slot: "curve", layer: "under", seed: 8282, key: "curve|" + tops.length + "|" + (recipe && recipe.seed) + "|" + B.boardId });
+        }, { ink: "win", slot: "curve", layer: "under", seed: 8282,
+             key: "curve|" + tops.length + "|" + (recipe && recipe.seed) + "|" + B.boardId + "|" + lo.toFixed(3) + "|" + hi.toFixed(3) });
 
-        /* THE 82-0 PLATEAU, in fire gold, and only when there is one. The gold band's LENGTH is
-           how many of the top 82 went perfect. */
+        /* THE 82-0 PLATEAU, in fire gold, and only when there is one. Its LENGTH is how many of
+           the top 82 went perfect. */
         var per = 0;
         for (i = 0; i < tops.length; i++) if (tops[i].perfect) per++;
         if (per > 0) {
           A.screen(doc, plot, function (g, w, h, K) {
-            /* t is 1 for a perfect season, so the band sits on the plot's own ceiling and its
-               LENGTH is how many of the top 82 went 82-0. */
-            g.fillStyle = K.tone(0.82);
-            g.fillRect(0, 0, Math.max(3, w * per / tops.length), 5);
-          }, { ink: "hot", slot: "perfect", layer: "over", seed: 820, key: "perfect|" + per });
+            g.fillStyle = K.tone(0.85);
+            g.fillRect(0, Math.max(0, Y(1) * h - 1), Math.max(3, w * per / tops.length), 4);
+          }, { ink: "hot", slot: "perfect", layer: "over", seed: 820, key: "perfect|" + per + "|" + hi.toFixed(3) });
         }
       }
 
@@ -626,11 +713,11 @@ window.LB = window.LB || {};
           rr = B.rows[k];
           if (rr.you) continue;
           x = rr.rank && rr.rank <= n ? w * (rr.rank - 1) / (n - 1) : w - 3;
-          y = h - h * cl01(rr.t);
+          y = Y(rr.t) * h;
           g.fillStyle = K.tone(0.95);
           g.beginPath(); g.arc(x, y, 4.2, 0, Math.PI * 2); g.fill();
         }
-      }, { ink: "win", slot: "pins", layer: "over", seed: 41, key: "pins|" + B.rows.length + "|" + (recipe && recipe.youRank) });
+      }, { ink: "win", slot: "pins", layer: "over", seed: 41, key: "pins|" + B.rows.length + "|" + (recipe && recipe.youRank) + "|" + lo.toFixed(3) + "|" + hi.toFixed(3) });
 
       /* YOUR PIN: a notch with a stem, plus the Climb's own fill from your marker down to the
          floor, which is how far you have already climbed. A shape and a fill, never a hue
@@ -639,14 +726,14 @@ window.LB = window.LB || {};
         A.screen(doc, plot, function (g, w, h, K) {
           var n = Math.max(2, tops.length);
           var x = B.you.rank && B.you.rank <= n ? w * (B.you.rank - 1) / (n - 1) : w - 4;
-          var y = h - h * cl01(B.you.t);
+          var y = Y(B.you.t) * h;
           g.fillStyle = K.tone(0.26);
           g.fillRect(Math.max(0, x - 1.5), y, 3, h - y);
           g.fillStyle = K.tone(0.98);
           g.beginPath();
           g.moveTo(x, y - 9); g.lineTo(x + 7, y); g.lineTo(x, y + 9); g.lineTo(x - 7, y);
           g.closePath(); g.fill();
-        }, { ink: "you", slot: "mine", layer: "over", seed: 7789, key: "mine|" + B.you.rank + "|" + B.you.t.toFixed(3) });
+        }, { ink: "you", slot: "mine", layer: "over", seed: 7789, key: "mine|" + B.you.rank + "|" + B.you.t.toFixed(3) + "|" + lo.toFixed(3) + "|" + hi.toFixed(3) });
       }
 
       /* the summit plate, the axis ends and the honest count */
@@ -656,8 +743,9 @@ window.LB = window.LB || {};
         add(top, mk(doc, "span", "", B.leader.score || ""));
       }
       var cap = add(b, mk(doc, "div", "lbx-cap"));
-      add(cap, mk(doc, "span", "", "Rank 1"));
-      add(cap, mk(doc, "span", "", B.field ? "Top 82 of " + fmtInt(B.field) + " shown" : "Top 82 shown"));
+      add(cap, mk(doc, "span", "", "Rank 1" + (tops.length && tops[0].score ? "  " + tops[0].score : "")));
+      add(cap, mk(doc, "span", "", (tops.length ? "Rank " + tops.length + "  " + tops[tops.length - 1].score + "  " : "") +
+        (B.field ? "of " + fmtInt(B.field) : "")));
     }
   };
 
@@ -855,7 +943,7 @@ window.LB = window.LB || {};
         A.screen(doc, lay, function (g, w, h, K) { g.fillStyle = K.tone(0.08); g.fillRect(0, 0, w, h); },
           { ink: "key", slot: "fibre", layer: "under", seed: 4471, key: "fibre" });
       }
-      if (!A || !B.rows.length) return;
+      if (!A) return;
 
       for (i = 0; i < B.rows.length; i++) {
         r = B.rows[i];
@@ -884,14 +972,9 @@ window.LB = window.LB || {};
            the print engine draws the 82 games as the ridge, prints the record in its own
            display type in two inks off register, and fills the paint only as far as the win
            rate. Nobody else on the wall gets one. */
-        A.scene(doc, sceneFor(B, recipe), host.querySelector(".lbx-face"), {
-          wins: B.leader.p.kind === "rec" ? B.leader.p.wins : 82,
-          seed: (recipe && recipe.seed) || 82,
-          pal: B.leader.t > 0.66 ? "golden" : "dusk",
-          context: (B.title || "").toUpperCase(),
-          fit: "cover", focus: "top", slot: "face"
-        });
-        add(b, mk(doc, "p", "lbx-foot", "Every ticket here was replayed by the server."));
+        A.scene(doc, sceneFor(B, recipe), host.querySelector(".lbx-face"),
+          printSpec(B, recipe, { pal: B.leader.t > 0.66 ? "golden" : "dusk", slot: "face" }));
+        if (B.rows.length) add(b, mk(doc, "p", "lbx-foot", "Every ticket here was replayed by the server."));
       }
     }
   };
@@ -1031,8 +1114,13 @@ window.LB = window.LB || {};
              hundreds of 81-1s prints crisp and you can SEE where the tie ends. */
           var ox = Math.min(maxOff, r.gap * maxOff * 7);
           var oy = -Math.min(maxOff, r.gap * maxOff * 4) * 0.5;
+          /* NO GAP, NO SECOND PLATE. At a dead tie the ghost would print exactly behind the
+             crisp name and still show as a pink fringe on every letter's edge, which reads as
+             misregistration where there is none. Under 0.6px of offset the plate is simply not
+             laid, so a run of ties prints clean and you can see where the tie ends. */
+          if (ox < 0.6 && !r.you) return;
           A.screen(doc, r.el, function (g, w, h, K) {
-            K.text(g, (r.name || "").toUpperCase(), nx + ox, ny + oy, { font: K.font(800, fs, "disp"), align: "left", cov: 0.9 });
+            K.text(g, (r.name || "").toUpperCase(), nx + ox, ny + oy, { font: K.font(800, fs, "disp"), align: "left", cov: 0.8 });
           }, { ink: "key", slot: "miss", layer: "under", seed: 300 + (r.rank || idx),
                key: "ghost|" + ox.toFixed(2) + "|" + oy.toFixed(2) + "|" + fs + "|" + (r.name || "") });
           /* your own name carries a third plate, which is the only triple on the board */
@@ -1125,13 +1213,13 @@ window.LB = window.LB || {};
       clean(doc);
       if (!B.sheet) return;
       stock(doc, B.sheet, "night", 0.09);
-      if (!A || !B.rows.length || !B.leader) return;
+      if (!A || !B.leader) return;
 
       /* THE PALETTE IS A FACT ABOUT THE DAY. The engine already chooses golden, dusk or night
          from the win rate, so a board where the room got wrecked prints at night and a soft day
          prints golden. Nobody has to read a number to know which kind of day it was. */
       for (i = 0; i < B.rows.length; i++) sum += B.rows[i].t;
-      med = sum / B.rows.length;
+      med = B.rows.length ? sum / B.rows.length : B.leader.t;
       pal = med >= 0.62 ? "golden" : (med >= 0.34 ? "dusk" : "night");
       id = sceneFor(B, recipe);
 
@@ -1140,16 +1228,10 @@ window.LB = window.LB || {};
       /* The print IS the board's head: spec.games is the leader's 82 games as the ridge, the
          record prints in 148px display type in two inks off register, the gauge colours the
          picture only as far as the win rate, and spec.context is the board's own name. */
-      A.scene(doc, id, host, {
-        wins: B.leader.p.kind === "rec" ? B.leader.p.wins : 82,
-        seed: (recipe && recipe.seed) || 82,
-        pal: pal,
-        context: (B.title || "").toUpperCase() + (B.field ? "  " + fmtInt(B.field) + " GMs" : ""),
-        fit: "cover", focus: "top", slot: "poster"
-      });
+      A.scene(doc, id, host, printSpec(B, recipe, { pal: pal, slot: "poster" }));
       cap = add(b, mk(doc, "div", "lbx-cap"));
       add(cap, mk(doc, "div", "lbx-who", B.leader.name || "Rank 1"));
-      add(cap, mk(doc, "div", "lbx-sub", (B.leader.score || "") + (B.crowd ? "   " + B.crowd : "")));
+      add(cap, mk(doc, "div", "lbx-sub", B.leader.score || ""));
       reward(doc, b);
 
       /* THE LEADER IS NOT A ROW. Their name and record are in the picture, so their line comes
@@ -1194,7 +1276,7 @@ window.LB = window.LB || {};
      THE LIST
      ====================================================================== */
 
-  LB.looks = {
+  window.LB.looks = {
     LIST: [gangrun, rail, strips, ticket, overprint, print]
   };
 }());
