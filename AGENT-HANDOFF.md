@@ -1,5 +1,44 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-04, later): V69.2. THE BOARDS WERE NOT BROKEN, BUT FOUR THINGS ON THEM WERE, AND
+> ONE OF THEM WOULD HAVE EMPTIED THE DAILY BOARD FOR EVERY AMERICAN PLAYER DURING THE INFLUENCER WINDOW.**
+> The account lane works end to end: that is now PROVEN rather than believed, by two harnesses that are
+> committed and repeatable (`node tools/boards-e2e.js`, 61 checks, and `node tools/boards-live.js`, 32
+> checks against a running Worker). What the audit found instead were defects in what the boards MEAN:
+>
+> 1. **`/api/lb`'s Today board asked for the UTC day; a run stores under the player's LOCAL day.** From
+>    5pm Pacific and 8pm Eastern until local midnight the board asked for a day nobody had played and came
+>    back empty. Measured: 7 hours a day in Los Angeles, 4 in New York. That is 10/20-10/22 prime time.
+>    Fixed in accounts.js (`loadBoard` sends `T82DAILY.dayKey()`); `utcDay()` stays as the no-JS fallback.
+> 2. **The run was posted BEFORE the post-season Heat Check resolved.** A refusal pushes "hx" into
+>    G.actions from inside the overlay, after the log had already been snapshotted, so the server replayed
+>    the spin the player DECLINED and agreed with the client's replay of the same incomplete log: a row
+>    stored `verified = 1` with a record nobody played. Demonstrated on Presti seed 7700208, where taking
+>    the spin gives 82-0 and refusing gives 80-2. Fixed: `submitFinishedRun()` holds while `G.hhPending`
+>    and hotHand's `dismiss()` releases it.
+> 3. **A Daily counted as an ordinary season in its base mode.** A GM with ZERO vanilla Classic seasons
+>    sat on the Classic Best net board. Worse, your 82-0% denominator counted every Daily, so playing the
+>    Daily every day LOWERED your perfection rate: the board charged people for the habit the game wants.
+>    Fixed: `official IS NULL` on rate, net and cheapest.
+> 4. **Every board tab rendered as a gold keycap.** `.lb-tab` is not in BTN3D_EXCLUDE, so app.js's
+>    document-wide decorator added `.presti-spin` and look.css's specificity-boosted rule beat both
+>    `.lb-tab` and `.lb-tab.on`: five identical neon plates with no selected state. Fixed with `tm-flat`
+>    on the tab (the documented opt-out) rather than hand-editing the lab-generated look.css.
+>
+> **Also landed:** the owner's reversal on the Daily (a signed-out 79-3 now counts when you sign in), with
+> three rules in SQL that stop it being farmable; and the board's legibility (the rank was painted in the
+> token the theme documents as DISABLED, 2.96:1).
+>
+> **`main` AND `origin/c-code-clean` ARE STILL UNTOUCHED.** All of this is on `v69-boards`, which is the
+> preview the owner can open. Nothing here changes gameplay.
+>
+> **THE LEADERBOARD LAB IS AT `docs/leaderboard-lab/`** and opens at
+> `https://v69-boards.true82.pages.dev/docs/leaderboard-lab/`. Its `SPEC.md` is the design brief a
+> 33-agent research and audit pass produced, and it is the most useful document in the folder: the board
+> slate it argues for, the start-link and post-game variants, eleven art directions, and the eleven-item
+> must-fix list this session worked from.
+
+
 > **FIRST THING (2026-10-04): V69, THE ACCOUNT AND THE FIVE BOARDS, IS BUILT, DEPLOYED AND WORKING — on the
 > branch `v69-boards` ONLY. `main` AND `origin/c-code-clean` ARE UNTOUCHED at v68.2 (`bb2c565`).** Ten commits,
 > `215d859..938865b`. Local `c-code-clean` carries them too but was never pushed, so the remote lane is clean.
@@ -104,6 +143,176 @@
 Read this file before editing. It summarizes the current architecture, the recent UI work, the exact Small-Ball rule, deployment structure, and validation expectations.
 
 ---
+
+## 0000003. START HERE (2026-10-04): V69.2, THE BOARDS MADE HONEST, AND THE LEADERBOARD LAB
+
+### What was asked, and what the answer turned out to be
+
+The owner asked for a lab (a start-screen link, a post-game hook, the board layout, and art directions)
+and, separately, to "fix accounts" because "obviously no scoreboard if no accounts". **Accounts were not
+broken.** The v69 handoff was right, and this session proved it rather than trusting it. What was broken
+was four things about what the boards MEAN, and they were invisible from the outside because every one
+of them produces a plausible-looking board.
+
+### The two harnesses, which are the durable part
+
+Neither existed before. Both are committed, both are fast, both are meant to be run on every change.
+
+**`node tools/boards-e2e.js`** (61 checks, about 20 s). Eight different signed-in GMs play 159 real
+games across Classic, Presti, Pro and 30 official Dailies, and every score is followed to a board row.
+It runs the REAL handlers (`functions/api/{run,lb,me,name,claim}.js`), the REAL migration SQL through
+`node:sqlite`, the REAL Clerk verification in `_lib/auth.js` against a throwaway RS256 keypair, and the
+REAL engine replay. No server, so it is repeatable; the previous session's wrangler-based check proved
+the deployment but could not be committed or re-run.
+**The ledger is the oracle:** every expectation is computed from what the SERVER said it accepted, never
+from what the harness intended to send. That is what turned "the boards look right" into "the Daily is
+contaminating the Classic board", which is a thing no hand-written fixture would have shown.
+
+**`node tools/boards-live.js`** (32 checks). The same story over HTTP against a running Worker, with
+tokens it mints itself, because the half the in-process harness cannot cover is the one that bit this
+feature twice: the Workers runtime. Start the server first (`.claude/launch.json` -> `site-boards`, port
+8793, which carries a throwaway `CLERK_JWT_KEY`); `node tools/boards-live.js --keys` prints the binding.
+
+**The paid-plan question is settled, with a fresh measurement.** An ordinary anonymous Classic season
+posted to the real edge (`https://v69-boards.true82.pages.dev/api/run`) on a cold isolate came back
+`verified: 1` in 1169 ms wall, matching the client's replay exactly (76-6, net 19.27). Workers Free
+affords the engine warm-up. Do not spend the $5 on this reasoning. (That probe left ONE anonymous row in
+production D1: `id = 00000000-0000-4000-fed0-0000000000e1`, `sid = sidedgeprobe1`. It is on the cleanup
+list below.)
+
+### The four defects, each with its proof
+
+1. **The Today board asked for the wrong day.** `lb.js` defaulted to `utcDay()`; `runs.official` stores
+   `T82DAILY.dayKey()`, which is device-local midnight (the Wordle convention). Measured on 2026-10-04:
+   local and UTC disagree from 5pm to midnight in Los Angeles and 8pm to midnight in New York. Every US
+   player who opened the board in the evening got "Nobody has made this board yet" or, worse, a different
+   day's list with their own score absent. **Fixed on the read side** (accounts.js `loadBoard` sends the
+   day; `DAY_RE` validation stays server-side) because the stored keys are local by design.
+   *The streak board's `current` column still uses `date('now','-1 day')` and has the same assumption; it
+   is invisible today because accounts.js renders only `r.score`. Fix it or drop the column.*
+
+2. **The run was submitted before the Heat Check resolved.** `finishRunTail` called `renderResults`
+   (which only BUILDS the overlay) and then `gameFinishedPings`, freezing `G.actions`. The refusal op
+   "hx" arrives later, from inside the overlay. Both the client's local replay and the server's replay
+   then used the same incomplete log, so they AGREED, and the row stored `verified = 1` with the spin
+   taken. **Proven numerically:** on Presti seed 7700208 taking the spin gives 82-0 and refusing gives
+   80-2, so a declined 81 could be credited as a perfect season. **Fixed:** `G.hhPending` is set in
+   `renderResults`, `submitFinishedRun()` holds while it is set, and hotHand's `dismiss()` (the one funnel
+   every exit path goes through) clears it and sends. A `pagehide` net covers the player who walks away
+   mid-ceremony, and accounts.js's own SUBMITTED guard makes a second call a no-op. Pinned in test.js by
+   running the real functions, not by reading the source.
+
+3. **A Daily counted as an ordinary season in its base mode.** `runs` has no column saying which board a
+   run was played on, and the mode boards did not exclude `official`. Two consequences, both measured by
+   the harness: a GM with zero vanilla Classic seasons on the Classic Best net board, and the 82-0%
+   denominator counting Dailies so that playing the Daily lowered your rate. There is a third the audit
+   found: `market_crash` (PRICE_MULT 0) is live in the POOL3 rotation and `capCost` floors at $1, so the
+   day it runs every five costs $5M and Cheapest 82-0 would read $5M forever, below anything reachable
+   under Presti's ordinary $26-a-player ceiling. **Fixed** with `official IS NULL` on rate, net and
+   cheapest. **The proper fix is still open:** a `ch_id TEXT` column in a migration 0032, written from the
+   server's own `board.ch.id`, because `official` does not catch a non-Daily challenge run.
+
+4. **The board tabs were gold keycaps.** `.lb-tab` is absent from `BTN3D_EXCLUDE` (app.js), so the
+   document-wide MutationObserver added `.presti-spin` the moment `openBoards()` appended the sheet, and
+   look.css's `#lab-k#lab-k`-boosted rule beat both `.lb-tab` and `.lb-tab.on`. Five identical neon plates
+   with no selected state and no accent border. **Fixed with `tm-flat` on the tab class in accounts.js**,
+   which is the documented opt-out (`.acct-btn` and `.hm-howto` already use it) and keeps look.css
+   untouched. **Never hand-edit look.css: it is generated by the Reprint Lab.**
+
+### The owner's reversal: a signed-out 79-3 now counts
+
+He first chose strict, then corrected himself mid-session: he wants the run a signed-out player just
+finished to count when they sign in. Without it the single best moment the game will ever have to earn
+an account can only answer "too late, come back tomorrow".
+
+`functions/api/claim.js` gains `adoptRuns()`, and `functions/api/run.js` now stamps `official:
+claimedDay` unconditionally (it used to be `userId && claimedDay`, which destroyed the only record of
+which Daily an anonymous run belonged to). Three rules make it unfarmable, all in SQL and all pinned in
+both test.js and the e2e harness:
+
+- **One account per device, ever.** Only the FIRST account to link a sid adopts anything, so a shared
+  phone cannot hand player A's seasons to player B and runs cannot be laundered by signing in and out.
+  (`sid_links` already existed for exactly this and was write-only until now.)
+- **The EARLIEST attempt at a day, never the best.** Playing the Daily five times signed out and then
+  signing in gets you your first attempt, which is what a signed-in player's one attempt a day gets.
+- **Nothing unverified, and never over a day the account already holds**, so `UNIQUE (user_id, official)`
+  cannot fire and an adopted run can never displace one played signed in.
+
+### THE DAILY'S SEED IS STILL CLIENT-DERIVABLE, and the three launch boards are worse than that
+
+He asked for this and said "only if it is a really easy robust way, not a rat's nest". The honest answer
+is: **the mechanism is easy, the integration is not, and it should be its own change.** But first, the
+thing he needs to know:
+
+**The three influencer boards are not merely derivable, they are published.** `daily-core.js`
+`SEED_OVERRIDES` carries `2026-10-20: 2696998625`, `2026-10-21: 3675641764`, `2026-10-22: 2501072727` in
+plaintext in a file every browser downloads. Anyone who opens the source on 10/19 can pre-solve all
+three of the boards the influencer films.
+
+**Why it is cheap in principle.** `boardFor()` already separates a board's IDENTITY from its SEED: the
+number, mode, challenge, name and badge all come from the day-number rotation, and `seed` is one
+isolated field. `SEED_OVERRIDES` already exists as a mechanism, so the crowd-tuned launch boards move
+server-side byte-identical. And the game already cannot play offline (it fetches site_data.json), so one
+small request costs nothing new.
+
+**The design, ready to build:**
+- `functions/_lib/dayseed.js`: the pinned days (moved out of the shipped file) plus
+  `HMAC(DAILY_SECRET, "t82seed|" + key)` truncated to a uint32.
+- `functions/api/day.js`: `GET /api/day` returns today plus the recent past in ONE response (so the tile,
+  the run and the archive are covered by one fetch) and **refuses any key after today**. It must report
+  whether it is minting or falling back, so a missing env var is diagnosable rather than silent.
+- `daily-core.js`: a `setSeeds(map)` and `boardFor` preferring an injected seed. Days BEFORE a cutover
+  keep `seedFor(key)` so the archive and every shared beat-link replay forever.
+- `functions/_lib/sim.js` `dailyBoard()`: mint the same seed server-side, so verification matches by
+  construction. It becomes async, which run.js can take.
+- **It fails safe:** if the client plays a seed the server did not mint, run.js's existing check nulls
+  `claimedDay` and the run is `officialRejected` rather than silently ranking on a different board.
+
+**Why not now.** The failure mode is the worst one available (two players on different boards the same
+day), test.js pins 120 days of boards and the special days' exact seeds, and the preview is where he
+tests launch boards on his phone with `?day=`. Set against that, the realistic damage today is that one
+determined programmer tops the Daily board on launch day, with one attempt, on a board that (since this
+session) no longer contaminates any other board. **Recommendation: build it as the next change, verify it
+alone, and ship it after the debut unless he says otherwise.**
+
+### What is left, in rough order
+
+1. **His decisions.** `docs/leaderboard-lab/SPEC.md` ends with seven, each with a recommendation. The two
+   that change code: cut the 82-0 RATE board for an 82-0 CLUB (unlimited winners, no denominator to lie
+   with), and add a THIS MONTH board (your ten best Dailies, so a wrecked day is dropped and a player who
+   arrives on 10/22 is not walking into a board already won).
+2. **Four must-fix items from the audit that this session did not do**, all in SPEC.md with file and
+   line: the `you` rank is resolved only among the 82 fetched rows, so rank 83 is told "You're not on
+   this board yet" (one extra bound COUNT query fixes it, and the same query is what the around-you
+   window and the post-game mini board both need); `SUBMITTED` is keyed on `mode|seed|actions.length` and
+   set BEFORE the POST, so a Daily rematch is silently never sent and a network failure loses the run
+   forever; the official-once gate lives in shared localStorage so the second account on a browser can
+   never post a Daily (this breaks his own seven-email test); and player A's Daily history is claimed by
+   player B on the next sign-in and read back to B as "Keeping 23 days of your Dailies".
+3. **Clear the test rows before the boards go public.** `created_ts` is the only discriminator today and
+   SECURITY.md:32's one-liner is not enough: it leaves every anonymous run, orphans `local_claims` and
+   `sid_links`, and would delete the owner's own pre-launch account. The clean moment is right after the
+   Clerk production swap, which reissues every user id. Rows this session created: `LiveTest A/B/C` plus
+   `GM-*` probe accounts in the LOCAL D1 only, and the ONE anonymous edge probe row in production named
+   above. **A `host TEXT` column in migration 0032 would make every future purge exact.**
+4. **The Clerk production instance** (unchanged from v69: DNS, up to 48h, different keys, his own Google
+   OAuth app, and a TikTok `user.info.email` review with no guaranteed ceiling).
+5. **The five "no account" surfaces** (unchanged from v69).
+6. `/api/lb` is public and unauthenticated the moment v69-boards merges, independent of `ACCT_LIVE`. The
+   flip is a UI gate, not an API gate. Worth knowing before the merge, not a defect.
+
+### Things learned that will recur
+
+- **A harness that computes its expectations from its own intentions tests nothing.** The e2e harness
+  only found the Daily contamination once its oracle was rebuilt from what the server said it accepted.
+- **A verify pass that refutes nothing is a smell.** 23 of 23 adversarial checks came back confirmed, so
+  the two most consequential were re-checked by hand. Both held, but the ratio was the reason to look.
+- **In a vm, `window` is not the global.** app.js guards on `window.T82ACC` and then calls the bare
+  `T82ACC`; a test that sets only one gets a silent throw into app.js's own try/catch and reads as "the
+  code did nothing". Set both.
+- **Parallel build agents share the browser pane.** One navigated the tab this session was using. The
+  Reprint Lab's README-agents.md already says to create your own tab and pass its id to every call; it is
+  still true and still gets forgotten.
 
 ## 0000002b. THE SESSION THAT SHIPPED IT (2026-10-03/04): WHAT IS DONE, WHAT IS LEFT, AND FIVE TRAPS
 

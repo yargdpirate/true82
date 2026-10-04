@@ -1,0 +1,575 @@
+/* ============================================================
+   LEADERBOARD LAB: the lab's own chrome. docs/leaderboard-lab/lab.css
+   ------------------------------------------------------------
+   This file styles the FURNITURE AROUND the phone and nothing else:
+   the head, the phone frame, the width picker, the console of controls,
+   the star codes, the caveat line and the view tabs. Everything INSIDE
+   the phone is the real site (styles.css plus the look under test), in
+   a frame this file never reaches into. If a rule here could change
+   what the owner is judging, it does not belong here.
+
+   Two standing jobs, in this order:
+   1. PHONE FIRST. One column from 320px up, every control 44px tall and
+      reachable with a thumb. The console moves beside the phone only at
+      900px and up, where there is room for it.
+   2. QUIET. The shell is a neutral dark grey tool with no hue in it, so
+      the owner can never mistake lab furniture for a candidate design.
+      The game's own inks (pink, gold, cyan, periwinkle) appear ONLY
+      inside the phone.
+   ============================================================ */
+
+/* ---- the one block of shell colour and shell type ----------------
+   Why these are not --t-* tokens: the theme is the GAME's palette. Every
+   ground it ships is the game's purple (--t-ground #16122B and friends)
+   and every face is one of its meaning inks. A shell built from them
+   would read as part of the screen under test, which is the single
+   failure this lab cannot afford. So the shell gets its own neutral
+   greys and the plain system face, declared once, here, and never again
+   as a literal anywhere below. Everything inside the phone still comes
+   from the tokens, because that is the real site rendering itself.
+   The lab also borrows one real token on purpose: var(--t-mono) for the
+   codes, since a T82LB- code is data and the repo already has a face
+   for data. */
+:root {
+  --lab-shell: #17171A;      /* the page behind the lab */
+  --lab-panel: #1F1F23;      /* a console group, the phone's bezel */
+  --lab-well: #27272C;       /* an input's ground, an unpressed segment */
+  --lab-edge: #3A3A41;       /* hairlines and control borders */
+  --lab-sel: #43434C;        /* the one active state: a filled segment */
+  --lab-sel-edge: #6E6E7A;   /* that segment's rim, so "on" survives a greyscale screenshot */
+  --lab-ink: #E9E9ED;        /* shell text (15.2:1 on the shell) */
+  --lab-ink-2: #A6A6B0;      /* shell secondary text (7.6:1 on the shell, 6.7:1 on a panel: a note is read, not decoration) */
+  --lab-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;  /* the shell wears the phone's own UI face, never the game's three */
+}
+
+/* ---- the page ----
+   lab.css loads after styles.css, so these win on equal specificity and
+   the game's purple ground does not leak into the shell. */
+html { background: var(--lab-shell); overflow-x: hidden; }
+@supports (overflow: clip) { html { overflow-x: clip; } }   /* clip: no sideways drift at 320px, not even by script */
+body {
+  margin: 0;
+  color-scheme: dark;   /* the native controls (the slider's track, the select's menu, the checkbox) paint themselves dark instead of flashing a white track across a dark tool */
+  background: var(--lab-shell);
+  color: var(--lab-ink);
+  font-family: var(--lab-ui);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---- the reset the lab does not get for free ----
+   index.html deliberately does NOT link the site's styles.css (it is
+   cached immutable for a year by path), so none of the site's base
+   rules exist on this page: no border-box, no button reset. Without
+   border-box a 100% wide button plus its padding overflows its column,
+   so the shell declares its own. The phone is the one exception and
+   says so at its own rule. */
+.lab, .lab *, .lab *::before, .lab *::after { box-sizing: border-box; }
+.lab button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  cursor: pointer;
+}
+.lab input, .lab select, .lab button { font: inherit; }
+
+/* hidden must mean hidden: several rules below set display on these very
+   elements, which would otherwise override the attribute and show a pane
+   lab.js has closed. */
+.lab [hidden], .lab[hidden] { display: none !important; }
+
+.lab {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: calc(10px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* ---- the head: what this page is, in one line ----
+   Small on purpose. The owner's attention belongs in the phone, so the
+   lab names itself and gets out of the way. */
+.lab-head { padding: 2px 0 10px; }
+.lab-head h1, .lab-head .lab-title {
+  margin: 0;
+  font-family: var(--lab-ui);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--lab-ink);
+}
+.lab-head p, .lab-head .lab-sub {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--lab-ink-2);
+}
+
+/* ---- the view tabs: start / results / boards ----
+   Sticky, because the console is long on a phone and switching view is
+   the thing he does most. Three equal thumb targets. */
+.lab-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 8px 0;
+  background: var(--lab-shell);   /* an opaque backstop: the phone must not show through the tabs as it scrolls under them */
+}
+.lab-tabs button {
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 10px;
+  background: var(--lab-well);
+  color: var(--lab-ink-2);
+  font-family: var(--lab-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.15;
+  /* the labels wrap to a second line rather than ellipsise: "Start scre..."
+     and "After a ga..." are three tabs the owner cannot tell apart, and a
+     tab he cannot read is a tab he will not press */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* the on state is a fill plus a rim plus weight: three signals, so it
+   still reads in a greyscale phone screenshot */
+.lab-tabs button.on, .lab-tabs button[aria-selected="true"] {
+  background: var(--lab-sel);
+  border-color: var(--lab-sel-edge);
+  color: var(--lab-ink);
+  font-weight: 600;
+}
+
+/* ---- the stage and the phone frame ----
+   The stage holds the width picker, the phone and the caveat line, in
+   that order, stacked. It stays a BLOCK container on purpose: a block
+   child with margin auto centres while it fits and falls back to the
+   left edge when it does not, so an over-wide phone scrolls to the
+   right with nothing cut off on the left. A flex or grid centred child
+   puts its left edge out of reach instead, which is the classic way to
+   lose the first column of a board at 320px.
+   The stage scrolls sideways by itself when a 390px phone is asked for
+   on a narrower screen, so the page never does. */
+.lab-stage {
+  display: block;
+  margin: 0 -14px 14px;           /* full bleed through the page's own 14px gutter: at 320px that gutter is 28px the phone needs more than the shell does */
+  padding: 2px 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+/* The bezel. It is deliberately a visible object: a screenshot of this
+   page has to carry its own width, or a 320px bug cannot be proved from
+   a photo.
+   content-box is the load-bearing word here. lab.js sets the phone's
+   width inline from the recipe (320, 375, 390) and the promise of this
+   lab is that the number IS the width of the screen. With border-box
+   the bezel would eat 14px out of it and a 320 test would really be
+   306. With content-box the inline width is the screen and the bezel
+   sits outside it. The default of 320 is only for the moment before
+   lab.js has set one: the narrow case, never a flattering one. */
+.lab-phone {
+  box-sizing: content-box;
+  position: relative;
+  width: 320px;
+  max-width: none;
+  margin: 0 auto;
+  padding: 10px 10px 30px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 24px;
+  background: var(--lab-panel);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--t-light) 6%, transparent);   /* one hairline of sheen so the bezel reads as a frame, not a border */
+}
+.lab-phone iframe {
+  display: block;
+  width: 100%;            /* exactly the width lab.js put on the bezel, no rounding of its own */
+  height: var(--lab-h, 62vh);        /* plain vh, not svh inside the var() fallback: a var() that resolves to a unit the browser does not know computes to auto instead of falling back, which would collapse the phone */
+  min-height: 420px;
+  max-height: 760px;
+  border: 0;                        /* the frame must not draw an edge of its own: the owner is judging the screen, not the browser */
+  border-radius: 14px;
+  background: var(--lab-shell);     /* a neutral ground while the real page loads, so nothing flashes a colour the site did not choose */
+}
+/* Under 420px the bezel goes slim, so a 320 phone fits inside a real
+   phone's viewport (375 and up) with no sideways scroll at all. A 320
+   phone cannot fit edge to edge inside a 320 window while wearing a
+   visible frame, and the frame is the point: a screenshot has to prove
+   its own width. So in that one case the stage scrolls sideways by
+   itself and the page never does. */
+@media (max-width: 419px) {
+  .lab-phone { padding: 6px 6px 26px; border-radius: 18px; }
+  .lab-phone iframe { border-radius: 10px; }
+}
+
+/* svh where it exists, so the phone is not pushed under the browser's own
+   toolbars on a real iPhone. Its own rule, so an older engine simply
+   keeps the vh height above. */
+@supports (height: 1svh) {
+  .lab-phone iframe { height: var(--lab-h, 62svh); }
+}
+
+/* the pixel width, printed on the bezel, so a screenshot of this page
+   proves its own width with no caption. Two ways in, and they are two
+   separate rules on purpose: if lab.js prints its own .lab-phone-w label
+   the attribute version steps aside, and in a browser without :has()
+   only that one extra rule is lost rather than the whole label. */
+.lab-phone[data-w]::after { content: attr(data-w) " wide"; }   /* lab.js stamps the unit into the attribute itself (data-w="375px"), so the unit is not repeated here */
+.lab-phone:has(.lab-phone-w)[data-w]::after { content: none; }
+.lab-phone[data-w]::after {
+  position: absolute;
+  left: 0; right: 0; bottom: 8px;
+  text-align: center;
+  font-family: var(--t-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--lab-ink-2);
+}
+.lab-phone-w {
+  position: absolute;
+  left: 0; right: 0; bottom: 8px;
+  text-align: center;
+  font-family: var(--t-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--lab-ink-2);
+}
+
+/* the slim bezel's label sits lower. This rides AFTER the two label
+   rules above rather than inside the media block with the rest of the
+   slim bezel, because it has to come later to win on equal specificity. */
+@media (max-width: 419px) {
+  .lab-phone[data-w]::after, .lab-phone-w { bottom: 5px; }
+}
+
+/* ---- the width picker ----
+   Three choices, one row, always: 320 is the case that breaks and it has
+   to be one tap away at every scroll position of the console. */
+.lab-widthrow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 auto 14px;
+  max-width: 360px;
+}
+.lab-widthrow button {
+  min-height: 44px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 10px;
+  background: var(--lab-well);
+  color: var(--lab-ink-2);
+  font-family: var(--t-mono);
+  font-size: 13px;
+}
+.lab-widthrow button.on, .lab-widthrow button[aria-pressed="true"] {
+  background: var(--lab-sel);
+  border-color: var(--lab-sel-edge);
+  color: var(--lab-ink);
+  font-weight: 700;
+}
+
+/* ---- the console ---- */
+.lab-console { display: block; }
+
+.lab-group {
+  margin: 0 0 12px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 14px;
+  background: var(--lab-panel);
+}
+.lab-group-h {
+  margin: 0 0 8px;
+  font-family: var(--t-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lab-ink-2);
+}
+
+/* one control: its label, then its input. The label sits above on a
+   phone (a label beside a control costs the control its width at 320px)
+   and the whole row is at least 44px tall. */
+.lab-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.lab-row:last-child { margin-bottom: 0; }
+.lab-row > label, .lab-row > .lab-lab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--lab-ink);
+}
+/* the live value of a control, read off the recipe */
+.lab-row output, .lab-row .lab-val {
+  font-family: var(--t-mono);
+  font-size: 12px;
+  color: var(--lab-ink-2);
+  white-space: nowrap;
+}
+
+/* a segmented control. auto-fit instead of a fixed count: a six-segment
+   look picker wraps to a second line at 320px rather than squeezing six
+   labels under a thumb. */
+.lab-seg {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 6px;
+}
+.lab-seg button {
+  min-height: 44px;
+  padding: 5px 6px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 10px;
+  background: var(--lab-well);
+  color: var(--lab-ink-2);
+  font-family: var(--lab-ui);
+  font-size: 12.5px;
+  line-height: 1.15;
+  /* a segment grows to fit its words instead of clipping them: the look
+     and surface names are the whole question being asked ("The
+     percentile promoted" cannot arrive as "The perce... prom...") */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.lab-seg button.on, .lab-seg button[aria-pressed="true"], .lab-seg button[aria-selected="true"] {
+  background: var(--lab-sel);
+  border-color: var(--lab-sel-edge);
+  color: var(--lab-ink);
+  font-weight: 600;
+}
+
+/* a checkbox row. The whole row is the target, not the 22px box.
+   The second selector is not a duplicate: a .lab-check that is also the
+   .lab-row's own label would otherwise inherit the label rule's
+   space-between and throw its words to the far right of the console. */
+.lab-check, .lab-row > label.lab-check {
+  justify-content: flex-start;
+  font-weight: 400;
+}
+.lab-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--lab-ink);
+}
+.lab-check label {   /* lab.js writes the word "on" or "off" here: the state in words, not colour alone */
+  font-family: var(--t-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--lab-ink-2);
+  cursor: pointer;
+}
+.lab-check input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin: 0;
+  accent-color: var(--lab-sel);        /* a grey tick: a coloured one would read as one of the game's meaning inks */
+}
+
+/* a slider row. 44px of height around a 4px track, so a thumb can find
+   it. The track is drawn rather than left native: a browser's own track
+   paints near white, which would be the loudest thing on a page whose
+   whole job is to be quieter than the phone beside it. Each engine's
+   pseudo element gets its own rule, because one selector an engine does
+   not know would throw away the whole group. */
+.lab-range { display: flex; align-items: center; gap: 10px; }   /* lab.js puts an <output> beside the slider: it reads as the slider's value only if it sits on the same line */
+.lab-range input[type="range"] { flex: 1 1 auto; min-width: 0; }
+.lab-range output { flex: none; }
+.lab-range input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  background: transparent;
+}
+.lab-range input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 999px; background: var(--lab-sel); }
+.lab-range input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; margin-top: -9px; border-radius: 50%;
+  border: 1px solid var(--lab-sel-edge); background: var(--lab-ink); }
+.lab-range input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 999px; background: var(--lab-sel); }
+.lab-range input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--lab-sel-edge); background: var(--lab-ink); }
+
+/* the small line under a control. Secondary ink, never the dim one: these
+   notes carry the reason a control exists and have to be readable. */
+.lab-note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--lab-ink-2);
+}
+
+/* ---- the star codes ---- */
+.lab-codes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 14px;
+  background: var(--lab-panel);
+}
+/* one code. user-select: all so one tap selects the whole code on a
+   phone, where dragging a selection across a monospace string is the
+   step that loses people. It wraps rather than scrolls, because a code
+   half out of view copies as a code half out of view. */
+.lab-code + .lab-code { margin-top: 8px; }   /* the pills are siblings in a plain list element with no gap of its own */
+.lab-code span { display: block; -webkit-user-select: all; user-select: all; }   /* "all" sits on the code and not on the pill, so one tap takes the code and leaves its label behind */
+.lab-code em {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--lab-ui);
+  font-style: normal;
+  font-size: 12px;
+  color: var(--lab-ink-2);
+}
+.lab-code {
+  display: block;
+  margin: 0;
+  padding: 11px 12px;
+  min-height: 44px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 10px;
+  background: var(--lab-well);
+  color: var(--lab-ink);
+  font-family: var(--t-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* ---- the lab's own buttons ---- */
+.lab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 10px;
+  background: var(--lab-well);
+  color: var(--lab-ink);
+  font-family: var(--lab-ui);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+.lab-btn:active { background: var(--lab-sel); }
+.lab-btn.on {
+  background: var(--lab-sel);
+  border-color: var(--lab-sel-edge);
+  color: var(--lab-ink);
+}
+.lab-btn[disabled] { opacity: 0.45; }
+/* the action buttons share one .lab-row inside .lab-codes. Two to a
+   line at 320px rather than four stacked, and they stay 44px each. */
+.lab-codes .lab-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+}
+.lab-row > .lab-btn, .lab-codes > .lab-btn { width: 100%; }
+
+/* ---- the caveat ----
+   Deliberately NOT red. Red means bad in this system, and "the results
+   screen here is a reconstruction" is an honest fact about the lab, not
+   an error. A left bar and quiet ink say "read this" without alarm. */
+.lab-warn:empty { display: none; }   /* lab.js fills this one at runtime: an empty caveat must not leave an empty panel behind */
+.lab-warn {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-left: 3px solid var(--lab-sel-edge);
+  border-radius: 0 10px 10px 0;
+  background: var(--lab-panel);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--lab-ink-2);
+}
+
+/* ---- focus and taps ----
+   A visible ring for a keyboard, in the shell's own ink: styles.css
+   rings everything in the game's accent, which would put a pink ring on
+   lab furniture. No tap-highlight flash on a phone. */
+.lab button:focus-visible,
+.lab input:focus-visible,
+.lab select:focus-visible,
+.lab .lab-code:focus-visible {
+  outline: 2px solid var(--lab-ink);
+  outline-offset: 2px;
+}
+.lab button, .lab input, .lab select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+/* a text input or a select in the console: 16px, because iOS zooms the
+   whole page when it focuses anything smaller, and a zoomed lab at
+   320px is a lab that cannot be judged at 320px */
+.lab-row select, .lab-row input[type="text"], .lab-row input[type="number"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--lab-edge);
+  border-radius: 10px;
+  background: var(--lab-well);
+  color: var(--lab-ink);
+  font-family: var(--lab-ui);
+  font-size: 16px;
+}
+
+/* ---- 900px and up: the console moves beside the phone ----
+   A bonus layout. The phone sticks so it stays in view while a long
+   console scrolls past it. Direct children only, so a console that
+   holds its own codes or caveat is untouched. */
+@media (min-width: 900px) {
+  /* A two column grid rather than a wrapping flex row, because the column
+     a child lands in must not depend on how tall its neighbour is: the
+     console and the codes both belong on the right, under each other,
+     whatever order lab.js emits them in. Anything unexpected lands in
+     column one with the phone and still reads. */
+  .lab {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 0 22px;
+    align-items: start;
+  }
+  .lab > .lab-head, .lab > .lab-tabs, .lab > .lab-warn { grid-column: 1 / -1; }
+  .lab > .lab-stage {
+    grid-column: 1;
+    position: sticky;    /* the phone stays in view while a long console scrolls past it */
+    top: 68px;
+    margin-left: 0;      /* the full bleed is a phone trick; there is room here */
+    margin-right: 0;
+  }
+  .lab > .lab-console, .lab > .lab-codes { grid-column: 2; }
+}
+
+/* ---- reduced motion: there is no motion in the shell, and there will
+   not be. Stated so a later edit does not quietly add one. ---- */
+@media (prefers-reduced-motion: reduce) {
+  .lab * { animation: none !important; transition: none !important; }
+}

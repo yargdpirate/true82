@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRUE 82 — Leaderboard Lab</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- THE SHELL CARRIES ITS OWN TOKENS ON PURPOSE.
+     The lab does NOT link the site's styles.css. _headers caches /styles.css for a
+     year as immutable, keyed by PATH and not by query, so a lab reference would
+     either go stale behind a year-long cache or need stamping in
+     tools/cache-keys.json every release. The board the owner is judging gets the
+     real tokens anyway: it is rendered INSIDE the framed real page, which loads
+     the real stylesheet at its real stamped key. Only the lab's own furniture
+     reads these, and the values are copied from styles.css's :root. -->
+<style id="lab-shell-tokens">
+  :root {
+    --t-ground:    #16122B;
+    --t-ground-2:  #1E1938;
+    --t-ground-3:  #2A2448;
+    --t-light:     #F4F1E8;
+    --t-text:      #EDEAE0;
+    --t-text-2:    #A6A2B3;
+    --t-text-3:    #635F74;
+    --t-rule:      #352E55;
+    --t-accent:    #FF48B0;
+    --t-offset:    #41C6EA;
+    --t-you:       #7A89FA;
+    --t-sun:       #FFB511;
+    --t-mono:      "Space Mono", ui-monospace, monospace;
+    --t-body:      "Rubik", system-ui, sans-serif;
+    --t-disp:      "Big Shoulders Display", "Rubik", sans-serif;
+  }
+</style>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<div class="lab">
+
+  <div class="lab-head">
+    <h1>Leaderboard Lab</h1>
+    <p class="lab-note">Flip anything. Star what you like. Paste the codes back to me. Nothing here is live.</p>
+  </div>
+
+  <div class="lab-tabs" id="labViews" role="tablist"></div>
+
+  <div class="lab-stage">
+    <div class="lab-widthrow" id="labWidths"></div>
+    <div class="lab-phone" id="labPhone">
+      <iframe id="labFrame" title="TRUE 82 preview"></iframe>
+    </div>
+    <p class="lab-warn" id="labWarn"></p>
+  </div>
+
+  <div class="lab-console" id="labConsole"></div>
+
+  <div class="lab-codes">
+    <div class="lab-row">
+      <button class="lab-btn" id="labStar" type="button">Star this look</button>
+      <button class="lab-btn" id="labCopy" type="button">Copy all star codes</button>
+      <button class="lab-btn" id="labCompare" type="button">Compare with today</button>
+      <button class="lab-btn" id="labClear" type="button">Clear stars</button>
+    </div>
+    <p class="lab-note" id="labCodeNote"></p>
+    <div id="labCodeList"></div>
+  </div>
+
+</div>
+
+<!-- the modules, in contract order. Each one only defines its object on window.LB. -->
+<script src="data.js"></script>
+<script src="looks.js"></script>
+<script src="boards.js"></script>
+<script src="surfaces.js"></script>
+<script src="lab.js"></script>
+</body>
+</html>
