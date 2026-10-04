@@ -32,6 +32,17 @@
 > **`main` AND `origin/c-code-clean` ARE STILL UNTOUCHED.** All of this is on `v69-boards`, which is the
 > preview the owner can open. Nothing here changes gameplay.
 >
+> **THE LAB WAS BUILT BY FIVE AGENTS IN PARALLEL AND THEN REVIEWED BY THREE, and the review pass was
+> worth more than the build.** All three lenses returned fix-first and agreed on the worst of it: the
+> one screen the lab exists for (signed out, with a season, being shown where they would have landed)
+> did not work, because data.js zeroed youRank whenever signedIn was false. Every other finding was a
+> place where two modules read one contract differently: looks.js styled `p.lb-ghost` where boards.js
+> emits a div, `.lb-window` was computed from the recipe while data.js windowed every board, the
+> five-tab row was flex-wrap: nowrap inside a 260px column, and `LB.boards.WIRE` was a contract one
+> side wrote and the other never read, so every in-frame control was dead on the phone. **If you build
+> the next lab this way, budget for the integration pass; it is not optional and it is where the real
+> defects are.** All fixed, 2,204 render combinations exercised.
+>
 > **THE LEADERBOARD LAB IS AT `docs/leaderboard-lab/`** and opens at
 > `https://v69-boards.true82.pages.dev/docs/leaderboard-lab/`. Its `SPEC.md` is the design brief a
 > 33-agent research and audit pass produced, and it is the most useful document in the folder: the board
