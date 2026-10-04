@@ -189,6 +189,11 @@ hidden.
    2026-10-03: this step used to say to set it on both, and that is exactly what broke the owner's first preview
    sign-in. `GET /api/me` with a token now answers it directly: `why: "origin-not-in-AUTHORIZED_PARTIES"`, with
    `authorizedParties` and `thisOrigin` beside it.)
+   **AND A CHANGE TO ANY OF THESE NEEDS A REDEPLOY.** Cloudflare Pages bakes environment variables into a
+   deployment when it is built; editing one in the dashboard does nothing to deployments that already exist, only
+   to the next one. So the sequence is always: change the variable, THEN push (or hit Retry deployment), THEN
+   test. Confirmed on 2026-10-03/04: the owner deleted AUTHORIZED_PARTIES on Preview and `/api/me` kept reporting
+   the old value verbatim until a rebuild, which reads as "the fix did not work" when the fix was fine.
 4. Clerk -> allowed origins -> add `http://127.0.0.1:8792` for local work.
 5. Paste `migrations/0030_accounts_min_v1.sql` into the D1 console for `true82`. Purely additive.
 A Clerk **production** instance is NOT needed yet, and is not free of friction when it is: it wants CNAMEs for
