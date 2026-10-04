@@ -42,6 +42,34 @@ const arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] :
 const KEYDIR = arg("--keydir", path.join(os.tmpdir(), "t82-boards-live"));
 const URL_BASE = String(arg("--url", "http://127.0.0.1:8793")).replace(/\/$/, "");
 
+/* ---------- REAL CLERK IDENTITIES (v69.3) ----------
+   With --clerk, this driver stops minting its own tokens and asks the deployment
+   for REAL ones through /api/testauth (see that file's header for the setup and
+   the four guards). Everything else about the run is identical, which is the
+   point: the same 32 checks, against the same Worker, with tokens Clerk signed.
+
+   This is what the owner asked for after a morning lost to simulated accounts:
+   "i do want you directly controlling actual accounts instead of simulating".
+   With real tokens a wrong CLERK_JWT_KEY, a wrong AUTHORIZED_PARTIES or an env
+   var that never got baked into a deployment FAILS HERE, which is exactly the
+   class of problem that kept getting rediscovered by hand.
+
+     node tools/boards-live.js --clerk --url https://v69-boards.true82.pages.dev \
+                               --secret <TEST_AUTH_SECRET>
+   Add --list to print the roster the preview will mint for and stop. */
+async function clerkRoster(base, secret) {
+  const r = await fetch(base + "/api/testauth?k=" + encodeURIComponent(secret));
+  if (!r.ok) return { ok: false, why: "testauth answered " + r.status + " (wrong host, wrong secret, or not configured)" };
+  return r.json();
+}
+async function clerkToken(base, secret, userId) {
+  const r = await fetch(base + "/api/testauth?k=" + encodeURIComponent(secret) +
+    "&user=" + encodeURIComponent(userId));
+  const j = await r.json().catch(() => null);
+  if (!j || !j.ok || !j.token) return null;
+  return j.token;
+}
+
 function keys() {
   fs.mkdirSync(KEYDIR, { recursive: true });
   const priv = path.join(KEYDIR, "priv.pem"), pub = path.join(KEYDIR, "pub.pem");
@@ -95,8 +123,22 @@ async function main() {
   const T = env0.T82, DAILY = env0.T82DAILY;
   const bot = AUD.makeBot(env0, {});
 
+  const USE_CLERK = argv.includes("--clerk");
+  const TEST_SECRET = arg("--secret", process.env.T82_TEST_SECRET || "");
   console.log("server:  " + URL_BASE);
-  console.log("keydir:  " + KEYDIR + "\n");
+  console.log(USE_CLERK ? "tokens:  REAL Clerk, through /api/testauth" : "keydir:  " + KEYDIR);
+
+  let roster = [];
+  if (USE_CLERK) {
+    if (!TEST_SECRET) { console.log("--clerk needs --secret <TEST_AUTH_SECRET> (or T82_TEST_SECRET)"); process.exitCode = 1; return; }
+    const r = await clerkRoster(URL_BASE, TEST_SECRET);
+    if (!r || !r.ok) { console.log("testauth: " + ((r && r.why) || "no answer")); process.exitCode = 1; return; }
+    roster = r.users || [];
+    console.log("roster:  " + (roster.length ? roster.join(", ") : "(TEST_USER_IDS is not set)"));
+    if (!roster.length) { process.exitCode = 1; return; }
+    if (argv.includes("--list")) return;
+  }
+  console.log("");
 
   const up = await call("GET", "/api/me", null);
   if (!up || up.ok !== true) {
@@ -163,11 +205,25 @@ async function main() {
   // indistinguishable "LiveTest A" rows on one board and the checks below could
   // not tell them apart. That collision is a real product finding, recorded in
   // the handoff; here it is simply designed out.
+  /* With --clerk each GM is a REAL Clerk user from the preview's allow-list, and
+     its token is one Clerk signed. Without it, the throwaway keypair as before. */
+  if (USE_CLERK && roster.length < GMS.length) {
+    console.log("NOTE: " + roster.length + " test users for " + GMS.length +
+      " GMs; running the first " + roster.length + ". Add more ids to TEST_USER_IDS for the rest.");
+    GMS.length = roster.length;
+  }
   GMS.forEach((g, i) => {
     g.sid = "sidlive" + i + STAMP;
     g.name = g.name + " " + STAMP.slice(-4);
-    g.token = mintToken("live_" + g.key + "_" + STAMP);
+    g.clerkId = USE_CLERK ? roster[i] : null;
+    g.token = USE_CLERK ? null : mintToken("live_" + g.key + "_" + STAMP);
   });
+  if (USE_CLERK) {
+    for (const g of GMS) {
+      g.token = await clerkToken(URL_BASE, TEST_SECRET, g.clerkId);
+      if (!g.token) { console.log("could not mint a token for " + g.clerkId); process.exitCode = 1; return; }
+    }
+  }
 
   for (const g of GMS) {
     const me = await call("GET", "/api/me", g.token);

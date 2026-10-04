@@ -14,7 +14,7 @@
 
    Reads only, so safe on any host: a preview shows the real boards. Every SQL fragment below is a server
    constant — nothing from the query string is ever interpolated, only bound. */
-import { accountAuth, json } from "../_lib/acct.js";
+import { accountAuth, json, db } from "../_lib/acct.js";
 
 const LIMIT = 82;                       // of course
 export const MIN_RUNS = 10;                    // the 82-0% board's qualifying bar; one dial
@@ -126,16 +126,17 @@ export const BOARDS = {
 function utcDay() { return new Date().toISOString().slice(0, 10); }
 
 export async function onRequestGet(context) {
+  const DB = db(context);          // the preview's own database when one is bound (acct.js)
   const { request, env } = context;
   try {
     const q = new URL(request.url).searchParams;
     const key = q.get("board") || "daily";
     const board = BOARDS[key];
     if (!board) return json({ ok: false, why: "no-board" });
-    if (!env.DB) return json({ ok: true, board: key, rows: [], note: board.note });
+    if (!DB) return json({ ok: true, board: key, rows: [], note: board.note });
 
     const args = board.args(q);
-    const res = await env.DB.prepare(board.sql + ` LIMIT ${LIMIT}`).bind(...args).all().catch(() => null);
+    const res = await DB.prepare(board.sql + ` LIMIT ${LIMIT}`).bind(...args).all().catch(() => null);
     const rows = (res && res.results) || [];
 
     const out = {
@@ -164,7 +165,7 @@ export async function onRequestGet(context) {
     const auth = await accountAuth(context);
     if (auth && auth.userId) {
       const cmp = board.asc ? "<" : ">";
-      const me = await env.DB.prepare(
+      const me = await DB.prepare(
         `WITH b AS (${board.sql})
          SELECT (SELECT COUNT(*) FROM b) outOf,
                 (SELECT score FROM b WHERE uid = ?) score,

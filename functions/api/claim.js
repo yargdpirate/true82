@@ -26,7 +26,7 @@
    client-reported). Re-claiming is idempotent and MERGES rather than replaces,
    because one account may stitch several devices: a day already held is only
    overwritten by a better result, and the streak keeps the higher count. */
-import { accountAuth, json } from "../_lib/acct.js";
+import { accountAuth, json, db } from "../_lib/acct.js";
 
 const SID_RE = /^[A-Za-z0-9_-]{4,64}$/;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;          // daily-core.js validKey(); sorts chronologically
@@ -135,17 +135,20 @@ function bestStreak(a, b) {
    sign-in still succeeds. */
 const ADOPT_MAX = 400;              // one sign-in may not spend the day's write budget
 
-export async function adoptRuns(env, userId, sid) {
+/* Takes the RESOLVED database rather than env, because which database an
+   account-lane write belongs in is decided once in acct.js db() and must not
+   be decided again here. test.js calls this directly with a D1 shim. */
+export async function adoptRuns(DB, userId, sid) {
   try {
-    if (!env.DB || !userId || !sid) return null;
+    if (!DB || !userId || !sid) return null;
 
     // Rule 1: are we the first account on this device?
-    const links = await env.DB.prepare("SELECT COUNT(*) n FROM sid_links WHERE sid = ?")
+    const links = await DB.prepare("SELECT COUNT(*) n FROM sid_links WHERE sid = ?")
       .bind(sid).first().catch(() => null);
     if (!links || links.n !== 1) return { first: false, seasons: 0, dailies: 0 };
 
     // The ordinary seasons: every verified anonymous run this device played.
-    const seasons = await env.DB.prepare(
+    const seasons = await DB.prepare(
       `UPDATE runs SET user_id = ?
         WHERE id IN (SELECT id FROM runs
                       WHERE sid = ? AND user_id IS NULL AND verified = 1 AND official IS NULL
@@ -156,7 +159,7 @@ export async function adoptRuns(env, userId, sid) {
     // Read the candidates first and update by id. The clever single-statement
     // version is unreadable, and this lane's standing lesson is that a query you
     // can check by eye beats one you have to trust.
-    const cand = await env.DB.prepare(
+    const cand = await DB.prepare(
       `SELECT official, MIN(created_ts) first_ts FROM runs
         WHERE sid = ? AND user_id IS NULL AND verified = 1 AND official IS NOT NULL
           AND official NOT IN (SELECT official FROM runs WHERE user_id = ? AND official IS NOT NULL)
@@ -167,13 +170,13 @@ export async function adoptRuns(env, userId, sid) {
     let dailies = 0;
     const rows = (cand && cand.results) || [];
     for (const r of rows) {
-      const one = await env.DB.prepare(
+      const one = await DB.prepare(
         `SELECT id FROM runs
           WHERE sid = ? AND user_id IS NULL AND verified = 1 AND official = ? AND created_ts = ?
           ORDER BY id ASC LIMIT 1`
       ).bind(sid, r.official, r.first_ts).first().catch(() => null);
       if (!one) continue;
-      const done = await env.DB.prepare("UPDATE runs SET user_id = ? WHERE id = ? AND user_id IS NULL")
+      const done = await DB.prepare("UPDATE runs SET user_id = ? WHERE id = ? AND user_id IS NULL")
         .bind(userId, one.id).run().catch(() => null);
       if (done && done.meta && done.meta.changes) dailies++;
     }
@@ -189,6 +192,7 @@ export async function adoptRuns(env, userId, sid) {
 }
 
 export async function onRequestPost(context) {
+  const DB = db(context);          // the preview's own database when one is bound (acct.js)
   const { request, env } = context;
   if (Number(request.headers.get("content-length") || 0) > MAX_BODY) return json({ ok: false, why: "too-large" });
   let body;
@@ -206,24 +210,24 @@ export async function onRequestPost(context) {
     const incoming = cleanDaily(body.daily);
     const askedDays = Object.keys(incoming.official).length;
 
-    if (!env.DB) return json({ ok: true, stored: false, linkedSid: false, days: 0, streak: 0 });
+    if (!DB) return json({ ok: true, stored: false, linkedSid: false, days: 0, streak: 0 });
 
     let adopted = null;
     if (sid) {
-      await env.DB.prepare("INSERT OR IGNORE INTO sid_links (sid, user_id, linked_ts) VALUES (?,?,?)")
+      await DB.prepare("INSERT OR IGNORE INTO sid_links (sid, user_id, linked_ts) VALUES (?,?,?)")
         .bind(sid, auth.userId, Date.now()).run().catch(() => {});
-      adopted = await adoptRuns(env, auth.userId, sid);
+      adopted = await adoptRuns(DB, auth.userId, sid);
     }
 
     let prev = null;
     if (askedDays || incoming.streak.count) {
-      const row = await env.DB.prepare("SELECT payload FROM local_claims WHERE user_id = ? AND kind = 'daily1'")
+      const row = await DB.prepare("SELECT payload FROM local_claims WHERE user_id = ? AND kind = 'daily1'")
         .bind(auth.userId).first().catch(() => null);
       if (row && row.payload) { try { prev = JSON.parse(row.payload); } catch { prev = null; } }
 
       const merged = mergeDaily(prev, incoming);
       const days = Object.keys(merged.official).length;
-      await env.DB.prepare(
+      await DB.prepare(
         `INSERT INTO local_claims (user_id, kind, payload, verified, days, streak, ts) VALUES (?,?,?,0,?,?,?)
            ON CONFLICT(user_id, kind) DO UPDATE SET
              payload = excluded.payload, days = excluded.days,

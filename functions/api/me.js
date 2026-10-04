@@ -3,10 +3,11 @@
    v69: trimmed from origin/accounts-test's version, which also aggregated the
    `runs` table and counted `matches` for the Arena chip. Neither table exists
    on this lane; this reads `users` and the one `local_claims` row. Two reads. */
-import { accountAuth, json } from "../_lib/acct.js";
+import { accountAuth, json, db } from "../_lib/acct.js";
 import { verifySession } from "../_lib/auth.js";   // the diagnostic below only
 
 export async function onRequestGet(context) {
+  const DB = db(context);          // the preview's own database when one is bound (acct.js)
   const { env, request } = context;
   try {
     const auth = await accountAuth(context);
@@ -38,8 +39,8 @@ export async function onRequestGet(context) {
       let tokenOk = null;
       try { tokenOk = !!(await verifySession(request, env)); } catch { tokenOk = null; }
       let dbReady = null;
-      if (tokenOk && env && env.DB) {
-        try { await env.DB.prepare("SELECT id FROM users LIMIT 1").first(); dbReady = true; }
+      if (tokenOk && env && DB) {
+        try { await DB.prepare("SELECT id FROM users LIMIT 1").first(); dbReady = true; }
         catch { dbReady = false; }
       }
       return json({ ok: true, anonymous: true, tokenSent: true,
@@ -58,15 +59,15 @@ export async function onRequestGet(context) {
     }
 
     const out = { ok: true, anonymous: false, user: { tag: auth.tag, name: auth.name } };
-    if (!env.DB) return json(out);
+    if (!DB) return json(out);
 
-    const u = await env.DB.prepare(
+    const u = await DB.prepare(
       "SELECT tag, display_name, title, frame, banner, created_ts FROM users WHERE id = ?"
     ).bind(auth.userId).first().catch(() => null);
     if (u) out.user = { tag: u.tag, name: u.display_name, title: u.title,
       frame: u.frame, banner: u.banner, since: u.created_ts };
 
-    const c = await env.DB.prepare(
+    const c = await DB.prepare(
       "SELECT days, streak, ts FROM local_claims WHERE user_id = ? AND kind = 'daily1'"
     ).bind(auth.userId).first().catch(() => null);
     if (c) out.claimed = { days: c.days || 0, streak: c.streak || 0, at: c.ts || null };

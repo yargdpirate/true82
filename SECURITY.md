@@ -143,3 +143,52 @@ nothing survives the user, so there is no anonymize-and-keep variant to choose
 If D1 is ever exposed: announce display-name and Daily-score exposure, rotate
 `DASH_KEY` and `RECAP_SIGN_KEY`, and that is the whole list — see the posture at
 the top for why. Clerk holds the emails; a D1 breach is not an email breach.
+
+## Test authentication on a preview (v69.3)
+
+`functions/api/testauth.js` mints **real Clerk session tokens** on a preview so several accounts can be
+driven without a human signing in once per identity. It is auth-adjacent, so it is written to be
+boring and is pinned by six checks in `test.js`.
+
+**It does not weaken authentication.** It holds no verification logic, reads no verification key and
+does no crypto: it asks Clerk's Backend API for a token and hands it back. `_lib/auth.js` is untouched
+and is still the only thing that validates anything. A token from here is refused by exactly the same
+RS256 path, with the same `azp` check, as a token from a phone, which is the point: a wrong
+`CLERK_JWT_KEY`, a wrong `AUTHORIZED_PARTIES` or an env var that never got baked into a deployment
+fails here loudly instead of being rediscovered by hand.
+
+**Four guards, every one of which answers 404 so the endpoint does not admit to existing:**
+
+| | |
+|---|---|
+| 1 | `true82.net` and `www.true82.net` are refused by hostname before anything else is read. One definition, shared with the database switch (`acct.js` `liveHost`) |
+| 2 | No `TEST_AUTH_SECRET`, no endpoint. Set it on Preview only and Production is inert even if guard 1 were wrong |
+| 3 | The caller must know the secret, compared in constant time so it cannot be learned a character at a time |
+| 4 | Only user ids listed in `TEST_USER_IDS` can be minted for, so a leaked preview secret still cannot reach the owner's own account |
+
+Clerk adds a fifth for free: `POST /v1/sessions` is documented as *"intended only for use in testing,
+and is not available for production instances"*, so the mechanism is refused by Clerk against a
+production instance.
+
+**Setup, once, all of it the owner's because it needs his Clerk secret:**
+
+1. Clerk dashboard, Users, create the test users. The `+clerk_test` convention works
+   (`true82mailbox+clerk_test1@gmail.com`): Clerk treats those as test identities with the fixed code
+   `424242`, so no real inbox is involved. Copy each `user_...` id.
+2. Cloudflare Pages, Settings, Environment variables, **Preview only**: `CLERK_SECRET_KEY`,
+   `TEST_AUTH_SECRET` (any long random string), `TEST_USER_IDS` (the ids, comma separated).
+3. **Redeploy.** Pages bakes environment variables in at build time (handoff 0000002b, trap one).
+
+Never set any of the three on Production.
+
+**Use:** `node tools/boards-live.js --clerk --url https://v69-boards.true82.pages.dev --secret <secret>`
+runs the full 32-check pass with real Clerk identities. `--list` prints the roster and stops.
+
+## The preview's own database (v69.3)
+
+Account-lane writes used to go to the **production** database from every host, which is why test runs
+landed on the real boards and cleanup was `created_ts` guesswork. Bind D1 as **`DB_PREVIEW`** on the
+Preview environment and `acct.js` `db()` routes every account read and write there instead; the same
+resolved binding is handed to `auth.js`, so a preview sign-in creates its user in the preview database
+too. With nothing bound the behaviour is exactly what shipped, so this changes nothing until it is
+bound.

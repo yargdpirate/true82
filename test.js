@@ -2479,7 +2479,7 @@ async function accountLane() {
     add.run("r7", "other", 1, 75, 14.0, null, 700);     // another device entirely: untouched
 
     db.prepare("INSERT INTO sid_links (sid, user_id, linked_ts) VALUES ('dev', 1, 0)").run();
-    const first = await claimMod.adoptRuns(env, 1, "dev");
+    const first = await claimMod.adoptRuns(env.DB, 1, "dev");
     const ownerOf = (id) => db.prepare("SELECT user_id FROM runs WHERE id = ?").get(id).user_id;
 
     eq("v69.2 adoption: the first account on a device takes its verified signed-out seasons and the EARLIEST " +
@@ -2491,7 +2491,7 @@ async function accountLane() {
     // the SECOND account on the same device adopts nothing
     db.prepare("INSERT INTO sid_links (sid, user_id, linked_ts) VALUES ('dev', 2, 0)").run();
     add.run("r8", "dev", 1, 68, 7.0, null, 800);        // played signed out after A had claimed
-    const second = await claimMod.adoptRuns(env, 2, "dev");
+    const second = await claimMod.adoptRuns(env.DB, 2, "dev");
     eq("v69.2 one account per device: a second sign-in on the same browser adopts nothing, so a shared phone " +
        "cannot hand one player's seasons to another and runs cannot be laundered between accounts by signing " +
        "in and out",
@@ -2500,7 +2500,7 @@ async function accountLane() {
     // a day the account already holds is never doubled (the UNIQUE index cannot fire)
     add.run("r9", "dev2", 1, 77, 16.0, "2026-10-01", 900);
     db.prepare("INSERT INTO sid_links (sid, user_id, linked_ts) VALUES ('dev2', 1, 0)").run();
-    const again = await claimMod.adoptRuns(env, 1, "dev2");
+    const again = await claimMod.adoptRuns(env.DB, 1, "dev2");
     eq("v69.2 adoption never doubles a day: a better attempt from a SECOND device on a day the account already " +
        "holds is left alone, so UNIQUE (user_id, official) cannot be violated and a signed-in result can never " +
        "be displaced by an adopted one",
@@ -2558,6 +2558,99 @@ async function accountLane() {
        "from outside",
       [/labels\.json/.test(simSrc), /setLabels\(/.test(simSrc), /export async function labelsReady/.test(simSrc)],
       [true, true, true]);
+  }
+
+  // (6b4) THE TEST-AUTH ENDPOINT (v69.3). It mints REAL Clerk session tokens on a
+  // preview so an agent can drive several accounts without a human signing in
+  // eight times. It is auth-adjacent, so its guards are pinned here rather than
+  // trusted: any of them failing must answer 404, which does not even admit the
+  // endpoint exists. Nothing below needs Clerk or a network: every case asserted
+  // here is refused BEFORE any request to Clerk is made.
+  {
+    const ta = await import("./functions/api/testauth.js");
+    const call = async (url, env) =>
+      ta.onRequestGet({ request: new Request(url), env: env || {} });
+
+    const SECRET = "a-long-random-string-for-the-test";
+    const full = { TEST_AUTH_SECRET: SECRET, TEST_USER_IDS: "user_aaa,user_bbb", CLERK_SECRET_KEY: "sk_test_x" };
+    const base = "https://v69-boards.true82.pages.dev/api/testauth";
+
+    const live1 = await call("https://true82.net/api/testauth?k=" + SECRET + "&user=user_aaa", full);
+    const live2 = await call("https://www.true82.net/api/testauth?k=" + SECRET + "&user=user_aaa", full);
+    eq("v69.3 testauth guard 1: the live site is refused by hostname with everything else configured, " +
+       "and answers 404 rather than admitting the endpoint is there",
+      [live1.status, live2.status], [404, 404]);
+
+    const noVar = await call(base + "?k=" + SECRET + "&user=user_aaa", { TEST_USER_IDS: "user_aaa", CLERK_SECRET_KEY: "sk" });
+    eq("v69.3 testauth guard 2: with no TEST_AUTH_SECRET set there is no endpoint, so production stays " +
+       "inert even if the host check were somehow wrong",
+      noVar.status, 404);
+
+    const wrong = await call(base + "?k=wrong&user=user_aaa", full);
+    const none = await call(base + "?user=user_aaa", full);
+    const shortSecret = await call(base + "?k=a&user=user_aaa", full);
+    eq("v69.3 testauth guard 3: a wrong secret, a missing secret and a short secret are all 404",
+      [wrong.status, none.status, shortSecret.status], [404, 404, 404]);
+
+    const notListed = await call(base + "?k=" + SECRET + "&user=user_zzz", full);
+    const notListedBody = await notListed.json();
+    eq("v69.3 testauth guard 4: only the user ids the owner named can be minted for, so a leaked preview " +
+       "secret still cannot reach his own account",
+      [notListed.status, notListedBody.ok, notListedBody.why], [200, false, "user-not-in-TEST_USER_IDS"]);
+
+    const roster = await (await call(base + "?k=" + SECRET, full)).json();
+    eq("v69.3 testauth: with the secret and no user it answers the roster, so a caller never guesses an id",
+      [roster.ok, roster.users], [true, ["user_aaa", "user_bbb"]]);
+
+    const noKey = await (await call(base + "?k=" + SECRET + "&user=user_aaa",
+      { TEST_AUTH_SECRET: SECRET, TEST_USER_IDS: "user_aaa" })).json();
+    eq("v69.3 testauth: a missing CLERK_SECRET_KEY is reported by name rather than failing as a network " +
+       "error, because which env var is missing is the only thing worth knowing from outside",
+      [noKey.ok, noKey.why], [false, "no-CLERK_SECRET_KEY-on-this-environment"]);
+
+    const src = fs.readFileSync("functions/api/testauth.js", "utf8");
+    // the claim is that it never READS the verification key and does no crypto of
+    // its own, not that the string never appears: the header explains what a bad
+    // CLERK_JWT_KEY would do to a token minted here, which is worth saying.
+    eq("v69.3 testauth does not weaken auth: it asks Clerk for a real token, never reads the verification " +
+       "key, and does no crypto of its own, so _lib/auth.js stays the only thing that validates anything",
+      [/api\.clerk\.com/.test(src), /crypto\.subtle/.test(src),
+       /env\.CLERK_JWT_KEY/.test(src), /importKey\(/.test(src)],
+      [true, false, false, false]);
+  }
+
+  // (6b5) THE PREVIEW'S OWN DATABASE (v69.3). Account-lane writes went to the
+  // PRODUCTION database from every host, which is why an agent could not iterate
+  // without polluting the boards it was testing. A preview may now bind its own
+  // D1 as DB_PREVIEW. Backward compatible by construction: with none bound, the
+  // resolved binding is env.DB and nothing changes.
+  {
+    const acct = await import("./functions/_lib/acct.js");
+    const real = { name: "production" }, preview = { name: "preview" };
+    const ctx = (url, env) => ({ request: new Request(url), env: env });
+    const both = { DB: real, DB_PREVIEW: preview };
+
+    eq("v69.3 the preview's own database: true82.net always gets the real one, a preview gets its own " +
+       "when one is bound, and with none bound every host still gets the real one exactly as before",
+      [acct.db(ctx("https://true82.net/api/run", both)).name,
+       acct.db(ctx("https://www.true82.net/api/run", both)).name,
+       acct.db(ctx("https://v69-boards.true82.pages.dev/api/run", both)).name,
+       acct.db(ctx("http://localhost:8793/api/run", both)).name,
+       acct.db(ctx("https://v69-boards.true82.pages.dev/api/run", { DB: real })).name,
+       acct.db(ctx("https://true82.net/api/run", {}))],
+      ["production", "production", "preview", "preview", "production", null]);
+
+    eq("v69.3 and auth.js is handed the SAME resolved binding, so a preview sign-in creates its user in " +
+       "the preview database rather than in production (acctEnv)",
+      acct.acctEnv(ctx("https://v69-boards.true82.pages.dev/api/me", both)).DB.name, "preview");
+
+    // the host rule has exactly one definition, shared with the analytics mock
+    const mw = fs.readFileSync("functions/_middleware.js", "utf8");
+    eq("v69.3 one definition of \"this is the live site\": acct.js and _middleware.js name the same two " +
+       "hosts, so the database switch and the analytics mock cannot drift apart about which host is real",
+      [/true82\.net/.test(mw), acct.liveHost(new Request("https://true82.net/")),
+       acct.liveHost(new Request("https://x.pages.dev/")), acct.liveHost({ url: "not a url" })],
+      [true, true, false, true]);
   }
 
   // (6c) the Daily's board is the server's to decide, not the client's

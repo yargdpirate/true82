@@ -17,7 +17,7 @@
    If the engine cannot load (Workers Free's 10 ms CPU ceiling — see _lib/sim.js)
    the run stores UNVERIFIED rather than failing. The game never notices; the
    boards simply stay quiet rather than filling with unchecked numbers. */
-import { accountAuth, json } from "../_lib/acct.js";
+import { accountAuth, json, db } from "../_lib/acct.js";
 import { verify, dailyBoard } from "../_lib/sim.js";
 
 const MODES = new Set(["classic", "pro", "cap"]);          // kaman never submits
@@ -51,6 +51,7 @@ export function nextStreak(prev, dayKey) {
 }
 
 export async function onRequestPost(context) {
+  const DB = db(context);          // the preview's own database when one is bound (acct.js)
   const { request, env } = context;
   if (Number(request.headers.get("content-length") || 0) > MAX_BODY) return json({ ok: false, why: "too-large" });
   let b;
@@ -100,7 +101,7 @@ export async function onRequestPost(context) {
     const verified = v.ok ? 1 : 0;
     const r = v.ok ? v.result : null;
 
-    if (!env.DB) return json({ ok: true, stored: false, verified });
+    if (!DB) return json({ ok: true, stored: false, verified });
 
     const row = {
       id, user_id: userId, sid, mode, seed,
@@ -137,7 +138,7 @@ export async function onRequestPost(context) {
     const fields = Object.keys(row);
     let dedup = false, alreadyToday = false, storeError = null;
     try {
-      await env.DB.prepare(
+      await DB.prepare(
         `INSERT INTO runs (${fields.join(",")}) VALUES (${fields.map(() => "?").join(",")})`
       ).bind(...fields.map((k) => row[k])).run();
     } catch (e) {
