@@ -68,4 +68,12 @@
 /art/*
   Cache-Control: public, max-age=31536000, immutable
 
+# THE LEADERBOARD LAB is a dev tool that changes several times in a session and its
+# scripts carry no ?v= key, so without this the owner's phone keeps yesterday's lab
+# and he reports, correctly, that nothing changed. no-cache still allows a 304, so
+# this costs a revalidation and not a download. Deliberately NOT the immutable list:
+# tools/cache-keys.js only reads the year-long rules, so this one is invisible to it.
+/docs/leaderboard-lab/*
+  Cache-Control: no-cache
+
 # (keep this blank line and comment last: without them the header parser dropped the rule above it)

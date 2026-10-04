@@ -271,6 +271,24 @@
     if (nv.length && nv.indexOf(RC.nav) === -1) RC.nav = nv[0];
   }
 
+  /* THE STAMP COUNTS WHAT IS LOADED, so a stale copy says so itself. He reported
+     "after game is unchanged" when the files on the server were already correct
+     and his phone was holding the previous round from cache. A hand-bumped
+     version number would have had the same problem (it ships in the same stale
+     file); a COUNT of the modules actually in memory cannot lie, because round
+     one had 11 looks and 6 after-game hooks and round two has 6 and 9. If the
+     numbers below are not the ones in my message, the page is cached. */
+  function stampLine() {
+    var host = document.getElementById("labStamp");
+    if (!host) return;
+    var looks = ((LB.looks && LB.looks.LIST) || []).length;
+    var navs = ((LB.nav && LB.nav.LIST) || []).length;
+    var posts = ((LB.surfaces && LB.surfaces.POST) || []).length;
+    var art = !!(LB.art && LB.art.ready);
+    host.textContent = looks + " looks \u00B7 " + navs + " ways in \u00B7 " + posts +
+      " after a game" + (art ? "" : " \u00B7 art module missing");
+  }
+
   function buildViews() {
     var host = document.getElementById("labViews");
     if (!host) return;
@@ -815,6 +833,7 @@
     buildConsole();
     wireBar();
     paintCodes();
+    stampLine();
     render();
   }
 
