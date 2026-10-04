@@ -4,6 +4,7 @@
    `runs` table and counted `matches` for the Arena chip. Neither table exists
    on this lane; this reads `users` and the one `local_claims` row. Two reads. */
 import { accountAuth, json } from "../_lib/acct.js";
+import { verifySession } from "../_lib/auth.js";   // the diagnostic below only
 
 export async function onRequestGet(context) {
   const { env, request } = context;
@@ -29,15 +30,30 @@ export async function onRequestGet(context) {
           keyUsable = true;
         } catch { keyUsable = false; }
       }
+      // Does the TOKEN verify, independently of whether a user row could be
+      // made for it? getAuth() folds both into one null, so without this a
+      // perfectly good token whose users table is missing reports as
+      // "token-rejected" — which sends you to look at Clerk when the problem
+      // is an unapplied migration. Pure crypto, no writes.
+      let tokenOk = null;
+      try { tokenOk = !!(await verifySession(request, env)); } catch { tokenOk = null; }
+      let dbReady = null;
+      if (tokenOk && env && env.DB) {
+        try { await env.DB.prepare("SELECT id FROM users LIMIT 1").first(); dbReady = true; }
+        catch { dbReady = false; }
+      }
       return json({ ok: true, anonymous: true, tokenSent: true,
         serverHasKey: !!(env && env.CLERK_JWT_KEY),
         keyUsable,
         authorizedParties: parties || null,
         thisOrigin: origin,
         originAllowed: !parties || parties.split(",").map((x) => x.trim()).includes(origin),
+        tokenVerifies: tokenOk,
+        usersTable: dbReady,
         why: !(env && env.CLERK_JWT_KEY) ? "no-key-on-this-environment"
            : keyUsable === false ? "key-will-not-parse"
            : (parties && !parties.split(",").map((x) => x.trim()).includes(origin)) ? "origin-not-in-AUTHORIZED_PARTIES"
+           : dbReady === false ? "users-table-missing-run-migration-0030"
            : "token-rejected" });
     }
 
