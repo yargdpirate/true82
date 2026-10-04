@@ -61,7 +61,9 @@
     // Daily's own tuning puts 3-12% of a field perfect, so 4,412 GMs means hundreds
     // of ties), and the slider is there to show it. But it is the least informative
     // first impression, so the default opens on an ordinary day instead.
-    seed: 500
+    seed: 500,
+    // the mode picker on the boards that carry one (82-0%, and the Club's cost view)
+    mode: "classic"
   };
   LB.DEFAULT = DEFAULT;
 
@@ -81,7 +83,7 @@
      Order is APPEND-ONLY: a new setting goes on the END, so every code ever
      starred still decodes and a missing trailing field keeps its default. */
   var ORDER = ["view", "slate", "board", "scope", "around", "youRank", "field", "rows",
-    "empty", "signedIn", "hasRun", "showTag", "crowd", "startLink", "postGame", "look", "width", "seed"];
+    "empty", "signedIn", "hasRun", "showTag", "crowd", "startLink", "postGame", "look", "width", "seed", "mode"];
 
   function encode(rc) {
     var s = ORDER.map(function (k) {
@@ -170,8 +172,10 @@
       { k: "hasRun", t: "check", label: "Has finished a season",
         note: "Signed out WITH a season is the state that earns the account. Signed out with none must never invent a rank." },
       { k: "youRank", t: "range", label: "Your rank", min: 0, max: 400, step: 1, note: "0 means you are not on this board." },
-      { k: "field", t: "range", label: "GMs on the board", min: 0, max: 20000, step: 100 },
-      { k: "rows", t: "range", label: "Rows shown", min: 3, max: 40, step: 1 },
+      { k: "field", t: "range", label: "GMs on the board", min: 0, max: 2000, step: 1,
+        note: "Under 30 the crowd line and the percentile go quiet, because nothing honest can be said about a distribution that small. Drag it down to see that." },
+      { k: "rows", t: "range", label: "Rows shown", min: 0, max: 82, step: 1,
+        note: "0 and 1 are real states, not edge cases: they are what the first viewers meet at 9am on debut day." },
       { k: "empty", t: "check", label: "Show the empty state" }
     ] },
     { h: "The look", rows: [
@@ -418,6 +422,7 @@
       mount.innerHTML = html;
       doc.body.appendChild(mount);
       doc.body.classList.add("rules-open");
+      wireFrameControls(doc, mount);
       paintLook(doc);
     });
   }
@@ -432,9 +437,39 @@
       if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
       var v = surfaceFor("POST");
       styleTag(doc, "lab-surface", v && v.css ? safe(v.css, RC) : "");
-      app.innerHTML = resultsShell(v, dataFor());
+      /* The post-game hooks all speak about "today's board" in their own copy, so
+         they are handed the DAILY, not whatever board the Boards tab happens to have
+         open. Feeding them the streak board put "13 days" through a card that prints
+         a win-loss record. */
+      app.innerHTML = resultsShell(v, LB.data && LB.data.board ? LB.data.board("today", RC) : null);
       paintLook(doc);
     });
+  }
+
+  /* boards.js emits its controls as plain attributes and documents them in
+     LB.boards.WIRE, deliberately holding no handlers of its own. Nothing was
+     listening, so every in-frame control (the board tabs, AROUND YOU / TOP, the
+     scope segment, the mode picker) was dead on the phone and the owner could
+     only drive the lab from the console below. One delegated listener closes it. */
+  function wireFrameControls(doc, mount) {
+    var map = (LB.boards && LB.boards.WIRE) || {};
+    mount.addEventListener("click", function (ev) {
+      for (var key in map) {
+        if (!map.hasOwnProperty(key)) continue;
+        var node = ev.target;
+        while (node && node !== mount) {
+          if (node.getAttribute && node.hasAttribute(map[key])) {
+            var raw = node.getAttribute(map[key]);
+            if (typeof DEFAULT[key] === "boolean") set(key, raw === "" ? !RC[key] : raw === "true" || raw === "1");
+            else if (raw !== "" && raw !== null) set(key, raw);
+            return;
+          }
+          node = node.parentNode;
+        }
+      }
+    });
+    var sel = mount.querySelector("select[" + (map.mode || "data-mode") + "]");
+    if (sel) sel.addEventListener("change", function () { set("mode", sel.value); });
   }
 
   function paintLook(doc) {

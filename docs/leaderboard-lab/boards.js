@@ -223,11 +223,15 @@
      If a new axis ever appears, it becomes a chip or a text button, or it does not ship. */
 
   function tabsHtml(sl, recipe) {
-    var selected = sl.def.pair && !sl.def.front ? sl.def.pair : sl.def.id;   /* one tab, two views */
+    var selected = sl.def.front ? sl.def.id : (sl.def.pair || sl.def.behind || sl.def.id);   /* a board behind another lights its parent tab, never nothing */
     /* Inline layout only, no colour: nowrap is the thing SPEC.md asks the lab to PROVE at 320px, and
        44px is the tap target it argues for. The shipped slate keeps its wrapping 32px tabs so the two
        sit side by side. Layout and size are free here; colour and type are tokens or nothing. */
-    var fit = sl.shipped ? "" : ' style="flex-wrap:nowrap"';
+    /* NOT nowrap. .lb-tab is white-space: nowrap with no flex property, so a five-tab
+       row cannot shrink OR wrap and .rs-scroll turns it into a horizontal scroller at
+       320px, which hides the last tab behind a gesture nobody is told about. Wrapping
+       to two short rows is the honest failure. */
+    var fit = sl.shipped ? "" : ' style="flex-wrap:wrap"';
     var tall = sl.shipped ? "" : ' style="min-height:44px"';
     return '<div class="lb-tabs" role="tablist" aria-label="Boards"' + fit + '>' +
       sl.front.map(function (b) {
@@ -278,7 +282,10 @@
     } else if (def.modes && def.modes.length > 1) {
       /* The three modes live HERE, inside the one board that needs them. Not a row. */
       right = '<select class="acct-input lb-chip" data-mode aria-label="Mode"' +
-        ' style="width:auto;min-height:34px;padding:4px 8px">' +
+        // 16px and 44px are not taste: iOS Safari zooms the whole viewport when a
+        // form control under 16px is tapped, which ends the 320px test the owner is
+        // running. lab.css states the same rule for the console's own controls.
+        ' style="width:auto;min-height:44px;padding:4px 8px;font-size:16px">' +
         def.modes.map(function (m) {
           return '<option value="' + esc(m) + '"' + (m === "classic" ? " selected" : "") + '>' +
             esc(MODE_NAME[m] || m) + '</option>';
@@ -311,7 +318,11 @@
     var cls = "lb-row" + (mine ? (ghost ? " lb-ghost" : " lb-you") : "");
     var key = String(r.name == null ? "" : r.name).toLowerCase();
     var name = ghost ? "Your season" : r.name;
-    var tag = ctx.showTag && r.tag && (mine || ctx.dupe[key]) ? r.tag : null;
+    /* A ghost row is a player with no account, so it has no tag: the tag is minted
+       by the server when the account is made (auth.js makeTag). Printing one beside
+       "Your season" would advertise the exact thing the row is asking them to go and
+       get. */
+    var tag = !ghost && ctx.showTag && r.tag && (mine || ctx.dupe[key]) ? r.tag : null;
     var chip = r.chip || r.mode || (ctx.chipSub ? r.sub : null);
     /* THE SCORE COLUMN IS THE RECORD, ALWAYS. Where data.js sends a second number that qualifies the
        score itself (the net tie-break on a Daily, the cap left on a cheapest row), it belongs in the
@@ -353,7 +364,13 @@
       out.push(rowHtml(r, ctx));
       prev = ctx.ranked ? r.rank : null;
     }
-    var windowed = recipe.around && def.views && def.views.length === 2;
+    /* Derived from the rows actually emitted, never from the recipe: data.js windows
+       every ranked board, not only the ones with two views, and looks.js reads the
+       ABSENCE of .lb-window as "this list starts at rank 1". Computing it from the
+       recipe made the two disagree on most boards. */
+    var windowed = ctx.ranked && rows.length > 1 && rows[1] && rows[0] &&
+      typeof rows[1].rank === "number" && typeof rows[0].rank === "number" &&
+      rows[1].rank > rows[0].rank + 1;
     return '<ol class="lb-list' + (windowed ? " lb-window" : "") + '"' +
       (windowed ? ' data-part="window"' : "") + '>' + out.join("") + '</ol>';
   }

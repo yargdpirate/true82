@@ -131,6 +131,10 @@
     var p = Math.ceil((rank / field) * 100);
     if (p < 1) p = 1;
     if (p > 99) p = 99;
+    /* Above the halfway mark "Top 60%" is a floor wearing a ceiling's words, and
+       boards.js already refuses to print one (ceilingPct). Two modules on one screen
+       must not make different claims about the same rank. */
+    if (p > 50) return null;
     return p;
   }
 
@@ -541,7 +545,7 @@
         var record = scoreOf(recipe, data);
         var second = (wins === 80 || wins === 81)
           ? "Almost nobody gets there."
-          : "Half the room finished under " + median + ".";
+          : "Half the room finished at " + median + " or under.";   /* a true statement OF the median: data.js says "under m + 1" for the same fact, and the two must not sit a win apart on one screen */
         var out = '<div class="lbx-rung" data-lbx="rung">' +
           '<p class="lbx-rung-line">' + esc(record) + ". That is the " + esc(rung.label) + " tier.</p>" +
           '<p class="lbx-rung-fine">' + esc(second) + "</p>" + textBtn("See the board");

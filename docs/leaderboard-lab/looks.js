@@ -37,7 +37,9 @@ window.LB = window.LB || {};
      NOTE: .lb-lead in boards.js is the list's HEADER strip ("4,412 GMs" opposite the text button), not
      a pinned leader row, whatever CONTRACT.md's reserved-name list suggested. It is styled as a header
      below and no look treats it as a row. */
-  function topList(s) { return s + ' .lb-list:not(.lb-window):not([data-part="card"])'; }
+  /* A windowed list still pins rank 1 in its first slot (data.js), so the leader
+     treatment must reach it; only the gap row and the card lists are excluded. */
+  function topList(s) { return s + ' .lb-list:not([data-part="card"])'; }
   function top3(s) { return topList(s) + " > .lb-row:nth-child(-n+3)"; }
   function first(s) { return topList(s) + " > .lb-row:first-child"; }
   // A child selector pushed onto EVERY selector in a comma list. first() and top3() return lists, so
@@ -135,12 +137,12 @@ window.LB = window.LB || {};
       s + " .lb-lead .lb-sub { font-size: var(--t-fs-small); color: var(--t-text-2); }",
       // the scope segment row rides on .lb-tabs: one row, never spread, never a second line
       s + " .lb-seg { display: flex; flex-wrap: nowrap; gap: 6px; width: 100%; }",
-      s + " .lb-more { appearance: none; -webkit-appearance: none; margin: 0; padding: 2px 0; min-height: 32px;" +
+      s + " .lb-more { appearance: none; -webkit-appearance: none; margin: 0; padding: 2px 0; min-height: 44px;" +
         " border: 0; background: none; box-shadow: none; cursor: pointer; white-space: nowrap; color: var(--t-accent);" +
         " font-family: var(--t-disp); font-weight: 700; font-size: 12.5px; letter-spacing: 0.06em; text-transform: uppercase; }",
       // the signed-out line is a paragraph; the signed-out ROW is your own season with no name on it
       // yet, so it gets a dashed bar: the same place as .lb-you's bar, visibly not yet the real thing
-      s + " p.lb-ghost { margin: 0; padding-left: 9px; border-left: 3px solid var(--t-rule);" +
+      s + " .lb-ghost:not(.lb-row) { margin: 0; padding-left: 9px; border-left: 3px solid var(--t-rule);" +
         " font-family: var(--t-body); font-size: var(--t-fs-small); line-height: 1.45; color: var(--t-text-2); }",
       s + " .lb-row.lb-ghost { padding-left: 7px; border-left: 3px dashed var(--t-rule); border-radius: 4px; }",
       s + " .lb-row.lb-ghost .lb-name { font-style: italic; color: var(--t-text-2); }",
@@ -627,7 +629,7 @@ window.LB = window.LB || {};
         var W = 288, H = 120, D = 2, LO = 34, HI = 82, BUCKET = 4;
         if (!win || !root || !win.T82RISO || !win.T82RISO.kit) return;
         drop(doc, "lb-hist");
-        anchor = doc.querySelector(".lb-lead") || doc.querySelector(".lb-list");
+        anchor = doc.querySelector('[data-part="card"]') || doc.querySelector(".lb-list") || doc.querySelector(".lb-lead");
         if (!anchor || !anchor.parentNode) return;
         R = rng((recipe && recipe.seed) || 82);
         // every season this player has finished, drawn from the seed: a sum of three uniforms, so the

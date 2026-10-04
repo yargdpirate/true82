@@ -418,6 +418,7 @@
       note: "Every verified 82-0 season, newest first. No ranking, and no limit on how many GMs get in.",
       emptyWhy: "No perfect seasons yet. The first 82-0 opens this page.",
       countOnly: true,                          // the crowd line claims no distribution
+      unranked: true,                           // a membership list, so never windowed (see board())
       row: function (rank, c) {
         /* Not a ranking: rank is this entry's place in a list ordered newest first, and
            boards.js is free to print nothing in the rank column. The score column carries
@@ -614,7 +615,14 @@
     /* A signed-out player has no row on any of these boards and it is not a styling choice:
        every board in lb.js filters user_id IS NOT NULL. So signed out means you is null and
        no row is yours, which is exactly the state the ghost line exists to answer. */
-    var youRank = signedIn ? clamp(int(recipe.youRank, 0), 0, field) : 0;
+    /* THE WINDOW FOLLOWS THE PLAYER EVEN SIGNED OUT, which is the whole point of
+       the lab's most important screen: somebody who just finished a season, is not
+       registered, and is being shown where they would have landed. Zeroing youRank
+       here sent them the TOP of the board instead of their own neighbourhood and
+       flagged no row as theirs, so the ghost line had nothing to sit beside.
+       The top-level `you` stays null when signed out, because that is true of the
+       real API (every board in lb.js filters user_id IS NOT NULL). */
+    var youRank = clamp(int(recipe.youRank, 0), 0, field);
     var around = recipe.around !== false;
     var gated = id === "cheapest" && field < CHEAP_BAR;
 
@@ -634,7 +642,10 @@
        the owner asking to see the sheet with no list in it. The field and the crowd line stay
        true, and boards.js decides what belongs in the gap. recipe.empty is the other thing. */
     var c = { id: id, seed: seed, field: field, youRank: youRank };
-    var ranks = ranksFor(want, field, youRank, around);
+    /* The 82-0 Club is a membership list, not a standing: boards.js renders no rank
+       integer and no gap row for it, so a windowed slice would simply delete entries
+       with nothing on screen to say so. */
+    var ranks = ranksFor(want, field, youRank, around && !B.unranked);
     var rows = [], i, r, nm, s;
     for (i = 0; i < ranks.length; i++) {
       r = ranks[i];
