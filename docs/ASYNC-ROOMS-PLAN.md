@@ -31,15 +31,55 @@ roll about 6-10% of players land the same five, which is exactly the "we all got
 you do with it" conversation he is describing.
 
 **(b) The contested draft.** A snake draft where taking Jokić MEANS nobody else can have him — the
-Redraft with friends. This is a different game: it needs turn order, it changes `rowDraftable`, every
-player's board depends on every earlier pick, and a slow friend blocks four people. It is the more
-interesting product and much the larger build.
+Redraft with friends.
 
-**Recommendation: build (a) first, and build it as a private Daily.** It reuses the entire verified
-lane — one seed, independent runs, `verified = 1`, the boards — and the only new concepts are a room
-id and who is in it. It is days, not weeks. Then use the SAME room primitive to prototype (b), where
-the real design questions live. If (b) is built first, (a) arrives free; but (b) first means nothing
-ships for a month and the debut is 10/20.
+**CORRECTION (2026-10-10, measured): this is NOT a new game. It is already built.** The first version
+of this plan called it one, and that was wrong. THE REDRAFTED (app.js, v55, "Class of 2016. Three
+GMs. One board.") is a real snake draft already: three seats, one exhaustible pool, every pick
+exclusive, snake order with the turn double, a strand guard that refuses a pick which would leave a
+roster unfillable, and a podium over all three projected seasons. It ships today against two bots.
+
+`tools/redraft-sim.js` drives all three seats as PEOPLE, headless, through the same legality path the
+screen uses. Measured: 2016, 2003, 1984, 2021, 1996 and 1976, both difficulties, dozens of drafts
+each, zero illegal picks and zero short rosters.
+
+**What actually blocks three live humans, measured rather than guessed — it is four things, and three
+of them are one line:**
+
+1. `sdShuffle` picks the seat order with `Math.random()`. A room's order must come from a seed.
+2. A player's default season (`app.js:7115`) is also `Math.random()`. It only matters if a pick is
+   ever committed without an explicit season, but a room cannot have "only matters sometimes".
+3. The bots' jitter band (`app.js:7238`) is `Math.random()`. This matters the moment an abandoned
+   seat is auto-picked, which §4 says it must be.
+4. **The draft logic lives in app.js and the Worker cannot see it.** It needs extracting into a
+   shared module the way `daily-core.js` already is — the same refactor, with a precedent that
+   worked. This is the real work; the other three are seeds.
+
+**What does NOT need changing, and was worth checking:** the scoring. `sdFinish` seeds its projection
+with `Date.now()`, which looks alarming and is harmless — the Redraft projects straight from net with
+no per-game realization (the owner's 2026-08-05 ruling), so the same roster scores identically at any
+seed. Verified directly across four seeds.
+
+**Recommendation, unchanged in order but not in cost:** still do (a) first, because it is the Daily
+with a guest list and needs no draft-loop work at all. But (b) is now a fortnight's work on a lane
+that already exists, not a month on a new game.
+
+### A fairness finding that changes the design
+
+With all three seats playing the SAME strategy, the draft is fully deterministic — and therefore ONE
+SLOT WINS EVERY TIME, decided entirely by the class. Measured over 40 drafts each: 2016 is won by the
+first slot 40/40, 2003 by the second 40/40, **1984 by the THIRD 40/40** — the back-to-back picks 3
+and 4 beat taking Jordan first.
+
+That is a tautology of determinism, and it is still the thing to design around: **slot is worth more
+than it looks, and which slot is worth most is a property of the class nobody can read off the
+board.** With three DIFFERENT strategies it loosens (13 / 17 / 0 of 30, with the plain
+best-available policy taking 21 of 30 — strategy beat slot), but it never vanishes.
+
+Three honest answers, and the owner picks one: randomise the slot and call it the lottery, as the
+real NBA does; pre-screen classes for slot balance with this simulator; or let the room's host pick
+the class and let the guests pick slots in reverse. Doing nothing is also a choice, and it means the
+first-named friend quietly wins a lot of 1984s.
 
 ## 2. The shape: a room is an append-only log
 
@@ -115,6 +155,8 @@ It should prove, in this order:
 
 The five Clerk test identities already exist and `tools/boards-live.js` already knows how to mint
 tokens for them, so this harness starts from a working multi-account driver rather than from zero.
+And `tools/redraft-sim.js` already drives three seats through a complete legal draft offline, so the
+room harness only has to add the network and the turn-taking, not the game.
 
 ## 6. What it depends on
 
