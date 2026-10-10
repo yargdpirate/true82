@@ -193,11 +193,36 @@ async function main() {
   eq("LIVE the warm path: a second submission to the same isolate verifies too (" + warmMs + " ms wall)",
     [warmRes.ok, warmRes.verified], [true, 1]);
 
+  /* ---------- SEEDS THE BOT TAKES TO 82-0 (v69.6) ----------
+     The 82-0 club counts perfect seasons, so testing it needs GMs who actually
+     have several, in named modes. Ordinary seeds reach 82-0 about 4% of the
+     time in Classic and Presti and 0.8% in Pro, so leaving it to chance would
+     make the club's counts a different number every run and untestable.
+
+     These were found offline by the SAME bot and replay this file uses
+     (scratch hunt over 7700000 + 7i), so each is a season the Worker will
+     verify at 82-0. Each GM takes its own slice, so no two accounts submit the
+     same seed — not required (the UNIQUE index is on the day key, not the
+     seed) but it keeps the ledger readable. */
+  const PERFECT_SEEDS = {
+    classic: [7700091, 7700245, 7700574, 7700693, 7700924, 7700945],
+    cap:     [7700315, 7700385, 7700651, 7700679, 7700868, 7701001],
+    pro:     [7701757, 7702310, 7702702, 7703857, 7703927, 7705285]
+  };
+  const perfectCursor = { classic: 0, cap: 0, pro: 0 };
+
   /* ---------- real column types through the real D1 driver ---------- */
   const GMS = [
-    { key: "live-a", name: "LiveTest A", classic: 11, cap: 3, pro: 0, dailies: [-3, -2, -1, 0] },
-    { key: "live-b", name: "LiveTest B", classic: 3, cap: 11, pro: 0, dailies: [-1, 0] },
-    { key: "live-c", name: "LiveTest C", classic: 0, cap: 0, pro: 11, dailies: [0] }
+    /* `perfect` is deliberately uneven across modes: a club filtered to Classic
+       must show A above B, filtered to Presti must show B above A, and filtered
+       to Pro must show only C. A board that ignored its mode would pass none of
+       those three at once. */
+    { key: "live-a", name: "LiveTest A", classic: 11, cap: 3, pro: 0, dailies: [-3, -2, -1, 0],
+      perfect: { classic: 3, cap: 1, pro: 0 } },
+    { key: "live-b", name: "LiveTest B", classic: 3, cap: 11, pro: 0, dailies: [-1, 0],
+      perfect: { classic: 1, cap: 3, pro: 0 } },
+    { key: "live-c", name: "LiveTest C", classic: 0, cap: 0, pro: 11, dailies: [0],
+      perfect: { classic: 0, cap: 0, pro: 3 } }
   ];
   // The display name carries the run stamp on purpose. Two accounts CAN hold the
   // same visible name (cleanName does not enforce uniqueness and the boards show
@@ -256,8 +281,29 @@ async function main() {
                       budgetUsed: run.result.budgetUsed, official: null });
         made++;
       }
-      eq("LIVE plays: " + g.key + " banked all " + g[mode] + " " + mode + " seasons through the Worker",
-        ledger.filter((x) => x.shown === g.shown && x.mode === mode).length, g[mode]);
+      /* ...and then the deliberate perfects, from the curated seeds. */
+      const wantPerfect = (g.perfect && g.perfect[mode]) || 0;
+      let gotPerfect = 0;
+      for (let k = 0; k < wantPerfect; k++) {
+        const seed = PERFECT_SEEDS[mode][perfectCursor[mode]++];
+        const run = seed === undefined ? null : play(mode, null, seed);
+        if (!run || run.result.wins !== 82) {
+          eq("LIVE perfect seed " + seed + " (" + mode + ") still goes 82-0 for " + g.key,
+            run ? run.result.wins : null, 82);
+          continue;
+        }
+        const res = await call("POST", "/api/run", g.token, body(g, run));
+        if (!(res.ok && res.stored && res.verified)) {
+          eq("LIVE submit perfect " + g.key + " " + mode, res, "stored and verified"); report(); return;
+        }
+        ledger.push({ shown: g.shown, mode, wins: 82, net: run.result.net,
+                      budgetUsed: run.result.budgetUsed, official: null });
+        gotPerfect++;
+      }
+      eq("LIVE plays: " + g.key + " banked all " + g[mode] + " " + mode + " seasons through the Worker" +
+         (wantPerfect ? ", including " + wantPerfect + " the Worker verified at 82-0" : ""),
+        [ledger.filter((x) => x.shown === g.shown && x.mode === mode).length, gotPerfect],
+        [g[mode] + wantPerfect, wantPerfect]);
     }
     for (const off of g.dailies) {
       const key = DAILY.shiftKey(TODAY, off), b = DAILY.boardFor(key);
@@ -367,19 +413,24 @@ async function main() {
     console.log("NOTE  the 82-0 club and This month were not checked: this database already holds a previous " +
                 "pass under the same five identities, and both boards count a GM's whole history. Clear it.");
   } else {
-    const r = await board("club");
-    show("The 82-0 club", r.rows, (x) => x.score + (x.score === 1 ? " perfect" : " perfects"));
-    const tally = new Map();
-    // every mode counts, Dailies do not (lb.js `official IS NULL`)
-    ledger.filter((x) => x.wins === 82 && x.official === null)
-      .forEach((x) => tally.set(x.shown, (tally.get(x.shown) || 0) + 1));
-    const want = [...tally.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => n + " x" + c);
-    const got = r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " x" + x.score);
-    eqBoard("LIVE board 82-0 club: every perfect this run banked is on it, in any mode, and no Daily perfect is",
-      [got.length, got.slice().sort(), want.slice().sort()], [want.length, want.slice().sort(), want.slice().sort()]);
-    eqBoard("LIVE board 82-0 club: the tie is broken by who got there first, so equal scores are ordered by first_ts",
-      r.rows.every((x, i, a) => i === 0 || a[i - 1].score > x.score ||
-                                (a[i - 1].score === x.score && a[i - 1].first_ts <= x.first_ts)), true);
+    /* v69.6 EVERY SCOPE, not just All. The quotas above are uneven on purpose,
+       so a board that ignored its mode parameter could not pass all four. */
+    for (const scope of ["all", "classic", "cap", "pro"]) {
+      const r = await board("club", "&mode=" + scope);
+      show("The 82-0 club . " + scope, r.rows, (x) => x.score + (x.score === 1 ? " perfect" : " perfects"));
+      const tally = new Map();
+      // Dailies never count (lb.js `official IS NULL`)
+      ledger.filter((x) => x.wins === 82 && x.official === null && (scope === "all" || x.mode === scope))
+        .forEach((x) => tally.set(x.shown, (tally.get(x.shown) || 0) + 1));
+      const want = [...tally.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => n + " x" + c);
+      const got = r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " x" + x.score);
+      eqBoard("LIVE board 82-0 club (" + scope + "): the count matches every perfect this run banked in that " +
+              "scope, and no Daily perfect is on it",
+        got.slice().sort(), want.slice().sort());
+      eqBoard("LIVE board 82-0 club (" + scope + "): equal scores are ordered by who got there first",
+        r.rows.every((x, i, a) => i === 0 || a[i - 1].score > x.score ||
+                                  (a[i - 1].score === x.score && a[i - 1].first_ts <= x.first_ts)), true);
+    }
 
     const month = TODAY.slice(0, 7);
     const rm = await board("month");
@@ -400,15 +451,48 @@ async function main() {
       rm.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + x.score + " over " + x.days), wantM);
   }
   {
-    const r = await board("net");
-    show("Best net . Classic", r.rows, (x) => (x.score > 0 ? "+" : "") + Number(x.score).toFixed(2));
-    const best = new Map();
-    ledger.filter((x) => x.mode === "classic" && x.official === null).forEach((x) => {
-      if (!best.has(x.shown) || x.net > best.get(x.shown)) best.set(x.shown, x.net);
-    });
-    eqBoard("LIVE board Best net: a REAL column holds the float, and every GM reads back at their own best net",
-      r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + Number(x.score).toFixed(2)),
-      [...best.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => n + " " + v.toFixed(2)));
+    /* v69.6 a net rating exists in every mode, and until now only Classic had
+       anywhere to be read. All three are checked. */
+    for (const mode of ["classic", "cap", "pro"]) {
+      const r = await board("net", "&mode=" + mode);
+      show("Best net . " + mode, r.rows, (x) => (x.score > 0 ? "+" : "") + Number(x.score).toFixed(2));
+      const best = new Map();
+      ledger.filter((x) => x.mode === mode && x.official === null).forEach((x) => {
+        if (!best.has(x.shown) || x.net > best.get(x.shown)) best.set(x.shown, x.net);
+      });
+      eqBoard("LIVE board Best net (" + mode + "): a REAL column holds the float, and every GM reads back at " +
+              "their own best season in that mode",
+        r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + Number(x.score).toFixed(2)),
+        [...best.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => n + " " + v.toFixed(2)));
+    }
+  }
+  /* v69.6 YOUR DAILIES, the personal board. Two things only this can prove:
+     that a signed-out caller gets an empty board with a reason rather than an
+     error or somebody else's rows, and that the per-day placement agrees with
+     the public board for the same day. */
+  {
+    const anon = await board("mydays");
+    const gA = GMS[0];
+    const r = await board("mydays", "", gA.token);
+    show("Your Dailies . " + gA.shown, r.rows, (x) => x.score + "-" + (82 - x.score) + "  " + x.rank + " of " + x.field);
+    eqBoard("LIVE board Your Dailies: signed out it is empty with a reason, never an error and never someone " +
+            "else's rows",
+      [anon.ok, anon.rows.length, anon.why], [true, 0, "sign-in"]);
+    const days = ledger.filter((x) => x.shown === gA.shown && x.official).map((x) => x.official).sort();
+    eqBoard("LIVE board Your Dailies: one row per Daily this GM banked, newest first",
+      [r.rows.map((x) => x.day).sort(), r.rows.every((x, i, a) => i === 0 || a[i - 1].day >= x.day)],
+      [days, true]);
+    /* the placement must agree with the public board for the same day: the two
+       are different SQL over the same rows, which is exactly where they drift */
+    if (r.rows.length) {
+      const probe = r.rows[0];
+      const pub = await board("daily", "&day=" + probe.day);
+      const field = pub.rows.length;
+      const place = pub.rows.findIndex((x) => x.name === gA.shown) + 1;
+      eqBoard("LIVE board Your Dailies: the placement and the field size agree with the public board for the " +
+              "same day (two different queries over the same rows)",
+        [probe.rank, probe.field], [place, field]);
+    }
   }
   {
     const r = await board("daily", "&day=" + TODAY);

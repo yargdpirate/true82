@@ -273,18 +273,31 @@
     { key: "rate",     tab: "82-0 %",   modes: true,
       fmt: function (r) { return (r.score * 100).toFixed(1) + "% \u00B7 " + r.immortals + " of " + r.runs; } },
     // v69.5 the owner's two picks from the lab's SPEC
-    { key: "club",     tab: "82-0 club",
+    { key: "club",     tab: "82-0 club", modes: "all",
       fmt: function (r) { return r.score + (r.score === 1 ? " perfect" : " perfects"); } },
     // terse on purpose: at 375px the full "66.3 avg - 4 days - best 81" pushed
     // the GM's name to "LiveTe...", and a board you cannot read a name on is
     // not a board. `best` is still in the row for whoever wants it later.
-    { key: "month",    tab: "This month",
+    { key: "month",    tab: "This month", modes: "all",
       fmt: function (r) { return r.score.toFixed(1) + " avg \u00B7 " + r.days + "d"; } },
+    // v69.6 personal: the row's name IS the day and its rank IS the placement,
+    // so the ordinary renderer reads "3  2026-10-09  74-8 of 51"
+    { key: "mydays",   tab: "Your days",
+      fmt: function (r) { return r.score + "-" + (82 - r.score) + " of " + r.field; } },
     { key: "cheapest", tab: "Cheapest", fmt: function (r) { return "$" + r.score + "M"; } },
-    { key: "net",      tab: "Best net", fmt: function (r) { return signed(r.score); } }
+    { key: "net",      tab: "Best net", modes: true, fmt: function (r) { return signed(r.score); } }
   ];
   var BOARD_MODES = [["classic", "Classic"], ["cap", "Presti"], ["pro", "Pro"]];
-  var boardState = { key: "daily", mode: "classic" };
+  var BOARD_MODES_ALL = [["all", "All"]].concat(BOARD_MODES);
+  /* v69.6 EACH BOARD REMEMBERS ITS OWN SCOPE. One shared `mode` could not work
+     once some boards read across every mode and others cannot: the club wants
+     to open on All (its whole argument is that there is no denominator), the
+     82-0 % board has no All to open on (a rate across modes is three different
+     denominators added together), and switching tabs should not silently
+     change what you are looking at. */
+  var boardState = { key: "daily", modeFor: { rate: "classic", net: "classic", club: "all", month: "all" } };
+  function modeOf(def) { return boardState.modeFor[def.key] || "classic"; }
+  function modesFor(def) { return def.modes === "all" ? BOARD_MODES_ALL : BOARD_MODES; }
 
   function signed(n) {
     var v = Math.round((n || 0) * 10) / 10;
@@ -298,8 +311,9 @@
       return '<button class="lb-tab tm-flat' + (b.key === boardState.key ? ' on' : '') + '" data-board="' + b.key +
         '" type="button" role="tab" aria-selected="' + (b.key === boardState.key) + '">' + esc(b.tab) + '</button>';
     }).join("") + '</div>';
-    var modes = def.modes ? '<div class="lb-tabs lb-modes">' + BOARD_MODES.map(function (m) {
-      return '<button class="lb-tab tm-flat' + (m[0] === boardState.mode ? ' on' : '') + '" data-mode="' + m[0] +
+    var cur = modeOf(def);
+    var modes = def.modes ? '<div class="lb-tabs lb-modes">' + modesFor(def).map(function (m) {
+      return '<button class="lb-tab tm-flat' + (m[0] === cur ? ' on' : '') + '" data-mode="' + m[0] +
         '" type="button">' + esc(m[1]) + '</button>';
     }).join("") + '</div>' : "";
 
@@ -307,7 +321,9 @@
     if (!data) body = '<p class="acct-p" id="lbLoading">Reading the board\u2026</p>';
     else if (!data.ok) body = '<p class="acct-p">The board didn\u2019t load. Your play is unaffected.</p>';
     else if (!data.rows || !data.rows.length) {
-      body = '<p class="acct-p">Nobody has made this board yet.</p>' + whyEmpty(def, data);
+      body = data.why === "sign-in"
+        ? '<p class="acct-p">Sign in and your Dailies will show up here.</p>'          // v69.6 personal board
+        : '<p class="acct-p">Nobody has made this board yet.</p>' + whyEmpty(def, data);
     } else {
       body = '<ol class="lb-list">' + data.rows.map(function (r) {
         var mine = data.you && data.you.rank === r.rank;
@@ -367,7 +383,7 @@
 
   function loadBoard() {
     var def = defFor(boardState.key);
-    var opts = def.modes ? { mode: boardState.mode } : {};
+    var opts = def.modes ? { mode: modeOf(def) } : {};
     if (def.key === "daily") opts.day = todayKey();
     return board(def.key, opts).then(function (data) {
       var sheet = document.querySelector("#acctOverlay .rules-sheet");
@@ -386,7 +402,10 @@
       b.addEventListener("click", function () { boardState.key = b.getAttribute("data-board"); loadBoard(); });
     });
     ov.querySelectorAll("[data-mode]").forEach(function (b) {
-      b.addEventListener("click", function () { boardState.mode = b.getAttribute("data-mode"); loadBoard(); });
+      b.addEventListener("click", function () {
+        boardState.modeFor[boardState.key] = b.getAttribute("data-mode");   // per board, v69.6
+        loadBoard();
+      });
     });
   }
 

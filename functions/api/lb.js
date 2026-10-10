@@ -21,6 +21,13 @@ export const MIN_RUNS = 10;                    // the 82-0% board's qualifying b
 export const MONTH_BEST = 10;                  // v69.5: how many Dailies THIS MONTH counts
 export const MONTH_MIN = 3;                    // ...and how many you need before it ranks you
 const MODES = new Set(["classic", "pro", "cap"]);
+/* v69.6: some boards read across every mode as well as one at a time. "all" is
+   a scope, not a mode, and it never reaches SQL as a mode — each query carries
+   `(? = 'all' OR r.mode = ?)` with the scope bound twice, so one bound value
+   both selects and disables the filter. */
+const SCOPES = new Set(["classic", "pro", "cap", "all"]);
+const scopeOf = (q, dflt) => (SCOPES.has(q.get("mode")) ? q.get("mode") : dflt);
+const modeOf = (q, dflt) => (MODES.has(q.get("mode")) ? q.get("mode") : dflt);
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const NAME = "COALESCE(NULLIF(u.display_name,''), 'GM-' || u.tag)";
@@ -55,7 +62,7 @@ export const BOARDS = {
            GROUP BY r.user_id
           HAVING COUNT(*) >= ${MIN_RUNS}
            ORDER BY score DESC, runs DESC`,
-    args: (q) => [MODES.has(q.get("mode")) ? q.get("mode") : "classic"]
+    args: (q) => [modeOf(q, "classic")]
   },
   streak: {
     title: "Daily streak",
@@ -103,16 +110,20 @@ export const BOARDS = {
     args: () => [],
     asc: true
   },
+  /* v69.6: a net rating is a net rating in every mode, so this board stopped
+     being Classic-only. Presti and Pro seasons produce one too and had nowhere
+     to be read. The default is still Classic, so an old link behaves. */
   net: {
     title: "Best net rating",
-    note: "Highest net rating on a Classic season.",
+    note: "Highest net rating on a single season.",
     sql: `SELECT r.user_id uid, ${NAME} name, u.tag tag, MAX(r.net) score
             FROM runs r JOIN users u ON u.id = r.user_id
            WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL
-             AND r.mode = 'classic' AND r.net IS NOT NULL
+             AND r.mode = ? AND r.net IS NOT NULL
            GROUP BY r.user_id
            ORDER BY score DESC`,
-    args: () => []
+    args: (q) => [modeOf(q, "classic")],
+    scopes: "modes"
   },
   /* v69.5 THE 82-0 CLUB, the owner's pick from the lab's SPEC: unlimited
      winners and NO DENOMINATOR. The rate board can be gamed by playing less —
@@ -136,10 +147,11 @@ export const BOARDS = {
                  COUNT(*) score, MIN(r.created_ts) first_ts
             FROM runs r JOIN users u ON u.id = r.user_id
            WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL
-             AND r.wins = 82
+             AND r.wins = 82 AND (? = 'all' OR r.mode = ?)
            GROUP BY r.user_id
            ORDER BY score DESC, first_ts ASC`,
-    args: () => []
+    args: (q) => { const m = scopeOf(q, "all"); return [m, m]; },
+    scopes: "all"
   },
 
   /* v69.5 THIS MONTH, the lab's other code change. The problem it solves is
@@ -166,6 +178,7 @@ export const BOARDS = {
                FROM runs r
               WHERE r.verified = 1 AND r.user_id IS NOT NULL
                 AND r.official IS NOT NULL AND substr(r.official, 1, 7) = ?
+                AND (? = 'all' OR r.mode = ?)
            ), kept AS (
              SELECT user_id, COUNT(*) days, AVG(wins) avg_wins, MAX(wins) best
                FROM ranked WHERE rn <= ${MONTH_BEST} GROUP BY user_id
@@ -175,7 +188,42 @@ export const BOARDS = {
              FROM kept k JOIN users u ON u.id = k.user_id
             WHERE k.days >= ${MONTH_MIN}
             ORDER BY score DESC, k.days DESC`,
-    args: (q) => [/^\d{4}-\d{2}$/.test(q.get("month") || "") ? q.get("month") : utcDay().slice(0, 7)]
+    args: (q) => {
+      const m = scopeOf(q, "all");
+      return [/^\d{4}-\d{2}$/.test(q.get("month") || "") ? q.get("month") : utcDay().slice(0, 7), m, m];
+    },
+    scopes: "all"
+  },
+
+  /* v69.6 YOUR DAILIES: where you finished each day, which is the question a
+     player actually asks and no board here could answer. It is PERSONAL — the
+     handler requires a signed-in caller and binds their id — so it is the one
+     board whose rows are not a public ranking.
+
+     TWO SHAPE TRICKS, both so the existing renderer needs no special case:
+     `name` is the DAY, and the placement is aliased to `rank`, which the
+     handler's row mapper lets win over the row index (it spreads the row AFTER
+     setting rank). So the list reads "3  2026-10-09  74-8 of 51" with no client
+     change beyond a formatter.
+
+     RANK() not ROW_NUMBER(): a tie should share a placement, the same
+     competition ranking the `you` block uses. */
+  mydays: {
+    title: "Your Dailies",
+    note: "Where you finished each day. Verified runs only, and ties share a place.",
+    personal: true,
+    sql: `WITH scored AS (
+             SELECT r.official day, r.user_id uid, r.wins, r.net, r.mode,
+                    RANK() OVER (PARTITION BY r.official ORDER BY r.wins DESC, r.net DESC) place,
+                    COUNT(*) OVER (PARTITION BY r.official) field
+               FROM runs r
+              WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NOT NULL
+           )
+           SELECT uid, day name, day, mode, wins score, net, place rank, field
+             FROM scored
+            WHERE uid = ?
+            ORDER BY day DESC`,
+    args: () => []
   },
 
   daily: {
@@ -202,6 +250,19 @@ export async function onRequestGet(context) {
     if (!DB) return json({ ok: true, board: key, rows: [], note: board.note });
 
     const args = board.args(q);
+
+    /* A PERSONAL BOARD IS THE CALLER'S OWN ROWS, so it resolves the account
+       first and binds it. Signed out it is empty with a reason rather than an
+       error: there is nothing to show and nothing has gone wrong. */
+    let auth = null;
+    if (board.personal) {
+      auth = await accountAuth(context);
+      if (!auth || !auth.userId) {
+        return json({ ok: true, board: key, title: board.title, note: board.note, rows: [], why: "sign-in" });
+      }
+      args.push(auth.userId);
+    }
+
     const res = await DB.prepare(board.sql + ` LIMIT ${LIMIT}`).bind(...args).all().catch(() => null);
     const rows = (res && res.results) || [];
 
@@ -230,8 +291,8 @@ export async function onRequestGet(context) {
        `outOf` is the other half of the owner's standings rule (DECISIONS.md):
        a rank with no field size is flattering nonsense on a small board, so the
        server never sends one without the other. */
-    const auth = await accountAuth(context);
-    if (auth && auth.userId) {
+    if (!board.personal) auth = await accountAuth(context);
+    if (!board.personal && auth && auth.userId) {
       const cmp = board.asc ? "<" : ">";
       const me = await DB.prepare(
         `WITH b AS (${board.sql})
