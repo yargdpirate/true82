@@ -1,5 +1,66 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-10, v70): THE DRAFT ROOM IS PLAYABLE. Three people, one snake draft, a clock,
+> and a screen.** His call to ship it before 10/20. On `origin/v69-boards`; `main` is still v68.2.
+> **Migration 0032 IS APPLIED to `db_preview`** (he did it) and nowhere else — production still needs it.
+>
+> **OPEN IT:** `https://v69-boards.true82.pages.dev/?acct=1`, then "Draft room" on the top strip.
+>
+> **WHAT IS ACTUALLY NEW IS SMALL, and that is the headline.** THE REDRAFTED has shipped a real snake
+> draft since v55 — three seats, exhaustible pool, the turn double, the strand guard, the podium. **The
+> earlier plan calling this "a new game" was wrong.** v70 adds only what a SHARED draft needs: whose turn
+> it is, whether a pick is legal, and a clock — all decided on the server.
+>
+> **THE SERVER IS HANDED THE BOARD, it does not derive one.** The host's browser builds the pool with
+> `sdBuildPool()` and posts it at creation; the server freezes it and judges every later pick against
+> that stored copy. **Taken deliberately with him** over extracting ~790 lines out of a LIVE app.js ten
+> days before the debut. The server still owns every RULE: turn, taken set, which seasons qualify at
+> which slot, the seat's remaining slots, and the strand guard. The upgrade path is open — derive the
+> board server-side later and compare it with the stored one.
+>
+> **THE CLOCK, his two shapes, numbers borrowed from fantasy drafts rather than invented:**
+> `live` 90 seconds a pick (the ESPN/Yahoo default: everyone in one sitting) and `slow` 8 hours
+> (fifteen picks still finishes inside a week). **An expired clock AUTO-PICKS, it does not forfeit** —
+> a forfeited seat ruins the draft for the two people who did show up, which is why every fantasy
+> platform auto-picks too. The auto-pick obeys every rule a person does, strand guard included.
+>
+> **THE CLOCK ADVANCES WHEN SOMEONE LOOKS.** No scheduler exists and none is needed: any read catches
+> the room up. **Auto-picks are stamped at the deadline they MISSED, not at the moment someone
+> noticed** — stamping "now" restarted the clock on every read, so a room left ten minutes on a
+> 90-second clock advanced ONE pick per read and needed fifteen visits to finish. The tests found that.
+>
+> **TWO SCHEMA DECISIONS THAT LOOK LIKE HACKS AND ARE NOT.** The pace lives in the setup JSON already
+> stored in `order_json` (a bare array still parses, so nothing written before it breaks), and an
+> auto-pick is marked by **`user_id = 0`** — the seat already says whose roster it joins, `user_id` says
+> who acted, and for an expired clock that is nobody. Both were chosen over an ALTER, which is not
+> repeat-safe and would break the paste rule in MIGRATIONS-NOTES.md. Row ids start at 1, so 0 cannot
+> collide.
+>
+> **`UNIQUE(room_id, seq)` IS THE CONCURRENCY DESIGN.** A move inserts at `seq = state.at`; two seats
+> together means one INSERT wins and the other is answered `behind` WITH THE LOG. No locks, no Durable
+> Object. Both membership indexes matter too: `(room_id, user_id)` stops one person taking two seats,
+> `(room_id, seat)` stops two taking one.
+>
+> **VERIFIED.** `tools/room-live.js` is 14 checks against a running Worker — a fourth seat refused,
+> joining twice idempotent, out of turn refused, an already-drafted player refused, a season that does
+> not qualify refused, **two seats moving at the same instant with exactly one landing**, both paces,
+> and the auto-pick catching a room up. Clean on 2016/1984/2003/1976 across **pro AND pickup**.
+> `tools/redraft-sim.js --all` is 312 three-seat drafts (52 classes x both difficulties x 3 seeds), all
+> legal. `test.js` 346. And it was played in a browser: the clock expired on an idle seat, auto-picked,
+> and a pick taken through the UI stored and moved the turn on.
+>
+> **PICKUP IS THE HARDER DIFFICULTY, not pro** — pro drafts the real board (2016: 32 names), pickup the
+> curated twenty, so pickup is the tighter pool and the harder case for the strand guard.
+>
+> **WHAT IS NOT DONE:** a finished room is NOT scored or ranked (the three rosters just sit there), no
+> way to leave or close a room, no rejoin-by-link, and the room list is not browsable — you need the
+> code. `sdFinish`-style scoring is the obvious next piece and the projection is already deterministic
+> (checked: the `Date.now()` seed in sdFinish changes nothing, because the Redraft projects straight
+> from net).
+>
+> **THE DEBUT RISK HAS NOT MOVED and is still not this:** the Clerk **production** instance is not
+> started and its DNS can take 48 hours.
+
 > **FIRST THING (2026-10-10, v69.6): EIGHT BOARDS, SPLIT BY MODE, AND THE CLERK SIGN-IN GAP IS CLOSED.**
 > The thing every earlier handoff called permanent — "Clerk's browser sign-in UI needs one human per
 > release" — **is no longer true on a local host, and it was proven end to end today.** Everything is on
