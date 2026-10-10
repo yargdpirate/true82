@@ -2763,16 +2763,19 @@ async function accountLane() {
     // boundary, and nothing is minted before it.
     const envS = { DAILY_SECRET: "test-secret-not-the-real-one" };
     const envPS = { DAILY_SECRET: "test-secret-not-the-real-one", DAILY_PINS: "2026-10-20:777" };
-    const m20 = await DS.mintSeed(envS, "2026-10-20");
+    // an ORDINARY day after the boundary: the chosen nights deliberately refuse
+    // the HMAC (see the half-configured check below), so they cannot test it
+    const ORD = "2026-11-05", ORD2 = "2026-11-06";
+    const mOrd = await DS.mintSeed(envS, ORD);
     eq("v69.4 a pin outranks the HMAC for its own day and changes no other day",
-       [await DS.mintSeed(envPS, "2026-10-20"), await DS.mintSeed(envPS, "2026-10-21") === await DS.mintSeed(envS, "2026-10-21")],
+       [await DS.mintSeed(envPS, "2026-10-20"), await DS.mintSeed(envPS, ORD) === await DS.mintSeed(envS, ORD)],
        [777, true]);
     eq("v69.4 the HMAC seed is a stable uint32, differs by day, and is NOT the shipped hash (which is the whole point)",
-       [Number.isInteger(m20), m20 >= 0 && m20 <= 0xFFFFFFFF, m20 === await DS.mintSeed(envS, "2026-10-20"),
-        m20 !== await DS.mintSeed(envS, "2026-10-21"), m20 !== D.seedFor("2026-10-20")],
+       [Number.isInteger(mOrd), mOrd >= 0 && mOrd <= 0xFFFFFFFF, mOrd === await DS.mintSeed(envS, ORD),
+        mOrd !== await DS.mintSeed(envS, ORD2), mOrd !== D.seedFor(ORD)],
        [true, true, true, true, true]);
     eq("v69.4 a different DAILY_SECRET mints a different board, so the secret is doing the work",
-       [await DS.mintSeed({ DAILY_SECRET: "another-secret" }, "2026-10-20") !== m20], [true]);
+       [await DS.mintSeed({ DAILY_SECRET: "another-secret" }, ORD) !== mOrd], [true]);
 
     // THE ARCHIVE CANNOT MOVE. This is the check that protects every board
     // already played: a day before the boundary is daily-core's forever, so the
@@ -2784,6 +2787,20 @@ async function accountLane() {
     eq("v69.4 THE ARCHIVE IS FROZEN: no day before the boundary is ever minted, with a secret set or not, so no played board can shift under a player",
        [mintedBefore, before.map((k) => D.needsServerSeed(k))],
        [[null, null, null, null], [false, false, false, false]]);
+    /* THE HALF-CONFIGURED ENVIRONMENT, which the first deployment walked into:
+       DAILY_SECRET set, DAILY_PINS not yet. Without this the three launch nights
+       would be HMAC'd into random boards no crowd model has ever been run
+       against — strictly worse than the published rolls they replaced, and
+       silent. Every environment passes through this state, so the fail-soft has
+       to hold here and not only when nothing is set at all. */
+    eq("v69.4 HALF CONFIGURED: a secret with no pin leaves the chosen nights on their approved roll and never HMACs them, while ordinary days still mint",
+       [await DS.mintSeed(envS, "2026-10-20"), await DS.mintSeed(envS, "2026-10-21"), await DS.mintSeed(envS, "2026-10-22"),
+        typeof (await DS.mintSeed(envS, "2026-11-05"))],
+       [null, null, null, "number"]);
+    eq("v69.4 and it SAYS it is half configured: pinsNeeded counts the chosen nights still to come with no pin, so 3 of 3 is visible in one request",
+       [DS.mintState(envS).pinsNeeded, DS.mintState(envPS).pinsNeeded, DS.mintState({}).pinsNeeded,
+        DS.mintState({ DAILY_SECRET: "x", DAILY_PINS: "2026-10-20:1,2026-10-21:2,2026-10-22:3" }).pinsNeeded],
+       [3, 2, 3, 0]);
     eq("v69.4 with no DAILY_SECRET and no pins nothing is minted at all, which is byte-for-byte the behaviour that shipped",
        [await DS.mintSeed({}, "2026-10-20"), await DS.mintSeed({}, "2026-11-01"), DS.mintState({}).minting],
        [null, null, false]);
@@ -2834,10 +2851,11 @@ async function accountLane() {
     // dayseed.js the endpoint does, so run.js's seed check cannot drift from
     // what the browser was served.
     const sim2 = await import("./functions/_lib/sim.js");
-    const srv = await sim2.dailyBoard(envS, "2026-10-20");
-    eq("v69.4 the verifier and the endpoint mint the same seed: run.js cannot reject a board /api/day handed out",
-       [srv.seed, srv.seed === (await DS.mintSeed(envS, "2026-10-20")), srv.base, srv.ch && srv.ch.id],
-       [m20, true, "classic", "opening_night"]);
+    const srvOrd = await sim2.dailyBoard(envS, ORD);
+    const srvPin = await sim2.dailyBoard(envPS, "2026-10-20");
+    eq("v69.4 the verifier and the endpoint mint the same seed, for a minted day and for a pinned one: run.js cannot reject a board /api/day handed out",
+       [srvOrd.seed, srvOrd.seed === mOrd, srvPin.seed, srvPin.base, srvPin.ch && srvPin.ch.id],
+       [mOrd, true, 777, "classic", "opening_night"]);
     const srvPast = await sim2.dailyBoard(envS, "2026-10-03");
     eq("v69.4 and for a day before the boundary the verifier still reads daily-core, so every stored run stays verifiable",
        [srvPast.seed, srvPast.seed === D2.seedFor("2026-10-03")], [D2.seedFor("2026-10-03"), true]);

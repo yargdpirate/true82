@@ -38,6 +38,16 @@
    already-played board can shift under a player. */
 export const MINT_FROM = "2026-10-11";
 
+/* DAYS WHOSE ROLL WAS CHOSEN DELIBERATELY, and must never be a random one.
+   The DATES are not secret — they are in daily-core's OVERRIDES already, and in
+   the blurb on the tile; only the seeds are. Listing them lets mintSeed REFUSE
+   to HMAC one, which closes a hole the first deployment found: with
+   DAILY_SECRET set and DAILY_PINS not yet set, opening night minted
+   3048253669, a board no crowd model has ever been run against. The fail-soft
+   has to hold for a HALF-configured environment too, not only an empty one,
+   because half-configured is the state every environment passes through. */
+const CHOSEN = new Set(["2026-10-20", "2026-10-21", "2026-10-22"]);
+
 const KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** `DAILY_PINS` as a map. Format: `2026-10-20:123,2026-10-21:456` — a day key,
@@ -89,6 +99,7 @@ export async function mintSeed(env, key) {
   if (!KEY_RE.test(String(key))) return null;
   const pinned = pins(env);
   if (pinned[key] !== undefined) return pinned[key];
+  if (CHOSEN.has(key)) return null;            // the approved roll stands until a pin replaces it
   if (key < MINT_FROM) return null;            // ISO keys compare as strings
   const secret = env && env.DAILY_SECRET;
   if (!secret) return null;
@@ -103,9 +114,18 @@ export async function mintSeed(env, key) {
     Never includes a seed or any part of the secret. */
 export function mintState(env) {
   const p = pins(env);
+  /* How many deliberately-rolled days are still to come and have no pin. It is
+     the number that says "this environment is half configured": `minting: true`
+     with `pinsNeeded: 3` means the secret landed and the pins did not, and the
+     launch nights are running on the approved public rolls rather than the ones
+     that replaced them. Zero of three is the only shippable state. */
+  const today = new Date().toISOString().slice(0, 10);
+  let pinsNeeded = 0;
+  for (const k of CHOSEN) if (k >= today && p[k] === undefined) pinsNeeded++;
   return {
     mintFrom: MINT_FROM,
     minting: !!(env && env.DAILY_SECRET),
-    pinned: Object.keys(p).length
+    pinned: Object.keys(p).length,
+    pinsNeeded
   };
 }

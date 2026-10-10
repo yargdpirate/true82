@@ -218,7 +218,7 @@ why `.gitignore` now covers `.claude/`: a local launch config carries the real p
    production's) and `DAILY_PINS` (`2026-10-20:<seed>,2026-10-21:<seed>,2026-10-22:<seed>`).
 2. **Redeploy both.** Pages bakes environment variables in at build time.
 
-**Check it with one request:** `GET /api/day` reports `minting` and `pinned` in every response and
+**Check it with one request:** `GET /api/day` reports `minting`, `pinned` and `pinsNeeded` in every response and
 leaks neither a secret nor a seed it was not asked for. `minting: false` or `pinned: 0` on production
 means a variable did not get baked into that deployment.
 
@@ -227,6 +227,14 @@ the game runs exactly as it shipped — the launch week falls back to the v66.4 
 `SEED_OVERRIDES`, which are public but tuned and simulated. The worst case of a forgotten variable is
 therefore today's situation, never a random board nobody checked. `SEED_OVERRIDES` was left in the
 shipped file for that reason alone.
+
+**And it fails soft when it is HALF configured, which is the state that actually happens.** The first
+deployment had `DAILY_SECRET` set and `DAILY_PINS` not yet, and opening night minted `3048253669` — a
+board no crowd model has ever been run against, strictly worse than the published roll it replaced,
+and silent. `dayseed.js` therefore carries the LIST of deliberately-rolled dates (`CHOSEN`; the dates
+are public, only the seeds are not) and refuses to HMAC one: with no pin, the approved roll stands.
+`/api/day` reports **`pinsNeeded`**, the chosen nights still to come with no pin. `minting: true` with
+`pinsNeeded: 3` is the half-configured state; **`pinsNeeded: 0` is the only shippable one.**
 
 **What it does not defend.** A player can still pre-solve TODAY's board, which is inherent: they are
 given the seed in order to play it. And `MINT_FROM` must never move backwards past a day that has been
