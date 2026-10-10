@@ -275,9 +275,11 @@
     // v69.5 the owner's two picks from the lab's SPEC
     { key: "club",     tab: "82-0 club",
       fmt: function (r) { return r.score + (r.score === 1 ? " perfect" : " perfects"); } },
+    // terse on purpose: at 375px the full "66.3 avg - 4 days - best 81" pushed
+    // the GM's name to "LiveTe...", and a board you cannot read a name on is
+    // not a board. `best` is still in the row for whoever wants it later.
     { key: "month",    tab: "This month",
-      fmt: function (r) { return r.score.toFixed(1) + " avg \u00B7 " + r.days + (r.days === 1 ? " day" : " days") +
-                                 (r.best != null ? " \u00B7 best " + r.best : ""); } },
+      fmt: function (r) { return r.score.toFixed(1) + " avg \u00B7 " + r.days + "d"; } },
     { key: "cheapest", tab: "Cheapest", fmt: function (r) { return "$" + r.score + "M"; } },
     { key: "net",      tab: "Best net", fmt: function (r) { return signed(r.score); } }
   ];
