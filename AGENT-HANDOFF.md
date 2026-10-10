@@ -1,5 +1,76 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-10, v69.4): THE DAILY'S SEED IS MINTED BY THE SERVER NOW, AND THE THREE LAUNCH
+> NIGHTS WERE RE-ROLLED. TWO ENVIRONMENT VARIABLES ARE HIS AND NEITHER IS SET YET.** Until they are, the
+> game runs exactly as it did — that is the designed fallback, not an oversight. Read SECURITY.md, "The
+> Daily's seed is minted, not derived".
+>
+> **HIS STEP, BEFORE 10/20:** `DAILY_SECRET` (any long random string) and `DAILY_PINS` on **Production
+> AND Preview**, then redeploy both. The pin values are NOT in this repo and must never be; they were
+> handed to him in chat and live in the Cloudflare dashboard. Check with one request — `GET /api/day`
+> reports `minting` and `pinned` and leaks neither a secret nor a seed it was not asked for:
+> ```
+> curl -s https://true82.net/api/day | head -c 200      # minting:true, pinned:3
+> ```
+>
+> **WHY THE SEEDS HAD TO CHANGE, which the design in 0000003 did not say.** Moving `2696998625`,
+> `3675641764` and `2501072727` out of daily-core.js protects against future readers of the source and
+> NOBODY ELSE: they had been live in a file every browser downloads since v66.4 shipped on 2026-09-29.
+> Relocating the same numbers would have been security theatre. So the three nights were re-rolled by the
+> same crowd search that chose them, with a private `--ns` namespace — this repo is public, so
+> `tools/daily-crowd.js`'s candidate sequence was enumerable too, and without a nonce an attacker could
+> have pre-solved the short list the search can propose.
+>
+> **THE NEW BOARDS BEAT THE BAR HE APPROVED**, at 900 simulated players (v66.4's numbers in brackets):
+> | night | most-common five | shared of 5 | records | 82-0 |
+> |---|---|---|---|---|
+> | 10/20 Opening Night | 8% (11) | 1.73 (1.8) | 73/78/81 (66/75/80) | 7% (6) |
+> | 10/21 Doubleheader | 6% (4) | 2.06 (1.7) | 54/75/81 (46/73/80) | 4% (5) |
+> | 10/22 Primetime | 6% (12) | 1.69 (2.0) | 60/76/81 (62/77/81) | 8% (4) |
+>
+> Each carries its night's headliners and exactly one deep cut, in round 2; dead paths 0 of 400 bot games
+> on all three. 10/20 opens on '80s Celtics (Bird, McHale, Parish) where the old roll opened on '00s.
+>
+> **THE MECHANISM, in four files.** `functions/_lib/dayseed.js` resolves a day as a `DAILY_PINS` pin,
+> else `HMAC(DAILY_SECRET, "t82seed|" + key)` from `MINT_FROM` (2026-10-11) onward, else nothing.
+> `functions/api/day.js` serves the browser one map of key -> seed and **refuses any day after today on
+> the live host**, while a preview answers, because `?day=` is how he tests a launch board on his phone.
+> `_lib/sim.js` mints from the same module, so run.js's seed check and the board a player was served
+> cannot drift. `dailyBoard()` is async and takes `env` now; **it deliberately does not call setSeeds()**,
+> because a Worker isolate is shared across players and a per-request map in module scope would answer
+> the next request's questions.
+>
+> **THE ARCHIVE CANNOT MOVE, and this is the thing to be careful with.** Every day before `MINT_FROM`
+> keeps `seedFor()` forever, so the archive, every stored official run and every shared beat-link replay
+> the board that was actually played. **Never move `MINT_FROM` backwards past a day that has been
+> played.** It exists in daily-core.js AND dayseed.js (the browser needs the boundary to know which days
+> it must not guess at); test.js fails if the two ever disagree, which is the only thing making two
+> copies of one constant safe.
+>
+> **TWO BUGS THE VERIFICATION FOUND, and the second is the lesson.** The HMAC key handle was cached in
+> module scope without being keyed on the secret, so the first secret an isolate saw would have answered
+> for every secret after it — a rotated `DAILY_SECRET` would have gone on minting the old boards with
+> nothing in a log. The unit tests caught that one. **They could not catch the other: the home screen
+> builds its Daily tile at boot, BEFORE /api/day answers, and keeps the board OBJECT in a closure.** By
+> the time a player taps, the seed gate sees a loaded map and waves them through while the object in hand
+> still carries the fallback seed, so the draft opened on the published '00s Celtics. Only playing it in
+> a browser found it. `startDailyRun()` now re-resolves the board from its day key, which fixes all six
+> callers at once. **If you touch this lane, play it; do not trust the suite alone.**
+>
+> **HOW TO RUN IT LOCALLY WITH REAL BINDINGS:** the `site-dayseed` entry in `.claude/launch.json`
+> (wrangler pages dev on 8794, with `DAILY_SECRET` and `DAILY_PINS` as `--binding` flags). Its
+> `--persist-to` points at a session scratchpad that will not exist for you — repoint it. `.claude/` is
+> gitignored as of this change precisely because that file carries the real pins.
+>
+> **Also:** `test.js` is 324 checks, 325 when the real pins are handed in:
+> `T82_DAILY_PINS="2026-10-20:...,..." node test.js` re-derives each pinned board and holds it to the
+> v66.4 bar. Without the variable it SKIPs and says so rather than passing on nothing. app.js and
+> daily-core.js are re-keyed `20261010-v69-4b`.
+>
+> **STILL NOT PUSHED.** Everything from the 10/5 tag refresh onward is local on `c-code-clean`;
+> `origin/c-code-clean` is clean at v68.2 and `origin/v69-boards` is still at `fa34790`, so no preview is
+> serving any of this yet.
+
 > **FIRST THING (2026-10-10, later): V69.3 IS VERIFIED. 32 OF 32 CHECKS PASS AGAINST THE DEPLOYMENT WITH
 > CLERK-SIGNED TOKENS, AND THE PREVIEW'S OWN DATABASE IS CONFIRMED ROUTING.** The job the last handoff
 > left as "the first job of the next session" is done. Command, for the next time:
