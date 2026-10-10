@@ -1,5 +1,60 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-10, v69.5): SEVEN BOARDS NOW, AND THE WHOLE LANE IS VERIFIED ON THE DEPLOYMENT.**
+> His two picks from the lab's SPEC are in: **the 82-0 club** and **This month**. `DAILY_SECRET` and
+> `DAILY_PINS` are set on both environments — the preview reports `pinned:3, pinsNeeded:0` and serves the
+> tuned opening-night board. **Production's variables are set but INERT: `main` is still v68.2 and has no
+> `/api/day`.** Everything below is on `origin/v69-boards` only.
+>
+> **THE OPEN DOOR FOR TESTING:** `https://v69-boards.true82.pages.dev/?acct=1` puts a plain centred
+> "Leaderboards" link at the top of the page. It is behind `laneOn()`, so it cannot appear on true82.net
+> while `ACCT_LIVE` is false, and `?acct=1` is required on a preview because that host is not localhost.
+> **It is a testing affordance and the first thing to delete when the real entry point is designed**;
+> nothing else references `lbTestDoor`.
+>
+> **THE TWO NEW BOARDS, and why each is shaped the way it is.**
+> - **82-0 club** answers the rate board rather than sitting beside it. A rate is gamed by playing LESS —
+>   eleven seasons with one 82 beats a hundred with eight — and it punishes experimenting. No denominator
+>   means playing more can only help. It counts a perfect in ANY mode (a perfect Presti season is a
+>   perfect season) and excludes Dailies for the same reason rate, net and cheapest do. **Ties go to
+>   whoever got there first**, which is the only honest tiebreak on an unbounded field, and it is working
+>   on real data: two GMs on one perfect each, ordered by four seconds.
+> - **This month** is an AVERAGE of your best ten Dailies, **not a sum, and that is the whole design**: a
+>   cumulative board is already won by the time someone who saw the influencer on 10/22 opens the game.
+>   Ten-best means a wrecked day drops out once you have more than ten, so playing a bad day never costs
+>   you. Three days to qualify stops one lucky 82 owning the month. Both are dials at the top of lb.js
+>   (`MONTH_BEST`, `MONTH_MIN`). The month is the day key's own first seven characters, so it is the
+>   player's LOCAL month.
+>
+> **VERIFIED, on the deployment and in a browser at 375px:** 32 of 32 live checks on a clean database;
+> all seven tabs render and wrap; the club and This month return correct rows against real runs; the
+> empty state reads right; `test.js` is 330. One formatting bug was found and fixed by looking —
+> `66.3 avg · 4 days · best 81` squeezed the GM's name to `LiveTe…`, and a board you cannot read a name
+> on is not a board.
+>
+> **THE HARNESS NOW NEEDS A CLEAN DATABASE AND SAYS SO INSTEAD OF FAILING.** This is worth knowing before
+> it costs anyone else an hour: **every check in `boards-live.js` is an oracle comparison against the
+> ledger of what THAT run banked**, and the five Clerk identities are reused every run. A second pass
+> against a database that already holds the first one fails eleven checks that look exactly like broken
+> SQL and are nothing of the kind. It now prints the boards either way and asserts only when the oracle
+> can be trusted: a dirty pass reads `18 passed, 0 failed` with two notes saying what was skipped.
+> **Clear `db_preview` between passes** (it is the preview's own since v69.3):
+> ```sql
+> DELETE FROM runs; DELETE FROM local_claims; DELETE FROM sid_links; DELETE FROM users;
+> ```
+>
+> **WHAT IS STILL NOT COVERED, and it has not changed: Clerk's browser sign-in UI and the clerk-js
+> bundle.** Everything downstream of a token is covered. One thing did change, though: the test users are
+> `+clerk_test` identities, which Clerk accepts with the fixed code `424242` and no real inbox, so **the
+> sign-in flow is mechanically automatable now** — against a LOCAL host, where entering credentials is
+> allowed. The `site-dayseed` launch config is the place to do it. That has not been attempted yet.
+>
+> **STILL HIS, and the clock is the Clerk production instance (DNS up to 48h, ten days to the debut):**
+> the five remaining SPEC decisions, the four weak pieces in 0000004, the `ACCT_LIVE` flip, the five
+> public pages still promising "no account", and one stray anonymous row in production
+> (`sid = sidedgeprobe1`). **Note that `/api/lb` is public the moment this merges, independent of
+> `ACCT_LIVE`** — the flip is a UI gate, not an API gate.
+
 > **FIRST THING (2026-10-10, v69.4): THE DAILY'S SEED IS MINTED BY THE SERVER NOW, AND THE THREE LAUNCH
 > NIGHTS WERE RE-ROLLED. TWO ENVIRONMENT VARIABLES ARE HIS AND NEITHER IS SET YET.** Until they are, the
 > game runs exactly as it did — that is the designed fallback, not an oversight. Read SECURITY.md, "The
