@@ -85,7 +85,7 @@ export async function onRequestPost(context) {
     // stops being official and stores as an ordinary run.
     let claimedDay = official, board = null;
     if (claimedDay) {
-      board = dailyBoard(claimedDay);
+      board = await dailyBoard(env, claimedDay);
       if (!board || board.base !== mode || board.seed !== seed) claimedDay = null;
     }
 

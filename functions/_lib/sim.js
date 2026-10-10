@@ -28,16 +28,32 @@ import T82 from "../../sim-core.js";
    test.js compares the server's board against the browser's for 120 days. */
 import "../../challenges.js";
 import T82DAILY from "../../daily-core.js";
+import { mintSeed } from "./dayseed.js";
 
 /* The Daily's board for a day, derived HERE rather than taken from the client.
    daily-core.js is the same file the browser runs and needs no DOM, so the
    server reproduces the day's mode, seed and challenge exactly. That is what
    stops the obvious cheat: playing an easy random board and submitting it as
-   today's Daily. run.js checks the submitted mode and seed against this. */
-export function dailyBoard(dayKey) {
+   today's Daily. run.js checks the submitted mode and seed against this.
+
+   v69.4: THE SEED IS MINTED, NOT DERIVED, for every day dayseed.js speaks for —
+   the same function /api/day serves the browser from, so the two agree by
+   construction rather than by two files staying in step.
+
+   IT DELIBERATELY DOES NOT CALL daily-core's setSeeds(). A Worker reuses one
+   isolate across requests and across PLAYERS, so installing a per-request map
+   into daily-core's module scope would let one request's seeds answer the next
+   one's questions. The override is applied to the returned object instead, which
+   owns nothing shared. Keep it that way.
+
+   `env` is now required. With no DAILY_SECRET and no DAILY_PINS, mintSeed
+   returns null for every day and this is byte-for-byte the old behaviour. */
+export async function dailyBoard(env, dayKey) {
   try {
     const b = T82DAILY.boardFor(dayKey);
-    return b && b.key === dayKey ? b : null;
+    if (!b || b.key !== dayKey) return null;
+    const minted = await mintSeed(env, dayKey);
+    return minted === null ? b : Object.assign({}, b, { seed: minted });
   } catch { return null; }
 }
 

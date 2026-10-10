@@ -7,3 +7,10 @@
 
 # wrangler's local state and login cache (scratch; never part of a deploy)
 .wrangler/
+
+# The desktop app's local session config. It is already outside the repo via
+# .git/info/exclude, but that file is one machine's and this one travels: a
+# launch config carries binding flags, and since v69.4 a local one carries the
+# real DAILY_PINS. A pinned launch board committed here would undo the whole
+# reason it was moved out of daily-core.js.
+.claude/

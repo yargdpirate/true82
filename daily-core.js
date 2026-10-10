@@ -73,6 +73,82 @@
   }
   function seedFor(key) { return hash32(SEED_NS + key); }
 
+  /* ---------- v69.4: THE SEED MAY COME FROM THE SERVER ----------
+     seedFor() is FNV-1a over the day key in a file every browser downloads, so
+     every future board was derivable, and SEED_OVERRIDES published the three
+     launch-week boards outright. /api/day now mints them (functions/_lib/dayseed.js)
+     and app.js injects the answer here at boot.
+
+     THE ORDER IS INJECTED, THEN PINNED, THEN DERIVED, and each step is a
+     deliberate fallback:
+       - An INJECTED seed is the server's and always wins.
+       - SEED_OVERRIDES stays in this file as the FAIL-SOFT for the launch week.
+         It holds the v66.4 rolls the owner approved, which are public but tuned,
+         so a DAILY_PINS that never got set means "his approved boards, known to
+         anyone who read this file" and never "a random board nobody simulated".
+       - seedFor() is every ordinary day before the server started minting, which
+         is what keeps THE DAILY ARCHIVE, every stored official run and every
+         shared beat-link replaying the board that was actually played.
+
+     INJECTED SEEDS ARE NEVER PERSISTED. They live in this closure for the life of
+     the page, so a stale map cannot outlive a reload and disagree with the server. */
+  var INJECTED = null;
+
+  /* Install the server's map of day key -> uint32 seed. Returns how many it took.
+     Hostile or partial input is dropped entry by entry rather than rejected
+     wholesale: one bad row must never cost a player the rest of the window. */
+  function setSeeds(map) {
+    if (!map || typeof map !== "object") return 0;
+    var next = {}, n = 0;
+    for (var k in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
+      if (!validKey(k)) continue;
+      var v = map[k];
+      if (typeof v !== "number" || !isFinite(v) || v < 0 || v > 4294967295 || v % 1 !== 0) continue;
+      next[k] = v >>> 0; n++;
+    }
+    /* `next`, NOT `n ? next : null`. An environment that mints nothing answers
+       with an empty map, and that answer is authoritative: it means "play the
+       seed in this file, the server agrees". Collapsing it to null would make
+       seedsLoaded() false forever and hold every Daily behind a gate waiting
+       for a map that had already arrived. */
+    INJECTED = next;
+    return n;
+  }
+
+  /* Whether the server has spoken for this day. app.js gates the Daily on it:
+     a day the server mints MUST be played on the server's seed, because run.js
+     checks the submitted seed against its own and a mismatch costs the player
+     their one official attempt. */
+  function seedIsServers(key) { return !!(INJECTED && INJECTED[key] !== undefined); }
+  function seedsLoaded() { return INJECTED !== null; }
+
+  /* THE BOUNDARY, and the one thing about minting the browser is told.
+     A date is not a secret — it leaks nothing about any seed — and the client
+     needs it to know which days it must NOT guess at. Days before it were
+     played on seedFor() and keep it forever, so the archive and every shared
+     beat-link stay honest; days from it onward belong to the server.
+
+     THIS MUST EQUAL functions/_lib/dayseed.js MINT_FROM. test.js imports both
+     and fails if they ever drift, which is the only thing keeping two copies of
+     one constant safe. */
+  var MINT_FROM = "2026-10-11";
+
+  /* Whether this day's seed is the server's to give. When this is true and the
+     map has not arrived, the seed resolvedSeed() would return is a GUESS, and
+     playing on a guess costs the player their one official attempt for the day
+     (run.js compares the submitted seed with its own). app.js holds the launch
+     until seedsLoaded() rather than play one.
+     Once the map HAS arrived, its silence about a day is an answer: the server
+     mints nothing for that day and the file's own seed is the right one. */
+  function needsServerSeed(key) { return validKey(key) && String(key) >= MINT_FROM; }
+
+  function resolvedSeed(key) {
+    if (INJECTED && INJECTED[key] !== undefined) return INJECTED[key];
+    if (SEED_OVERRIDES[key] !== undefined) return SEED_OVERRIDES[key];
+    return seedFor(key);
+  }
+
   /* ---------- the pool ----------
      Curated from the 98-challenge manifest: solo-legible in one blurb, punchy
      mid-draft, no account features. Vanilla entries breathe between modifiers.
@@ -1094,7 +1170,7 @@
       var pick = POOL[hash32("pick|" + key) % POOL.length];   // legacy hash: history replays untouched
       core = (pick && pick.id) ? coreForId(pick.id) : vanillaBoard(pick && pick.base);
     }
-    return { key: key, num: dayNum(key), seed: SEED_OVERRIDES[key] || seedFor(key),
+    return { key: key, num: dayNum(key), seed: resolvedSeed(key),
              ch: core.ch, base: core.base, name: core.name, blurb: core.blurb,
              short: core.short, gate: core.gate, badge: DAILY_BADGES[key] || null };
   }
@@ -1285,6 +1361,8 @@
     OVERRIDES: OVERRIDES, SEED_OVERRIDES: SEED_OVERRIDES, DAILY_BADGES: DAILY_BADGES, setTestDay: setTestDay, clearTestRecord: clearTestRecord,
     dayKey: dayKey, dayNum: dayNum, validKey: validKey, shiftKey: shiftKey,
     hash32: hash32, seedFor: seedFor, boardFor: boardFor,
+    setSeeds: setSeeds, seedIsServers: seedIsServers, seedsLoaded: seedsLoaded,
+    MINT_FROM: MINT_FROM, needsServerSeed: needsServerSeed,
     verdict: verdict, signedNet: signedNet,
     shareTextDaily: shareTextDaily, beatLink: beatLink, parseLink: parseLink,
     officialFor: officialFor, recordOfficial: recordOfficial, recordArchive: recordArchive, archiveFor: archiveFor,

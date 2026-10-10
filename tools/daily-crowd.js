@@ -7,7 +7,7 @@
    reached 1995, modern MVPs up big, the older legends by name (a list below), everyone else of old down 8. It is rough
    (it rates Dale Ellis and Bob McAdoo as known names), so read its numbers as directions. Built for the special days
    (AGENT-HANDOFF 000000) after the owner saw "everyone is going to have the exact same team".
-     node tools/daily-crowd.js crowd DAY [N]           the crowd on DAY's board and seed: distinct fives, the most common
+     node tools/daily-crowd.js crowd DAY [N] [SEED]    the crowd on DAY's board and seed: distinct fives, the most common
                                                        five's share, how many players two random fives share, records
      node tools/daily-crowd.js search DAY N EVAL MUSTS  seeds for DAY's board: the no-skip path must carry each MUST (a
                                                        comma list of "A|1990/B|2000" alternatives) and exactly one deep
@@ -87,13 +87,23 @@ function evalCrowd(ch0, seed0, sort0, N) {
     most: [...pc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, k]) => n + " " + Math.round(100 * k / crowd.length) + "%").join(", "), topFive: top[0][0] };
 }
 
-const [cmd, day, a3, a4, a5] = process.argv.slice(2).filter(x => x !== "--labels");
+/* v69.4: an optional PRIVATE namespace for the candidate sequence. This repo is public, so without one the
+   seeds this search can propose are a list anyone can regenerate — and for the launch-week boards that is the
+   whole threat being closed. With --ns=<nonce> the sequence is unguessable; the nonce is never committed and
+   never needs to be again, because the chosen seed is the output. No --ns reproduces the v66.4 searches byte
+   for byte, so every number recorded in AGENT-HANDOFF 000000 still checks out. */
+const NS = (process.argv.find(x => x.startsWith("--ns=")) || "").slice(5);
+const [cmd, day, a3, a4, a5] = process.argv.slice(2).filter(x => x !== "--labels" && !x.startsWith("--ns="));
 if (!cmd || !day || !D.validKey(day)) { console.log("usage: node tools/daily-crowd.js crowd DAY [N] | search DAY N EVAL MUSTS"); process.exit(1); }
 const board = D.boardFor(day), bch = board.ch;
 if (!bch) { console.log(day + " has no challenge board"); process.exit(1); }
 if (cmd === "crowd") {
-  const m = evalCrowd(bch, board.seed, bch.sortMode || "min", +(a3 || 900));
-  console.log(day, "#" + board.num, board.name, "seed", board.seed, JSON.stringify(m, null, 1));
+  /* v69.4: an explicit SEED, so a roll that is no longer in the shipped file can still be
+     scored here. A pinned launch board's seed lives in DAILY_PINS on Cloudflare now, not in
+     daily-core.js, and this is how it gets checked before it is pinned. */
+  const useSeed = a4 !== undefined ? +a4 : board.seed;
+  const m = evalCrowd(bch, useSeed, bch.sortMode || "min", +(a3 || 900));
+  console.log(day, "#" + board.num, board.name, "seed", useSeed, JSON.stringify(m, null, 1));
 } else if (cmd === "search") {
   const deep = (bch.deal && bch.deal.deep) || [], MUST = (a5 || "").split(",").filter(Boolean).map(m => m.split("/"));
   const CAPN = { G: 2, F: 2, C: 1 };
@@ -106,7 +116,7 @@ if (cmd === "crowd") {
       if (S.picks.length < 5 && T82.dealRound(S) === "done") return null; }
     return tk; };
   const cand = [];
-  for (let i = 0; i < +(a3 || 20000); i++) { const seed = T82.seedOf("t82d1|" + day + "|search|" + i), tk = path(seed); if (!tk) continue;
+  for (let i = 0; i < +(a3 || 20000); i++) { const seed = T82.seedOf("t82d1|" + day + "|search|" + (NS ? NS + "|" : "") + i), tk = path(seed); if (!tk) continue;
     if (deep.length && tk.filter(k => deep.includes(k)).length !== 1) continue;
     if (MUST.some(alts => !tk.some(k => alts.includes(k)))) continue;
     cand.push({ seed, path: tk.join(" > ") }); }

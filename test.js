@@ -490,14 +490,55 @@ eq("section headers: head() builds one component with the context's variant",
         T.applyPick(S, best.nm, null, best.b); if (r < 4) T.dealRound(S); }
       return tk; };
     const P20 = path("2026-10-20"), P21 = path("2026-10-21"), P22 = path("2026-10-22");
-    eq("special days: the chosen paths (a no-skip player's five tickets)", [P20, P21, P22], [
+    eq("special days: the FALLBACK paths, a no-skip player's five tickets on the v66.4 rolls (the live rolls are minted; see dayseed.js)", [P20, P21, P22], [
       ["CELTICS|2000", "PISTONS|1970", "SPURS|2020", "KNICKS|1990", "THUNDER|2010"],
       ["LAKERS|1990", "WARRIORS|1980", "TIMBERWOLVES|2010", "HEAT|2000", "WARRIORS|2020"],
       ["76ERS|1980", "THUNDER|1970", "CAVALIERS|2010", "NUGGETS|2020", "76ERS|2000"]]);
-    eq("special days: each path carries exactly one deep cut, in round 2", [[P20, "opening_night"], [P21, "doubleheader"], [P22, "primetime"]].map(([p, id]) =>
+    eq("special days: each fallback path carries exactly one deep cut, in round 2", [[P20, "opening_night"], [P21, "doubleheader"], [P22, "primetime"]].map(([p, id]) =>
       p.map((k, i) => env.T82CH.byId[id].deal.deep.indexOf(k) >= 0 ? i + 1 : 0).filter(Boolean)), [[2], [2], [2]]);
+
+    /* v69.4 THE REAL LAUNCH BOARDS, only when they are handed in. The rolls that
+       actually run on 10/20-10/22 are minted from DAILY_PINS and are deliberately
+       not in this repo (functions/_lib/dayseed.js says why), so this is opt-in:
+         T82_DAILY_PINS="2026-10-20:...,2026-10-21:...,2026-10-22:..." node test.js
+       It injects each one, re-derives its no-skip path and holds it to the bar the
+       owner approved in v66.4: exactly one deep cut, in round 2 or 3. Without the
+       variable it says so rather than passing on nothing. */
+    {
+      const raw = process.env.T82_DAILY_PINS || "";
+      const real = {};
+      raw.split(",").forEach((part) => {
+        const bits = part.trim().split(":");
+        if (bits.length !== 2) return;
+        const n = Number(bits[1].trim());
+        if (D2.validKey(bits[0].trim()) && Number.isInteger(n) && n >= 0 && n <= 0xFFFFFFFF) real[bits[0].trim()] = n;
+      });
+      const ids = { "2026-10-20": "opening_night", "2026-10-21": "doubleheader", "2026-10-22": "primetime" };
+      const want = Object.keys(ids);
+      if (want.every((k) => real[k] !== undefined)) {
+        const counts = [], rounds = [], same = [];
+        want.forEach((k) => {
+          same.push(real[k] === D2.SEED_OVERRIDES[k]);     // a re-roll that did not re-roll is a failure
+          D2.setSeeds({ [k]: real[k] });
+          const p = path(k), deep = env.T82CH.byId[ids[k]].deal.deep;
+          const hits = p.map((t, i) => deep.indexOf(t) >= 0 ? i + 1 : 0).filter(Boolean);
+          counts.push(hits.length); rounds.push(hits[0] || 0);
+        });
+        D2.setSeeds({});
+        eq("v69.4 the REAL pinned launch boards: each is a different roll from the published one, carries exactly one deep cut, and it falls in round 2 or 3",
+           [same, counts, rounds.every((r) => r === 2 || r === 3)],
+           [[false, false, false], [1, 1, 1], true]);
+      } else {
+        console.log("SKIP  v69.4 the real pinned launch boards: set T82_DAILY_PINS to check them (they are not in this repo on purpose)");
+      }
+    }
   }
-  eq("special days: only 10/20, 10/21 and 10/22 carry a chosen seed; every other day's seed is its date's hash",
+  /* v69.4: these three numbers are now the FAIL-SOFT, not the boards that ship.
+     The rolls that run on 10/20-10/22 are minted from DAILY_PINS and are not in
+     this repo (functions/_lib/dayseed.js says why). What this still pins is that
+     if DAILY_PINS is never set, the game falls back to the v66.4 rolls the owner
+     approved and simulated — public, but tuned — and never to a random board. */
+  eq("special days: with no server pin, 10/20-10/22 fall back to the approved v66.4 rolls; every other day's seed is its date's hash",
     [D.boardFor("2026-10-20").seed, D.boardFor("2026-10-21").seed, D.boardFor("2026-10-22").seed, D.boardFor("2026-10-23").seed === D.seedFor("2026-10-23"), Object.keys(D.SEED_OVERRIDES).sort()],
     [2696998625, 3675641764, 2501072727, true, ["2026-10-20", "2026-10-21", "2026-10-22"]]);
   eq("special days: both open their list on OBPM (the stars lead each ticket); every other board keeps its default",
@@ -2657,11 +2698,12 @@ async function accountLane() {
   {
     const sim = await import("./functions/_lib/sim.js");
     const D = require("./daily-core.js");
-    const day = "2026-10-03", board = sim.dailyBoard(day);
+    const day = "2026-10-03", board = await sim.dailyBoard({}, day);
     eq("v69.1 the Daily is server-derived: the day key alone fixes the mode, the seed and the challenge, so a run " +
        "played on any other seed cannot be posted as that day's board",
        [board.key, board.base === D.boardFor(day).base, board.seed === D.boardFor(day).seed,
-        sim.dailyBoard("2026-10-04").seed !== board.seed, sim.dailyBoard("nope"), sim.dailyBoard("")],
+        (await sim.dailyBoard({}, "2026-10-04")).seed !== board.seed,
+        await sim.dailyBoard({}, "nope"), await sim.dailyBoard({}, "")],
        [day, true, true, true, null, null]);
 
     // (6d) ...and it must agree with the board the BROWSER played. daily-core.js
@@ -2675,7 +2717,7 @@ async function accountLane() {
       let withCh = 0, total = 0;
       for (let i = 0; i < 120; i++) {
         const d = new Date(Date.UTC(2026, 9, 3) + i * 86400000).toISOString().slice(0, 10);
-        const b = dailyBoard(d); total++; if (b && b.ch) withCh++;
+        const b = await dailyBoard({}, d); total++; if (b && b.ch) withCh++;
       }
       console.log(JSON.stringify({ total, withCh }));`;
     let probed = { total: 0, withCh: 0 };
@@ -2687,6 +2729,122 @@ async function accountLane() {
        "still resolve a challenge (dropping sim.js's challenges.js import makes every board vanilla, so every " +
        "Daily replays wrong and never ranks \u2014 and it looks like a broken engine)",
        [probed.total, probed.withCh === probed.total && probed.withCh > 0], [120, true]);
+  }
+
+  // (6e) THE SERVER-MINTED DAILY SEED (v69.4). Until now a Daily's seed was
+  // FNV-1a over the day key in a file every browser downloads, so every future
+  // board was derivable and the three launch-week boards were published
+  // outright. These checks cover the mechanism; the live launch rolls are in
+  // DAILY_PINS and deliberately absent from this repo, so nothing here can pin
+  // them. Set T82_DAILY_PINS to the production value to check the real boards.
+  {
+    const DS = await import("./functions/_lib/dayseed.js");
+    const day = await import("./functions/api/day.js");
+    const D = require("./daily-core.js");
+
+    // THE DRIFT GUARD. MINT_FROM exists in two files on purpose — the browser
+    // needs the boundary to know which days it must not guess at, and the
+    // server needs it as the authority. Two copies of one constant are safe
+    // only while something fails when they disagree. This is that something.
+    eq("v69.4 the mint boundary is one date: daily-core.js and dayseed.js agree, or the client guesses a seed on a day the server mints",
+       [D.MINT_FROM, DS.MINT_FROM, D.MINT_FROM === DS.MINT_FROM], ["2026-10-11", "2026-10-11", true]);
+
+    // DAILY_PINS parsing. A malformed variable must cost only its own entry:
+    // one fat-fingered comma cannot be allowed to drop a launch board.
+    const pins = DS.pins({ DAILY_PINS: "2026-10-20:12345, 2026-10-21:7 ,nope:9,2026-10-22:-4,2026-10-23:4294967296,2026-10-24:x,:,2026-10-25:0" });
+    eq("v69.4 DAILY_PINS drops bad entries one at a time and keeps the rest (a negative, an over-uint32, a non-number, a bad key, and a legitimate zero)",
+       [Object.keys(pins).sort(), pins["2026-10-20"], pins["2026-10-21"], pins["2026-10-25"]],
+       [["2026-10-20", "2026-10-21", "2026-10-25"], 12345, 7, 0]);
+    eq("v69.4 no DAILY_PINS, or garbage for it, is a missing variable and never a throw",
+       [DS.pins({}), DS.pins({ DAILY_PINS: "" }), DS.pins({ DAILY_PINS: "garbage" }), DS.pins(null)],
+       [{}, {}, {}, {}]);
+
+    // THE ORDER: a pin beats the HMAC, the HMAC covers every day from the
+    // boundary, and nothing is minted before it.
+    const envS = { DAILY_SECRET: "test-secret-not-the-real-one" };
+    const envPS = { DAILY_SECRET: "test-secret-not-the-real-one", DAILY_PINS: "2026-10-20:777" };
+    const m20 = await DS.mintSeed(envS, "2026-10-20");
+    eq("v69.4 a pin outranks the HMAC for its own day and changes no other day",
+       [await DS.mintSeed(envPS, "2026-10-20"), await DS.mintSeed(envPS, "2026-10-21") === await DS.mintSeed(envS, "2026-10-21")],
+       [777, true]);
+    eq("v69.4 the HMAC seed is a stable uint32, differs by day, and is NOT the shipped hash (which is the whole point)",
+       [Number.isInteger(m20), m20 >= 0 && m20 <= 0xFFFFFFFF, m20 === await DS.mintSeed(envS, "2026-10-20"),
+        m20 !== await DS.mintSeed(envS, "2026-10-21"), m20 !== D.seedFor("2026-10-20")],
+       [true, true, true, true, true]);
+    eq("v69.4 a different DAILY_SECRET mints a different board, so the secret is doing the work",
+       [await DS.mintSeed({ DAILY_SECRET: "another-secret" }, "2026-10-20") !== m20], [true]);
+
+    // THE ARCHIVE CANNOT MOVE. This is the check that protects every board
+    // already played: a day before the boundary is daily-core's forever, so the
+    // archive, each stored official run and every shared beat-link replay the
+    // board that was actually played, whatever the server is configured with.
+    const before = ["2026-07-19", "2026-09-28", "2026-10-03", "2026-10-10"];
+    const mintedBefore = [];
+    for (const k of before) mintedBefore.push(await DS.mintSeed(envS, k));
+    eq("v69.4 THE ARCHIVE IS FROZEN: no day before the boundary is ever minted, with a secret set or not, so no played board can shift under a player",
+       [mintedBefore, before.map((k) => D.needsServerSeed(k))],
+       [[null, null, null, null], [false, false, false, false]]);
+    eq("v69.4 with no DAILY_SECRET and no pins nothing is minted at all, which is byte-for-byte the behaviour that shipped",
+       [await DS.mintSeed({}, "2026-10-20"), await DS.mintSeed({}, "2026-11-01"), DS.mintState({}).minting],
+       [null, null, false]);
+    eq("v69.4 a malformed day key mints nothing",
+       [await DS.mintSeed(envS, "nope"), await DS.mintSeed(envS, ""), await DS.mintSeed(envS, "2026-1-1")],
+       [null, null, null]);
+
+    // THE CLIENT'S SIDE: the injection, its sanitizer, and the resolution order.
+    const D2 = require("./daily-core.js");
+    eq("v69.4 setSeeds keeps only well-formed rows and reports the count, so one hostile entry cannot cost the window",
+       [D2.setSeeds({ "2026-10-20": 4242, "2026-10-21": -1, "2026-10-22": 1.5, "nope": 7, "2026-10-23": 4294967296, "2026-10-24": "9" })],
+       [1]);
+    eq("v69.4 the resolution order is injected, then the approved fallback, then the date's hash",
+       [D2.boardFor("2026-10-20").seed, D2.boardFor("2026-10-21").seed, D2.boardFor("2026-10-23").seed === D2.seedFor("2026-10-23")],
+       [4242, 3675641764, true]);
+    eq("v69.4 an EMPTY map is an answer, not a failure: the server mints nothing, the Daily must not wait for a map that already arrived",
+       [D2.setSeeds({}), D2.seedsLoaded(), D2.seedIsServers("2026-10-20"), D2.boardFor("2026-10-20").seed],
+       [0, true, false, 2696998625]);
+    eq("v69.4 the boundary decides who may guess: a day before it never needs the server, a day from it onward always does",
+       [D2.needsServerSeed("2026-10-10"), D2.needsServerSeed("2026-10-11"), D2.needsServerSeed("2026-10-20"), D2.needsServerSeed("nope")],
+       [false, true, true, false]);
+
+    // THE ENDPOINT. It must refuse tomorrow on the live site and answer it on a
+    // preview, because `?day=` is how the owner tests a launch board on his
+    // phone (app.js gates that on offLiveHost() too).
+    const ask = async (url, env) => JSON.parse(await (await day.onRequestGet({ request: new Request(url), env: env || envS })).text());
+    const ahead = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+    const liveFuture = await ask("https://true82.net/api/day?key=" + ahead);
+    const prevFuture = await ask("https://v69-boards.true82.pages.dev/api/day?key=" + ahead);
+    eq("v69.4 /api/day REFUSES a future day on the live site and serves it on a preview, so nobody sees a board before its day but his phone still can",
+       [liveFuture.ok, liveFuture.why, prevFuture.ok, Object.keys(prevFuture.days).length],
+       [false, "not-yet", true, 1]);
+    const liveWin = await ask("https://true82.net/api/day");
+    const keys = Object.keys(liveWin.days).sort();
+    eq("v69.4 /api/day's window starts at the boundary and stops at today, and never carries a day past tomorrow",
+       [liveWin.ok, keys[0], keys.every((k) => k >= DS.MINT_FROM), keys[keys.length - 1] <= new Date(Date.now() + 86400000).toISOString().slice(0, 10)],
+       [true, "2026-10-11", true, true]);
+    eq("v69.4 /api/day reports whether it is minting and how many pins it holds, so an env var that never got baked in is one curl away",
+       [(await ask("https://true82.net/api/day", {})).minting, (await ask("https://true82.net/api/day", envPS)).pinned,
+        (await ask("https://true82.net/api/day", {})).pinned, (await ask("https://true82.net/api/day?key=junk")).why],
+       [false, 1, 0, "bad-key"]);
+    eq("v69.4 /api/day leaks neither the secret nor a seed it was not asked for",
+       [JSON.stringify(await ask("https://true82.net/api/day", envPS)).indexOf("test-secret-not-the-real-one"),
+        JSON.stringify(await ask("https://true82.net/api/day?key=2026-10-03")).indexOf("2026-10-03")],
+       [-1, -1]);
+
+    // THE TWO SIDES AGREE BY CONSTRUCTION. sim.js mints through the same
+    // dayseed.js the endpoint does, so run.js's seed check cannot drift from
+    // what the browser was served.
+    const sim2 = await import("./functions/_lib/sim.js");
+    const srv = await sim2.dailyBoard(envS, "2026-10-20");
+    eq("v69.4 the verifier and the endpoint mint the same seed: run.js cannot reject a board /api/day handed out",
+       [srv.seed, srv.seed === (await DS.mintSeed(envS, "2026-10-20")), srv.base, srv.ch && srv.ch.id],
+       [m20, true, "classic", "opening_night"]);
+    const srvPast = await sim2.dailyBoard(envS, "2026-10-03");
+    eq("v69.4 and for a day before the boundary the verifier still reads daily-core, so every stored run stays verifiable",
+       [srvPast.seed, srvPast.seed === D2.seedFor("2026-10-03")], [D2.seedFor("2026-10-03"), true]);
+
+    /* The REAL launch boards are checked where the v66.4 special-days helpers
+       live (section "special days" above), because the no-skip path deriver and
+       the challenge registry are in scope there and not here. */
   }
 
   // (7) the paste rule (migrations/MIGRATIONS-NOTES.md): the D1 console can

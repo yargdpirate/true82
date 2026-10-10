@@ -9789,6 +9789,40 @@ function renderDailyGate(board, target, variantTag, opts) {
   }
 }
 function startDailyRun(board, target, variantTag, opts) {
+  /* v69.4 THE SEED GATE. Every Daily — official, practice, an archive replay, a
+     shared beat-link — begins here, which is why the gate is here and not on
+     each of the six callers.
+
+     It holds only when it must: a day the server speaks for (from
+     dayseed.js MINT_FROM) whose map has not arrived. Once the map is in, its
+     silence about a day is an answer and the file's own seed is correct, so
+     ordinary days and the whole back archive never wait at all. */
+  try {
+    if (board && T82DAILY.needsServerSeed(board.key) && !T82DAILY.seedsLoaded()) {
+      var again = arguments;
+      whenSeeds(function (ok) {
+        if (ok) { startDailyRun.apply(null, again); return; }
+        showError("Couldn\u2019t load today\u2019s board. It\u2019s minted when you open it, so the game won\u2019t guess at it and cost you the day. Check your connection and reload.");
+      });
+      return;
+    }
+    /* ...AND THEN RE-RESOLVE THE BOARD, which is not the same check and is the
+       one that actually bites. The home screen builds its Daily tile at boot,
+       BEFORE /api/day has answered, and keeps the board OBJECT in a closure —
+       seed and all. By the time the player taps, seedsLoaded() is true and the
+       gate above waves them through, but the object in hand still carries the
+       fallback seed from a second earlier. Caught by playing it: the draft
+       opened on the published '00s Celtics instead of the minted board.
+
+       Re-deriving from the day KEY here fixes it for every caller at once —
+       the tile, the gate, the menu, a practice run, an archive replay and a
+       shared beat-link all arrive through this function — and it is a no-op
+       for any board whose seed was never the server's. */
+    if (board && board.key && T82DAILY.needsServerSeed(board.key)) {
+      var fresh = T82DAILY.boardFor(board.key);
+      if (fresh && fresh.key === board.key) board = fresh;
+    }
+  } catch (e) { /* a broken daily-core must not block a run: fall through */ }
   var archive = !!(opts && opts.archive);
   if (archive) variantTag = "daily-practice:" + board.num;   // v56: a replay of a past board is practice (it stays out of the Daily's percentile pool)
   var explicitPractice = /^daily-practice:/.test(variantTag || "");
@@ -10040,6 +10074,77 @@ function whenLabels(fn) {
   LABELS_WAITERS.push(go);
   setTimeout(go, 2500);
 }
+
+/* ---------- v69.4: THE DAILY'S SEED COMES FROM THE SERVER ----------
+   daily-core's seedFor() is FNV-1a over the day key in a file every browser
+   downloads, so every future board was derivable, and SEED_OVERRIDES published
+   the three launch-week boards outright. /api/day mints them now; this installs
+   the answer and the Daily waits for it.
+
+   THE ONE WAY THIS DIFFERS FROM whenLabels: a missing tag is cosmetic, so
+   whenLabels times out and plays on. A missing SEED is not cosmetic — the board
+   would be the wrong one and run.js would strip the run's official status, so
+   the player would lose their one attempt for the day to a board that never
+   counted. whenSeeds therefore reports success or failure and the caller
+   refuses rather than guessing.
+
+   A 404 IS AN ANSWER, NOT A FAILURE. Opened over a static server (dev, a test
+   build, `python3 -m http.server`) there is no Worker at all, so there is also
+   nothing minting and nothing to disagree with: an absent endpoint means "this
+   file's own seeds are correct", and the Daily must stay playable. Only a
+   network error or a 5xx is a real failure, and only those are retried. */
+var SEEDS_STATE = "loading", SEEDS_WAITERS = [], SEEDS_INFLIGHT = false;
+function loadDaySeeds() {
+  if (SEEDS_INFLIGHT) return;
+  SEEDS_INFLIGHT = true;
+  SEEDS_STATE = "loading";
+  var tries = 0;
+  function settle(state) {
+    SEEDS_STATE = state; SEEDS_INFLIGHT = false;
+    var w = SEEDS_WAITERS; SEEDS_WAITERS = [];
+    w.forEach(function (f) { try { f(state === "ready"); } catch (e) {} });
+  }
+  function attempt() {
+    tries++;
+    /* try/catch around the CALL, not just the promise: in a headless sandbox or
+       off file:// there is no fetch at all, and a ReferenceError thrown here
+       would escape the promise chain and take the caller with it. */
+    var p;
+    try { p = fetch("/api/day", { headers: { accept: "application/json" } }); }
+    catch (e) { settle("failed"); return; }
+    p
+      .then(function (r) {
+        if (r.status === 404) return null;              // no Worker here: see above
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        if (d === null) { T82DAILY.setSeeds({}); settle("ready"); return; }
+        if (!d || d.ok !== true || !d.days || typeof d.days !== "object") throw new Error("bad-body");
+        T82DAILY.setSeeds(d.days);
+        settle("ready");
+        /* Nothing on screen needs redrawing. The home tile shows the board's
+           number, name, badge and base mode, and the streak and today's own
+           record — every one of them keyed on the DATE, not the seed. The seed
+           is read once, when a run starts, which is the gate in
+           startDailyRun(). */
+      })
+      .catch(function () {
+        if (tries < 3) { setTimeout(attempt, tries * 400); return; }
+        settle("failed");
+      });
+  }
+  attempt();
+}
+/* fn(ok). A failed load is retried here, because a player who taps again has
+   often just come back onto a signal. */
+function whenSeeds(fn) {
+  if (SEEDS_STATE === "ready") { fn(true); return; }
+  var fired = false, go = function (ok) { if (!fired) { fired = true; fn(ok); } };
+  SEEDS_WAITERS.push(go);
+  if (SEEDS_STATE === "failed") loadDaySeeds();
+  setTimeout(function () { go(SEEDS_STATE === "ready"); }, 6000);
+}
 function boot() {
   if (SHARE_REF) analyticsTrack("referral_open", {
     surface: "landing", action: "tribune_share", outcome: "open", source: SHARE_REF
@@ -10059,6 +10164,7 @@ function boot() {
   else renderIntro();   // the intro needs no player data — show it instantly instead of a loading screen
   fetchFootStats();  // footer stat line — tiny request, independent of the big payload
   loadLabels();      // v61: the frozen tags, beside the game data
+  loadDaySeeds();    // v69.4: the Daily's seed, which the Daily will not start without
   var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
   var dataHttpStatus = 0;
   fetch(CFG.DATA_URL)

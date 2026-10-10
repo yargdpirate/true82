@@ -33,6 +33,7 @@ is no column for it anywhere in `migrations/`. Keep it that way.
 | Account history theft | The claim accepts only `t82:sid`, this lane's own namespace. It is **not** the retention cookie (`t82_rid`) and **not** the traits voter hash, so an account can never be joined to the analytics stream | `claim.js`, `accounts.js` |
 | Fabricated scores | The client posts `{mode, seed, actions}`, never a score. The server replays it and stores its OWN recomputation; a mismatch in wins, net, RNG draws or the Hot Hand stores `verified = 0` and can never rank | `_lib/sim.js`, `api/run.js` |
 | Posting an easy board as today's Daily | The day key alone fixes the mode, seed and challenge, re-derived server-side from the same daily-core.js the browser runs. A run on any other seed is stored but stripped of its official status | `_lib/sim.js` `dailyBoard()` |
+| **Pre-solving a future Daily** | v69.4: the seed is minted server-side from `DAILY_SECRET`, so a future board cannot be computed from the shipped file, and `/api/day` refuses any day after today on the live host. Days before `MINT_FROM` keep the old derivation so the archive cannot move | `_lib/dayseed.js`, `api/day.js` |
 | Re-rolling a Daily until it is good | UNIQUE `(user_id, official)`: the first official attempt of a day is the one that counts | `migrations/0031` |
 | A board full of anonymous entries | Every board filters `verified = 1 AND user_id IS NOT NULL` | `api/lb.js` |
 | SQL injection via a board name | Every board's SQL is a server constant in a fixed registry; the query string only ever picks a key and supplies BOUND arguments. Nothing from a request is interpolated, not even a column or a mode | `api/lb.js` |
@@ -192,3 +193,42 @@ Preview environment and `acct.js` `db()` routes every account read and write the
 resolved binding is handed to `auth.js`, so a preview sign-in creates its user in the preview database
 too. With nothing bound the behaviour is exactly what shipped, so this changes nothing until it is
 bound.
+
+## The Daily's seed is minted, not derived (v69.4)
+
+`daily-core.js` computed every Daily's seed as `hash32(SEED_NS + key)` **in the browser**, so any
+future board could be computed by anyone who read the shipped file. The three launch-week boards were
+worse: `SEED_OVERRIDES` carried their seeds as literals, published since v66.4 went live on 2026-09-29.
+
+The seed now resolves, in order: a pin from **`DAILY_PINS`**, else
+`HMAC-SHA256(DAILY_SECRET, "t82seed|" + key)` truncated to a uint32 for any day from `MINT_FROM`
+onward, else nothing — and daily-core's own `seedFor()` stands. `/api/day` serves the browser that
+map; `_lib/sim.js` mints from the same module, so run.js's seed check and the board a player was
+served cannot drift.
+
+**Why the pins are an environment variable and not a constant in `functions/`.** This repo is public.
+Moving a literal out of a file the browser downloads and into one it does not hides it from the
+browser and from nobody else. A seed that matters cannot live in the repo in any file, which is also
+why `.gitignore` now covers `.claude/`: a local launch config carries the real pins as binding flags.
+
+**Setup, both his, both needed before 10/20:**
+
+1. Cloudflare Pages, Settings, Environment variables, **Production AND Preview**: `DAILY_SECRET`
+   (any long random string — the same value on both, or a preview's ordinary boards will differ from
+   production's) and `DAILY_PINS` (`2026-10-20:<seed>,2026-10-21:<seed>,2026-10-22:<seed>`).
+2. **Redeploy both.** Pages bakes environment variables in at build time.
+
+**Check it with one request:** `GET /api/day` reports `minting` and `pinned` in every response and
+leaks neither a secret nor a seed it was not asked for. `minting: false` or `pinned: 0` on production
+means a variable did not get baked into that deployment.
+
+**It fails soft, deliberately to the OLD behaviour.** With neither variable set, nothing is minted and
+the game runs exactly as it shipped — the launch week falls back to the v66.4 rolls in
+`SEED_OVERRIDES`, which are public but tuned and simulated. The worst case of a forgotten variable is
+therefore today's situation, never a random board nobody checked. `SEED_OVERRIDES` was left in the
+shipped file for that reason alone.
+
+**What it does not defend.** A player can still pre-solve TODAY's board, which is inherent: they are
+given the seed in order to play it. And `MINT_FROM` must never move backwards past a day that has been
+played, or the archive, stored official runs and shared beat-links would all replay a board nobody saw.
+test.js pins that boundary in both files.
