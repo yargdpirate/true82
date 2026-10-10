@@ -130,9 +130,14 @@ function buildBoard(cls, diff) {
   }
 
   /* 1. open the room and fill it */
-  const made = await call("POST", "/api/room?op=create", GMS[0].token, { board });
-  eq("ROOM a room opens, the host takes a seat, and the snake order is fixed at creation",
-    [made.ok, made.seat, Array.isArray(made.order) && made.order.length], [true, 0, 15]);
+  const PACE = argv.includes("--slow") ? "slow" : "live";
+  const PICK_MS = Number(arg("--pickms", 0)) || undefined;
+  const made = await call("POST", "/api/room?op=create", GMS[0].token,
+    { board, pace: PACE, pickMs: PICK_MS });
+  eq("ROOM a room opens, the host takes a seat, the snake order is fixed at creation, and the clock is set",
+    [made.ok, made.seat, Array.isArray(made.order) && made.order.length, made.pace,
+     made.pickMs === (PICK_MS || (PACE === "slow" ? 8 * 3600 * 1000 : 90 * 1000))],
+    [true, 0, 15, PACE, true]);
   if (!made.ok) { report(); return; }
   const id = made.id;
 
@@ -240,6 +245,52 @@ function buildBoard(cls, diff) {
 
   console.log("");
   fin.rosters.forEach((r, i) => console.log("  seat " + i + ": " + r.map((p) => p.player + " " + p.season + " (" + p.slot + ")").join(", ")));
+
+  /* 7. THE CLOCK, in a room of its own with a one-second pick. An abandoned
+     seat must not freeze the other two, and the catch-up has to run on a plain
+     READ — there is no scheduler, so if looking at the room does not advance
+     it, nothing ever will. */
+  console.log("");
+  const fast = await call("POST", "/api/room?op=create", GMS[0].token, { board, pace: "live", pickMs: 1000 });
+  await call("POST", "/api/room?op=join", GMS[1].token, { id: fast.id });
+  await call("POST", "/api/room?op=join", GMS[2].token, { id: fast.id });
+  const before = await call("GET", "/api/room?id=" + fast.id, GMS[0].token);
+  eq("ROOM the clock is reported with the room, so a client can draw it without guessing",
+    [before.pickMs, typeof before.deadline === "number", before.deadline > before.now], [1000, true, true]);
+
+  await new Promise((r) => setTimeout(r, 2600));
+  const after1 = await call("GET", "/api/room?id=" + fast.id, GMS[0].token);
+  eq("ROOM NOBODY PICKED AND THE CLOCK RAN OUT: a plain read auto-picks for the seat, more than once if more " +
+     "than one deadline passed, and the draft moves on instead of freezing",
+    [after1.at >= 2, after1.moves.filter((m) => m.auto).length >= 2, after1.done], [true, true, false]);
+
+  /* and the auto-picks must be legal picks, not just rows */
+  const dupes = after1.moves.map((m) => m.player);
+  eq("ROOM an auto-pick obeys the same rules a person does: never a duplicate, always into an open slot",
+    [new Set(dupes).size, dupes.length], [dupes.length, dupes.length]);
+
+  /* a seat that comes BACK mid-draft can still play */
+  {
+    const v = await call("GET", "/api/room?id=" + fast.id, GMS[0].token);
+    const st = RM.deriveState(JSON.parse(JSON.stringify(fast.order)), v.moves);
+    if (!st.done) {
+      const tokenForSeat = (sx) => GMS[sx].token;
+      const m = pickFor(st, st.seat);
+      const back = await call("POST", "/api/room?op=move", tokenForSeat(st.seat), { id: fast.id, ...m });
+      eq("ROOM a seat that comes back after the clock picked for it can still take its next turn",
+        [back.ok === true || back.why === "behind"], [true]);
+    }
+  }
+
+  /* the slow pace must NOT auto-pick on the same timescale */
+  const slow = await call("POST", "/api/room?op=create", GMS[0].token, { board, pace: "slow" });
+  await call("POST", "/api/room?op=join", GMS[1].token, { id: slow.id });
+  await call("POST", "/api/room?op=join", GMS[2].token, { id: slow.id });
+  await new Promise((r) => setTimeout(r, 1500));
+  const slowView = await call("GET", "/api/room?id=" + slow.id, GMS[0].token);
+  eq("ROOM a SLOW room sits on its eight-hour clock and auto-picks nothing: the two paces are really different",
+    [slowView.pace, slowView.pickMs, slowView.at, slowView.deadline - slowView.now > 7 * 3600 * 1000],
+    ["slow", 8 * 3600 * 1000, 0, true]);
 
   report();
   function report() {

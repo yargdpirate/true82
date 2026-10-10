@@ -30,6 +30,55 @@ export const CAPS = { G: 2, F: 2, C: 1 };
 export const ROSTER = 5;
 export const SEATS = 3;
 
+/* ---------- THE CLOCK (v70) ----------
+   The owner's two shapes, and they are the two a fantasy draft already ships,
+   so the numbers are borrowed rather than invented:
+
+     LIVE  90 seconds a pick. The ESPN/Yahoo default for a live draft, which is
+           the format this is: everybody in one sitting, the clock is the thing
+           that keeps them there.
+     SLOW  8 hours a pick. The "play it over a few days" shape — a full draft is
+           fifteen picks, so a slow room finishes inside a week even if everyone
+           uses most of their clock.
+
+   AN EXPIRED CLOCK AUTO-PICKS; IT DOES NOT FORFEIT. This is the part worth
+   copying and the part people get wrong. A forfeited seat ruins the draft for
+   the two people who did show up: the pool stops depleting evenly and the
+   rosters stop being comparable. Every fantasy platform auto-picks for the same
+   reason, and so does this.
+
+   THE CLOCK ADVANCES WHEN SOMEONE LOOKS. There is no scheduler here and none is
+   needed: any read of the room catches it up, picking for every deadline that
+   has passed since the last one. A room nobody is watching simply waits, which
+   costs nothing and is invisible — the first person back sees the correct state.
+   Two readers catching up at once is the same race as two players moving at
+   once, and UNIQUE(room_id, seq) settles it the same way. */
+export const PACES = {
+  live: { ms: 90 * 1000, label: "Live · 90 seconds a pick" },
+  slow: { ms: 8 * 3600 * 1000, label: "Slow · 8 hours a pick" }
+};
+export const DEFAULT_PACE = "live";
+
+/** The room's immutable setup, stored as JSON in `order_json`.
+    It began life as a bare array of seat numbers, so a bare array still parses:
+    the column holds the room's fixed SETUP, of which the order is one field.
+    Keeping the pace here rather than in a new column is deliberate — an
+    ALTER TABLE is not repeat-safe, and migrations/MIGRATIONS-NOTES.md requires
+    that every statement be safe to paste twice. */
+export function parseSetup(json) {
+  let v;
+  try { v = typeof json === "string" ? JSON.parse(json) : json; } catch { return null; }
+  if (Array.isArray(v)) return { order: v, pace: DEFAULT_PACE, pickMs: PACES[DEFAULT_PACE].ms };
+  if (!v || !Array.isArray(v.order)) return null;
+  const pace = PACES[v.pace] ? v.pace : DEFAULT_PACE;
+  const ms = Number(v.pickMs);
+  return {
+    order: v.order, pace,
+    // an explicit pickMs wins, so a harness can run a whole draft in seconds
+    pickMs: Number.isFinite(ms) && ms >= 250 && ms <= 7 * 24 * 3600 * 1000 ? ms : PACES[pace].ms
+  };
+}
+
 /** The snake order for `seats` seats over `rounds` rounds: 0,1,2, 2,1,0, 0,1,2…
     Returned as an array of seat numbers, one per turn. The ORDER OF SEATS is
     the caller's (the room stores a shuffled one), this only snakes it. */
@@ -66,7 +115,12 @@ export function parseBoard(json) {
       bk.forEach((c) => union.add(c));
     }
     if (players.has(row.n)) return null;              // a duplicate name would make "taken" ambiguous
-    players.set(row.n, { seasons, buckets: [...union] });
+    /* `v` is the host's own valuation of the player, used ONLY to decide an
+       auto-pick. It is advisory and cannot make an illegal pick legal; with it
+       absent, auto-pick falls back to the board's own order, which is already a
+       ranking (the real draft order on a PRO board). */
+    const val = Number(row.v);
+    players.set(row.n, { seasons, buckets: [...union], v: Number.isFinite(val) ? val : null, at: players.size });
   }
   return {
     cls: String(b.cls || ""), diff: b.diff === "pickup" ? "pickup" : "pro",
@@ -159,4 +213,34 @@ export function boardViable(board) {
   const supplies = [];
   for (const [, rec] of board.players) supplies.push(rec.buckets);
   return hall(need, supplies) === null;
+}
+
+/* ---------- the clock ---------- */
+
+/** When the seat on the clock runs out. Measured from the last move, or from
+    the moment the room filled if nobody has moved yet. */
+export function deadlineFor(state, setup, lastMoveTs, startedTs) {
+  if (state.done) return null;
+  const from = lastMoveTs || startedTs || null;
+  return from ? from + setup.pickMs : null;
+}
+
+/** The pick an expired clock makes: the most valuable LEGAL option, which is
+    what a fantasy auto-pick does, falling back to board order when the host
+    sent no values. Returns null only if nothing at all is legal, which the
+    strand guard is supposed to make impossible. */
+export function autoPick(board, state, seat) {
+  let best = null;
+  for (const [name, rec] of board.players) {
+    if (state.taken.has(name)) continue;
+    for (const [season, bks] of rec.seasons) {
+      for (const slot of bks) {
+        if (openAt(state.rosters[seat], slot, board.caps) <= 0) continue;
+        if (feasibleAfter(board, state, seat, name, slot)) continue;
+        const score = rec.v !== null ? rec.v : -rec.at;      // board order as the fallback ranking
+        if (!best || score > best.score) best = { player: name, season, slot, score, auto: 1 };
+      }
+    }
+  }
+  return best;
 }
