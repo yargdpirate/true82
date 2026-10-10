@@ -18,6 +18,8 @@ import { accountAuth, json, db } from "../_lib/acct.js";
 
 const LIMIT = 82;                       // of course
 export const MIN_RUNS = 10;                    // the 82-0% board's qualifying bar; one dial
+export const MONTH_BEST = 10;                  // v69.5: how many Dailies THIS MONTH counts
+export const MONTH_MIN = 3;                    // ...and how many you need before it ranks you
 const MODES = new Set(["classic", "pro", "cap"]);
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -112,6 +114,70 @@ export const BOARDS = {
            ORDER BY score DESC`,
     args: () => []
   },
+  /* v69.5 THE 82-0 CLUB, the owner's pick from the lab's SPEC: unlimited
+     winners and NO DENOMINATOR. The rate board can be gamed by playing less —
+     eleven seasons with one 82 beats a hundred seasons with eight — and it
+     punishes the player who experiments. The club cannot be gamed by not
+     playing: you are either in it or you are not, and playing more can only
+     ever help you.
+
+     IT EXCLUDES DAILIES for the same reason rate, net and cheapest do (v69.2):
+     a Daily carries a modifier, and market_crash alone would mint perfects that
+     mean something different from a Classic 82-0. The Daily keeps its own two
+     boards.
+
+     Ties break on who got there FIRST, which is the only honest tiebreak for a
+     club: the field is unbounded, so without it an alphabet of GMs on one
+     perfect would be ordered by nothing at all. */
+  club: {
+    title: "The 82-0 club",
+    note: "Every GM with a perfect season. No percentage, no minimum \u2014 playing more can only help you. Dailies have their own boards.",
+    sql: `SELECT r.user_id uid, ${NAME} name, u.tag tag,
+                 COUNT(*) score, MIN(r.created_ts) first_ts
+            FROM runs r JOIN users u ON u.id = r.user_id
+           WHERE r.verified = 1 AND r.user_id IS NOT NULL AND r.official IS NULL
+             AND r.wins = 82
+           GROUP BY r.user_id
+           ORDER BY score DESC, first_ts ASC`,
+    args: () => []
+  },
+
+  /* v69.5 THIS MONTH, the lab's other code change. The problem it solves is
+     arrival time: a cumulative board is already won by the time a player who
+     saw the influencer on 10/22 opens the game, and there is nothing they can
+     do about it. So it is an AVERAGE of your best ${MONTH_BEST} Dailies this
+     month, not a sum — a player three days in competes with a player twenty
+     days in on equal terms, and a wrecked day drops out once you have more than
+     ten.
+
+     THE MINIMUM IS WHY IT IS NOT A LOTTERY. Without one, a single lucky 82 on
+     one day tops the board forever; ${MONTH_MIN} days is low enough that a late
+     arrival clears it inside a long weekend and high enough that one day cannot
+     own the month. Both numbers are dials at the top of this file.
+
+     The month comes from the day key's own first seven characters, so it is the
+     player's LOCAL month, the same convention the key itself uses (v69.2). */
+  month: {
+    title: "This month",
+    note: "Your best " + MONTH_BEST + " Dailies this month, averaged. " + MONTH_MIN + " days to qualify, so arriving late is not losing.",
+    sql: `WITH ranked AS (
+             SELECT r.user_id, r.wins, r.net,
+                    ROW_NUMBER() OVER (PARTITION BY r.user_id ORDER BY r.wins DESC, r.net DESC) rn
+               FROM runs r
+              WHERE r.verified = 1 AND r.user_id IS NOT NULL
+                AND r.official IS NOT NULL AND substr(r.official, 1, 7) = ?
+           ), kept AS (
+             SELECT user_id, COUNT(*) days, AVG(wins) avg_wins, MAX(wins) best
+               FROM ranked WHERE rn <= ${MONTH_BEST} GROUP BY user_id
+           )
+           SELECT k.user_id uid, ${NAME} name, u.tag tag,
+                  ROUND(k.avg_wins, 1) score, k.days days, k.best best
+             FROM kept k JOIN users u ON u.id = k.user_id
+            WHERE k.days >= ${MONTH_MIN}
+            ORDER BY score DESC, k.days DESC`,
+    args: (q) => [/^\d{4}-\d{2}$/.test(q.get("month") || "") ? q.get("month") : utcDay().slice(0, 7)]
+  },
+
   daily: {
     title: "Today's board",
     note: "One attempt a day. The first one counts.",
@@ -143,7 +209,9 @@ export async function onRequestGet(context) {
       ok: true, board: key, title: board.title, note: board.note,
       scope: args.length ? String(args[0]) : null,
       rows: rows.map((r, i) => ({ rank: i + 1, ...r })),
-      minRuns: key === "rate" ? MIN_RUNS : undefined
+      minRuns: key === "rate" ? MIN_RUNS : undefined,
+      minDays: key === "month" ? MONTH_MIN : undefined,
+      bestOf: key === "month" ? MONTH_BEST : undefined
     };
 
     /* "AND WHERE AM I?" — THE REAL ANSWER, NOT THE ONE ON THIS PAGE (v69.2).

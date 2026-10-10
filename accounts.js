@@ -272,6 +272,12 @@
     { key: "streak",   tab: "Streak",   fmt: function (r) { return r.score + (r.score === 1 ? " day" : " days"); } },
     { key: "rate",     tab: "82-0 %",   modes: true,
       fmt: function (r) { return (r.score * 100).toFixed(1) + "% \u00B7 " + r.immortals + " of " + r.runs; } },
+    // v69.5 the owner's two picks from the lab's SPEC
+    { key: "club",     tab: "82-0 club",
+      fmt: function (r) { return r.score + (r.score === 1 ? " perfect" : " perfects"); } },
+    { key: "month",    tab: "This month",
+      fmt: function (r) { return r.score.toFixed(1) + " avg \u00B7 " + r.days + (r.days === 1 ? " day" : " days") +
+                                 (r.best != null ? " \u00B7 best " + r.best : ""); } },
     { key: "cheapest", tab: "Cheapest", fmt: function (r) { return "$" + r.score + "M"; } },
     { key: "net",      tab: "Best net", fmt: function (r) { return signed(r.score); } }
   ];
@@ -549,9 +555,36 @@
     });
   }
 
+  /* ---------- the test door (v69.5) ----------
+     A plain centred link above everything, so the boards can be opened without
+     going through the account face first. The owner asked for it to exercise
+     the accounts and the score recording; it is a TESTING affordance and says
+     so, and the styling is deliberately nothing.
+
+     It is behind laneOn(), like every other part of this file, so it cannot
+     appear on true82.net while ACCT_LIVE is false — on a preview that means
+     `?acct=1`. When the real entry point is designed this is the first thing to
+     delete; nothing else references it. */
+  function testDoor() {
+    try {
+      if (document.getElementById("lbTestDoor")) return;
+      var bar = document.createElement("div");
+      bar.id = "lbTestDoor";
+      bar.setAttribute("style", "text-align:center;padding:8px 12px;font-size:14px");
+      var a = document.createElement("a");
+      a.href = "#";
+      a.id = "lbTestDoorLink";
+      a.textContent = "Leaderboards";
+      a.addEventListener("click", function (e) { e.preventDefault(); openBoards(); });
+      bar.appendChild(a);
+      document.body.insertBefore(bar, document.body.firstChild);
+    } catch (e) {}
+  }
+
   /* ---------- boot ---------- */
   function boot() {
     if (!laneOn()) return;                   // true82.net today: render nothing, request nothing
+    testDoor();                              // v69.5: the plain link to the boards
     renderButton(null);                      // the signed-out button appears immediately
     if (!configured()) return;               // no keys yet: the button opens the sheet and says so
     me().then(renderButton).catch(function () {});

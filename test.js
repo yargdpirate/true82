@@ -2431,10 +2431,12 @@ async function accountLane() {
     let rid = 0;
     const addRun = db.prepare(
       `INSERT INTO runs (id,user_id,mode,seed,verified,wins,net,budget_used,cap_left,official,created_ts)
-       VALUES (?,?,?,?,?,?,?,?,?,?,0)`);
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+    // created_ts rises with insertion order (v69.5), so the club's "who got
+    // there first" tiebreak is exercised rather than left to row order
     const run = (uid, mode, wins, net, verified, budget, day) =>
       addRun.run("r" + (++rid), uid, mode, rid, verified, wins, net, budget === undefined ? null : budget,
-                 budget === undefined ? null : 50 - budget, day || null);
+                 budget === undefined ? null : 50 - budget, day || null, rid);
 
     // ava: 10 classic, 2 of them 82-0, best net 30. ben: 10 classic, 1 immortal.
     // cy: only 3 classic runs -> below the bar, must not appear on the rate board.
@@ -2469,6 +2471,20 @@ async function accountLane() {
     eq("v69.1 board Best net: one row per GM, their best Classic season, verified only",
        net.map((r) => r.name + " " + r.score), ["CY 40", "AVA 30", "BEN 20"]);
 
+    /* v69.5 THE 82-0 CLUB, the owner's pick from the lab's SPEC. The fixture
+       already carries its whole argument: CY has three perfect seasons in three
+       runs and the rate board's 10-run bar SHUTS THEM OUT, which is the
+       complaint the club answers. It counts a perfect in any mode — a perfect
+       Presti season is a perfect season — and ties go to whoever got there
+       first, which is the only honest tiebreak on an unbounded field. */
+    const club = rows("club");
+    eq("v69.5 board 82-0 club: every GM with a perfect, in any mode, most first and the earliest to three winning " +
+       "the tie \u2014 and the 3-for-3 the rate board's bar shut out is on it",
+       [club.map((r) => r.name + " x" + r.score), rate.map((r) => r.name)],
+       [["AVA x3", "CY x3", "BEN x2"], ["AVA", "BEN"]]);
+    eq("v69.5 board 82-0 club: the unverified perfect, the anonymous one and the DAILY perfect are all still out",
+       club.reduce((n, r) => n + r.score, 0), 8);
+
     const daily = rows("daily", "2026-10-03");
     eq("v69.1 board Today: only that day's verified rows", daily.map((r) => r.name + " " + r.score), ["AVA 80"]);
 
@@ -2478,6 +2494,25 @@ async function accountLane() {
     eq("v69.1 board Streak: longest CONSECUTIVE run of Dailies, computed from the rows (a gap splits it, and the " +
        "answer does not depend on the order the days were written)",
        streak.map((r) => r.name + " best=" + r.score + " days=" + r.days), ["BEN best=3 days=5", "AVA best=1 days=1"]);
+
+    /* v69.5 THIS MONTH, the lab's other code change, and the reason it is an
+       AVERAGE rather than a sum: a cumulative board is already won by the time
+       a player who saw the influencer on 10/22 opens the game. These rows go in
+       AFTER the streak check on purpose — twelve consecutive Dailies would
+       otherwise rewrite the streak fixture underneath it. */
+    for (let i = 0; i < 10; i++) run(1, "cap", 80, 2, 1, 20, "2026-11-" + String(i + 1).padStart(2, "0"));
+    run(1, "cap", 10, -9, 1, 20, "2026-11-11");
+    run(1, "cap", 12, -8, 1, 20, "2026-11-12");
+
+    const monthNov = rows("month", "2026-11");
+    eq("v69.5 board This month: the best " + lb.MONTH_BEST + " of twelve Dailies are averaged and the two wrecked " +
+       "days drop out entirely, so playing a bad day never costs you anything",
+       monthNov.map((r) => r.name + " " + r.score + " over " + r.days + " best " + r.best), ["AVA 80 over 10 best 80"]);
+    eq("v69.5 board This month: " + lb.MONTH_MIN + " days to qualify \u2014 BEN's five September Dailies rank, " +
+       "AVA's single October one does not, and the month comes from the day key's own first seven characters",
+       [rows("month", "2026-09").map((r) => r.name + " " + r.score + " over " + r.days),
+        rows("month", "2026-10").map((r) => r.name), rows("month", "2026-12").length],
+       [["BEN 70 over 5"], [], 0]);
 
     db.close();
   }
