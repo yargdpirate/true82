@@ -2964,14 +2964,116 @@ async function accountLane() {
        the challenge registry are in scope there and not here. */
   }
 
+  // (6f) THE DRAFT ROOM (v70): three people in one snake draft. The draft
+  // itself is not new — THE REDRAFTED has shipped it against two bots since
+  // v55 — so these pin only what a SHARED draft adds: whose turn it is, and
+  // whether a pick is legal, both decided on the server.
+  {
+    const RM = await import("./functions/_lib/room.js");
+
+    eq("v70 the snake order snakes: three seats over five rounds is 0,1,2 then 2,1,0, and a seat gets the turn " +
+       "double at the turn",
+       [RM.snakeOrder([0, 1, 2], 5), RM.snakeOrder([2, 0, 1], 2)],
+       [[0, 1, 2, 2, 1, 0, 0, 1, 2, 2, 1, 0, 0, 1, 2], [2, 0, 1, 1, 0, 2]]);
+
+    const board = RM.parseBoard({
+      v: 1, cls: "test", diff: "pro", size: 5, caps: { G: 2, F: 2, C: 1 },
+      p: [
+        { n: "G One", s: [[2020, "G"]] }, { n: "G Two", s: [[2020, "G"]] }, { n: "G Three", s: [[2020, "G"]] },
+        { n: "G Four", s: [[2020, "G"]] }, { n: "G Five", s: [[2020, "G"]] }, { n: "G Six", s: [[2020, "G"]] },
+        { n: "F One", s: [[2020, "F"]] }, { n: "F Two", s: [[2020, "F"]] }, { n: "F Three", s: [[2020, "F"]] },
+        { n: "F Four", s: [[2020, "F"]] }, { n: "F Five", s: [[2020, "F"]] }, { n: "F Six", s: [[2020, "F"]] },
+        { n: "C One", s: [[2020, "C"]] }, { n: "C Two", s: [[2020, "C"]] }, { n: "C Three", s: [[2020, "C"]] },
+        { n: "Swing", s: [[2019, "G"], [2021, "F"]] }
+      ]
+    });
+    eq("v70 the frozen board parses per-season buckets and unions them for capacity, and a swing player counts " +
+       "once in each",
+       [board.players.size, board.players.get("Swing").buckets.sort(), board.players.get("Swing").seasons.get(2021)],
+       [16, ["F", "G"], ["F"]]);
+    eq("v70 a malformed board is refused whole rather than half-loaded (a duplicate name would make `taken` " +
+       "ambiguous, and an empty bucket string is not a position)",
+       [RM.parseBoard("{"), RM.parseBoard({ p: [] }),
+        RM.parseBoard({ p: [{ n: "A", s: [[2020, "G"]] }, { n: "A", s: [[2020, "F"]] }] }),
+        RM.parseBoard({ p: [{ n: "A", s: [[2020, "X"]] }] })],
+       [null, null, null, null]);
+
+    const order = RM.snakeOrder([0, 1, 2], 5);
+    const moves = [];
+    const st = () => RM.deriveState(order, moves);
+    eq("v70 the turn is DERIVED from the log, never stored: an empty log is seat 0 round 1",
+       [st().at, st().seat, st().round, st().done], [0, 0, 1, false]);
+
+    eq("v70 out of turn is refused before anything else is even looked at",
+       RM.validate(board, st(), 1, { player: "G One", season: 2020, slot: "G" }), "not your turn");
+    eq("v70 the four refusals a shared pool needs: not on the board, already taken, the season does not qualify " +
+       "at that slot, and the slot is full",
+       [RM.validate(board, st(), 0, { player: "Ghost", season: 2020, slot: "G" }),
+        RM.validate(board, st(), 0, { player: "G One", season: 1999, slot: "G" }),
+        RM.validate(board, st(), 0, { player: "G One", season: 2020, slot: "F" }),
+        RM.validate(board, st(), 0, { player: "G One", season: 2020, slot: "G" })],
+       ["that player is not on this board", "that season is not on this board",
+        "that season does not qualify at F", null]);
+
+    // play it out, each seat taking the first thing that is legal
+    let guard = 0;
+    while (!st().done && guard++ < 40) {
+      const s = st(), seat = s.seat;
+      let made = null;
+      for (const [name, rec] of board.players) {
+        if (s.taken.has(name)) continue;
+        for (const [season, bks] of rec.seasons) {
+          for (const slot of bks) {
+            if (RM.openAt(s.rosters[seat], slot, board.caps) > 0 &&
+                !RM.feasibleAfter(board, s, seat, name, slot)) { made = { player: name, season, slot }; break; }
+          }
+          if (made) break;
+        }
+        if (made) break;
+      }
+      if (!made) break;
+      moves.push({ seq: s.at, seat, player: made.player, season: made.season, slot: made.slot });
+    }
+    const shapes = st().rosters.map((r) => {
+      const n = { G: 0, F: 0, C: 0 }; r.forEach((p) => n[p.slot]++);
+      return r.length + ":" + n.G + n.F + n.C;
+    });
+    eq("v70 fifteen picks fill three legal 2G/2F/1C rosters, nobody twice, and the seats follow the snake",
+       [moves.length, new Set(moves.map((m) => m.player)).size, shapes,
+        moves.map((m) => m.seat), st().done],
+       [15, 15, ["5:221", "5:221", "5:221"], order, true]);
+
+    /* THE STRAND GUARD is the rule that makes an exhaustible pool survivable,
+       and it is the one the server could not have taken on trust: with exactly
+       three centres on the board, the moment a seat tries to take the third
+       one into a forward slot the other two seats can never finish. */
+    const tight = RM.parseBoard({
+      v: 1, cls: "t", diff: "pro", size: 5, caps: { G: 2, F: 2, C: 1 },
+      p: [...Array(6)].map((_, i) => ({ n: "G" + i, s: [[2020, "G"]] }))
+        .concat([...Array(6)].map((_, i) => ({ n: "F" + i, s: [[2020, "F"]] })))
+        .concat([{ n: "Big A", s: [[2020, "CF"]] }, { n: "Big B", s: [[2020, "C"]] }, { n: "Big C", s: [[2020, "C"]] }])
+    });
+    const empty = RM.deriveState(order, []);
+    eq("v70 THE STRAND GUARD: taking the only flexible big into a FORWARD slot leaves three seats needing three " +
+       "centres and two left, so the server refuses the pick the way the screen does",
+       [RM.validate(tight, empty, 0, { player: "Big A", season: 2020, slot: "F" }),
+        RM.validate(tight, empty, 0, { player: "Big A", season: 2020, slot: "C" })],
+       ["that strands the board at C", null]);
+    eq("v70 a board that cannot field three teams is refused when the room OPENS, not three picks from the end",
+       [RM.boardViable(board), RM.boardViable(tight),
+        RM.boardViable(RM.parseBoard({ p: [...Array(15)].map((_, i) => ({ n: "G" + i, s: [[2020, "G"]] })) }))],
+       [true, true, false]);
+  }
+
   // (7) the paste rule (migrations/MIGRATIONS-NOTES.md): the D1 console can
   // smart-convert a double hyphen, so a migration carries NO comment lines, and
   // every statement must be independently repeat-safe.
   {
-    for (const [file, n] of [["0030_accounts_min_v1.sql", 4], ["0031_runs_boards_v1.sql", 7]]) {
+    for (const [file, n] of [["0030_accounts_min_v1.sql", 4], ["0031_runs_boards_v1.sql", 7],
+                             ["0032_rooms_v1.sql", 8]]) {
       const sql = fs.readFileSync("migrations/" + file, "utf8");
       const stmts = sql.split(";").map((x) => x.trim()).filter(Boolean);
-      eq("v69 migration " + file.slice(0, 4) + ": zero comment lines, and every statement is idempotent",
+      eq("migration " + file.slice(0, 4) + ": zero comment lines, and every statement is idempotent",
          [sql.indexOf("--"), stmts.length, stmts.every((x) => /IF NOT EXISTS/i.test(x))],
          [-1, n, true]);
     }
