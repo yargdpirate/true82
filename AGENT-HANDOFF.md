@@ -1,5 +1,40 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-10): V69.3 IS DEPLOYED AND THE OWNER HAS CONFIGURED IT. TEN DAYS TO THE DEBUT.**
+> He created the Clerk test users, set `CLERK_SECRET_KEY`, `TEST_AUTH_SECRET` and `TEST_USER_IDS` on
+> **Preview only**, and redeployed. So the thing that cost him a whole morning is now fixed at the root:
+> an agent can drive SEVERAL REAL ACCOUNTS against the deployment instead of simulating them.
+>
+> **NOTHING HAS BEEN RUN AGAINST IT YET.** The first job of the next session is to run it and report:
+> ```
+> node tools/boards-live.js --clerk --url https://v69-boards.true82.pages.dev --secret <TEST_AUTH_SECRET>
+> ```
+> (`--list` prints the roster and stops. Ask him for the secret; it is not in the repo and must never be.)
+> That runs the full 32-check pass with tokens CLERK SIGNED, so a wrong `CLERK_JWT_KEY`, a wrong
+> `AUTHORIZED_PARTIES`, or an env var that never got baked into a deployment fails THERE rather than
+> being rediscovered by hand. Expect the first run to find something; that is what it is for.
+>
+> **TWO NEW SEAMS, both documented in SECURITY.md (read that before touching either):**
+> - `functions/api/testauth.js` mints real Clerk session tokens on a preview. Four guards, each
+>   answering 404: not the live host, no endpoint without `TEST_AUTH_SECRET`, a constant-time secret
+>   compare, and an allow-list of user ids. It holds NO verification logic and never reads
+>   `CLERK_JWT_KEY`; `_lib/auth.js` is untouched and still the only thing that validates anything.
+>   Clerk adds a fifth guard for free: `POST /v1/sessions` is testing-only and unavailable on
+>   production instances. Six checks in test.js pin all of this.
+> - `acct.js` `db()` routes account-lane reads and writes to **`DB_PREVIEW`** when one is bound on a
+>   non-live host, and `acctEnv()` hands auth.js the same binding so a preview sign-in creates its user
+>   there too. **Check whether he bound a preview D1**: if not, preview test rows are STILL landing in
+>   production and the cleanup list in 0000003 still applies. With none bound the behaviour is exactly
+>   what shipped.
+>
+> **WHAT THIS STILL CANNOT TEST, and it has not changed:** Clerk's browser sign-in UI and the clerk-js
+> bundle. That needs one human sign-in per release. Everything downstream of a token is covered now.
+>
+> **STILL OPEN AND HIS TO DECIDE** (nothing below is blocked on code): the seven decisions at the end of
+> `docs/leaderboard-lab/SPEC.md`, the four weak pieces named in section 0000004, and the server-minted
+> Daily seed designed in 0000003 — whose three launch-week seeds are STILL in plaintext in
+> `daily-core.js:157` with ten days to go.
+
 > **FIRST THING (2026-10-04, later): V69.2. THE BOARDS WERE NOT BROKEN, BUT FOUR THINGS ON THEM WERE, AND
 > ONE OF THEM WOULD HAVE EMPTIED THE DAILY BOARD FOR EVERY AMERICAN PLAYER DURING THE INFLUENCER WINDOW.**
 > The account lane works end to end: that is now PROVEN rather than believed, by two harnesses that are
