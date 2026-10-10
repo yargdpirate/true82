@@ -123,11 +123,12 @@ function legalMoves(ctx, gi) {
   return out;
 }
 
-function runOne(seed) {
+function runOne(seed) { return runOneWith(CLASS, DIFF, seed); }
+function runOneWith(cls, diff, seed) {
   const ctx = makeCtx();
   seedRandom(ctx, seed);
-  ctx.SD_CLASS_ID = CLASS;
-  ctx.SD_DIFF = DIFF;
+  ctx.SD_CLASS_ID = cls;
+  ctx.SD_DIFF = diff;
   ctx.SD = null;
   vm.runInContext("SD_GMS.forEach(function (g) { g.ai = 0; });", ctx);   // all three seats are people
   ctx.SD = ctx.sdFresh();
@@ -153,6 +154,37 @@ function runOne(seed) {
   });
   teams.sort((a, b) => (b.wins - a.wins) || (b.net - a.net) || (a.gi - b.gi));
   return { ok: true, seats: ctx.SD.seats.slice(), seq: ctx.SD.seq.slice(), log, teams };
+}
+
+/* ---------- the sweep: every class, both difficulties ----------
+   The robustness bar the owner asked for. PRO and PICKUP are different games
+   for this purpose: PRO drafts the real board (2016: 32 names) and PICKUP the
+   curated twenty, so PICKUP is the TIGHTER pool and the harder case for the
+   strand guard — fifteen exclusive picks out of twenty with 2G/2F/1C to fill
+   three times over leaves very little room to be wrong. */
+if (argv.includes("--all")) {
+  const probe = makeCtx();
+  const ids = probe.sdOrderAll();
+  let bad = [], drafts = 0;
+  const seeds = [4242, 90210, 777001];
+  for (const id of ids) {
+    for (const diff of ["pickup", "pro"]) {
+      for (const seed of seeds) {
+        const r = runOneWith(id, diff, seed);
+        drafts++;
+        if (!r.ok) { bad.push(id + ":" + diff + ":" + seed + " " + r.why); continue; }
+        const names = r.log.map((m) => m.name);
+        if (new Set(names).size !== names.length) bad.push(id + ":" + diff + ":" + seed + " a player went twice");
+        const shapes = r.teams.map((t) => t.five.length).join(",");
+        if (shapes !== "5,5,5") bad.push(id + ":" + diff + ":" + seed + " rosters " + shapes);
+      }
+    }
+  }
+  console.log(drafts + " drafts: " + ids.length + " classes x 2 difficulties x " + seeds.length + " seeds");
+  if (bad.length) { bad.slice(0, 20).forEach((b) => console.log("  BAD " + b)); }
+  console.log(bad.length ? bad.length + " PROBLEMS" : "every class fields three legal five-player teams in both difficulties");
+  process.exitCode = bad.length ? 1 : 0;
+  return;
 }
 
 /* ---------- run ---------- */
