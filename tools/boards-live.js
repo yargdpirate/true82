@@ -487,11 +487,18 @@ async function main() {
     if (r.rows.length) {
       const probe = r.rows[0];
       const pub = await board("daily", "&day=" + probe.day);
-      const field = pub.rows.length;
-      const place = pub.rows.findIndex((x) => x.name === gA.shown) + 1;
+      /* COMPETITION RANKING, not row position. mydays uses RANK(), so a tie
+         SHARES a place — and every bot plays a Daily identically, so ties are
+         the normal case here, not the exotic one. Comparing against
+         findIndex() passed the first time only because that GM happened to sit
+         first, and failed the moment a second pass put six identical rows on
+         one day. The oracle has to count who is strictly better. */
+      const me = pub.rows.find((x) => x.name === gA.shown) || null;
+      const better = me ? pub.rows.filter((x) =>
+        x.score > me.score || (x.score === me.score && (x.net || 0) > (me.net || 0))).length : null;
       eqBoard("LIVE board Your Dailies: the placement and the field size agree with the public board for the " +
-              "same day (two different queries over the same rows)",
-        [probe.rank, probe.field], [place, field]);
+              "same day, ties shared (two different queries over the same rows)",
+        [probe.rank, probe.field], [better === null ? null : better + 1, pub.rows.length]);
     }
   }
   {
