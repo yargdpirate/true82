@@ -1,5 +1,64 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-10, later): V69.3 IS VERIFIED. 32 OF 32 CHECKS PASS AGAINST THE DEPLOYMENT WITH
+> CLERK-SIGNED TOKENS, AND THE PREVIEW'S OWN DATABASE IS CONFIRMED ROUTING.** The job the last handoff
+> left as "the first job of the next session" is done. Command, for the next time:
+> ```
+> T82_TEST_SECRET=<secret> node tools/boards-live.js --clerk --url https://v69-boards.true82.pages.dev
+> ```
+>
+> **THE DB_PREVIEW PROOF IS THE BOARD ITSELF, not a claim.** Best net came back with LiveTest A +27.13 and
+> LiveTest B +24.82 and NOTHING ELSE: the owner's own 10/04 phone runs are in production and would be
+> sitting on that board if the preview were still reading it. Before the run the same boards answered 200
+> with `rows: []` and no error header, which also proves 0030 and 0031 are applied to `db_preview`. Test
+> rows no longer touch his real boards and the `created_ts` guesswork in 0000003 is retired. The harness
+> itself is blind to which database it hit — it passes either way — so this is the check to repeat by hand
+> whenever the binding is in doubt.
+>
+> **HIS SETUP TOOK THREE ATTEMPTS, and both wrong turns are worth knowing because they recur:**
+> 1. `TEST_USER_IDS` held the five EMAIL ADDRESSES. The roster endpoint happily served them (it only
+>    echoes the env var), so `--list` looked right and minting failed one layer down. Clerk's
+>    `POST /v1/sessions` wants `user_...` ids. SECURITY.md step 1 already said so.
+> 2. `CLERK_SECRET_KEY` was first absent from the deployment (`why: "no-CLERK_SECRET_KEY-on-this-
+>    environment"`), then present but rejected by Clerk 401 "The provided Clerk Secret Key is invalid" —
+>    the publishable key, or the wrong instance. **testauth.js passing Clerk's error through verbatim is
+>    what made both diagnosable in one curl each.** Keep that property in anything like it.
+>
+> **WHAT THE RUN PROVED BEYOND "IT WORKS":**
+> - The 10/20-10/22 emptiness is fixed ON A DEPLOYMENT: the Today board filled for 2026-10-10, which no
+>   deployment had ever done before (the local-day fix from v69.2).
+> - D1 really runs the streak query — `julianday()` with `ROW_NUMBER() OVER ()` returned 4/2/1 days. That
+>   was faith until now; SQLite agreeing locally is not the same thing.
+> - Four real Dailies (10/07 classic upside_down, 10/08 pro millennium_men, 10/09 classic screen_setter,
+>   10/10 cap journeymen) were re-derived server-side and agreed with the client.
+> - The submission law holds through real D1 both ways: a false 82-0 stored unverified, and the UNIQUE
+>   collision surfaced as `alreadyToday` rather than a 500.
+> - Cold isolate 555 ms, warm 96 ms, reproduced across three deployments. **The Workers Paid plan stays
+>   unnecessary**; `why: "engine"` has never once appeared.
+>
+> **WHAT IT STILL CANNOT TEST:** Clerk's browser sign-in UI and the clerk-js bundle (one human sign-in per
+> release, unchanged), and **draft variety** — all three GMs posted an identical 47-35 on today's Daily
+> because the harness is one deterministic bot on one seed. That says nothing about whether real players
+> on a shared roll draft differently; that is `tools/daily-crowd.js`'s job and it should be run against
+> the launch-week seeds separately.
+>
+> **THE 10/5 TAG REFRESH IS COMMITTED** (`c92cb4b`), a real rebuild from live D1 (`built`
+> 2026-10-05T14:53:01Z, four bytes smaller than 9/28: one settled vote, no roster change), with the
+> `t82-labels` meta matching. **BUT THE STANDING "FAST-FORWARD MAIN AT HIS WORD" CHORE NO LONGER WORKS
+> FOR TAG REFRESHES.** Local `c-code-clean` is now `origin/main` + 23 v69 commits + the labels commit, so
+> a fast-forward would ship all of v69 to true82.net. Carry a refresh to main by cherry-picking its one
+> commit. `origin/c-code-clean` is still clean at v68.2 and nothing here is pushed.
+>
+> **STILL OPEN AND HIS** (nothing blocked on code): the seven decisions ending `docs/leaderboard-lab/SPEC.md`,
+> the four weak pieces in 0000004, the `ACCT_LIVE` flip, the Clerk **production** instance (DNS up to 48h
+> — the long pole with ten days to go), the five public pages still promising "no account", and one stray
+> anonymous row in production from the v69.2 audit (`sid = sidedgeprobe1`).
+>
+> **IN PROGRESS: THE SERVER-MINTED DAILY SEED**, at his word ("then do the daily seeds"), built to the
+> design in 0000003 — against that section's own recommendation to ship it after the debut. His call, and
+> the right one: shipping it after 10/22 would miss the only thing it is for, since the three boards the
+> influencer films are published in plaintext today.
+
 > **FIRST THING (2026-10-10): V69.3 IS DEPLOYED AND THE OWNER HAS CONFIGURED IT. TEN DAYS TO THE DEBUT.**
 > He created the Clerk test users, set `CLERK_SECRET_KEY`, `TEST_AUTH_SECRET` and `TEST_USER_IDS` on
 > **Preview only**, and redeployed. So the thing that cost him a whole morning is now fixed at the root:
