@@ -51,7 +51,10 @@
         return {
           n: rec.name,
           v: Math.round((g.valueOf ? g.valueOf(rec.best) : 0) * 100) / 100,
-          s: rec.seasons.map(function (row) { return [row[IDX.season], g.sdRowBuckets(row).join("")]; })
+          s: rec.seasons.map(function (row) {
+            return [row[IDX.season], g.sdRowBuckets(row).join(""),
+                    Math.round((g.valueOf ? g.valueOf(row) : 0) * 100) / 100];
+          })
         };
       })
     };
@@ -157,7 +160,9 @@
   function stopPoll() { if (S && S.poll) { clearTimeout(S.poll); S.poll = null; } }
   function poll(first) {
     if (!S) return;
-    var url = "/api/room?id=" + encodeURIComponent(S.id) + (S.board ? "" : "&board=1");
+    /* `score=1` is only honoured on a FINISHED room, so asking for it always
+       is free during the draft and saves a second round trip at the end. */
+    var url = "/api/room?id=" + encodeURIComponent(S.id) + (S.board ? "" : "&board=1") + "&score=1";
     api("GET", url).then(function (v) {
       if (!S) return;
       if (!v || !v.ok) { renderLobby(why(v)); return; }
@@ -199,8 +204,23 @@
       return;
     }
 
+    /* THE VERDICT. The three projected seasons, scored by the server with the
+       same engine and the same label taxes every other board uses, so the
+       record here is the record the single-player Redraft would have shown. */
+    var verdict = "";
+    if (v.done && v.verdict && v.verdict.length) {
+      var podium = v.verdict.slice().sort(function (a, b) { return a.place - b.place; });
+      verdict = '<ol class="lb-list">' + podium.map(function (t) {
+        return '<li class="lb-row' + (t.seat === mine ? " lb-you" : "") + '">' +
+          '<span class="lb-rank">' + t.place + "</span>" +
+          '<span class="lb-name">Seat ' + (t.seat + 1) + (t.seat === mine ? " (you)" : "") + "</span>" +
+          '<span class="lb-score">' + t.wins + "-" + t.losses + " \u00b7 " +
+          (t.net > 0 ? "+" : "") + t.net + "</span></li>";
+      }).join("") + "</ol>";
+    }
+
     var turnLine = v.done
-      ? '<p class="acct-p"><b>The draft is done.</b></p>'
+      ? '<p class="acct-p"><b>The draft is done.</b></p>' + verdict
       : '<p class="acct-p">' + (yours ? "<b>Your pick</b>" : "Seat " + (v.turn + 1) + " is on the clock") +
         " · pick " + (v.at + 1) + " of 15" +
         (secs != null ? " · " + secs + "s" : "") + "</p>";
@@ -224,7 +244,7 @@
         p.s.forEach(function (sn) {
           sn[1].split("").forEach(function (slot) {
             if (openAt(v.rosters[mine], slot) <= 0) return;
-            rows.push({ n: p.n, season: sn[0], slot: slot, v: p.v || 0 });
+            rows.push({ n: p.n, season: sn[0], slot: slot, v: sn.length > 2 ? sn[2] : (p.v || 0) });
           });
         });
       });

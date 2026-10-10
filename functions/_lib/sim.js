@@ -58,6 +58,14 @@ export async function dailyBoard(env, dayKey) {
 }
 
 let ready = null;
+let ROWS = null;              // name -> Map(season -> row), built by engine()
+
+/** One player's row for one season, or null. Needs engine() to have run. */
+export function rowFor(name, season) {
+  if (!ROWS) return null;
+  const m = ROWS.get(String(name));
+  return (m && m.get(Number(season))) || null;
+}
 
 /** The initialised engine, or null if it could not be loaded. Never throws. */
 export function engine(context) {
@@ -102,6 +110,27 @@ export function engine(context) {
         if (lab && lab.ok) T82.setLabels(await lab.json());
       } catch { /* scores as it did before; see above */ }
 
+      /* v70.4 A NAME-AND-SEASON INDEX, for the draft room.
+         Everything else here replays a (mode, seed, actions) log, where rows
+         are resolved from the ticket the draft dealt. A room's roster has no
+         tickets — it is a list of (player, season) a person chose — so it needs
+         a direct lookup, and the engine's own POOLS are keyed by franchise and
+         decade, not by name. Built once, from the same payload the engine was
+         initialised with, so it cannot disagree with it. */
+      try {
+        const IDX = T82.t.IDX, byName = new Map();
+        for (const row of (data.players || [])) {
+          const nm = row[IDX.name];
+          let m = byName.get(nm);
+          if (!m) { m = new Map(); byName.set(nm, m); }
+          /* a season can appear twice for a traded player; the engine's own
+             convention is the row with the most minutes, so keep that one */
+          const prev = m.get(row[IDX.season]);
+          if (!prev || (row[IDX.mp] || 0) > (prev[IDX.mp] || 0)) m.set(row[IDX.season], row);
+        }
+        ROWS = byName;
+      } catch { ROWS = null; }
+
       return T82;
     } catch {
       return null;
@@ -141,4 +170,48 @@ export async function dataVersion(context) {
 export async function labelsReady(context) {
   const T = await engine(context);
   try { return !!(T && T.labelsReady && T.labelsReady()); } catch { return false; }
+}
+
+/* ---------- SCORING A FINISHED DRAFT ROOM (v70.4) ----------
+   The Redraft's own verdict, computed here instead of in a browser. Each seat's
+   five (player, season, slot) become rows and bucket slots, and the engine
+   projects the season exactly as app.js `sdFinish` does.
+
+   NO PER-GAME REALIZATION, which is the owner's 2026-08-05 ruling for this mode
+   ("the luck spread was reading as verdict"): the record comes straight off the
+   projected net. That is also why the seed below is a CONSTANT and not a clock
+   reading — app.js passes `Date.now()`, which looks alarming and changes
+   nothing, verified across four seeds. A constant makes the room's result
+   reproducible, which a shared result has to be: three people are going to
+   compare it.
+
+   The engine is the SAME one /api/run verifies with, labels and all, so a room
+   is scored on the terms every other board already uses. */
+export async function scoreRosters(context, rosters) {
+  const T = await engine(context);
+  if (!T || !ROWS) return null;
+  const IDX = T.t.IDX;
+  const out = [];
+  for (let seat = 0; seat < rosters.length; seat++) {
+    const rows = [], slots = [];
+    for (const p of rosters[seat]) {
+      const row = rowFor(p.player, p.season);
+      if (!row) return null;                       // an unresolvable roster is not a score
+      rows.push(row); slots.push(p.slot);
+    }
+    if (!rows.length) { out.push({ seat, wins: 0, net: 0, five: [] }); continue; }
+    try {
+      const S = T.newState("classic", 82000 + seat, null);
+      const e = T.engine(S, rows, slots);
+      out.push({
+        seat, wins: e.winTally, losses: 82 - e.winTally,
+        net: Math.round(e.net * 100) / 100,
+        five: rows.map((r, i) => ({ name: r[IDX.name], season: r[IDX.season], slot: slots[i] }))
+      });
+    } catch { return null; }
+  }
+  /* the podium: wins, then net, then seat order, the same tiebreak sdFinish uses */
+  const rank = out.slice().sort((a, b) => (b.wins - a.wins) || (b.net - a.net) || (a.seat - b.seat));
+  rank.forEach((t, i) => { t.place = i + 1; });
+  return out;
 }

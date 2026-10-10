@@ -104,14 +104,22 @@ export function parseBoard(json) {
   for (const row of b.p) {
     if (!row || typeof row.n !== "string" || !Array.isArray(row.s) || !row.s.length) return null;
     const seasons = new Map();
+    const seasonVal = new Map();
     const union = new Set();
     for (const s of row.s) {
-      if (!Array.isArray(s) || s.length !== 2) return null;
+      if (!Array.isArray(s) || s.length < 2) return null;
       const yr = Number(s[0]);
       if (!Number.isInteger(yr) || yr < 1946 || yr > 2100) return null;
       const bk = String(s[1] || "").split("").filter((c) => c === "G" || c === "F" || c === "C");
       if (!bk.length) return null;
+      /* A PER-SEASON value, because a player is not one thing. Without it an
+         auto-pick can tell you WHO is worth taking and not WHICH YEAR of him,
+         so it takes whichever season happens to come first — which in practice
+         meant rosters full of rookie years. Optional, so an older board still
+         parses; those fall back to the player's single value. */
+      const sv = Number(s[2]);
       seasons.set(yr, bk);
+      seasonVal.set(yr, Number.isFinite(sv) ? sv : null);
       bk.forEach((c) => union.add(c));
     }
     if (players.has(row.n)) return null;              // a duplicate name would make "taken" ambiguous
@@ -120,7 +128,8 @@ export function parseBoard(json) {
        absent, auto-pick falls back to the board's own order, which is already a
        ranking (the real draft order on a PRO board). */
     const val = Number(row.v);
-    players.set(row.n, { seasons, buckets: [...union], v: Number.isFinite(val) ? val : null, at: players.size });
+    players.set(row.n, { seasons, seasonVal, buckets: [...union],
+                         v: Number.isFinite(val) ? val : null, at: players.size });
   }
   return {
     cls: String(b.cls || ""), diff: b.diff === "pickup" ? "pickup" : "pro",
@@ -237,7 +246,11 @@ export function autoPick(board, state, seat) {
       for (const slot of bks) {
         if (openAt(state.rosters[seat], slot, board.caps) <= 0) continue;
         if (feasibleAfter(board, state, seat, name, slot)) continue;
-        const score = rec.v !== null ? rec.v : -rec.at;      // board order as the fallback ranking
+        /* rank the (player, SEASON) pair, not the player: per-season value
+           first, then the player's own, then board order */
+        const sv = rec.seasonVal ? rec.seasonVal.get(season) : null;
+        const score = sv !== null && sv !== undefined ? sv
+                    : (rec.v !== null ? rec.v : -rec.at);
         if (!best || score > best.score) best = { player: name, season, slot, score, auto: 1 };
       }
     }

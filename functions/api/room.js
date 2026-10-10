@@ -19,6 +19,7 @@
    READS ARE CHEAP AND MEANT TO BE POLLED: `since` returns only the moves after
    a sequence number, so the common poll is an empty array. */
 import { accountAuth, json, db } from "../_lib/acct.js";
+import { scoreRosters } from "../_lib/sim.js";
 import { parseBoard, parseSetup, deriveState, validate, snakeOrder, boardViable,
          deadlineFor, autoPick, PACES, DEFAULT_PACE, SEATS, ROSTER } from "../_lib/room.js";
 
@@ -267,6 +268,19 @@ export async function onRequest(context) {
         after.room.state = "done";
       }
       return json(view(after, st, order, after.moves.slice(state.at), clockOf(after, st)));
+    }
+
+    /* ---------- the verdict ----------
+       Scored on demand rather than stored, because it is a pure function of
+       the move log and storing it would be a second source of truth — the same
+       rule the rest of this file follows. It is only computed for a FINISHED
+       room, so a poll during the draft never pays for it. */
+    if (op === "get" && state.done && q.get("score") === "1") {
+      const teams = await scoreRosters(context, state.rosters);
+      if (!teams) return json(Object.assign(view(r, state, order, [], clockOf(r, state)),
+        { seat: mine ? mine.seat : null, verdict: null, why: "no-engine" }));
+      return json(Object.assign(view(r, state, order, r.moves, clockOf(r, state)),
+        { seat: mine ? mine.seat : null, verdict: teams }));
     }
 
     /* ---------- read ---------- */

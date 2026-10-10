@@ -25,6 +25,8 @@
 # the keys and that this list matches). HTML pages and labels.json are never here: they keep revalidating.
 /accounts.js
   Cache-Control: public, max-age=31536000, immutable
+/room-ui.js
+  Cache-Control: public, max-age=31536000, immutable
 /app.js
   Cache-Control: public, max-age=31536000, immutable
 /styles.css

@@ -96,16 +96,52 @@ function buildBoard(cls, diff) {
   vm.runInContext("initData(initDataInput); DATA_READY = true; sdDeriveClasses();", ctx);
   ctx.draftsInput = JSON.parse(fs.readFileSync(path.join(ROOT, "redraft-drafts.json"), "utf8")).c;
   vm.runInContext("SD_DRAFTS = draftsInput;", ctx);
+  /* THE LABEL TAXES ARE PART OF THE SCORE (v69.2). The Worker loads labels.json
+     into its engine, and so does every browser; a harness that skips them
+     scores on a DIFFERENT engine and agrees with nothing. This is the repo's
+     own trap — handoff 0000002b, trap five — and it has caught two sessions. */
+  try {
+    const lab = JSON.parse(fs.readFileSync(path.join(ROOT, "labels.json"), "utf8"));
+    ctx.labelsInput = lab;
+    vm.runInContext("T82.setLabels(labelsInput);", ctx);
+  } catch (e) { console.log("NOTE: labels.json did not load; scores will not match the Worker"); }
   ctx.SD_CLASS_ID = cls; ctx.SD_DIFF = diff; ctx.SD = null;
   const pool = ctx.sdBuildPool();
   const IDX = ctx.IDX;
+  LOCAL = ctx;
   return {
     v: 1, cls, diff, size: 5, caps: { G: 2, F: 2, C: 1 },
     p: pool.list.map((rec) => ({
       n: rec.name,
-      s: rec.seasons.map((row) => [row[IDX.season], ctx.sdRowBuckets(row).join("")])
+      v: Math.round(ctx.valueOf(rec.best) * 100) / 100,
+      s: rec.seasons.map((row) => [row[IDX.season], ctx.sdRowBuckets(row).join(""),
+                                   Math.round(ctx.valueOf(row) * 100) / 100])
     }))
   };
+}
+
+let LOCAL = null;     // the sandbox buildBoard used, kept for the score cross-check
+
+/* What a BROWSER would put on the screen for this roster: the same engine call
+   app.js sdFinish makes, with labels loaded. If the Worker's verdict and this
+   ever disagree, the room is showing three people a record none of them would
+   have seen in the single-player mode. */
+function scoreLocally(rosters) {
+  const T = LOCAL.T82, IDX = LOCAL.IDX;
+  const byName = new Map();
+  for (const row of (LOCAL.initDataInput && LOCAL.initDataInput.players) || []) {
+    const nm = row[IDX.name];
+    let m = byName.get(nm); if (!m) { m = new Map(); byName.set(nm, m); }
+    const prev = m.get(row[IDX.season]);
+    if (!prev || (row[IDX.mp] || 0) > (prev[IDX.mp] || 0)) m.set(row[IDX.season], row);
+  }
+  return rosters.map((roster, seat) => {
+    const rows = roster.map((p) => (byName.get(p.player) || new Map()).get(p.season));
+    if (rows.some((r) => !r)) return null;
+    const S = T.newState("classic", 82000 + seat, null);
+    const e = T.engine(S, rows, roster.map((p) => p.slot));
+    return { seat, wins: e.winTally, net: Math.round(e.net * 100) / 100 };
+  });
 }
 
 (async function main() {
@@ -159,19 +195,30 @@ function buildBoard(cls, diff) {
     [bad.ok, bad.why, bad.detail], [false, "illegal", "not your turn"]);
 
   /* a legal move for the seat on the clock, chosen from the board itself */
+  /* Takes the most VALUABLE legal option rather than the first one. Not a
+     nicety: drafting the first name alphabetically fills three rosters with
+     rookie seasons and scores 2-80, which makes the verdict unreadable and
+     hides any real regression in it behind noise. */
+  /* Takes the most valuable legal (player, SEASON) pair. Not a nicety: picking
+     the first legal thing fills three rosters with rookie years and scores
+     2-80, which buries any real change in the verdict under noise. */
   function pickFor(state, seat) {
     const parsed = RM.parseBoard(board);
+    let best = null;
     for (const [name, rec] of parsed.players) {
       if (state.taken.has(name)) continue;
       for (const [season, bks] of rec.seasons) {
+        const v = (rec.seasonVal && rec.seasonVal.get(season)) ?? rec.v ?? -1;
+        if (best && v <= best.v) continue;
         for (const slot of bks) {
           if (RM.openAt(state.rosters[seat], slot, parsed.caps) <= 0) continue;
           if (RM.feasibleAfter(parsed, state, seat, name, slot)) continue;
-          return { player: name, season, slot };
+          best = { player: name, season, slot, v };
+          break;
         }
       }
     }
-    return null;
+    return best;
   }
   const stateFrom = (v) => RM.deriveState(made.order, v.moves || []);
 
@@ -243,8 +290,44 @@ function buildBoard(cls, diff) {
     { id, player: board.p[0].n, season: board.p[0].s[0][0], slot: board.p[0].s[0][1][0] });
   eq("ROOM a move after the draft is over is refused", [after.ok, after.detail], [false, "the draft is over"]);
 
+  /* THE VERDICT. A room that does not end in a result is not a game, and this
+     is the one piece the single-player Redraft had and the room did not. */
+  const scored = await call("GET", "/api/room?id=" + id + "&score=1", GMS[0].token);
+  const v = scored.verdict || [];
+  eq("ROOM a finished draft is SCORED: three projected seasons, a place each, and no ties on the podium",
+    [Array.isArray(v) ? v.length : 0,
+     v.every((t) => Number.isInteger(t.wins) && t.wins >= 0 && t.wins <= 82),
+     v.every((t) => t.five.length === 5),
+     v.map((t) => t.place).sort().join("")],
+    [3, true, true, "123"]);
+  /* the same room scored twice must give the same answer: three people are
+     going to compare it, so it cannot wobble */
+  /* THE CROSS-CHECK THAT MATTERS: the Worker's verdict against what a browser
+     with labels loaded would compute for the same five. */
+  const local = scoreLocally(fin.rosters);
+  eq("ROOM the Worker's verdict is the record a BROWSER would show for the same rosters \u2014 same engine, " +
+     "labels and all, so a room is scored on the terms every other board uses",
+    v.map((t) => t.seat + ":" + t.wins + ":" + t.net).sort(),
+    (local || []).filter(Boolean).map((t) => t.seat + ":" + t.wins + ":" + t.net).sort());
+
+  const again = await call("GET", "/api/room?id=" + id + "&score=1", GMS[1].token);
+  eq("ROOM the verdict is reproducible \u2014 scoring the same finished room twice gives the same records",
+    (again.verdict || []).map((t) => t.seat + ":" + t.wins + ":" + t.net),
+    v.map((t) => t.seat + ":" + t.wins + ":" + t.net));
+  {
+    const open2 = await call("POST", "/api/room?op=create", GMS[0].token, { board, pace: "slow" });
+    const mid = await call("GET", "/api/room?id=" + open2.id + "&score=1", GMS[0].token);
+    eq("ROOM the verdict is only offered once the draft is OVER, so a poll mid-draft never pays for it",
+      mid.verdict, undefined);
+  }
+
   console.log("");
-  fin.rosters.forEach((r, i) => console.log("  seat " + i + ": " + r.map((p) => p.player + " " + p.season + " (" + p.slot + ")").join(", ")));
+  fin.rosters.forEach((r, i) => {
+    const t = v.find((x) => x.seat === i) || {};
+    console.log("  seat " + i + ": " + (t.wins != null ? t.wins + "-" + t.losses + "  net " +
+      (t.net > 0 ? "+" : "") + t.net + "  #" + t.place + "   " : "") +
+      r.map((p) => p.player + " " + p.season + " (" + p.slot + ")").join(", "));
+  });
 
   /* 7. THE CLOCK, in a room of its own with a one-second pick. An abandoned
      seat must not freeze the other two, and the catch-up has to run on a plain

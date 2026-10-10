@@ -44,15 +44,44 @@
 
   var ACCT_LIVE = false;                      // <- THE LIVE FLIP (see the header)
 
-  var CONFIG = {
-    // The owner's Clerk DEVELOPMENT instance (2026-10-03). Both values are
-    // client-safe by design and ship to every browser inside this file; the
-    // secret key is never used anywhere in this repo, because verification is
-    // offline against the public key in CLERK_JWT_KEY. Swap these two for the
-    // production instance's pair at the live flip.
+  /* ---------- WHICH CLERK INSTANCE (v70.3) ----------
+     Both values in each pair are client-safe by design and ship to every
+     browser inside this file; the SECRET key is never used anywhere in this
+     repo, because verification is offline against the public key in
+     CLERK_JWT_KEY.
+
+     THE LIVE SITE AND EVERYWHERE ELSE USE DIFFERENT INSTANCES, ON PURPOSE.
+     The first version of this swapped one pair for the other at the live flip,
+     and that would have broken every automated test the moment it happened:
+     Clerk documents `POST /v1/sessions` as "intended only for use in testing,
+     and is not available for production instances", so /api/testauth — which
+     is how tools/boards-live.js and tools/room-live.js drive real accounts —
+     can only ever mint against the DEVELOPMENT instance. Pointing previews at
+     production would leave no way to test an account lane at all.
+
+     So: true82.net gets the production instance, and every preview, localhost
+     and test build keeps the development one. The host check is the same
+     hostname list the rest of this file uses.
+
+     PROD IS EMPTY UNTIL THE PRODUCTION INSTANCE EXISTS. With it empty,
+     `configured()` is false on the live host, the account face says so, and
+     nothing is requested from Clerk — which is the correct state today, since
+     ACCT_LIVE is false anyway. See docs/CLERK-PRODUCTION.md. */
+  var CLERK_DEV = {
     CLERK_FRONTEND_API: "https://ruling-sturgeon-1691.clerk.accounts.dev",
     CLERK_PUBLISHABLE_KEY: "pk_test_cnVsaW5nLXN0dXJnZW9uLTE2OTEuY2xlcmsuYWNjb3VudHMuZGV2JA"
   };
+  var CLERK_PROD = {
+    CLERK_FRONTEND_API: "",        // https://clerk.true82.net
+    CLERK_PUBLISHABLE_KEY: ""      // pk_live_...
+  };
+  function liveHostName() {
+    try {
+      var h = String(g.location.hostname || "").toLowerCase();
+      return h === "true82.net" || h === "www.true82.net";
+    } catch (e) { return false; }
+  }
+  var CONFIG = (liveHostName() && CLERK_PROD.CLERK_FRONTEND_API) ? CLERK_PROD : CLERK_DEV;
   var CLERK_UI_MAJOR = "1", CLERK_JS_MAJOR = "6";
 
   var SID_KEY = "t82:sid";                    // this lane's own device namespace
