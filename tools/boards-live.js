@@ -98,7 +98,7 @@ function mintToken(clerkId) {
   return h + "." + p + "." + b64u(s.sign(K.priv));
 }
 
-let pass = 0, fail = 0, notRepeatable = 0; const failures = [];
+let pass = 0, fail = 0, notRepeatable = 0, skipped = 0; const failures = [];
 function eq(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
   if (ok) pass++; else { fail++; failures.push(name); }
@@ -323,6 +323,22 @@ async function main() {
   };
   const mine = new Set(GMS.map((g) => g.shown));
 
+  /* v69.5 EVERY BOARD CHECK IS AN ORACLE COMPARISON, and the oracle is the
+     ledger of what THIS run banked. That only equals the board when the
+     database held nothing first. These five Clerk identities are reused every
+     run, so a second pass sees the first pass's rows under this run's display
+     names and every board check fails — eleven failures that look like broken
+     SQL and are nothing of the kind. It cost a real diagnosis once; it should
+     not cost another.
+
+     The boards are still PRINTED either way, so a dirty run is still worth
+     reading. Only the assertions wait for a clean one. */
+  const oracleOk = !notRepeatable;
+  const eqBoard = (name, got, want) => {
+    if (oracleOk) { eq(name, got, want); return; }
+    skipped++;
+  };
+
   for (const mode of ["classic", "cap", "pro"]) {
     const r = await board("rate", "&mode=" + mode);
     show("82-0 % . " + mode, r.rows, (x) => (x.score * 100).toFixed(1) + "%  " + x.immortals + " of " + x.runs);
@@ -335,8 +351,53 @@ async function main() {
     const want = [...tally.entries()].filter(([, t]) => t.runs >= 10)
       .sort((a, b) => (b[1].imm / b[1].runs - a[1].imm / a[1].runs) || (b[1].runs - a[1].runs))
       .map(([n, t]) => n + " " + t.imm + "/" + t.runs);
-    eq("LIVE board 82-0% (" + mode + "): the Worker's own counts match every season it said it verified",
+    eqBoard("LIVE board 82-0% (" + mode + "): the Worker's own counts match every season it said it verified",
       r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + x.immortals + "/" + x.runs), want);
+  }
+  /* v69.5 the two boards the owner added from the lab's SPEC. Each is checked
+     against an oracle built from the ledger of what this run actually banked,
+     the same way the mode boards are, so the check measures the Worker's SQL
+     and not a restatement of it.
+
+     BOTH NEED A CLEAN DATABASE, like every other board check (see eqBoard).
+     These two additionally cannot even be PRINTED usefully against a dirty one,
+     because they count a GM's whole history rather than one run's worth, so
+     they are skipped outright with a note rather than shown misleadingly. */
+  if (notRepeatable) {
+    console.log("NOTE  the 82-0 club and This month were not checked: this database already holds a previous " +
+                "pass under the same five identities, and both boards count a GM's whole history. Clear it.");
+  } else {
+    const r = await board("club");
+    show("The 82-0 club", r.rows, (x) => x.score + (x.score === 1 ? " perfect" : " perfects"));
+    const tally = new Map();
+    // every mode counts, Dailies do not (lb.js `official IS NULL`)
+    ledger.filter((x) => x.wins === 82 && x.official === null)
+      .forEach((x) => tally.set(x.shown, (tally.get(x.shown) || 0) + 1));
+    const want = [...tally.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => n + " x" + c);
+    const got = r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " x" + x.score);
+    eqBoard("LIVE board 82-0 club: every perfect this run banked is on it, in any mode, and no Daily perfect is",
+      [got.length, got.slice().sort(), want.slice().sort()], [want.length, want.slice().sort(), want.slice().sort()]);
+    eqBoard("LIVE board 82-0 club: the tie is broken by who got there first, so equal scores are ordered by first_ts",
+      r.rows.every((x, i, a) => i === 0 || a[i - 1].score > x.score ||
+                                (a[i - 1].score === x.score && a[i - 1].first_ts <= x.first_ts)), true);
+
+    const month = TODAY.slice(0, 7);
+    const rm = await board("month");
+    show("This month . " + month, rm.rows, (x) => Number(x.score).toFixed(1) + " avg  " + x.days + "d  best " + x.best);
+    const byGm = new Map();
+    ledger.filter((x) => x.official && x.official.slice(0, 7) === month)
+      .forEach((x) => { const a = byGm.get(x.shown) || []; a.push(x.wins); byGm.set(x.shown, a); });
+    const wantM = [...byGm.entries()]
+      .map(([n, ws]) => {
+        const best = ws.slice().sort((a, b) => b - a).slice(0, 10);
+        return { n, days: best.length, avg: Math.round((best.reduce((t, w) => t + w, 0) / best.length) * 10) / 10 };
+      })
+      .filter((x) => x.days >= 3)
+      .sort((a, b) => (b.avg - a.avg) || (b.days - a.days))
+      .map((x) => x.n + " " + x.avg + " over " + x.days);
+    eqBoard("LIVE board This month: the best ten Dailies of the month averaged, and a GM under the qualifying bar is " +
+       "left off rather than ranked on one lucky day",
+      rm.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + x.score + " over " + x.days), wantM);
   }
   {
     const r = await board("net");
@@ -345,7 +406,7 @@ async function main() {
     ledger.filter((x) => x.mode === "classic" && x.official === null).forEach((x) => {
       if (!best.has(x.shown) || x.net > best.get(x.shown)) best.set(x.shown, x.net);
     });
-    eq("LIVE board Best net: a REAL column holds the float, and every GM reads back at their own best net",
+    eqBoard("LIVE board Best net: a REAL column holds the float, and every GM reads back at their own best net",
       r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + Number(x.score).toFixed(2)),
       [...best.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => n + " " + v.toFixed(2)));
   }
@@ -354,7 +415,7 @@ async function main() {
     show("Today . " + TODAY, r.rows, (x) => x.score + "-" + (82 - x.score) +
       (x.net == null ? "" : "  " + (x.net > 0 ? "+" : "") + Number(x.net).toFixed(1)));
     const want = ledger.filter((x) => x.official === TODAY).sort((a, b) => (b.wins - a.wins) || (b.net - a.net));
-    eq("LIVE board Today: the deployment's own Daily board, which no deployment had ever filled before",
+    eqBoard("LIVE board Today: the deployment's own Daily board, which no deployment had ever filled before",
       r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + x.score),
       want.map((x) => x.shown + " " + x.wins));
     eq("LIVE board Today is not empty", r.rows.length > 0, true);
@@ -368,13 +429,13 @@ async function main() {
       for (let i = 1; i < ds.length; i++) { run = ds[i] === ds[i - 1] + 1 ? run + 1 : 1; if (run > best) best = run; }
       return g.shown + " " + best + "/" + ds.length;
     }).sort((a, b) => Number(b.split(" ")[1].split("/")[0]) - Number(a.split(" ")[1].split("/")[0]));
-    eq("LIVE board Streak: julianday() and ROW_NUMBER() OVER () really work in D1, not just in SQLite",
+    eqBoard("LIVE board Streak: julianday() and ROW_NUMBER() OVER () really work in D1, not just in SQLite",
       r.rows.filter((x) => mine.has(x.name)).map((x) => x.name + " " + x.score + "/" + x.days), want);
   }
   {
     const r = await board("cheapest");
     show("Cheapest 82-0 . Presti", r.rows, (x) => "$" + x.score + "M");
-    eq("LIVE board Cheapest 82-0: the query runs and returns only perfect Presti seasons",
+    eqBoard("LIVE board Cheapest 82-0: the query runs and returns only perfect Presti seasons",
       [r.ok, r.rows.every((x) => typeof x.score === "number")], [true, true]);
   }
   {
@@ -390,6 +451,9 @@ async function main() {
     console.log("\nGMs created (delete these rows when you are done): " +
       GMS.filter((g) => g.tag).map((g) => g.shown + " [" + g.tag + "]").join(", "));
     console.log(pass + " passed, " + fail + " failed");
+    if (skipped) console.log(skipped + " board checks were not asserted (the boards above are still real; the " +
+
+      "oracle is this run's ledger, which only matches the board on a clean database).");
     if (notRepeatable) console.log(notRepeatable + " Daily submissions were skipped as already played: this database has seen a " +
       "pass before. Clear it (it is the preview's own since v69.3) for a clean 32.");
     if (fail) { console.log("failed: " + failures.join(" | ")); process.exitCode = 1; }
