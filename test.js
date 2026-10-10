@@ -2451,10 +2451,12 @@ async function accountLane() {
     run(1, "cap", 80, 4, 1, 10, "2026-10-03");          // today's daily
     ["2026-09-20","2026-09-21","2026-09-22","2026-09-25","2026-09-26"].forEach((d) => run(2, "cap", 70, 1, 1, 20, d));
 
+    // v69.6: a board's args() can be several values now (a scope is bound twice
+    // so one value both selects and disables the mode filter), so pass an array
     const rows = (key, arg) => {
-      const b = lb.BOARDS[key];
-      const st = db.prepare(b.sql);
-      return arg === undefined ? st.all() : st.all(arg);
+      const st = db.prepare(lb.BOARDS[key].sql);
+      if (arg === undefined) return st.all();
+      return Array.isArray(arg) ? st.all(...arg) : st.all(arg);
     };
 
     const rate = rows("rate", "classic");
@@ -2467,7 +2469,7 @@ async function accountLane() {
     eq("v69.1 board Cheapest 82-0: least money first, and the unverified $1M run is not there",
        cheap.map((r) => r.name + " $" + r.score), ["BEN $38", "AVA $41"]);
 
-    const net = rows("net");
+    const net = rows("net", "classic");
     eq("v69.1 board Best net: one row per GM, their best Classic season, verified only",
        net.map((r) => r.name + " " + r.score), ["CY 40", "AVA 30", "BEN 20"]);
 
@@ -2477,7 +2479,7 @@ async function accountLane() {
        complaint the club answers. It counts a perfect in any mode — a perfect
        Presti season is a perfect season — and ties go to whoever got there
        first, which is the only honest tiebreak on an unbounded field. */
-    const club = rows("club");
+    const club = rows("club", ["all", "all"]);
     eq("v69.5 board 82-0 club: every GM with a perfect, in any mode, most first and the earliest to three winning " +
        "the tie \u2014 and the 3-for-3 the rate board's bar shut out is on it",
        [club.map((r) => r.name + " x" + r.score), rate.map((r) => r.name)],
@@ -2504,15 +2506,77 @@ async function accountLane() {
     run(1, "cap", 10, -9, 1, 20, "2026-11-11");
     run(1, "cap", 12, -8, 1, 20, "2026-11-12");
 
-    const monthNov = rows("month", "2026-11");
+    const monthNov = rows("month", ["2026-11", "all", "all"]);
     eq("v69.5 board This month: the best " + lb.MONTH_BEST + " of twelve Dailies are averaged and the two wrecked " +
        "days drop out entirely, so playing a bad day never costs you anything",
        monthNov.map((r) => r.name + " " + r.score + " over " + r.days + " best " + r.best), ["AVA 80 over 10 best 80"]);
     eq("v69.5 board This month: " + lb.MONTH_MIN + " days to qualify \u2014 BEN's five September Dailies rank, " +
        "AVA's single October one does not, and the month comes from the day key's own first seven characters",
-       [rows("month", "2026-09").map((r) => r.name + " " + r.score + " over " + r.days),
-        rows("month", "2026-10").map((r) => r.name), rows("month", "2026-12").length],
+       [rows("month", ["2026-09", "all", "all"]).map((r) => r.name + " " + r.score + " over " + r.days),
+        rows("month", ["2026-10", "all", "all"]).map((r) => r.name), rows("month", ["2026-12", "all", "all"]).length],
        [["BEN 70 over 5"], [], 0]);
+
+    /* v69.6 THE MODE SPLIT. A metric that exists in every mode should be
+       readable in every mode, and one that does not (money, which only Presti
+       has) should not pretend otherwise. The fixture is deliberately lopsided:
+       AVA's perfects are mostly Classic and BEN's mostly Presti, so a board
+       that ignored its scope could not satisfy both orders at once. */
+    run(2, "cap", 82, 6, 1, 30);                        // BEN: a second Presti perfect
+    run(2, "cap", 82, 7, 1, 33);                        // ...and a third
+    const clubAll = rows("club", ["all", "all"]);
+    const clubCla = rows("club", ["classic", "classic"]);
+    const clubCap = rows("club", ["cap", "cap"]);
+    const clubPro = rows("club", ["pro", "pro"]);
+    eq("v69.6 board 82-0 club scopes by mode: Classic puts CY and AVA above BEN, Presti REVERSES that and puts " +
+       "BEN on top, and Pro is empty \u2014 one parameter no board could fake both orders at once",
+       [clubAll.map((r) => r.name + " x" + r.score), clubCla.map((r) => r.name + " x" + r.score),
+        clubCap.map((r) => r.name + " x" + r.score), clubPro.length],
+       [["BEN x4", "AVA x3", "CY x3"], ["CY x3", "AVA x2", "BEN x1"], ["BEN x3", "AVA x1"], 0]);
+
+    const netCla = rows("net", "classic");
+    const netCap = rows("net", "cap");
+    eq("v69.6 board Best net is no longer Classic-only: a Presti season has a net rating too and now has " +
+       "somewhere to be read",
+       [netCla.map((r) => r.name), netCap.map((r) => r.name).sort(), rows("net", "pro").length],
+       [["CY", "AVA", "BEN"], ["AVA", "BEN"], 0]);
+
+    eq("v69.6 Cheapest takes NO mode: money only exists in Presti, so the board does not offer a scope it " +
+       "cannot honour",
+       [lb.BOARDS.cheapest.scopes, lb.BOARDS.club.scopes, lb.BOARDS.net.scopes, lb.BOARDS.month.scopes],
+       [undefined, "all", "modes", "all"]);
+
+    /* v69.6 YOUR DAILIES: the per-day placement, which no other board answers.
+       Its rows carry `rank` as the PLACEMENT (not the row index) and `name` as
+       the DAY, so the ordinary renderer needs no special case. */
+    /* a CONTESTED day, because a board that only ever reports "1 of 1" has not
+       been tested. AVA and CY tie on wins AND net, so RANK() must give them the
+       same place and push BEN to 3rd — competition ranking, the same rule the
+       `you` block uses. */
+    run(1, "classic", 80, 5, 1, undefined, "2026-12-01");
+    run(3, "classic", 80, 5, 1, undefined, "2026-12-01");
+    run(2, "classic", 75, 1, 1, undefined, "2026-12-01");
+    run(null, "classic", 82, 9, 1, undefined, "2026-12-01");   // anonymous: not in the field
+    run(1, "classic", 82, 9, 0, undefined, "2026-12-02");      // unverified: not a row at all
+
+    const mine1 = rows("mydays", 1), mine2 = rows("mydays", 2), mine3 = rows("mydays", 3);
+    const dec1 = (rowsFor) => rowsFor.find((r) => r.day === "2026-12-01");
+    eq("v69.6 board Your Dailies on a CONTESTED day: a tie shares the place and pushes the next GM to 3rd, the " +
+       "field counts only verified signed-in runs, and an unverified day is not a row at all",
+       [dec1(mine1).rank + "/" + dec1(mine1).field, dec1(mine3).rank + "/" + dec1(mine3).field,
+        dec1(mine2).rank + "/" + dec1(mine2).field, mine1.some((r) => r.day === "2026-12-02")],
+       ["1/3", "1/3", "3/3", false]);
+
+    eq("v69.6 board Your Dailies: one row per Daily this GM played, newest first, each carrying that day's own " +
+       "placement and field size",
+       [mine1.length, mine1[0].day, mine1[mine1.length - 1].day,
+        mine1.every((r, i, a) => i === 0 || a[i - 1].day > r.day),
+        mine1.every((r) => r.rank === 1 && r.field === 1),
+        mine2.length, mine2.every((r) => r.rank === 1 && r.field === 1)],
+       [14, "2026-12-01", "2026-10-03", true, false, 6, false]);
+    eq("v69.6 board Your Dailies is PERSONAL: the same query for another GM returns only their own days",
+       [mine1.every((r) => r.uid === 1), mine2.every((r) => r.uid === 2), rows("mydays", 99).length],
+       [true, true, 0]);
+
 
     db.close();
   }
