@@ -162,6 +162,10 @@
      renders nothing and requests nothing from Clerk. No file here is hidden by #t82-live-hide below. -->
 <script src="accounts.js?v=20261010-v69-6" defer></script>
 <script src="app.js?v=20261010-v69-4b" defer></script>
+<!-- v70 the draft room: three GMs in one snake draft. AFTER app.js, because the host builds the room's board
+     with app.js's own sdBuildPool(), and behind the same account lane as accounts.js, so it renders nothing on
+     true82.net while ACCT_LIVE is false. -->
+<script src="room-ui.js?v=20261010-v70" defer></script>
 <script src="reel-riso.js?v=20261002-v68" defer></script>
 <!-- v67 part two (art/CONTRACT-FX.md): the shared riso FX layer (the Heat Check, the Presti perks, the 82-0 fireworks);
      it prints with the reel's kit, so it comes after reel-riso.js. Without it the game plays the old emoji effects. -->
