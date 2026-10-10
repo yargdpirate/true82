@@ -1,5 +1,68 @@
 # TRUE 82 — CURRENT AGENT HANDOFF
 
+> **FIRST THING (2026-10-10, v69.6): EIGHT BOARDS, SPLIT BY MODE, AND THE CLERK SIGN-IN GAP IS CLOSED.**
+> The thing every earlier handoff called permanent — "Clerk's browser sign-in UI needs one human per
+> release" — **is no longer true on a local host, and it was proven end to end today.** Everything is on
+> `origin/v69-boards`; `main` is still v68.2.
+>
+> **I CAN SIGN IN NOW, and here is exactly how.** The `+clerk_test` identities Clerk accepts with the
+> fixed code `424242` need no inbox, and doing it against **localhost** is inside the rule that kept it
+> off limits. Proven: Clerk's dialog loads, 424242 signs in, the token verifies, a users row is created,
+> and the signed-in BOARD RENDERING (your own row highlighted, your own rank) was checked at 375px.
+> `site-signin` in `.claude/launch.json` is the server. **Two traps, both of which cost time today:**
+> - `AUTHORIZED_PARTIES` must list the exact local origin (`http://localhost:8797`) or auth.js rejects
+>   on `azp` while every other diagnostic reads green.
+> - **Get `CLERK_JWT_KEY` from the instance's public JWKS, not from an old launch config.** The key in
+>   the `site-boards` entry is the SYNTHETIC TEST KEYPAIR, not Clerk's; it is the same length and fails
+>   with `tokenVerifies: false` and nothing else wrong. Derive it from
+>   `https://ruling-sturgeon-1691.clerk.accounts.dev/.well-known/jwks.json` (import the JWK, export
+>   SPKI, one line with PEM headers — auth.js strips headers and whitespace).
+>
+> **A SECOND LOCAL SERVER, `site-harness`, IS THE BIGGER WIN FOR DAY-TO-DAY WORK.** It runs the throwaway
+> keypair (`node tools/boards-live.js --keys`) with its own D1, so **a clean 46-check pass no longer
+> waits on the preview database being cleared.** Use it for everything except the Clerk UI itself.
+> Both configs' `--persist-to` point at a session scratchpad that will not exist for you: repoint them,
+> and apply 0030 + 0031 to the fresh D1 before the first run.
+>
+> **THE BOARD SLATE IS NOW EIGHT:** Today · Streak · 82-0 % · **82-0 club** · **This month** ·
+> **Your days** · Cheapest · Best net.
+> - **Mode scopes, where the metric survives one.** Club and This month take All/Classic/Presti/Pro;
+>   **Best net stopped being Classic-only** (a Presti or Pro season has a net rating and had nowhere to
+>   be read); **Cheapest takes NO scope**, because money only exists in Presti and a board should not
+>   offer one it cannot honour. `"all"` never reaches SQL as a mode — each query carries
+>   `(? = 'all' OR r.mode = ?)` with the scope bound twice.
+> - **Each board remembers its OWN scope on the client.** One shared mode could not work: the club wants
+>   to open on All, and the 82-0 % board has no All to open on, because a rate across modes is three
+>   different denominators added together.
+> - **Your days is the first PERSONAL board**: the handler requires a signed-in caller and binds their
+>   id, and signed out it is empty with a reason rather than an error or somebody else's rows. Two shape
+>   tricks keep the renderer unchanged — `name` is the DAY and the placement is aliased to `rank`, which
+>   the row mapper lets win over the row index. RANK() not ROW_NUMBER(), so a tie shares a place.
+>
+> **THE CLUB'S COUNTS NOW ADD UP, and that needed real perfects rather than luck.** Ordinary seeds go
+> 82-0 about 4% of the time in Classic and Presti and **0.8% in Pro**, so the counts were a different
+> number every run. `boards-live.js` carries eighteen curated seeds the same bot and replay take to
+> 82-0, and each GM banks a KNOWN number per mode, **deliberately lopsided so a board ignoring its scope
+> cannot pass**: Classic puts A above B and Presti reverses it. Measured live: all A5/B4/C4, classic
+> A4/B1, cap B3/A1, pro C4. A side effect worth knowing — the curated Presti perfects finally put rows
+> on the **Cheapest** board, which had never had one.
+>
+> **TWO ORACLE BUGS IN MY OWN CHECKS, both found by running twice.** The club/net/Daily checks compare
+> the board against a ledger of what THAT run banked, so they only hold on a clean database — every
+> board assertion now waits for one (`eqBoard`) and a dirty pass reads `18 passed, 0 failed` with notes
+> instead of eleven failures that look like broken SQL. And the Your-days check compared RANK() against
+> row POSITION; every bot plays a Daily identically, so ties are the normal case, and it passed the
+> first time only because that GM happened to sit first.
+>
+> **Verified:** `test.js` 336; 46 live checks on a clean local Worker; the signed-in UI at 375px.
+>
+> **ASYNC PLAY IS PLANNED AND NOT BUILT: `docs/ASYNC-ROOMS-PLAN.md`.** The headline is that the hard
+> part already exists — the game stores `(mode, seed, actions)` and replays them, so a shared game is
+> one seed and one ordered action log with an owner per line. It argues that TWO games are hiding in
+> his idea (a shared board, which is the Daily with a guest list, and a contested snake draft, which is
+> a new game) and to build the first first. Concurrency is `UNIQUE(room_id, seq)`, the same trick the
+> Daily's one-attempt-a-day plays. Nothing starts before the debut.
+
 > **FIRST THING (2026-10-10, v69.5): SEVEN BOARDS NOW, AND THE WHOLE LANE IS VERIFIED ON THE DEPLOYMENT.**
 > His two picks from the lab's SPEC are in: **the 82-0 club** and **This month**. `DAILY_SECRET` and
 > `DAILY_PINS` are set on both environments — the preview reports `pinned:3, pinsNeeded:0` and serves the
