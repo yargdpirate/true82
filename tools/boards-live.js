@@ -98,7 +98,7 @@ function mintToken(clerkId) {
   return h + "." + p + "." + b64u(s.sign(K.priv));
 }
 
-let pass = 0, fail = 0; const failures = [];
+let pass = 0, fail = 0, notRepeatable = 0; const failures = [];
 function eq(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
   if (ok) pass++; else { fail++; failures.push(name); }
@@ -268,10 +268,25 @@ async function main() {
       // mode, seed AND challenge the Worker re-derives with its own daily-core.js
       // and challenges.js. A missing challenge import makes this fail, and the
       // symptom looks like a broken engine.
-      eq("LIVE the official Daily " + key + " (" + b.base + ", " + ((b.ch && b.ch.id) || "vanilla") + "): the " +
-         "Worker re-derived the same board and took it as official for " + g.key,
-        [res.ok, res.stored, res.verified, res.officialRejected, res.wins === run.result.wins],
-        [true, true, 1, false, true]);
+      /* v69.4: SAY WHEN IT IS THE DATABASE AND NOT THE CODE. These five Clerk
+         identities are fixed, so a second pass against a database that still
+         holds the first one trips UNIQUE (user_id, official) — the one-attempt-
+         a-day rule doing exactly its job — and every Daily check fails with
+         `stored: false` for a reason that has nothing to do with the board.
+         Note what is still proven when that happens: `officialRejected: false`
+         means the Worker DID re-derive the same mode, seed and challenge, which
+         is what this check exists for. Only the storing is refused. */
+      if (res.ok && res.verified === 1 && !res.officialRejected && !res.stored && res.alreadyToday) {
+        notRepeatable++;
+        console.log("NOTE  " + key + ": " + g.key + " already has an official run for that day, so it was not " +
+                    "stored. The board still re-derived correctly (officialRejected: false). Clear the preview " +
+                    "database to make this pass repeatable.");
+      } else {
+        eq("LIVE the official Daily " + key + " (" + b.base + ", " + ((b.ch && b.ch.id) || "vanilla") + "): the " +
+           "Worker re-derived the same board and took it as official for " + g.key,
+          [res.ok, res.stored, res.verified, res.officialRejected, res.wins === run.result.wins],
+          [true, true, 1, false, true]);
+      }
       if (res.ok && res.stored && res.verified && !res.officialRejected) {
         ledger.push({ shown: g.shown, mode: b.base, wins: run.result.wins, net: run.result.net,
                       budgetUsed: run.result.budgetUsed, official: key });
@@ -375,6 +390,8 @@ async function main() {
     console.log("\nGMs created (delete these rows when you are done): " +
       GMS.filter((g) => g.tag).map((g) => g.shown + " [" + g.tag + "]").join(", "));
     console.log(pass + " passed, " + fail + " failed");
+    if (notRepeatable) console.log(notRepeatable + " Daily submissions were skipped as already played: this database has seen a " +
+      "pass before. Clear it (it is the preview's own since v69.3) for a clean 32.");
     if (fail) { console.log("failed: " + failures.join(" | ")); process.exitCode = 1; }
   }
 }
